@@ -13,8 +13,9 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.launch_method.fork import Fork
-from radical.pilot.agent.executing.popen    import Popen
+from radical.pilot.agent.resource_manager.base import ResourceManager
+from radical.pilot.agent.launch_method.fork    import Fork
+from radical.pilot.agent.executing.popen       import Popen
 
 base = os.path.abspath(os.path.dirname(__file__))
 
@@ -57,20 +58,21 @@ class TestPopen(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
-    @mock.patch.object(Popen, 'find_launcher', return_value=None)
+    @mock.patch.object(ResourceManager, 'find_launcher', return_value=None)
     @mock.patch.object(Fork, '__init__', return_value=None)
     @mock.patch('subprocess.Popen')
     def test_handle_task(self, mocked_sp_popen, mocked_lm_init,
                          mocked_find_launcher, mocked_init):
 
+        launcher = Fork(name=None, lm_cfg={}, rm_info={}, log=None, prof=None)
+        launcher.name    = 'FORK'
+        launcher._env_sh = 'env/lm_fork.sh'
+        mocked_find_launcher.return_value = launcher
+
         task = dict(self._test_case['task'])
         task['slots'] = self._test_case['setup']['slots']
 
         pex = Popen(cfg=None, session=None)
-
-        with self.assertRaises(RuntimeError):
-            # no launcher
-            pex._handle_task(task)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
         pex._pwd     = ''
@@ -83,10 +85,8 @@ class TestPopen(TestCase):
         pex.gtod     = ''
         pex.prof     = ''
 
-        launcher = Fork(name=None, lm_cfg={}, rm_info={}, log=None, prof=None)
-        launcher.name    = 'FORK'
-        launcher._env_sh = 'env/lm_fork.sh'
-        mocked_find_launcher.return_value = launcher
+        pex._rm      = mock.Mock()
+        pex._rm.find_launcher = mocked_find_launcher
 
         pex._handle_task(task)
 

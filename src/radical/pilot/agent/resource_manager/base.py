@@ -138,6 +138,7 @@ class ResourceManager(object):
     #
     def __init__(self, cfg, log, prof):
 
+        log.debug('foo 1')
         self.name     = type(self).__name__
         self._cfg     = cfg
         self._log     = log
@@ -159,9 +160,6 @@ class ResourceManager(object):
             # let the base class collect some data, then let the impl take over
             rm_info = self._prepare_info()
             rm_info = self._init_from_scratch(rm_info)
-
-            # after rm setup and node config, set up all launch methods
-            self._prepare_launch_methods(rm_info)
 
             # have a valid info - store in registry and complete initialization
             self._reg.put('rm.%s' % self.name.lower(), rm_info)
@@ -329,6 +327,7 @@ class ResourceManager(object):
 
             except:
                 self._log.exception('skip LM %s' % name)
+                print('=== skip', name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')

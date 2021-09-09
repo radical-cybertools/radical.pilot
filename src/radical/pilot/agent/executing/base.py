@@ -34,13 +34,7 @@ class AgentExecutingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        session._log.debug('===== exec init start')
-
-        self._uid = ru.generate_id(cfg['owner'] + '.executing.%(counter)s',
-                                   ru.ID_CUSTOM)
-
         rpu.Component.__init__(self, cfg, session)
-        session._log.debug('===== exec init stop')
 
         # if so configured, let the Task know what to use as tmp dir
         self._task_tmp = cfg.get('task_tmp', os.environ.get('TMP', '/tmp'))
@@ -88,34 +82,6 @@ class AgentExecutingComponent(rpu.Component):
         # been collected during agent startup.
         self._rm = rpa.ResourceManager.create(self._cfg.resource_manager,
                                               self._cfg, self._log, self._prof)
-
-        # The AgentExecutingComponent needs LaunchMethods to construct
-        # commands.
-        self._launchers    = dict()
-        self._launch_order = None
-
-        self._log.debug('===== cfg ', self._cfg)
-        launch_methods = self._cfg.resource_cfg.launch_methods
-        for name, lm_cfg in launch_methods.items():
-
-            if name == 'order':
-                self._launch_order = lm_cfg
-                continue
-
-            try:
-                self._log.debug('==== prepare lm %s', name)
-                lm_cfg['pid']         = self._cfg.pid
-                lm_cfg['reg_addr']    = self._cfg.reg_addr
-                self._launchers[name] = rpa.LaunchMethod.create(
-                    name, lm_cfg, self._rm.info, self._log, self._prof)
-            except:
-                self._log.exception('skip LM %s' % name)
-
-        if not self._launchers:
-            raise RuntimeError('no valid launch methods found')
-
-        if not self._launch_order:
-            self._launch_order = list(launch_methods.keys())
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
 __copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
@@ -22,31 +24,48 @@ class RMBaseTestCase(TestCase):
 
         # check initialization from registry data only,
         # initialization from scratch will be tested by each method separately
-
-        reg = ru.zmq.Registry()
-        reg.start()
-
+        lm_info = {'env_sh': '/dev/null',
+                   'env'   : {}
+                   }
         rm_info = RMInfo({'requested_nodes': 1,
                           'requested_cores': 16,
                           'requested_gpus' : 2,
                           'node_list'      : [['node00', '1']],
                           'cores_per_node' : 16,
                           'gpus_per_node'  : 2})
+        rm_info.verify()
 
-        c = ru.zmq.RegistryClient(url=reg.addr)
-        c.put('rm.resourcemanager', rm_info)
-        c.close()
+        cfg = ru.Config(from_dict={
+            'reg_addr': None,
+            'resource_cfg': {
+                'launch_methods': {
+                    'order': ['FORK'],
+                    'FORK' : {'env': {}}
+                }}})
 
-        rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
-                             log=mock.Mock(), prof=mock.Mock())
+        def mock_init(self, url):
+            pass
 
-        self.assertIsInstance(rm.info, RMInfo)
-        # check some attributes
-        self.assertEqual(rm.info.requested_cores, rm_info.requested_cores)
-        self.assertEqual(rm.info.node_list,       rm_info.node_list)
+        def mock_get(self, name):
+            if 'lm' in name:
+                return lm_info
+            elif 'rm' in name:
+                return rm_info
 
-        rm._reg.close()
-        reg.stop()
+        def mock_close(self):
+            pass
+
+        with mock.patch.object(ru.zmq.RegistryClient, '__init__', mock_init), \
+             mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get),  \
+             mock.patch.object(ru.zmq.RegistryClient, 'close',    mock_close):
+
+            rm = ResourceManager(cfg=cfg, log=mock.Mock(), prof=mock.Mock())
+
+            self.assertIsInstance(rm.info, RMInfo)
+
+            self.assertEqual(rm.info.requested_cores, rm_info.requested_cores)
+            self.assertEqual(rm.info.node_list,       rm_info.node_list)
+
 
     # --------------------------------------------------------------------------
     #
@@ -90,7 +109,6 @@ class RMBaseTestCase(TestCase):
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._cfg = cfg
-
         rm_info = rm._prepare_info()
 
         self.assertIsInstance(rm_info, RMInfo)
@@ -104,6 +122,46 @@ class RMBaseTestCase(TestCase):
         # lfs size and lfs path
         self.assertEqual(rm_info.lfs_per_node, 100)
         self.assertEqual(rm_info.lfs_path,     '/tmp/local_folder/')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    @mock.patch('radical.pilot.agent.launch_method.base.LaunchMethod')
+    def test_find_launcher(self, mocked_lm, mocked_init):
+
+        os.environ['LOCAL'] = '/tmp/local_folder/'
+
+        cfg = ru.Munch({
+            'cores'        : 16,
+            'gpus'         : 2,
+            'resource_cfg' : {
+                'cores_per_node'   : 16,
+                'gpus_per_node'    : 2,
+                'lfs_path_per_node': '${LOCAL}',
+                'lfs_size_per_node': 100,
+                'launch_methods'   : {
+                    'order': ['SRUN'],
+                    'SRUN' : {}
+                }}})
+
+        rm = ResourceManager.create('FORK', cfg=cfg, log=mock.Mock(),
+                                    prof=mock.Mock())
+
+        rm._launch_order = ['SRUN']
+        rm._launchers    = {'SRUN': mocked_lm}
+
+        def mocked_can_launch(task):
+            return False
+        mocked_lm.can_launch = mocked_can_launch
+
+        self.assertIsNone(rm.find_launcher(task=None))
+
+        def mocked_can_launch(task):
+            return True
+        mocked_lm.can_launch = mocked_can_launch
+        self.assertIs(rm.find_launcher(task=None), mocked_lm)
+
 
     # --------------------------------------------------------------------------
     #
@@ -122,6 +180,7 @@ class RMBaseTestCase(TestCase):
             # `node_list` should not be empty or not being set
             # this attribute is set by an overwritten method `_update_info`
             rm._init_from_scratch(RMInfo({'node_list': []}))
+
 
     # --------------------------------------------------------------------------
     #
@@ -143,8 +202,21 @@ class RMBaseTestCase(TestCase):
 
         rm._cfg.resource_cfg.launch_methods = {}
         with self.assertRaises(RuntimeError):
-            # no launch methods
             rm._prepare_launch_methods(None)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tc = RMBaseTestCase()
+  # tc.test_init_from_registry()
+  # tc.test_set_info()
+  # tc.test_prepare_info()
+    tc.test_find_launcher()
+    tc.test_init_from_scratch()
+    tc.test_prepare_launch_methods()
+
 
 # ------------------------------------------------------------------------------
 

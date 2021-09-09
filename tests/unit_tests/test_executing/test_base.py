@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=unused-argument, protected-access
 
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
@@ -7,8 +9,9 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.executing.base  import AgentExecutingComponent
-from radical.pilot.agent.executing.popen import Popen
+from radical.pilot.agent.executing        import AgentExecutingComponent
+from radical.pilot.agent.executing.popen  import Popen
+from radical.pilot.agent.resource_manager import ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -43,32 +46,12 @@ class TestBaseExecuting(TestCase):
         # Popen was initialized
         self.assertTrue(mocked_popen_init.called)
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(AgentExecutingComponent, '__init__', return_value=None)
-    @mock.patch('radical.pilot.agent.launch_method.base.LaunchMethod')
-    @mock.patch('radical.utils.Logger')
-    def test_find_launcher(self, mocked_logger, mocked_lm, mocked_init):
-
-        exec_base = AgentExecutingComponent(cfg=None, session=None)
-
-        exec_base._launch_order = []
-        self.assertIsNone(exec_base.find_launcher(task=None))
-
-        lm = mocked_lm.return_value
-        lm.can_launch.return_value = True
-
-        exec_base._log          = mocked_logger
-        exec_base._launchers    = {'launcher_name': lm}
-        exec_base._launch_order = exec_base._launchers.keys()
-        self.assertIs(exec_base.find_launcher(task=None), lm)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentExecutingComponent, '__init__', return_value=None)
-    @mock.patch('radical.pilot.agent.executing.base.rpa.ResourceManager')
-    @mock.patch('radical.pilot.agent.executing.base.rpa.LaunchMethod')
-    def test_initialize(self, mocked_lm, mocked_rm, mocked_init):
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_initialize(self, mocked_rm, mocked_init):
 
         ec = AgentExecutingComponent(cfg=None, session=None)
         ec._cfg = ru.Munch(from_dict={
@@ -87,20 +70,15 @@ class TestBaseExecuting(TestCase):
         ec.register_publisher = ec.register_subscriber = mock.Mock()
 
         mocked_rm.create.return_value = mocked_rm
-        mocked_lm.create.return_value = mocked_lm
         ec.initialize()
 
-        self.assertEqual(ec._launch_order, ['SRUN'])
-        self.assertEqual(ec._launchers['SRUN'], mocked_lm)
 
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestBaseExecuting()
     tc.test_create()
-    tc.test_find_launcher()
     tc.test_initialize()
 
 

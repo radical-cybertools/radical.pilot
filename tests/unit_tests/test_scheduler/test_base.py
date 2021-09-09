@@ -15,17 +15,6 @@ base = os.path.abspath(os.path.dirname(__file__))
 
 # ------------------------------------------------------------------------------
 #
-# mock ru.zmq.RegistryClient class
-#
-class MockRegistry(object):
-
-    def __init__(self, cfg):
-        self._cfg = cfg
-        print('=== init mock registry: %s' % self._cfg)
-
-
-# ------------------------------------------------------------------------------
-#
 class TestBaseScheduling(TestCase):
 
     # --------------------------------------------------------------------------
@@ -58,15 +47,20 @@ class TestBaseScheduling(TestCase):
 
         for c in self._test_cases['initialize']:
 
-            def mock_init(self, url):
-                pass
-
+            def mock_init(self, url)       : pass
+            def mock_put(self, name, data) : pass
+            def mock_close(self)           : pass
             def mock_get(self, name):
-                return c['config'][name]
+                if 'rm' in name:
+                    return c['config'][name]
+                else:
+                    return {'env': {}, 'env_sh': {}}
 
             sched._cfg = ru.Config(from_dict=c['config'])
             with mock.patch.object(ru.zmq.RegistryClient, '__init__', mock_init), \
-                 mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get):
+                 mock.patch.object(ru.zmq.RegistryClient, 'put',      mock_put), \
+                 mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get), \
+                 mock.patch.object(ru.zmq.RegistryClient, 'close',    mock_close):
                 if 'RuntimeError' in c['result']:
                     if ':' in c['result']:
                         pat = c['result'].split(':')[1]
