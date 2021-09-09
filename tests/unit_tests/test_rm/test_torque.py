@@ -12,7 +12,7 @@ from unittest import mock, TestCase
 from radical.pilot.agent.resource_manager        import RMInfo
 from radical.pilot.agent.resource_manager.torque import Torque
 
-TEST_CASES_DIR = 'tests/unit_tests/test_rm/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ class TorqueTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
 
-        os.environ['PBS_NODEFILE']  = '%s/nodelist.torque' % TEST_CASES_DIR
+        os.environ['PBS_NODEFILE']  = '%s/test_cases/nodelist.torque' % base
         os.environ['PBS_NCPUS']     = '2'
         os.environ['PBS_NUM_PPN']   = '4'
         os.environ['PBS_NUM_NODES'] = '2'

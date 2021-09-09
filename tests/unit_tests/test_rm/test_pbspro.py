@@ -12,7 +12,7 @@ from unittest import mock, TestCase
 from radical.pilot.agent.resource_manager        import RMInfo
 from radical.pilot.agent.resource_manager.pbspro import PBSPro
 
-TEST_CASES_DIR = 'tests/unit_tests/test_rm/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ class PBSProTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
 
-        os.environ['PBS_NODEFILE'] = '%s/nodelist.pbs' % TEST_CASES_DIR
+        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.pbs' % base
         os.environ['SAGA_PPN']     = '0'
         os.environ['NODE_COUNT']   = '2'
         os.environ['NUM_PPN']      = '4'

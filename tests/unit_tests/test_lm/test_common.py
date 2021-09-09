@@ -6,13 +6,14 @@ import glob
 
 import radical.utils as ru
 
+base = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
 def setUp(test_type, test_name):
 
     ret  = list()
-    base = os.path.abspath(os.path.dirname(__file__))
 
     for fin in glob.glob('%s/test_cases/task.*.json' % base):
 

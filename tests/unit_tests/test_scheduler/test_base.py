@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import os
 import pytest
 import radical.utils as ru
 
@@ -9,7 +10,7 @@ from unittest import mock, TestCase
 
 from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
 
-TEST_CASES_DIR = 'tests/unit_tests/test_scheduler/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -33,7 +34,7 @@ class TestBaseScheduling(TestCase):
     def setUpClass(cls) -> None:
 
         # provided JSON file (with test cases) should NOT contain any comments
-        cls._test_cases = ru.read_json('%s/test_base.json' % TEST_CASES_DIR)
+        cls._test_cases = ru.read_json('%s/test_cases/test_base.json' % base)
 
 
     # --------------------------------------------------------------------------

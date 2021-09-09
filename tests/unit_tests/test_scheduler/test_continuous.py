@@ -17,7 +17,6 @@ import radical.pilot.constants as rpc
 from radical.pilot.agent.scheduler.continuous import Continuous
 
 base = os.path.abspath(os.path.dirname(__file__))
-TEST_CASES_DIR = '%s/test_cases' % base
 
 
 # ------------------------------------------------------------------------------
@@ -30,10 +29,10 @@ class TestContinuous(TestCase):
     def setUpClass(cls) -> None:
 
         cls._test_cases = []
-        for f in glob.glob('%s/task.*.json' % TEST_CASES_DIR):
+        for f in glob.glob('%s/test_cases/task.*.json' % base):
             cls._test_cases.append(ru.read_json(f))
 
-        cls._config = ru.read_json('%s/test_continuous.json' % TEST_CASES_DIR)
+        cls._config = ru.read_json('%s/test_cases/test_continuous.json' % base)
 
 
     # --------------------------------------------------------------------------

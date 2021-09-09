@@ -12,7 +12,7 @@ from unittest import mock, TestCase
 from radical.pilot.agent.resource_manager     import RMInfo
 from radical.pilot.agent.resource_manager.lsf import LSF
 
-TEST_CASES_DIR = 'tests/unit_tests/test_rm/test_cases'
+base = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ class LSFTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
 
-        cls._host_file_path = '%s/nodelist.lsf' % TEST_CASES_DIR
+        cls._host_file_path = '%s/test_cases/nodelist.lsf' % base
 
     # --------------------------------------------------------------------------
     #

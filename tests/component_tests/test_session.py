@@ -11,8 +11,6 @@ from unittest import TestCase, mock
 
 from radical.pilot.session import Session
 
-TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
-
 
 # ------------------------------------------------------------------------------
 #
