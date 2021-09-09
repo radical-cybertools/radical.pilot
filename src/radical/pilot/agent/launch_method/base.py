@@ -89,6 +89,8 @@ class LaunchMethod(object):
             self._reg.put('lm.%s' % self.name, lm_info)
             self._log.debug('=== INFO: %s', pprint.pformat(lm_info))
 
+        self._reg.close()
+
 
     # --------------------------------------------------------------------------
     #

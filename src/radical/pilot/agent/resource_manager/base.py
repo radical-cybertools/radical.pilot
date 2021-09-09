@@ -164,6 +164,7 @@ class ResourceManager(object):
             # have a valid info - store in registry and complete initialization
             self._reg.put('rm.%s' % self.name.lower(), rm_info)
 
+        self._reg.close()
         self._set_info(rm_info)
 
 
