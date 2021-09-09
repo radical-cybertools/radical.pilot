@@ -143,18 +143,5 @@ class AgentExecutingComponent(rpu.Component):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def find_launcher(self, task):
-
-        for name in self._launch_order:
-            launcher = self._launchers[name]
-            self._log.debug('==== launcher %s: %s', name, launcher)
-            if launcher.can_launch(task):
-                return self._launchers[name]
-
-        return None
-
-
 # ------------------------------------------------------------------------------
 

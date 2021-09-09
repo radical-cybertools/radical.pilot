@@ -238,7 +238,7 @@ class Popen(AgentExecutingComponent):
         task['stdout'] = ''
         task['stderr'] = ''
 
-        launcher = self.find_launcher(task)
+        launcher = self._rm.find_launcher(task)
 
         if not launcher:
             raise RuntimeError('no launcher found for task %s' % tid)

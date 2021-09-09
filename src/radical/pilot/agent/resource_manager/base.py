@@ -390,8 +390,6 @@ class ResourceManager(object):
     #
     def find_launcher(self, task):
 
-        # NOTE: this code is duplicated from the executor base class
-
         for name in self._launch_order:
 
             launcher = self._launchers[name]
