@@ -36,9 +36,6 @@ class AgentExecutingComponent(rpu.Component):
 
         rpu.Component.__init__(self, cfg, session)
 
-        # if so configured, let the Task know what to use as tmp dir
-        self._task_tmp = cfg.get('task_tmp', os.environ.get('TMP', '/tmp'))
-
 
     # --------------------------------------------------------------------------
     #
@@ -91,6 +88,11 @@ class AgentExecutingComponent(rpu.Component):
         self.psbox     = self._cfg['pilot_sandbox']
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
+
+        # if so configured, let the Task know what to use as tmp dir
+        self._task_tmp = self._cfg.get('task_tmp',
+                                       os.environ.get('TMP', '/tmp'))
+
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
