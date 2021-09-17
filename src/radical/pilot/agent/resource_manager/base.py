@@ -50,7 +50,7 @@ class RMInfo(ru.Munch):
             'threads_per_core' : int,           # number of threads per core
 
             'gpus_per_socket'  : int,           # number of gpus per socket
-            'threads_per_gpu'  : int,           # number of threads per cgpu
+            'threads_per_gpu'  : int,           # number of threads per gpu
             'mem_per_gpu'      : int,           # memory per gpu (MB)
 
             'lfs_per_node'     : int,           # node local FS size (MB)
@@ -138,16 +138,15 @@ class ResourceManager(object):
     #
     def __init__(self, cfg, log, prof):
 
-        log.debug('foo 1')
-        self.name     = type(self).__name__
-        self._cfg     = cfg
-        self._log     = log
-        self._prof    = prof
+        self.name  = type(self).__name__
+        self._cfg  = cfg
+        self._log  = log
+        self._prof = prof
 
         self._log.info('Configuring ResourceManager %s', self.name)
 
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-        rm_info   = self._reg.get('rm.%s' % self.name.lower())
+        reg     = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        rm_info = reg.get('rm.%s' % self.name.lower())
 
         if rm_info:
 
@@ -162,12 +161,12 @@ class ResourceManager(object):
             rm_info = self._init_from_scratch(rm_info)
 
             # have a valid info - store in registry and complete initialization
-            self._reg.put('rm.%s' % self.name.lower(), rm_info)
+            reg.put('rm.%s' % self.name.lower(), rm_info.as_dict())
 
         # set up launch methods even when initialized from registry info
         self._prepare_launch_methods(rm_info)
 
-        self._reg.close()
+        reg.close()
         self._set_info(rm_info)
 
 

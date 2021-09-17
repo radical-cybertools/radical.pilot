@@ -20,52 +20,37 @@ class RMBaseTestCase(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def test_init_from_registry(self):
+    @mock.patch.object(ResourceManager, '_prepare_launch_methods')
+    @mock.patch('radical.utils.zmq.server.Logger')
+    @mock.patch('radical.utils.zmq.server.Profiler')
+    def test_init_from_registry(self, mocked_prof, mocked_log, mocked_lm):
 
         # check initialization from registry data only,
         # initialization from scratch will be tested by each method separately
-        lm_info = {'env_sh': '/dev/null',
-                   'env'   : {}
-                   }
+
+        reg = ru.zmq.Registry()
+        reg.start()
+
         rm_info = RMInfo({'requested_nodes': 1,
                           'requested_cores': 16,
                           'requested_gpus' : 2,
                           'node_list'      : [['node00', '1']],
                           'cores_per_node' : 16,
                           'gpus_per_node'  : 2})
-        rm_info.verify()
 
-        cfg = ru.Config(from_dict={
-            'reg_addr': None,
-            'resource_cfg': {
-                'launch_methods': {
-                    'order': ['FORK'],
-                    'FORK' : {'env': {}}
-                }}})
+        c = ru.zmq.RegistryClient(url=reg.addr)
+        c.put('rm.resourcemanager', rm_info)
+        c.close()
 
-        def mock_init(self, url):
-            pass
+        rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
+                             log=mock.Mock(), prof=mock.Mock())
 
-        def mock_get(self, name):
-            if 'lm' in name:
-                return lm_info
-            elif 'rm' in name:
-                return rm_info
+        self.assertIsInstance(rm.info, RMInfo)
+        # check some attributes
+        self.assertEqual(rm.info.requested_cores, rm_info.requested_cores)
+        self.assertEqual(rm.info.node_list, rm_info.node_list)
 
-        def mock_close(self):
-            pass
-
-        with mock.patch.object(ru.zmq.RegistryClient, '__init__', mock_init), \
-             mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get),  \
-             mock.patch.object(ru.zmq.RegistryClient, 'close',    mock_close):
-
-            rm = ResourceManager(cfg=cfg, log=mock.Mock(), prof=mock.Mock())
-
-            self.assertIsInstance(rm.info, RMInfo)
-
-            self.assertEqual(rm.info.requested_cores, rm_info.requested_cores)
-            self.assertEqual(rm.info.node_list,       rm_info.node_list)
-
+        reg.stop()
 
     # --------------------------------------------------------------------------
     #
@@ -123,7 +108,6 @@ class RMBaseTestCase(TestCase):
         self.assertEqual(rm_info.lfs_per_node, 100)
         self.assertEqual(rm_info.lfs_path,     '/tmp/local_folder/')
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
@@ -162,7 +146,6 @@ class RMBaseTestCase(TestCase):
         mocked_lm.can_launch = mocked_can_launch
         self.assertIs(rm.find_launcher(task=None), mocked_lm)
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
@@ -180,7 +163,6 @@ class RMBaseTestCase(TestCase):
             # `node_list` should not be empty or not being set
             # this attribute is set by an overwritten method `_update_info`
             rm._init_from_scratch(RMInfo({'node_list': []}))
-
 
     # --------------------------------------------------------------------------
     #
@@ -204,15 +186,15 @@ class RMBaseTestCase(TestCase):
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
 
-
 # ------------------------------------------------------------------------------
-#
+
+
 if __name__ == '__main__':
 
     tc = RMBaseTestCase()
-  # tc.test_init_from_registry()
-  # tc.test_set_info()
-  # tc.test_prepare_info()
+    tc.test_init_from_registry()
+    tc.test_set_info()
+    tc.test_prepare_info()
     tc.test_find_launcher()
     tc.test_init_from_scratch()
     tc.test_prepare_launch_methods()
