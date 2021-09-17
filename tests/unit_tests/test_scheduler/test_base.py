@@ -25,14 +25,19 @@ class TestBaseScheduling(TestCase):
         # provided JSON file (with test cases) should NOT contain any comments
         cls._test_cases = ru.read_json('%s/test_cases/test_base.json' % base)
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    @mock.patch.object(ru.zmq.RegistryClient, '__init__', return_value=None)
+    @mock.patch.object(ru.zmq.RegistryClient, 'put', return_value=None)
+    @mock.patch.object(ru.zmq.RegistryClient, 'close', return_value=None)
     @mock.patch('radical.pilot.agent.scheduler.base.mp')
-    def test_initialize(self, mocked_mp, mocked_init):
+    @mock.patch('radical.utils.get_hostname', return_value=None)
+    def test_initialize(self, mocked_hostname, mocked_mp,
+                        mocked_reg_close, mocked_reg_put, mocked_reg_init,
+                        mocked_init):
 
-        sched = AgentSchedulingComponent(cfg = None, session = None)
+        sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._configure          = mock.Mock()
         sched._schedule_tasks     = mock.Mock()
         sched._log                = mock.Mock()
@@ -44,23 +49,13 @@ class TestBaseScheduling(TestCase):
         sched.register_subscriber = mock.Mock()
         sched.nodes               = list()
 
-
         for c in self._test_cases['initialize']:
 
-            def mock_init(self, url)       : pass
-            def mock_put(self, name, data) : pass
-            def mock_close(self)           : pass
             def mock_get(self, name):
-                if 'rm' in name:
-                    return c['config'][name]
-                else:
-                    return {'env': {}, 'env_sh': {}}
+                return c['config'][name]
 
             sched._cfg = ru.Config(from_dict=c['config'])
-            with mock.patch.object(ru.zmq.RegistryClient, '__init__', mock_init), \
-                 mock.patch.object(ru.zmq.RegistryClient, 'put',      mock_put), \
-                 mock.patch.object(ru.zmq.RegistryClient, 'get',      mock_get), \
-                 mock.patch.object(ru.zmq.RegistryClient, 'close',    mock_close):
+            with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:
                     if ':' in c['result']:
                         pat = c['result'].split(':')[1]

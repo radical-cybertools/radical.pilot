@@ -5,8 +5,10 @@
             "config": {
                 "pid"             : "pid.0003",
                 "resource_manager": "FORK",
-                "lm"              : "FORK",
-                "lm_info"         : {},
+                "lm.fork"         : {
+                    "env"            : {},
+                    "env_sh"         : "env/lm_fork.sh"
+                },
                 "rm.fork"         : {
                     "node_list"      : [["node-00", "00"], ["node-01", "01"]],
                     "cores_per_node" : 12,
