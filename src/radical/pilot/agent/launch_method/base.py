@@ -52,17 +52,13 @@ class LaunchMethod(object):
         self._prof    = prof
         self._pwd     = os.getcwd()
 
-        self._reg = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
-        lm_info   = self._reg.get('lm.%s' % self.name)
+        reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
+        lm_info = reg.get('lm.%s' % self.name.lower())
         self._log.debug('=== addr: %s', self._lm_cfg.reg_addr)
         self._log.debug('=== name: %s', self.name)
         self._log.debug('=== info: %s', pprint.pformat(lm_info))
 
-        if lm_info:
-            # we found data in the registry and use it to (re)initialize the LM
-            self._init_from_info(lm_info)
-
-        else:
+        if not lm_info:
 
             # The registry does not yet contain any info for this LM - we need
             # to initialize the LM from scratch.  That happens in the env
@@ -83,13 +79,13 @@ class LaunchMethod(object):
           # lm_info = envp.get()
 
             lm_info = self._init_from_scratch(env_lm, env_sh)
-            self._init_from_info(lm_info)
 
             # store the info in the registry for any other instances of the LM
-            self._reg.put('lm.%s' % self.name, lm_info)
+            reg.put('lm.%s' % self.name.lower(), lm_info)
             self._log.debug('=== INFO: %s', pprint.pformat(lm_info))
 
-        self._reg.close()
+        reg.close()
+        self._init_from_info(lm_info)
 
 
     # --------------------------------------------------------------------------
