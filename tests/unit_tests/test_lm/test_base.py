@@ -1,5 +1,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import radical.utils as ru
+
 from unittest import mock, TestCase
 
 from radical.pilot.agent.launch_method.base import LaunchMethod
@@ -8,6 +10,43 @@ from radical.pilot.agent.launch_method.base import LaunchMethod
 # ------------------------------------------------------------------------------
 #
 class TestBaseLaunchMethod(TestCase):
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch('radical.utils.zmq.server.Logger')
+    @mock.patch('radical.utils.zmq.server.Profiler')
+    def test_init_from_registry(self, mocked_prof, mocked_log):
+
+        class NewLaunchMethod(LaunchMethod):
+
+            def _init_from_info(self, lm_info):
+                self._env     = lm_info['env']
+                self._env_sh  = lm_info['env_sh']
+                self._command = lm_info['command']
+                assert self._command
+
+        # check initialization from registry data only,
+
+        reg = ru.zmq.Registry()
+        reg.start()
+
+        lm_name = 'NewLaunchMethod'
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_new.sh',
+                   'command': '/usr/bin/test'}
+
+        c = ru.zmq.RegistryClient(url=reg.addr)
+        c.put('lm.%s' % lm_name.lower(), lm_info)
+        c.close()
+
+        lm = NewLaunchMethod(lm_name, ru.Munch({'reg_addr': reg.addr}), None,
+                             mock.Mock(), mock.Mock())
+
+        self.assertEqual(lm._env,     lm_info['env'])
+        self.assertEqual(lm._env_sh,  lm_info['env_sh'])
+        self.assertEqual(lm._command, lm_info['command'])
+
+        reg.stop()
 
     # --------------------------------------------------------------------------
     #
@@ -68,4 +107,3 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
