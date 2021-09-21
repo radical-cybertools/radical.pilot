@@ -51,6 +51,7 @@ class RMBaseTestCase(TestCase):
         self.assertEqual(rm.info.node_list, rm_info.node_list)
 
         reg.stop()
+        reg.wait()
 
     # --------------------------------------------------------------------------
     #

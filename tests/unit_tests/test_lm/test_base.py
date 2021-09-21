@@ -47,6 +47,7 @@ class TestBaseLaunchMethod(TestCase):
         self.assertEqual(lm._command, lm_info['command'])
 
         reg.stop()
+        reg.wait()
 
     # --------------------------------------------------------------------------
     #
