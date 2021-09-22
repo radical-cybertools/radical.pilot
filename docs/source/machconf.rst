@@ -5,6 +5,8 @@
 Using Local and Remote HPC Resources
 ************************************
 
+.. py:module:: radical.pilot.configs
+
 Introduction
 ============
 
@@ -46,7 +48,7 @@ use. If you are not familiar with how to setup password-less ssh keys, check out
 this `guide <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_.
 
 All SSH-specific information, like remote usernames, passwords, and keyfiles,
-are set in a  ``Context`` object. For example, if you want to tell RADICAL-Pilot
+are set in a  :py:class:`~radical.pilot.Context` object. For example, if you want to tell RADICAL-Pilot
 your user-id on the remote resource, use the following construct:
 
 .. code-block:: python
@@ -196,4 +198,3 @@ All fields are mandatory, unless indicated otherwise below.
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
-
