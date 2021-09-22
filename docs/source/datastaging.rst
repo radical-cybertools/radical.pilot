@@ -58,6 +58,8 @@ transferred back to the local directory.
 
 The :ref:`example-string` example demonstrates this in full glory.
 
+.. py:module:: radical.pilot.staging_directives
+
 Staging Directives
 ------------------
 
