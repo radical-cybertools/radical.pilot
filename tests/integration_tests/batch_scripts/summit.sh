@@ -38,12 +38,9 @@ module reset
 module unload xl
 module unload xalt
 module unload spectrum-mpi
-module unload py-pip
-module unload py-virtualenv
-module unload py-setuptools
-module load gcc/8.1.1
-module load zeromq/4.2.5
-module load python/3.7.0-anaconda3-5.3.0
+module load gcc/9.1.0
+module load libzmq/4.3.3
+module load python/3.7-anaconda3
 
 eval "$(conda shell.posix hook)"
 

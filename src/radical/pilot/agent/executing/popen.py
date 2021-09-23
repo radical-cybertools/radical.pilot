@@ -332,14 +332,16 @@ prof(){
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,
-                                      executable = None,
-                                      stdin      = None,
-                                      stdout     = _stdout_file_h,
-                                      stderr     = _stderr_file_h,
-                                      preexec_fn = os.setsid,
-                                      close_fds  = True,
-                                      shell      = True,
-                                      cwd        = sbox)
+                                        executable = None,
+                                        stdin      = None,
+                                        stdout     = _stdout_file_h,
+                                        stderr     = _stderr_file_h,
+                                        close_fds  = True,
+                                        shell      = True,
+                                        cwd        = sbox)
+        # decoupling from parent process group is disabled,
+        # in case of enabling it, one of the following options should be added:
+        #    `preexec_fn=os.setsid` OR `start_new_session=True`
         self._prof.prof('exec_ok', uid=tid)
 
         # store pid for last-effort termination
