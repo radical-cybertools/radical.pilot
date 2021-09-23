@@ -3,6 +3,18 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.8.0  Release                                                        2021-09-23
+--------------------------------------------------------------------------------
+
+  - fixed pilot staging for input directories
+  - clean up configs
+  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - refreshed module list for Summit
+  - return virtenv setup parameters
+  - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
+  - use local virtual env (either venv or conda) for Summit
+
+
 1.6.8  Hotfix Release                                                 2021-08-24
 --------------------------------------------------------------------------------
 
