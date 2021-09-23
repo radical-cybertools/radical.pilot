@@ -320,7 +320,7 @@ class Pilot(object):
     @property
     def state(self):
         '''
-        Returns the current state of the pilot.
+        Returns the current :py:mod:`state <radical.pilot.states>` of the pilot.
 
         **Returns:**
             * state (string enum)
@@ -521,8 +521,8 @@ class Pilot(object):
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that pilot has to reach in order for the
-              call to return.
+              The :py:mod:`state(s) <radical.pilot.states>` that pilot has to reach in
+              order for the call to return.
 
               By default `wait` waits for the pilot to reach a **final**
               state, which can be one of the following:
@@ -605,8 +605,8 @@ class Pilot(object):
     #
     def stage_in(self, sds):
         '''
-        Stages the content of the staging directive into the pilot's
-        staging area
+        Stages the content of the :py:mod:`~radical.pilot.staging_directives` into the
+        pilot's staging area.
         '''
 
         sds = ru.as_list(sds)
@@ -639,7 +639,9 @@ class Pilot(object):
     #
     def stage_out(self, sds=None):
         '''
-        fetch files (default:`staging_output.tgz`) from the pilot sandbox
+        Fetch files (default:`staging_output.tgz`) from the pilot sandbox.
+
+        See :py:mod:`radical.pilot.staging_directives`.
         '''
 
         sds = ru.as_list(sds)
@@ -661,4 +663,3 @@ class Pilot(object):
 
 
 # ------------------------------------------------------------------------------
-
