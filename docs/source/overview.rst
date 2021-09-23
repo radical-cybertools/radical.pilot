@@ -172,6 +172,8 @@ system.
 How do I monitor pilots and CUs?
 ================================
 
+.. py:module:: radical.pilot.states
+
 Pilots and tasks progress according to state models. Figure 2 shows the state
 models of a pilot (left) and of a Task (right). States ending in ``pending``
 (light blue boxes) indicate that pilots or tasks are queued in one of the RP
