@@ -27,7 +27,7 @@ class TestTask(TestCase):
         resources = ru.read_json(path)
         hostname  = socket.gethostname()
 
-        if ru.host_is_local(hostname):
+        if ru.is_localhost(hostname):
             hostname = 'localhost'
 
         cls.host = None
