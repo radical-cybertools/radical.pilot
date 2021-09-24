@@ -149,6 +149,19 @@ class Popen(AgentExecutingComponent):
         td   = task['description']
         sbox = task['task_sandbox_path']
 
+        # prepare stdout/stderr
+        stdout_file = td.get('stdout') or '%s.out' % (tid)
+        stderr_file = td.get('stderr') or '%s.err' % (tid)
+
+        if stdout_file[0] != '/': stdout_file = '%s/%s' % (sbox, stdout_file)
+        if stderr_file[0] != '/': stderr_file = '%s/%s' % (sbox, stderr_file)
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout_file
+        task['stderr_file'] = stderr_file
+
         # ensure that the named env exists
         env = td.get('named_env')
         if env:
@@ -345,8 +358,8 @@ class Popen(AgentExecutingComponent):
                 tmp += self._get_rank_exec(task, rank_id, rank, launcher)
                 tmp += '        ;;\n'
             tmp += 'esac\n'
-            tmp += self._get_prof('rank_stop', tid)
             tmp += 'RP_RET=$?\n'
+            tmp += self._get_prof('rank_stop', tid)
 
             # post_rank list is applied to rank 0, dict to the ranks listed
             post_rank = td['post_rank']
@@ -412,30 +425,16 @@ class Popen(AgentExecutingComponent):
         # launch and exec script are done, get ready for execution.
         cmdline = '/bin/sh %s' % launch_script
 
-        # prepare stdout/stderr
-        stdout_file = td.get('stdout') or '%s.out' % (tid)
-        stderr_file = td.get('stderr') or '%s.err' % (tid)
-
-        if stdout_file[0] != '/': stdout_file = '%s/%s' % (sbox, stdout_file)
-        if stderr_file[0] != '/': stderr_file = '%s/%s' % (sbox, stderr_file)
-
-        task['stdout'] = ''
-        task['stderr'] = ''
-
-        _stdout_file_h = open(stdout_file, 'a')
-        _stderr_file_h = open(stderr_file, 'a')
-
-        task['stdout_file'] = stdout_file
-        task['stderr_file'] = stderr_file
-
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
+
+        _launch_out_h = open('%s/%s.launch.out' % (sbox, tid), 'w')
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,
                                         executable = None,
                                         stdin      = None,
-                                        stdout     = _stdout_file_h,
-                                        stderr     = _stderr_file_h,
+                                        stdout     = _launch_out_h,
+                                        stderr     = subprocess.STDOUT,
                                         close_fds  = True,
                                         shell      = True,
                                         cwd        = sbox)
@@ -611,7 +610,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['pre_launch']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('pre_launch failed'))
+            ret += '%s %s' % (cmd, self._get_check('pre_launch'))
 
         return ret
 
@@ -620,12 +619,13 @@ class Popen(AgentExecutingComponent):
     #
     def _get_launch_cmds(self, task, launcher, exec_path):
 
-
-        ret  = ''
+        ret  = '( \\\n'
         cmds = ru.as_list(launcher.get_launch_cmds(task, exec_path))
         for cmd in cmds:
-            ret += '%s %s' % (cmd,  self._get_check('launch failed'))
+            ret += '  %s \\\n' % cmd
 
+        ret += ') 1> %s 2>%s %s' % (task['stdout_file'], task['stderr_file'],
+                                    self._get_check('launch'))
         return ret
 
 
@@ -636,7 +636,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['post_launch']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('post_launch failed'))
+            ret += '%s %s' % (cmd, self._get_check('post_launch'))
 
         return ret
 
@@ -710,7 +710,7 @@ class Popen(AgentExecutingComponent):
 
         cmds = task['description']['pre_exec']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('pre_exec failed'))
+            ret += '%s %s' % (cmd, self._get_check('pre_exec'))
 
         return ret
 
@@ -733,7 +733,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['post_exec']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('post_exec failed'))
+            ret += '%s %s' % (cmd, self._get_check('post_exec'))
 
         return ret
 
@@ -808,7 +808,7 @@ class Popen(AgentExecutingComponent):
         ret = ''
         cmds = cmds or []
         for cmd in cmds:
-            ret += '        %s %s' % (cmd, self._get_check('post_rank failed'))
+            ret += '        %s %s' % (cmd, self._get_check('post_rank'))
 
         return ret
 

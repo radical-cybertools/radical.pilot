@@ -1,7 +1,6 @@
 
 import os
 import time
-import errno
 
 import radical.utils as ru
 
@@ -18,7 +17,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
     # manageable(the size of mongodb documents is limited).
 
     if not txt:
-        return txt
+        return ''
 
     if len(txt) > maxlen:
         return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]

@@ -164,8 +164,6 @@ class Default(AgentStagingOutputComponent):
                         tid   = elems[2]
                         self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
 
-                task['stderr'] += rpu.tail(txt)
-
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
