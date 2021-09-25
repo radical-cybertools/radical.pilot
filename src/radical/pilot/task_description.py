@@ -324,6 +324,66 @@ class TaskDescription(ru.Description):
         the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
+
+    Task Environment
+    ================
+
+    RP tasks are expected to be executed in isolation, meaning that their
+    runtime environment is completely independent from the environment of other
+    tasks, independent from the launch mechanism used to start the task, and
+    also independent from the environment of the RP stack itself.
+
+    The task description provides several hooks to help setting up the
+    environment in that context.  It is important to understand the way those
+    hooks interact with respect to the environments mentioned above.
+
+      - `pre_launch` directives are set and executed before the task is passed
+        on to the task launch method.  As such, `pre_launch` usually executed
+        on the node where RP's agent is running, and *not* on the tasks target
+        node.  Executing `pre_launch` directives for many tasks can thus
+        negatively impact RP's performance (*).  Note also that `pre_launch`
+        directives can in some cases interfere with the launch method.
+
+        Use `pre_launch` directives for rare, heavy-weight operations which
+        prepare the runtime environment for multiple tasks: fetch data from
+        a remote source, unpack input data, create global communication
+        channels, etc.
+
+      - `pre_exec` directives are set and executed *after* the launch method
+        placed the task on the compute nodes and are thus running on the target
+        node.  Note that for MPI tasks, the `pre_exec` directives are executed
+        once per rank.  Running large numbers of `pre_exec` directives
+        concurrently can lead to system performance degradation (*), for example
+        when those  directives concurrently hot the shared files system (for
+        loading modules or Python virtualenvs etc).
+
+        Use `pre_exec` directives for task environment setup such as `module
+        load`, `virtualenv activate`, `export` whose effects are expected to be
+        applied to all task ranks.  Avoid file staging operations at this point
+        (files would be redundantly staged multiple times - once per rank).
+
+      - `pre_rank` directives are executed only for the specified rank.  Note
+        that environment settings specified in `pre_rank` will thus only apply
+        to that specific rank, not to other ranks.  All other ranks stall until
+        the last `pre_rank` directive has been completed -- only then is the
+        actual workload task being executed on all ranks.
+
+        Use `pre_rank` directives on rank 0 to prepare task input data: the
+        operations are performed once per task, and all ranks will stall until
+        the directives are completed, i.e., until input data are available.
+        Avoid using `pre_rank` directives for environment settings - `pre_exec`
+        will generally perform better in this case.
+
+    (*) The performance impact of repeated concurrent access to the system's
+    shared file system can be significant and can pose a major bottleneck for
+    your application.  Specifically `module load` and `virtualenv activate`
+    operations and the like are heavy on file system I/O, and executing those
+    for many tasks is ill advised.  Having said that: RP attempts to optimize
+    those operations: if it identifies that identical `pre_exec` directives are
+    shared between multiple tasks, RP will execute the directives exactly *once*
+    and will cache the resulting environment settings - those cached settings
+    are then applied to all other tasks with the same directives, without
+    executing the directives again.
     """
 
     _schema = {
