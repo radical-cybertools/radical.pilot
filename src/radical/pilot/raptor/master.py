@@ -117,6 +117,10 @@ class Master(rpu.Component):
         #        base config from scratch on startup.
 
         pwd = os.getcwd()
+
+        if cfg and 'path' in cfg:
+            del(cfg['path'])
+
         ru.dict_merge(cfg, ru.read_json('%s/../control_pubsub.json' % pwd))
 
         del(cfg['channel'])
