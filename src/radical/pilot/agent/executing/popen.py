@@ -647,7 +647,7 @@ class Popen(AgentExecutingComponent):
     def _get_rp_env(self, task):
 
         tid  = task['uid']
-        name = task['name'] or tid
+        name = task.get('name') or tid
         sbox = os.path.realpath(task['task_sandbox_path'])
 
         if sbox.startswith(self._pwd):
