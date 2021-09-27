@@ -140,7 +140,7 @@ class ZMQBridge(ru.zmq.Server):
         self._lock    = mt.Lock()
         self._clients = dict()
 
-        ru.zmq.Server.__init__(self)
+        ru.zmq.Server.__init__(self, url='tcp://*:44444')
 
         self._monitor = mt.Thread(target=self._monitor)
         self._monitor.daemon = True
