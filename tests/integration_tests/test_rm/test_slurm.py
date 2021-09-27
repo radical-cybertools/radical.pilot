@@ -16,39 +16,47 @@ from radical.pilot.agent.resource_manager.slurm import Slurm
 #
 class TestTask(TestCase):
 
+    def __init__(self):
+
+        TestCase.__init__(self)
+        self.setUpClass()
+
+
     # --------------------------------------------------------------------------
     #
-    def setUp(self) -> dict:
-        path = os.path.dirname(__file__) + '../test_config/resources.json'
+    @classmethod
+    def setUpClass(cls):
+        path = os.path.dirname(__file__) + '/../test_config/resources.json'
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
         for host in resources.keys():
             if host in hostname:
-                return resources[host]
+                cls.host = host
+                cls.resource = resources[host]
+                break
+
 
     # ------------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__',   return_value=None)
-    def test_configure(self, mocked_init):
+    @mock.patch('radical.utils.Logger')
+    def test_configure(self, mocked_init, mocked_Logger):
 
-        os.environ['SLURM_NODELIST']     = 'node_1'
-        os.environ['SLURM_NPROCS']       = '48'
-        os.environ['SLURM_NNODES']       = '2'
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
+        if not self.host:
+            return
 
-        cfg = self.setUp()
         component = Slurm(cfg=None, session=None)
-        component._log    = ru.Logger('dummy')
-        component._cfg    = {}
+        component._log    = mocked_Logger
+        component._cfg    = ru.Munch({'resource': self.host})
         component.lm_info = {'cores_per_node': None}
         component._configure()
 
         node = os.environ['SLURM_NODELIST']
 
         self.assertEqual(component.node_list, [[node, node]])
-        self.assertEqual(component.cores_per_node, cfg['cores_per_node'])
-        self.assertEqual(component.gpus_per_node, ['gpus_per_node'])
+        self.assertEqual(component.cores_per_node, self.resource['cores_per_node'])
+        self.assertEqual(component.gpus_per_node, self.resource['gpus_per_node'])
         self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
 
 

@@ -6,8 +6,6 @@
 MASTER                         = 'master'
 WORKER                         = 'worker'
 
-UPDATE_WORKER                  = 'update'
-
 STAGER_WORKER                  = 'stager'
 STAGER_REQUEST_QUEUE           = 'stager_request_queue'
 STAGER_RESPONSE_PUBSUB         = 'stager_response_pubsub'
@@ -45,6 +43,10 @@ CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 LOG_PUBSUB                     = 'log_pubsub'
 
+PROXY_CONTROL_PUBSUB           = 'proxy_control_pubsub'
+PROXY_STATE_PUBSUB             = 'proxy_state_pubsub'
+PROXY_TASK_QUEUE               = 'proxy_task_queue'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -66,13 +68,6 @@ TMGR_METRICS         = [TASK_STATE,
 
 PILOT_STATE          = 'PILOT_STATE'
 PMGR_METRICS         = [PILOT_STATE]
-
-
-# -----------------------------------------------------------------------------
-#
-# config related
-#
-RESOURCE_CONFIG_LABEL_DEFAULT = 'user.cfg'
 
 
 # ------------------------------------------------------------------------------

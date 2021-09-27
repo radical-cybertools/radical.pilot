@@ -18,24 +18,24 @@ from .staging_directives import complete_url
 # ------------------------------------------------------------------------------
 #
 class Pilot(object):
-    '''
+    """
     A Pilot represent a resource overlay on a local or remote resource.
 
     .. note:: A Pilot cannot be created directly. The factory method
               :meth:`radical.pilot.PilotManager.submit_pilots` has to be
               used instead.
 
-        **Example**::
+    **Example**::
 
-              pm = radical.pilot.PilotManager(session=s)
-              pd = radical.pilot.PilotDescription()
+          pm = radical.pilot.PilotManager(session=s)
+          pd = radical.pilot.PilotDescription()
 
-              pd.resource = "local.localhost"
-              pd.cores    = 2
-              pd.runtime  = 5 # minutes
+          pd.resource = "local.localhost"
+          pd.cores    = 2
+          pd.runtime  = 5 # minutes
 
-              pilot = pm.submit_pilots(pd)
-    '''
+          pilot = pm.submit_pilots(pd)
+    """
 
     # --------------------------------------------------------------------------
     # In terms of implementation, a Pilot is not much more than a dict whose
@@ -320,7 +320,7 @@ class Pilot(object):
     @property
     def state(self):
         '''
-        Returns the current state of the pilot.
+        Returns the current :py:mod:`state <radical.pilot.states>` of the pilot.
 
         **Returns:**
             * state (string enum)
@@ -521,8 +521,8 @@ class Pilot(object):
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that pilot has to reach in order for the
-              call to return.
+              The :py:mod:`state(s) <radical.pilot.states>` that pilot has to reach in
+              order for the call to return.
 
               By default `wait` waits for the pilot to reach a **final**
               state, which can be one of the following:
@@ -605,8 +605,8 @@ class Pilot(object):
     #
     def stage_in(self, sds):
         '''
-        Stages the content of the staging directive into the pilot's
-        staging area
+        Stages the content of the :py:mod:`~radical.pilot.staging_directives` into the
+        pilot's staging area.
         '''
 
         sds = ru.as_list(sds)
@@ -630,7 +630,9 @@ class Pilot(object):
         This is basically an RPC into the pilot.
         '''
 
-        reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
+        # FIXME: MongoDB
+        reply = None
+      # reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
 
         return reply
 
@@ -639,7 +641,9 @@ class Pilot(object):
     #
     def stage_out(self, sds=None):
         '''
-        fetch files (default:`staging_output.tgz`) from the pilot sandbox
+        Fetch files (default:`staging_output.tgz`) from the pilot sandbox.
+
+        See :py:mod:`radical.pilot.staging_directives`.
         '''
 
         sds = ru.as_list(sds)
@@ -661,4 +665,3 @@ class Pilot(object):
 
 
 # ------------------------------------------------------------------------------
-

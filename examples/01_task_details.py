@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -58,12 +58,12 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 300,
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue', None),
                    'access_schema' : config[resource].get('schema', None),
-                   'cores'         : 1024 * 2,
+                   'cores'         : 1024 * 16,
                    'gpus'          : config[resource].get('gpus', 0),
                    }
         pdesc = rp.PilotDescription(pd_init)
@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
         # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 64 * 1024  # number of tasks to run
+        n = 1024 * 1024  # number of tasks to run
         report.info('create %d task description(s)\n' % n)
 
         tds = list()
@@ -89,6 +89,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable = '/bin/date'
+            td.sandbox    = 'task_sandbox'
             tds.append(td)
             report.progress()
 
@@ -104,7 +105,7 @@ if __name__ == '__main__':
         tmgr.wait_tasks()
 
         report.info('\n')
-        for task in tasks:
+        for task in tasks[:10]:
             report.plain('  * %s: %s, exit: %3s, out: %s'
                     % (task.uid, task.state[:4],
                         task.exit_code, task.stdout))

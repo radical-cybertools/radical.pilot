@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -30,6 +30,7 @@ if __name__ == '__main__':
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
+
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
     session = rp.Session()
@@ -42,7 +43,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         config = ru.read_json('%s/config.json'
-                              % os.path.dirname(os.path.abspath(__file__)))
+                             % os.path.dirname(os.path.abspath(__file__)))
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -56,9 +57,9 @@ if __name__ == '__main__':
                    'runtime'       : 120,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'nodes'         : 1024 * 4,
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : config[resource].get('cores',   None),
                   }
         pdesc = rp.PilotDescription(pd_init)
 
@@ -100,7 +101,6 @@ if __name__ == '__main__':
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
-
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

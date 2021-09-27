@@ -38,7 +38,7 @@ class PilotManager(rpu.Component):
 
     **Example**::
 
-        s = rp.Session(database_url=DBURL)
+        s = rp.Session()
 
         pm = rp.PilotManager(session=s)
 
@@ -89,16 +89,16 @@ class PilotManager(rpu.Component):
 
         assert(session.primary), 'pmgr needs primary session'
 
-        self._uids        = list()   # known UIDs
-        self._pilots      = dict()
-        self._pilots_lock = ru.RLock('pmgr.pilots_lock')
-        self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock('pmgr.pcb_lock')
-        self._terminate   = mt.Event()
-        self._closed      = False
-        self._rec_id      = 0       # used for session recording
         self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
+
+        self._uids        = list()   # known UIDs
+        self._pilots      = dict()
+        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
+        self._callbacks   = dict()
+        self._pcb_lock    = ru.RLock('%s.pcb_lock' % self._uid)
+        self._terminate   = mt.Event()
+        self._closed      = False
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -118,7 +118,6 @@ class PilotManager(rpu.Component):
         cfg.sid       = session.uid
         cfg.base      = session.base
         cfg.path      = session.path
-        cfg.dburl     = session.dburl
         cfg.heartbeat = session.cfg.heartbeat
 
         rpu.Component.__init__(self, cfg, session=session)
@@ -149,8 +148,6 @@ class PilotManager(rpu.Component):
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
         # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._state_pull_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
         self.register_timed_cb(self._pilot_heartbeat_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
@@ -271,39 +268,13 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _state_pull_cb(self):
-
-        if self._terminate.is_set():
-            return False
-
-        # pull all pilot states from the DB, and compare to the states we know
-        # about.  If any state changed, update the known pilot instances and
-        # push an update message to the state pubsub.
-        # pubsub.
-        # FIXME: we also pull for dead pilots.  That is not efficient...
-        # FIXME: this needs to be converted into a tailed cursor in the update
-        #        worker
-        # FIXME: this is a big and frequently invoked lock
-        pilot_dicts = self._session._dbs.get_pilots(pmgr_uid=self.uid)
-
-
-        for pilot_dict in pilot_dicts:
-            self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
-                                                    pilot_dict['state'])
-            self._update_pilot(pilot_dict, publish=True)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def _state_sub_cb(self, topic, msg):
 
         if self._terminate.is_set():
             return False
 
 
-        self._log.debug('state event: %s', msg)
+      # self._log.debug('state event: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -339,7 +310,7 @@ class PilotManager(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== got control cmd %s: %s', cmd, arg)
+        self._log.debug('got control cmd %s: %s', cmd, arg)
 
         if cmd == 'pilot_activate':
             pilot = arg['pilot']
@@ -372,16 +343,16 @@ class PilotManager(rpu.Component):
                 return
 
             target, passed = rps._pilot_state_progress(pid, current, target)
-            self._log.debug('=== %s current: %s', pid, current)
-            self._log.debug('=== %s target : %s', pid, target )
-            self._log.debug('=== %s passed : %s', pid, passed )
+          # self._log.debug('%s current: %s', pid, current)
+          # self._log.debug('%s target : %s', pid, target )
+          # self._log.debug('%s passed : %s', pid, passed )
 
             if target in [rps.CANCELED, rps.FAILED]:
                 # don't replay intermediate states
                 passed = passed[-1:]
 
             for s in passed:
-                self._log.debug('=== %s advance: %s', pid, s )
+                self._log.debug('%s advance: %s', pid, s )
                 # we got state from either pubsub or DB, so don't publish again.
                 # we also don't need to maintain bulks for that reason.
                 pilot_dict['state'] = s
@@ -425,7 +396,8 @@ class PilotManager(rpu.Component):
     #
     def _pilot_send_hb(self, pid=None):
 
-        self._session._dbs.pilot_command('heartbeat', {'pmgr': self._uid}, pid)
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pmgr_heartbeat',
+                                          'arg' : {'pmgr' : self.uid}})
 
 
     # --------------------------------------------------------------------------
@@ -435,7 +407,8 @@ class PilotManager(rpu.Component):
         if not env_spec:
             return
 
-        self._session._dbs.pilot_command('prep_env', env_spec, [pid])
+        # FIXME: MongoDB
+      # self._session._dbs.pilot_command('prep_env', env_spec, [pid])
 
 
     # --------------------------------------------------------------------------
@@ -471,7 +444,15 @@ class PilotManager(rpu.Component):
                                          if  sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
+            errs = list()
+            for uid in self._active_sds:
+                if self._active_sds[uid].get('error'):
+                    errs.append(self._active_sds[uid]['error'])
+
+            if errs:
+                raise RuntimeError('pilot staging failed: %s' % errs)
+            else:
+                raise RuntimeError('pilot staging failed')
 
 
     # --------------------------------------------------------------------------
@@ -507,7 +488,15 @@ class PilotManager(rpu.Component):
                                                 if sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
+            errs = list()
+            for uid in self._active_sds:
+                if self._active_sds[uid].get('error'):
+                    errs.append(self._active_sds[uid]['error'])
+
+            if errs:
+                raise RuntimeError('pilot staging failed: %s' % errs)
+            else:
+                raise RuntimeError('pilot staging failed')
 
 
     # --------------------------------------------------------------------------
@@ -524,8 +513,10 @@ class PilotManager(rpu.Component):
 
             with self._sds_lock:
                 for sd in arg['sds']:
-                    if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['state'] = sd['state']
+                    uid = sd['uid']
+                    if uid in self._active_sds:
+                        self._active_sds[uid]['state'] = sd['state']
+                        self._active_sds[uid]['error'] = sd['error']
 
         return True
 
@@ -612,10 +603,6 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            if self._session._rec:
-                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
-                        % (self._session._rec, pilot.uid, self._rec_id))
-
             self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
                       (pilot.uid, pd['resource'],
                        pd.get('cores', 0), pd.get('gpus', 0)))
@@ -627,12 +614,6 @@ class PilotManager(rpu.Component):
         #        the profile entry for the advance to NEW.  So we here basically
         #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
-
-        if self._session._rec:
-            self._rec_id += 1
-
-        # insert pilots into the database, as a bulk.
-        self._session._dbs.insert_pilots(pilot_docs)
 
         # immediately send first heartbeat and any other commands which are
         # included in the pilot description
@@ -841,11 +822,7 @@ class PilotManager(rpu.Component):
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
         # send the cancelation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], uids)
-
-        # inform pmgr.launcher - it will force-kill the pilot after some delay
+        # the pmgr.launcher will also force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})

@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -50,6 +51,7 @@ class Flux(AgentExecutingComponent) :
                            'RUN'     : rps.AGENT_EXECUTING,
                            'CLEANUP' : None,
                            'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
+                           'PRIORITY': None,
                           }
 
         # thread termination signal
@@ -112,7 +114,7 @@ class Flux(AgentExecutingComponent) :
 
         self._task_q.put(ru.as_list(tasks))
 
-        if self._term:
+        if self._term.is_set():
             self._log.warn('threads triggered termination')
             self.stop()
 
@@ -183,7 +185,7 @@ class Flux(AgentExecutingComponent) :
 
         for event in events:
 
-            flux_id, flux_state = event
+            flux_state = event[1]  # event: flux_id, flux_state
             state = self._event_map[flux_state]
 
             if state is None:
@@ -231,30 +233,44 @@ class Flux(AgentExecutingComponent) :
                 try:
                     for task in self._task_q.get_nowait():
 
-                        flux_id = task['flux_id']
-                        assert flux_id not in tasks
-                        tasks[flux_id] = task
+                        active = True
+                        try:
 
-                        # handle and purge cached events for that task
-                        if flux_id in events:
-                            if self.handle_events(task, events[flux_id]):
-                                # task completed - purge data
-                                # NOTE: this assumes events are ordered
-                                if flux_id in events: del(events[flux_id])
-                                if flux_id in tasks : del(tasks[flux_id])
+                            flux_id = task['flux_id']
+                            assert flux_id not in tasks
+                            tasks[flux_id] = task
 
-                    active = True
+                            # handle and purge cached events for that task
+                            if flux_id in events:
+                                if self.handle_events(task, events[flux_id]):
+                                    # task completed - purge data
+                                    # NOTE: this assumes events are ordered
+                                    if flux_id in events: del(events[flux_id])
+                                    if flux_id in tasks : del(tasks[flux_id])
+
+                        except Exception:
+
+                            self._log.exception("error collecting Task")
+                            if task['stderr'] is None:
+                                task['stderr'] = ''
+                            task['stderr'] += '\nPilot cannot collect task:\n'
+                            task['stderr'] += '\n'.join(ru.get_exception_trace())
+
+                            # can't rely on the executor base to free the task resources
+                            self._prof.prof('unschedule_start', uid=task['uid'])
+                            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                            self.advance(task, rps.FAILED, publish=True, push=False)
 
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some events
                     pass
 
-
                 try:
 
                     for event in self._event_q.get_nowait():
 
-                        flux_id, flux_event = event
+                        flux_id = event[0]  # event: flux_id, flux_state
 
                         if flux_id in tasks:
 
@@ -279,7 +295,6 @@ class Flux(AgentExecutingComponent) :
 
                 if not active:
                     time.sleep(0.01)
-
 
         except Exception:
             self._log.exception('Error in watcher loop')

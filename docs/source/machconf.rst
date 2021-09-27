@@ -5,6 +5,8 @@
 Using Local and Remote HPC Resources
 ************************************
 
+.. py:module:: radical.pilot.configs
+
 Introduction
 ============
 
@@ -46,7 +48,7 @@ use. If you are not familiar with how to setup password-less ssh keys, check out
 this `guide <https://linuxize.com/post/how-to-setup-passwordless-ssh-login/>`_.
 
 All SSH-specific information, like remote usernames, passwords, and keyfiles,
-are set in a  ``Context`` object. For example, if you want to tell RADICAL-Pilot
+are set in a  :py:class:`~radical.pilot.Context` object. For example, if you want to tell RADICAL-Pilot
 your user-id on the remote resource, use the following construct:
 
 .. code-block:: python
@@ -125,7 +127,7 @@ provided resource configuration files, you can write your own, and save it in
           different types of systems and batch system, it may run into trouble
           on specific configurations or software versions we did not encounter
           before.  If you run into trouble using a resource not in our list of
-          officially supported ones, please open 
+          officially supported ones, please open
           `an issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 A configuration file has to be valid JSON. The structure is as follows:
@@ -196,33 +198,3 @@ All fields are mandatory, unless indicated otherwise below.
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
-
-
-Customizing Resource Configurations Programmatically
-===================================================
-
-The set of resource configurations available to the RADICAL-Pilot session is
-accessible programmatically. The example below creates a new resource config
-from the ``xsede.bridges`` resource, and updates attribute ``default_queue``.
-
-.. code-block:: python
-
-    import radical.pilot as rp
-    import pprint
-
-    # resource label should of a format <domain>.<host>
-    RESOURCE     = 'xsede.bridges'
-    NEW_RESOURCE = 'xsede.bridges_debug'
-
-    # get a pre-installed resource configuration
-    session = rp.Session()
-    # a deep copy of a config from the session is returned
-    cfg = session.get_resource_config(RESOURCE)
-    # update the default queue name
-    cfg.default_queue = 'debug'
-    # set resource label for a new config
-    cfg.label = NEW_RESOURCE
-    # add new resource config back to the session
-    session.add_resource_config(cfg)
-    pprint.pprint(session.get_resource_config(NEW_RESOURCE))
-

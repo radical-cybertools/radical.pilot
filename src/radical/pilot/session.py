@@ -4,17 +4,18 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
-import sys
 import copy
+import time
+
+import threading as mt
 
 import radical.utils                as ru
 import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .constants import RESOURCE_CONFIG_LABEL_DEFAULT
-from .db        import DBSession
-from .          import utils as rpu
+from . import constants as rpc
+from . import utils     as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -44,15 +45,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True):
+    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True, **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
 
         **Arguments:**
-            * **dburl** (`string`): The MongoDB URL.  If none is given,
-              RP uses the environment variable RADICAL_PILOT_DBURL.  If that is
-              not set, an error will be raised.
+            * **service_url** (`string`): The Bridge Service URL.
+              If none is given, RP uses the environment variable
+              RADICAL_PILOT_SERVICE_URL.  If that is not set, an error will be
+              raised.
 
             * **cfg** (`str` or `dict`): a named or instantiated configuration
               to be used for the session.
@@ -62,15 +64,20 @@ class Session(rs.Session):
               underlying database, resulting in undefined behaviours (or worse).
 
             * **_primary** (`bool`): only sessions created by the original
-              application process (via `rp.Session()`, will connect to the  DB.
+              application process (via `rp.Session()`, will create comm bridges
               Secondary session instances are instantiated internally in
               processes spawned (directly or indirectly) by the initial session,
               for example in some of it's components.  A secondary session will
               inherit the original session ID, but will not attempt to create
-              a new DB collection - if such a DB connection is needed, the
-              component needs to establish that on its own.
-        '''
+              a new comm bridge - if such a bridge connection is needed, the
+              component will connect to the one created by the primary session.
 
+        If additional key word arguments are provided, they will be used as the
+        default arguments to Session.close(). (This can be useful when the
+        Session is used as a Python context manager, such that close() is called
+        automatically at the end of a ``with`` block.)
+        '''
+        self._close_options = _CloseOptions(close_options)
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
@@ -79,9 +86,10 @@ class Session(rs.Session):
             name = cfg
             cfg  = None
 
-        self._dbs     = None
+        self._service = None
         self._closed  = False
         self._primary = _primary
+        self._t_start = time.time()
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
         self._tmgrs   = dict()  # map IDs to tmgr instances
@@ -90,28 +98,22 @@ class Session(rs.Session):
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
         self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
 
-        if _primary:
+        pwd = os.getcwd()
 
-            pwd = os.getcwd()
+        if not self._cfg.sid:
+            if uid:
+                self._cfg.sid = uid
+            else:
+                self._cfg.sid = ru.generate_id('rp.session',
+                                               mode=ru.ID_PRIVATE)
+        if not self._cfg.base:
+            self._cfg.base = pwd
 
-            if not self._cfg.sid:
-                if uid:
-                    self._cfg.sid = uid
-                else:
-                    self._cfg.sid = ru.generate_id('rp.session',
-                                                   mode=ru.ID_PRIVATE)
-            if not self._cfg.base:
-                self._cfg.base = pwd
+        if not self._cfg.path:
+            self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
 
-            if not self._cfg.path:
-                self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
-
-            if not self._cfg.client_sandbox:
-                self._cfg.client_sandbox = pwd
-
-        else:
-            for k in ['sid', 'base', 'path']:
-                assert(k in self._cfg), 'non-primary session misses %s' % k
+        if not self._cfg.client_sandbox:
+            self._cfg.client_sandbox = pwd
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -124,14 +126,14 @@ class Session(rs.Session):
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
-                                       level=self._cfg.get('debug'))
+                                        level=self._cfg.get('debug'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s' % rp_version_detail)
         self._log.info('radical.saga  version: %s' % rs.version_detail)
         self._log.info('radical.utils version: %s' % ru.version_detail)
 
-        self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
+        self._prof.prof('session_start', uid=self._uid)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -145,101 +147,74 @@ class Session(rs.Session):
                             'js_shells'        : dict(),
                             'fs_dirs'          : dict()}
 
-        if _primary:
-            self._initialize_primary(dburl)
+        if self._primary:
+            self._rep.info ('<<new session: ')
+            self._rep.plain('[%s]' % self._uid)
 
-        # at this point we have a DB connection, logger, etc, and are done
-        self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
+        # need a service_url to connect to
+        if not service_url:
+            service_url = self._cfg.service_url
+
+        if not service_url:
+            service_url = os.environ.get('RADICAL_PILOT_SERVICE_URL')
+
+        if not service_url:
+            # FIXME MongoDB: in this case, start an embedded service
+            raise RuntimeError("no service url (set RADICAL_PILOT_SERVICE_URL)")
 
 
-    # --------------------------------------------------------------------------
-    def _initialize_primary(self, dburl):
+        self._cfg.service_url = service_url
 
-        self._rep.info ('<<new session: ')
-        self._rep.plain('[%s]' % self._uid)
+        if self._primary:
 
-        # create db connection - need a dburl to connect to
-        if not dburl: dburl = self._cfg.dburl
-        if not dburl: dburl = self._cfg.default_dburl
-        if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
+            self._connect_proxy()
 
-        self._cfg.dburl = dburl
+        else:
+            # a non-primary session will query the same service url to obtain
+            # information about the comm channels created by the primary session
+            if not self._cfg.proxy:
+                self._service = ru.zmq.Client(url=self._cfg.service_url)
+                response      = self._service.request('client_lookup',
+                                                      {'sid': self._uid})
+                if response.err:
+                    for line in response.exc:
+                        self._log.error(line)
+                    raise RuntimeError('request failed: %s' % response.err)
 
-        dburl_no_passwd = ru.Url(dburl)
-        if dburl_no_passwd.get_password():
-            dburl_no_passwd.set_password('****')
+                self._cfg.proxy = response.res
 
-        self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'    % dburl_no_passwd)
-        self._log.info('dburl %s' % dburl_no_passwd)
+                self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
 
-        # create/connect database handle on primary sessions
-        try:
-            self._dbs = DBSession(sid=self.uid, dburl=dburl,
-                                  cfg=self._cfg, log=self._log)
 
-            py_version_detail = sys.version.replace("\n", " ")
-            from . import version_detail as rp_version_detail
+        # for mostly debug purposes, dump the used session config
+        ru.write_json(self._cfg, '%s/%s.cfg' % (self._cfg.path, self._uid))
 
-            self.inject_metadata({'radical_stack':
-                                         {'rp': rp_version_detail,
-                                          'rs': rs.version_detail,
-                                          'ru': ru.version_detail,
-                                          'py': py_version_detail}})
-        except Exception as e:
-            self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]' %
-                    dburl_no_passwd)
-            raise RuntimeError ('session create failed [%s]' %
-                    dburl_no_passwd) from e
+        # at this point we have a bridge connection, logger, etc, and are done
+        self._prof.prof('session_ok', uid=self._uid)
 
-        # primary sessions have a component manager which also manages
-        # heartbeat.  'self._cmgr.close()` should be called during termination
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
-
-        # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
-
-        self._rec = False
-        if self._cfg.record:
-
-            # append session ID to recording path
-            self._rec = "%s/%s" % (self._rec, self._uid)
-
-            # create recording path and record session
-            os.system('mkdir -p %s' % self._rec)
-            ru.write_json({'dburl': str(self.dburl)},
-                          "%s/session.json" % self._rec)
-            self._log.info("recording session in %s" % self._rec)
-
-        self._rep.ok('>>ok\n')
+        if self._primary:
+            self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
-    # FIXME: cleanup_on_close, terminate_on_close attributes?
     #
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close(download=True)
+        self.close()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=False, terminate=True, download=False):
+    def close(self, **kwargs):
         '''
 
         Closes the session.  All subsequent attempts access objects attached to
-        the session will result in an error. If cleanup is set to True,
-        the session data is removed from the database.
+        the session will result in an error.
 
         **Arguments:**
-            * **cleanup**   (`bool`):
-              Remove session from MongoDB (implies * terminate)
             * **terminate** (`bool`):
               Shut down all pilots associated with the session.
             * **download** (`bool`):
@@ -251,17 +226,18 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        self._rep.info('closing session %s' % self._uid)
+        if self._primary:
+            self._rep.info('closing session %s' % self._uid)
+
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
-        # set defaults
-        if cleanup   is None: cleanup   = True
-        if terminate is None: terminate = True
+        # Merge kwargs with current defaults stored in self._close_options
+        self._close_options.update(kwargs)
+        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
+                                      # to their types if needed (but None value will stay if it is set)
 
-        if  cleanup:
-            # cleanup implies terminate
-            terminate = True
+        options = self._close_options
 
         for tmgr_uid, tmgr in self._tmgrs.items():
             self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
@@ -270,37 +246,134 @@ class Session(rs.Session):
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
-            pmgr.close(terminate=terminate)
+            pmgr.close(terminate=options.terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
         if self._cmgr:
             self._cmgr.close()
 
-        if self._dbs:
-            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
-            self._dbs.close(delete=cleanup)
+        if self._service:
+            try:
+                self._log.debug("session %s closes service", self._uid)
+                self._service.request('client_unregister',
+                                      {'sid': self._uid})
+            except:
+                pass
 
-        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
+        self._log.debug("session %s closed", self._uid)
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
         self._closed = True
 
+
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
-        if download:
-
+        if options.download:
+)
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
-            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            # FIXME: MongoDB
+          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
-        self._rep.ok('>>ok\n')
+        if self._primary:
+            self._t_stop = time.time()
+            self._rep.info('<<session lifetime: %.1fs'
+                          % (self._t_stop - self._t_start))
+            self._rep.ok('>>ok\n')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _connect_proxy(self):
+
+        assert(self._primary)
+
+        # a primary session will create proxy comm channels
+        self._rep.info ('<<bridge     : ')
+        self._rep.plain('[%s]' % self._cfg.service_url)
+
+        # create/connect bridge handle on primary sessions
+        self._service = ru.zmq.Client(url=self._cfg.service_url)
+        response      = self._service.request('client_register',
+                                              {'sid': self._uid})
+        if response.err:
+            for line in response.exc:
+                self._log.error(line)
+            raise RuntimeError('request failed: %s' % response.err)
+
+        self._cfg.proxy = response.res
+        self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
+
+        # now that the proxy bridges have been created on the service host,
+        # write config files for them so that all components can use them
+        for p in self._cfg.proxy:
+            ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
+
+        # primary sessions have a component manager which also manages
+        # heartbeat.  'self._cmgr.close()` should be called during
+        # termination
+        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr.start_bridges()
+        self._cmgr.start_components()
+
+        # expose the cmgr's heartbeat channel to anyone who wants to use it
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+
+        # make sure we send heartbeats to the proxy
+        self._run_proxy_hb()
+
+      # FIXME MONGODB: to json
+      # self.inject_metadata({'radical_stack':
+      #                              {'rp': rp_version_detail,
+      #                               'rs': rs.version_detail,
+      #                               'ru': ru.version_detail,
+      #                               'py': py_version_detail}})
+
+        pwd = self._cfg.path
+
+        # forward any control messages to the proxy
+        def fwd_control(topic, msg):
+            self._log.debug('=== fwd control %s: %s', topic, msg)
+            self._proxy_ctrl_pub.put(rpc.PROXY_CONTROL_PUBSUB, msg)
+
+        self._proxy_ctrl_pub = ru.zmq.Publisher(rpc.PROXY_CONTROL_PUBSUB, path=pwd)
+        self._ctrl_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, path=pwd)
+        self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB, fwd_control)
+
+
+        # collect any state updates from the proxy
+        def fwd_state(topic, msg):
+            self._log.debug('=== fwd state   %s: %s', topic, msg)
+            self._state_pub.put(topic, msg)
+
+        self._state_pub = ru.zmq.Publisher(rpc.STATE_PUBSUB, path=pwd)
+        self._proxy_state_sub = ru.zmq.Subscriber(rpc.PROXY_STATE_PUBSUB, path=pwd)
+        self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _run_proxy_hb(self):
+
+        self._proxy_heartbeat_thread = mt.Thread(target=self._proxy_hb)
+        self._proxy_heartbeat_thread.daemon = True
+        self._proxy_heartbeat_thread.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _proxy_hb(self):
+
+        while True:
+
+            self._service.request('client_heartbeat', {'sid': self._uid})
+            time.sleep(20)
 
 
     # --------------------------------------------------------------------------
@@ -311,12 +384,12 @@ class Session(rs.Session):
         '''
 
         object_dict = {
-            "uid"       : self._uid,
-            "created"   : self.created,
-            "connected" : self.connected,
-            "closed"    : self.closed,
-            "dburl"     : str(self.dburl),
-            "cfg"       : copy.deepcopy(self._cfg)
+            "uid"        : self._uid,
+            "created"    : self.created,
+            "connected"  : self.connected,
+            "closed"     : self.closed,
+            "service_url": str(self.service_url),
+            "cfg"        : copy.deepcopy(self._cfg)
         }
         return object_dict
 
@@ -327,6 +400,13 @@ class Session(rs.Session):
         '''Returns a string representation of the object.
         '''
         return str(self.as_dict())
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def primary(self):
+        return self._primary
 
 
     # --------------------------------------------------------------------------
@@ -353,23 +433,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def dburl(self):
-        return self._cfg.dburl
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_db(self):
-
-        if self._dbs: return self._dbs.get_db()
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def primary(self):
-        return self._primary
+    def service_url(self):
+        return self._cfg.service_url
 
 
     # --------------------------------------------------------------------------
@@ -383,49 +448,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert(self._primary)
         return self._cmgr
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def created(self):
-        '''Returns the UTC date and time the session was created.
-        '''
-        if self._dbs: return self._dbs.created
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def connected(self):
-        '''
-        Return time when the session connected to the DB
-        '''
-
-        if self._dbs: return self._dbs.connected
-        else        : return None
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def is_connected(self):
-
-        return self._dbs.is_connected
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def closed(self):
-        '''
-        Returns the time of closing
-        '''
-        if self._dbs: return self._dbs.closed
-        else        : return None
 
 
     # --------------------------------------------------------------------------
@@ -477,17 +500,17 @@ class Session(rs.Session):
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
 
-        if self._dbs and self._dbs._c:
-            self._dbs._c.update({'type'  : 'session',
-                                 "uid"   : self.uid},
-                                {"$push" : {"metadata": metadata}})
+        # FIXME MONGODB: to json
+      # if self._dbs and self._dbs._c:
+      #     self._dbs._c.update({'type'  : 'session',
+      #                          "uid"   : self.uid},
+      #                         {"$push" : {"metadata": metadata}})
 
 
     # --------------------------------------------------------------------------
     #
     def _register_pmgr(self, pmgr):
 
-        self._dbs.insert_pmgr(pmgr.as_dict())
         self._pmgrs[pmgr.uid] = pmgr
 
 
@@ -537,7 +560,6 @@ class Session(rs.Session):
     #
     def _register_tmgr(self, tmgr):
 
-        self._dbs.insert_tmgr(tmgr.as_dict())
         self._tmgrs[tmgr.uid] = tmgr
 
 
@@ -600,60 +622,6 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def add_resource_config(self, resource_config):
-        '''
-        Adds a new :class:`ru.Config` to the session's dictionary of known
-        resources, or accept a string which points to a configuration file.
-
-        For example::
-
-               rc = ru.Config(path='./mycluster.json')
-               rc.label                = 'local.mycluster'
-               rc.job_manager_endpoint = 'ssh+pbs://mycluster'
-               rc.filesystem_endpoint  = 'sftp://mycluster'
-               rc.default_queue        = 'private'
-
-               session = rp.Session()
-               session.add_resource_config(rc)
-
-               pd = rp.PilotDescription()
-               pd.resource = 'local.mycluster'
-               pd.cores    = 16
-               pd.runtime  = 5 # minutes
-
-               pilot = pm.submit_pilots(pd)
-
-        NOTE:  if <resource_config>.label is not set, then the default value
-               is assigned - `rp.RESOURCE_CONFIG_LABEL_DEFAULT`
-        '''
-
-        if isinstance(resource_config, str):
-
-            rcs = ru.Config('radical.pilot.resource', name=resource_config)
-            domain = os.path.splitext(os.path.basename(resource_config))[0]
-            if domain not in self._rcfgs:
-                self._rcfgs[domain] = {}
-
-            for rc in rcs:
-                self._log.info('load rcfg for "%s.%s"' % (domain, rc))
-                self._rcfgs[domain][rc] = rcs[rc].as_dict()
-
-        else:
-
-            if not resource_config.label:
-                resource_config.label = RESOURCE_CONFIG_LABEL_DEFAULT
-
-            elif '.' not in resource_config.label:
-                raise ValueError('Resource config label format should be '
-                                 '"<domain>.<host>"')
-
-            domain, host = resource_config.label.split('.', 1)
-            self._log.debug('load rcfg for "%s.%s"', (domain, host))
-            self._rcfgs.setdefault(domain, {})[host] = resource_config.as_dict()
-
-
-    # --------------------------------------------------------------------------
-    #
     def get_resource_config(self, resource, schema=None):
         '''
         Returns a dictionary of the requested resource config
@@ -682,6 +650,7 @@ class Session(rs.Session):
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
 
+        resource_cfg.label = resource
         return resource_cfg
 
 
@@ -689,24 +658,21 @@ class Session(rs.Session):
     #
     def fetch_profiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_json(self, tgt=None, fetch_client=False):
 
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
-                              session=self)
+        return rpu.fetch_json(self._uid, tgt=tgt, session=self)
 
 
     # --------------------------------------------------------------------------
@@ -774,7 +740,7 @@ class Session(rs.Session):
                             expand['pd.%s' % k.lower()] = v
                     sandbox_raw = sandbox_raw % expand
 
-                if '_' in sandbox_raw and 'summit' in resource:
+                if '_' in sandbox_raw and 'ornl' in resource:
                     sandbox_raw = sandbox_raw.split('_')[0]
 
                 # If the sandbox contains expandables, we need to resolve those
@@ -1022,3 +988,27 @@ class Session(rs.Session):
 
 
 # ------------------------------------------------------------------------------
+#
+class _CloseOptions(ru.Munch):
+    """Options and validation for Session.close().
+
+    **Arguments:**
+        * **download** (`bool`):
+          Fetch pilot profiles and database entries. (default False)
+        * **terminate** (`bool`):
+          Shut down all pilots associated with the session. (default True)
+
+    """
+    _schema = {
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'download' : False,
+        'terminate': True
+    }
+
+
+# ------------------------------------------------------------------------------
+

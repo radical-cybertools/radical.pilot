@@ -14,7 +14,7 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as rpcud
+from . import task_description as rptd
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -28,6 +28,7 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 # make sure deprecation warning is shown only once per type
 #
 _seen = list()
+
 
 def _warn(old_type, new_type):
     if old_type not in _seen:
@@ -48,7 +49,7 @@ class TaskManager(rpu.Component):
 
     **Example**::
 
-        s = rp.Session(database_url=DBURL)
+        s = rp.Session()
 
         pm = rp.PilotManager(session=s)
 
@@ -99,18 +100,18 @@ class TaskManager(rpu.Component):
             * A new `TaskManager` object [:class:`radical.pilot.TaskManager`].
         """
 
-        self._pilots      = dict()
-        self._pilots_lock = ru.RLock('tmgr.pilots_lock')
-        self._uids        = list()   # known task UIDs
-        self._tasks       = dict()
-        self._tasks_lock  = ru.RLock('tmgr.tasks_lock')
-        self._callbacks   = dict()
-        self._cb_lock     = ru.RLock('tmgr.cb_lock')
-        self._terminate   = mt.Event()
-        self._closed      = False
-        self._rec_id      = 0       # used for session recording
         self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
+
+        self._pilots      = dict()
+        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
+        self._uids        = list()   # known task UIDs
+        self._tasks       = dict()
+        self._tasks_lock  = ru.RLock('%s.tasks_lock' % self._uid)
+        self._callbacks   = dict()
+        self._tcb_lock    = ru.RLock('%s.tcb_lock' % self._uid)
+        self._terminate   = mt.Event()
+        self._closed      = False
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
@@ -130,7 +131,6 @@ class TaskManager(rpu.Component):
         cfg.sid       = session.uid
         cfg.base      = session.base
         cfg.path      = session.path
-        cfg.dburl     = session.dburl
         cfg.heartbeat = session.cfg.heartbeat
 
         if scheduler:
@@ -162,16 +162,6 @@ class TaskManager(rpu.Component):
                                  rpc.TMGR_STAGING_OUTPUT_QUEUE)
         else:
             self._has_sout = False
-
-        # register the state notification pull cb
-        # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._state_pull_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
-
-        # register callback which pulls tasks back from agent
-        # FIXME: this should be a tailing cursor in the update worker
-        self.register_timed_cb(self._task_pull_cb,
-                               timer=self._cfg['db_poll_sleeptime'])
 
         # also listen to the state pubsub for task state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
@@ -227,7 +217,7 @@ class TaskManager(rpu.Component):
         self._rep.info('<<close task manager')
 
         # disable callbacks during shutdown
-        with self._cb_lock:
+        with self._tcb_lock:
             self._callbacks = dict()
             for m in rpc.TMGR_METRICS:
                 self._callbacks[m] = dict()
@@ -307,6 +297,8 @@ class TaskManager(rpu.Component):
 
                 self._log.debug('pilot %s is final - pull tasks', pilot.uid)
 
+                # FIXME: MongoDB
+                continue
                 task_cursor = self.session._dbs._c.find({
                     'type'    : 'task',
                     'pilot'   : pilot.uid,
@@ -343,8 +335,8 @@ class TaskManager(rpu.Component):
 
                     self._log.debug('task %s is  restartable', task['uid'])
                     task['restarted'] = True
-                    ud = rpcud.TaskDescription(task['description'])
-                    to_restart.append(ud)
+                    td = rptd.TaskDescription(task['description'])
+                    to_restart.append(td)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old task.
 
@@ -364,119 +356,6 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _state_pull_cb(self):
-
-        if self._terminate.is_set():
-            return False
-
-        # pull all task states from the DB, and compare to the states we know
-        # about.  If any state changed, update the task instance and issue
-        # notification callbacks as needed.  Do not advance the state (again).
-        # FIXME: we also pull for dead tasks.  That is not efficient...
-        # FIXME: this needs to be converted into a tailed cursor in the update
-        #        worker
-        tasks = self._session._dbs.get_tasks(tmgr_uid=self.uid)
-
-        for task in tasks:
-            if not self._update_task(task, publish=True, advance=False):
-                return False
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _task_pull_cb(self):
-
-        if self._terminate.is_set():
-            return False
-
-        # pull tasks from the agent which are about to get back
-        # under tmgr control, and push them into the respective queues
-        # FIXME: this should also be based on a tailed cursor
-        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same tasks over and over
-        #        again, we update the 'control' field *before* running the next
-        #        find -- so we do it right here.
-        task_cursor = self.session._dbs._c.find({'type'    : 'task',
-                                                 'tmgr'    : self.uid,
-                                                 'control' : 'tmgr_pending'})
-
-        if not task_cursor.count():
-            # no tasks whatsoever...
-          # self._log.info("tasks pulled:    0")
-            return True  # this is not an error
-
-        # update the tasks to avoid pulling them again next time.
-        tasks = list(task_cursor)
-        uids  = [task['uid'] for task in tasks]
-
-        self._log.info("tasks pulled:    %d", len(uids))
-
-        for task in tasks:
-            task['control'] = 'tmgr'
-
-        self._session._dbs._c.update({'type'  : 'task',
-                                      'uid'   : {'$in'     : uids}},
-                                     {'$set'  : {'control' : 'tmgr'}},
-                                     multi=True)
-
-        self._log.info("tasks pulled: %4d", len(tasks))
-        self._prof.prof('get', msg="bulk size: %d" % len(tasks), uid=self.uid)
-        for task in tasks:
-
-            # we need to make sure to have the correct state:
-            uid = task['uid']
-            self._prof.prof('get', uid=uid)
-
-            old = task['state']
-            new = rps._task_state_collapse(task['states'])
-
-            if old != new:
-                self._log.debug("task  pulled %s: %s / %s", uid, old, new)
-
-            task['state'] = new
-
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).
-
-        to_stage    = list()
-        to_finalize = list()
-
-        for task in tasks:
-            # only advance tasks to data stager if we need data staging
-            # = otherwise finalize them right away
-            if task['description'].get('output_staging'):
-                to_stage.append(task)
-            else:
-                to_finalize.append(task)
-
-        # don't profile state transitions - those happened in the past
-        if to_stage:
-            if self._has_sout:
-                # normal route: needs data stager
-                self.advance(to_stage, publish=True, push=True, prof=False)
-            else:
-                self._log.error('output staging needed but not available!')
-                for task in to_stage:
-                    task['target_state'] = rps.FAILED
-                    to_finalize.append(task)
-
-        if to_finalize:
-            # shortcut, skip the data stager, but fake state transition
-            self.advance(to_finalize, state=rps.TMGR_STAGING_OUTPUT,
-                                      publish=True, push=False)
-
-            # move to final stata
-            for task in to_finalize:
-                task['state'] = task['target_state']
-            self.advance(to_finalize, publish=True, push=False)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def _state_sub_cb(self, topic, msg):
 
         if self._terminate.is_set():
@@ -489,91 +368,69 @@ class TaskManager(rpu.Component):
             self._log.debug('ignore state cb msg with cmd %s', cmd)
             return True
 
-        if isinstance(arg, list): things =  arg
-        else                    : things = [arg]
+        things = ru.as_list(arg)
+        tasks  = [thing for thing in things if thing.get('type') == 'task']
 
-        cb_requests = list()
-
-        for thing in things:
-
-            if thing.get('type') == 'task':
-
-                # we got the state update from the state callback - don't
-                # publish it again
-                to_notify = self._update_task(thing, publish=False,
-                                              advance=False)
-                if to_notify:
-                    cb_requests += to_notify
-            else:
-                self._log.debug('tmgr state cb ignores %s/%s', thing.get('uid'),
-                        thing.get('state'))
-
-        if cb_requests:
-            if _USE_BULK_CB:
-                self._bulk_cbs(set([task for task,state in cb_requests]))
-            else:
-                for task,state in cb_requests:
-                    self._task_cb(task, state)
+        self._update_tasks(tasks)
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _update_task(self, task_dict, publish=False, advance=False):
+    def _update_tasks(self, task_dicts):
 
-        uid = task_dict['uid']
 
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
         # note however that individual task callbacks are still being called on
         # each task (if any are registered), which can lead to arbitrary,
         # application defined delays.
+
         to_notify = list()
 
         with self._tasks_lock:
 
-            # we don't care about tasks we don't know
-            if uid not in self._tasks:
-                self._log.debug('tmgr: unknown: %s', uid)
-                return None
+            for task_dict in task_dicts:
 
-            task = self._tasks[uid]
+                uid = task_dict['uid']
 
-            # only update on state changes
-            current = task.state
-            target  = task_dict['state']
-            if current == target:
-                self._log.debug('tmgr: static: %s', uid)
-                return None
+                # we don't care about tasks we don't know
+                task = self._tasks.get(uid)
+                if not task:
+                    self._log.debug('tmgr: task unknown: %s', uid)
+                    continue
 
-            target, passed = rps._task_state_progress(uid, current, target)
+                # only update on state changes
+                current = task.state
+                target  = task_dict['state']
+                if current == target:
+                    continue
 
-            if target in [rps.CANCELED, rps.FAILED]:
-                # don't replay intermediate states
-                passed = passed[-1:]
+                target, passed = rps._task_state_progress(uid, current, target)
 
-            for s in passed:
-                task_dict['state'] = s
-                self._tasks[uid]._update(task_dict)
-                to_notify.append([task, s])
+                if target in [rps.CANCELED, rps.FAILED]:
+                    # don't replay intermediate states
+                    passed = passed[-1:]
 
-                # we don't usually advance state at this point, but just keep up
-                # with state changes reported from elsewhere
-                if advance:
-                    self.advance(task_dict, s, publish=publish, push=False,
-                                 prof=False)
+                for s in passed:
+                    task_dict['state'] = s
+                    self._tasks[uid]._update(task_dict)
+                    to_notify.append([task, s])
 
-            self._log.debug('tmgr: notify: %s %s %s', len(to_notify), task_dict,
-                    task_dict['state'])
-            return to_notify
+        if to_notify:
+            if _USE_BULK_CB:
+                self._bulk_cbs(set([task for task,_ in to_notify]))
+            else:
+                for task, state in to_notify:
+                    self._task_cb(task, state)
 
 
     # --------------------------------------------------------------------------
     #
     def _task_cb(self, task, state):
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             uid      = task.uid
             cb_dicts = list()
@@ -585,8 +442,8 @@ class TaskManager(rpu.Component):
 
             for cb_dict in cb_dicts:
 
-                cb           = cb_dict['cb']
-                cb_data      = cb_dict['cb_data']
+                cb      = cb_dict['cb']
+                cb_data = cb_dict['cb_data']
 
                 try:
                     if cb_data: cb(task, state, cb_data)
@@ -604,7 +461,7 @@ class TaskManager(rpu.Component):
 
         cbs = dict()  # bulked callbacks to call
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             for metric in metrics:
 
@@ -695,19 +552,25 @@ class TaskManager(rpu.Component):
         if len(pilots) == 0:
             raise ValueError('cannot add no pilots')
 
+        pilot_docs = list()
         with self._pilots_lock:
 
             # sanity check, and keep pilots around for inspection
             for pilot in pilots:
 
-                pid = pilot.uid
+                if isinstance(pilot, dict):
+                    pilot_dict = pilot
+                else:
+                    pilot_dict = pilot.as_dict()
+                    # real object: subscribe for state updates
+                    pilot.register_callback(self._pilot_state_cb)
+
+                pid = pilot_dict['uid']
 
                 if pid in self._pilots:
                     raise ValueError('pilot %s already added' % pid)
-                self._pilots[pid] = pilot
-
-                # subscribe for state updates
-                pilot.register_callback(self._pilot_state_cb)
+                self._pilots[pid] = pilot_dict
+                pilot_docs.append(pilot_dict)
 
         # publish to the command channel for the scheduler to pick up
         pilot_docs = [pilot.as_dict() for pilot in pilots]
@@ -790,12 +653,12 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def list_units(self, uids=None):
+    def list_units(self):
         '''
         deprecated - use `list_tasks()`
         '''
         _warn(self.list_units, self.list_tasks)
-        return self.list_tasks(uids=uids)
+        return self.list_tasks()
 
 
     # --------------------------------------------------------------------------
@@ -852,40 +715,40 @@ class TaskManager(rpu.Component):
         # we return a list of tasks
         self._rep.progress_tgt(len(descriptions), label='submit')
         tasks = list()
-        for ud in descriptions:
+        ret   = list()
+        for td in descriptions:
 
-            if not ud.executable:
+            if not td.executable:
                 raise ValueError('task executable must be defined')
 
-            task = Task(tmgr=self, descr=ud)
+            task = Task(tmgr=self, descr=td)
             tasks.append(task)
 
             # keep tasks around
             with self._tasks_lock:
                 self._tasks[task.uid] = task
 
-            if self._session._rec:
-                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json"
-                        % (self._session._rec, task.uid, self._rec_id))
-
             self._rep.progress()
+
+            if len(tasks) >= 1024:
+                # submit this bulk
+                task_docs = [u.as_dict() for u in tasks]
+                self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
+                             publish=True, push=True)
+                ret += tasks
+                tasks = list()
 
         self._rep.progress_done()
 
-        if self._session._rec:
-            self._rec_id += 1
+        # submit remaining bulk (if any)
+        if tasks:
+            task_docs = [u.as_dict() for u in tasks]
+            self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
+                         publish=True, push=True)
+            ret += tasks
 
-        # insert tasks into the database, as a bulk.
-        task_docs = [u.as_dict() for u in tasks]
-      # self._session._dbs.insert_tasks(task_docs)
-
-        # Only after the insert can we hand the tasks over to the next
-        # components (ie. advance state).
-        self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
-                     publish=True, push=True)
-
-        if ret_list: return tasks
-        else       : return tasks[0]
+        if ret_list: return ret
+        else       : return ret[0]
 
 
     # --------------------------------------------------------------------------
@@ -946,7 +809,7 @@ class TaskManager(rpu.Component):
     #
     def wait_tasks(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`radical.pilot.Tasks` reach a
+        Returns when the given :class:`radical.pilot.Tasks` reach a
         specific state.
 
         If `uids` is `None`, `wait_tasks` returns when **all**
@@ -1136,7 +999,8 @@ class TaskManager(rpu.Component):
                                                    'tmgr' : self.uid}})
 
         # we also inform all pilots about the cancelation request
-        self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
+        # FIXME: MongoDB
+      # self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
 
         # In the default case of calling 'advance' above, we just set the state,
         # so we *know* tasks are canceled.  But we nevertheless wait until that
@@ -1200,7 +1064,7 @@ class TaskManager(rpu.Component):
             raise ValueError('no such task %s' % uid)
 
 
-        with self._cb_lock:
+        with self._tcb_lock:
             cb_name = cb.__name__
 
             if metric not in self._callbacks:
@@ -1230,7 +1094,7 @@ class TaskManager(rpu.Component):
             if metric not in rpc.TMGR_METRICS :
                 raise ValueError ("invalid tmgr metric '%s'" % metric)
 
-        with self._cb_lock:
+        with self._tcb_lock:
 
             for metric in metrics:
 

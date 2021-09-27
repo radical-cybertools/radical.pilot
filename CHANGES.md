@@ -3,6 +3,105 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.8.0  Release                                                        2021-09-23
+--------------------------------------------------------------------------------
+
+  - fixed pilot staging for input directories
+  - clean up configs
+  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - refreshed module list for Summit
+  - return virtenv setup parameters
+  - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
+  - use local virtual env (either venv or conda) for Summit
+
+
+1.6.8  Hotfix Release                                                 2021-08-24
+--------------------------------------------------------------------------------
+
+  - adapt flux integration to changes in flux event model
+  - fix a merge problem on flux termination handling
+
+
+1.6.7  Release                                                        2021-07-09
+--------------------------------------------------------------------------------
+
+  - artifact upload for RA integration test
+  - encapsulate kwargs handling for Session.close().
+  - ensure state updates
+  - fail tasks which can never be scheduled
+  - fixed jsrun resource_set_file to use `cpu_index_using: logical`
+  - separate cpu/gpu utilization
+  - fix error handling in data stager
+  - use methods from the new module `host` within RU (>=1.6.7)
+
+
+1.6.6  Release                                                        2021-05-18
+--------------------------------------------------------------------------------
+
+  - added flags to keep `prun` aware of gpus (PRTE2 LM)
+  - add service node support
+  - Bridges mpiexec confing fix
+  - task level profiling now python independent
+  - executor errors should not affect task bulks
+  - revive ibrun support, include layout support
+  - MPI standard prescribes -H, not -host
+  - remove pilot staging area
+  - reduce profiling verbosity
+  - restore original env before task execution
+  - scattered repex staging fixes
+  - slurm env fixes
+  - updated documentation for `PilotDescription` and `TaskDescription`
+
+
+1.6.5  Release                                                        2021-04-14
+--------------------------------------------------------------------------------
+
+  - added flag `exclusive` for tags (in task description, default `False`)
+  - Adding Bridges2 and Comet
+  - always specifu GPU number on srun
+  - apply RP+* env vars to raptor tasks
+  - avoid a termination race
+  - Summit LFS config and JSRUN integration tests
+  - gh workflows and badges
+  - ensure that RU lock names are unique
+  - fixed env creation command and updated env setup check processes
+  - fixed launch command for PRTE2 LM
+  - fix missing event updates
+  - fix ve isolation for prep_env
+  - keep track of tagged nodes (no nodes overlapping between different tags)
+  - ensure conda activate works
+  - allow output staging on failed tasks
+  - python 2 -> 3 fix for shebangs
+  - remove support for add_resource_config
+  - Stampede2 migrates to work2 filesystem
+  - update setup module (use `python3`)
+  
+
+1.6.3  Hotfix Release                                                 2021-04-03
+--------------------------------------------------------------------------------
+
+  - fix uid assignment for managers
+
+
+1.6.2  Hotfix Release                                                 2021-03-26
+--------------------------------------------------------------------------------
+
+  - switch to pep-440 for sdist and wheel versioning, to keep pip happy
+
+
+1.6.1  Release                                                        2021-03-09
+--------------------------------------------------------------------------------
+
+  - support for Andes@ORNL, obsolete Rhea@ORNL
+  - add_pilot() also accepts pilot dict
+  - fixed conda activation for PRTE2 config (Summit@ORNL)
+  - fixed partitions handling in LSF_SUMMIT RM
+  - reorganized DVM start process (prte2)
+  - conf fixes for comet
+  - updated events for PRTE2 LM
+  - integration test for Bridges2
+  - prepare partitioning
+
 
 1.6.0  Release                                                        2021-02-13
 --------------------------------------------------------------------------------
@@ -1389,5 +1488,4 @@ API Changes:
 
         
 --------------------------------------------------------------------------------
-
 

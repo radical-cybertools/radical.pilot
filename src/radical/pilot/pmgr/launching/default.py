@@ -15,6 +15,8 @@ import tempfile
 import radical.saga            as rs
 import radical.utils           as ru
 
+rsfs = rs.filesystem
+
 from ...  import states        as rps
 from ...  import constants     as rpc
 from ...  import utils         as rpu
@@ -539,7 +541,8 @@ class Default(PMGRLaunchingComponent):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
+              # raise ValueError('staging tgt %s outside pilot sbox: %s'
+              #                  % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
@@ -565,6 +568,7 @@ class Default(PMGRLaunchingComponent):
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
+            self._log.debug('cmd: %s', cmd)
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
             raise RuntimeError('callout failed: %s' % cmd)
@@ -654,8 +658,8 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid          = self._session.uid
-        database_url = self._session.cfg.dburl
+        sid         = self._session.uid
+        service_url = self._session.cfg.service_url
 
         # some default values are determined at runtime
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
@@ -674,13 +678,14 @@ class Default(PMGRLaunchingComponent):
         project         = pilot['description']['project']
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
+        services        = pilot['description']['services']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_launch_method     = rcfg.get('agent_launch_method')
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
-        agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
+        agent_service_url       = rcfg.get('agent_service_url', service_url)
+        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
+        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
@@ -700,16 +705,17 @@ class Default(PMGRLaunchingComponent):
         lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
-        task_tmp                  = rcfg.get('task_tmp')
+        task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
-        task_pre_exec             = rcfg.get('task_pre_exec')
-        task_post_exec            = rcfg.get('task_post_exec')
-        export_to_task            = rcfg.get('export_to_task')
+        task_pre_exec           = rcfg.get('task_pre_exec')
+        task_post_exec          = rcfg.get('task_post_exec')
+        export_to_task          = rcfg.get('export_to_task')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
+        services               += rcfg.get('services', [])
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -766,11 +772,11 @@ class Default(PMGRLaunchingComponent):
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        db_url = rs.Url(agent_dburl)
-        if db_url.port:
-            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+        tmp = rs.Url(agent_service_url)
+        if tmp.port:
+            hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
+            hostport = "%s:%d" % (tmp.host, 27017)  # mongodb default
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -830,7 +836,6 @@ class Default(PMGRLaunchingComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-
         if not rp_version:
             if virtenv_mode == 'local': rp_version = 'installed'
             else                      : rp_version = DEFAULT_RP_VERSION
@@ -842,16 +847,29 @@ class Default(PMGRLaunchingComponent):
         if rp_version.startswith('@'):
             rp_version  = rp_version[1:]  # strip '@'
 
+        # use local VE ?
+        if virtenv_mode == 'local':
+            if os.environ.get('VIRTUAL_ENV'):
+                python_dist = 'default'
+                virtenv     = os.environ['VIRTUAL_ENV']
+            elif os.environ.get('CONDA_PREFIX'):
+                python_dist = 'anaconda'
+                virtenv     = os.environ['CONDA_PREFIX']
+            else:
+                # we can't use local
+                self._log.error('virtenv_mode is local, no local env found')
+                raise ValueError('no local env found')
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        RE = RuntimeError
+        if not python_dist        : raise RE("missing python distribution")
+        if not virtenv_dist       : raise RE("missing virtualenv distribution")
+        if not agent_spawner      : raise RE("missing agent spawner")
+        if not agent_scheduler    : raise RE("missing agent scheduler")
+        if not resource_manager   : raise RE("missing resource manager")
+        if not agent_launch_method: raise RE("missing agentlaunch method")
+        if not task_launch_method : raise RE("missing task launch method")
 
         # massage some values
         if not queue:
@@ -940,11 +958,13 @@ class Default(PMGRLaunchingComponent):
         # set optional args
         if resource_manager == "CCM": bootstrap_args += " -c"
         if forward_tunnel_endpoint:   bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % db_hostport
+        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % hostport
         if python_interpreter:        bootstrap_args += " -i '%s'" % python_interpreter
         if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
         if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
 
+        for arg in services:
+            bootstrap_args += " -j '%s'" % arg
         for arg in pre_bootstrap_0:
             bootstrap_args += " -e '%s'" % arg
         for arg in pre_bootstrap_1:
@@ -958,7 +978,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
-        agent_cfg['dburl']               = str(database_url)
+        agent_cfg['service_url']         = service_url
         agent_cfg['sid']                 = sid
         agent_cfg['pid']                 = pid
         agent_cfg['pmgr']                = self._pmgr

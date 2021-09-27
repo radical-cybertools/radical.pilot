@@ -49,7 +49,7 @@ class TestBaseResourceManager(TestCase):
         # check that `self.rm_info` has all necessary keys
         rm_info_keys = ['name', 'lm_info', 'node_list', 'partitions',
                         'agent_nodes', 'cores_per_node', 'gpus_per_node',
-                        'lfs_per_node', 'mem_per_node']
+                        'lfs_per_node', 'mem_per_node', 'service_node']
         for rm_info_key in component.rm_info.keys():
             self.assertIn(rm_info_key, rm_info_keys)
 

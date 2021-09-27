@@ -8,6 +8,22 @@
         "gpus"     : 0
     },
 
+    "local.localhost_test" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 1,
+        "gpus"     : 0
+    },
+
+    "local.localhost_flux" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 128,
+        "gpus"     : 0
+    },
+
     "local.localhost_prte" : {
         "project"  : null,
         "queue"    : null,

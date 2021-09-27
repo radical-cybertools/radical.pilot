@@ -4,13 +4,8 @@
 # a functional pilot agent, without any component redundency.
 
 {
-    "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "db_poll_sleeptime"    :  5.0,
   # "network_interface"    : "ipogif0",
-
-    "bulk_time"    : 1.0,
-    "bulk_size"    : 1024,
 
     "heartbeat"    : {
         "interval" :  1.0,

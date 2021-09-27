@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -196,7 +196,7 @@ if __name__ == '__main__':
         report.header('finalize')
         report.header()
         if session:
-            session.close(cleanup=False)
+            session.close()
 
     report.header()
 

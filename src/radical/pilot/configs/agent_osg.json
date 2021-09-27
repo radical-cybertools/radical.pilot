@@ -3,13 +3,8 @@
 # but forces te ZMQ bridges to bind to the local network interface 'lo'.
 
 {
-    "staging_schema"       : "staging",
     "max_io_loglength"     : 1024,
-    "db_poll_sleeptime"    : 1.0,
     "network_interface"    : "lo",
-
-    "bulk_time"    : 1.0,
-    "bulk_size"    : 1024,
 
     "heartbeat"    : {
         "interval" :  1.0,

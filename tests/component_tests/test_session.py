@@ -1,6 +1,6 @@
-# pylint: disable=protected-access, unused-argument
+# pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2020, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import glob
@@ -9,8 +9,7 @@ import shutil
 
 from unittest import TestCase, mock
 
-import radical.pilot as rp
-import radical.utils as ru
+from radical.pilot.session import Session
 
 TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
 
@@ -22,9 +21,12 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_get_logger')
+    @mock.patch.object(Session, '_get_profiler')
+    @mock.patch.object(Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs):
-        cls._session = rp.Session()
+        cls._session = Session()
 
     # --------------------------------------------------------------------------
     #
@@ -45,38 +47,6 @@ class TestSession(TestCase):
 
         self.assertIsInstance(listed_resources, list)
         self.assertIn('local.localhost', listed_resources)
-
-    # --------------------------------------------------------------------------
-    #
-    def test_add_resource_config(self):
-
-        cfg_path = os.path.abspath('%s/user_cfg.json' % TEST_CASES_PATH)
-
-        # add resource config by providing config file path
-        self._session.add_resource_config(resource_config=cfg_path)
-
-        # add resource config by providing Config instance
-        user_cfg = ru.Config(path=cfg_path)
-        user_cfg.mpi_launch_method = 'MPIRUN'
-        user_cfg.cores_per_node    = 1024
-        # label with "<domain>.<host>"
-        user_cfg.label = 'local.mpirun_cfg'
-        self._session.add_resource_config(resource_config=user_cfg)
-        # no label, thus default label is assigned
-        user_cfg.label = None
-        self._session.add_resource_config(resource_config=user_cfg)
-
-        # check exception(s)
-        user_cfg.label = 'tmp_cfg'
-        with self.assertRaises(ValueError):
-            self._session.add_resource_config(resource_config=user_cfg)
-
-        # retrieve resource labels and test them
-        listed_resources = self._session.list_resources()
-
-        self.assertIn('user_cfg.user_resource', listed_resources)
-        self.assertIn('local.mpirun_cfg', listed_resources)
-        self.assertIn(rp.RESOURCE_CONFIG_LABEL_DEFAULT, listed_resources)
 
     # --------------------------------------------------------------------------
     #
@@ -105,6 +75,36 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Session, 'created', return_value=0)
+    @mock.patch.object(Session, 'closed', return_value=0)
+    def test_close(self, mocked_closed, mocked_created):
+
+        # check default values
+        self.assertFalse(self._session._close_options.cleanup)
+        self.assertFalse(self._session._close_options.download)
+        self.assertTrue(self._session._close_options.terminate)
+
+        # only `True` values are targeted
+
+        self._session._closed = False
+        self._session.close(cleanup=True)
+        self.assertTrue(self._session._close_options.cleanup)
+
+        self._session._closed = False
+        self._session.fetch_json     = mock.Mock()
+        self._session.fetch_profiles = mock.Mock()
+        self._session.fetch_logfiles = mock.Mock()
+        self._session.close(download=True)
+        self._session.fetch_json.assert_called()
+        self._session.fetch_profiles.assert_called()
+        self._session.fetch_logfiles.assert_called()
+
+        self._session._closed = False
+        with self.assertRaises(ValueError):
+            self._session.close(cleanup=True, terminate=False)
+
 # ------------------------------------------------------------------------------
 
 
@@ -113,4 +113,7 @@ if __name__ == '__main__':
     tc = TestSession()
     tc.test_list_resources()
     tc.test_get_resource_config()
-    tc.test_add_resource_config()
+
+
+# ------------------------------------------------------------------------------
+

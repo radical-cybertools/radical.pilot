@@ -54,8 +54,8 @@ class APRun(LaunchMethod):
         #       'cpu_threads'      : 2,
         #       'gpu_processes     : 2,
         #       'slots':
-        #       {   # 'nodes': [{'name': node_name,
-        #           #            'uid': node_uid,
+        #       {   # 'ranks': [{'node': node_name,
+        #           #            'node_id': node_uid,
         #           #            'core_map': [core_map],
         #           #            'gpu_map': [gpu_map],
         #           #            'lfs': lfs}],

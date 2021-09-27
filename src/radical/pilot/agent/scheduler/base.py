@@ -2,7 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
+import os
 import time
 import queue
 import logging
@@ -27,7 +27,6 @@ SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
 SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
-SCHEDULER_NAME_TORUS              = "TORUS"
 
 # SCHEDULER_NAME_YARN               = "YARN"
 # SCHEDULER_NAME_SPARK              = "SPARK"
@@ -220,8 +219,6 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = None
-        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                    ru.ID_CUSTOM)
         rpu.Component.__init__(self, cfg, session)
 
 
@@ -262,15 +259,17 @@ class AgentSchedulingComponent(rpu.Component):
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool = dict()  # map uid:task
-        self._ts_map   = dict()
-        self._ts_valid = False  # set to False to trigger re-binning
+        self._waitpool   = dict()  # map uid:task
+        self._ts_map     = dict()
+        self._ts_valid   = False   # set to False to trigger re-binning
+        self._active_cnt = 0       # count of currently scheduled tasks
+        self._log.debug('=== active: %s', self._active_cnt)
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
         self._queue_unsched = mp.Queue()
-        self._proc_term     = mp.Event()  # signal termination ot scheduler proc
+        self._proc_term     = mp.Event()  # signal termination of scheduler proc
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
@@ -306,6 +305,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
+        self._proc_term.set()
         self._p.terminate()
 
 
@@ -482,7 +482,7 @@ class AgentSchedulingComponent(rpu.Component):
 
       # self._prof.prof('tsmap_start')
 
-        for uid,task in self._waitpool.items():
+        for uid, task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -521,9 +521,6 @@ class AgentSchedulingComponent(rpu.Component):
         and then puts them forward onto the queue towards the actual scheduling
         process (self._schedule_tasks).
         '''
-
-        # unify handling of bulks / non-bulks
-        tasks = ru.as_list(tasks)
 
         # advance state, publish state change, and push to scheduler process
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
@@ -601,6 +598,9 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
+        self._publishers = dict()
+        self.register_publisher(rpc.STATE_PUBSUB)
+
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
@@ -662,15 +662,31 @@ class AgentSchedulingComponent(rpu.Component):
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
         # FIXME: cache tuple size metric
-        # FIXME: only resort waitpool if we need to
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
-             (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
-              reverse=True)
+        to_wait    = list()
+        to_test    = list()
+        named_envs = dict()
+
+        for task in self._waitpool.values():
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if not named_envs.get(named_env):
+                    # [re]check env: (1) first time check; (2) was not set yet
+                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                if named_envs[named_env]:
+                    to_test.append(task)
+                else:
+                    to_wait.append(task)
+            else:
+                to_test.append(task)
+
+        to_test.sort(key=lambda x:
+                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                 reverse=True)
 
       # self._log.debug("schedule waitpool %d", len(tasks))
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+        scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
@@ -678,6 +694,19 @@ class AgentSchedulingComponent(rpu.Component):
       # self._log.debug("schedules waitpool %d", len(scheduled))
       # for task in scheduled:
       #     self._prof.prof('schedule_wait', uid=task['uid'])
+
+        if failed:
+            for task, error in failed:
+                task['stderr']       = error
+                task['control']      = 'tmgr_pending'
+                task['target_state'] = 'FAILED'
+                task['$all']         = True
+
+                self._log.error('bisect failed on %s: %s', task['uid'], error)
+
+            self.advance(failed, rps.FAILED, publish=True, push=False)
+
+        self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
         # we only need to re-create the waitpool if any tasks were scheduled
         if scheduled:
@@ -748,14 +777,50 @@ class AgentSchedulingComponent(rpu.Component):
 
             self._log.debug("schedule incoming [%d]", len(tasks))
 
+
             # handle largest tasks first
             # FIXME: this needs lazy-bisect
+            to_schedule = list()
+            named_envs  = dict()
+            for task in tasks:
 
-            tasks.sort(key=lambda x: x['tuple_size'][0], reverse=True)
-            scheduled, unscheduled = ru.lazy_bisect(tasks,
+                # FIXME: This is a slow and inefficient way to wait for named VEs.
+                #        The semantics should move to the upcoming eligibility
+                #        checker
+                # FIXME: Note that this code is duplicated in _schedule_waitpool
+                named_env = task['description'].get('named_env')
+                if not named_env:
+                    to_schedule.append(task)
+
+                else:
+                    if not named_envs.get(named_env):
+                        # [re]check env: (1) first time check; (2) was not set yet
+                        named_envs[named_env] = os.path.exists('%s.ok' % named_env)
+
+                    if named_envs[named_env]:
+                        to_schedule.append(task)
+
+                    else:
+                        # put delayed task into the waitpool
+                        self._waitpool[task['uid']] = task
+
+                        self._log.debug('delay %s, no env %s',
+                                        task['uid'], named_env)
+
+
+            to_schedule.sort(key=lambda x: x['tuple_size'][0], reverse=True)
+            scheduled, unscheduled, failed = ru.lazy_bisect(to_schedule,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+            self._log.debug('unscheduled incoming: %d', len(scheduled))
+            self._log.debug('scheduled   incoming: %d', len(unscheduled))
+
+
+            if failed:
+                self.advance(failed, rps.FAILED, publish=True, push=False)
+
+
             if scheduled:
                 for task in scheduled:
 
@@ -771,6 +836,7 @@ class AgentSchedulingComponent(rpu.Component):
                 self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
                                          publish=True, push=True)
 
+
             # all tasks which could not be scheduled are added to the waitpool
             if unscheduled:
                 self._waitpool.update({task['uid']:task for task in unscheduled})
@@ -782,15 +848,12 @@ class AgentSchedulingComponent(rpu.Component):
                 # if tasks remain waiting, we are out of usable resources
                 resources = False
 
-            self._log.debug('unscheduled incoming: %d', len(scheduled))
-            self._log.debug('scheduled   incoming: %d', len(unscheduled))
-
-            # if we could not schedule any task from the last chunk, then we
-            # should break to allow the unschedule to kick in
-            # NOTE: new incoming tasks *may* have a chance to get scheduled, so
-            #       this is a lucky guess
-            if unscheduled:
+                # if we could not schedule any task from the last chunk, then we
+                # should break to allow the unschedule to kick in
+                # NOTE: new incoming tasks *may* have a chance to get scheduled,
+                #       so this is a lucky(?) guess
                 break
+
 
         self._log.debug("after  schedule incoming: waiting: %d",
                 len(self._waitpool))
@@ -852,12 +915,36 @@ class AgentSchedulingComponent(rpu.Component):
             #
             # FIXME
 
-            ts = tuple(task['tuple_size'])
-            if not self._ts_map.get(ts):
+          # ts = tuple(task['tuple_size'])
+          # if self._ts_map.get(ts):
+          #
+          #     replace = self._waitpool[self._ts_map[ts].pop()]
+          #     replace['slots'] = task['slots']
+          #     placed.append(placed)
+          #
+          #     # unschedule task A and schedule task B have the same
+          #     # timestamp
+          #     ts = time.time()
+          #     self._prof.prof('unschedule_stop', uid=task['uid'],
+          #                     timestamp=ts)
+          #     self._prof.prof('schedule_fast', uid=replace['uid'],
+          #                     timestamp=ts)
+          #     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+          #                  publish=True, push=True)
+          # else:
+          #
+          #     # no replacement task found: free the slots, and try to
+          #     # schedule other tasks of other sizes.
+          #     to_release.append(task)
 
-                # no candidates with matching tuple sizes
-                to_release.append(task)
+            self._active_cnt -= 1
+            to_release.append(task)
 
+
+        if not to_release:
+            if not to_unschedule:
+                # no new resources, not been active
+                return False, False
             else:
 
                 # cycle through the matching ts-candidates.  Some
@@ -912,6 +999,11 @@ class AgentSchedulingComponent(rpu.Component):
 
             self._log.debug('unscheduled release      : %d', len(to_release))
 
+        # we placed some previously waiting tasks, and need to remove those from
+        # the waitpool
+        self._waitpool = {task['uid']: task for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
+
         # if previously waiting tasks were placed, remove them from the waitpool
       # self._log.debug("scheduled  completed %d", len(placed))
         if placed:
@@ -939,7 +1031,15 @@ class AgentSchedulingComponent(rpu.Component):
 
             # schedule failure
           # self._prof.prof('schedule_fail', uid=uid)
+
+            # if schedule fails while no other task is scheduled, then the
+            # `schedule_task` will never be able to succeed - fail that task
+            if self._active_cnt == 0:
+                raise RuntimeError('insufficient resources')
+
             return False
+
+        self._active_cnt += 1
 
         # the task was placed, we need to reflect the allocation in the
         # nodelist state (BUSY) and pass placement to the task, to have

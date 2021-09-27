@@ -40,7 +40,9 @@ class Default(TMGRStagingOutputComponent):
         self._cache = dict()
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
-                            rpc.TMGR_STAGING_OUTPUT_QUEUE, self.work)
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._session.uid,
+                            cb=self.work)
 
         # we don't need an output queue -- tasks will be final
 
@@ -156,6 +158,7 @@ class Default(TMGRStagingOutputComponent):
             # Always set CREATE_PARENTS
             flags |= rs.filesystem.CREATE_PARENTS
 
+            self._log.debug('deed: %s: %s -> %s [%s]', saga_dir.url, src, tgt, flags)
             saga_dir.copy(src, tgt, flags=flags)
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 

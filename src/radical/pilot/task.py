@@ -466,7 +466,7 @@ class Task(object):
             # we will never see another state progression.  Raise an error
             # (unless we waited for this)
             if self.state in states:
-                return
+                return self.state
 
             # FIXME: do we want a raise here, really?  This introduces a race,
             #        really, on application level
@@ -481,8 +481,8 @@ class Task(object):
             if timeout and (timeout <= (time.time() - start_wait)):
                 break
 
-          # if self._tmgr._terminate.is_set():
-          #     break
+            if self._tmgr._terminate.is_set():
+                break
 
         return self.state
 

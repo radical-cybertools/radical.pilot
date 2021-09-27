@@ -110,6 +110,7 @@ class Srun(LaunchMethod):
         mapping = '--exclusive --cpu-bind=none ' \
                 + '--nodes %d '        % n_nodes \
                 + '--ntasks %d '       % n_tasks \
+                + '--gpus %d '         % (n_gpus * n_tasks) \
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
@@ -117,10 +118,17 @@ class Srun(LaunchMethod):
             mapping += ' --gpus-per-task %d' % n_gpus
 
         if nodefile:
-            mapping += ' --nodelist=%s' % nodefile
+            mapping += ' --nodefile=%s' % nodefile
 
         cmd = '%s %s %s %s' % (self.launch_command, mapping, env, task_cmd)
         return cmd, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return "echo $PMIX_RANK"
 
 
 # ------------------------------------------------------------------------------

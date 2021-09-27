@@ -18,7 +18,7 @@ echo "safe environment of bootstrap_0"
 
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
+env | sort > env.orig
 
 
 # create a `deactivate` script
@@ -121,11 +121,11 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
+"pyzmq netifaces setproctitle msgpack regex"
 
-VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
-"zmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
+"zmq netifaces setproctitle msgpack regex"
 
 if ! test -z "$RADICAL_DEBUG"
 then
@@ -1420,6 +1420,16 @@ $cmd"
 
 # -------------------------------------------------------------------------------
 #
+# Build the PREBOOTSTRAP2 variable to pass down to sub-agents
+#
+add_services()
+{
+    echo "$* &" >> ./services
+}
+
+
+# -------------------------------------------------------------------------------
+#
 # untar the pilot sandbox
 #
 untar()
@@ -1447,6 +1457,7 @@ untar()
 #    -g   virtualenv distribution (default, 1.9, system)
 #    -h   hostport to create tunnel to
 #    -i   python Interpreter to use, e.g., python2.7
+#    -j   add a command for the service node
 #    -m   mode of stack installion
 #    -p   pilot ID
 #    -r   radical-pilot version version to install in virtenv
@@ -1460,7 +1471,7 @@ untar()
 #
 # NOTE: -z makes some assumptions on sandbox and tarball location
 #
-while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"         ;;
         b)  PYTHON_DIST="$OPTARG"             ;;
@@ -1471,6 +1482,7 @@ while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         g)  VIRTENV_DIST="$OPTARG"            ;;
         h)  HOSTPORT="$OPTARG"                ;;
         i)  PYTHON="$OPTARG"                  ;;
+        j)  add_services "$OPTARG"            ;;
         m)  VIRTENV_MODE="$OPTARG"            ;;
         p)  PILOT_ID="$OPTARG"                ;;
         r)  RP_VERSION="$OPTARG"              ;;
@@ -1793,10 +1805,6 @@ export RADICAL_VERBOSE=DEBUG
 export RADICAL_UTIL_VERBOSE=DEBUG
 export RADICAL_PILOT_VERBOSE=DEBUG
 
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
-
 # avoid ntphost lookups on compute nodes
 export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 
@@ -1804,9 +1812,16 @@ export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
 
-# start agent, forward arguments
+# start services and agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+if test "\$1" = 'services'
+then
+    # start the services script
+    exec ./services 1> services.out 2> services.err
+else
+    # start a sub-agent
+    exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+fi
 
 EOT
 chmod 0755 bootstrap_2.sh
@@ -1886,6 +1901,11 @@ fi
 # all env settings are done, bootstrap stages are created - as last action
 # capture the resulting env differences in a deactivate script
 create_deactivate
+
+# add a `wait` to the services script
+test -f ./services && echo 'wait' >> ./services
+test -f ./services && chmod 0755     ./services
+
 
 # start the master agent instance (zero)
 profile_event 'bootstrap_0_ok'
@@ -2039,13 +2059,6 @@ then
     final_state='FAILED'
 fi
 
-echo "# -------------------------------------------------------------------"
-echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-sp=$(which radical-pilot-agent-statepush)
-test -z "$sp" && echo "statepush not found"
-test -z "$sp" || $PYTHON "$sp" agent.0.cfg "$final_state"
-
-echo
 echo "# -------------------------------------------------------------------"
 echo "#"
 echo "# Done, exiting ($AGENT_EXITCODE)"

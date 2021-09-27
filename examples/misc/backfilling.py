@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # pylint: disable=redefined-outer-name
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
         # the above is equivalent to
         #
-        #   session.close (cleanup=True, terminate=True)
+        #   session.close (terminate=True)
         #
         # it will thus both clean out the session's database record, and kill
         # all remaining pilots (none in our example).

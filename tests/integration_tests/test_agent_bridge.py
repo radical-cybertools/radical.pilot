@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import time
 
 import radical.utils as ru
@@ -7,9 +8,14 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
-def test_agent_bridge(sid='foo'):
+def test_agent_bridge(url=None):
 
-    bridge = ru.zmq.Client('server.0000')
+    if url:
+        bridge = ru.zmq.Client(url=url)
+    else:
+        bridge = ru.zmq.Client(server='server.0000')
+
+    sid = 'foo'
 
     try:
         print(bridge.request('client_register',   {'sid': sid}))
@@ -36,7 +42,11 @@ def test_agent_bridge(sid='foo'):
 #
 if __name__ == '__main__':
 
-    test_agent_bridge()
+    url = None
+    if len(sys.argv) > 1:
+        url = sys.argv[1]
+
+    test_agent_bridge(url)
 
 
 # ------------------------------------------------------------------------------

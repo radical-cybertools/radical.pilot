@@ -252,6 +252,13 @@ term iv
   - Exception in SA startup causes hang (agent_0 does not die)
 
 
+others
+------
   - `PRTE` switches in scheduler should become `partition` switches, where the
     partitions are defined by the RM
+
+  - stager and other RPC like workers should get a proper async RPC channel
+    (req/res).  That should be built upon `ru.zmq.Service`.  The client side
+    should wrap the request into a proper async Future.
+
 

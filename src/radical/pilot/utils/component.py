@@ -423,9 +423,9 @@ class Component(object):
         self._workers    = dict()       # methods to work on things
         self._publishers = dict()       # channels to send notifications to
         self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = ru.RLock('comp.cb_lock.%s' % self._name)
+        self._cb_lock    = mt.RLock()
                                         # guard threaded callback invokations
-        self._work_lock  = ru.RLock('comp.work_lock.%s' % self._name)
+        self._work_lock  = mt.RLock()
                                         # guard threaded callback invokations
 
         self._subscribers = dict()      # ZMQ Subscriber classes
@@ -516,12 +516,8 @@ class Component(object):
         from radical.pilot import pmgr   as rppm
         from radical.pilot import tmgr   as rptm
         from radical.pilot import agent  as rpa
-        from radical.pilot import raptor as rpt
-      # from radical.pilot import constants as rpc
 
         comp = {
-                rpc.WORKER                         : rpt.Worker,
-                rpc.UPDATE_WORKER                  : rpw.Update,
                 rpc.STAGER_WORKER                  : rpw.Stager,
 
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
@@ -620,7 +616,7 @@ class Component(object):
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
-        self._cancel_lock = ru.RLock('comp.cancel_lock.%s' % self._uid)
+        self._cancel_lock = mt.RLock()
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # call component level initialize
@@ -678,14 +674,15 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker=None):
+    def register_input(self, states, queue, cb=None, qname=None):
         '''
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
         can be a single state or a list of states) will trigger an assert check
         upon thing arrival.
 
-        This method will further associate a thing state with a specific worker.
+        This method will further associate a thing state with a specific worker
+        callback `cb`.
         Upon thing arrival, the thing state will be used to lookup the
         respective worker, and the thing will be handed over.  Workers should
         call self.advance(thing), in order to push the thing toward the next
@@ -701,13 +698,17 @@ class Component(object):
         if not states:
             states = [None]  # worker handles stateless entities
 
-        name = '%s.%s.%s' % (self.uid, worker.__name__,
+        if cb: cbname = cb.__name__
+        else : cbname = 'none'
+
+        name = '%s.%s.%s' % (self.uid, cbname,
                              '_'.join([str(s) for s in states]))
 
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        self._inputs[name] = {'queue'  : self.get_input_ep(input),
+        self._inputs[name] = {'queue'  : self.get_input_ep(queue),
+                              'qname'  : qname,
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -722,14 +723,14 @@ class Component(object):
             if state in self._workers:
                 self._log.warn("%s replaces worker %s (%s)"
                         % (self.uid, self._workers[state], state))
-            self._workers[state] = worker
+            self._workers[state] = cb
 
-            self._log.debug('registered worker %s [%s]', worker.__name__, state)
+            self._log.debug('registered worker %s [%s]', cbname, state)
 
 
     # --------------------------------------------------------------------------
     #
-    def unregister_input(self, states, input, worker):
+    def unregister_input(self, states, queue, worker):
         '''
         This methods is the inverse to the 'register_input()' method.
         '''
@@ -748,7 +749,7 @@ class Component(object):
 
         self._inputs[name]['queue'].stop()
         del(self._inputs[name])
-        self._log.debug('unregistered input %s', name)
+        self._log.debug('=== unregistered input %s: %s', name, queue)
 
         for state in states:
 
@@ -803,16 +804,16 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_input_ep(self, input):
+    def get_input_ep(self, queue):
         '''
         return an input endpoint
         '''
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, input)
+        fname = '%s/%s.cfg' % (self._cfg.path, queue)
         cfg   = ru.read_json(fname)
 
-        return ru.zmq.Getter(input, url=cfg['get'])
+        return ru.zmq.Getter(queue, url=cfg['get'])
 
 
     # --------------------------------------------------------------------------
@@ -1030,7 +1031,7 @@ class Component(object):
                                                           log=self._log,
                                                           prof=self._prof)
 
-        self._subscribers[pubsub].subscribe(topic=ru.as_string(pubsub), cb=cb,
+        self._subscribers[pubsub].subscribe(topic=pubsub, cb=cb,
                                             lock=self._cb_lock)
 
 
@@ -1046,27 +1047,28 @@ class Component(object):
         attempt on getting a thing is up.
         '''
 
-        # if no action occurs in this iteration, idle
+        # if there is nothing to check, idle a bit
         if not self._inputs:
-            time.sleep(0.01)
+            time.sleep(0.1)
             return True
 
         for name in self._inputs:
 
-          # self._log.debug('== work_cb %s', name)
-
-            input  = self._inputs[name]['queue']
+            queue  = self._inputs[name]['queue']
+            qname  = self._inputs[name]['qname']
             states = self._inputs[name]['states']
 
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(timeout=200)     # microseconds
+            things = queue.get_nowait(qname=qname, timeout=200)   # microseconds
+          # self._log.debug('work_cb %s: %s %s %d', name, queue.channel,
+          #                                         qname, len(things))
 
             if not things:
-                return True
 
-            self._log.debug('== work_cb %s got %d ', name, len(things))
+                # return to have a chance to catch term signals
+                return True
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
@@ -1074,7 +1076,6 @@ class Component(object):
             buckets = dict()
             for thing in things:
                 state = thing.get('state')  # can be stateless
-                uid   = thing.get('uid')    # and not have uids
 
                 if state not in buckets:
                     buckets[state] = list()
@@ -1084,7 +1085,7 @@ class Component(object):
 
             for state,things in buckets.items():
 
-                assert(state in states), 'cannot handle state %s' % state
+                assert(state in states),        'cannot handle state %s' % state
                 assert(state in self._workers), 'no worker for state %s' % state
 
                 try:
@@ -1131,8 +1132,8 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def advance(self, things, state=None, publish=True, push=False, ts=None,
-                      prof=True):
+    def advance(self, things, state=None, publish=True, push=False, qname=None,
+                              ts=None, prof=True):
         '''
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -1143,6 +1144,7 @@ class Component(object):
         state:   new state to set for the things
         publish: determine if state update notifications should be issued
         push:    determine if things should be pushed to outputs
+        qname:   output queue name to push to (if applicable)
         prof:    determine if state advance creates a profile event
                  (publish, and push are always profiled)
 
@@ -1240,7 +1242,7 @@ class Component(object):
                 if _state in rps.FINAL:
                     # things in final state are dropped
                   # for thing in _things:
-                  #     self._log.debug('final %s [%s]', thing['uid'], _state)
+                  #     self._log.debug('=== final %s [%s]', thing['uid'], _state)
                   #     self._prof.prof('drop', uid=thing['uid'], state=_state,
                   #                     ts=ts)
                     continue
@@ -1248,7 +1250,7 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                   # for thing in _things:
-                  #   # self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                  #     self._log.debug('=== lost  %s [%s]', thing['uid'], _state)
                   #   # self._prof.prof('lost', uid=thing['uid'], state=_state,
                   #   #                 ts=ts)
                     continue
@@ -1256,7 +1258,7 @@ class Component(object):
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                   # for thing in _things:
-                  #     self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                  #     self._log.debug('=== drop  %s [%s]', thing['uid'], _state)
                   #   # self._prof.prof('drop', uid=thing['uid'], state=_state,
                   #   #                 ts=ts)
                     continue
@@ -1264,8 +1266,9 @@ class Component(object):
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-              # self._log.debug('put bulk %s: %s', _state, len(_things))
-                output.put(_things)
+              # self._log.debug('=== put bulk %s: %s: %s', _state, len(_things),
+              #         output.channel)
+                output.put(_things, qname=qname)
 
                 ts = time.time()
               # for thing in _things:
