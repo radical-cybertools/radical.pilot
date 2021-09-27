@@ -675,7 +675,6 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
@@ -684,27 +683,28 @@ class Default(PMGRLaunchingComponent):
         default_queue           = rcfg.get('default_queue')
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         resource_manager        = rcfg.get('resource_manager')
-        mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
-        task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
+        lfs_path_per_node       = rcfg.get('lfs_path_per_node')
+        lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
+        task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
+        task_pre_rank           = rcfg.get('task_pre_rank')
+        task_post_launch        = rcfg.get('task_post_launch')
         task_post_exec          = rcfg.get('task_post_exec')
-        export_to_task          = rcfg.get('export_to_task')
+        task_post_rank          = rcfg.get('task_post_rank')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
@@ -856,13 +856,11 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        if not python_dist     : raise RuntimeError("missing python distribution")
+        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
+        if not agent_spawner   : raise RuntimeError("missing agent spawner")
+        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
+        if not resource_manager: raise RuntimeError("missing resource manager")
 
         # massage some values
         if not queue:
@@ -957,17 +955,17 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
         agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
         agent_cfg['cores_per_node']      = cores_per_node
         agent_cfg['gpus_per_node']       = gpus_per_node
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
         agent_cfg['task_tmp']            = task_tmp
-        agent_cfg['export_to_task']        = export_to_task
+        agent_cfg['task_pre_launch']     = task_pre_launch
         agent_cfg['task_pre_exec']       = task_pre_exec
+        agent_cfg['task_pre_rank']       = task_pre_rank
+        agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
+        agent_cfg['task_post_rank']      = task_post_rank
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 

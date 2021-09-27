@@ -1,4 +1,7 @@
-#!/bin/bash -l
+#!/bin/sh
+
+# combine stdout and stderr
+exec 2>&1
 
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
@@ -8,6 +11,11 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+mkdir -p env
+env > env/bs0_orig.env
+
 
 # Report where we are, as this is not always what you expect ;-)
 # Save environment, useful for debugging
@@ -15,11 +23,6 @@ echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
-
-# store the sorted env for logging, but also so that we can dig original env
-# settings for task environments, if needed
-env | sort > env.orig
-
 
 # create a `deactivate` script
 old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
@@ -29,7 +32,6 @@ old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
 echo "export PATH='$old_path'"          > deactivate
 echo "export PYTHONPATH='$old_pypath'" >> deactivate
 echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -122,10 +124,10 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
-"pyzmq netifaces setproctitle msgpack regex"
+"pyzmq netifaces setproctitle msgpack regex python-string-utils"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
-"zmq netifaces setproctitle msgpack regex"
+"zmq netifaces setproctitle msgpack regex string_utils"
 
 if ! test -z "$RADICAL_DEBUG"
 then
@@ -155,30 +157,19 @@ export MAKEFLAGS="-j"
 #
 create_deactivate()
 {
-    # capture the current environment
-    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
-        > env.bs_0
+    # at this point we activated the agent VE and thus have RU availale.  Use
+    # `radical-utils-env.sh` to create a script to recover the virgin env
+    # (`bs0_orig.env`) from the current state (`bs0_acivate.env`)
+    which radical-utils-env.sh
+    . radical-utils-env.sh
+    env_dump -t env/bs0_active.env
+    env_prep -s env/bs0_orig.env -r env/bs0_active.env -t env/bs0_orig.sh
 
-    # find all variables which changed
-    changed=$(diff -w env.orig env.bs_0 | grep '='        \
-                                        | cut -f 3 -d ' ' \
-                                        | cut -f 1 -d '=' \
-                                        | sort -u)
-
-    # capture the original values in `deactivate`.  If no original value exists,
-    # unset the variable
-    for var in $changed
-    do
-        orig=$(grep -e "^export $var=" env.orig)
-        if test -z "$orig"
-        then
-            # var did not exist
-            echo "# unset  $var" >> deactivate
-        else
-            # var existed, value may or may not be empty
-            echo "$orig" >> deactivate
-        fi
-    done
+    # we also prepare a script to return to the `pre_bootstrap_0` state: all
+    # pre_bootstrap_0 commands have been run, but the virtualenv is not yet
+    # activated.  This can be used in case a different VE is to be created or
+    # used.
+    env_prep -s env/bs0_pre_0.env -r env/bs0_active.env -t env/bs0_pre_0.sh
 }
 
 
@@ -229,6 +220,25 @@ create_gtod()
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
         "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+create_prof(){
+
+    cat > ./prof <<EOT
+#!/bin/sh
+
+test -z "\$RP_PROF_TGT" && exit
+
+now=\$(\$RP_PILOT_GTOD)
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now\\
+    >> "\$RP_PROF_TGT"
+
+EOT
+
+    chmod 0755 ./prof
 }
 
 
@@ -1493,6 +1503,9 @@ while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
+# pre_bootstrap_0 is done at this point, save resulting env
+env > env/bs0_pre_0.env
+
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'
 echo '# -------------------------------------------------------------------'
@@ -1546,14 +1559,9 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+echo 'create gtod, prof'
+create_gtod
+create_prof
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1686,6 +1694,7 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
                  "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
+create_deactivate
 
 # ------------------------------------------------------------------------------
 # launch the radical agent
@@ -1816,10 +1825,10 @@ $PREBOOTSTRAP2_EXPANDED
 if test "\$1" = 'services'
 then
     # start the services script
-    exec ./services 1> services.out 2> services.err
+    exec ./services 1>> services.out 2>> services.err
 else
     # start a sub-agent
-    exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+    exec $AGENT_CMD "\$1" 1>>"\$1.out" 2>>"\$1.err"
 fi
 
 EOT
@@ -1897,25 +1906,20 @@ fi
 # ./packer.sh 2>&1 >> bootstrap_0.out &
 # PACKER_ID=$!
 
-# all env settings are done, bootstrap stages are created - as last action
-# capture the resulting env differences in a deactivate script
-create_deactivate
-
 # add a `wait` to the services script
 test -f ./services && echo 'wait' >> ./services
 test -f ./services && chmod 0755     ./services
-
 
 # start the master agent instance (zero)
 profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 else
     ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
 

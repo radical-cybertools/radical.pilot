@@ -474,7 +474,10 @@ class TaskManager(rpu.Component):
 
             # move to final stata
             for task in to_finalize:
-                task['state'] = task['target_state']
+                target_state = task.get('target_state')
+                if not target_state:
+                    target_state = rps.FAILED
+                task['state'] = target_state
             self.advance(to_finalize, publish=True, push=False)
 
         return True
