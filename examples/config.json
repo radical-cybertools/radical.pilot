@@ -102,10 +102,10 @@
         "cores"    : 56
     },
 
-    "xsede.frontera" : {
-        "project"  : "FTA-Jha",
+    "tacc.frontera" : {
+        "project"  : "MCB20006",
         "queue"    : "development",
-        "schema"   : "local",
+        "schema"   : "ssh",
         "cores"    : 64
     },
 
