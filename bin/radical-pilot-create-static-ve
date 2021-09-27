@@ -38,7 +38,7 @@ then
     MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
     MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
-    MODULES="$MODULES python-string-utils'
+    MODULES="$MODULES python-string-utils"
 fi
 
 if ! test -z "$ENV_SETUP"
@@ -158,7 +158,7 @@ then
 fi
 
 echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD -p "python$VERSION" "$PREFIX" | progress
+stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
 .          "$PREFIX"/bin/activate
 
 echo -n "update  setuptools "
