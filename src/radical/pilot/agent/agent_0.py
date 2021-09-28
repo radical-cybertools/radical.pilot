@@ -799,6 +799,8 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
+        self._log.debug('=== out: %s', out)
+        self._log.debug('=== err: %s', err)
 
         if ret:
             raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
