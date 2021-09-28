@@ -227,7 +227,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._ts_map     = dict()
         self._ts_valid   = False   # set to False to trigger re-binning
         self._active_cnt = 0       # count of currently scheduled tasks
-        self._log.debug('=== active: %s', self._active_cnt)
+        self._named_envs = list()  # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -340,6 +340,12 @@ class AgentSchedulingComponent(rpu.Component):
 
         cmd = msg['cmd']
         arg = msg['arg']
+
+        if cmd == 'register_named_env':
+
+            env_name = arg['env_name']
+            self._named_envs.append(env_name)
+
 
         if cmd == 'register_raptor_queue':
 
@@ -688,16 +694,11 @@ class AgentSchedulingComponent(rpu.Component):
         #
         to_wait    = list()
         to_test    = list()
-        named_envs = dict()
 
         for task in self._waitpool.values():
             named_env = task['description'].get('named_env')
             if named_env:
-                if not named_envs.get(named_env):
-                    # [re]check env: (1) first time check; (2) was not set yet
-                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
-
-                if named_envs[named_env]:
+                if named_env in self._named_envs:
                     to_test.append(task)
                 else:
                     to_wait.append(task)
@@ -810,7 +811,6 @@ class AgentSchedulingComponent(rpu.Component):
         # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
         to_wait    = list()
-        named_envs = dict()
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
@@ -820,11 +820,7 @@ class AgentSchedulingComponent(rpu.Component):
             # FIXME: Note that this code is duplicated in _schedule_waitpool
             named_env = task['description'].get('named_env')
             if named_env:
-                if not named_envs.get(named_env):
-                    # [re]check env: (1) first time check; (2) was not set yet
-                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
-
-                if not named_envs[named_env]:
+                if named_env not in self._named_envs:
                     to_wait.append(task)
                     self._log.debug('delay %s, no env %s',
                                     task['uid'], named_env)

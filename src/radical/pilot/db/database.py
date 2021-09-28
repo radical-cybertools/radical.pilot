@@ -238,8 +238,8 @@ class DBSession(object):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd,
-                        'arg' : arg}
+            cmd_spec = {'cmd': cmd,
+                    'arg': arg}
 
             self._log.debug('insert cmd: %s %s %s', pids, cmd, arg)
 

@@ -33,8 +33,7 @@ class PRTE(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self._verbose  = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
+        self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 

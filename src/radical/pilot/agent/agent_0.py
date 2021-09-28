@@ -568,14 +568,6 @@ class Agent_0(rpu.Worker):
             if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
                 self._hb.beat(uid=self._pmgr)
 
-            elif cmd == 'prep_env':
-                env_spec = arg
-
-                for env_id in env_spec:
-                    # ensure we have a hb period
-                    self._hb.beat(uid=self._pmgr)
-                    self._prepare_env(env_id, env_spec[env_id])
-
             elif cmd == 'cancel_pilot':
                 self._log.info('cancel pilot cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
@@ -623,7 +615,7 @@ class Agent_0(rpu.Worker):
             # document has no rpc request
             return True
 
-        self._log.debug('=== rpc req: %s', rpc_req)
+        self._log.debug('rpc req: %s', rpc_req)
 
         # RPCs are synchronous right now - we send the RPC on the command
         # channel, hope that some component picks it up and replies, and then
@@ -670,7 +662,7 @@ class Agent_0(rpu.Worker):
         '''
         Check for commands on the control pubsub, mainly waiting for RPC
         requests to handle.  We handle two types of RPC requests: `hello` for
-        testing, and `prep_env` for environment preparation requests.
+        testing, and `prepare_env` for environment preparation requests.
         '''
 
         cmd = msg['cmd']
@@ -681,7 +673,7 @@ class Agent_0(rpu.Worker):
             return True
 
         req = arg['rpc']
-        if req not in ['hello', 'prep_env']:
+        if req not in ['hello', 'prepare_env']:
             # we don't handle that request
             return True
 
@@ -691,16 +683,17 @@ class Agent_0(rpu.Worker):
             if req == 'hello'   :
                 ret = 'hello %s' % ' '.join(arg['arg'])
 
-            elif req == 'prep_env':
-                env_id   = arg['arg']['env_id']
+            elif req == 'prepare_env':
+                env_name = arg['arg']['env_name']
                 env_spec = arg['arg']['env_spec']
-                self._prepare_env(env_id, env_spec)
-                ret = (env_id, env_spec)
+                out      = self._prepare_env(env_name, env_spec)
+                ret      = (env_name, out)
 
         except Exception as e:
             # request failed for some reason - indicate error
             rpc_res['err'] = repr(e)
             rpc_res['ret'] = None
+            self._log.exception('control cmd failed')
 
         else:
             # request succeeded - respond with return value
@@ -790,7 +783,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_env(self, eid, env_spec):
+    def _prepare_env(self, env_name, env_spec):
 
         etype = env_spec['type']
         evers = env_spec['version']
@@ -800,17 +793,25 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         rp_cse = 'radical-pilot-create-static-ve'
+        ve_cmd = '%s -p %s/env/rp_named_env.%s -v %s ' \
+                 '-e ". env/bs0_pre_0.sh" -m "%s"' \
+               % (rp_cse, self._pwd, env_name, evers, ','.join(emods))
 
-        # FIXME: env prep is async as to not stall the hb callback.  This
-        #        negates any error checking which is now missing.  We
-        #        asynchroneously communicate success / failure via `$eid.ok`
-        #        / `$eid.fail`, and store stderr and stdout in `$eid.log`
-        #
-        # start env setup from `bs0_0_pre.env`
-        ve_cmd = '%s -p ./%s -v %s -e ". env/bs0_pre_0.sh" -m "%s"' \
-               % (rp_cse, eid, evers, ','.join(emods))
-        ru.sh_callout_bg('%s 1>%s.log 2>&1 && touch %s.ok || touch %s.fail'
-               % (ve_cmd, self.uid, eid, eid), shell=True)
+        self._log.debug('env cmd: %s', ve_cmd)
+        out, err, ret = ru.sh_callout(ve_cmd, shell=True)
+
+        if ret:
+            raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
+
+        # prepare the env to be loaded in task exec scripts
+        ve_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+        with open('%s.sh' % ve_path, 'w') as fout:
+            fout.write('\n. %s/bin/activate\n\n' % ve_path)
+
+        # publish the venv creation to the scheduler
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'register_named_env',
+                                          'arg': {'env_name': env_name}})
+        return out
 
 
 # ------------------------------------------------------------------------------

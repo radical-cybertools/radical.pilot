@@ -24,8 +24,6 @@ class APRun(LaunchMethod):
 
         self._command: str = ''
 
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
-
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 

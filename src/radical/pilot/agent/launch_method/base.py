@@ -45,12 +45,13 @@ class LaunchMethod(object):
 
         import pprint
 
-        self.name     = name
-        self._lm_cfg  = lm_cfg
-        self._rm_info = rm_info
-        self._log     = log
-        self._prof    = prof
-        self._pwd     = os.getcwd()
+        self.name      = name
+        self._lm_cfg   = lm_cfg
+        self._rm_info  = rm_info
+        self._log      = log
+        self._prof     = prof
+        self._pwd      = os.getcwd()
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
@@ -185,25 +186,23 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_task_env(self, spec):
-
-        name = spec['name']
-        cmds = spec['cmds']
+    def get_task_named_env(self, env_name):
 
         # we assume that the launcher env is still active in the task execution
         # script.  We thus remove the launcher env from the task env before
         # applying the task env's pre_exec commands
-        tgt = '%s/env/%s.env' % (self._pwd, name)
-        self._log.debug('=== tgt : %s', tgt)
+        act = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
+        tgt = '%s/env/rp_named_env.%s.%s.env' % (self._pwd, env_name, self.name)
+        self._log.debug('=== act : %s', act)
 
+        # the env does not yet exists - create
+        # FIXME: this would need some file locking for concurrent executors. or
+        #        add self._uid to path name
         if not os.path.isfile(tgt):
-
-            # the env does not yet exists - create
             ru.env_prep(self._env_orig,
-                        unset=self._env,
-                        pre_exec=cmds,
+                        unset=list(os.environ.keys()),
+                        pre_exec_cached=['. %s' % act],
                         script_path=tgt)
-
         return tgt
 
 

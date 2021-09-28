@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 set -e  # exit on all errors
 
@@ -158,6 +158,7 @@ then
 fi
 
 echo -n "create  virtualenv "
+echo stdbuf -oL $VIRTENV_CMD "$PREFIX"
 stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
 .          "$PREFIX"/bin/activate
 

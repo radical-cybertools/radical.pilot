@@ -162,18 +162,6 @@ class Popen(AgentExecutingComponent):
         task['stdout_file'] = stdout_file
         task['stderr_file'] = stderr_file
 
-        # ensure that the named env exists
-        env = td.get('named_env')
-        if env:
-            if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                raise ValueError('invalid named env %s for task %s'
-                                % (env, task['uid']))
-            pre = ru.as_list(td.get('pre_exec'))
-            pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-            pre.insert(0, '. %s/deactivate'      % (self._pwd))
-            td['pre_exec'] = pre
-
-
         # create two shell scripts: a launcher script (task.launch.sh) which
         # sets the launcher environment, performs pre_launch commands, and then
         # launches the second script which executes the task.
@@ -691,7 +679,7 @@ class Popen(AgentExecutingComponent):
         # named_env's are prepared by the launcher
         if td['named_env']:
             ret += '\n# named environment\n'
-            ret += '. %s\n' % launcher.get_task_env(td['named_env'])
+            ret += '. %s\n' % launcher.get_task_named_env(td['named_env'])
 
         # also add any env vars requested in the task description
         if td['environment']:
