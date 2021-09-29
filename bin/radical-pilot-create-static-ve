@@ -142,6 +142,7 @@ then
 fi
 
 
+# TODO: find out why this hangs in GH ci
 # VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 VIRTENV_CMD="python$VERSION -m venv"
 
