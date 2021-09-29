@@ -142,7 +142,7 @@ then
 fi
 
 
-VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
+# VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
 VIRTENV_CMD="python$VERSION -m venv"
 
 if test -z "$VIRTENV_CMD"
