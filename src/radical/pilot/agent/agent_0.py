@@ -797,7 +797,7 @@ class Agent_0(rpu.Worker):
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/sh -x %s -p %s/env/rp_named_env.%s -v %s ' \
                  '-e ". env/bs0_pre_0.sh" -m "%s" | tee -a env.log 2>&1' \
-               % (rp_cse, self._pwd, env_name, evers, ','.join(emods), env_name)
+               % (rp_cse, self._pwd, env_name, evers, ','.join(emods))
 
         self._log.debug('=== env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
