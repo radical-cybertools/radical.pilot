@@ -792,6 +792,8 @@ class Agent_0(rpu.Worker):
         assert(etype == 'virtualenv')
         assert(evers)
 
+        self._log.error('===================== find this =====================')
+
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/sh -x %s -p %s/env/rp_named_env.%s -v %s ' \
                  '-e ". env/bs0_pre_0.sh" -m "%s" | tee -a env.log 2>&1' \
