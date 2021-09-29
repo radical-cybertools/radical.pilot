@@ -793,9 +793,9 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         rp_cse = 'radical-pilot-create-static-ve'
-        ve_cmd = '%s -p %s/env/rp_named_env.%s -v %s ' \
-                 '-e ". env/bs0_pre_0.sh" -m "%s"' \
-               % (rp_cse, self._pwd, env_name, evers, ','.join(emods))
+        ve_cmd = '/bin/sh -x %s -p %s/env/rp_named_env.%s -v %s ' \
+                 '-e ". env/bs0_pre_0.sh" -m "%s" | tee %s.env.log 2>&1' \
+               % (rp_cse, self._pwd, env_name, evers, ','.join(emods), env_name)
 
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
