@@ -991,25 +991,26 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
                 continue
 
             try:
-                snodes = task.cfg['slots']['nodes']
+                ranks  = task.cfg['slots']['ranks']
                 tts    = task.timestamps
-                u_min  = tts(event=task_durations['consume']['exec_queue'][0])[0]
-                u_max  = tts(event=task_durations['consume']['unschedule'][1])[-1]
+                task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
+                task_max  = tts(event=task['consume']['unschedule'][1])[-1]
+
             except:
                 continue
 
-            for snode in snodes:
+            for rank in ranks:
 
-                node  = [snode['name'], snode['uid']]
+                node  = [rank['node'], rank['node_id']]
                 r0, _ = get_node_index(nodes, node, pn)
 
-                for core_map in snode[rmap]:
-                    for core in core_map:
-                        idx = r0 + core
+                for resource_map in rank[rmap]:
+                    for resource in resource_map:
+                        idx   = r0 + resource
                         t_min = resources[idx][0]
                         t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
+                        if t_min is None or t_min > task_min: t_min = task_min
+                        if t_max is None or t_max < task_max: t_max = task_max
                         resources[idx] = [t_min, t_max]
 
         # now sift through resources and find buckets of pairs with same t_min
@@ -1189,16 +1190,16 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     if 'slots' not in task.cfg:
         return dict()
 
-    snodes    = task.cfg['slots']['nodes']
+    ranks     = task.cfg['slots']['ranks']
     resources = list()
-    for snode in snodes:
+    for rank in ranks:
 
-        node  = [snode['name'], snode['uid']]
+        node  = [rank['name'], rank['uid']]
         r0, _ = get_node_index(nodes, node, pn)
 
-        for core_map in snode[rmap]:
-            for core in core_map:
-                resources.append(r0 + core)
+        for resource_map in rank[rmap]:
+            for resource in resource_map:
+                resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)
@@ -1271,12 +1272,12 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     # we try to find points in time where resource usage moved from purpose A to
     # purpose B.  For example, consider this metric:
     #
-    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-    #                    {ru.STATE: s.AGENT_EXECUTING        }],
-    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
-    #                    {ru.EVENT: 'exec_start'             }],
-    #   'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-    #                    {ru.EVENT: 'cu_start'               }],
+    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'    },
+    #                    {ru.STATE: s.AGENT_EXECUTING}],
+    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING},
+    #                    {ru.EVENT: 'exec_start'     }],
+    #   'exec_rp'     : [{ru.EVENT: 'exec_start'     },
+    #                    {ru.EVENT: 't_start'        }],
     #
     # then we convert this into the following structure:
     #
@@ -1285,7 +1286,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     #   [{ru.EVENT: 'schedule_ok'    },  None,        'exec_queue'],
     #   [{ru.STATE: s.AGENT_EXECUTING}, 'exec_queue', 'exec_prep'],
     #   [{ru.EVENT: 'exec_start'     }, 'exec_prep',  'exec_rp'],
-    #   [{ru.EVENT: 'cu_start'       }, 'exec_rp',    'None]
+    #   [{ru.EVENT: 't_start'        }, 'exec_rp',    'None]
     # ]
     #
     # which we will use like this:

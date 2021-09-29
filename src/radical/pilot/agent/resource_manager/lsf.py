@@ -1,11 +1,8 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-
+__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
-
-import radical.utils as ru
 
 from .base import ResourceManager
 
@@ -16,64 +13,75 @@ class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
-
-        ResourceManager.__init__(self, cfg, session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
+    def _update_info(self, info):
 
         lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
-        if lsf_hostfile is None:
-            msg = "$LSB_DJOB_HOSTFILE not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
+        if not lsf_hostfile:
+            raise RuntimeError('$LSB_DJOB_HOSTFILE not set')
+        self._log.info('LSB_DJOB_HOSTFILE: %s', lsf_hostfile)
 
-        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
-        if lsb_mcpu_hosts is None:
-            msg = "$LSB_MCPU_HOSTS not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
-
-        # parse LSF hostfile
-        # format:
-        # <hostnameX>
-        # <hostnameX>
-        # <hostnameY>
-        # <hostnameY>
+        # LSF hostfile format:
         #
-        # There are in total "-n" entries (number of tasks)
-        # and "-R" entries per host (tasks per host).
-        # (That results in "-n" / "-R" unique hosts)
+        #     node_1
+        #     node_1
+        #     ...
+        #     node_2
+        #     node_2
+        #     ...
         #
-        lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
-        self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
-                       lsf_hostfile, lsf_nodes)
-        lsf_node_list = list(set(lsf_nodes))
+        # There are in total "-n" entries (number of tasks of the job)
+        # and "-R" entries per node (tasks per host).
+        #
+        # Count the cores while digging out the node names.
+        lsf_nodes = dict()
 
-        # Grab the core (slot) count from the environment
-        # Format: hostX N hostY N hostZ N
-        lsf_cores_count_list = list(map(int, lsb_mcpu_hosts.split()[1::2]))
-        lsf_core_counts      = list(set(lsf_cores_count_list))
-        lsf_cores_per_node   = min(lsf_core_counts)
-        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-        lsf_lfs_per_node     = {'path': ru.expand_env(
-                                           self._cfg.get('lfs_path_per_node')),
-                                'size':    self._cfg.get('lfs_size_per_node', 0)
-                               }
-        lsf_mem_per_node     = self._cfg.get('mem_per_node', 0)
+        # LSF adds login and batch nodes to the hostfile (with 1 core) which
+        # needs filtering out.
+        with open(lsf_hostfile, 'r') as fin:
+            for line in fin.readlines():
+                if 'login' not in line and 'batch' not in line:
+                    node = line.strip()
+                    if node not in lsf_nodes: lsf_nodes[node]  = 1
+                    else                    : lsf_nodes[node] += 1
 
-        self._log.info("Found unique core counts: %s Using: %d",
-                      lsf_core_counts, lsf_cores_per_node)
+        # It is possible that login/batch nodes were not marked at hostfile
+        # and were not filtered out, thus we assume that there is only one
+        # such node with 1 core (otherwise assertion error will be raised later)
+        # *) affected machine(s): Lassen@LLNL
+        for node, node_cores in lsf_nodes.items():
+            if node_cores == 1:
+                del lsf_nodes[node]
+                break
 
-        # node names are unique, so can serve as node uids
-        self.node_list        = [[node, node] for node in lsf_node_list]
-        self.cores_per_node   = lsf_cores_per_node
-        self.gpus_per_node    = lsf_gpus_per_node
-        self.lfs_per_node     = lsf_lfs_per_node
-        self.mem_per_node     = lsf_mem_per_node
+        # RP currently requires uniform node configuration, so we expect the
+        # same core count for all nodes
+        assert(len(set(lsf_nodes.values())) == 1)
+        info.cores_per_node = list(lsf_nodes.values())[0]
+        self._log.debug('found %d nodes with %d cores',
+                        len(lsf_nodes), info.cores_per_node)
+
+        # ensure we can derive the number of cores per socket
+        assert(not info.cores_per_node % info.sockets_per_node)
+        info.cores_per_socket = int(info.cores_per_node / info.sockets_per_node)
+
+        # same for gpus
+        assert(not info.gpus_per_node % info.sockets_per_node)
+        info.gpus_per_socket = int(info.gpus_per_node / info.sockets_per_node)
+
+        # structure of the node list is
+        #
+        #   [[node_name_1, node_id_1],
+        #    [node_name_2, node_id_2],
+        #    ...
+        #   ]
+        #
+        # While LSF node names are unique and could serve as node uids, we
+        # need an integer index later on for resource set specifications.
+        # (LSF starts node indexes at 1, not 0)
+        info.node_list = [[name, str(idx + 1)]
+                          for idx, name in enumerate(sorted(lsf_nodes.keys()))]
+
+        return info
 
 
 # ------------------------------------------------------------------------------

@@ -152,19 +152,19 @@ class LoadLeveler(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg, log, prof):
 
         self.torus_block            = None
         self.loadl_bg_block         = None
         self.shape_table            = None
         self.torus_dimension_labels = None
 
-        ResourceManager.__init__(self, cfg, session)
+        ResourceManager.__init__(self, cfg, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _update_info(self, info):
 
         loadl_node_list     = None
         loadl_cpus_per_node = None
@@ -205,7 +205,6 @@ class LoadLeveler(ResourceManager):
             # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
             loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
-            loadl_gpus_per_node = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
 
         elif self.loadl_bg_block:
             # Blue Gene specific.
@@ -286,14 +285,15 @@ class LoadLeveler(ResourceManager):
             # BGQ Specific Torus labels
             self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
 
-        # node names are unique, so can serve as node uids
-        self.node_list      = [[node, node] for node in loadl_node_list]
-        self.cores_per_node = loadl_cpus_per_node
-        self.gpus_per_node  = loadl_gpus_per_node
+        info.cores_per_node = loadl_cpus_per_node
+        info.node_list = [[name, str(idx + 1)]
+                          for idx, name in enumerate(sorted(loadl_node_list))]
 
         self._log.debug("Sleeping for #473 ...")
         time.sleep(5)
         self._log.debug("Configure done")
+
+        return info
 
 
     # --------------------------------------------------------------------------

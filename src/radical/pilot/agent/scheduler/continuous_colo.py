@@ -243,11 +243,11 @@ class ContinuousColo(Continuous):
         # we got an allocation for the pseudo task, not dissassemble the slots
         # and assign back to the individual tasks in the bag
         slots = copy.deepcopy(pseudo['slots'])
-        cpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['core_map'])
-        gpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['gpu_map'])
+        cpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['core_map'])
+        gpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['gpu_map'])
 
-        slots['nodes'][0]['core_map'] = list()
-        slots['nodes'][0]['gpu_map']  = list()
+        slots['ranks'][0]['core_map'] = list()
+        slots['ranks'][0]['gpu_map']  = list()
 
         for task in tasks:
 
@@ -258,13 +258,13 @@ class ContinuousColo(Continuous):
                 block = list()
                 for _ in range(descr['cpu_threads']):
                     block.append(cpus.pop(0)[0])
-                tslots['nodes'][0]['core_map'].append(block)
+                tslots['ranks'][0]['core_map'].append(block)
 
             for _ in range(descr['gpu_processes']):
 
                 block = list()
                 block.append(gpus.pop(0)[0])
-                tslots['nodes'][0]['gpu_map'].append(block)
+                tslots['ranks'][0]['gpu_map'].append(block)
 
             task['slots'] = tslots
 

@@ -114,8 +114,7 @@ class Torus(AgentSchedulingComponent):
         return {'cores_per_node'      : self._rm_cores_per_node,
                 'loadl_bg_block'      : self._rm.loadl_bg_block,
                 'sub_block_shape_str' : sub_block_shape_str,
-                'corner_node'         : corner_node,
-                'lm_info'             : self._rm_lm_info}
+                'corner_node'         : corner_node}
 
 
     # --------------------------------------------------------------------------

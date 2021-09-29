@@ -180,7 +180,7 @@ class Default(AgentStagingInputComponent):
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
-                    rpu.rec_makedir(tgtdir)
+                    ru.rec_makedir(tgtdir)
 
             if action == rpc.COPY:
                 try:
