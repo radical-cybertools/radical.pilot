@@ -10,11 +10,17 @@ MODULES=        # alternative list of pre-installed modules/packages
 DEFAULTS=       # install default modules
 ENV_SETUP=''    # command(s) to set up starting environment
 
+pre_exec(){
+    echo "=== pre exec: $*"
+    $*
+    echo "=== pre exec done"
+}
+
 while getopts "e:p:P:v:m:d" OPTION; do
     case $OPTION in
         e)  ENV_SETUP="$OPTARG" ;;
         p)  PREFIX="$OPTARG"    ;;
-        P)  $OPTARG             ;;  # pre_exec
+        P)  pre_exec "$OPTARG"  ;;
         v)  VERSION="$OPTARG"   ;;
         m)  MODULES="$OPTARG"   ;;
         d)  DEFAULTS=True       ;;
