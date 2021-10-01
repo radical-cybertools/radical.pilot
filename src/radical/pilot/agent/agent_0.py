@@ -792,7 +792,7 @@ class Agent_0(rpu.Worker):
         emods = env_spec['setup']
         pre   = env_spec['pre_exec'] or []
 
-        pre_exec = '-P ". env/bs0_orig.sh"'
+        pre_exec = '-P ". env/bs0_orig.sh" '
         for cmd in pre:
             pre_exec += '-P "%s" ' % cmd
 
@@ -801,7 +801,7 @@ class Agent_0(rpu.Worker):
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/sh -x %s -p %s/env/rp_named_env.%s -v %s ' \
-                 '-e ". env/bs0_pre_0.sh" -m "%s" %s | tee -a env.log 2>&1' \
+                 '-m "%s" %s | tee -a env.log 2>&1' \
                % (rp_cse, self._pwd, env_name, evers, ','.join(emods), pre_exec)
 
         self._log.debug('env cmd: %s', ve_cmd)
