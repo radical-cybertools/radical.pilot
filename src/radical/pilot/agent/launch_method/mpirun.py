@@ -119,11 +119,10 @@ class MPIRun(LaunchMethod):
     #
     def can_launch(self, task):
 
-        # mpirun can launch any executable
-        if task['description']['executable']:
-            return True
+        if not task['description']['executable']:
+            return False, 'no executable'
 
-        return False
+        return True
 
 
     # --------------------------------------------------------------------------

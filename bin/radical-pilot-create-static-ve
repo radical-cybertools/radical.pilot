@@ -10,10 +10,11 @@ MODULES=        # alternative list of pre-installed modules/packages
 DEFAULTS=       # install default modules
 ENV_SETUP=''    # command(s) to set up starting environment
 
-while getopts "e:p:v:m:d" OPTION; do
+while getopts "e:p:P:v:m:d" OPTION; do
     case $OPTION in
         e)  ENV_SETUP="$OPTARG" ;;
         p)  PREFIX="$OPTARG"    ;;
+        P)  $OPTARG             ;;  # pre_exec
         v)  VERSION="$OPTARG"   ;;
         m)  MODULES="$OPTARG"   ;;
         d)  DEFAULTS=True       ;;
@@ -89,9 +90,10 @@ EOT
 progress(){
   while read X
   do
-    echo -n .
+    echo $X
+  # echo -n .
   done
-  echo
+# echo
 }
 
 
@@ -161,7 +163,40 @@ fi
 echo -n "create  virtualenv "
 echo stdbuf -oL $VIRTENV_CMD "$PREFIX"
 stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
+
+# echo ==================
+# which python3
+# radical-stack || true
+# echo ==================
+#
+# # need to deactivate here
+# if ! test -z "$VIRTUAL_ENV"
+# then
+#     echo ================ clean 1
+#     env | grep ve3
+#     echo ================ clean 2
+#     unset VIRTUAL_ENV
+#     REMOVE=$(dirname `which python3`)
+#     p=$(echo $PATH \
+#         | tr ":" "\n" \
+#         | grep -v "$REMOVE" \
+#         | tr "\n" ":")
+#     PATH=$(echo ${p%:})
+#     echo ================ clean 3
+#     env | grep ve3
+#     echo ================ clean 4
+# fi
+#
+# echo ==================
+# which python3
+# radical-stack || true
+# echo ==================
 .          "$PREFIX"/bin/activate
+
+# echo ==================
+# which python3
+# radical-stack || true
+# echo ==================
 
 echo -n "update  setuptools "
 pip install --no-cache-dir --upgrade $setuptools | progress || exit 1
@@ -189,4 +224,9 @@ echo "PYTHONPATH: $PYTHONPATH"
 echo
 echo "---------------------------------------------------------------------"
 echo
+
+echo ==================
+which python3
+radical-stack || true
+echo ==================
 

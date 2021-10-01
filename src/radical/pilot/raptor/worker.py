@@ -679,7 +679,7 @@ class Worker(rpu.Component):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret)]
+            res = [task, str(out), str(err), int(ret), None]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
 

@@ -57,14 +57,8 @@ class CCMRun(LaunchMethod):
     #
     def can_launch(self, task):
 
-        # ensure single rank on localhost
-        if len(task['slots']['ranks']) > 1:
-            return False
-
-        node = task['slots']['ranks'][0]['node']
-        if node not in ['localhost', self.node_name]:
-            return False
-
+        if not task['description']['executable']:
+            return False, 'task has no executable'
         return True
 
 

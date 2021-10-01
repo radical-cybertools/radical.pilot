@@ -613,10 +613,8 @@ class Pilot(object):
         installed into the environment.
         '''
 
-        reply = self.rpc('prepare_env', {'env_name': env_name,
-                                         'env_spec': env_spec})
-        import pprint
-        pprint.pprint(reply)
+        _ = self.rpc('prepare_env', {'env_name': env_name,
+                                     'env_spec': env_spec})
 
 
     # --------------------------------------------------------------------------

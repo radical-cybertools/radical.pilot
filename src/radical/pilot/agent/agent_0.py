@@ -102,7 +102,7 @@ class Agent_0(rpu.Worker):
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
-        freq = 10
+        freq = 60
         tint = freq / 3
         tout = freq * 10
         self._hb = ru.Heartbeat(uid=self._uid,
@@ -785,24 +785,29 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
+        print(env_spec)
+
         etype = env_spec['type']
         evers = env_spec['version']
         emods = env_spec['setup']
+        pre   = env_spec['pre_exec'] or []
+
+        pre_exec = '-P ". env/bs0_orig.sh"'
+        for cmd in pre:
+            pre_exec += '-P "%s" ' % cmd
 
         assert(etype == 'virtualenv')
         assert(evers)
 
-        self._log.error('===================== find this =====================')
-
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/sh -x %s -p %s/env/rp_named_env.%s -v %s ' \
-                 '-e ". env/bs0_pre_0.sh" -m "%s" | tee -a env.log 2>&1' \
-               % (rp_cse, self._pwd, env_name, evers, ','.join(emods))
+                 '-e ". env/bs0_pre_0.sh" -m "%s" %s | tee -a env.log 2>&1' \
+               % (rp_cse, self._pwd, env_name, evers, ','.join(emods), pre_exec)
 
-        self._log.debug('=== env cmd: %s', ve_cmd)
+        self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
-        self._log.debug('=== out: %s', out)
-        self._log.debug('=== err: %s', err)
+        self._log.debug('    out: %s', out)
+        self._log.debug('    err: %s', err)
 
         if ret:
             raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))

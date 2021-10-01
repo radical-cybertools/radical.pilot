@@ -63,10 +63,10 @@ class APRun(LaunchMethod):
     #
     def can_launch(self, task):
 
-        # aprun can launch any executable
-        if task['description']['executable']:
-            return True
-        return False
+        if not task['description']['executable']:
+            return False, 'task has no executable'
+
+        return True
 
 
     # --------------------------------------------------------------------------

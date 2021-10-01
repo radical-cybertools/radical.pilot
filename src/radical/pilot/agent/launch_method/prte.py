@@ -317,9 +317,11 @@ class PRTE(LaunchMethod):
     #
     def can_launch(self, task):
 
-        if task['description']['executable']:
-            return True
-        return False
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True
+
 
     # --------------------------------------------------------------------------
     #
