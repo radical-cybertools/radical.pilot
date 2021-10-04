@@ -78,12 +78,16 @@ class MPI_Func_Worker():
         mpi_kwargs = {}
 
         if 'cpu_processes' in kwargs:
-            p1 = eval(hosts)
-            p2 = ",".join([str(s) for s in list(p1)])
-            p3 = p2.split(",")
-            p4 = '%s' % ",".join(p3)
-            mpi_kwargs['np'] = len(p3)
-            mpi_kwargs['host'] = p4#kwargs['cpu_processes']
+
+            if hosts:
+                p1 = eval(hosts)
+                p2 = ",".join([str(s) for s in list(p1)])
+                p3 = p2.split(",")
+                p4 = '%s' % ",".join(p3)
+                mpi_kwargs['np'] = len(p3)
+                mpi_kwargs['host'] = p4
+            else:
+                mpi_kwargs['np'] = kwargs['cpu_processes']
             
         else:
             pass

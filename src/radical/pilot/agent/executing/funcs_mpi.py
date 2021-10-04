@@ -95,9 +95,16 @@ class MPIFUNCS(AgentExecutingComponent) :
         # will be utilized by the mpi_workers inside every executor.
         # So the mpi worker will see 2 nodes for every task and occupy it
 
-        spl = int(len(self._cfg['rm_info']['node_list'])/2)  
+        breakdown = self._cfg['rm_info']['node_list']
 
-        for idx, node in enumerate(self._cfg['rm_info']['node_list'][:spl]):
+        if self._cfg['resource'].startswith('local'):
+            pass
+
+        else:
+            spl = int(len(self._cfg['rm_info']['node_list'])/2)  
+            breakdown = self._cfg['rm_info']['node_list'][:spl]
+
+        for idx, node in enumerate(breakdown):
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
@@ -169,8 +176,14 @@ class MPIFUNCS(AgentExecutingComponent) :
             fout.write('export RP_FUNCS_ID="%s"\n'        % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'            % self.gtod)
             fout.write('export RP_TMP="%s"\n'             % self._task_tmp)
-            fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
-            fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
+
+            if self._cfg['resource'].startswith('local'):
+                fout.write('export PILOT_SCHEMA="%s"\n'     % 'LOCAL')
+            else:
+                fout.write('export PILOT_SCHEMA="%s"\n'     % 'REMOTE')
+                fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
+                fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
+            
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):
