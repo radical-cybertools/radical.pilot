@@ -249,8 +249,8 @@ class Worker(rpu.Component):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            pre   = data.get('pre_exec', '')
-            code  = data['code']
+            pre  = data.get('pre_exec', '')
+            code = data['code']
 
             # create a wrapper function around the given code
             lines = code.split('\n')
@@ -619,7 +619,7 @@ class Worker(rpu.Component):
             os.environ[k] = v
 
         # ----------------------------------------------------------------------
-        def _dispatch_thread(res_lock):
+        def _dispatch_proc(res_lock):
             # FIXME: do we still need this thread?
 
             import setproctitle
@@ -656,7 +656,7 @@ class Worker(rpu.Component):
           # self._result_queue.put(res)
 
             res_lock = mp.Lock()
-            dispatcher = mp.Process(target=_dispatch_thread, args=[res_lock])
+            dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
             dispatcher.daemon = True
             dispatcher.start()
             dispatcher.join(timeout=tout)

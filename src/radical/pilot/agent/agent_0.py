@@ -222,7 +222,12 @@ class Agent_0(rpu.Worker):
         # ready to roll!  Update pilot state.
         pilot = {'type'             : 'pilot',
                  'uid'              : self._pid,
-                 'state'            : rps.PMGR_ACTIVE}
+                 'state'            : rps.PMGR_ACTIVE,
+                 'resource_details' : {
+                   # 'lm_info'      : self._rm.lm_info.get('version_info'),
+                   # 'lm_detail'    : self._rm.lm_info.get('lm_detail'),
+                     'rm_info'      : self._rm.info},
+                 '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)
 
 

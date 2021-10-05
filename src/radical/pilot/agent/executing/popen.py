@@ -661,9 +661,10 @@ class Popen(AgentExecutingComponent):
         else:
             ret += 'unset  RP_PROF_TGT'
 
-        if 'RP_APP_TUNNEL' in os.environ:
-            ret += 'export RP_APP_TUNNEL="%s"\n' \
-                    % os.environ['RP_APP_TUNNEL']
+        self._log.debug('==== task env: %s', self._cfg.task_environment)
+        if self._cfg.task_environment:
+            for k, v in self._cfg.task_environment.items():
+                ret += 'export %s="%s"\n' % (k, v)
 
         return ret
 

@@ -185,28 +185,28 @@ create_gtod()
         if ! contains "$tmp" '%'
         then
             # we can use the system tool
-            echo "#!/bin/sh"       > ./gtod
-            echo "date '+%s.%6N'" >> ./gtod
+            echo "#!/bin/sh"       > ./gtod.sh
+            echo "date '+%s.%6N'" >> ./gtod.sh
         fi
     else
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                > ./gtod
-        echo "export LC_NUMERIC=C"                    >> ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
-        echo "then"                                   >> ./gtod
-        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
-        echo "else"                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
-        echo "fi"                                     >> ./gtod
+        echo "#!$SHELL"                                > ./gtod.sh
+        echo "export LC_NUMERIC=C"                    >> ./gtod.sh
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod.sh
+        echo "then"                                   >> ./gtod.sh
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod.sh
+        echo "else"                                   >> ./gtod.sh
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod.sh
+        echo "fi"                                     >> ./gtod.sh
     fi
 
-    chmod 0755 ./gtod
+    chmod 0755 ./gtod.sh
 
     # initialize profile
     PROFILE="bootstrap_0.prof"
-    now=$(./gtod)
+    now=$(./gtod.sh)
     echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
 
     ip=$(ip addr \
@@ -232,7 +232,7 @@ create_prof(){
 
 test -z "\$RP_PROF_TGT" && exit
 
-now=\$(\$RP_PILOT_GTOD)
+now=\$(\$RP_GTOD)
 printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_UNIT_ID,AGENT_EXECUTING,\\\n" \$now\\
     >> "\$RP_PROF_TGT"
 
@@ -255,7 +255,7 @@ profile_event()
 
     event=$1
     msg=$2
-    now=$(./gtod)
+    now=$(./gtod.sh)
 
     # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
     # EVENT  = 1  # event ID (string)                           mandatory
@@ -322,7 +322,7 @@ waitfor()
     TIMEOUT="$1";  shift
     COMMAND="$*"
 
-    START=`echo \`./gtod\` | cut -f 1 -d .`
+    START=`echo \`./gtod.sh\` | cut -f 1 -d .`
     END=$((START + TIMEOUT))
     NOW=$START
 
@@ -339,7 +339,7 @@ waitfor()
         else
             echo "COND ok ($RET)"
         fi
-        NOW=`echo \`./gtod\` | cut -f 1 -d .`
+        NOW=`echo \`./gtod.sh\` | cut -f 1 -d .`
     done
 
     if test "$RET" = 0
@@ -1709,19 +1709,15 @@ create_deactivate
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
-# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
-# then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
-# else
-#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
-# fi
+
 
 # after all is said and done, we should end up with a usable python version.
 # Verify it
 verify_install
 
-# we should have a better `gtod` now
-test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
+# all is installed - keep a local copy of `radical-gtod` so that task profiling
+# is independent of its location in the pilot VE
+test -z $(which radical-gtod) || cp $(which radical-gtod) ./gtod
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
@@ -1834,77 +1830,6 @@ fi
 EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
-
-#
-# Create a barrier to start the agent.
-# This can be used by experimental scripts to push all tasks to the DB before
-# the agent starts.
-#
-if ! test -z "$RADICAL_PILOT_BARRIER"
-then
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
-    echo "# -------------------------------------------------------------------"
-
-    profile_event 'client_barrier_start'
-
-    while ! test -f $RADICAL_PILOT_BARRIER
-    do
-        sleep 1
-    done
-
-    profile_event 'client_barrier_stop'
-
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Leaving barrier"
-    echo "# -------------------------------------------------------------------"
-fi
-
-# # I am ashamed that we have to resort to this -- lets hope it's temporary...
-# cat > packer.sh <<EOT
-# #!/bin/sh
-#
-# PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-# LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-#
-# echo "start packing profiles / logfiles [\$(date)]"
-# while ! test -e exit.signal
-# do
-#
-#     if test -z "\$(ls *.prof )"
-#     then
-#         echo "skip  packing profiles [\$(date)]"
-#     else
-#         echo "check packing profiles [\$(date)]"
-#         mkdir prof/
-#         cp  *.prof prof/
-#         tar -czf "\$PROFILES_TARBALL.tmp" prof/ || true
-#         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
-#         rm -rf prof/
-#     fi
-#
-#
-#     # we always have a least the cfg file
-#     if true
-#     then
-#         echo "check packing logfiles [\$(date)]"
-#         mkdir log/
-#         cp  *.log *.out *.err *,cfg log/
-#         tar -czf "\$LOGFILES_TARBALL.tmp" log/ || true
-#         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
-#         rm -rf log/
-#     fi
-#
-#     ls -l *.tgz
-#     sleep 10
-# done
-# echo "stop  packing profiles / logfiles [\$(date)]"
-# EOT
-# chmod 0755 packer.sh
-# ./packer.sh 2>&1 >> bootstrap_0.out &
-# PACKER_ID=$!
 
 # add a `wait` to the services script
 test -f ./services && echo 'wait' >> ./services
