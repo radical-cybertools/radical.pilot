@@ -13,8 +13,9 @@ import shutil
 import tempfile
 import threading as mt
 
-import radical.saga            as rs
+import radical.gtod            as rg
 import radical.utils           as ru
+import radical.saga            as rs
 
 from ...  import states        as rps
 from ...  import constants     as rpc
@@ -907,9 +908,15 @@ class Default(PMGRLaunchingComponent):
             sdist_names = list()
             sdist_paths = list()
         else:
-            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
-            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
-            bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+            sdist_names = [rg.sdist_name,
+                           ru.sdist_name,
+                           rs.sdist_name,
+                           self._rp_sdist_name]
+            sdist_paths = [rg.sdist_path,
+                           ru.sdist_path,
+                           rs.sdist_path,
+                           self._rp_sdist_path]
+            bootstrap_args += " -d '%s'" % (':'.join(sdist_names))
 
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
