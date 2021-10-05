@@ -42,19 +42,10 @@ if __name__ == '__main__':
             td.uid            = ru.generate_id('master.%(item_counter)06d',
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
-            td.executable     = "/bin/sh"
             td.cpu_threads    = cpn
             td.gpu_processes  = gpn
-            td.arguments      = ['./raptor_master.sh', cfg_file, i]
-            td.input_staging  = [{'source': 'raptor_master.sh',
-                                  'target': 'raptor_master.sh',
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': 'raptor_worker.sh',
-                                  'target': 'raptor_worker.sh',
-                                  'action': rp.TRANSFER,
-                                  'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': 'raptor_master.py',
+            td.arguments      = [cfg_file, i]
+            td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
@@ -73,9 +64,10 @@ if __name__ == '__main__':
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
         task  = tmgr.submit_tasks(tds)
-        pilot.prepare_env({'ve_raptor' : {'type'   : 'virtualenv',
-                                          'version': '3.8',
-                                          'setup'  : ['radical.pilot']}})
+        pilot.prepare_env(env_name='ve_raptor',
+                          env_spec={'type'   : 'virtualenv',
+                                    'version': '3.8',
+                                    'setup'  : ['radical.pilot']})
 
 
 

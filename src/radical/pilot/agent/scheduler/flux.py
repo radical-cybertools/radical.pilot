@@ -72,17 +72,17 @@ class Flux(AgentSchedulingComponent):
     def work(self, tasks):
 
         # overload the base class work method
-        self._log.debug('==== submit tasks?')
+        self._log.debug('submit tasks?')
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         # FIXME: need actual job description, obviously
         jds = [self.task_to_spec(task) for task in tasks]
-        self._log.debug('==== submit tasks: %s', [jd for jd in jds])
+        self._log.debug('submit tasks: %s', [jd for jd in jds])
         jids = self._lm.fh.submit_jobs([jd for jd in jds])
-        self._log.debug('==== submitted tasks')
+        self._log.debug('submitted tasks')
 
         for task, jid in zip(tasks, jids):
-            self._log.debug('==== submit tasks %s -> %s', task['uid'], jid)
+            self._log.debug('submit tasks %s -> %s', task['uid'], jid)
             task['flux_id'] = jid
 
         self._q.put(tasks)

@@ -126,7 +126,7 @@ class Default(AgentStagingOutputComponent):
         uid  = task['uid']
 
         self._prof.prof('staging_stdout_start', uid=uid)
-        self._log.debug('=== out: %s', task.get('stdout_file'))
+      # self._log.debug('out: %s', task.get('stdout_file'))
 
         # TODO: disable this at scale?
         if task.get('stdout_file') and os.path.isfile(task['stdout_file']):

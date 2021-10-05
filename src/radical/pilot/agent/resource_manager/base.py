@@ -150,11 +150,11 @@ class ResourceManager(object):
 
         if rm_info:
 
-            self._log.debug('=== RM init from registry')
+            self._log.debug('RM init from registry')
             rm_info = RMInfo(rm_info)
 
         else:
-            self._log.debug('=== RM init from scratch')
+            self._log.debug('RM init from scratch')
 
             # let the base class collect some data, then let the impl take over
             rm_info = self._prepare_info()
@@ -318,7 +318,7 @@ class ResourceManager(object):
                 continue
 
             try:
-                self._log.debug('==== prepare lm %s', name)
+                self._log.debug('prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
                 self._launchers[name] = rpa.LaunchMethod.create(
@@ -326,7 +326,7 @@ class ResourceManager(object):
 
             except:
                 self._log.exception('skip LM %s' % name)
-                print('=== skip', name)
+                print('skip', name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')

@@ -55,9 +55,9 @@ class LaunchMethod(object):
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
-        self._log.debug('=== addr: %s', self._lm_cfg.reg_addr)
-        self._log.debug('=== name: %s', self.name)
-        self._log.debug('=== info: %s', pprint.pformat(lm_info))
+      # self._log.debug('addr: %s', self._lm_cfg.reg_addr)
+      # self._log.debug('name: %s', self.name)
+      # self._log.debug('info: %s', pprint.pformat(lm_info))
 
         if not lm_info:
 
@@ -83,7 +83,7 @@ class LaunchMethod(object):
 
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
-            self._log.debug('=== INFO: %s', pprint.pformat(lm_info))
+          # self._log.debug('INFO: %s', pprint.pformat(lm_info))
 
         reg.close()
         self._init_from_info(lm_info)
@@ -193,7 +193,6 @@ class LaunchMethod(object):
         # applying the task env's pre_exec commands
         act = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
         tgt = '%s/env/rp_named_env.%s.%s.env' % (self._pwd, env_name, self.name)
-        self._log.debug('=== act : %s', act)
 
         # the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
