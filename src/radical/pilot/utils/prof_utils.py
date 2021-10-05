@@ -940,15 +940,15 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
-        if tdurations:
-            # print('DEBUG: using tdurations')
-            task_durations = tdurations
-        elif pilot.cfg['task_launch_method'] == 'PRTE':
-            # print('DEBUG: using prte configuration')
-            task_durations = TASK_DURATIONS_PRTE
-        else:
-            # print('DEBUG: using default configuration')
-            task_durations = TASK_DURATIONS_DEFAULT
+      # if tdurations:
+      #     # print('DEBUG: using tdurations')
+      #     task_durations = tdurations
+      # elif pilot.cfg['task_launch_method'] == 'PRTE':
+      #     # print('DEBUG: using prte configuration')
+      #     task_durations = TASK_DURATIONS_PRTE
+      # else:
+      #     # print('DEBUG: using default configuration')
+      #     task_durations = TASK_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
         log.debug('timestamps:')
@@ -1194,7 +1194,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     resources = list()
     for rank in ranks:
 
-        node  = [rank['name'], rank['uid']]
+        node  = [rank['node'], rank['node_id']]
         r0, _ = get_node_index(nodes, node, pn)
 
         for resource_map in rank[rmap]:
@@ -1208,7 +1208,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     # traces
     if tdurations:
         task_durations = tdurations
-    elif pilot.cfg['task_launch_method'] == 'PRTE':
+    elif 'PRTE' in pilot.cfg['resource_cfg']['launch_methods']:
         task_durations = TASK_DURATIONS_PRTE
     else:
         task_durations = TASK_DURATIONS_DEFAULT
@@ -1260,7 +1260,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
 def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
 
     if not task_metrics:
-        if pilot.cfg['task_launch_method'] == 'PRTE':
+        if 'PRTE' in pilot.cfg['resource_cfg']['launch_methods']:
             task_metrics = TASK_DURATIONS_PRTE
         else:
             task_metrics = TASK_DURATIONS_DEFAULT
