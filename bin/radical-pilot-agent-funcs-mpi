@@ -3,11 +3,9 @@
 import os
 import sys
 import time
-import dill
 import queue
 import pickle
 import codecs
-import itertools
 
 import multiprocessing as mp
 import threading       as mt
@@ -31,6 +29,8 @@ if ve and ve not in ['', 'None', None]:
 
 # ------------------------------------------------------------------------------
 #
+
+
 class Tasker():
     '''
     This executor is running as an RP task (master) and owns a complete node.
@@ -55,7 +55,7 @@ class Tasker():
     # --------------------------------------------------------------------------
     #
     def __init__(self, n_workers=None):
-        
+
         '''
         Since it is possible, we might need to provide the n_workers to:
         MPIExecutor(max_workers = n_workers)
@@ -119,11 +119,11 @@ class Tasker():
         self._t_get_results.start()
 
         wid  = '%s.%03d' % (self._uid, 1)
-    
+
         self._watcher = mt.Thread(target=self.watch)
         self._watcher.daemon = True
         self._watcher.start()
-    
+
         # start the work
         self._work(self._uid, wid)
         self._prof.prof('init_stop', uid=self._uid)
@@ -230,12 +230,11 @@ class Tasker():
             exe   = descr['executable']
             args  = descr.get('arguments', list())
             pres  = descr.get('pre_exec',  list())
-            cmd   = '%s(%s)' % (exe, ','.join(args))
 
             self._prof.prof('task_get', comp=wid, uid=tid)
 
             def breakdown(cpt):
-                
+
                 import re
                 import hostlist
                 self._log.debug('Entering breakdown function: ') 
@@ -244,72 +243,62 @@ class Tasker():
                 host_list = []
                 cores_per_task = cpt
                 cores_per_node = os.environ['SLURM_CPUS_ON_NODE']
-                nodes_per_task = int(cores_per_task/int(cores_per_node))
+                nodes_per_task = int(cores_per_task / int(cores_per_node))
                 func_id = os.environ['RP_FUNCS_ID'] 
                 exec_id = int(re.sub("^0+(?!$)", "", func_id.split('.')[1]))
 
-                dual_nodes = [*zip( slurm_nodes[::2],  slurm_nodes[1::2])]
+                dual_nodes = [*zip(slurm_nodes[::2], slurm_nodes[1::2])]
                 task_matrix = [list(elem) for elem in dual_nodes]
                 for i in range(nodes_per_task):
                     for j in range(int(cores_per_node)):
                         host_list.append(task_matrix[exec_id][i])
                 hosts = ", ".join(repr(e) for e in host_list)
-                
+
                 return hosts
 
-
-            def check_obj(obj):
-                '''
-                Check the object type if pickled or not
-                to distinguish between exec and eval
-                '''
-                try:
-                    obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
-                    if isinstance(obj, dict) is True:
-                        return True
-
-                except:
-                    return False
-
             try:
-                if check_obj(exe) is True:
-                    state      = None
-                    result     = None
-                    hosts      = None
 
-                    # We check if the Pilot is running on a Local or remote resource
-                    if os.environ['PILOT_SCHEMA'] == 'LOCAL':
-                        pass
-                    else:
-                        cores_per_task = descr['cpu_processes']
-                        hosts =  breakdown(cores_per_task)
-                    mpi_kwargs = descr
+                state     = None
+                result    = None
+                hosts     = None
+                task_info = task_info = pickle.loads(codecs.decode(exe.encode(),"base64"))
 
-                    try:
-                        self._prof.prof('worker_start', comp=wid, uid=tid)
-                        state, result = self._worker.launch_mpirun_func(exe, hosts, **mpi_kwargs)
-                        self._prof.prof('worker_stop', comp=wid, uid=tid)
-   
-                    except Exception as e:
-                        task['stderr'] = str(e)
-                        task['state']  = 'FAILED'
-                        raise
+                # We check if the Pilot is running on a Local or remote resource
+                if os.environ['PILOT_SCHEMA'] == 'LOCAL':
+                    pass
+                else:
+                    cores_per_task = descr['cpu_processes']
+                    hosts =  breakdown(cores_per_task)
+                mpi_kwargs = descr
 
-                    if state == 'DONE':
-                        task['stdout'] = result
-                        task['stderr'] = None
-                        task['state']  = state
-                    else:
-                        task['stdout'] = result
-                        task['stderr'] = None
-                        task['state']  = state
+                try:
+                    func = task_info["_cud_code"]
+                    args = task_info["_cud_args"]
+
+                    self._prof.prof('worker_start', comp=wid, uid=tid)
+                    state, result = self._worker.launch_mpirun_func(func.hex(),
+                                                                    str(args), hosts, **mpi_kwargs)
+                    self._prof.prof('worker_stop', comp=wid, uid=tid)
+
+                except Exception as e:
+                    task['stderr'] = str(e)
+                    task['state']  = 'FAILED'
+                    raise
+
+                if state == 'DONE':
+                    task['stdout'] = result
+                    task['stderr'] = None
+                    task['state']  = state
+                else:
+                    task['stdout'] = result
+                    task['stderr'] = None
+                    task['state']  = state
 
 
             except Exception as e:
-
-                    task['stdout'] = None
-                    task['stderr'] = str(e)
-                    task['state']  = 'FAILED'
+                task['stdout'] = None
+                task['stderr'] = str(e)
+                task['state']  = 'FAILED'
 
             self._prof.prof('task_put', comp=wid, uid=tid)
 
@@ -322,7 +311,6 @@ class Tasker():
 if __name__ == '__main__':
 
     tasker = Tasker()
-    
 
 # ------------------------------------------------------------------------------
 

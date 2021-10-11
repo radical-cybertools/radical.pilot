@@ -7,6 +7,8 @@ import codecs
 
 import radical.utils as ru
 
+from radical.pilot.serialize import serializer as serialize
+
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -391,8 +393,6 @@ class TaskDescription(ru.Description):
         if isinstance(self.get('executable'), dict):
 
             exe = self.get('executable')
-            from radical.pilot.serialize import serializer as serialize
-            # ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
             ser_exe = serialize.FuncSerializer.serialize_obj(exe['func'])
             cu_exe_dict   = {'_cud_code'  :ser_exe,
                              '_cud_args'  :exe['args'],
