@@ -73,7 +73,7 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
-        self._log.debug('===== exec base initialize')
+      # self._log.debug('exec base initialize')
 
         # The spawner/executor needs the ResourceManager information which have
         # been collected during agent startup.

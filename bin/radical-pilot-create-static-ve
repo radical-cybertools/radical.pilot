@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 set -e  # exit on all errors
 
@@ -45,7 +45,6 @@ then
     MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
     MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
-    MODULES="$MODULES python-string-utils"
 fi
 
 if ! test -z "$ENV_SETUP"

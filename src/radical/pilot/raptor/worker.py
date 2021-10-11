@@ -542,7 +542,7 @@ class Worker(rpu.Component):
                     #       right now.  alloc_task is not a proper scheduler,
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
-                  #     self._log.debug('=== req_alloc_wait %s', task['uid'])
+                  #     self._log.debug('req_alloc_wait %s', task['uid'])
 
                     time.sleep(0.01)
 

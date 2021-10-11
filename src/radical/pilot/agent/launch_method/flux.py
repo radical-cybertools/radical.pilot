@@ -35,7 +35,7 @@ class Flux(LaunchMethod):
 
       # self._fh.start_flux(env=env)  # FIXME
 
-        self._log.debug('==== starting flux')
+        self._log.debug('starting flux')
         self._fh.start_flux()
 
         self._details = {'flux_uri': self._fh.uri,

@@ -167,9 +167,6 @@ if __name__ == '__main__':
     descr      = cfg.worker_descr
     pwd        = os.getcwd()
 
-    # add data staging to worker: link input_dir, impress_dir, and oe_license
-    descr['arguments'] = './raptor_worker.sh'
-
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
     # the worker type and application workload to judge if that makes sense, so

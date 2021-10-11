@@ -55,18 +55,18 @@ class Popen(AgentExecutingComponent):
     #
     def __init__(self, cfg, session):
 
-        session._log.debug('===== popen init start')
+      # session._log.debug('popen init start')
         AgentExecutingComponent.__init__(self, cfg, session)
 
         self._proc_term = mt.Event()
-        session._log.debug('===== popen init stop')
+      # session._log.debug('popen init stop')
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self._log.debug('===== popen initialize start')
+      # self._log.debug('popen initialize start')
         AgentExecutingComponent.initialize(self)
 
         self._cancel_lock     = mt.RLock()
@@ -81,7 +81,7 @@ class Popen(AgentExecutingComponent):
       # self._watcher.daemon = True
         self._watcher.start()
 
-        self._log.debug('===== popen initialize stop')
+      # self._log.debug('popen initialize stop')
 
     # --------------------------------------------------------------------------
     #
@@ -661,7 +661,7 @@ class Popen(AgentExecutingComponent):
         else:
             ret += 'unset  RP_PROF_TGT'
 
-        self._log.debug('==== task env: %s', self._cfg.task_environment)
+      # self._log.debug('task env: %s', self._cfg.task_environment)
         if self._cfg.task_environment:
             for k, v in self._cfg.task_environment.items():
                 ret += 'export %s="%s"\n' % (k, v)

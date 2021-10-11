@@ -11,10 +11,49 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
+# ------------------------------------------------------------------------------
+# replica RU env dump
+env_grep(){
+    grep -v \
+         -e '^LS_COLORS=' \
+         -e '^PS1=' \
+         -e '^_=' \
+         -e '^SHLVL='
+}
+
+env_dump(){
+    local tgt
+    local OPTIND OPTARG OPTION
+    while getopts "t:" OPTION; do
+        case $OPTION in
+            t)  tgt="$OPTARG" ;;
+            *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+                return 1;;
+        esac
+    done
+
+    dump() {
+        awk 'END {
+          for (k in ENVIRON) {
+            v=ENVIRON[k];
+            gsub(/\n/,"\\n",v);
+            print k"="v;
+          }
+        }' < /dev/null
+    }
+
+    if test -z "$tgt"; then
+        dump | sort | env_grep
+    else
+        dump | sort | env_grep > "$tgt"
+    fi
+}
+
+
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
 mkdir -p env
-env > env/bs0_orig.env
+env_dump -t env/bs0_orig.env
 
 
 # Report where we are, as this is not always what you expect ;-)
@@ -1504,7 +1543,7 @@ while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
 done
 
 # pre_bootstrap_0 is done at this point, save resulting env
-env > env/bs0_pre_0.env
+env_dump -t env/bs0_pre_0.env
 
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'
