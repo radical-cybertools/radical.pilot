@@ -808,7 +808,7 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/sh %s -p %s/env/rp_named_env.%s -v %s %s %s ' \
+        ve_cmd = '/bin/bash %s -p %s/env/rp_named_env.%s -v %s %s %s ' \
                  '| tee -a env.log 2>&1' \
                % (rp_cse, self._pwd, env_name, evers, mods, pre_exec)
 
