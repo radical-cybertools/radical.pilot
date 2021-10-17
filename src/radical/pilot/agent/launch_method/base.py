@@ -193,7 +193,7 @@ class LaunchMethod(object):
         # applying the task env's pre_exec commands
         base = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
         act  = '%s.sh'                  %  base
-        tgt  = '%s.env'                 % (base, self.name.lower())
+        tgt  = '%s.%s.env'              % (base, self.name.lower())
 
         # the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
