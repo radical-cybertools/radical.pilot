@@ -1,5 +1,14 @@
 #!/bin/sh
 
+ru_env=$(which radical-utils-env.sh)
+if test -z '$ru_env'
+then
+    echo "$0 needs radical.utils installed"
+    exit 1
+fi
+
+. radical-utils-env.sh
+
 set -e  # exit on all errors
 
 SCRIPT="$0"
@@ -34,7 +43,6 @@ test -z "$PREFIX"  && echo "no prefix" && exit
 
 unset PYTHONPATH
 echo "[$0 $*]"
-env > $PREFIX.env
 
 # move from comma separated to space separated module list
 MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
@@ -217,10 +225,13 @@ do
     stdbuf -oL pip install -I --no-cache-dir --upgrade $mod || exit 1
 done
 
+env_dump -t "$PREFIX.env"
+
 # print the ve information and stack versions for verification
 echo
 echo "---------------------------------------------------------------------"
 echo
+echo "ENV       : $PREFIX.env"
 echo "SCRIPT    : $SCRIPT"
 echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"
