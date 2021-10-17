@@ -462,7 +462,7 @@ class Component(object):
       #                            scope='entity',
       #                            start='get',
       #                            stop=['put', 'drop'])
-        self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
+      # self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
         self._q    = None
         self._in   = None
