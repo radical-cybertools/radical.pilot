@@ -25,6 +25,7 @@ MPI_RANK=""
 test -z "$MPI_RANK" && MPI_RANK="$ALPS_APP_PE"
 test -z "$MPI_RANK" && MPI_RANK="$PMIX_RANK"
 test -z "$MPI_RANK" && MPI_RANK="$PMI_RANK"
+test -z "$MPI_RANK" && MPI_RANK="$SLURM_PROCID"
 test -z "$MPI_RANK" && MPI_RANK="0"
 
 # obtain number of threads

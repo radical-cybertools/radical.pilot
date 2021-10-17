@@ -75,7 +75,7 @@ help(){
 
     cat <<EOT
 
-    usage: $0 -p <path> [-v <version>] [-m <modules>] [-e env_setup]
+    usage: $0 [-d] -p <path> [-v <version>] [-m <modules>] [-e env_setup]
 
     This script creates a virtualenv at the given target path.  That
     virtualenv should be suitable to be used as static VE for a radical.pilot
@@ -84,6 +84,8 @@ help(){
     version  :  python version to use
     modules  :  comma separated list of modules to install
     env_setup:  command string to execute for environment setup
+
+    -d: install default RCT dependencies into the target virtualenv
 
 EOT
     exit $ret

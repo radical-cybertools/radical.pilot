@@ -75,8 +75,7 @@
                                          "JSRUN": {
                                              "pre_exec_cached": [
                                                  "module unload xl",
-                                                 "module unload xalt",
-                                                 "module unload spectrum-mpi"
+                                                 "module unload xalt"
                                              ]
                                          }
                                         },
