@@ -246,6 +246,13 @@
         "queue"    : null,
         "schema"   : "ssh",
         "cores"    : 8
+    },
+
+    "rutgers.amarel" : {
+         "project" : null,
+         "queue"   : null,
+         "schema"  : "ssh",
+         "cores"   : 8
     }
 }
 
