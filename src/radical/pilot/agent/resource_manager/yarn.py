@@ -6,44 +6,34 @@ import multiprocessing
 import os
 import subprocess
 
-from .base import ResourceManager
+import radical.utils as ru
+
+from ...   import constants as rpc
+from .base import RMInfo
+from .fork import Fork
 
 
 # ------------------------------------------------------------------------------
 #
-class Yarn(ResourceManager):
+class Yarn(Fork):
 
     # --------------------------------------------------------------------------
     #
-    def _update_info(self, info):
+    def _init_from_scratch(self, rm_info):
 
-        # when we profile the agent, we fake any number of cores, so don't
-        # perform any sanity checks.  Otherwise we use at most all available
-        # cores (and inform about unused ones)
-        if self._prof.enabled:
-
-            detected_cpus = multiprocessing.cpu_count()
-
-            if detected_cpus < info.requested_cores:
-                self._log.warn('insufficient cores: using available %d ' +
-                               'instead of requested %d.',
-                               detected_cpus, info.requested_cores)
-                info.requested_cores = detected_cpus
-
-            elif detected_cpus > info.requested_cores:
-                self._log.warn('more cores available: using requested %d ' +
-                               'instead of available %d.',
-                               info.requested_cores, detected_cpus)
+        # initialize nodelist from FORK RM
+        super()._init_from_scratch(rm_info)
 
         self.namenode_url = subprocess.check_output(
-            ['hdfs', 'getconf', '-nnRpcAddresses']).split('\n')[0]
+            ['hdfs', 'getconf', '-nnRpcAddresses']).split(b'\n')[0]
         self._log.debug('Namenode URL = %s', self.namenode_url)
 
         # I will leave it for the moment because I have not found another way
         # to take the necessary value yet.
         yarn_conf_output = subprocess.check_output(
-            ['yarn', 'node', '-list'], stderr=subprocess.STDOUT).split('\n')
+            ['yarn', 'node', '-list'], stderr=subprocess.STDOUT).split(b'\n')
         for line in yarn_conf_output:
+            line = ru.as_string(line)
             if 'ResourceManager' in line:
                 settings = line.split('at ')[1]
                 if '/' in settings:
@@ -54,10 +44,8 @@ class Yarn(ResourceManager):
                     self.rm_ip = settings.split(':')[0]
                     self.rm_port = settings.split(':')[1]
 
-        info.cores_per_node = info.requested_cores
-        info.node_list = [os.environ.get('HOSTNAME') or 'localhost', '1']
+        return rm_info
 
-        return info
 
 # ------------------------------------------------------------------------------
 

@@ -5,9 +5,16 @@ __license__   = 'MIT'
 import math
 import os
 
+from typing import Optional, List, Tuple, Dict, Any
+
+T_NODES     = List[Tuple[str, int]]
+T_NODE_LIST = List[Dict[str, Any]]
+
+
 import radical.utils as ru
 
-from ... import agent as rpa
+from ... import agent     as rpa
+from ... import constants as rpc
 
 
 # 'enum' for resource manager types
@@ -16,12 +23,10 @@ RM_NAME_CCM         = 'CCM'
 RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
 RM_NAME_PBSPRO      = 'PBSPRO'
-RM_NAME_SGE         = 'SGE'
 RM_NAME_SLURM       = 'SLURM'
 RM_NAME_TORQUE      = 'TORQUE'
 RM_NAME_COBALT      = 'COBALT'
 RM_NAME_YARN        = 'YARN'
-RM_NAME_SPARK       = 'SPARK'
 RM_NAME_DEBUG       = 'DEBUG'
 
 
@@ -45,11 +50,10 @@ class RMInfo(ru.Munch):
             'agent_node_list'  : [None],        # nodes reserved for sub-agents
             'service_node_list': [None],        # nodes reserved for services
 
-            'sockets_per_node' : int,           # number of sockets per node
-            'cores_per_socket' : int,           # number of cores per socket
+            'cores_per_node'   : int,           # number of cores per node
             'threads_per_core' : int,           # number of threads per core
 
-            'gpus_per_socket'  : int,           # number of gpus per socket
+            'gpus_per_node'    : int,           # number of gpus per node
             'threads_per_gpu'  : int,           # number of threads per gpu
             'mem_per_gpu'      : int,           # memory per gpu (MB)
 
@@ -59,18 +63,15 @@ class RMInfo(ru.Munch):
 
             'details'          : {None: None},  # dict of launch method info
             'lm_info'          : {str: None},   # dict of launch method info
-
-            # backward compatibility / simplicity
-            'cores_per_node'   : int,
-            'gpus_per_node'    : int,
-            'threads_per_node' : int,
     }
 
     _defaults = {
             'agent_node_list'  : [],            # no sub-agents run by default
             'service_node_list': [],            # no services run by default
-            'threads_per_core' : 1,             # assume one thread per core
-            'threads_per_gpu'  : 1,             # assume one thread per gpu
+            'cores_per_node'   : 1,
+            'threads_per_core' : 1,
+            'gpus_per_node'    : 0,
+            'threads_per_gpu'  : 1,
     }
 
 
@@ -78,28 +79,16 @@ class RMInfo(ru.Munch):
     #
     def _verify(self):
 
-        if not self.requested_nodes:
-            if self.requested_cores and self.cores_per_node:
-                self.requested_cores = self.requested_cores / self.cores_per_node
-
-        if not self.requested_cores:
-            if self.requested_nodes and self.cores_per_node:
-                self.requested_cores = self.requested_nodes * self.cores_per_node
-
-        if not self.requested_gpus:
-            if self.requested_nodes and self.gpus_per_node:
-                self.requested_gpus = self.requested_nodes * self.gpus_per_node
-
-        assert(self['requested_nodes'  ] is not None)
-        assert(self['requested_cores'  ] is not None)
+        assert(self['requested_nodes'  ])
+        assert(self['requested_cores'  ])
         assert(self['requested_gpus'   ] is not None)
 
       # assert(self['partitions'       ] is not None)
-        assert(self['node_list'        ] is not None)
+        assert(self['node_list'])
         assert(self['agent_node_list'  ] is not None)
         assert(self['service_node_list'] is not None)
 
-        assert(self['cores_per_node'   ] is not None)
+        assert(self['cores_per_node'   ])
         assert(self['gpus_per_node'    ] is not None)
         assert(self['threads_per_core' ] is not None)
 
@@ -152,13 +141,14 @@ class ResourceManager(object):
 
             self._log.debug('RM init from registry')
             rm_info = RMInfo(rm_info)
+            rm_info.verify()
 
         else:
             self._log.debug('RM init from scratch')
 
             # let the base class collect some data, then let the impl take over
-            rm_info = self._prepare_info()
-            rm_info = self._init_from_scratch(rm_info)
+            rm_info = self.init_from_scratch()
+            rm_info.verify()
 
             # have a valid info - store in registry and complete initialization
             reg.put('rm.%s' % self.name.lower(), rm_info.as_dict())
@@ -188,66 +178,106 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_info(self):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+        '''
+        This method MUST be overloaded by any RM implementation.  It will be
+        called during `init_from_scratch` and is expected to check and correct
+        or complete node information, such as `cores_per_node`, `gpus_per_node`
+        etc., and to provide `rm_info.node_list` of the following form:
 
-        info = RMInfo()
+            node_list = [
+                {
+                    'uid'  : str                        # node uid
+                    'name' : str                        # node name
+                    'cores': [rpc.FREE, rpc.FREE, ...]  # cores per node
+                    'gpus' : [rpc.FREE, rpc.FREE, ...]  # gpus per node
+                    'lfs'  : int                        # lfs per node (MB)
+                    'mem'  : int                        # mem per node (MB)
+                },
+                ...
+            ]
 
-        # fill well defined attributes
-        info.requested_cores  = self._cfg['cores']
-        info.requested_gpus   = self._cfg['gpus']
+        The node entries can be augmented with additional information which may
+        be interpreted by the specific agent scheduler instance.
+        '''
+
+        raise NotImplementedError('_update_node_info is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def init_from_scratch(self):
+
+        rm_info = RMInfo()
+
+        # fill well defined default attributes
+        rm_info.requested_cores  = self._cfg['cores']
+        rm_info.requested_gpus   = self._cfg['gpus']
 
         rcfg = self._cfg['resource_cfg']
-        info.cores_per_node   = rcfg.get('cores_per_node')
-        info.gpus_per_node    = rcfg.get('gpus_per_node')
-        info.mem_per_node     = rcfg.get('mem_per_node',      0)
-        info.lfs_per_node     = rcfg.get('lfs_size_per_node', 0)
-        info.lfs_path         = ru.expand_env(rcfg.get('lfs_path_per_node'))
+        rm_info.cores_per_node   = rcfg.get('cores_per_node',    0)
+        rm_info.gpus_per_node    = rcfg.get('gpus_per_node',     0)
+        rm_info.mem_per_node     = rcfg.get('mem_per_node',      0)
+        rm_info.lfs_per_node     = rcfg.get('lfs_size_per_node', 0)
+        rm_info.lfs_path         = ru.expand_env(rcfg.get('lfs_path_per_node'))
 
-        info.sockets_per_node = rcfg.get('sockets_per_node',  1)
-        info.cores_per_socket = rcfg.get('cores_per_socket')
-        info.gpus_per_socket  = rcfg.get('gpus_per_socket')
+        rm_info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
+        rm_info.threads_per_gpu  = 1
+        rm_info.mem_per_gpu      = None
 
-        if info.cores_per_socket and not info.cores_per_node:
-            info.cores_per_node    = info.cores_per_socket * \
-                                     info.sockets_per_node
-            if info.gpus_per_socket:
-                info.gpus_per_node = info.gpus_per_socket * \
-                                     info.sockets_per_node
-        elif info.cores_per_node:
-            info.sockets_per_node  = 1
-            info.cores_per_socket  = info.cores_per_node
-            info.gpus_per_socket   = info.gpus_per_node
+        # give the RM implementation a chance to correct or complete node
+        # information (cores_per_node, gpus_per_node, etc)
 
-        info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
-        info.threads_per_gpu  = 1
-        info.mem_per_gpu      = None
+        n_nodes = rm_info.requested_cores / rm_info.cores_per_node
+        if rm_info.gpus_per_node:
+            gpu_nodes = rm_info.requested_gpus / rm_info.gpus_per_node
+            n_nodes   = max(n_nodes, gpu_nodes)
 
-        n_nodes = info.requested_cores / info.cores_per_node
-        if info.gpus_per_node:
-            n_nodes = max(n_nodes, info.requested_gpus / info.gpus_per_node)
+        rm_info.requested_nodes = math.ceil(n_nodes)
 
-        info.requested_nodes = int(math.ceil(n_nodes))
+        if not rm_info.requested_nodes:
+            if rm_info.requested_cores and rm_info.cores_per_node:
+                rm_info.requested_nodes = rm_info.requested_cores \
+                                        / rm_info.cores_per_node
 
-        return info
+        if not rm_info.requested_cores:
+            if rm_info.requested_nodes and rm_info.cores_per_node:
+                rm_info.requested_cores = rm_info.requested_nodes \
+                                        * rm_info.cores_per_node
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _update_info(self, info):
-
-        return info
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _init_from_scratch(self, info):
+        if not rm_info.requested_gpus:
+            if rm_info.requested_nodes and rm_info.gpus_per_node:
+                rm_info.requested_gpus = rm_info.requested_nodes \
+                                       * rm_info.gpus_per_node
 
         # let the specific RM instance fill out the RMInfo attributes
-        info = self._update_info(info)
+        rm_info = self._init_from_scratch(rm_info)
 
         # we expect to have a valid node list now
-        assert info.node_list
-        self._log.info('node list: %s', info.node_list)
+        self._log.info('node list: %s', rm_info.node_list)
+
+        # however, the config can override core and gpu detection,
+        # and decide to block some resources
+        blocked_cores = self._cfg.resource_cfg.blocked_cores or []
+        blocked_gpus  = self._cfg.resource_cfg.blocked_gpus  or []
+
+        self._log.info('blocked cores: %s' % blocked_cores)
+        self._log.info('blocked gpus : %s' % blocked_gpus)
+
+        if blocked_cores or blocked_gpus:
+            for node in rm_info.node_list:
+
+                rm_info.cores_per_node -= len(blocked_cores)
+                rm_info.gpus_per_node  -= len(blocked_gpus)
+
+                for idx in blocked_cores:
+                    assert(len(node['cores']) > idx)
+                    node['cores'][idx] = rpc.DOWN
+
+                for idx in blocked_gpus:
+                    assert(len(node['gpus']) > idx)
+                    node['gpus'][idx] = rpc.DOWN
+
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -267,41 +297,41 @@ class ResourceManager(object):
         # If not, pick the first couple of nodes from the nodelist as fallback.
         if agent_nodes:
 
-            if not info.agent_node_list:
-                info.agent_node_list = list()
+            if not rm_info.agent_node_list:
+                rm_info.agent_node_list = list()
                 for i in range(agent_nodes):
-                    info.agent_node_list.append(info.node_list.pop())
+                    rm_info.agent_node_list.append(rm_info.node_list.pop())
 
-            assert(agent_nodes == len(info.agent_node_list))
+            assert(agent_nodes == len(rm_info.agent_node_list))
 
         if service_nodes:
 
-            if not info.service_node_list:
-                info.service_node_list = list()
+            if not rm_info.service_node_list:
+                rm_info.service_node_list = list()
                 for i in range(service_nodes):
-                    info.service_node_list.append(info.node_list.pop())
+                    rm_info.service_node_list.append(rm_info.node_list.pop())
 
-            assert(service_nodes == len(info.service_node_list))
+            assert(service_nodes == len(rm_info.service_node_list))
 
-        self._log.info('compute nodes: %s' % len(info.node_list))
-        self._log.info('agent   nodes: %s' % len(info.agent_node_list))
-        self._log.info('service nodes: %s' % len(info.service_node_list))
+        self._log.info('compute nodes: %s' % len(rm_info.node_list))
+        self._log.info('agent   nodes: %s' % len(rm_info.agent_node_list))
+        self._log.info('service nodes: %s' % len(rm_info.service_node_list))
 
         # check if we can do any work
-        if not info.node_list:
+        if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # we have nodes and node properties - calculate some convenience values
         # and perform sanity checks
-        total_nodes = len(info.node_list) + agent_nodes + service_nodes
-        cores_avail = total_nodes * info.cores_per_node
-        gpus_avail  = total_nodes * info.gpus_per_node
+        total_nodes = len(rm_info.node_list) + agent_nodes + service_nodes
+        cores_avail = total_nodes * rm_info.cores_per_node
+        gpus_avail  = total_nodes * rm_info.gpus_per_node
 
-        assert(total_nodes >= info.requested_nodes)
-        assert(cores_avail >= info.requested_cores)
-        assert(gpus_avail  >= info.requested_gpus)
+        assert(total_nodes >= rm_info.requested_nodes)
+        assert(cores_avail >= rm_info.requested_cores)
+        assert(gpus_avail  >= rm_info.requested_gpus)
 
-        return info
+        return rm_info
 
 
     # --------------------------------------------------------------------------
@@ -345,12 +375,10 @@ class ResourceManager(object):
         from .loadleveler import LoadLeveler
         from .lsf         import LSF
         from .pbspro      import PBSPro
-        from .sge         import SGE
         from .slurm       import Slurm
         from .torque      import Torque
         from .cobalt      import Cobalt
         from .yarn        import Yarn
-        from .spark       import Spark
         from .debug       import Debug
 
         # Make sure that we are the base-class!
@@ -363,12 +391,10 @@ class ResourceManager(object):
             RM_NAME_LOADLEVELER : LoadLeveler,
             RM_NAME_LSF         : LSF,
             RM_NAME_PBSPRO      : PBSPro,
-            RM_NAME_SGE         : SGE,
             RM_NAME_SLURM       : Slurm,
             RM_NAME_TORQUE      : Torque,
             RM_NAME_COBALT      : Cobalt,
             RM_NAME_YARN        : Yarn,
-            RM_NAME_SPARK       : Spark,
             RM_NAME_DEBUG       : Debug
         }
 
@@ -408,6 +434,93 @@ class ResourceManager(object):
             self._log.debug('    %s: %s', name, error)
 
         return None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _parse_nodefile(self, fname: str,
+                              cpn  : Optional[int] = 0) -> T_NODES:
+        '''
+        parse the given nodefile and return a list of tuples of the form
+
+            [['node_1', 8],
+             ['node_2', 8],
+             ...
+            ]
+
+        where the first tuple entry is the name of the node found, and the
+        second entry is the number of entries found for this node.  The latter
+        number usually corresponds to the number of process slots available on
+        that node.
+
+        Some nodefile formats though have one entry per node, not per slot.  In
+        those cases we'll use the passed cores per node (`cpn`) to fill the slot
+        count for the returned node list (`cpn` will supercede the detected slot
+        count).
+
+        An invalid or un-parsable file will result in an empty list being
+        returned.
+        '''
+
+        self._log.info('using nodefile: %s', fname)
+        try:
+            nodes = dict()
+            with open(fname, 'r') as fin:
+                for line in fin.readlines():
+                    node = line.strip()
+                    assert(' ' not in node)
+                    if node in nodes: nodes[node] += 1
+                    else            : nodes[node]  = 1
+
+            if cpn:
+                for node in nodes:
+                    nodes[node] = cpn
+
+            # convert node dict into tuple list
+            return [(node, cpn) for node, cpn in nodes.items()]
+
+        except Exception:
+            return []
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_cores_per_node(self, nodes: T_NODES) -> Optional[int]:
+        '''
+        From a node dict as returned by `self._parse_nodefile()`, determine the
+        number of cores per node.  To do so, we check if all nodes have the same
+        number of cores.  If that is the case we return that number.  If the
+        node list is heterogeneous we will raise an `ValueError`.
+        '''
+
+        cores_per_node = set([node[1] for node in nodes])
+
+        if len(cores_per_node) == 1:
+            self._log.debug('found %d [%d cores]', len(nodes), cores_per_node)
+            return cores_per_node.pop()
+
+        else:
+            raise ValueError('non-uniform node list, cores_per_node invalid')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_node_list(self, nodes  : T_NODES,
+                             rm_info: RMInfo) -> T_NODE_LIST:
+        '''
+        From a node dict as returned by `self._parse_nodefile()`, and from
+        additonal per-node information stored in rm_info, create a node list
+        as required for rm_info.
+        '''
+
+        node_list = [{'uid'  : node[0],
+                      'name' : node[0],
+                      'cores': [rpc.FREE] * node[1],
+                      'gpus' : [rpc.FREE] * rm_info.gpus_per_node,
+                      'lfs'  : rm_info.lfs_per_node,
+                      'mem'  : rm_info.mem_per_node} for node in nodes]
+
+        return node_list
 
 
 # ------------------------------------------------------------------------------

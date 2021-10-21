@@ -7,13 +7,15 @@ import os
 import copy
 import time
 import subprocess
+import functools
+
+import radical.utils as ru
 
 from ... import constants as rpc
 
 from ..scheduler.torus import Torus
 
-from .base import ResourceManager
-from functools import reduce
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -65,10 +67,10 @@ class LoadLeveler(ResourceManager):
     # FIXME: not used?
     #
     BGQ_CORES_PER_NODE      = 16
-    BGQ_GPUS_PER_NODE       =  0  # FIXME GPU
-    BGQ_NODES_PER_BOARD     = 32  # NODE       == Compute Card == Chip module
-    BGQ_BOARDS_PER_MIDPLANE = 16  # NODE BOARD == NODE CARD
-    BGQ_MIDPLANES_PER_RACK  =  2
+  # BGQ_GPUS_PER_NODE       =  0  # FIXME GPU
+  # BGQ_NODES_PER_BOARD     = 32  # NODE       == Compute Card == Chip module
+  # BGQ_BOARDS_PER_MIDPLANE = 16  # NODE BOARD == NODE CARD
+  # BGQ_MIDPLANES_PER_RACK  =  2
 
 
     # --------------------------------------------------------------------------
@@ -164,10 +166,10 @@ class LoadLeveler(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _update_info(self, info):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        loadl_node_list     = None
-        loadl_cpus_per_node = None
+        loadl_nodes          = list()
+        loadl_cores_per_node = None
 
         # Determine method for determining hosts,
         # either through hostfile or BG/Q environment.
@@ -195,7 +197,7 @@ class LoadLeveler(ResourceManager):
             loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
             self._log.info("Found LOADL_HOSTFILE %s. Expanded to: %s",
                           loadl_hostfile, loadl_nodes)
-            loadl_node_list = list(set(loadl_nodes))
+            loadl_nodes = list(set(loadl_nodes))
 
             # Verify that $LLOAD_TOTAL_TASKS == len($LOADL_HOSTFILE)
             if loadl_total_tasks != len(loadl_nodes):
@@ -204,7 +206,7 @@ class LoadLeveler(ResourceManager):
 
             # Determine the number of cpus per node.  Assume:
             # cores_per_node = lenght(nodefile) / len(unique_nodes_in_nodefile)
-            loadl_cpus_per_node = len(loadl_nodes) / len(loadl_node_list)
+            loadl_cores_per_node = int(len(loadl_nodes) / len(loadl_nodes))
 
         elif self.loadl_bg_block:
             # Blue Gene specific.
@@ -221,6 +223,7 @@ class LoadLeveler(ResourceManager):
             output = subprocess.check_output(["llq", "-l", loadl_job_name])
 
             for line in output.splitlines():
+                line = ru.as_string(line)
                 if "BG Node Board List: " in line:
                     loadl_bg_board_list_str    = line.split(':')[1].strip()
                 elif "BG Midplane List: " in line:
@@ -260,7 +263,7 @@ class LoadLeveler(ResourceManager):
                      (e[0], [e[1][key] for key in sorted(e[1])], e[2], e[3]))
 
             try:
-                loadl_node_list = [entry[Torus.TORUS_BLOCK_NAME]
+                loadl_nodes = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
             except Exception:
                 raise RuntimeError("Couldn't construct node list")
@@ -272,7 +275,7 @@ class LoadLeveler(ResourceManager):
             except Exception:
                 raise RuntimeError("Couldn't construct shape table")
 
-            self._log.debug("Node list constructed: %s" % loadl_node_list)
+            self._log.debug("Node list constructed: %s" % loadl_nodes)
             self._log.debug("Shape table constructed: ")
             for (size, dim) in [(key, self.shape_table[key])
                                       for key in sorted(self.shape_table)]:
@@ -280,20 +283,24 @@ class LoadLeveler(ResourceManager):
                                             [dim[key] for key in sorted(dim)]))
 
             # Determine the number of cpus per node
-            loadl_cpus_per_node = self.BGQ_CORES_PER_NODE
+            loadl_cores_per_node = self.BGQ_CORES_PER_NODE
 
             # BGQ Specific Torus labels
             self.torus_dimension_labels = self.BGQ_DIMENSION_LABELS
 
-        info.cores_per_node = loadl_cpus_per_node
-        info.node_list = [[name, str(idx + 1)]
-                          for idx, name in enumerate(sorted(loadl_node_list))]
+        assert(loadl_nodes)
+        assert(loadl_cores_per_node)
+        rm_info.cores_per_node = loadl_cores_per_node
+
+        nodes = [(name, loadl_cores_per_node) for name in sorted(loadl_nodes)]
+
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
 
         self._log.debug("Sleeping for #473 ...")
         time.sleep(5)
         self._log.debug("Configure done")
 
-        return info
+        return rm_info
 
 
     # --------------------------------------------------------------------------
@@ -634,7 +641,7 @@ class LoadLeveler(ResourceManager):
 
                 # Calculate the number of nodes for the current shape
                 from operator import mul
-                num_nodes = reduce(mul, [length for length
+                num_nodes = functools.reduce(mul, [length for length
                                     in list(sub_block_shape.values()) if length != 0])
 
                 if num_nodes in self.BGQ_SUPPORTED_SUB_BLOCK_SIZES:

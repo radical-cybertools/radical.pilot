@@ -4,7 +4,7 @@ __license__   = 'MIT'
 
 import os
 
-from .base import ResourceManager
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -13,45 +13,30 @@ class CCM(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _update_info(self, info):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        ccm_nodefile_dir  = os.path.expanduser('~/.crayccm')
-        ccm_nodefile_list = [x for x in os.listdir(ccm_nodefile_dir)
-                             if x.startswith('ccm_nodelist')]
+        # use the last (creation time) ccm_nodelist file in ~/.crayccm
+        nodefile_dir  = os.path.expanduser('~/.crayccm')
+        nodefile_list = [x for x in os.listdir(nodefile_dir)
+                               if x.startswith('nodelist')]
 
-        if not ccm_nodefile_list:
-            raise Exception('no CCM nodefiles found in: %s' % ccm_nodefile_dir)
+        if not nodefile_list:
+            raise Exception('no CCM nodefiles found in: %s' % nodefile_dir)
 
-        ccm_nodefile_name = max(
-            ccm_nodefile_list,
-            key=lambda x: os.stat(os.path.join(ccm_nodefile_dir, x)).st_mtime)
-        ccm_nodefile = os.path.join(ccm_nodefile_dir, ccm_nodefile_name)
+        nodefile_name = max(
+            nodefile_list,
+            key=lambda x: os.stat(os.path.join(nodefile_dir, x)).st_mtime)
+        nodefile = os.path.join(nodefile_dir, nodefile_name)
 
-        hostname = os.uname()[1]
-        if hostname not in open(ccm_nodefile).read():
-            raise RuntimeError(
-                'Using the most recent CCM nodefile (%s), ' % ccm_nodefile +
-                'but I (%s) am not in it!'                  % hostname)
+        nodes = self._parse_nodefile(nodefile)
 
-        # Parse the CCM nodefile
-        ccm_nodes = [line.strip() for line in open(ccm_nodefile)]
-        self._log.info('found CCM nodefile: %s', ccm_nodefile)
+        if not rm_info.cores_per_node:
+            rm_info.cores_per_node = self._get_cores_per_node(nodes)
 
-        # Get the number of raw entries
-        ccm_nodes_length = len(ccm_nodes)
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
 
-        # Unique nodes
-        ccm_node_list        = list(set(ccm_nodes))
-        ccm_node_list_length = len(ccm_node_list)
+        return rm_info
 
-        # Some simple arithmetic
-        info.cores_per_node = ccm_nodes_length / ccm_node_list_length
-
-        # node names are unique, so can serve as node uids
-        info.node_list = [[name, str(idx + 1)]
-                          for idx, name in enumerate(sorted(ccm_node_list))]
-
-        return info
 
 # ------------------------------------------------------------------------------
 

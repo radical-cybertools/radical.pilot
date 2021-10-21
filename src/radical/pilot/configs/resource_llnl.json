@@ -10,9 +10,7 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
       # "forward_tunnel_endpoint"     : "`hostname -f`",
-        "cores_per_node"              : 40,
         "gpus_per_node"               : 4,
-        "sockets_per_node"            : 2,
         "default_queue"               : "pbatch",
         "resource_manager"            : "LSF",
         "agent_scheduler"             : "CONTINUOUS",

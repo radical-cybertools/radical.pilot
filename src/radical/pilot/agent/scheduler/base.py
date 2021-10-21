@@ -3,6 +3,7 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import copy
 import time
 import queue
 import logging
@@ -237,14 +238,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        for node, node_id in self._rm.info.node_list:
-            self.nodes.append({
-                'uid'  : node_id,
-                'name' : node,
-                'cores': [rpc.FREE] * self._rm.info.cores_per_node,
-                'gpus' : [rpc.FREE] * self._rm.info.gpus_per_node,
-                'lfs'  :              self._rm.info.lfs_per_node,
-                'mem'  :              self._rm.info.mem_per_node})
+        self.nodes = copy.deepcopy(self._rm.info.node_list)
 
         # configure the scheduler instance
         self._configure()

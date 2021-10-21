@@ -5,9 +5,12 @@ __license__   = 'MIT'
 import os
 import subprocess
 
+from typing import List
+
 import radical.utils as ru
 
-from .base import ResourceManager
+from ...   import constants as rpc
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -16,66 +19,29 @@ class PBSPro(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _update_info(self, info):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+
         # TODO: $NCPUS?!?! = 1 on archer
 
-        pbspro_nodefile = os.environ.get('PBS_NODEFILE')
-        if pbspro_nodefile is None:
-            raise RuntimeError('$PBS_NODEFILE not set')
-        self._log.info('PBS_NODEFILE: %s', pbspro_nodefile)
-
-        # Dont need to parse the content of nodefile for PBSPRO, only the length
-        # is interesting, as there are only duplicate entries in it.
-        pbspro_nodes        = [line.strip() for line in open(pbspro_nodefile)]
-        pbspro_nodes_length = len(pbspro_nodes)
-
-        # Number of Processors per Node
-        val = os.environ.get('NUM_PPN') or os.environ.get('SAGA_PPN')
-        if not val:
+        cpn = os.environ.get('NUM_PPN') or os.environ.get('SAGA_PPN')
+        if not cpn:
             raise RuntimeError('$NUM_PPN and $SAGA_PPN not set!')
 
-        pbspro_num_ppn = int(val)
+        pbspro_vnodes = self._parse_pbspro_vnodes()
 
-        # Number of Nodes allocated
-        val = os.environ.get('NODE_COUNT')
-        if val:
-            pbspro_node_count = int(val)
-        else:
-            pbspro_node_count = len(set(pbspro_nodes))
-            self._log.warn('$NODE_COUNT not set - use %d', pbspro_node_count)
+        nodes = [(name, int(cpn)) for name in sorted(pbspro_vnodes)]
 
-        # Number of Parallel Environments
-        val = os.environ.get('NUM_PES')
-        if val:
-            pbspro_num_pes = int(val)
-        else:
-            pbspro_num_pes = len(pbspro_nodes)
-            self._log.warn('$NUM_PES not set - use %d', pbspro_num_pes)
+        if not rm_info.cores_per_node:
+            rm_info.cores_per_node = self._get_cores_per_node(nodes)
 
-        try:
-            pbspro_vnodes = self._parse_pbspro_vnodes()
-        except:
-            self._log.exception('node parsing failed')
-            raise
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
 
-        # Verify that $NUM_PES == $NODE_COUNT * $NUM_PPN == len($PBS_NODEFILE)
-        if not (pbspro_node_count * pbspro_num_ppn
-                == pbspro_num_pes
-                == pbspro_nodes_length):
-            self._log.warning(
-                'NUM_PES != NODE_COUNT * NUM_PPN != len($PBS_NODEFILE)')
+        return rm_info
 
-        info.cores_per_node = pbspro_num_ppn
-
-        # node names are unique, so can serve as node uids
-        info.node_list = [[name, str(idx + 1)]
-                          for idx, name in enumerate(sorted(pbspro_vnodes))]
-
-        return info
 
     # --------------------------------------------------------------------------
     #
-    def _parse_pbspro_vnodes(self):
+    def _parse_pbspro_vnodes(self) -> List[str]:
 
         # PBS Job ID
         pbspro_jobid = os.environ.get('PBS_JOBID')
@@ -147,6 +113,7 @@ class PBSPro(ResourceManager):
 
         # Return the list of node names
         return sorted(node_list)
+
 
 # ------------------------------------------------------------------------------
 
