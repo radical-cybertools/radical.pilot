@@ -9,7 +9,6 @@ import dill
 import subprocess      as sp
 
 import radical.utils   as ru
-from whichcraft import which
 
 
 class MPI_Func_Worker():
@@ -23,7 +22,7 @@ class MPI_Func_Worker():
 
         self.THIS_SCRIPT = os.path.realpath(__file__)
         self.MPIRUN      = ['mpirun']
-        self.MPIRUN[0]   = which(self.MPIRUN[0])
+        self.MPIRUN[0]   = ru.which(self.MPIRUN[0])
         if not os.path.exists(self.MPIRUN[0]):
             raise RuntimeError('mpirun not found')
 
