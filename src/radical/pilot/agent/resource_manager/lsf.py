@@ -86,7 +86,7 @@ class LSF(ResourceManager):
         # node uids need to be indexes starting at 1 in order to be usable for
         # jsrun ERF spec files
         for idx, node in enumerate(rm_info.node_list):
-            node['uid'] = str(idx + 1)
+            node['node_id'] = str(idx + 1)
 
         return rm_info
 

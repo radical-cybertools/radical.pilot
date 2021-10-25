@@ -1,5 +1,4 @@
 #!/bin/sh
-
 # combine stdout and stderr
 exec 2>&1
 
@@ -305,7 +304,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -1601,6 +1600,7 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 echo 'create gtod, prof'
 create_gtod
 create_prof
+pilot_state="PMGR_ACTIVE_PENDING"
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1886,6 +1886,7 @@ else
                    2>> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
+pilot_state="PMGR_ACTIVE"
 
 while true
 do

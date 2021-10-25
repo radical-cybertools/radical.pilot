@@ -190,10 +190,10 @@ class AgentSchedulingComponent(rpu.Component):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'name'  : 'name-of-node',
-    #       'uid'   : 'uid-of-node',
-    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
-    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
+    #     { 'node_name' : 'name-of-node',
+    #       'node_id'   : 'uid-of-node',
+    #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
     #   ]
     #
@@ -409,7 +409,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             # Find the entry in the the slots list
 
-            # TODO: [Optimization] Assuming 'uid' is the ID of the node, it
+            # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
@@ -419,7 +419,7 @@ class AgentSchedulingComponent(rpu.Component):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['uid'] == rank['node_id']:
+                if node['node_id'] == rank['node_id']:
                     node_found = True
                     break
 
@@ -704,10 +704,13 @@ class AgentSchedulingComponent(rpu.Component):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
+      # self._log.debug('=== before bisec: %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+      # self._log.debug('=== after  bisec: %d : %d : %d', len(scheduled),
+      #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
             task['stderr']       = error
@@ -886,9 +889,9 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
-                task = self._queue_unsched.get(timeout=0.001)
+                task = self._queue_unsched.get(timeout=0.01)
                 to_unschedule.append(task)
-                if len(to_unschedule) > 128:
+                if len(to_unschedule) > 512:
                     break
 
         except queue.Empty:

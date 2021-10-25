@@ -354,7 +354,7 @@ class PRTE2(LaunchMethod):
         else:
             hosts = collections.defaultdict(int)
             for node in slots['nodes']:
-                hosts[node['name']] += 1
+                hosts[node['node_name']] += 1
             flags += ' --host ' + ','.join(['%s:%s' % x for x in hosts.items()])
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE

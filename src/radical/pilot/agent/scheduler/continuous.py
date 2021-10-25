@@ -31,20 +31,20 @@ from .base import AgentSchedulingComponent
 #
 # Expected DS of the nodelist
 # self.nodes = [{
-#                   'name'    : 'aa',
-#                   'uid'     : 'node.0000',
-#                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0, 1, 2],
-#                   'lfs'     : 128,
-#                   'mem'     : 256
+#                   'node_name': 'aa',
+#                   'node_id'  : 'node.0000',
+#                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
+#                   'gpus'     : [0, 1, 2],
+#                   'lfs'      : 128,
+#                   'mem'      : 256
 #               },
 #               {
-#                   'name'    : 'bb',
-#                   'uid'     : 'node.0001',
-#                   'cores'   : [0, 1, 2, 3, 4, 5, 6, 7],
-#                   'gpus'    : [0, 1, 2],
-#                   'lfs'     : 128,
-#                   'mem'     : 256,
+#                   'node_name': 'bb',
+#                   'node_id'  : 'node.0001',
+#                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
+#                   'gpus'     : [0, 1, 2],
+#                   'lfs'      : 128,
+#                   'mem'      : 256,
 #                },
 #                ...
 #              ]
@@ -192,8 +192,8 @@ class Continuous(AgentSchedulingComponent):
 
         # we should be able to host the slots - dig out the precise resources
         slots     = list()
-        node_id   = node['uid']
-        node_name = node['name']
+        node_id   = node['node_id']
+        node_name = node['node_name']
 
         core_idx  = 0
         gpu_idx   = 0
@@ -343,8 +343,8 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-            node_id   = node['uid']
-            node_name = node['name']
+            node_id   = node['node_id']
+            node_name = node['node_name']
 
             self._log.debug_3('next %s : %s', node_id, node_name)
             self._log.debug_3('req1: %s = %s + %s', req_slots, rem_slots,

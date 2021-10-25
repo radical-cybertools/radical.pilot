@@ -161,8 +161,8 @@ class Hombre(AgentSchedulingComponent):
                 slot = next_slot(slot)
 
             node  = self.nodes[nidx]
-            nuid  = node['uid']
-            nname = node['name']
+            nuid  = node['node_id']
+            nname = node['node_name']
             ok    = True
 
             while slot['ncblocks'] < ncblocks:

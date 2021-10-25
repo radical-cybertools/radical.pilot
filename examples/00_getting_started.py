@@ -58,7 +58,7 @@ if __name__ == '__main__':
                    'project'       : config.get('project', None),
                    'queue'         : config.get('queue', None),
                    'access_schema' : config.get('schema', None),
-                   'cores'         : 128,
+                   'cores'         : 1024,
                    'gpus'          : config.get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)

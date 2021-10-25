@@ -150,17 +150,23 @@ class Popen(AgentExecutingComponent):
         sbox = task['task_sandbox_path']
 
         # prepare stdout/stderr
-        stdout_file = td.get('stdout') or '%s.out' % (tid)
-        stderr_file = td.get('stderr') or '%s.err' % (tid)
-
-        if stdout_file[0] != '/': stdout_file = '%s/%s' % (sbox, stdout_file)
-        if stderr_file[0] != '/': stderr_file = '%s/%s' % (sbox, stderr_file)
-
         task['stdout'] = ''
         task['stderr'] = ''
 
-        task['stdout_file'] = stdout_file
-        task['stderr_file'] = stderr_file
+        stdout_file    = td.get('stdout') or '%s.out' % (tid)
+        stderr_file    = td.get('stderr') or '%s.err' % (tid)
+
+        if stdout_file[0] != '/':
+            task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
+            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % (stdout_file)
+        else:
+            task['stdout_file_short'] = stdout_file
+
+        if stderr_file[0] != '/':
+            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % (stderr_file)
+            task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
+        else:
+            task['stderr_file_short'] = stderr_file
 
         # create two shell scripts: a launcher script (task.launch.sh) which
         # sets the launcher environment, performs pre_launch commands, and then
@@ -612,8 +618,9 @@ class Popen(AgentExecutingComponent):
         for cmd in cmds:
             ret += '  %s \\\n' % cmd
 
-        ret += ') 1> %s 2>%s %s' % (task['stdout_file'], task['stderr_file'],
-                                    self._get_check('launch'))
+        ret += ') 1> %s\n  2>%s %s' % (task['stdout_file_short'],
+                                       task['stderr_file_short'],
+                                       self._get_check('launch'))
         return ret
 
 

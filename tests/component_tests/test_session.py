@@ -101,8 +101,7 @@ class TestSession(TestCase):
         self._session.fetch_logfiles.assert_called()
 
         self._session._closed = False
-        with self.assertRaises(ValueError):
-            self._session.close(cleanup=True, terminate=False)
+        self._session.close(cleanup=True, terminate=True)
 
 
 # ------------------------------------------------------------------------------

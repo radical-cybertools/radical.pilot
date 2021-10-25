@@ -8,7 +8,8 @@ import radical.utils as ru
 from ..       import states as s
 from .session import fetch_json
 
-_debug = os.environ.get('RP_PROF_DEBUG')
+_debug      = os.environ.get('RP_PROF_DEBUG')
+_node_index = dict()
 
 
 # ------------------------------------------------------------------------------
@@ -742,9 +743,14 @@ def get_session_description(sid, src=None, dburl=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_node_index(node_list, node, pn):
+def get_node_index(node_list, node_uid, pn):
 
-    r0 = node_list.index(node) * pn
+    global _node_index
+    if not _node_index:
+        for idx,n in enumerate(node_list):
+            _node_index[n['node_id']] = idx
+
+    r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
 
     return [r0, r1]
@@ -839,7 +845,7 @@ def _get_pilot_provision(pilot, rtype):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node, pn)
+            r0, r1 = get_node_index(nodes, node['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -981,7 +987,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode, pn)
+            idx = get_node_index(nodes, pnode['node_id'], pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
 
@@ -1001,8 +1007,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
             for rank in ranks:
 
-                node  = [rank['node'], rank['node_id']]
-                r0, _ = get_node_index(nodes, node, pn)
+                r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
                 for resource_map in rank[rmap]:
                     for resource in resource_map:
@@ -1131,7 +1136,7 @@ def _get_pilot_consumption(pilot, rtype):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode, pn)
+            r0, r1 = get_node_index(nodes, anode['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1147,7 +1152,7 @@ def _get_pilot_consumption(pilot, rtype):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node, pn)
+                r0, r1 = get_node_index(nodes, node['node_id'], pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1194,8 +1199,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     resources = list()
     for rank in ranks:
 
-        node  = [rank['node'], rank['node_id']]
-        r0, _ = get_node_index(nodes, node, pn)
+        r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
         for resource_map in rank[rmap]:
             for resource in resource_map:

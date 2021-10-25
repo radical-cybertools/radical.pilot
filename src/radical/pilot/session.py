@@ -261,6 +261,7 @@ class Session(rs.Session):
         # Merge kwargs with current defaults stored in self._close_options
         self._close_options.update(kwargs)
         self._close_options.verify()
+
         # to call for `_verify` method and to convert attributes
         # to their types if needed (but None value will stay if it is set)
 

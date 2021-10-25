@@ -20,7 +20,7 @@ class Debug(ResourceManager):
 
         # UIDs need to be made unique
         for idx, node in enumerate(rm_info.node_list):
-            node['uid'] = '%s_%04d' % (node['name'], idx)
+            node['node_id'] = '%s_%04d' % (node['node_name'], idx)
 
         return rm_info
 
