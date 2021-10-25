@@ -105,24 +105,19 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SSH", "PRTE"],
+                                         "order": ["PRTE", "SSH"],
                                          "SSH"  : {},
                                          "PRTE" : {
                                              "pre_exec_cached": [
                                                  "module unload pmix hwloc impi xalt",
                                                  "module load gcc/6.3.0",
-                                                 "module use /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+                                                 "module use  /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
                                                  "module load prrte/master"
                                              ],
                                              "dvm_count": 1
                                          }
                                         },
-        "pre_bootstrap_0"             : [
-            "module unload pmix hwloc impi xalt",
-            "module load gcc/6.3.0",
-            "module use /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
-            "module load prrte/master"
-        ],
+        "pre_bootstrap_0"             : [],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "python_dist"                 : "default",

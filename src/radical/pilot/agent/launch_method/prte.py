@@ -51,8 +51,7 @@ class PRTE(LaunchMethod):
         if not prte_cmd:
             raise Exception('prte command not found')
 
-        prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR') or \
-                      os.environ.get('PRRTE_DIR', '')
+        prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR')
 
         prte_info = {}  # get OpenRTE/PRTE version
         out = ru.sh_callout('prte_info | grep "RTE"', shell=True)[0]
@@ -125,8 +124,8 @@ class PRTE(LaunchMethod):
             file_info = dict(dvm_file_info)
             file_info['dvm_id'] = dvm_id
 
-            prte  = '%s'               % prte_cmd
-            prte += ' --prefix %s'     % prte_prefix
+            prte  = '%s' % prte_cmd
+            if prte_prefix: prte += ' --prefix %s' % prte_prefix
             prte += ' --report-uri %s' % DVM_URI_FILE_TPL   % file_info
             prte += ' --hostfile %s'   % DVM_HOSTS_FILE_TPL % file_info
 
@@ -222,14 +221,14 @@ class PRTE(LaunchMethod):
                 num_slots = self._rm_info['cores_per_node'] * \
                             self._rm_info['threads_per_core']
                 for node in node_list:
-                    fout.write('%s slots=%d\n' % (node[0], num_slots))
+                    fout.write('%s slots=%d\n' % (node['node_name'], num_slots))
 
             _dvm_size  = len(node_list)
             _dvm_ready = mt.Event()
             _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
             dvm_list[str(_dvm_id)] = {
-                'nodes'  : [node[1] for node in node_list],
+                'nodes'  : [node['node_id'] for node in node_list],
                 'dvm_uri': _dvm_uri}
 
             # extra time to confirm that "DVM ready" was just delayed
@@ -359,7 +358,7 @@ class PRTE(LaunchMethod):
         if n_gpus:
             # input data is edited here to keep PRUN setup within LM
             td['environment'] \
-                ['PMIX_MCA_pmdl_ompi5_include_envars'] = 'OMPI_*,CUDA_*'
+                ['PMIX_MCA_pmdl_ompi_include_envars'] = 'OMPI_*,CUDA_*'
             flags += '--personality ompi '
 
         flags += '--np %d '                                   % n_procs
