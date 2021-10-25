@@ -83,11 +83,11 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         # now run the func launcher on all nodes
         ve  = os.environ.get('VIRTUAL_ENV',  '')
-        exe = ru.which('radical-pilot-agent-funcs-mpi')
+        exe = ru.which('radical-pilot-agent-funcs2-mpi')
         sbox = os.getcwd()
 
         if not exe:
-            exe = '%s/rp_install/bin/radical-pilot-agent-funcs-mpi' % self._pwd
+            exe = '%s/rp_install/bin/radical-pilot-agent-funcs2-mpi' % self._pwd
 
 
         # Since we know that every task is a multinode, we take half of the nodes and
@@ -95,27 +95,29 @@ class MPIFUNCS(AgentExecutingComponent) :
         # will be utilized by the mpi_workers inside every executor.
         # So the mpi worker will see 2 nodes for every task and occupy it
 
-        breakdown = self._cfg['rm_info']['node_list']
+        #breakdown = self._cfg['rm_info']['node_list']
 
         if self._cfg['resource'].startswith('local'):
             pass
 
         else:
             spl = int(len(self._cfg['rm_info']['node_list'])/2)  
-            breakdown = self._cfg['rm_info']['node_list'][:spl]
+            #breakdown = self._cfg['rm_info']['node_list'][:spl]
 
-        for idx, node in enumerate(breakdown):
+        #for idx, node in enumerate(breakdown):
+        for idx, node in enumerate(self._cfg['rm_info']['node_list']):
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
                      'description': {'executable'   : exe,
                                      'arguments'    : [pwd, ve],
-                                     'cpu_processes': 1,
+                                     'cpu_processes': 4,
                                      'environment'  : [],
                                     },
-                     'slots'      : {'nodes'        : [{'name'  : node[0],
-                                                        'uid'   : node[1],
-                                                        'cores' : [[0]],
+                     'task_sandbox_path': "./",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+                     'slots'      : {'nodes'        : [{'name'     : node[0],
+                                                        'uid'      : node[1],
+                                                        'core_map' : [[0], [1], [2], [3]],
                                                         'gpus'  : []
                                                        }]
                                     },
