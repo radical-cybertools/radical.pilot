@@ -10,7 +10,6 @@ import pickle
 import msgpack
 from mpi4py import MPI
 
-import multiprocessing as mp
 import radical.utils as ru
 
 IDLE = False
@@ -77,7 +76,9 @@ class MPIExecutor(object):
         self._pwd   = os.getcwd()
         self._uid   = os.environ.get('RP_FUNCS_ID')
         self._log   = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
+        self._prof  = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
 
+        self._log.debug('MPI worker got init')
 
     # --------------------------------------------------------------------------
     #
@@ -152,6 +153,7 @@ class MPIExecutor(object):
         master (rank == 0) does master stuff
         worker (rank != 0) does worker stuff
         '''
+        self._log.debug('work got called')
 
         if self.master: self.work_master()
         else          : self.work_worker()
@@ -160,7 +162,7 @@ class MPIExecutor(object):
     # --------------------------------------------------------------------------
     #
     def work_master(self):
-
+        self._log.debug('Master got called')
         # keep track of busy and idle workers (not really used, yet)
         resources = [IDLE] * (self.size - 1)
 
@@ -169,91 +171,93 @@ class MPIExecutor(object):
         #    ranks: how many workers to use in the task's communicator
         #    work : what method to call
         #    args : what arguments to pass to the method
-        #tasks = [{'uid': 0, 'ranks': 2, 'work' : 'test_1', 'args': ['foo']},
-        #         {'uid': 1, 'ranks': 4, 'work' : 'test_2', 'args': ['bar']},
-        #         {'uid': 2, 'ranks': 4, 'work' : 'test_1', 'args': ['buz']},
-        #         {'uid': 3, 'ranks': 3, 'work' : 'test_2', 'args': ['biz']},
-        #        ]
-        _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
+  
+        if self.rank == 0:
 
-        addr_req  = _cfg.get('req_get')
-        addr_res  = _cfg.get('res_put')
-        addr_ctrl = _cfg.get('ctrl')
+            _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
 
-        assert(addr_req)
-        assert(addr_res)
-        assert(addr_ctrl)
+            addr_req  = _cfg.get('req_get')
+            addr_res  = _cfg.get('res_put')
+            addr_ctrl = _cfg.get('ctrl')
+
+            assert(addr_req)
+            assert(addr_res)
+            assert(addr_ctrl)
 
 
-        _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
-        _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
-        _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
+            _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+            _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+            _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
+        
+        while True:
+            if self.rank == 0:
+                tasks = _zmq_req.get_nowait(1000)
+                self._log.debug('got %d tasks', len(tasks))
 
-        tasks = _zmq_req.get_nowait(1000)
+                if tasks:
 
-        if tasks:
-            self._out('got %d tasks', len(tasks))
+                    for task in tasks:
+                        
 
-            for task in tasks:
+                        task_descr = task['description']
+                        task_exe   = task_descr['executable']
+                        task_args  = task_descr.get('arguments', list())
+                        task_pres  = task_descr.get('pre_exec',  list())
 
-                task_descr = task['description']
-                task_exe   = task_descr['executable']
-                task_args  = task_descr.get('arguments', list())
-                task_pres  = task_descr.get('pre_exec',  list())
+                        task_ranks = task_descr['cpu_processes']
+                        try:
 
-                task_ranks = task_descr['cpu_processes']
-                try:
+                            task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
 
-                    task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
+                            task = {'uid'  : task['uid'],
+                                    'ranks': task_ranks,
+                                    'work' : task_info["_cud_code"],
+                                    'args' : task_info["_cud_args"]}
+                        except Exception as e:
+                            self._log.debug('ERROR %s', str(e))
 
-                    task = {'uid'  : task['uid'],
-                            'ranks': task_ranks,
-                            'work' : task_info["_cud_code"],
-                            'args' : task_info["_cud_args"]}
-                except Exception as e:
-                    self._out('ERROR %s', str(e))
+                        # find workers and mark as busy
+                        workers = list()
+                        for idx, worker in enumerate(resources):
+                            if worker == IDLE:
+                                workers.append(idx + 1)
+                                resources[idx] = BUSY
+                                if len(workers) == task_ranks:
+                                    # enough workers found
+                                    break
 
-                # find workers and mark as busy
-                workers = list()
-                for idx, worker in enumerate(resources):
-                    if worker == IDLE:
-                        workers.append(idx + 1)
-                        resources[idx] = BUSY
-                        if len(workers) == task_ranks:
-                            # enough workers found
-                            break
+                        # make sure we did find workers!
+                        assert(len(workers) == task_ranks)
 
-                # make sure we did find workers!
-                assert(len(workers) == task_ranks)
+                        # workers need to know who is part of the sub-communicator
+                        task['workers'] = workers
 
-                # workers need to know who is part of the sub-communicator
-                task['workers'] = workers
-
-                # send the task to each of the workers
-                self._out('send task %s  to  %s' % (task['uid'], workers))
-                for worker in workers:
-                    self._world.send(msgpack.packb(task), dest=worker, tag=0)
-
-
-            # once all tasks are sent out, collect results
-            for task in tasks:
-                result = msgpack.unpackb(self._world.recv(tag=1))
-                if task['state'] == 'DONE':
-                    task['stdout'] = result
-                    task['stderr'] = None
-                
-                else:
-                    task['stdout'] = None
-                    task['stderr'] = result
-
-                _zmq_res.put(task)
-                self._out('recv task %s from %s' % (task['uid'], task))
+                        # send the task to each of the workers
+                        self._log.debug('send task %s  to  %s' % (task['uid'], workers))
+                        for worker in workers:
+                            self._world.send(msgpack.packb(task), dest=worker, tag=0)
 
 
-            # once all results are received, send termination signal to workers
-            for worker in range(self.size - 1):
-                self._out('send term to %s' % (worker + 1))
-                self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
+                    # once all tasks are sent out, collect results
+                    for task in tasks:
+                        result = msgpack.unpackb(self._world.recv(tag=1))
+                        if  task['state'] == 'DONE':
+                            task['stdout'] = result
+                            task['stderr'] = None
+                        
+                        else:
+                            task['stdout'] = None
+                            task['stderr'] = result
+
+                        self._log.debug('recv task %s from %s' % (task['uid'], task))
+                        _zmq_res.put(task)
+
+
+                    # once all results are received, send termination signal to workers
+                    for worker in range(self.size - 1):
+                        self._log.debug('send term to %s' % (worker + 1))
+                        self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
+                    break
 
 
     # --------------------------------------------------------------------------
@@ -266,10 +270,10 @@ class MPIExecutor(object):
             task = msgpack.unpackb(self._world.recv(source=0, tag=0))
 
             if not task:
-                self._out('terminate!')
+                self._log.debug('terminate!')
                 break
 
-            self._out('recv task %s from 0 >>>' % (task['uid']))
+            self._log.debug('recv task %s from 0 >>>' % (task['uid']))
             assert(self.rank in task['workers'])
 
             comm  = None
@@ -290,12 +294,12 @@ class MPIExecutor(object):
                 # result is only reported back by rank 0 (of sub-communicator)
                 if comm.rank == 0:
                     task['result'] = result
-                    self._out('send res  %s  to  0 <<< ' % (task['uid']))
+                    self._log.debug('send res  %s  to  0 <<< ' % (task['uid']))
                     self._world.send(msgpack.packb(task), dest=0, tag=1)
 
             except Exception as e:
                 task['error'] = str(e)
-                self._out('recv err  %s  to  0' % (task['uid']))
+                self._log.debug('recv err  %s  to  0' % (task['uid']))
                 self._world.send(msgpack.packb(task), dest=0, tag=1)
                 raise
 
