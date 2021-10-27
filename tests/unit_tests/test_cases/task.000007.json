@@ -37,11 +37,11 @@
     },
 
     "results": {
-        "lm": { "ibrun"  : ["ibrun -n 2 -o 0 /bin/sleep \"10\" ",null],
+        "lm": { "ibrun"  : ["ibrun -n 2 -o 0 /bin/sleep 10",null],
                 "ssh"    : "RuntimeError",
                 "spark"  : "RuntimeError",
                 "rsh"    : "RuntimeError",
-                "jsrun"  : ["jsrun --erf_input rs_layout_task_000007   /bin/sleep \"10\" ",null],
+                "jsrun"  : ["jsrun --erf_input rs_layout_task_000007   /bin/sleep 10",null],
                 "prte"   : "RuntimeError",
                 "prte2"  : "RuntimeError"
         },
