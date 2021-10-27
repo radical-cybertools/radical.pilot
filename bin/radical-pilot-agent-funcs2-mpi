@@ -205,10 +205,9 @@ class MPIExecutor(object):
 
                             task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
 
-                            task = {'uid'  : task['uid'],
-                                    'ranks': task_ranks,
-                                    'work' : task_info["_cud_code"],
-                                    'args' : task_info["_cud_args"]}
+                            task['work']  = task_info["_cud_code"]
+                            task['args']  = task_info["_cud_args"]
+                            task['ranks'] = task_ranks
 
                         except Exception as e:
                             self._log.debug('ERROR %s', str(e))
@@ -241,15 +240,16 @@ class MPIExecutor(object):
                         if  task['state'] == 'DONE':
                             task['stdout'] = task['result']
                             task['stderr'] = None
+                            task['work']   = str(task['work'])
+                            self._log.debug('recv task %s with result: %s' % (task['uid'], task))
 
                         else:
                             task['stdout'] = None
                             task['stderr'] = task['error']
-
-                        self._log.debug('recv task %s from %s' % (task['uid'], task))
+                            task['work']   = str(task['work'])
+                            self._log.debug('recv task %s with result: %s' % (task['uid'], task))
                         _zmq_res.put(task)
-
-
+                        self._log.debug('task %s is sent to the agent' % (task['uid']))
                     # once all results are received, send termination signal to workers
                     for worker in range(self.size - 1):
                         self._log.debug('send term to %s' % (worker + 1))
