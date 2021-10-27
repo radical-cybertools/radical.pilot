@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
 import os
-import sys
 import dill
-import time
-import queue
 import codecs
 import pickle
 import msgpack
@@ -16,6 +13,7 @@ IDLE = False
 BUSY = True
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -162,7 +160,6 @@ class MPIExecutor(object):
     # --------------------------------------------------------------------------
     #
     def work_master(self):
-        self._log.debug('Master got called')
         # keep track of busy and idle workers (not really used, yet)
         resources = [IDLE] * (self.size - 1)
 
@@ -171,7 +168,7 @@ class MPIExecutor(object):
         #    ranks: how many workers to use in the task's communicator
         #    work : what method to call
         #    args : what arguments to pass to the method
-  
+
         if self.rank == 0:
 
             _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
@@ -188,23 +185,22 @@ class MPIExecutor(object):
             _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
             _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
             _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
-        
+
+
         while True:
             if self.rank == 0:
                 tasks = _zmq_req.get_nowait(1000)
-                self._log.debug('got %d tasks', len(tasks))
 
                 if tasks:
 
                     for task in tasks:
-                        
-
+                        self._log.debug('got %s', task['uid'])
                         task_descr = task['description']
                         task_exe   = task_descr['executable']
                         task_args  = task_descr.get('arguments', list())
                         task_pres  = task_descr.get('pre_exec',  list())
-
                         task_ranks = task_descr['cpu_processes']
+
                         try:
 
                             task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
@@ -213,6 +209,7 @@ class MPIExecutor(object):
                                     'ranks': task_ranks,
                                     'work' : task_info["_cud_code"],
                                     'args' : task_info["_cud_args"]}
+
                         except Exception as e:
                             self._log.debug('ERROR %s', str(e))
 
@@ -237,17 +234,17 @@ class MPIExecutor(object):
                         for worker in workers:
                             self._world.send(msgpack.packb(task), dest=worker, tag=0)
 
-
                     # once all tasks are sent out, collect results
                     for task in tasks:
-                        result = msgpack.unpackb(self._world.recv(tag=1))
+                        task = msgpack.unpackb(self._world.recv(tag=1))
+
                         if  task['state'] == 'DONE':
-                            task['stdout'] = result
+                            task['stdout'] = task['result']
                             task['stderr'] = None
-                        
+
                         else:
                             task['stdout'] = None
-                            task['stderr'] = result
+                            task['stderr'] = task['error']
 
                         self._log.debug('recv task %s from %s' % (task['uid'], task))
                         _zmq_res.put(task)
@@ -257,7 +254,7 @@ class MPIExecutor(object):
                     for worker in range(self.size - 1):
                         self._log.debug('send term to %s' % (worker + 1))
                         self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
-                    break
+
 
 
     # --------------------------------------------------------------------------
@@ -287,24 +284,25 @@ class MPIExecutor(object):
 
                 # work on task
                 fn = MPI.pickle.loads(task['work'])
-                to_call = getattr(self, fn, None)
-                assert(to_call)
-                result = to_call(comm, *task['args'])
+                result = fn(*task['args'])
 
                 # result is only reported back by rank 0 (of sub-communicator)
                 if comm.rank == 0:
                     task['result'] = result
+                    task['state']  = "DONE"
                     self._log.debug('send res  %s  to  0 <<< ' % (task['uid']))
                     self._world.send(msgpack.packb(task), dest=0, tag=1)
 
             except Exception as e:
-                task['error'] = str(e)
-                self._log.debug('recv err  %s  to  0' % (task['uid']))
+                task['error']  = str(e)
+                task['state']  = "FAILED"
+                self._log.error('recv err  %s  to  0' % (task['uid']))
+                self._log.error(str(e))
                 self._world.send(msgpack.packb(task), dest=0, tag=1)
                 raise
 
             finally:
-                # sub-communicator must alwaus be destroyed
+                # sub-communicator must always be destroyed
                 if group: group.Free()
                 if comm : comm.Free()
 
