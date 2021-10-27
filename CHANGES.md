@@ -3,7 +3,7 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
-1.9.1  Hotfix Release                                                 2021-10-27
+1.9.2  Hotfix Release                                                 2021-10-27
 --------------------------------------------------------------------------------
 
   - fix shell escaping for task arguments
