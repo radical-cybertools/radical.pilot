@@ -31,15 +31,15 @@
 
     "results": {
         "lm": {
-            "fork"    : ["/bin/sleep \"10\" ", null],
-            "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep \"10\"  ", null],
-            "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep \"10\"", null],
-            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep \"10\" ", null],
-            "ssh"     : ["/bin/sleep \"10\" ","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
-            "rsh"     : ["/bin/sleep \"10\" ","rsh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "fork"    : ["/bin/sleep 10", null],
+            "aprun"   : ["aprun -n 1 -N 1 -L node1 -d 4 -cc 0,1,2,3 /bin/sleep 10 ", null],
+            "mpirun"  : ["mpirun  -np 1  -host node1  /bin/sleep 10", null],
+            "ibrun"   : ["ibrun -n 1 -o 0 /bin/sleep 10", null],
+            "ssh"     : ["/bin/sleep 10","ssh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
+            "rsh"     : ["/bin/sleep 10","rsh node1 LD_LIBRARY_PATH=/usr/local/lib/ PATH=test_path 1"],
             "spark"   : "RuntimeError",
-            "jsrun"   : ["jsrun --erf_input rs_layout_task_000003   /bin/sleep \"10\" ",null],
-            "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep \"10\" ", null]
+            "jsrun"   : ["jsrun --erf_input rs_layout_task_000003   /bin/sleep 10",null],
+            "mpiexec" : ["mpiexec -host node1 -n 1    /bin/sleep 10", null]
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0,1,2,3}}\n"]
