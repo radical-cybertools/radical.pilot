@@ -4,6 +4,7 @@ __copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import shlex
 
 import radical.utils as ru
 
@@ -232,33 +233,10 @@ class LaunchMethod(object):
     #
     def _create_arg_string(self, args):
 
-        if not args:
+        if args:
+            return ' '.join([shlex.quote(arg) for arg in args])
+        else:
             return ''
-
-        arg_string = ''
-        for arg in args:
-            if not arg:
-                # ignore empty args
-                continue
-
-            if arg in ['>', '>>', '<', '<<', '|', '||', '&&', '&']:
-                # Don't quote shell direction arguments, etc.
-                arg_string += '%s ' % arg
-                continue
-
-            if any([c in arg for c in ['?', '*']]):
-                # Don't quote arguments with wildcards
-                arg_string += '%s ' % arg
-                continue
-
-            arg = arg.replace('"', '\\"')    # Escape all double quotes
-            if arg[0] == arg[-1] == "'" :    # between outer single quotes?
-                arg_string += '%s ' % arg    # ... pass it as is.
-
-            else:
-                arg_string += '"%s" ' % arg  # else return double quoted
-
-        return arg_string
 
 
     # --------------------------------------------------------------------------
