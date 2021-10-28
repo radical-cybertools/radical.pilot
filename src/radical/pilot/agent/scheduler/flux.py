@@ -3,8 +3,10 @@ __copyright__ = 'Copyright 2017, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
+import os
 import json
 import shlex
+import textwrap
 
 import radical.utils        as ru
 
@@ -31,11 +33,38 @@ class Flux(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
-        # create execution helper, i.e., a small shell script which manages I/O 
+        # create execution helper, i.e., a small shell script which manages I/O
         # redirection for us (Flux does not support it just yet)
-        with open('%s/flux_helper.sh' % self._pwd, 'w') as fout:
-            fout.write('''
+        self._helper = '%s/flux_helper.sh' % self._cfg.pilot_sandbox
+        with open(self._helper, 'w') as fout:
+            fout.write(textwrap.dedent('''\
                 #/bin/sh
+
+                exec >>flux_helper.log 2>&1
+
+                out=
+                err=
+                cmd=
+
+                while getopts "o:e:c:" OPTION; do
+                    case $OPTION in
+                        o)  out="$OPTARG"  ;;
+                        e)  err="$OPTARG"  ;;
+                        c)  cmd="$OPTARG"  ;;
+                        *)  echo "ERROR: unknown option '$OPTION=$OPTARG'"
+                            exit 1;;
+                    esac
+                done
+                if test -z "$out" -o -z "$err" -o -z "$cmd"
+                then
+                    echo "ERROR: missing option '$cmd 1>$out 2>$err'"
+                    exit 1
+                fi
+
+                $cmd 1>"$out" 2>"$err"
+
+                '''))
+        os.chmod(self._helper, 0o0755)
 
 
 
@@ -181,14 +210,14 @@ class Flux(AgentSchedulingComponent):
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
         args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
-        cmd  = '%s %s 1>%s 2>%s' % (td['executable'], args, stdout, stderr)
+        cmd  = '%s %s' % (td['executable'], args)
         spec = {
             'tasks': [{
                 'slot' : 'task',
                 'count': {
                     'per_slot': 1
                 },
-                'command': ['/bin/sh', '-c', cmd],
+                'command': [self._helper, '-o', stdout, '-e', stderr, '-c', cmd],
             }],
             'attributes': {
                 'system': {
