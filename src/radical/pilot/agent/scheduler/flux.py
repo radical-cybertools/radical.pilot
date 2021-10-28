@@ -4,6 +4,7 @@ __license__   = 'MIT'
 
 
 import json
+import shlex
 
 import radical.utils        as ru
 
@@ -29,6 +30,15 @@ class Flux(AgentSchedulingComponent):
         self.nodes = None
 
         AgentSchedulingComponent.__init__(self, cfg, session)
+
+        # create execution helper, i.e., a small shell script which manages I/O 
+        # redirection for us (Flux does not support it just yet)
+        with open('%s/flux_helper.sh' % self._pwd, 'w') as fout:
+            fout.write('''
+                #/bin/sh
+
+
+
 
 
     # --------------------------------------------------------------------------
@@ -170,8 +180,8 @@ class Flux(AgentSchedulingComponent):
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
-        cmd  = '%s %s 1>%s 2>%s' % (td['executable'], ' '.join(td['arguments']),
-                                    stdout, stderr)
+        args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
+        cmd  = '%s %s 1>%s 2>%s' % (td['executable'], args, stdout, stderr)
         spec = {
             'tasks': [{
                 'slot' : 'task',
@@ -200,6 +210,7 @@ class Flux(AgentSchedulingComponent):
                 }]
             }]
         }
+        self._log.debug('=== %s', spec['tasks'][0]['command'])
 
         if td['gpu_processes']:
             spec['resources']['with'].append({
