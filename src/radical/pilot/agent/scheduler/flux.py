@@ -35,39 +35,14 @@ class Flux(AgentSchedulingComponent):
 
         # create execution helper, i.e., a small shell script which manages I/O
         # redirection for us (Flux does not support it just yet)
-        self._helper = '%s/flux_helper.sh' % self._cfg.pilot_sandbox
-        with open(self._helper, 'w') as fout:
-            fout.write(textwrap.dedent('''\
+        self._helper = textwrap.dedent('''\
                 #/bin/sh
 
-                exec >>flux_helper.log 2>&1
+                exec >>%(log)s 2>&1
 
-                out=
-                err=
-                cmd=
+                %(cmd)s 1>"%(out)s" 2>"%(err)s"
 
-                while getopts "o:e:c:" OPTION; do
-                    case $OPTION in
-                        o)  out="$OPTARG"  ;;
-                        e)  err="$OPTARG"  ;;
-                        c)  cmd="$OPTARG"  ;;
-                        *)  echo "ERROR: unknown option '$OPTION=$OPTARG'"
-                            exit 1;;
-                    esac
-                done
-                if test -z "$out" -o -z "$err" -o -z "$cmd"
-                then
-                    echo "ERROR: missing option '$cmd 1>$out 2>$err'"
-                    exit 1
-                fi
-
-                $cmd 1>"$out" 2>"$err"
-
-                '''))
-        os.chmod(self._helper, 0o0755)
-
-
-
+                ''')
 
 
     # --------------------------------------------------------------------------
@@ -211,17 +186,26 @@ class Flux(AgentSchedulingComponent):
 
         args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
         cmd  = '%s %s' % (td['executable'], args)
+
+        ru.rec_makedir(sbox)
+        exec_script = '%s/%s.flux.sh' % (sbox, uid)
+        with open(exec_script, 'w') as fout:
+            fout.write(self._helper % {'out': stdout,
+                                       'err': stderr, 
+                                       'log': '%s.flux.log' % uid, 
+                                       'cmd': cmd})
+        os.chmod(exec_script, 0o0755)
         spec = {
             'tasks': [{
                 'slot' : 'task',
                 'count': {
                     'per_slot': 1
                 },
-                'command': [self._helper, '-o', stdout, '-e', stderr, '-c', cmd],
+                'command': [exec_script],
             }],
             'attributes': {
                 'system': {
-                    'cwd'     : task['task_sandbox_path'],
+                    'cwd'     : sbox,
                     'duration': 0,
                 }
             },
