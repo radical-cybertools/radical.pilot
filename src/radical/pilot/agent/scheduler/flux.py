@@ -191,8 +191,8 @@ class Flux(AgentSchedulingComponent):
         exec_script = '%s/%s.flux.sh' % (sbox, uid)
         with open(exec_script, 'w') as fout:
             fout.write(self._helper % {'out': stdout,
-                                       'err': stderr, 
-                                       'log': '%s.flux.log' % uid, 
+                                       'err': stderr,
+                                       'log': '%s.flux.log' % uid,
                                        'cmd': cmd})
         os.chmod(exec_script, 0o0755)
         spec = {
@@ -223,7 +223,6 @@ class Flux(AgentSchedulingComponent):
                 }]
             }]
         }
-        self._log.debug('=== %s', spec['tasks'][0]['command'])
 
         if td['gpu_processes']:
             spec['resources']['with'].append({
