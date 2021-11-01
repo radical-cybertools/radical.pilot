@@ -343,16 +343,10 @@ class PRTE(LaunchMethod):
         n_threads = td['cpu_threads']
         n_gpus    = td['gpu_processes']
 
-        if not slots.get('lm_info'):
-            raise RuntimeError('lm_info not set (%s): %s' % (self.name, slots))
-
-        if not slots['lm_info'].get('partitions'):
-            raise RuntimeError('no partitions (%s): %s' % (self.name, slots))
-
-        dvm_list = self._details['dvm_list']
+        dvm_list  = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
-        dvm_id  = slots.get('partition_id') or dvm_list.keys()[0]
-        dvm_uri = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
+        dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]
+        dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
         flags = ''
         if n_gpus:

@@ -496,8 +496,9 @@ class ResourceManager(object):
         cores_per_node = set([node[1] for node in nodes])
 
         if len(cores_per_node) == 1:
+            cores_per_node = cores_per_node.pop()
             self._log.debug('found %d [%d cores]', len(nodes), cores_per_node)
-            return cores_per_node.pop()
+            return cores_per_node
 
         else:
             raise ValueError('non-uniform node list, cores_per_node invalid')
