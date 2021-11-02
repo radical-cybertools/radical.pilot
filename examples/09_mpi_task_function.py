@@ -32,6 +32,13 @@ def mpi_func(x):
     sys.stdout.flush()
 
     return ec
+
+@mpitask.mpirun
+def mpi_func2(x):
+    import time
+    #time.sleep(1)
+    print(time.time())
+    
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -67,14 +74,15 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         
-        pd_init = {'resource'      : resource,
-                   'runtime'       : 60,  # pilot runtime (min)
-                   'exit_on_error' : True,
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue',   None),
-                   'access_schema' : config[resource].get('schema',  None),
-                   'cores'         : config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),}
+        pd_init = {'resource'       : resource,
+                   'runtime'        : 60,  # pilot runtime (min)
+                   'exit_on_error'  : True,
+                   'executor_cores' : 14,
+                   'project'        : config[resource].get('project', None),
+                   'queue'          : config[resource].get('queue',   None),
+                   'access_schema'  : config[resource].get('schema',  None),
+                   'cores'          : 16,#config[resource].get('cores', 1),
+                   'gpus'           : config[resource].get('gpus', 0),}
 
         pdesc = rp.PilotDescription(pd_init)
 
@@ -90,7 +98,7 @@ if __name__ == '__main__':
         # Create a workload of Tasks.
         # Each task runs '/bin/date'.
 
-        n = 1024
+        n = 2
         report.progress_tgt(n, label='create')
 
         tds = list()
@@ -101,7 +109,7 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.pre_exec         = []
-            td.executable       = mpi_func(jobs)
+            td.executable       = mpi_func2(1)
             td.arguments        = []
             td.gpu_processes    = 0
             td.cpu_processes    = 2

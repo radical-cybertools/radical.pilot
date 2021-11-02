@@ -183,11 +183,13 @@ class MPIExecutor(object):
                                 workers.append(idx + 1)
                                 resources[idx] = BUSY
                                 if len(workers) == task_ranks:
-                                    # enough workers found
+                                    self._log.debug('enough workers found')
                                     break
 
                         # make sure we did find workers!
+                        self._log.debug('Number of workers ({0}) and ranks ({1})'.format(len(workers),task_ranks))
                         assert(len(workers) == task_ranks)
+
 
                         # workers need to know who is part of the sub-communicator
                         task['workers'] = workers
@@ -196,11 +198,23 @@ class MPIExecutor(object):
                         self._log.debug('send task %s  to  %s' % (task['uid'], workers))
                         for worker in workers:
                             self._world.send(msgpack.packb(task), dest=worker, tag=0)
+                        
+                        # FIXME: Now release the BUSY workers and mark them as IDLE to be 
+                        # resuesd by the next task 
+                        for worker in workers:
+                            if worker == BUSY:
+                                workers.append(idx + 1)
+                                resources[idx] = IDLE
+                                
+                                self._log.debug('IDLE WOKERS {0}'.format(worker))
+                            else:
+                                self._log.debug('BUSY WOKERS {0}'.format(worker))
+                                pass
+                        self._log.debug(resources)
 
                     # once all tasks are sent out, collect results
                     for task in tasks:
                         task = msgpack.unpackb(self._world.recv(tag=1))
-
                         if  task['state'] == 'DONE':
                             task['stdout'] = task['result']
                             task['stderr'] = None
@@ -257,8 +271,11 @@ class MPIExecutor(object):
                     self._world.send(msgpack.packb(task), dest=0, tag=1)
 
             except Exception as e:
-                task['error']  = str(e)
-                task['state']  = "FAILED"
+                if comm.rank == 0:
+                    task['error']  = str(e)
+                    task['state']  = "FAILED"
+                    task['result'] = None
+
                 self._log.error('recv err  %s  to  0' % (task['uid']))
                 self._log.error(str(e))
                 self._world.send(msgpack.packb(task), dest=0, tag=1)
