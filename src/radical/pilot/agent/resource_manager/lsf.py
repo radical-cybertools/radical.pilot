@@ -32,7 +32,8 @@ class LSF(ResourceManager):
         if not hostfile:
             raise RuntimeError('$LSB_DJOB_HOSTFILE not set')
 
-        nodes = self._parse_nodefile(hostfile)
+        smt   = rm_info.threads_per_core
+        nodes = self._parse_nodefile(hostfile, smt=smt)
 
         # LSF adds login and batch nodes to the hostfile (with 1 core) which
         # needs filtering out.
@@ -75,7 +76,6 @@ class LSF(ResourceManager):
         if rm_info.cores_per_node > 40 and \
            'JSRUN' in self._cfg['resource_cfg']['launch_methods']:
 
-            smt = rm_info.get('threads_per_core', 1)
             for node in rm_info.node_list:
                 for i in range(smt):
                     node['cores'][21 * smt + i] = DOWN

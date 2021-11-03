@@ -228,6 +228,13 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    def get_partitions(self):
+
+        return None
+
+
+    # --------------------------------------------------------------------------
+    #
     def _create_arg_string(self, args):
 
         if args:

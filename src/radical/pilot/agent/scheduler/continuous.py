@@ -326,14 +326,14 @@ class Continuous(AgentSchedulingComponent):
         # in case of PRTE LM: key `partition` from task description attribute
         #                     `tags` represents a DVM ID
         partition = td.get('tags', {}).get('partition')
-        if self._rm.info.partitions and partition is not None:
+        if self._partitions and partition is not None:
             partition = str(partition)
-            if partition not in self._rm.info.partitions:
+            if partition not in self._partitions:
                 raise ValueError('partition id (%s) out of range' % partition)
             # partition id becomes a part of a co-locate tag
             colo_tag = partition + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
-                self._colo_history[colo_tag] = self._rm.info.partitions[partition]
+                self._colo_history[colo_tag] = self._partitions[partition]
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
@@ -371,15 +371,15 @@ class Continuous(AgentSchedulingComponent):
                                        'switched "exclusive" flag to "False"')
 
             node_partition_id = None
-            if self._rm.info.partitions:
+            if self._partitions:
                 # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
                 _skip_node = True
-                for p_id, p_node_ids in self._rm.info.partitions.items():
+                for plabel, p_node_ids in self._partitions.items():
                     if node_id in p_node_ids:
-                        if task_partition_id in [None, p_id]:
-                            node_partition_id = p_id
+                        if task_partition_id in [None, plabel]:
+                            node_partition_id = plabel
                             _skip_node = False
                         break
                 if _skip_node:

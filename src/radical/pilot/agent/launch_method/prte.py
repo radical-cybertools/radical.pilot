@@ -257,6 +257,19 @@ class PRTE(LaunchMethod):
 
         return lm_details
 
+
+    # --------------------------------------------------------------------------
+    #
+    def get_partitions(self):
+
+        partitions = dict()
+
+        for k, v in self._details['dvm_list'].items():
+            partitions[str(k)] = v['nodes']
+
+        return partitions
+
+
     # --------------------------------------------------------------------------
     #
     def _terminate(self):

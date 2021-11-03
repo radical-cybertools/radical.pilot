@@ -225,9 +225,13 @@ class ResourceManager(object):
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
 
-        # give the RM implementation a chance to correct or complete node
-        # information (cores_per_node, gpus_per_node, etc)
+        # let the specific RM instance fill out the RMInfo attributes
+        rm_info = self._init_from_scratch(rm_info)
 
+        # we expect to have a valid node list now
+        self._log.info('node list: %s', rm_info.node_list)
+
+        # complete node information (cores_per_node, gpus_per_node, etc)
         n_nodes = rm_info.requested_cores / rm_info.cores_per_node
         if rm_info.gpus_per_node:
             gpu_nodes = rm_info.requested_gpus / rm_info.gpus_per_node
@@ -249,12 +253,6 @@ class ResourceManager(object):
             if rm_info.requested_nodes and rm_info.gpus_per_node:
                 rm_info.requested_gpus = rm_info.requested_nodes \
                                        * rm_info.gpus_per_node
-
-        # let the specific RM instance fill out the RMInfo attributes
-        rm_info = self._init_from_scratch(rm_info)
-
-        # we expect to have a valid node list now
-        self._log.info('node list: %s', rm_info.node_list)
 
         # however, the config can override core and gpu detection,
         # and decide to block some resources
@@ -336,7 +334,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_launch_methods(self, info):
+    def _prepare_launch_methods(self, rm_info):
 
         launch_methods  = self._cfg.resource_cfg.launch_methods
         self._launchers = dict()
@@ -352,7 +350,7 @@ class ResourceManager(object):
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
                 self._launchers[name] = rpa.LaunchMethod.create(
-                    name, lm_cfg, info, self._log, self._prof)
+                    name, lm_cfg, rm_info, self._log, self._prof)
 
             except:
                 self._log.exception('skip LM %s' % name)
@@ -360,6 +358,22 @@ class ResourceManager(object):
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_partitions(self):
+
+        # TODO: this makes it impossible to have mutiple launchers with a notion
+        #       of partitions
+
+        for lname in self._launchers:
+
+            launcher   = self._launchers[lname]
+            partitions = launcher.get_partitions()
+
+            if partitions:
+                return partitions
 
 
     # --------------------------------------------------------------------------
@@ -439,12 +453,13 @@ class ResourceManager(object):
     # --------------------------------------------------------------------------
     #
     def _parse_nodefile(self, fname: str,
-                              cpn  : Optional[int] = 0) -> T_NODES:
+                              cpn  : Optional[int] = 0,
+                              smt  : Optional[int] = 1) -> T_NODES:
         '''
         parse the given nodefile and return a list of tuples of the form
 
-            [['node_1', 8],
-             ['node_2', 8],
+            [['node_1', 42 * 4],
+             ['node_2', 42 * 4],
              ...
             ]
 
@@ -462,6 +477,9 @@ class ResourceManager(object):
         returned.
         '''
 
+        if not smt:
+            smt = 1
+
         self._log.info('using nodefile: %s', fname)
         try:
             nodes = dict()
@@ -477,7 +495,7 @@ class ResourceManager(object):
                     nodes[node] = cpn
 
             # convert node dict into tuple list
-            return [(node, cpn) for node, cpn in nodes.items()]
+            return [(node, cpn * smt) for node, cpn in nodes.items()]
 
         except Exception:
             return []

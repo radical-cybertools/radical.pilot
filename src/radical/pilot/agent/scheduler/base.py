@@ -220,6 +220,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._rm = ResourceManager.create(self._cfg.resource_manager,
                                           self._cfg, self._log, self._prof)
 
+        self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
+
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement tasks.  And outdated binlist is mostly
