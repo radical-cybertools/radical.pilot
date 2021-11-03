@@ -9,12 +9,12 @@ import math
 import time
 import copy
 import queue
+import signal
 import atexit
 import threading as mt
 import subprocess
 
 import radical.utils as ru
-import radical.pilot as rp
 
 from ...  import utils     as rpu
 from ...  import states    as rps
@@ -101,7 +101,6 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         # now schedule the executors and start
         self._schedule_and_start_mpi_executor()
-        
         # Since we know that every task is a multinode, we take half of the nodes and
         # spawn executros on them, then the rest of the nodes (the other half) 
         # will be utilized by the mpi_workers inside every executor.
@@ -164,7 +163,6 @@ class MPIFUNCS(AgentExecutingComponent) :
                 fout.write('export PILOT_SCHEMA="%s"\n'     % 'REMOTE')
                 fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
                 fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
-            
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):
@@ -199,7 +197,7 @@ class MPIFUNCS(AgentExecutingComponent) :
         _pids.append(funcs['proc'].pid)
 
 
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     #
     def _schedule_and_start_mpi_executor(self):
 
@@ -279,10 +277,10 @@ class MPIFUNCS(AgentExecutingComponent) :
             slots    = {}
             nodes    = []
             core_map = _get_node_maps(cores_per_executor, 1)
-            
+
             # 1 slot (slot = node) per executor
             if cores_per_executor == cores_per_node:
-                
+
                 slot = {'name'     : node_list[0][0],
                         'uid'      : node_list[0][1],
                         'core_map' : core_map,
@@ -302,19 +300,18 @@ class MPIFUNCS(AgentExecutingComponent) :
                     executors_per_node = 2
                 else:
                     pass
-            
+
                 for executor in range(executors_per_node):
 
                     slots = {'nodes':[{'name'     : node_list[0][0],
                                        'uid'      : node_list[0][1],
-                                       'core_map' : core_map[:len(core_map)//executors_per_node],
+                                       'core_map' : core_map[:len(core_map) // executors_per_node],
                                        'gpus'     : []
                                        }]}
                 self._log.debug(node_list)
                 node_list.pop(0)
                 self._log.debug(node_list)
 
-            
             # more than 1 slot (node) per executor
             if cores_per_executor > cores_per_node:
 
@@ -322,14 +319,12 @@ class MPIFUNCS(AgentExecutingComponent) :
                 if nodes_per_executor % len(node_list) == 0:
 
                     for i in range(nodes_per_executor):
-                        
                         slot = {'name' : node_list[i][0],
                                 'uid'  : node_list[i][1],
                                 'core_map' : core_map,
                                 'gpus'     : []}
                         nodes.append(slot)
                         node_list.pop(0)
-                    
                     slots['nodes'] = nodes
                 else:
                     for i in range(math.floor(len(node_list) / nodes_per_executor)):
@@ -340,9 +335,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                 'gpus'     : []}
                         nodes.append(slot)
                         node_list.pop(0)
-                    
                     slots['nodes'] = nodes
-
             self._log.debug(slots)
             return slots
 
@@ -350,22 +343,22 @@ class MPIFUNCS(AgentExecutingComponent) :
         # then simply it does not make sense to use MPI acort!)
         if cores_per_executor <= 1:
             raise ValueError('can not start mpi executor with size %d cores' % (cores_per_executor))
-        
+
         # Case 2 (if the pilot cores are less than the required by the executor (core_per_executor))
         if cores_per_executor > cores_per_pilot:
             raise ValueError('mpi executor of size %d cores can not'
                              'fit in %d avilable cores' % (cores_per_executor, cores_per_pilot))
-        
+
         # Case 3 (if pilot cores are exactly enough for the executor,
         # then start only one executor for the entire pilot)
         if cores_per_executor == cores_per_pilot:
-                slots = _find_slots(cores_per_node = cores_per_pilot,
-                                    cores_per_executor = cores_per_executor)
-                _start_mpi_executor(cores_per_executor, slots, executors_to_start_id = 0)
-        
+            slots = _find_slots(cores_per_node = cores_per_pilot,
+                         cores_per_executor = cores_per_executor)
+            _start_mpi_executor(cores_per_executor, slots, executors_to_start_id = 0)
+
         # Case 4 (The entire pilot cores are enough to start more than one executor)
         if cores_per_executor < cores_per_pilot:
-            
+
             # Case 4.1 (If we can fit a single executor per node, then do it for every node!)
             if cores_per_executor == cores_per_node:
                 for executors_to_start_id in range(len(node_list)):
@@ -386,7 +379,6 @@ class MPIFUNCS(AgentExecutingComponent) :
                     for executors_to_start_id in range(executors_per_node):
                         _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
 
-            
             # Case 4.3 (If we can not fit one executor per node, 
             # then we need more than one node per executor)
             if cores_per_executor > cores_per_node:

@@ -2,7 +2,6 @@
 
 import os
 import dill
-import time
 import codecs
 import pickle
 import msgpack
@@ -195,14 +194,13 @@ class MPIExecutor(object):
                         self._log.debug('send task %s  to  %s' % (task['uid'], workers))
                         for worker in workers:
                             self._world.send(msgpack.packb(task), dest=worker, tag=0)
-                        
+
                         # FIXME: Now release the BUSY workers and mark them as IDLE to be 
                         # resuesd by the next task 
                         for worker in workers:
                             if worker == BUSY:
                                 workers.append(idx + 1)
                                 resources[idx] = IDLE
-                                
                                 self._log.debug('IDLE WOKERS %d' % (worker))
                             else:
                                 self._log.debug('BUSY WOKERS %d' % (worker))
