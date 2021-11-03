@@ -17,7 +17,6 @@
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "lfs_per_node"  : {"path": null, "size": 0},
-                "lm_info"       : {},
                 "ranks"         : []
             }
         }

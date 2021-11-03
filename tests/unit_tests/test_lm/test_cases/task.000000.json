@@ -19,12 +19,6 @@
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "lfs_per_node"  : {"path": null, "size": 0},
-                "lm_info"       : {
-                                   "partitions"     : {
-                                       "0" : {"dvm_uri": "unused_uri"},
-                                       "1" : {"dvm_uri": "dvm_uri"}
-                                   }
-                                  },
                 "partition_id"  : "1",
                 "ranks"         : [{"node"    : "node1",
                                     "node_id" : "node1",
@@ -33,6 +27,8 @@
                                     "lfs"     : {"path": null, "size": 0}
                 }]
             },
+            "dvm_list"          : {"1": {"dvm_uri": "dvm_uri",
+                                         "nodes"  : ["node1"]}},
             "task_sandbox": "./"
         }
     },

@@ -343,6 +343,9 @@ class PRTE(LaunchMethod):
         n_threads = td['cpu_threads']
         n_gpus    = td['gpu_processes']
 
+        if not self._details.get('dvm_list'):
+            raise RuntimeError('details with dvm_list not set (%s)' % self.name)
+
         dvm_list  = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
         dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]

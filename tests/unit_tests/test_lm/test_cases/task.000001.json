@@ -17,8 +17,7 @@
             "slots": {
                 "ranks"         : [],
                 "cores_per_node": 24,
-                "gpus_per_node" : 0,
-                "lm_info"       : {}
+                "gpus_per_node" : 0
             }
         }
     },

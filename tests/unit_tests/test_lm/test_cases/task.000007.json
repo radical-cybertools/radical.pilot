@@ -48,8 +48,7 @@
             "jsrun" : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000007",
                 "rank_exec"  : "/bin/sleep 10"
-            },
-            "prte"  : "RuntimeError"
+            }
         },
         "resource_file": {
             "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node2; cpu: {0,1}}\n"]

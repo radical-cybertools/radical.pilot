@@ -94,9 +94,7 @@ class TestPRTE(TestCase):
         lm_prte = PRTE('', {}, None, None, None)
         lm_prte.name     = 'prte'
         lm_prte._command = 'prun'
-        lm_prte._details = {'dvm_list'    : {'1': {'dvm_uri': 'uri000',
-                                                   'nodes': ['0', '1']}},
-                            'version_info': {'name'   : 'PRTE',
+        lm_prte._details = {'version_info': {'name'   : 'PRTE',
                                              'version': '1.1.1'},
                             'cvd_id_mode' : 'physical'}
         lm_prte._verbose = False
@@ -104,9 +102,11 @@ class TestPRTE(TestCase):
         test_cases = setUp('lm', 'prte')
         for task, result in test_cases:
 
-            dvm_list = task['slots'].get('lm_info', {}).get('partitions')
-            if dvm_list:
-                lm_prte._details['dvm_list'].update(dvm_list)
+            lm_prte._details['dvm_list'] = {}
+
+            # FIXME: add test to check partitions
+            if task.get('dvm_list'):
+                lm_prte._details['dvm_list'].update(task['dvm_list'])
 
             if result == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
