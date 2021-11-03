@@ -160,12 +160,14 @@ class Popen(AgentExecutingComponent):
             task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
             task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % (stdout_file)
         else:
+            task['stdout_file']       = stdout_file
             task['stdout_file_short'] = stdout_file
 
         if stderr_file[0] != '/':
-            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % (stderr_file)
             task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
+            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % (stderr_file)
         else:
+            task['stderr_file']       = stderr_file
             task['stderr_file_short'] = stderr_file
 
         # create two shell scripts: a launcher script (task.launch.sh) which
