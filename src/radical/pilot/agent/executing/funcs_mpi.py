@@ -211,7 +211,7 @@ class MPIFUNCS(AgentExecutingComponent) :
         node_list            = copy.deepcopy(self._cfg['rm_info']['node_list'])
         cores_per_node       = self._cfg['cores_per_node']
         cores_per_pilot      = self._cfg['cores']
-        cores_per_executor   = self._cfg['executor_cores']
+        cores_per_executor   = self._cfg['max_task_cores']
 
         ve  = os.environ.get('VIRTUAL_ENV',  '')
 
