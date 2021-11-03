@@ -83,10 +83,15 @@ class TestSSH(TestCase):
         # (NOTE: full task and rank descriptions are NOT provided)
 
         lm_ssh = SSH('', {}, None, None, None)
-        self.assertTrue(lm_ssh.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}]}}))
-        self.assertFalse(lm_ssh.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}, {'node_id': '00002'}]}}))
+        self.assertFalse(lm_ssh.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'},
+                                      {'node_id': '00002'}]}})[0])
+        self.assertFalse(lm_ssh.can_launch(
+            task={'description': {'executable': None},
+                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+        self.assertTrue(lm_ssh.can_launch(
+            task={'description': {'executable': 'script'},
+                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
 
     # --------------------------------------------------------------------------
     #

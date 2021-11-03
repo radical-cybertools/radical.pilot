@@ -44,7 +44,10 @@ class TestIBRun(TestCase):
     def test_can_launch(self, mocked_init):
 
         lm_ibrun = IBRun('', {}, None, None, None)
-        self.assertTrue(lm_ibrun.can_launch(task=None))
+        self.assertTrue(lm_ibrun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_ibrun.can_launch(
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

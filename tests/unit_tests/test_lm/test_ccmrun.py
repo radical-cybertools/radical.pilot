@@ -45,18 +45,11 @@ class TestCCMRun(TestCase):
     @mock.patch.object(CCMRun, '__init__', return_value=None)
     def test_can_launch(self, mocked_init):
 
-        # ensure single rank
-        # (NOTE: full task and rank descriptions are NOT provided)
-
         lm_ccmrun = CCMRun('', {}, None, None, None)
-        lm_ccmrun.node_name = 'local_machine'
-        self.assertFalse(lm_ccmrun.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}, {'node_id': '00002'}]}}))
-        self.assertFalse(lm_ccmrun.can_launch(task={
-            'slots': {'ranks': [{'node': 'not_localhost_0000'}]}}))
-        # correct for `localhost`
-        self.assertTrue(lm_ccmrun.can_launch(task={
-            'slots': {'ranks': [{'node': 'localhost'}]}}))
+        self.assertTrue(lm_ccmrun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_ccmrun.can_launch(
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

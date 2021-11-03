@@ -49,10 +49,11 @@ class TestRSH(TestCase):
         # (NOTE: full task and rank descriptions are NOT provided)
 
         lm_rsh = RSH('', {}, None, None, None)
-        self.assertTrue(lm_rsh.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}]}}))
-        self.assertFalse(lm_rsh.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}, {'node_id': '00002'}]}}))
+        self.assertTrue(lm_rsh.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+        self.assertFalse(lm_rsh.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'},
+                                      {'node_id': '00002'}]}})[0])
 
     # --------------------------------------------------------------------------
     #

@@ -51,9 +51,9 @@ class TestAPRun(TestCase):
 
         lm_aprun = APRun('', {}, None, None, None)
         self.assertTrue(lm_aprun.can_launch(
-            task={'description': {'executable': 'script'}}))
+            task={'description': {'executable': 'script'}})[0])
         self.assertFalse(lm_aprun.can_launch(
-            task={'description': {'executable': None}}))
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

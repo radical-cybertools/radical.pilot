@@ -106,9 +106,9 @@ class TestMPIExec(TestCase):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
         self.assertTrue(lm_mpiexec.can_launch(
-            task={'description': {'executable': 'script'}}))
+            task={'description': {'executable': 'script'}})[0])
         self.assertFalse(lm_mpiexec.can_launch(
-            task={'description': {'executable': None}}))
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

@@ -62,7 +62,10 @@ class TestJSRun(TestCase):
     def test_can_launch(self, mocked_init):
 
         lm_jsrun = JSRUN('', {}, None, None, None)
-        self.assertTrue(lm_jsrun.can_launch(task=None))
+        self.assertTrue(lm_jsrun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_jsrun.can_launch(
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

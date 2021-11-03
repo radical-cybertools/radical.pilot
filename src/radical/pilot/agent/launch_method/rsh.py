@@ -56,7 +56,7 @@ class RSH(LaunchMethod):
         if len(task['slots']['ranks']) > 1:
             return False, 'more than one rank'
 
-        return True
+        return True, ''
 
 
     # --------------------------------------------------------------------------

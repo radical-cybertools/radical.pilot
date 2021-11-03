@@ -59,11 +59,10 @@ class TestPRTE(TestCase):
     def test_can_launch(self, mocked_term, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
-
         self.assertTrue(lm_prte.can_launch(
-            task={'description': {'executable': 'script'}}))
+            task={'description': {'executable': 'script'}})[0])
         self.assertFalse(lm_prte.can_launch(
-            task={'description': {'executable': None}}))
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

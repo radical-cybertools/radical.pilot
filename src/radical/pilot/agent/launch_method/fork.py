@@ -58,9 +58,9 @@ class Fork(LaunchMethod):
             return False, 'not on localhost'
 
         if not task['description']['executable']:
-            return False, 'task has no executable'
+            return False, 'no executable'
 
-        return True
+        return True, ''
 
 
     # --------------------------------------------------------------------------

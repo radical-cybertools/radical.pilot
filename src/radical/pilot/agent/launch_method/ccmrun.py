@@ -58,8 +58,9 @@ class CCMRun(LaunchMethod):
     def can_launch(self, task):
 
         if not task['description']['executable']:
-            return False, 'task has no executable'
-        return True
+            return False, 'no executable'
+
+        return True, ''
 
 
     # --------------------------------------------------------------------------

@@ -137,13 +137,13 @@ class RMBaseTestCase(TestCase):
         rm._launchers    = {'SRUN': mocked_lm}
 
         def mocked_can_launch(task):
-            return False
+            return False, ''
         mocked_lm.can_launch = mocked_can_launch
 
         self.assertIsNone(rm.find_launcher(task=None))
 
         def mocked_can_launch(task):
-            return True
+            return True, ''
         mocked_lm.can_launch = mocked_can_launch
         self.assertIs(rm.find_launcher(task=None), mocked_lm)
 

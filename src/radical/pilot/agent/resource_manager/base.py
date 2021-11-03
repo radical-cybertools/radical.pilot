@@ -423,11 +423,11 @@ class ResourceManager(object):
         for name in self._launch_order:
 
             launcher = self._launchers[name]
-            ret = launcher.can_launch(task)
-            if ret is True:
+            lm_can_launch, err_message = launcher.can_launch(task)
+            if lm_can_launch:
                 return launcher
             else:
-                errors.append([name, ret[1]])
+                errors.append([name, err_message])
 
         self._log.error('no launch method for task %s:', task['uid'])
         for name, error in errors:

@@ -72,7 +72,10 @@ class TestSrun(TestCase):
     def test_can_launch(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
-        self.assertTrue(lm_srun.can_launch(task=None))
+        self.assertTrue(lm_srun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_srun.can_launch(
+            task={'description': {'executable': None}})[0])
 
     # --------------------------------------------------------------------------
     #

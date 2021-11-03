@@ -122,7 +122,7 @@ class MPIRun(LaunchMethod):
         if not task['description']['executable']:
             return False, 'no executable'
 
-        return True
+        return True, ''
 
 
     # --------------------------------------------------------------------------

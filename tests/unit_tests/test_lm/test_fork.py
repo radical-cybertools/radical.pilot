@@ -47,13 +47,17 @@ class TestFork(TestCase):
 
         lm_fork = Fork('', {}, None, None, None)
         lm_fork.node_name = 'local_machine'
-        self.assertFalse(lm_fork.can_launch(task={
-            'slots': {'ranks': [{'node_id': '00001'}, {'node_id': '00002'}]}}))
-        self.assertFalse(lm_fork.can_launch(task={
-            'slots': {'ranks': [{'node': 'not_localhost_0000'}]}}))
-        # correct for `localhost`
-        self.assertTrue(lm_fork.can_launch(task={
-            'slots': {'ranks': [{'node': 'localhost'}]}}))
+        self.assertFalse(lm_fork.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'},
+                                      {'node_id': '00002'}]}})[0])
+        self.assertFalse(lm_fork.can_launch(
+            task={'slots': {'ranks': [{'node': 'not_localhost_0000'}]}})[0])
+        self.assertFalse(lm_fork.can_launch(
+            task={'description': {'executable': None},
+                  'slots': {'ranks': [{'node': 'localhost'}]}})[0])
+        self.assertTrue(lm_fork.can_launch(
+            task={'description': {'executable': 'script'},
+                  'slots': {'ranks': [{'node': 'localhost'}]}})[0])
 
     # --------------------------------------------------------------------------
     #
