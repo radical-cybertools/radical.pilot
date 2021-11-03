@@ -2,6 +2,7 @@
 
 import os
 import dill
+import time
 import codecs
 import pickle
 import msgpack
@@ -76,8 +77,6 @@ class MPIExecutor(object):
         self._log   = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._prof  = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
 
-        self._log.debug('MPI worker got init')
-
     # --------------------------------------------------------------------------
     #
     @property
@@ -115,7 +114,6 @@ class MPIExecutor(object):
         master (rank == 0) does master stuff
         worker (rank != 0) does worker stuff
         '''
-        self._log.debug('work got called')
 
         if self.master: self.work_master()
         else          : self.work_worker()
@@ -187,7 +185,6 @@ class MPIExecutor(object):
                                     break
 
                         # make sure we did find workers!
-                        self._log.debug('Number of workers ({0}) and ranks ({1})'.format(len(workers),task_ranks))
                         assert(len(workers) == task_ranks)
 
 
@@ -206,11 +203,10 @@ class MPIExecutor(object):
                                 workers.append(idx + 1)
                                 resources[idx] = IDLE
                                 
-                                self._log.debug('IDLE WOKERS {0}'.format(worker))
+                                self._log.debug('IDLE WOKERS %d' % (worker))
                             else:
-                                self._log.debug('BUSY WOKERS {0}'.format(worker))
+                                self._log.debug('BUSY WOKERS %d' % (worker))
                                 pass
-                        self._log.debug(resources)
 
                     # once all tasks are sent out, collect results
                     for task in tasks:
@@ -247,7 +243,7 @@ class MPIExecutor(object):
                 self._log.debug('terminate!')
                 break
 
-            self._log.debug('recv task %s from 0 >>>' % (task['uid']))
+            self._log.debug('recv task %s from Master >>>' % (task['uid']))
             assert(self.rank in task['workers'])
 
             comm  = None
@@ -267,7 +263,7 @@ class MPIExecutor(object):
                 if comm.rank == 0:
                     task['result'] = result
                     task['state']  = "DONE"
-                    self._log.debug('send res  %s  to  0 <<< ' % (task['uid']))
+                    self._log.debug('send res  %s to Master <<< ' % (task['uid']))
                     self._world.send(msgpack.packb(task), dest=0, tag=1)
 
             except Exception as e:
@@ -276,7 +272,7 @@ class MPIExecutor(object):
                     task['state']  = "FAILED"
                     task['result'] = None
 
-                self._log.error('recv err  %s  to  0' % (task['uid']))
+                self._log.error('recv err %s to Master' % (task['uid']))
                 self._log.error(str(e))
                 self._world.send(msgpack.packb(task), dest=0, tag=1)
                 raise

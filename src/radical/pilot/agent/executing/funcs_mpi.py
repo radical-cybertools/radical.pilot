@@ -5,10 +5,11 @@ __license__   = "MIT"
 
 import os
 import stat
-import time
 import math
+import time
 import copy
 import queue
+import atexit
 import threading as mt
 import subprocess
 
@@ -22,6 +23,21 @@ from ...  import constants as rpc
 from ..   import LaunchMethod
 
 from .base           import AgentExecutingComponent
+
+
+# ------------------------------------------------------------------------------
+# ensure tasks are killed on termination
+_pids = list()
+
+
+def _kill():
+    for pid in _pids:
+        try   : os.killpg(pid, signal.SIGTERM)
+        except: pass
+
+
+atexit.register(_kill)
+# ------------------------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------------
@@ -85,7 +101,6 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         # now schedule the executors and start
         self._schedule_and_start_mpi_executor()
-        time.sleep(1)
         
         # Since we know that every task is a multinode, we take half of the nodes and
         # spawn executros on them, then the rest of the nodes (the other half) 
@@ -181,6 +196,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                          cwd        = sandbox)
 
         self._prof.prof('exec_ok', uid=funcs['uid'])
+        _pids.append(funcs['proc'].pid)
 
 
     #---------------------------------------------------------------------------
@@ -197,13 +213,7 @@ class MPIFUNCS(AgentExecutingComponent) :
         node_list            = copy.deepcopy(self._cfg['rm_info']['node_list'])
         cores_per_node       = self._cfg['cores_per_node']
         cores_per_pilot      = self._cfg['cores']
-        cores_per_executor   = list()
-
-        # We check for +1 core (rank) since our executor requires 1 rank to spawn
-        # the master process
-        self._log.debug(self._cfg)
-        for core in range(self._cfg['executor_cores']+1):
-            cores_per_executor.append(core)
+        cores_per_executor   = self._cfg['executor_cores']
 
         ve  = os.environ.get('VIRTUAL_ENV',  '')
 
@@ -216,12 +226,12 @@ class MPIFUNCS(AgentExecutingComponent) :
             process. 
 
             example:
-                cores : [1, 2, 3, 4, 5, 6, 7, 8]
+                cores : 8 and we convert it to ==> [1, 2, 3, 4, 5, 6, 7, 8]
                 tpp   : 4
                 result: [[1, 2, 3, 4], [5, 6, 7, 8]]]
             For more details, see top level comment of `agent/scheduler/base.py`.
             '''
-
+            cores    = list(range(cores))
             core_map = list()
 
             # make sure the core sets can host the requested number of threads
@@ -271,7 +281,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             core_map = _get_node_maps(cores_per_executor, 1)
             
             # 1 slot (slot = node) per executor
-            if len(cores_per_executor) == cores_per_node:
+            if cores_per_executor == cores_per_node:
                 
                 slot = {'name'     : node_list[0][0],
                         'uid'      : node_list[0][1],
@@ -282,11 +292,11 @@ class MPIFUNCS(AgentExecutingComponent) :
                 node_list.pop(0)
 
             # If this is true then we can fit more than one executor per node
-            if len(cores_per_executor) < cores_per_node:
+            if cores_per_executor < cores_per_node:
 
                 # Calculate how many executors to fit in a single node and limit it to 2 per node
                 # 
-                executors_per_node = math.floor(cores_per_node / len(cores_per_executor))
+                executors_per_node = math.floor(cores_per_node / cores_per_executor)
 
                 if executors_per_node > 2:
                     executors_per_node = 2
@@ -306,9 +316,9 @@ class MPIFUNCS(AgentExecutingComponent) :
 
             
             # more than 1 slot (node) per executor
-            if len(cores_per_executor) > cores_per_node:
-                
-                nodes_per_executor = math.ceil(len(cores_per_executor) / cores_per_node)
+            if cores_per_executor > cores_per_node:
+
+                nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
                 if nodes_per_executor % len(node_list) == 0:
 
                     for i in range(nodes_per_executor):
@@ -336,34 +346,35 @@ class MPIFUNCS(AgentExecutingComponent) :
             self._log.debug(slots)
             return slots
 
-        
         # Case 1 (if the mpi executor requires only 1 core, 
         # then simply it does not make sense to use MPI acort!)
-        if len(cores_per_executor) <= 1:
-            raise ValueError('can not start mpi executor with size {0} cores'.format(len(cores_per_executor)))
+        if cores_per_executor <= 1:
+            raise ValueError('can not start mpi executor with size %d cores' % (cores_per_executor))
         
         # Case 2 (if the pilot cores are less than the required by the executor (core_per_executor))
-        if len(cores_per_executor) > cores_per_pilot:
-            raise ValueError('mpi executor of size {0} cores can not fit in {1} avilable cores'.format(len(cores_per_executor), cores_per_pilot))
+        if cores_per_executor > cores_per_pilot:
+            raise ValueError('mpi executor of size %d cores can not'
+                             'fit in %d avilable cores' % (cores_per_executor, cores_per_pilot))
         
         # Case 3 (if pilot cores are exactly enough for the executor,
         # then start only one executor for the entire pilot)
-        if len(cores_per_executor) == cores_per_pilot:
-                slots = _find_slots(cores_per_node = cores_per_pilot, cores_per_executor = cores_per_executor)
-                _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+        if cores_per_executor == cores_per_pilot:
+                slots = _find_slots(cores_per_node = cores_per_pilot,
+                                    cores_per_executor = cores_per_executor)
+                _start_mpi_executor(cores_per_executor, slots, executors_to_start_id = 0)
         
         # Case 4 (The entire pilot cores are enough to start more than one executor)
-        if len(cores_per_executor) < cores_per_pilot:
+        if cores_per_executor < cores_per_pilot:
             
             # Case 4.1 (If we can fit a single executor per node, then do it for every node!)
-            if len(cores_per_executor) == cores_per_node:
+            if cores_per_executor == cores_per_node:
                 for executors_to_start_id in range(len(node_list)):
                     slots = _find_slots(cores_per_node, cores_per_executor)
                     _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
 
-            # Case 4.2 fit more than one executor per node!
-            if len(cores_per_executor) < cores_per_node:
-                executors_per_node = math.floor(cores_per_node / len(cores_per_executor))
+            # Case 4.2 fit more than one executor (limit is 2) per node!
+            if cores_per_executor < cores_per_node:
+                executors_per_node = math.floor(cores_per_node / cores_per_executor)
                 if executors_per_node > 2:
                     executors_per_node = 2
                 else:
@@ -378,9 +389,9 @@ class MPIFUNCS(AgentExecutingComponent) :
             
             # Case 4.3 (If we can not fit one executor per node, 
             # then we need more than one node per executor)
-            if len(cores_per_executor) > cores_per_node:
+            if cores_per_executor > cores_per_node:
                 # Case 4.3.1 Let's find out how many nodes our executor requires
-                nodes_per_executor = math.ceil(len(cores_per_executor) / cores_per_node)
+                nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
                 if nodes_per_executor % len(node_list) == 0:
                     executors_to_start = len(node_list) // nodes_per_executor
                     for executors_to_start_id in range(executors_to_start):
