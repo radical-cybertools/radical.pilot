@@ -668,11 +668,6 @@ class Popen(AgentExecutingComponent):
         else:
             ret += 'unset  RP_PROF_TGT'
 
-      # self._log.debug('task env: %s', self._cfg.task_environment)
-        if self._cfg.task_environment:
-            for k, v in self._cfg.task_environment.items():
-                ret += 'export %s="%s"\n' % (k, v)
-
         return ret
 
 
