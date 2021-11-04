@@ -26,7 +26,7 @@ class RMBaseTestCase(TestCase):
     def test_init_from_registry(self, mocked_prof, mocked_log, mocked_lm):
 
         # check initialization from registry data only,
-        # initialization from scratch will be tested by each method separately
+        # initialization from scratch will be tested separately
 
         reg = ru.zmq.Registry()
         reg.start()
@@ -52,6 +52,51 @@ class RMBaseTestCase(TestCase):
 
         reg.stop()
         reg.wait()
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_init_from_scratch(self, mocked_init):
+
+        os.environ['LOCAL'] = '/tmp/local_folder/'
+
+        cfg = ru.Munch({'cores': 16,
+                        'gpus': 2,
+                        'resource_cfg': {'cores_per_node': 16,
+                                         'gpus_per_node': 2,
+                                         'lfs_path_per_node': '${LOCAL}',
+                                         'lfs_size_per_node': 100}})
+
+        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm._cfg  = cfg
+        rm._log  = mock.Mock()
+        rm._prof = mock.Mock()
+
+        def _init_from_scratch(rm_info):
+            rm_info.node_list = rm._get_node_list([('node00', 16)], rm_info)
+            return rm_info
+
+        # RM specific method (to update node_list and cores_per_node if needed)
+        rm._init_from_scratch = _init_from_scratch
+
+        rm_info_output = rm.init_from_scratch()
+
+        self.assertIsInstance(rm_info_output, RMInfo)
+        # check some attributes
+        self.assertEqual(rm_info_output.requested_cores, cfg.cores)
+        self.assertEqual(rm_info_output.requested_gpus,  cfg.gpus)
+        self.assertEqual(rm_info_output.cores_per_node,
+                         cfg.resource_cfg.cores_per_node)
+        self.assertEqual(rm_info_output.gpus_per_node,
+                         cfg.resource_cfg.gpus_per_node)
+        # lfs size and lfs path
+        self.assertEqual(rm_info_output.lfs_per_node, 100)
+        self.assertEqual(rm_info_output.lfs_path, '/tmp/local_folder/')
+
+        rm._cfg.update({'agents': {'agent.0000': {'target': 'node'}}})
+        with self.assertRaises(RuntimeError):
+            # `node_list` became empty b/c of `agent_node_list`
+            rm.init_from_scratch()
 
     # --------------------------------------------------------------------------
     #
@@ -82,36 +127,6 @@ class RMBaseTestCase(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
-    def test_prepare_info(self, mocked_init):
-
-        os.environ['LOCAL'] = '/tmp/local_folder/'
-
-        cfg = ru.Munch({'cores': 16,
-                        'gpus' : 2,
-                        'resource_cfg': {'cores_per_node'   : 16,
-                                         'gpus_per_node'    : 2,
-                                         'lfs_path_per_node': '${LOCAL}',
-                                         'lfs_size_per_node': 100}})
-
-        rm = ResourceManager(cfg=None, log=None, prof=None)
-        rm._cfg = cfg
-        rm_info = rm._prepare_info()
-
-        self.assertIsInstance(rm_info, RMInfo)
-        # check some attributes
-        self.assertEqual(rm_info.requested_cores, cfg.cores)
-        self.assertEqual(rm_info.requested_gpus,  cfg.gpus)
-        self.assertEqual(rm_info.cores_per_node,
-                         cfg.resource_cfg.cores_per_node)
-        self.assertEqual(rm_info.gpus_per_node,
-                         cfg.resource_cfg.gpus_per_node)
-        # lfs size and lfs path
-        self.assertEqual(rm_info.lfs_per_node, 100)
-        self.assertEqual(rm_info.lfs_path,     '/tmp/local_folder/')
-
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(ResourceManager, '__init__', return_value=None)
     @mock.patch('radical.pilot.agent.launch_method.base.LaunchMethod')
     def test_find_launcher(self, mocked_lm, mocked_init):
 
@@ -130,40 +145,23 @@ class RMBaseTestCase(TestCase):
                     'SRUN' : {}
                 }}})
 
-        rm = ResourceManager.create('FORK', cfg=cfg, log=mock.Mock(),
-                                    prof=mock.Mock())
+        rm = ResourceManager.create('FORK', cfg, None, None)
 
         rm._launch_order = ['SRUN']
         rm._launchers    = {'SRUN': mocked_lm}
+        rm._log          = mock.Mock()
+        rm._prof         = mock.Mock()
 
         def mocked_can_launch(task):
-            return False, ''
+            return False, 'error'
         mocked_lm.can_launch = mocked_can_launch
 
-        self.assertIsNone(rm.find_launcher(task=None))
+        self.assertIsNone(rm.find_launcher(task={'uid': 'task0000'}))
 
         def mocked_can_launch(task):
             return True, ''
         mocked_lm.can_launch = mocked_can_launch
-        self.assertIs(rm.find_launcher(task=None), mocked_lm)
-
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(ResourceManager, '__init__', return_value=None)
-    def test_init_from_scratch(self, mocked_init):
-
-        rm = ResourceManager(cfg=None, log=None, prof=None)
-        rm._log = mock.Mock()
-        rm._cfg = ru.Munch({'agents': {'agent.0000': {'target': 'node'}}})
-
-        with self.assertRaises(RuntimeError):
-            # `node_list` became empty b/c of `agent_node_list`
-            rm._init_from_scratch(RMInfo({'node_list': [['node00', '1']]}))
-
-        with self.assertRaises(AssertionError):
-            # `node_list` should not be empty or not being set
-            # this attribute is set by an overwritten method `_update_info`
-            rm._init_from_scratch(RMInfo({'node_list': []}))
+        self.assertIs(rm.find_launcher(task={'uid': 'task0000'}), mocked_lm)
 
     # --------------------------------------------------------------------------
     #
@@ -194,10 +192,9 @@ if __name__ == '__main__':
 
     tc = RMBaseTestCase()
     tc.test_init_from_registry()
-    tc.test_set_info()
-    tc.test_prepare_info()
-    tc.test_find_launcher()
     tc.test_init_from_scratch()
+    tc.test_set_info()
+    tc.test_find_launcher()
     tc.test_prepare_launch_methods()
 
 
