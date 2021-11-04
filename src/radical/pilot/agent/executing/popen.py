@@ -779,7 +779,8 @@ class Popen(AgentExecutingComponent):
 
         # FIXME: need to distinguish between logical and physical IDs
         if gmap:
-            gpus = ','.join([str(gpu) for gpu in gmap[0]])
+            # equivalent to the 'physical' value for original `cvd_id_mode`
+            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
             ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
 
         cmap = rank['core_map'][0]
