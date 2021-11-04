@@ -156,13 +156,21 @@ class MPIFUNCS(AgentExecutingComponent) :
             fout.write('export RP_FUNCS_ID="%s"\n'        % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'            % self.gtod)
             fout.write('export RP_TMP="%s"\n'             % self._task_tmp)
+            fout.write('export RP_PILOT_SANDBOX="%s"\n'   % self._pwd)
+            fout.write('export RP_PILOT_STAGING="%s"\n'   % self._pwd
 
             if self._cfg['resource'].startswith('local'):
-                fout.write('export PILOT_SCHEMA="%s"\n'     % 'LOCAL')
+                fout.write('export PILOT_SCHEMA="%s"\n'       % 'LOCAL')
             else:
-                fout.write('export PILOT_SCHEMA="%s"\n'     % 'REMOTE')
+                fout.write('export PILOT_SCHEMA="%s"\n'       % 'REMOTE')
                 fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
                 fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
+            
+            if self._prof.enabled:
+                fout.write('export RP_PROF="%s/%s.prof"\n' % (sandbox, funcs['uid']))
+
+            else:
+                fout.write('unset  RP_PROF\n')
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):
@@ -263,7 +271,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                             'cpu_processes': cores_per_executor,
                                             'environment'  : [],
                                             },
-                            'task_sandbox_path': "./",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+                            'task_sandbox_path'            : pwd,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
                             'slots'      : slots,
                             'cfg'        : {'req_get'      : self.req_cfg['get'],
                                             'res_put'      : self.res_cfg['put'],
