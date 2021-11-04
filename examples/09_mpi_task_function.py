@@ -32,13 +32,6 @@ def mpi_func(x):
     sys.stdout.flush()
 
     return ec
-
-@mpitask.mpirun
-def mpi_func2(x):
-    import time
-    #time.sleep(1)
-    print(time.time())
-    
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -74,15 +67,15 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         
-        pd_init = {'resource'       : resource,
-                   'runtime'        : 60,  # pilot runtime (min)
-                   'exit_on_error'  : True,
-                   'executor_cores' : 14,
-                   'project'        : config[resource].get('project', None),
-                   'queue'          : config[resource].get('queue',   None),
-                   'access_schema'  : config[resource].get('schema',  None),
-                   'cores'          : 16,#config[resource].get('cores', 1),
-                   'gpus'           : config[resource].get('gpus', 0),}
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 60,   # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'max_task_cores': 2048, # task NO * cores_per_task
+                   'project'       : config[resource].get('project', None),
+                   'queue'         : config[resource].get('queue',   None),
+                   'access_schema' : config[resource].get('schema',  None),
+                   'cores'         : config[resource].get('cores', 1),
+                   'gpus'          : config[resource].get('gpus', 0),}
 
         pdesc = rp.PilotDescription(pd_init)
 
@@ -98,21 +91,20 @@ if __name__ == '__main__':
         # Create a workload of Tasks.
         # Each task runs '/bin/date'.
 
-        n = 2
+        n = 1024
         report.progress_tgt(n, label='create')
 
         tds = list()
-        jobs = [47,18,99,10,72,25,7,29,74,2,81,96,26,67,15,17,51,64,38,29,48]
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.pre_exec         = []
-            td.executable       = mpi_func2(1)
+            td.executable       = mpi_func(i)
             td.arguments        = []
             td.gpu_processes    = 0
-            td.cpu_processes    = 2
+            td.cpu_processes    = 2 # task ranks
             td.cpu_threads      = 1
             td.cpu_process_type = rp.MPI_FUNC
             tds.append(td)
