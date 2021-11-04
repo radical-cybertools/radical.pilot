@@ -266,6 +266,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._header
             tmp += self._separator
             tmp += self._get_rp_env(task)
+            tmp += self._separator
             tmp += self._get_prof('launch_start', tid)
 
             tmp += self._separator
@@ -311,15 +312,15 @@ class Popen(AgentExecutingComponent):
             tmp  = ''
             tmp += self._header
             tmp += self._separator
-            tmp += self._get_prof('exec_start', tid)
-
-            tmp += self._separator
             tmp += '# rank ID\n'
             tmp += self._get_rank_ids(n_ranks, launcher)
 
             tmp += self._separator
-            tmp += '# task environment\n'
             tmp += self._get_rp_env(task)
+            tmp += self._separator
+            tmp += self._get_prof('exec_start', tid)
+
+            tmp += '# task environment\n'
             tmp += self._get_task_env(task, launcher)
 
             tmp += self._separator
@@ -620,9 +621,9 @@ class Popen(AgentExecutingComponent):
         for cmd in cmds:
             ret += '  %s \\\n' % cmd
 
-        ret += ') 1> %s\n  2>%s %s' % (task['stdout_file_short'],
-                                       task['stderr_file_short'],
-                                       self._get_check('launch'))
+        ret += ') 1> %s\n  2> %s %s' % (task['stdout_file_short'],
+                                        task['stderr_file_short'],
+                                        self._get_check('launch'))
         return ret
 
 

@@ -2,13 +2,13 @@
 # test the correct startup of mixed OpenMP / MPI / CPU / GPU tasks
 
 prof(){
-    if test -z "$RP_PROF"
+    if test -z "$RP_PROF_TGT"
     then
         return
     fi
     event=$1
     now=$($RP_GTOD)
-    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
+    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF_TGT
 }
 
 prof "app_start"
