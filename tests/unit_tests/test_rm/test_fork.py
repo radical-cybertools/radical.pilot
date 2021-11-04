@@ -22,28 +22,28 @@ class ForkTestCase(TestCase):
     @mock.patch.object(Fork, '__init__', return_value=None)
     @mock.patch('multiprocessing.cpu_count', return_value=24)
     @mock.patch('radical.utils.Logger')
-    def test_update_info(self, mocked_logger, mocked_mp_cpu_count, mocked_init):
+    def test_init_from_scratch(self, mocked_logger, mocked_mp_cpu_count,
+                               mocked_init):
 
-        cfg     = ru.Munch({'resource_cfg': {'fake_resources': False}})
         rm_info = RMInfo({'requested_nodes': 1,
                           'requested_cores': 16,
                           'cores_per_node' : 16})
 
         rm_fork = Fork(cfg=None, log=None, prof=None)
-        rm_fork._cfg = cfg
+        rm_fork._cfg = ru.Munch({'resource_cfg': {'fake_resources': False}})
         rm_fork._log = mocked_logger
 
-        rm_info = rm_fork._update_info(rm_info)
+        rm_info = rm_fork._init_from_scratch(rm_info)
         self.assertEqual(len(rm_info.node_list), 1)
 
         # not fake resource, but request more cores than available
         rm_info.requested_cores = 36
         with self.assertRaises(RuntimeError):
-            rm_fork._update_info(rm_info)
+            rm_fork._init_from_scratch(rm_info)
 
         # fake resource, request more cores than available
-        cfg.resource_cfg.fake_resources = True
-        rm_info = rm_fork._update_info(rm_info)
+        rm_fork._cfg.resource_cfg.fake_resources = True
+        rm_info = rm_fork._init_from_scratch(rm_info)
         self.assertGreater(rm_info.requested_cores, mocked_mp_cpu_count())
 
 # ------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ class ForkTestCase(TestCase):
 if __name__ == '__main__':
 
     tc = ForkTestCase()
-    tc.test_update_info()
+    tc.test_init_from_scratch()
 
 
 # ------------------------------------------------------------------------------

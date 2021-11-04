@@ -24,30 +24,28 @@ class TorqueTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
 
-        os.environ['PBS_NODEFILE']  = '%s/test_cases/nodelist.torque' % base
-        os.environ['PBS_NCPUS']     = '2'
-        os.environ['PBS_NUM_PPN']   = '4'
-        os.environ['PBS_NUM_NODES'] = '2'
+        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.torque' % base
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_update_info(self, mocked_logger, mocked_init):
+    def test_init_from_scratch(self, mocked_logger, mocked_init):
 
         rm_torque = Torque(cfg=None, log=None, prof=None)
         rm_torque._log = mocked_logger
 
-        rm_info = rm_torque._update_info(RMInfo())
+        rm_info = rm_torque._init_from_scratch(RMInfo({'cores_per_node': None}))
 
-        self.assertEqual(rm_info.node_list, [['nodes1', '1']])
-        self.assertEqual(rm_info.cores_per_node, 4)
+        node_names = sorted([n['node_name'] for n in rm_info.node_list])
+        self.assertEqual(node_names, ['nodes1'])
+        self.assertEqual(rm_info.cores_per_node, 2)
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Torque, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_update_info_error(self, mocked_logger, mocked_init):
+    def test_init_from_scratch_error(self, mocked_logger, mocked_init):
 
         if 'PBS_NODEFILE' in os.environ:
             del os.environ['PBS_NODEFILE']
@@ -56,7 +54,7 @@ class TorqueTestCase(TestCase):
         rm_torque._log = mocked_logger
 
         with self.assertRaises(RuntimeError):
-            rm_torque._update_info(None)
+            rm_torque._init_from_scratch(RMInfo())
 
 # ------------------------------------------------------------------------------
 
@@ -64,8 +62,8 @@ class TorqueTestCase(TestCase):
 if __name__ == '__main__':
 
     tc = TorqueTestCase()
-    tc.test_update_info()
-    tc.test_update_info_error()
+    tc.test_init_from_scratch()
+    tc.test_init_from_scratch_error()
 
 
 # ------------------------------------------------------------------------------
