@@ -217,7 +217,9 @@ class MPIFUNCS(AgentExecutingComponent) :
         '''
 
         node_list            = copy.deepcopy(self._cfg['rm_info']['node_list'])
-        cores_per_node       = self._cfg['cores_per_node']
+        slurm_cpn            = int(os.environ['SLURM_CPUS_ON_NODE'])
+        rp_cfg_cpn           = self._cfg['cores_per_node']
+        cores_per_node       = slurm_cpn if rp_cfg_cpn == 0 else rp_cfg_cpn
         cores_per_pilot      = self._cfg['cores']
         cores_per_executor   = self._cfg['max_task_cores']
 
@@ -284,7 +286,7 @@ class MPIFUNCS(AgentExecutingComponent) :
 
             slots    = {}
             nodes    = []
-            core_map = _get_node_maps(cores_per_executor, 1)
+            core_map = _get_node_maps(cores_per_node, 1)
 
             # 1 slot (slot = node) per executor
             if cores_per_executor == cores_per_node:
@@ -332,7 +334,6 @@ class MPIFUNCS(AgentExecutingComponent) :
                                 'core_map' : core_map,
                                 'gpus'     : []}
                         nodes.append(slot)
-                        node_list.pop(0)
                     slots['nodes'] = nodes
                 else:
                     for i in range(math.floor(len(node_list) / nodes_per_executor)):
@@ -357,51 +358,41 @@ class MPIFUNCS(AgentExecutingComponent) :
             raise ValueError('mpi executor of size %d cores can not'
                              'fit in %d avilable cores' % (cores_per_executor, cores_per_pilot))
 
-        # Case 3 (if pilot cores are exactly enough for the executor,
-        # then start only one executor for the entire pilot)
-        if cores_per_executor == cores_per_pilot:
-            slots = _find_slots(cores_per_node = cores_per_pilot,
-                         cores_per_executor = cores_per_executor)
-            _start_mpi_executor(cores_per_executor, slots, executors_to_start_id = 0)
+        # Case 3 (If we can fit a single executor per node, then do it for every node!)
+        if cores_per_executor == cores_per_node:
+            for executors_to_start_id in range(len(node_list)):
+                slots = _find_slots(cores_per_node, cores_per_executor)
+                _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
 
-        # Case 4 (The entire pilot cores are enough to start more than one executor)
-        if cores_per_executor < cores_per_pilot:
+        # Case 4 fit more than one executor (limit is 2) per node!
+        if cores_per_executor < cores_per_node:
+            executors_per_node = math.floor(cores_per_node / cores_per_executor)
+            if executors_per_node > 2:
+                executors_per_node = 2
+            else:
+                pass
 
-            # Case 4.1 (If we can fit a single executor per node, then do it for every node!)
-            if cores_per_executor == cores_per_node:
-                for executors_to_start_id in range(len(node_list)):
-                    slots = _find_slots(cores_per_node, cores_per_executor)
+            for node in range(len(node_list)):
+                slots = _find_slots(cores_per_node, cores_per_executor)
+                # We limit the number of executors per node to 2
+                for executors_to_start_id in range(executors_per_node):
                     _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
 
-            # Case 4.2 fit more than one executor (limit is 2) per node!
-            if cores_per_executor < cores_per_node:
-                executors_per_node = math.floor(cores_per_node / cores_per_executor)
-                if executors_per_node > 2:
-                    executors_per_node = 2
-                else:
-                    pass
-
-                for node in range(len(node_list)):
+        # Case 5 (If we can not fit one executor per node, 
+        # then we need more than one node per executor)
+        if cores_per_executor > cores_per_node:
+            # Case 5.1 Let's find out how many nodes our executor requires
+            nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
+            if nodes_per_executor % len(node_list) == 0:
+                executors_to_start = len(node_list) // nodes_per_executor
+                for executors_to_start_id in range(executors_to_start):
                     slots = _find_slots(cores_per_node, cores_per_executor)
-                    # We limit the number of executors per node to 2
-                    for executors_to_start_id in range(executors_per_node):
-                        _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
-
-            # Case 4.3 (If we can not fit one executor per node, 
-            # then we need more than one node per executor)
-            if cores_per_executor > cores_per_node:
-                # Case 4.3.1 Let's find out how many nodes our executor requires
-                nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
-                if nodes_per_executor % len(node_list) == 0:
-                    executors_to_start = len(node_list) // nodes_per_executor
-                    for executors_to_start_id in range(executors_to_start):
-                        slots = _find_slots(cores_per_node, cores_per_executor)
-                        _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
-                else:
-                    executors_to_start = math.floor(len(node_list) / nodes_per_executor)
-                    for executors_to_start_id in range(executors_to_start):
-                        slots = _find_slots(cores_per_node, cores_per_executor)
-                        _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+                    _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+            else:
+                executors_to_start = math.floor(len(node_list) / nodes_per_executor)
+                for executors_to_start_id in range(executors_to_start):
+                    slots = _find_slots(cores_per_node, cores_per_executor)
+                    _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
 
 
     # --------------------------------------------------------------------------
