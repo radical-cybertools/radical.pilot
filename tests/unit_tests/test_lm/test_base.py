@@ -15,7 +15,8 @@ class TestBaseLaunchMethod(TestCase):
     #
     @mock.patch('radical.utils.zmq.server.Logger')
     @mock.patch('radical.utils.zmq.server.Profiler')
-    def test_init_from_registry(self, mocked_prof, mocked_log):
+    @mock.patch('radical.utils.env_eval')
+    def test_init_from_registry(self, mocked_env_eval, mocked_prof, mocked_log):
 
         class NewLaunchMethod(LaunchMethod):
 
