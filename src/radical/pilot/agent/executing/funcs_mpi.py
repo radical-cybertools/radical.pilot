@@ -157,7 +157,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             fout.write('export RP_GTOD="%s"\n'            % self.gtod)
             fout.write('export RP_TMP="%s"\n'             % self._task_tmp)
             fout.write('export RP_PILOT_SANDBOX="%s"\n'   % self._pwd)
-            fout.write('export RP_PILOT_STAGING="%s"\n'   % self._pwd
+            fout.write('export RP_PILOT_STAGING="%s"\n'   % self._pwd)
 
             if self._cfg['resource'].startswith('local'):
                 fout.write('export PILOT_SCHEMA="%s"\n'       % 'LOCAL')
