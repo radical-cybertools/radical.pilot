@@ -1,22 +1,31 @@
 {
-    "comet" : {
-      "cores_per_node"   : 24,
-      "gpus_per_node"    : 0,
-      "ssh_path"         : "/bin/ssh",
-      "resource"         : "xsede.comet"
-    },
-    "bridges2" : {
-        "cores_per_node" : 40,
-        "gpus_per_node"  : 0,
-        "mpirun_path"    : "mpirun",
-        "mpi_flavor"     : "OMPI",
-        "mpi_version"    : "3.1.6",
-        "resource"       : "xsede.bridges2"
-    },
-    "summit" : {
-      "cores_per_node"   : 42,
-      "gpus_per_node"    : 0,
-      "jsrun_path"       : "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun",
-        "resource"       : "ornl.summit"
-    }
+  "arcticus": {
+    "cores_per_node": 48,
+    "gpus_per_node": 2,
+    "mpi_flavor": "OMPI",
+    "mpi_version": "4.1.1",
+    "mpirun_path": "mpirun",
+    "resource": "anl.arcticus",
+    "ssh_path": "/usr/bin/ssh"
+  },
+  "bridges2": {
+    "cores_per_node": 40,
+    "gpus_per_node": 0,
+    "mpirun_path": "mpirun",
+    "mpi_flavor": "OMPI",
+    "mpi_version": "3.1.6",
+    "resource": "xsede.bridges2"
+  },
+  "comet": {
+    "cores_per_node": 24,
+    "gpus_per_node": 0,
+    "ssh_path": "/bin/ssh",
+    "resource": "xsede.comet"
+  },
+  "summit": {
+    "cores_per_node": 42,
+    "gpus_per_node": 0,
+    "jsrun_path": "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun",
+    "resource": "ornl.summit"
+  }
 }
