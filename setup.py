@@ -245,8 +245,8 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.6.7',
-                            'radical.saga>=1.6.6',
+    'install_requires'   : ['radical.utils>=1.8.4',
+                            'radical.saga>=1.8.0',
                             'pymongo',
                             'setproctitle'
                            ],
