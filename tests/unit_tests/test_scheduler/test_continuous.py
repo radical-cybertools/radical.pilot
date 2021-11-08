@@ -32,39 +32,6 @@ class TestContinuous(TestCase):
         for f in glob.glob('%s/test_cases/task.*.json' % base):
             cls._test_cases.append(ru.read_json(f))
 
-        cls._config = ru.read_json('%s/test_cases/test_continuous.json' % base)
-
-
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Continuous, '__init__', return_value=None)
-    def test_configure(self, mocked_init):
-
-        component = Continuous(cfg=None, session=None)
-        component._uid  = 'agent_scheduling.0000'
-        component._log  = mock.Mock()
-        component._prof = mock.Mock()
-        component._rm   = ru.Config()
-
-        for rm_info, resource_cfg, result in zip(
-                self._config['configure']['rm_info'],
-                self._config['configure']['resource_cfg'],
-                self._config['configure']['result']):
-
-            component._rm.info                   = ru.Config(from_dict=rm_info)
-            component._rm.info['node_list']      = rm_info['node_list']
-            component._rm.info['cores_per_node'] = rm_info['cores_per_node']
-            component._rm.info['gpus_per_node']  = rm_info['gpus_per_node']
-            component._rm.info['lfs_per_node']   = rm_info['lfs_per_node']
-            component._rm.info['mem_per_node']   = rm_info['mem_per_node']
-
-            component._cfg = ru.Config(from_dict={'pid'         : 'pid.0000',
-                                                  'rm_info'     : rm_info,
-                                                  'resource_cfg': resource_cfg})
-
-            component._configure()
-            self.assertEqual(component.nodes, result)
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
@@ -112,19 +79,18 @@ class TestContinuous(TestCase):
 
             nodes = test_case['setup']['nodes']
 
-            component._rm                        = ru.Config()
-            component._rm.info                   = ru.Config()
-            component._rm.info['cores_per_node'] = len(nodes[0]['cores'])
-            component._rm.info['gpus_per_node']  = len(nodes[0]['gpus'])
-            component._rm.info['lfs_per_node']   = nodes[0]['lfs']
-            component._rm.info['mem_per_node']   = nodes[0]['mem']
-            component._rm.info['partitions']     = {}
+            component._rm      = mock.Mock()
+            component._rm.info = ru.Munch(from_dict={
+                'cores_per_node': len(nodes[0]['cores']),
+                'gpus_per_node' : len(nodes[0]['gpus']),
+                'lfs_per_node'  : nodes[0]['lfs'],
+                'mem_per_node'  : nodes[0]['mem']})
 
-            component._lm_info           = {}
             component._colo_history      = {}
             component._tagged_nodes      = set()
             component._scattered         = None
             component._node_offset       = 0
+            component._partitions        = {}
             component.nodes              = nodes
 
             task  = test_case['task']
@@ -187,7 +153,6 @@ if __name__ == '__main__':
 
     tc = TestContinuous()
     tc.setUpClass()
-    tc.test_configure()
     tc.test_find_resources()
     tc.test_schedule_task()
     tc.test_unschedule_task()
