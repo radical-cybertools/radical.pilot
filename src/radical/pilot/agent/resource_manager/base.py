@@ -263,10 +263,11 @@ class ResourceManager(object):
         self._log.info('blocked gpus : %s' % blocked_gpus)
 
         if blocked_cores or blocked_gpus:
-            for node in rm_info.node_list:
 
-                rm_info.cores_per_node -= len(blocked_cores)
-                rm_info.gpus_per_node  -= len(blocked_gpus)
+            rm_info.cores_per_node -= len(blocked_cores)
+            rm_info.gpus_per_node  -= len(blocked_gpus)
+
+            for node in rm_info.node_list:
 
                 for idx in blocked_cores:
                     assert(len(node['cores']) > idx)
@@ -275,7 +276,6 @@ class ResourceManager(object):
                 for idx in blocked_gpus:
                     assert(len(node['gpus']) > idx)
                     node['gpus'][idx] = rpc.DOWN
-
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out

@@ -13,6 +13,8 @@ from unittest import mock, TestCase
 
 from radical.pilot.agent.resource_manager import ResourceManager, RMInfo
 
+base = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
@@ -97,6 +99,31 @@ class RMBaseTestCase(TestCase):
         with self.assertRaises(RuntimeError):
             # `node_list` became empty b/c of `agent_node_list`
             rm.init_from_scratch()
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_cores_cpus_map(self, mocked_init):
+
+        tc_map = ru.read_json('%s/test_cases/test_cores_gpus_map.json' % base)
+
+        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm._log  = mock.Mock()
+        rm._prof = mock.Mock()
+
+        for rm_info, rm_cfg, result in zip(tc_map['rm_info'],
+                                           tc_map['rm_cfg'],
+                                           tc_map['result']):
+
+            def _init_from_scratch(rm_info_input):
+                return ru.Munch(rm_info)
+
+            rm._cfg = ru.Munch(rm_cfg)
+            rm._init_from_scratch = _init_from_scratch
+
+            rm_info_output = rm.init_from_scratch()
+
+            self.assertEqual(rm_info_output.node_list, result)
 
     # --------------------------------------------------------------------------
     #
@@ -193,6 +220,7 @@ if __name__ == '__main__':
     tc = RMBaseTestCase()
     tc.test_init_from_registry()
     tc.test_init_from_scratch()
+    tc.test_cores_cpus_map()
     tc.test_set_info()
     tc.test_find_launcher()
     tc.test_prepare_launch_methods()
