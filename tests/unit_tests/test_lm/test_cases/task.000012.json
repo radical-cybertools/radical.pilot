@@ -13,9 +13,9 @@
     "setup": {
         "lm": {
             "slots": {
-                "ranks": [{"node"    : "node1",
-                           "node_id" : "node1",
-                           "core_map": [[]]}]
+                "ranks": [{"node_name" : "node1",
+                           "node_id"   : "node1",
+                           "core_map"  : [[]]}]
             }
         }
     },

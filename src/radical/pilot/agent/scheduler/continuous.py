@@ -134,7 +134,7 @@ class Continuous(AgentSchedulingComponent):
         slots of the following structure:
 
             {
-                'node'     : 'node_name',
+                'node_name': 'node_name',
                 'node_id'  : 'node.0001',
                 'core_map' : [[1, 2, 4, 5]],
                 'gpu_map'  : [[1, 3]],
@@ -218,12 +218,12 @@ class Continuous(AgentSchedulingComponent):
             core_map = [cores]
             gpu_map  = [[gpu] for gpu in gpus]
 
-            slots.append({'node'    : node_name,
-                          'node_id' : node_id,
-                          'core_map': core_map,
-                          'gpu_map' : gpu_map,
-                          'lfs'     : lfs_per_slot,
-                          'mem'     : mem_per_slot})
+            slots.append({'node_name': node_name,
+                          'node_id'  : node_id,
+                          'core_map' : core_map,
+                          'gpu_map'  : gpu_map,
+                          'lfs'      : lfs_per_slot,
+                          'mem'      : mem_per_slot})
 
         # consistency check
         assert((len(slots) == find_slots) or (len(slots) and partial))

@@ -168,10 +168,10 @@ class Hombre(AgentSchedulingComponent):
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
-                    slot['ranks'].append({'node'    : nname,
-                                          'node_id' : nuid,
-                                          'core_map': [cblock],
-                                          'gpu_map' : []})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [cblock],
+                                          'gpu_map'  : []})
                     slot['ncblocks'] += 1
                 else:
                     ok = False
@@ -183,10 +183,10 @@ class Hombre(AgentSchedulingComponent):
                     # move the process onto core `0` (oversubscribed)
                     # enabled)
                     gblock = node['gblocks'].pop(0)
-                    slot['ranks'].append({'node'    : nname,
-                                          'node_id' : nuid,
-                                          'core_map': [[0]],
-                                          'gpu_map' : [gblock]})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [[0]],
+                                          'gpu_map'  : [gblock]})
                     slot['ngblocks'] += 1
                 else:
                     ok = False

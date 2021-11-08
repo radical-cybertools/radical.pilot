@@ -29,12 +29,12 @@
      },
 
     "setup": {
-        "slots": {"ranks"       : [{"node"    : "a",
-                                    "node_id" : "1",
-                                    "core_map": [[0]],
-                                    "gpu_map" : [],
-                                    "mem"     : 0,
-                                    "lfs"     : 0}]
+        "slots": {"ranks"       : [{"node_name" : "a",
+                                    "node_id"   : "1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "mem"       : 0,
+                                    "lfs"       : 0}]
         }
     }
 }

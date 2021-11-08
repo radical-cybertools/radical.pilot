@@ -123,7 +123,7 @@ class Srun(LaunchMethod):
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
-            nodelist = [rank['node'] for rank in slots['ranks']]
+            nodelist = [rank['node_name'] for rank in slots['ranks']]
             nodefile = '%s/%s.nodes' % (sbox, uid)
             with open(nodefile, 'w') as fout:
                 fout.write(','.join(nodelist))

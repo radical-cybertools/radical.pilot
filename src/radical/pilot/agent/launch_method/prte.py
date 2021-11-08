@@ -385,7 +385,7 @@ class PRTE(LaunchMethod):
         else:
             ranks = collections.defaultdict(int)
             for rank in slots['ranks']:
-                ranks[rank['node']] += 1
+                ranks[rank['node_name']] += 1
             flags += ' --host ' + ','.join(['%s:%s' % x for x in ranks.items()])
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE

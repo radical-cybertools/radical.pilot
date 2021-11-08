@@ -67,12 +67,12 @@
                 "cores_per_node": 12,
                 "gpus_per_node" : 0,
                 "lfs_per_node"  : 100,
-                "ranks"         : [{"node"    : "node-0000",
-                                    "node_id" : "n.0000",
-                                    "core_map": [[0]],
-                                    "gpu_map" : [],
-                                    "lfs"     : 100,
-                                    "mem"     : 0}]
+                "ranks"         : [{"node_name" : "node-0000",
+                                    "node_id"   : "n.0000",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "lfs"       : 100,
+                                    "mem"       : 0}]
             },
             "new_state": 1,
             "result": [{"node_id"   : "n.0000",
@@ -93,12 +93,12 @@
                 "cores_per_node": 12,
                 "gpus_per_node" : 4,
                 "lfs_per_node"  : 100,
-                "ranks"         : [{"node"    : "node-0001",
-                                    "node_id" : "n.0001",
-                                    "core_map": [[0]],
-                                    "gpu_map" : [[1]],
-                                    "lfs"     : 70,
-                                    "mem"     : 0}]
+                "ranks"         : [{"node_name" : "node-0001",
+                                    "node_id"   : "n.0001",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [[1]],
+                                    "lfs"       : 70,
+                                    "mem"       : 0}]
             },
             "new_state": 0,
             "result": [{"node_id"   : "n.0001",
@@ -119,12 +119,12 @@
                 "cores_per_node": 12,
                 "gpus_per_node" : 2,
                 "lfs_per_node"  : 100,
-                "ranks"         : [{"node"    : "node-0003",
-                                    "node_id" : "n.0003",
-                                    "core_map": [[0]],
-                                    "gpu_map" : [[1]],
-                                    "lfs"     : 100,
-                                    "mem"     : 0}]
+                "ranks"         : [{"node_name" : "node-0003",
+                                    "node_id"   : "n.0003",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [[1]],
+                                    "lfs"       : 100,
+                                    "mem"       : 0}]
             },
             "new_state": 1,
             "result": "RuntimeError"
@@ -168,12 +168,12 @@
                 "mem_per_node"   : 1024,
                 "lm_info"        : {},
                 "partition_id"   : null,
-                "ranks"          : [{"node"    : "node-0000",
-                                     "node_id" : "n.0000",
-                                     "core_map": [[0]],
-                                     "gpu_map" : [[0]],
-                                     "lfs"     : 0,
-                                     "mem"     : 128}]
+                "ranks"          : [{"node_name" : "node-0000",
+                                     "node_id"   : "n.0000",
+                                     "core_map"  : [[0]],
+                                     "gpu_map"   : [[0]],
+                                     "lfs"       : 0,
+                                     "mem"       : 128}]
             }
         }
     ]

@@ -161,7 +161,7 @@ class MPIRun(LaunchMethod):
         for rank in slots['ranks']:
 
             for cpu_proc in rank['core_map']:
-                host_list.append(rank['node'])
+                host_list.append(rank['node_name'])
                 core_list.append(cpu_proc[0])
                 # FIXME: inform this proc about the GPU to be used
 

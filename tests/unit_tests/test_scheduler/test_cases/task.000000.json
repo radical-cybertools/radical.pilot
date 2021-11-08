@@ -42,18 +42,18 @@
     "result": {
         "slots": {
             "partition_id"     : null,
-            "ranks"            : [{"node"    : "a",
-                                   "node_id" : "1",
-                                   "core_map": [[0]],
-                                   "gpu_map" : [[0]],
-                                   "mem"     : 128,
-                                   "lfs"     : 0},
-                                  {"node"    : "a",
-                                   "node_id" : "1",
-                                   "core_map": [[1]],
-                                   "gpu_map" : [[1]],
-                                   "mem"     : 128,
-                                   "lfs"     : 0}]
+            "ranks"            : [{"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[0]],
+                                   "gpu_map"   : [[0]],
+                                   "mem"       : 128,
+                                   "lfs"       : 0},
+                                  {"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[1]],
+                                   "gpu_map"   : [[1]],
+                                   "mem"       : 128,
+                                   "lfs"       : 0}]
         },
         "colo_history": {"tag.0000": ["1", "1"]}
     }

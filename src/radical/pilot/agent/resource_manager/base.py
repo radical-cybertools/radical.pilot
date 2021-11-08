@@ -296,7 +296,6 @@ class ResourceManager(object):
         if agent_nodes:
 
             if not rm_info.agent_node_list:
-                rm_info.agent_node_list = list()
                 for i in range(agent_nodes):
                     rm_info.agent_node_list.append(rm_info.node_list.pop())
 
@@ -305,7 +304,6 @@ class ResourceManager(object):
         if service_nodes:
 
             if not rm_info.service_node_list:
-                rm_info.service_node_list = list()
                 for i in range(service_nodes):
                     rm_info.service_node_list.append(rm_info.node_list.pop())
 

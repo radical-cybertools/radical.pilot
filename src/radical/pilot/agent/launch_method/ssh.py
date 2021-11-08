@@ -99,7 +99,7 @@ class SSH(LaunchMethod):
         if len(slots['ranks']) != 1:
             raise RuntimeError('ssh cannot run multi-rank tasks')
 
-        host = slots['ranks'][0]['node']
+        host = slots['ranks'][0]['node_name']
         cmd  = '%s %s %s' % (self._command, host, exec_path)
         return cmd.rstrip()
 

@@ -15,12 +15,11 @@
     "setup": {
         "lm": {
             "slots": {
-                "ranks": [{"node"    : "node2",
-                           "node_id" : "node2",
-                           "core_map": [[0]],
-                           "gpu_map" : [],
-                           "lfs"     : {"path": null,
-                                        "size": 0}}]
+                "ranks": [{"node_name" : "node2",
+                           "node_id"   : "node2",
+                           "core_map"  : [[0]],
+                           "gpu_map"   : [],
+                           "lfs"       : 0}]
             }
         }
     },

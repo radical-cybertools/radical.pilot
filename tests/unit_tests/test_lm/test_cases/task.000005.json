@@ -22,15 +22,13 @@
                 "cores_per_node": 16,
                 "gpus_per_node" : 1,
                 "task_offsets"  : [0],
-                "lfs_per_node"  : {"path": null, "size": 0},
+                "lfs_per_node"  : 0,
                 "partition_id"  : "0",
-                "ranks"         : [{"node"    : "node1",
-                                    "node_id" : "node1",
-                                    "core_map": [[0]],
-                                    "gpu_map" : [[0]],
-                                    "lfs"     : {"size": 0,
-                                                 "path": null}
-                }]
+                "ranks"         : [{"node_name" : "node1",
+                                    "node_id"   : "node1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [[0]],
+                                    "lfs"       : 0}]
             },
             "dvm_list"          : {"0": {"dvm_uri": "dvm_uri",
                                          "nodes"  : ["node1"]}},

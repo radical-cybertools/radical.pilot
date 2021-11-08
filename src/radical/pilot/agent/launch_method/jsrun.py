@@ -98,16 +98,13 @@ class JSRUN(LaunchMethod):
             The slots that the task will be placed. A slot has the following
             format:
 
-            {"nodes"         : [{"name"    : "a",
-                                 "uid"     : 1,
-                                 "gpu_map" : [],
-                                 "core_map": [[0]],
-                                 "lfs"     : {"path": "/dev/null", "size": 0}
-                                }],
-             "cores_per_node": 16,
-             "gpus_per_node" : 6
-             "lfs_per_node"  : {"size": 0, "path": "/dev/null"},
-             "lm_info"       : "INFO",
+            {"ranks"         : [{"node_name" : "a",
+                                 "node_id"   : 1,
+                                 "core_map"  : [[0]],
+                                 "gpu_map"   : [],
+                                 "lfs"       : 0,
+                                 "mem"       : 0
+                                }]
             }
 
         uid     : task ID (string)

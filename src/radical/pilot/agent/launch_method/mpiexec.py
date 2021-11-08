@@ -142,7 +142,7 @@ class MPIExec(LaunchMethod):
         # entries can have the same node names, we *add* new information.
         host_slots = dict()
         for rank in slots['ranks']:
-            node_name = rank['node']
+            node_name = rank['node_name']
             if node_name not in host_slots:
                 host_slots[node_name] = 0
             host_slots[node_name] += len(rank['core_map'])
