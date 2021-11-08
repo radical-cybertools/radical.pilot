@@ -5,58 +5,68 @@
             "config": {
                 "pid"             : "pid.0003",
                 "resource_manager": "FORK",
-                "lm.fork"         : {
-                    "env"            : {},
-                    "env_sh"         : "env/lm_fork.sh"
-                },
-                "rm.fork"         : {
-                    "node_list"      : [["node-00", "00"], ["node-01", "01"]],
-                    "cores_per_node" : 12,
-                    "gpus_per_node"  : 4,
-                    "lfs_per_node"   : 0,
-                    "mem_per_node"   : 0,
-                    "requested_nodes": 1
-                },
                 "resource_cfg" : {
                     "launch_methods" : {
                         "FORK": {}
                     }
                 }
             },
-            "result": [
-                {
-                    "uid"  : "00",
-                    "name" : "node-00",
-                    "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    "gpus" : [0, 0, 0, 0],
-                    "lfs"  : 0,
-                    "mem"  : 0
+            "registry": {
+                "lm.fork"         : {
+                    "env"            : {},
+                    "env_sh"         : "env/lm_fork.sh"
                 },
-                {
-                    "uid"  : "01",
-                    "name" : "node-01",
-                    "cores": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    "gpus" : [0, 0, 0, 0],
-                    "lfs"  : 0,
-                    "mem"  : 0
+                "rm.fork"         : {
+                    "node_list"      : [{"node_name": "localhost",
+                                         "node_id"  : "localhost_0000",
+                                         "cores"    : [0, 0, 0, 0, 0, 0, 0, 0],
+                                         "gpus"     : [0, 0, 0, 0],
+                                         "lfs"      : 0,
+                                         "mem"      : 0},
+                                        {"node_name": "localhost",
+                                         "node_id"  : "localhost_0001",
+                                         "cores"    : [0, 0, 0, 0, 0, 0, 0, 0],
+                                         "gpus"     : [0, 0, 0, 0],
+                                         "lfs"      : 0,
+                                         "mem"      : 0}],
+                    "cores_per_node" : 8,
+                    "gpus_per_node"  : 4,
+                    "lfs_per_node"   : 0,
+                    "mem_per_node"   : 0,
+                    "requested_nodes": 1,
+                    "requested_cores": 8,
+                    "requested_gpus" : 0
                 }
+            },
+            "result": [
+                {"node_name": "localhost",
+                 "node_id"  : "localhost_0000",
+                 "cores"    : [0, 0, 0, 0, 0, 0, 0, 0],
+                 "gpus"     : [0, 0, 0, 0],
+                 "lfs"      : 0,
+                 "mem"      : 0},
+                {"node_name": "localhost",
+                 "node_id"  : "localhost_0001",
+                 "cores"    : [0, 0, 0, 0, 0, 0, 0, 0],
+                 "gpus"     : [0, 0, 0, 0],
+                 "lfs"      : 0,
+                 "mem"      : 0}
             ]
         }
     ],
 
     "change_slots": [
         {
-            "nodes": [{"uid"    : "n.0000",
-                       "name"   : "node-0000",
-                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       "gpus"   : [],
-                       "lfs"    : 175,
-                       "mem"    : 1024}],
+            "nodes": [{"node_id"    : "n.0000",
+                       "node_name"  : "node-0000",
+                       "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"       : [],
+                       "lfs"        : 175,
+                       "mem"        : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 0,
                 "lfs_per_node"  : 100,
-                "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0000",
                                     "node_id" : "n.0000",
                                     "core_map": [[0]],
@@ -65,25 +75,24 @@
                                     "mem"     : 0}]
             },
             "new_state": 1,
-            "result": [{"uid"   : "n.0000",
-                       "name"   : "node-0000",
-                       "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       "gpus"   : [],
-                       "lfs"    : 75,
-                       "mem"    : 1024}]
+            "result": [{"node_id"   : "n.0000",
+                        "node_name" : "node-0000",
+                        "cores"     : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        "gpus"      : [],
+                        "lfs"       : 75,
+                        "mem"       : 1024}]
         },
         {
-            "nodes": [{"uid"    : "n.0001",
-                       "name"   : "node-0001",
-                       "cores"  : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       "gpus"   : [0, 1, 0, 0],
-                       "lfs"    : 30,
-                       "mem"    : 1024}],
+            "nodes": [{"node_id"    : "n.0001",
+                       "node_name"  : "node-0001",
+                       "cores"      : [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"       : [0, 1, 0, 0],
+                       "lfs"        : 30,
+                       "mem"        : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 4,
                 "lfs_per_node"  : 100,
-                "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0001",
                                     "node_id" : "n.0001",
                                     "core_map": [[0]],
@@ -92,25 +101,24 @@
                                     "mem"     : 0}]
             },
             "new_state": 0,
-            "result": [{"uid"   : "n.0001",
-                       "name"   : "node-0001",
-                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       "gpus"   : [0, 0, 0, 0],
-                       "lfs"    : 100,
-                       "mem"    : 1024}]
+            "result": [{"node_id"   : "n.0001",
+                        "node_name" : "node-0001",
+                        "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        "gpus"      : [0, 0, 0, 0],
+                        "lfs"       : 100,
+                        "mem"       : 1024}]
         },
         {
-            "nodes": [{"uid"    : "n.9999",
-                       "name"   : "non-allocated-node",
-                       "cores"  : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                       "gpus"   : [0, 0],
-                       "lfs"    : 100,
-                       "mem"    : 1024}],
+            "nodes": [{"node_id"    : "n.9999",
+                       "node_name"  : "non-allocated-node",
+                       "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                       "gpus"       : [0, 0],
+                       "lfs"        : 100,
+                       "mem"        : 1024}],
             "slots": {
                 "cores_per_node": 12,
                 "gpus_per_node" : 2,
                 "lfs_per_node"  : 100,
-                "lm_info"       : {},
                 "ranks"         : [{"node"    : "node-0003",
                                     "node_id" : "n.0003",
                                     "core_map": [[0]],
@@ -125,12 +133,12 @@
 
     "slot_status": [
         {
-            "nodes": [{"uid"    : "n.0000",
-                       "name"   : "node-0000",
-                       "cores"  : [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 2],
-                       "gpus"   : [0, 0, 0, 0],
-                       "lfs"    : 100,
-                       "mem"    : 1024}],
+            "nodes": [{"node_id"    : "n.0000",
+                       "node_name"  : "node-0000",
+                       "cores"      : [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 2, 2],
+                       "gpus"       : [0, 0, 0, 0],
+                       "lfs"        : 100,
+                       "mem"        : 1024}],
             "result": "|####------!!:----|"
         },
         {

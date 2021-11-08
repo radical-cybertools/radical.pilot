@@ -33,7 +33,8 @@ class TestBaseScheduling(TestCase):
     @mock.patch.object(ru.zmq.RegistryClient, 'close', return_value=None)
     @mock.patch('radical.pilot.agent.scheduler.base.mp')
     @mock.patch('radical.utils.get_hostname', return_value=None)
-    def test_initialize(self, mocked_hostname, mocked_mp,
+    @mock.patch('radical.utils.env_eval')
+    def test_initialize(self, mocked_env_eval, mocked_hostname, mocked_mp,
                         mocked_reg_close, mocked_reg_put, mocked_reg_init,
                         mocked_init):
 
@@ -47,26 +48,22 @@ class TestBaseScheduling(TestCase):
         sched.unschedule_cb       = mock.Mock()
         sched.register_input      = mock.Mock()
         sched.register_subscriber = mock.Mock()
-        sched.nodes               = list()
+        sched.nodes               = []
+        sched._partitions         = {}
 
         for c in self._test_cases['initialize']:
 
             def mock_get(self, name):
-                return c['config'][name]
+                return c['registry'][name]
 
             sched._cfg = ru.Config(from_dict=c['config'])
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:
-                    if ':' in c['result']:
-                        pat = c['result'].split(':')[1]
-                        with pytest.raises(RuntimeError, match=r'.*%s.*' % pat):
-                            sched.initialize()
-                    else:
                         with pytest.raises(RuntimeError):
                             sched.initialize()
                 else:
                     sched.initialize()
-                self.assertEqual(ru.demunch(sched.nodes), c['result'])
+                    self.assertEqual(sched.nodes, c['result'])
 
             return
 
