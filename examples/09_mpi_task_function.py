@@ -68,8 +68,9 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         
         pd_init = {'resource'      : resource,
-                   'runtime'       : 60,  # pilot runtime (min)
+                   'runtime'       : 60,   # pilot runtime (min)
                    'exit_on_error' : True,
+                   'max_task_cores': 2048, # task NO * cores_per_task
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue',   None),
                    'access_schema' : config[resource].get('schema',  None),
@@ -94,17 +95,16 @@ if __name__ == '__main__':
         report.progress_tgt(n, label='create')
 
         tds = list()
-        jobs = [47,18,99,10,72,25,7,29,74,2,81,96,26,67,15,17,51,64,38,29,48]
         for i in range(0, n):
 
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.pre_exec         = []
-            td.executable       = mpi_func(jobs)
+            td.executable       = mpi_func(i)
             td.arguments        = []
             td.gpu_processes    = 0
-            td.cpu_processes    = 2
+            td.cpu_processes    = 2 # task ranks
             td.cpu_threads      = 1
             td.cpu_process_type = rp.MPI_FUNC
             tds.append(td)

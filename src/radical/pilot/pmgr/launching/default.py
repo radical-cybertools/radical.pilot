@@ -662,6 +662,7 @@ class Default(PMGRLaunchingComponent):
         # pilot description and resource configuration
         number_cores    = pilot['description']['cores']
         number_gpus     = pilot['description']['gpus']
+        max_task_cores  = pilot['description']['max_task_cores']
         required_memory = pilot['description']['memory']
         runtime         = pilot['description']['runtime']
         app_comm        = pilot['description']['app_comm']
@@ -943,6 +944,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['resource']            = resource
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
+        agent_cfg['max_task_cores']      = max_task_cores
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
