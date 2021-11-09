@@ -215,6 +215,8 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         cores_per_task: number of cores required for every MPI task
         '''
+        rp_cfg_cpn = 0
+        slurm_cpn  = 0
         if self._cfg['resource'].startswith('local'):
             rp_cfg_cpn = self._cfg['cores_per_node']
         else:
