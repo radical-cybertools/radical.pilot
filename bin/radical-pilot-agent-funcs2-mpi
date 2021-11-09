@@ -2,6 +2,7 @@
 
 import os
 import dill
+import time
 import codecs
 import pickle
 import msgpack
@@ -114,17 +115,18 @@ class MPIExecutor(object):
         worker (rank != 0) does worker stuff
         '''
 
-        if self.master: self.work_master()
+        if self.master: self.single_work_master()
         else          : self.work_worker()
-
 
     # --------------------------------------------------------------------------
     #
-    def work_master(self):
-        # keep track of busy and idle workers (not really used, yet)
+    def single_work_master(self):
+        # keep track of busy and idle workers
         resources = [IDLE] * (self.size - 1)
 
-        # define a static list of tasks
+        # define a static list of tasks and send single one per time to the workers
+        # We assume in this mode that the task is large enough where:
+        #    task[ranks] == self.resources
         #    uid  : duh!
         #    ranks: how many workers to use in the task's communicator
         #    work : what method to call
@@ -186,7 +188,6 @@ class MPIExecutor(object):
                         # make sure we did find workers!
                         assert(len(workers) == task_ranks)
 
-
                         # workers need to know who is part of the sub-communicator
                         task['workers'] = workers
 
@@ -195,16 +196,118 @@ class MPIExecutor(object):
                         for worker in workers:
                             self._world.send(msgpack.packb(task), dest=worker, tag=0)
 
-                        # FIXME: Now release the BUSY workers and mark them as IDLE to be 
-                        # resuesd by the next task 
-                        for worker in workers:
+                        # once a single task is sent out, collect results
+                        task = msgpack.unpackb(self._world.recv(tag=1))
+                        self._out('recv task %s from %s' % (task['uid'], task))
+
+                        if  task['state'] == 'DONE':
+                            task['stdout'] = task['result']
+                            task['stderr'] = None
+                            task['work']   = str(task['work'])
+
+                        else:
+                            task['stdout'] = None
+                            task['stderr'] = task['error']
+                            task['work']   = str(task['work'])
+
+                        _zmq_res.put(task)
+
+                        # once the task executing is finished mark the workers as IDLE
+                        idle_workers = []
+                        for idx, worker in enumerate(resources):
                             if worker == BUSY:
-                                workers.append(idx + 1)
                                 resources[idx] = IDLE
-                                self._log.debug('IDLE WOKERS %d' % (worker))
-                            else:
-                                self._log.debug('BUSY WOKERS %d' % (worker))
-                                pass
+                                self._out('Marked worker number {0} as IDLE'.format(idx))
+                                idle_workers.append(idx)
+                                if  len(idle_workers) == task['ranks']:
+                                    break
+                    # once all results are received, send termination signal to workers
+                    for worker in range(self.size - 1):
+                        self._out('send term to %s' % (worker + 1))
+                        self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
+                else:
+                    time.sleep(0.1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def batch_work_master(self):
+        # keep track of busy and idle workers (not really used, yet)
+        resources = [IDLE] * (self.size - 1)
+
+        # define a static list of tasks and send all of them at once to
+        # workers.
+        # We assume in this mode that the tasks ranks all can fit in 
+        # self.resources:
+        #
+        #    uid  : duh!
+        #    ranks: how many workers to use in the task's communicator
+        #    work : what method to call
+        #    args : what arguments to pass to the method
+
+        if self.rank == 0:
+
+            _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
+
+            addr_req  = _cfg.get('req_get')
+            addr_res  = _cfg.get('res_put')
+            addr_ctrl = _cfg.get('ctrl')
+
+            assert(addr_req)
+            assert(addr_res)
+            assert(addr_ctrl)
+
+
+            _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+            _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+            _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
+
+
+        while True:
+            if self.rank == 0:
+                tasks = _zmq_req.get_nowait(1000)
+
+                if tasks:
+
+                    for task in tasks:
+                        self._log.debug('got %s', task['uid'])
+                        task_descr = task['description']
+                        task_exe   = task_descr['executable']
+                        task_args  = task_descr.get('arguments', list())
+                        task_pres  = task_descr.get('pre_exec',  list())
+                        task_ranks = task_descr['cpu_processes']
+
+                        try:
+
+                            task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
+
+                            task['work']  = task_info["_cud_code"]
+                            task['args']  = task_info["_cud_args"]
+                            task['ranks'] = task_ranks
+
+                        except Exception as e:
+                            self._log.debug('ERROR %s', str(e))
+
+                        # find workers and mark as busy
+                        workers = list()
+                        for idx, worker in enumerate(resources):
+                            if worker == IDLE:
+                                workers.append(idx + 1)
+                                resources[idx] = BUSY
+                                if len(workers) == task_ranks:
+                                    self._log.debug('enough workers found')
+                                    break
+
+                        # make sure we did find workers!
+                        assert(len(workers) == task_ranks)
+
+                        # workers need to know who is part of the sub-communicator
+                        task['workers'] = workers
+
+                        # send the task to each of the workers
+                        self._log.debug('send task %s  to  %s' % (task['uid'], workers))
+                        for worker in workers:
+                            self._world.send(msgpack.packb(task), dest=worker, tag=0)
 
                     # once all tasks are sent out, collect results
                     for task in tasks:

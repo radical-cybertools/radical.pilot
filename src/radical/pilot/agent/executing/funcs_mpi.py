@@ -165,7 +165,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                 fout.write('export PILOT_SCHEMA="%s"\n'       % 'REMOTE')
                 fout.write('export SLURM_NODELIST="%s"\n'     % os.environ['SLURM_NODELIST'])
                 fout.write('export SLURM_CPUS_ON_NODE="%s"\n' % os.environ['SLURM_CPUS_ON_NODE'])
-            
+
             if self._prof.enabled:
                 fout.write('export RP_PROF="%s/%s.prof"\n' % (sandbox, funcs['uid']))
 
@@ -215,10 +215,12 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         cores_per_task: number of cores required for every MPI task
         '''
+        if self._cfg['resource'].startswith('local'):
+            rp_cfg_cpn = self._cfg['cores_per_node']
+        else:
+            slurm_cpn  = int(os.environ['SLURM_CPUS_ON_NODE'])
 
         node_list            = copy.deepcopy(self._cfg['rm_info']['node_list'])
-        slurm_cpn            = int(os.environ['SLURM_CPUS_ON_NODE'])
-        rp_cfg_cpn           = self._cfg['cores_per_node']
         cores_per_node       = slurm_cpn if rp_cfg_cpn == 0 else rp_cfg_cpn
         cores_per_pilot      = self._cfg['cores']
         cores_per_executor   = self._cfg['max_task_cores']
