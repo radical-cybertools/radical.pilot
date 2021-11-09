@@ -46,11 +46,10 @@ class TestTask(TestCase):
         if not self.host:
             return
 
-        component = MPIRun(name=None, cfg=None, session=None)
+        component = MPIRun('', {}, None, None, None)
         component.name = 'MPIRUN'
         component._log = mock.Mock()
-        component._cfg = ru.Munch({'resource': self.host})
-        lm_info = component._init_from_scratch(None, None)
+        lm_info = component._init_from_scratch({}, '')
         component._init_from_info(lm_info)
 
         self.assertEqual(component._command,     self.resource['mpirun_path'])

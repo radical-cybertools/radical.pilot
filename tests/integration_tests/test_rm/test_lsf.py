@@ -39,13 +39,12 @@ class LSFTestCase(TestCase):
         rm_lsf = LSF(cfg=None, log=None, prof=None)
         rm_lsf._log = mock.Mock()
 
-        rm_info = rm_lsf._update_info(RMInfo({'sockets_per_node': 2,
-                                              'gpus_per_node'   : 6}))
+        rm_info = rm_lsf._init_from_scratch(
+            RMInfo({'cores_per_node'  : None,
+                    'threads_per_core': self.resource['smt']}))
 
-        self.assertEqual(rm_info.cores_per_socket,
-                         self.resource['cores_per_socket'])
-        self.assertEqual(rm_info.gpus_per_socket,
-                         self.resource['gpus_per_socket'])
+        self.assertEqual(rm_info.cores_per_node,
+                         self.resource['cores_per_node'])
 
 
 # ------------------------------------------------------------------------------

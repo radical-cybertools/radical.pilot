@@ -52,13 +52,11 @@ class TestTask(TestCase):
         reason='test needs to run in LSF allocation')
     def test_configure(self, mocked_init):
 
-        log  = mock.Mock()
-        prof = mock.Mock()
+        component = JSRUN('', {}, None, None, None)
+        lm_info = component._init_from_scratch({}, '')
+        component._init_from_info(lm_info)
 
-        component = JSRUN(name=None, lm_cfg=None, rm_info=None,
-                                     log=log, prof=prof)
-        component._init_from_scratch(None, None)
-        self.assertEqual(component.launch_command, self.resource['jsrun_path'])
+        self.assertEqual(component._command, self.resource['jsrun_path'])
 
 
     # --------------------------------------------------------------------------

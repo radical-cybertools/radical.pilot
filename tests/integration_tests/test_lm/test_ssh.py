@@ -39,10 +39,9 @@ class TestTask(TestCase):
         if not cfg:
             return
 
-        component = SSH(name=None, cfg=None, session=None)
+        component = SSH('', {}, None, None, None)
         component._log = mock.Mock()
-        component._cfg = {}
-        lm_info = component._init_from_scratch(None, None)
+        lm_info = component._init_from_scratch({}, '')
         component._init_from_info(lm_info)
 
         command = cfg['ssh_path'] + ' -o StrictHostKeyChecking=no -o ControlMaster=auto'
