@@ -1,4 +1,4 @@
-# pylint: disable=protected-access, unused-argument, no-value-for-parameter
+# pylint: disable=protected-access,unused-argument,no-value-for-parameter,abstract-method
 
 import radical.utils as ru
 

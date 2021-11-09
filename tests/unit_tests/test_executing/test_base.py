@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=unused-argument, protected-access
+# pylint: disable=unused-argument,protected-access,no-value-for-parameter
 
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'

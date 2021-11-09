@@ -296,7 +296,7 @@ class ResourceManager(object):
         if agent_nodes:
 
             if not rm_info.agent_node_list:
-                for i in range(agent_nodes):
+                for _ in range(agent_nodes):
                     rm_info.agent_node_list.append(rm_info.node_list.pop())
 
             assert(agent_nodes == len(rm_info.agent_node_list))
@@ -304,7 +304,7 @@ class ResourceManager(object):
         if service_nodes:
 
             if not rm_info.service_node_list:
-                for i in range(service_nodes):
+                for _ in range(service_nodes):
                     rm_info.service_node_list.append(rm_info.node_list.pop())
 
             assert(service_nodes == len(rm_info.service_node_list))

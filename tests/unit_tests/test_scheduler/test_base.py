@@ -59,8 +59,8 @@ class TestBaseScheduling(TestCase):
             sched._cfg = ru.Config(from_dict=c['config'])
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:
-                        with pytest.raises(RuntimeError):
-                            sched.initialize()
+                    with pytest.raises(RuntimeError):
+                        sched.initialize()
                 else:
                     sched.initialize()
                     self.assertEqual(sched.nodes, c['result'])

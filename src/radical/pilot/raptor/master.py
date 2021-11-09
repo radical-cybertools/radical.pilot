@@ -196,14 +196,14 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, req):
+    def request_cb(self, requests):
 
-        return req
+        return requests
 
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, cb):
+    def result_cb(self, req):
 
         pass
 

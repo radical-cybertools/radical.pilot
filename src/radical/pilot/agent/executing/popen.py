@@ -1,4 +1,4 @@
-# pylint: disable=subprocess-popen-preexec-fn
+# pylint: disable=subprocess-popen-preexec-fn,unused-argument
 # FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
 #        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
 
@@ -372,7 +372,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_post_rank(rank_id, rank, cmds)
+                    tmp += self._get_post_rank(rank_id, cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -798,7 +798,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_rank(self, rank_id, rank, cmds=None):
+    def _get_post_rank(self, rank_id, cmds=None):
 
         ret = ''
         cmds = cmds or []

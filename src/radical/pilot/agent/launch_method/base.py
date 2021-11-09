@@ -151,7 +151,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env_lm, env_sh):
+    def _init_from_scratch(self, env, env_sh):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

@@ -179,15 +179,15 @@ class RMBaseTestCase(TestCase):
         rm._log          = mock.Mock()
         rm._prof         = mock.Mock()
 
-        def mocked_can_launch(task):
+        def mocked_can_launch_false(task):
             return False, 'error'
-        mocked_lm.can_launch = mocked_can_launch
+        mocked_lm.can_launch = mocked_can_launch_false
 
         self.assertIsNone(rm.find_launcher(task={'uid': 'task0000'}))
 
-        def mocked_can_launch(task):
+        def mocked_can_launch_true(task):
             return True, ''
-        mocked_lm.can_launch = mocked_can_launch
+        mocked_lm.can_launch = mocked_can_launch_true
         self.assertIs(rm.find_launcher(task={'uid': 'task0000'}), mocked_lm)
 
     # --------------------------------------------------------------------------
