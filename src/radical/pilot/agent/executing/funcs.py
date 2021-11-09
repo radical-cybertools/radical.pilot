@@ -2,7 +2,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import os
 import stat
 import time
@@ -12,13 +11,11 @@ import subprocess
 
 import radical.utils as ru
 
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states    as rps
+from ...   import constants as rpc
 
-from ..   import LaunchMethod
-
-from .base           import AgentExecutingComponent
+from ..    import LaunchMethod
+from .base import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------

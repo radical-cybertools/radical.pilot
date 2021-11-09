@@ -2,8 +2,6 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
-import os
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -62,7 +60,6 @@ class MPIRun(LaunchMethod):
 
         if '_mpt' in self.name.lower():
             lm_info['mpt'] = True
-
 
         if '_rsh' in self.name.lower():
             lm_info['rsh'] = True

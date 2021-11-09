@@ -2,9 +2,6 @@
 __copyright__ = 'Copyright 2017, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
-
-import json
-
 import radical.utils        as ru
 
 from ...   import states    as rps
@@ -122,9 +119,9 @@ class Flux(AgentSchedulingComponent):
                 'with' : [{
                     'count': td['cpu_threads'],
                     'type' : 'core'
-                # }, {
-                #     'count': td['gpu_processes'],
-                #     'type' : 'gpu'
+                    # }, {
+                    #     'count': td['gpu_processes'],
+                    #     'type' : 'gpu'
                 }]
             }]
         }

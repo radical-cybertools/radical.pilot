@@ -2,13 +2,10 @@
 __copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import multiprocessing
-import os
 import subprocess
 
 import radical.utils as ru
 
-from ...   import constants as rpc
 from .base import RMInfo
 from .fork import Fork
 
@@ -19,7 +16,7 @@ class Yarn(Fork):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         # initialize nodelist from FORK RM
         super()._init_from_scratch(rm_info)

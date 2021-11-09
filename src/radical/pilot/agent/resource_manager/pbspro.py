@@ -9,7 +9,6 @@ from typing import List
 
 import radical.utils as ru
 
-from ...   import constants as rpc
 from .base import RMInfo, ResourceManager
 
 

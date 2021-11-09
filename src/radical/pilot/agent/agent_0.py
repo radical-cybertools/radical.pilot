@@ -2,16 +2,11 @@
 __copyright__ = 'Copyright 2014-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
-
-import os
-import sys
 import copy
+import os
+import pprint
 import stat
 import time
-import pprint
-
-import subprocess      as sp
-import multiprocessing as mp
 
 import radical.utils       as ru
 
@@ -164,7 +159,7 @@ class Agent_0(rpu.Worker):
         self._rm = ResourceManager.create(name=self._cfg.resource_manager,
                                           cfg=self._cfg, log=self._log,
                                           prof=self._prof)
-        import pprint
+
         self._log.debug(pprint.pformat(self._rm.info))
 
 
@@ -224,8 +219,8 @@ class Agent_0(rpu.Worker):
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
                  'resource_details' : {
-                   # 'lm_info'      : self._rm.lm_info.get('version_info'),
-                   # 'lm_detail'    : self._rm.lm_info.get('lm_detail'),
+                     # 'lm_info'      : self._rm.lm_info.get('version_info'),
+                     # 'lm_detail'    : self._rm.lm_info.get('lm_detail'),
                      'rm_info'      : self._rm.info},
                  '$set'             : ['resource_details']}
         self.advance(pilot, publish=True, push=False)

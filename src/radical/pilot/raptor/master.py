@@ -1,19 +1,18 @@
 
+import copy
+import json
 import os
 import sys
-import copy
 import time
-import json
 
 import threading         as mt
 
 import radical.utils     as ru
-from radical.utils.profile import combine_profiles
 
-from .. import Session, TaskDescription
 from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
+from .. import Session, TaskDescription
 
 from .request import Request
 

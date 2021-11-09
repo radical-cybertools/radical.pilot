@@ -2,11 +2,10 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import os
 import copy
-import time
-import queue
 import logging
+import queue
+import time
 import threading          as mt
 
 import multiprocessing    as mp

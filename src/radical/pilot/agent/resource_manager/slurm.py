@@ -6,7 +6,6 @@ import os
 
 import radical.utils as ru
 
-from ...   import constants as rpc
 from .base import RMInfo, ResourceManager
 
 

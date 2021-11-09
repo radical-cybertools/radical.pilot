@@ -3,7 +3,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import copy
 import time
 
@@ -613,8 +612,8 @@ class Pilot(object):
         installed into the environment.
         '''
 
-        _ = self.rpc('prepare_env', {'env_name': env_name,
-                                     'env_spec': env_spec})
+        self.rpc('prepare_env', {'env_name': env_name,
+                                 'env_spec': env_spec})
 
 
     # --------------------------------------------------------------------------
