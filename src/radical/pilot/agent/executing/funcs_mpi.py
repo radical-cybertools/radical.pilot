@@ -261,7 +261,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             assert(idx == len(cores)), \
                 ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
 
-            return core_map      
+            return core_map
 
         def _start_mpi_executor(cores_per_executor, slots, executors_to_start_id):
 
@@ -352,6 +352,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             self._log.debug(slots)
             return slots
 
+        
         # Case 1 (if the mpi executor requires only 1 core, 
         # then simply it does not make sense to use MPI acort!)
         if cores_per_executor <= 1:
@@ -365,8 +366,12 @@ class MPIFUNCS(AgentExecutingComponent) :
         # Case 3 (If we can fit a single executor per node, then do it for every node!)
         if cores_per_executor == cores_per_node:
             for executors_to_start_id in range(len(node_list)):
+                self._prof.prof('exec_warmup_start',
+                                uid = 'func_exec.%04d' % executors_to_start_id)
                 slots = _find_slots(cores_per_node, cores_per_executor)
                 _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+                self._prof.prof('exec_warmup_stop',
+                                uid = 'func_exec.%04d' % executors_to_start_id)
 
         # Case 4 fit more than one executor (limit is 2) per node!
         if cores_per_executor < cores_per_node:
@@ -380,7 +385,11 @@ class MPIFUNCS(AgentExecutingComponent) :
                 slots = _find_slots(cores_per_node, cores_per_executor)
                 # We limit the number of executors per node to 2
                 for executors_to_start_id in range(executors_per_node):
+                    self._prof.prof('exec_warmup_start',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
                     _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+                    self._prof.prof('exec_warmup_stop',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
 
         # Case 5 (If we can not fit one executor per node, 
         # then we need more than one node per executor)
@@ -390,14 +399,21 @@ class MPIFUNCS(AgentExecutingComponent) :
             if nodes_per_executor % len(node_list) == 0:
                 executors_to_start = len(node_list) // nodes_per_executor
                 for executors_to_start_id in range(executors_to_start):
+                    self._prof.prof('exec_warmup_start',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
                     slots = _find_slots(cores_per_node, cores_per_executor)
                     _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+                    self._prof.prof('exec_warmup_stop',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
             else:
                 executors_to_start = math.floor(len(node_list) / nodes_per_executor)
                 for executors_to_start_id in range(executors_to_start):
+                    self._prof.prof('exec_warmup_start',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
                     slots = _find_slots(cores_per_node, cores_per_executor)
                     _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
-
+                    self._prof.prof('exec_warmup_stop',
+                                    uid = 'func_exec.%04d' % executors_to_start_id)
 
     # --------------------------------------------------------------------------
     #
