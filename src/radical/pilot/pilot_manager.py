@@ -143,7 +143,7 @@ class PilotManager(rpu.Component):
         # we also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock('pmgr_sds_lock')
+        self._sds_lock   = mt.Lock()
 
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
