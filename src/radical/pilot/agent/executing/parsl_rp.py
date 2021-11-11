@@ -1,15 +1,9 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/ParSL
 """
-import os
 import re
 import shlex
 import parsl
-import time
-import queue
-import pickle
-import logging
 import typeguard
-import threading
 import inspect
 
 import radical.pilot as rp
@@ -18,15 +12,10 @@ import radical.utils as ru
 from radical.pilot import PythonTask
 
 from concurrent.futures import Future
+from typing import Optional, Union
 
-from multiprocessing import Process, Queue
-from typing import Any, Dict, List, Optional, Tuple, Union
-
-from parsl.app.errors import RemoteExceptionWrapper
-from parsl.executors.errors import *
 from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
-
 
 
 class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
@@ -52,7 +41,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                            |                                       |     RP Task/Tasks desc. --+->   
         ----------------------------------------------------------------------------------------------------------------------------------------------------
     """        
-  
+
     @typeguard.typechecked
     def __init__(self,
                  label: str = 'RADICALExecutor',
@@ -75,8 +64,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.walltime           = walltime
         self.future_tasks       = {}
         self.managed            = managed
-        self.max_tasks          = max_tasks # Pilot cores
-        self.max_task_cores     = max_task_cores # executor cores
+        self.max_tasks          = max_tasks  # Pilot cores
+        self.max_task_cores     = max_task_cores  # executor cores
         self.gpus               = gpus
         self._task_counter      = 0
         self.run_dir            = '.'
@@ -88,10 +77,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                       mode=ru.ID_PRIVATE))
 
         self.report.title('RP version %s :' % rp.version)
-        self.report.header("Initializing RADICALExecutor with ParSL version %s :" % parsl.__version__)
+        self.report.header("Initializing RADICALExecutor (Parsl version: %s)" % parsl.__version__)
         self.pmgr    = rp.PilotManager(session=self.session)
         self.tmgr    = rp.TaskManager(session=self.session)
-        
+
     def task_state_cb(self, task, state):
 
         """
@@ -133,11 +122,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pilot = self.pmgr.submit_pilots(pdesc)
         self.tmgr.add_pilots(pilot)
         pilot.wait(state=rp.PMGR_ACTIVE)
-        #time.sleep(60)
         self.report.header('PMGR Is Active submitting tasks now')
 
         return True
-    
+
     def unwrap(self, func):
         while hasattr(func, '__wrapped__'):
             func = func.__wrapped__
@@ -159,18 +147,18 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
                 temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
                                                                             comments=True, posix=True)))
-                #task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
+                task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
                 if 'exe' in kwargs:
                     code = "{0} {1}".format(kwargs['exe'], task_exe)
                 else:
-                    code = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
+                    code = task_exe
 
             elif task_type.startswith('@python_app'):
-                code  = self.unwrap(func)
                 # We ignore the resource dict from Parsl
                 new_args = list(args)
                 new_args.pop(0)
                 args = tuple(new_args)
+                code  = PythonTask(self.unwrap(func), *args, **kwargs) 
 
 
             cu =  {"source_code": code,
@@ -178,7 +166,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                    "args"       : [],
                    "kwargs"     : kwargs,
                    "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                   "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
+                   "ptype"      : rp.FUNC if 'ptype' not in kwargs else kwargs['ptype'],
                    "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
                    "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
                    "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
@@ -192,7 +180,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             args = tuple(new_args)
 
 
-            cu = {"source_code": PythonTask(func, *args, **kwargs),
+            cu = {"source_code": PythonTask(rp_func, *args, **kwargs),
                   "name"       : func.__name__,
                   "args"       : [],
                   "kwargs"     : kwargs,
