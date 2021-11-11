@@ -18,7 +18,8 @@ config = Config(
                         partition = '',
                         walltime = 30,
                         managed = True,
-                        max_tasks = 4)
+                        max_tasks = 4,
+                        max_task_cores = 3)
                         ],
 
 strategy= None,
@@ -30,7 +31,6 @@ parsl.load(config)
 def hello_mpi(x, ptype=str,
                  nproc=int,
                  nthrd=int):
-    from mpi4py import MPI
 
     ec = os.system('/bin/echo "on %s print %s"' % (MPI.COMM_WORLD.rank, x))
     ret = 'on %s print %s' % (MPI.COMM_WORLD.rank, x)

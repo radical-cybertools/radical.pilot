@@ -157,7 +157,7 @@ class MPIExecutor(object):
                 if tasks:
 
                     for task in tasks:
-                        self._prof.prof('task_exec_start', uid= task['uid'])
+                        self._prof.prof('task_start', uid= task['uid'])
                         self._log.debug('got %s', task['uid'])
                         task_descr = task['description']
                         task_exe   = task_descr['executable']
@@ -222,7 +222,7 @@ class MPIExecutor(object):
                                 idle_workers.append(idx)
                                 if  len(idle_workers) == task['ranks']:
                                     break
-                        self._prof.prof('task_exec_stop', uid=task['uid'])
+                        self._prof.prof('func_stop', uid=task['uid'])
                     # once all results are received, send termination signal to workers
                     for worker in range(self.size - 1):
                         self._out('send term to %s' % (worker + 1))

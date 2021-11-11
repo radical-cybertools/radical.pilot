@@ -18,6 +18,7 @@ config = Config(
                         walltime = 60,
                         managed = True,
                         max_tasks = 24,
+                        max_task_cores = 24, 
                         gpus = 4)
                         ],
 strategy= None,
@@ -34,7 +35,7 @@ def run_iwp(work,ngpus=int,
 
     import sys
     sys.path.append("/oasis/projects/nsf/unc100/aymen/IWP/local_dir/")
-    import  iwp_run as iwp
+    import iwp_run as iwp
     import iwp_divideimg as divide
     import iwp_inferenceimg as inference
     import iwp_stitchshpfile as stitch
@@ -81,7 +82,7 @@ num_nodes = 1  # Every IWP task takes 1 GPU Node (4 GPUs and 24 CPU cores)
 
 for i in range(num_nodes):
 
-    results.append(run_iwp(work, ngpus=4,ptype=rp.MPI_FUNC, nproc=24))
+    results.append(run_iwp(work, ngpus = 4, ptype = rp.MPI_FUNC, nproc = 23))
 
 # wait for all apps to complete
 [r.result() for r in results]

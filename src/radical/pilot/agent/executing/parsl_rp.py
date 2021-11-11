@@ -61,6 +61,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  walltime: int = None,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
+                 max_task_cores: int = 1,
                  gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
                  partition : Optional[str] = " ",
@@ -74,7 +75,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.walltime           = walltime
         self.future_tasks       = {}
         self.managed            = managed
-        self.max_tasks          = max_tasks
+        self.max_tasks          = max_tasks # Pilot cores
+        self.max_task_cores     = max_task_cores # executor cores
         self.gpus               = gpus
         self._task_counter      = 0
         self.run_dir            = '.'
@@ -123,14 +125,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'project'       : self.project,
                           'queue'         : self.partition,
                           'access_schema' : self.login_method,
-                          'cores'         : 1*self.max_tasks,
+                          'cores'         : 1 * self.max_tasks,
+                          'max_task_cores': self.max_task_cores,
                           'gpus'          : self.gpus,}
 
         pdesc = rp.PilotDescription(pd_init)
         pilot = self.pmgr.submit_pilots(pdesc)
         self.tmgr.add_pilots(pilot)
         pilot.wait(state=rp.PMGR_ACTIVE)
-        time.sleep(60)
+        #time.sleep(60)
         self.report.header('PMGR Is Active submitting tasks now')
 
         return True

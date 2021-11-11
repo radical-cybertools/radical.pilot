@@ -27,7 +27,7 @@ NODES             = 'nodes'
 CORES             = 'cores'
 GPUS              = 'gpus'
 MEMORY            = 'memory'
-EXECUTOR_CORES    = 'executor_cores'
+MAX_TASK_CORES    = 'max_task_cores'
 
 INPUT_STAGING     = 'input_staging'
 OUTPUT_STAGING    = 'output_staging'
@@ -242,7 +242,7 @@ class PilotDescription(ru.Description):
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
         SERVICES        : [str]      ,
-        EXECUTOR_CORES  : int        ,
+        MAX_TASK_CORES  : int        ,
     }
 
     _defaults = {
@@ -266,7 +266,7 @@ class PilotDescription(ru.Description):
         PREPARE_ENV     : {}         ,
         LAYOUT          : 'default'  ,
         SERVICES        : []         ,
-        EXECUTOR_CORES  : 1          ,
+        MAX_TASK_CORES  : 1          ,
     }
 
 
