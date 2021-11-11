@@ -157,7 +157,7 @@ class MPIExecutor(object):
                 if tasks:
 
                     for task in tasks:
-                        self._prof.prof('task_start', uid= task['uid'])
+                        self._prof.prof('func_start', uid= task['uid'])
                         self._log.debug('got %s', task['uid'])
                         task_descr = task['description']
                         task_exe   = task_descr['executable']
