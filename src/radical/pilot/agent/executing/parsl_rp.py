@@ -147,20 +147,35 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def task_translate(self, func, args, kwargs):
 
-        task_type = inspect.getsource(func).split('\n')[0]
-        if task_type.startswith('@bash_app'):
-            source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
-            temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
+        try:
+            task_type = inspect.getsource(func).split('\n')[0]
+        except:
+            task_type = None
+
+        if task_type:
+            code  = None
+
+            if task_type.startswith('@bash_app'):
+                source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
+                temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
                                                                             comments=True, posix=True)))
-            task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
-            if 'exe' in kwargs:
-                code = "{0} {1}".format(kwargs['exe'], task_exe)
-            else:
-                code = task_exe
+                #task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
+                if 'exe' in kwargs:
+                    code = "{0} {1}".format(kwargs['exe'], task_exe)
+                else:
+                    code = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
+
+            elif task_type.startswith('@python_app'):
+                code  = self.unwrap(func)
+                # We ignore the resource dict from Parsl
+                new_args = list(args)
+                new_args.pop(0)
+                args = tuple(new_args)
+
 
             cu =  {"source_code": code,
                    "name"       : func.__name__,
-                   "args"       : None,
+                   "args"       : [],
                    "kwargs"     : kwargs,
                    "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
                    "ptype"      : None if 'ptype' not in kwargs else kwargs['ptype'],
@@ -169,16 +184,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                    "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
 
 
-        elif task_type.startswith('@python_app'):
-
-            rp_func  = self.unwrap(func)
-
+        else:
+            rp_func = self.unwrap(func)
             # We ignore the resource dict from Parsl
             new_args = list(args)
-            new_args.pop(0)      
+            new_args.pop(0)
             args = tuple(new_args)
 
-            cu = {"source_code": PythonTask(rp_func, *args, **kwargs),
+
+            cu = {"source_code": PythonTask(func, *args, **kwargs),
                   "name"       : func.__name__,
                   "args"       : [],
                   "kwargs"     : kwargs,
@@ -188,8 +202,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
                   "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
 
-        else:
-            pass
         return cu
 
     def submit(self, func, *args, **kwargs):

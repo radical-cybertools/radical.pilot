@@ -209,6 +209,7 @@ class Executor(object):
                 continue
 
             if task:
+                self._log.debug(task)
                 self._zmq_res.put(task)
 
 
@@ -277,7 +278,8 @@ class Executor(object):
                     if isinstance(obj, dict) is True:
                         return True
 
-                except:
+                except Exception as e:
+                    self._log.exception(str(e))
                     return False
 
             try:
