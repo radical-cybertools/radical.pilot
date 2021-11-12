@@ -92,7 +92,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         STDOUT = task.stdout
         if state == rp.DONE:
             try:
-                STODUT = pickle.loads(eval(task.stdout))
+                STDOUT = pickle.loads(eval(task.stdout))
             except: pass 
             parsl_task.set_result(STDOUT)
             print('\t+ %s: %-10s: %10s: %s'
