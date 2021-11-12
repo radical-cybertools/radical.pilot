@@ -301,7 +301,14 @@ class Executor(object):
                         self._prof.prof('func_start', comp=wid, uid=tid)
                         res = fn(*args, **kwargs)
                         self._prof.prof('func_stop', comp=wid, uid=tid)
-                        task['stdout'] = res
+
+                        # if our output does not need serialization
+                        if isinstance(res, int) or isinstance(res, str):
+                            task['stdout'] = res
+                        # else serialize it and send it via ZMQ
+                        else:
+                            
+                            task['stdout'] = str(pickle.dumps(res))
                         task['state']  = 'DONE'
                     except Exception as e:
                         self._log.exception('=== Function execution failed')

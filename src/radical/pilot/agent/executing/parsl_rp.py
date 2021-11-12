@@ -3,8 +3,9 @@
 import re
 import shlex
 import parsl
-import typeguard
+import pickle
 import inspect
+import typeguard
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -88,10 +89,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Based on RP task state
         """
         parsl_task = self.future_tasks[task.name]
+        STDOUT = task.stdout
         if state == rp.DONE:
-            parsl_task.set_result(task.stdout)
+            try:
+                STODUT = pickle.loads(eval(task.stdout))
+            except: pass 
+            parsl_task.set_result(STDOUT)
             print('\t+ %s: %-10s: %10s: %s'
-                  % (task.uid, task.state, task.pilot, task.stdout))
+                  % (task.uid, task.state, task.pilot, STDOUT))
 
         if state == rp.CANCELED:
             parsl_task.cancel()
