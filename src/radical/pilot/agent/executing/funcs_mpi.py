@@ -320,7 +320,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                            'uid'  : node_list[0][1],
                                            'core_map' : core_map,
                                            'gpus'     : []})
-                    to_pop.append(node_list[0][0], node_list[0][1])
+                    to_pop.append([node_list[0][0], node_list[0][1]])
 
                 self._log.debug(node_list)
                 node_list.pop(0)
@@ -337,7 +337,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                                'uid'  : node_list[i][1],
                                                'core_map' : core_map,
                                                'gpus'     : []})
-                        to_pop.append(node_list[i][0], node_list[i][1])
+                        to_pop.append([node_list[i][0], node_list[i][1]])
 
                 else:
                     for i in range(math.floor(len(node_list) / nodes_per_executor)):
@@ -345,7 +345,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                                'uid'  : node_list[i][1],
                                                'core_map' : core_map,
                                                'gpus'     : []})
-                        to_pop.append(node_list[i][0], node_list[i][1])
+                        to_pop.append([node_list[i][0], node_list[i][1]])
 
             self._log.debug(slots)
             self._log.debug(to_pop)
