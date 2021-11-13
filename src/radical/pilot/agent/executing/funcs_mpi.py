@@ -288,20 +288,19 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         def _find_slots(cores_per_node, cores_per_executor):
 
-            slots    = {}
-            nodes    = []
+            slots          = {}
+            to_pop         = []
+            slots['nodes'] = []
+            
             core_map = _get_node_maps(cores_per_node, 1)
 
             # 1 slot (slot = node) per executor
             if cores_per_executor == cores_per_node:
-
-                slot = {'name'     : node_list[0][0],
-                        'uid'      : node_list[0][1],
-                        'core_map' : core_map,
-                        'gpus'     : []}
-                nodes.append(slot)
-                slots['nodes'] = nodes
-                node_list.pop(0)
+                slots['nodes'].append({'name' : node_list[0][0],
+                                       'uid'  : node_list[0][1],
+                                       'core_map' : core_map,
+                                       'gpus'     : []})
+                to_pop.append([node_list[0][0], node_list[0][1]])
 
             # If this is true then we can fit more than one executor per node
             if cores_per_executor < cores_per_node:
@@ -317,11 +316,12 @@ class MPIFUNCS(AgentExecutingComponent) :
 
                 for executor in range(executors_per_node):
 
-                    slots = {'nodes':[{'name'     : node_list[0][0],
-                                       'uid'      : node_list[0][1],
-                                       'core_map' : core_map[:len(core_map) // executors_per_node],
-                                       'gpus'     : []
-                                       }]}
+                    slots['nodes'].append({'name' : node_list[0][0],
+                                           'uid'  : node_list[0][1],
+                                           'core_map' : core_map,
+                                           'gpus'     : []})
+                    to_pop.append(node_list[0][0], node_list[0][1])
+
                 self._log.debug(node_list)
                 node_list.pop(0)
                 self._log.debug(node_list)
@@ -333,23 +333,26 @@ class MPIFUNCS(AgentExecutingComponent) :
                 if nodes_per_executor % len(node_list) == 0:
 
                     for i in range(nodes_per_executor):
-                        slot = {'name' : node_list[i][0],
-                                'uid'  : node_list[i][1],
-                                'core_map' : core_map,
-                                'gpus'     : []}
-                        nodes.append(slot)
-                    slots['nodes'] = nodes
+                        slots['nodes'].append({'name' : node_list[i][0],
+                                               'uid'  : node_list[i][1],
+                                               'core_map' : core_map,
+                                               'gpus'     : []})
+                        to_pop.append(node_list[i][0], node_list[i][1])
+
                 else:
                     for i in range(math.floor(len(node_list) / nodes_per_executor)):
+                        slots['nodes'].append({'name' : node_list[i][0],
+                                               'uid'  : node_list[i][1],
+                                               'core_map' : core_map,
+                                               'gpus'     : []})
+                        to_pop.append(node_list[i][0], node_list[i][1])
 
-                        slot = {'name' : node_list[i][0],
-                                'uid'  : node_list[i][1],
-                                'core_map' : core_map,
-                                'gpus'     : []}
-                        nodes.append(slot)
-                        node_list.pop(0)
-                    slots['nodes'] = nodes
             self._log.debug(slots)
+            self._log.debug(to_pop)
+            self._log.debug(node_list)
+
+            for node in to_pop:
+                node_list.remove(node)
             return slots
 
         

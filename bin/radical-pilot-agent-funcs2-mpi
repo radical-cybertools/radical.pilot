@@ -115,8 +115,12 @@ class MPIExecutor(object):
         worker (rank != 0) does worker stuff
         '''
 
-        if self.master: self.single_work_master()
-        else          : self.work_worker()
+        if self.master:
+            self._prof.prof('work_start', uid = self._uid)
+            self.single_work_master()
+            self._prof.prof('work_stop', uid = self._uid)
+        else: 
+            self.work_worker()
 
     # --------------------------------------------------------------------------
     #
