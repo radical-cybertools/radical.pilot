@@ -702,7 +702,7 @@ class Default(PMGRLaunchingComponent):
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
-        task_pre_exec           = rcfg.get('task_pre_exec')
+        executor_pre_exec       = rcfg.get('executor_pre_exec')
         task_post_exec          = rcfg.get('task_post_exec')
         export_to_task          = rcfg.get('export_to_task')
         mandatory_args          = rcfg.get('mandatory_args', [])
@@ -966,8 +966,8 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
         agent_cfg['task_tmp']            = task_tmp
-        agent_cfg['export_to_task']        = export_to_task
-        agent_cfg['task_pre_exec']       = task_pre_exec
+        agent_cfg['export_to_task']      = export_to_task
+        agent_cfg['executor_pre_exec']   = executor_pre_exec
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
