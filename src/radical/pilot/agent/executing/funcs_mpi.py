@@ -16,13 +16,12 @@ import subprocess
 
 import radical.utils as ru
 
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import utils     as rpu
+from ...   import states    as rps
+from ...   import constants as rpc
 
-from ..   import LaunchMethod
-
-from .base           import AgentExecutingComponent
+from ..    import LaunchMethod
+from .base import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -88,8 +87,7 @@ class MPIFUNCS(AgentExecutingComponent) :
         self._collector.daemon = True
         self._collector.start()
 
-        # we need to launch the executors on all nodes, and use the
-        # agent_launcher for that
+        # Set a specific launch method
         self._launcher = LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
                 cfg     = self._cfg,
@@ -101,10 +99,6 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         # now schedule the executors and start
         self._schedule_and_start_mpi_executor()
-        # Since we know that every task is a multinode, we take half of the nodes and
-        # spawn executros on them, then the rest of the nodes (the other half) 
-        # will be utilized by the mpi_workers inside every executor.
-        # So the mpi worker will see 2 nodes for every task and occupy it
 
 
     # --------------------------------------------------------------------------
@@ -176,6 +170,12 @@ class MPIFUNCS(AgentExecutingComponent) :
             if descr.get('environment', []):
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
+
+            # FIXME: maybe exposing this option on the API level
+            # would be easier to deal with.
+            if self._cfg.get('executor_pre_exec'):
+                for val in self._cfg['executor_pre_exec']:
+                    fout.write("%s\n"  % val)
 
             fout.write('\n%s\n\n' % launch_cmd)
             fout.write('RETVAL=$?\n')
@@ -427,6 +427,7 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
+        # send tasks to the executor(s)
         for task in tasks:
             assert(task['description']['cpu_process_type'] == 'MPI_FUNC')
             self._req_queue.put(task)
