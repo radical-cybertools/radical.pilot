@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable=pointless-statement
+
 
 __copyright__ = "Copyright 2014-2015, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -8,9 +8,9 @@ import sys
 import radical.pilot as rp
 
 
-""" DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
-                             submitted to multiple machines
-"""
+# DESCRIPTION: Tutorial 1: A Simple Workload consisting of a Bag-of-Tasks
+#                             submitted to multiple machines
+#
 
 # READ: The RADICAL-Pilot documentation:
 #   https://radicalpilot.readthedocs.io/en/stable/
