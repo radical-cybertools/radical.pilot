@@ -70,12 +70,13 @@ class MPIExecutor(object):
     def __init__(self):
 
         # ensure we have a communicator
-        self._world = MPI.COMM_WORLD
-        self._group = self._world.Get_group()
-        self._pwd   = os.getcwd()
-        self._uid   = os.environ.get('RP_FUNCS_ID')
-        self._log   = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
-        self._prof  = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
+        self._world      = MPI.COMM_WORLD
+        self._group      = self._world.Get_group()
+        self._pwd        = os.getcwd()
+        self._uid        = os.environ.get('RP_FUNCS_ID')
+        self._log        = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
+        self._prof       = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
+
 
     # --------------------------------------------------------------------------
     #
@@ -94,7 +95,6 @@ class MPIExecutor(object):
     @property
     def worker(self) -> bool:
         return bool(self.rank != 0)
-
 
     # --------------------------------------------------------------------------
     #
@@ -122,16 +122,19 @@ class MPIExecutor(object):
         else: 
             self.work_worker()
 
+
     # --------------------------------------------------------------------------
     #
     def single_work_master(self):
         # keep track of busy and idle workers
         resources = [IDLE] * (self.size - 1)
 
+        MAX_WAIT_TIME = 100
+
         # define a static list of tasks and send single one per time to the workers
         # We assume in this mode that the task is large enough where:
         #    task[ranks] == self.resources
-        #    uid  : duh!
+        #    uid  : recieved task id
         #    ranks: how many workers to use in the task's communicator
         #    work : what method to call
         #    args : what arguments to pass to the method
@@ -155,11 +158,11 @@ class MPIExecutor(object):
 
 
         while True:
+            self._log.debug(MAX_WAIT_TIME)
             if self.rank == 0:
                 tasks = _zmq_req.get_nowait(1000)
-
                 if tasks:
-
+                    MAX_WAIT_TIME = 100
                     for task in tasks:
                         self._prof.prof('func_start', uid= task['uid'])
                         self._log.debug('got %s', task['uid'])
@@ -203,7 +206,8 @@ class MPIExecutor(object):
 
                         # once a single task is sent out, collect results
                         task = msgpack.unpackb(self._world.recv(tag=1))
-                        self._out('recv task %s from %s' % (task['uid'], task))
+                        self._log.debug('recv %s with state %s' % (task['uid'],
+                                                                  task['state']))
 
                         if  task['state'] == 'DONE':
                             task['stdout'] = task['result']
@@ -222,17 +226,31 @@ class MPIExecutor(object):
                         for idx, worker in enumerate(resources):
                             if worker == BUSY:
                                 resources[idx] = IDLE
-                                self._out('Marked worker number {0} as IDLE'.format(idx))
+                                self._log.debug('marked worker number %d as IDLE' % (idx))
                                 idle_workers.append(idx)
                                 if  len(idle_workers) == task['ranks']:
                                     break
                         self._prof.prof('func_stop', uid=task['uid'])
-                    # once all results are received, send termination signal to workers
-                    for worker in range(self.size - 1):
-                        self._out('send term to %s' % (worker + 1))
-                        self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
-                else:
+
+                if not tasks and MAX_WAIT_TIME != 0:
+                    MAX_WAIT_TIME = MAX_WAIT_TIME - 1
                     time.sleep(0.1)
+                    continue
+
+                # If the countdown is 0 but some/all resource still BUSY
+                # then wait for them to become IDLE
+                if not tasks and MAX_WAIT_TIME == 0:
+                    self._log.debug("waiting for resource to be IDLE to terminate")
+                    if all(worker == IDLE for worker in resources):
+                        break
+                    else:
+                        time.sleep(0.1)
+                        continue
+        # once all results are received, send termination signal to workers
+        for worker in range(self.size - 1):
+            self._log.debug('send term to %s' % (worker + 1))
+            self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
+
 
 
     # --------------------------------------------------------------------------
@@ -311,7 +329,7 @@ class MPIExecutor(object):
                         task['workers'] = workers
 
                         # send the task to each of the workers
-                        self._log.debug('send task %s  to  %s' % (task['uid'], workers))
+                        self._log.debug('send %s to %s' % (task['uid'], workers))
                         for worker in workers:
                             self._world.send(msgpack.packb(task), dest=worker, tag=0)
 
@@ -370,7 +388,7 @@ class MPIExecutor(object):
                 if comm.rank == 0:
                     task['result'] = result
                     task['state']  = "DONE"
-                    self._log.debug('send res  %s to Master <<< ' % (task['uid']))
+                    self._log.debug('send %s result to master <<< ' % (task['uid']))
                     self._world.send(msgpack.packb(task), dest=0, tag=1)
 
             except Exception as e:
@@ -379,8 +397,8 @@ class MPIExecutor(object):
                     task['state']  = "FAILED"
                     task['result'] = None
 
-                self._log.error('recv err %s to Master' % (task['uid']))
-                self._log.error(str(e))
+                self._log.error('%s %s (%s)' % (task['uid'], task['state'],
+                                                task['error']))
                 self._world.send(msgpack.packb(task), dest=0, tag=1)
                 raise
 
