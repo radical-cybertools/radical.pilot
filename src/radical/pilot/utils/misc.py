@@ -1,6 +1,7 @@
 
 import os
 import time
+import inspect
 import builtins
 
 from typing import Any, Union, Optional
@@ -84,25 +85,25 @@ def create_tar(tgt: str, dnames: str) -> None:
 
 # ------------------------------------------------------------------------------
 #
-def get_type(type_name: str) -> type:
+def get_type(type_name: str) -> Optional[type]:
     '''
     get a type object from a type name (str)
     '''
 
+    # check builtin types
     ret = getattr(builtins, type_name, None)
-
-    if ret:
+    if isinstance(ret, type):
         return ret
 
-    obj = globals().get(type_name)
+    # check global types
+    ret = globals().get(type_name)
+    if isinstance(ret, type):
+        return ret
 
-    if not obj:
-        return None
-
-    if not isinstance(obj, type):
-        return None
-
-    return repr(obj)
+    # check local types of the calling frame
+    ret = inspect.currentframe().f_back.f_locals.get(type_name)
+    if isinstance(ret, type):
+        return ret
 
 
 # ------------------------------------------------------------------------------
@@ -116,6 +117,9 @@ def load_class(fpath: str,
     '''
 
     from importlib import util as imp
+
+    if not os.path.isfile(fpath):
+        raise ValueError('no source file at [%s]' % fpath)
 
     pname  = os.path.splitext(os.path.basename(fpath))[0]
     spec   = imp.spec_from_file_location(pname, fpath)

@@ -78,10 +78,10 @@ if __name__ == '__main__':
             # work serialization goes here
             work = json.dumps({'mode'   :  'call',
                                'cores'  :  1,
-                               'timeout':  100,
-                               'data'   : {'method': 'hello',
-                                           'kwargs': {'count': i,
-                                                      'uid'  : uid}}})
+                               'timeout':  10,
+                               'data'   : {'method': 'test',
+                                           'kwargs': {'idx'    : i,
+                                                      'seconds': 0}}})
             # ------------------------------------------------------------------
             requests.append(rp.TaskDescription({
                                'uid'       : uid,

@@ -66,8 +66,22 @@ class Worker(rpu.Component):
     @staticmethod
     def run(fpath, cname, cfg):
 
+        # load worker class from fname if that is a valid string
+        wclass = None
+
         # Create the worker class and run it's work loop.
-        wclass = rpu.load_class(fpath, cname, Worker)
+        if fpath and fpath != 'None':
+            wclass = rpu.load_class(fpath, cname, Worker)
+
+        else:
+            # import all known workers into the local name space so that
+            # `get_type` has a chance to find them
+            from .worker_default import DefaultWorker
+            wclass = rpu.get_type(cname)
+
+        if not wclass:
+            raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))
+
         worker = wclass(cfg)
         worker.start()
         worker.join()

@@ -323,8 +323,9 @@ class Master(rpu.Component):
                         '-c',
                         'import radical.pilot as rp; '
                         'rp.raptor.Worker.run("%s", "%s", "%s")'
-                                           % (descr['worker_file'],
-                                               descr['worker_class'], fname)]
+                            % (descr.get('worker_file', ''),
+                               descr.get('worker_class', 'DefaultWorker'),
+                               fname)]
 
 
 
