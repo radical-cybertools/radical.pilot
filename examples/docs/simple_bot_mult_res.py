@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+#pylint: disable=pointless-statement
 
 __copyright__ = "Copyright 2014-2015, http://radical.rutgers.edu"
 __license__   = "MIT"
