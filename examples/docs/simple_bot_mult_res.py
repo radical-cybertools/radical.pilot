@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-#pylint: disable=pointless-statement
+# pylint: disable=pointless-statement
 
 __copyright__ = "Copyright 2014-2015, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -38,8 +38,6 @@ def task_state_cb (task, state):
 
     if not task:
         return
-
-    global CNT
 
     print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
