@@ -88,22 +88,6 @@ The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facilit
 
 * **Available schemas** : ``local, ssh, go``
 
-SUMMITDEV
-*********
-
-The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
-
-* **Resource label**    : ``ornl.summitdev``
-* **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
-* **Note**              : Requires the use of an RSA SecurID on every connection.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :batch``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local``
-
 SUMMIT
 ******
 
