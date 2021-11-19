@@ -57,25 +57,6 @@ The FU Berlin 'Allegro' cluster at IMP (http://www.allegro.imp.fu-berlin.de).
 
 * **Available schemas** : ``ssh``
 
-RESOURCE_OSG
-============
-
-XSEDE-VIRT-CLUST
-****************
-
-XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).
-
-* **Resource label**    : ``osg.xsede-virt-clust``
-* **Raw config**        : :download:`resource_osg.json <../../src/radical/pilot/configs/resource_osg.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
 CONNECT
 *******
 
@@ -503,54 +484,6 @@ The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
  * ``access_schema :gsissh``
 
 * **Available schemas** : ``gsissh, ssh``
-
-COMET_SSH
-*********
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-COMET_SSH_FUNCS
-***************
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh_funcs``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-COMET_SPARK
-***********
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
 
 SUPERMIC_SSH
 ************
