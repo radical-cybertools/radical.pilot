@@ -1,6 +1,9 @@
 
 import os
 import time
+import builtins
+
+from typing import Any, Union, Optional
 
 import radical.utils as ru
 
@@ -10,7 +13,7 @@ MAX_IO_LOGLENGTH = 1024
 
 # ------------------------------------------------------------------------------
 #
-def tail(txt, maxlen=MAX_IO_LOGLENGTH):
+def tail(txt: str, maxlen: int = MAX_IO_LOGLENGTH) -> str:
 
     # shorten the given string to the last <n> characters, and prepend
     # a notification.  This is used to keep logging information in mongodb
@@ -27,7 +30,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
 # ------------------------------------------------------------------------------
 #
-def get_rusage():
+def get_rusage() -> str:
 
     import resource
 
@@ -43,9 +46,9 @@ def get_rusage():
          % (rtime, utime, stime, rss)
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def create_tar(tgt, dnames):
+def create_tar(tgt: str, dnames: str) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''
@@ -79,5 +82,63 @@ def create_tar(tgt, dnames):
     fout.close()
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+#
+def get_type(type_name: str) -> type:
+    '''
+    get a type object from a type name (str)
+    '''
+
+    ret = getattr(builtins, type_name, None)
+
+    if ret:
+        return ret
+
+    obj = globals().get(type_name)
+
+    if not obj:
+        return None
+
+    if not isinstance(obj, type):
+        return None
+
+    return repr(obj)
+
+
+# ------------------------------------------------------------------------------
+#
+def load_class(fpath: str,
+               cname: str,
+               ctype: Optional[Union[type,str]] = None) -> Optional[Any]:
+    '''
+    load class `cname` from a source file at location `fpath`
+    and return it (the class, not an instance).
+    '''
+
+    from importlib import util as imp
+
+    pname  = os.path.splitext(os.path.basename(fpath))[0]
+    spec   = imp.spec_from_file_location(pname, fpath)
+    plugin = imp.module_from_spec(spec)
+
+    spec.loader.exec_module(plugin)
+
+    ret = getattr(plugin, cname)
+
+    if ctype:
+
+        if isinstance(ctype, str):
+            ctype_name = ctype
+            ctype = get_type(ctype_name)
+
+            if not ctype:
+                raise ValueError('cannot type check %s' % ctype_name)
+
+        if not issubclass(ret, ctype):
+            return None
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
 

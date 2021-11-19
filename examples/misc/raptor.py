@@ -18,16 +18,14 @@ if __name__ == '__main__':
     cfg_fname =                 os.path.basename(cfg_file)
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    cpn       = cfg.cpn
-    gpn       = cfg.gpn
+    cpn       = cfg.worker_descr.cores_per_rank
+    gpn       = cfg.worker_descr.gpus_per_rank
     n_masters = cfg.n_masters
     n_workers = cfg.n_workers
     workload  = cfg.workload
 
     # each master uses a node, and each worker on each master uses a node
-    nodes     =  n_masters + (n_masters * n_workers)
-    print('nodes', nodes)
-
+    nodes     = n_masters + (n_masters * n_workers)
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)

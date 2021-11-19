@@ -784,14 +784,12 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
-        print(env_spec)
-
         etype = env_spec['type']
         evers = env_spec['version']
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
 
-        pre_exec = '-P ". env/bs0_orig.sh" '
+        pre_exec = '-P ". env/bs0_pre_0.sh" '
         for cmd in pre:
             pre_exec += '-P "%s" ' % cmd
 

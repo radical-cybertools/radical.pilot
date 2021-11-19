@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
 
-import sys
 import time
 import random
 
@@ -9,7 +7,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.Worker):
+class MyWorker(rp.raptor.DefaultWorker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
@@ -20,7 +18,9 @@ class MyWorker(rp.raptor.Worker):
     #
     def __init__(self, cfg):
 
-        rp.raptor.Worker.__init__(self, cfg)
+        rp.raptor.DefaultWorker.__init__(self, cfg)
+
+        self._enable_bulk_start = True
 
 
     # --------------------------------------------------------------------------
@@ -41,17 +41,6 @@ class MyWorker(rp.raptor.Worker):
       # self._prof.flush()
 
         return out
-
-
-# ------------------------------------------------------------------------------
-#
-if __name__ == '__main__':
-
-    # the `info` dict is passed to the worker as config file.
-    # Create the worker class and run it's work loop.
-    worker = MyWorker(sys.argv[1])
-    worker.start()
-    worker.join()
 
 
 # ------------------------------------------------------------------------------
