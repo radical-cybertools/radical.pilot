@@ -9,8 +9,6 @@ RESOURCE_PRINCETON
 TIGER_CPU
 *********
 
-
-
 * **Resource label**    : ``princeton.tiger_cpu``
 * **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
 * **Note**              : 
@@ -24,8 +22,6 @@ TIGER_CPU
 
 TIGER_GPU
 *********
-
-
 
 * **Resource label**    : ``princeton.tiger_gpu``
 * **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
@@ -56,22 +52,6 @@ The FU Berlin 'Allegro' cluster at IMP (http://www.allegro.imp.fu-berlin.de).
  * ``access_schema :ssh``
 
 * **Available schemas** : ``ssh``
-
-CONNECT
-*******
-
-OSG Connect. (https://osgconnect.net).
-
-* **Resource label**    : ``osg.connect``
-* **Raw config**        : :download:`resource_osg.json <../../src/radical/pilot/configs/resource_osg.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
 
 RESOURCE_ORNL
 =============
@@ -439,8 +419,6 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
 FRONTERA
 ********
-
-
 
 * **Resource label**    : ``xsede.frontera``
 * **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
