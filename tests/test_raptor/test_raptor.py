@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import time
 
 from   unittest import mock
@@ -25,6 +26,10 @@ class TestWorker(TestCase):
 
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
+
+        os.environ['RP_TASK_ID'] = 'task.000000'
+
+        rp.raptor.Worker.publish = mock.Mock()
 
         worker = rp.raptor.Worker(cfg, session=mock.Mock())
 
