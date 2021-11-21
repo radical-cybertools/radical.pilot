@@ -35,7 +35,7 @@ You can describe multiple :class:`radical.pilot.Pilot` save them to a list and s
     pilot_list=list()
 
     pdesc = radical.pilot.PilotDescription()
-    pdesc.resource  = "xsede.comet"
+    pdesc.resource  = "xsede.bridges2"
     pdesc.runtime   = 10
     pdesc.cores     = 12
 
