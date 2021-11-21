@@ -260,7 +260,7 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
-        with open('%s/%s' % (sbox, launch_script), 'w') as fout:
+        with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
             tmp  = ''
             tmp += self._header
@@ -307,7 +307,7 @@ class Popen(AgentExecutingComponent):
         ranks   = task['slots']['ranks']
         n_ranks = len(ranks)
 
-        with open('%s/%s' % (sbox, exec_script), 'w') as fout:
+        with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
 
             tmp  = ''
             tmp += self._header
@@ -411,7 +411,7 @@ class Popen(AgentExecutingComponent):
         # make sure the sandbox exists
         slots_fname = '%s/%s.sl' % (sbox, tid)
 
-        with open(slots_fname, 'w') as fout:
+        with ru.ru_open(slots_fname, 'w') as fout:
             fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         # make sure the sandbox exists
@@ -424,7 +424,7 @@ class Popen(AgentExecutingComponent):
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
-        _launch_out_h = open('%s/%s.launch.out' % (sbox, tid), 'w')
+        _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,

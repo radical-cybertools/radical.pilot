@@ -132,7 +132,7 @@ class JSRUN(LaunchMethod):
                 rank_id += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
-        with open(rs_name, 'w') as fout:
+        with ru.ru_open(rs_name, 'w') as fout:
             fout.write(rs_str)
 
         return rs_name

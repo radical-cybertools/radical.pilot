@@ -481,7 +481,7 @@ class ResourceManager(object):
         self._log.info('using nodefile: %s', fname)
         try:
             nodes = dict()
-            with open(fname, 'r') as fin:
+            with ru.ru_open(fname, 'r') as fin:
                 for line in fin.readlines():
                     node = line.strip()
                     assert(' ' not in node)

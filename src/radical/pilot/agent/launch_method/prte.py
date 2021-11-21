@@ -184,7 +184,7 @@ class PRTE(LaunchMethod):
                 time.sleep(.5)
 
                 try:
-                    with open(DVM_URI_FILE_TPL % file_info, 'r') as fin:
+                    with ru.ru_open(DVM_URI_FILE_TPL % file_info, 'r') as fin:
                         for line in fin.readlines():
                             if '://' in line:
                                 dvm_uri = line.strip()
@@ -217,7 +217,7 @@ class PRTE(LaunchMethod):
                                                   (_dvm_id + 1) * nodes_per_dvm]
             dvm_file_info.update({'dvm_id': _dvm_id})
             # write hosts file
-            with open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
+            with ru.ru_open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
                 num_slots = self._rm_info['cores_per_node'] * \
                             self._rm_info['threads_per_core']
                 for node in node_list:

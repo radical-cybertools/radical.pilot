@@ -520,7 +520,7 @@ class Default(PMGRLaunchingComponent):
             output_staging = pilot['description'].get('output_staging')
             if output_staging:
                 fname = '%s/%s/staging_output.txt' % (tmp_dir, pilot['uid'])
-                with open(fname, 'w') as fout:
+                with ru.ru_open(fname, 'w') as fout:
                     for entry in output_staging:
                         fout.write('%s\n' % entry)
 
@@ -546,7 +546,7 @@ class Default(PMGRLaunchingComponent):
             if src == '/dev/null':
                 # we want an empty file -- touch it (tar will refuse to
                 # handle a symlink to /dev/null)
-                open('%s/%s' % (tmp_dir, tgt), 'a').close()
+                ru.ru_open('%s/%s' % (tmp_dir, tgt), 'a').close()
             else:
                 # use a shell callout to account for wildcard expansion
                 cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)

@@ -1004,7 +1004,7 @@ class _CloseOptions(ru.Munch):
     #
     def _verify(self):
 
-        if self.cleanup and not self.terminate:
+        if self.get('cleanup') and not self.get('terminate'):
             self.terminate = True
 
 

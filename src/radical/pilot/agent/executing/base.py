@@ -109,5 +109,19 @@ class AgentExecutingComponent(rpu.Component):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
 
+    # --------------------------------------------------------------------------
+    #
+    def work(self, tasks):
+
+        raise NotImplementedError('work is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, msg):
+
+        raise NotImplementedError('work is not implemented')
+
+
 # ------------------------------------------------------------------------------
 

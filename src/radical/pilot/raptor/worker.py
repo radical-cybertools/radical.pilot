@@ -263,7 +263,7 @@ class Worker(rpu.Component):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            exec(src, {}, loc)
+            exec(src, {}, loc)                           # pylint: disable=W0122
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -597,7 +597,7 @@ class Worker(rpu.Component):
 
 
     def _after_fork():
-        with open('/tmp/after_fork', 'a+') as fout:
+        with ru.ru_open('/tmp/after_fork', 'a+') as fout:
             fout.write('after fork %s %s\n' % (os.getpid(), mt.current_thread().name))
 
     # --------------------------------------------------------------------------
@@ -663,7 +663,7 @@ class Worker(rpu.Component):
 
             with res_lock:
                 if dispatcher.is_alive():
-                    dispatcher.kill()
+                    dispatcher.terminate()
                     dispatcher.join()
                     out = None
                     err = 'timeout (>%s)' % tout

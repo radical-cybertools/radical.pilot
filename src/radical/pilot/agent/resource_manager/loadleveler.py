@@ -194,7 +194,7 @@ class LoadLeveler(ResourceManager):
                 loadl_total_tasks = int(loadl_total_tasks_str)
 
             # Construct the host list
-            loadl_nodes = [line.strip() for line in open(loadl_hostfile)]
+            loadl_nodes = [line.strip() for line in ru.ru_open(loadl_hostfile)]
             self._log.info("Found LOADL_HOSTFILE %s. Expanded to: %s",
                           loadl_hostfile, loadl_nodes)
             loadl_nodes = list(set(loadl_nodes))
@@ -254,8 +254,8 @@ class LoadLeveler(ResourceManager):
                 self.torus_block = self._bgq_construct_block(
                     loadl_bg_block_shape_str, loadl_bg_board_list_str,
                     loadl_bg_block_size,      loadl_bg_midplane_list_str)
-            except Exception:
-                raise RuntimeError("Couldn't construct block")
+            except Exception as e:
+                raise RuntimeError("Couldn't construct block") from e
 
             self._log.debug("Torus block constructed:")
             for e in self.torus_block:
@@ -265,15 +265,15 @@ class LoadLeveler(ResourceManager):
             try:
                 loadl_nodes = [entry[Torus.TORUS_BLOCK_NAME]
                                    for entry in self.torus_block]
-            except Exception:
-                raise RuntimeError("Couldn't construct node list")
+            except Exception as e:
+                raise RuntimeError("Couldn't construct node list") from e
 
             # Construct sub-block table
             try:
                 self.shape_table = self._bgq_create_sub_block_shape_table(
                                                        loadl_bg_block_shape_str)
-            except Exception:
-                raise RuntimeError("Couldn't construct shape table")
+            except Exception as e:
+                raise RuntimeError("Couldn't construct shape table") from e
 
             self._log.debug("Node list constructed: %s" % loadl_nodes)
             self._log.debug("Shape table constructed: ")

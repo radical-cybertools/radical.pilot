@@ -188,7 +188,7 @@ class MPIExec(LaunchMethod):
             # Create a hostfile from the list of hosts.  We create that in the
             # task sandbox
             hostfile = '%s/mpi_hostfile' % task['task_sandbox_path']
-            with open(hostfile, 'w') as f:
+            with ru.ru_open(hostfile, 'w') as f:
                 for node, nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
             host_string = '-hostfile %s' % hostfile

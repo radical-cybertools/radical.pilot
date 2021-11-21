@@ -55,7 +55,6 @@ class ComponentManager(object):
     #
     def __init__(self, cfg):
 
-        global _components
         _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)

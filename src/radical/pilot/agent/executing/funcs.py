@@ -68,10 +68,13 @@ class FUNCS(AgentExecutingComponent) :
 
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
+        # FIXME: env isolation
         self._launcher = LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+                lm_cfg  = self._cfg,
+                rm_info = {},
+                log     = self._log,
+                prof    = self._prof)
 
         # now run the func launcher on all nodes
         ve  = os.environ.get('VIRTUAL_ENV',  '')
@@ -138,7 +141,7 @@ class FUNCS(AgentExecutingComponent) :
         if hop_cmd : cmdline = hop_cmd
         else       : cmdline = fname
 
-        with open(fname, "w") as fout:
+        with ru.ru_open(fname, "w") as fout:
 
             fout.write('#!/bin/sh\n\n')
 
@@ -164,8 +167,8 @@ class FUNCS(AgentExecutingComponent) :
         st = os.stat(fname)
         os.chmod(fname, st.st_mode | stat.S_IEXEC)
 
-        fout = open('%s/%s.out' % (sandbox, funcs['uid']), "w")
-        ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
+        fout = ru.ru_open('%s/%s.out' % (sandbox, funcs['uid']), "w")
+        ferr = ru.ru_open('%s/%s.err' % (sandbox, funcs['uid']), "w")
 
         self._prof.prof('exec_start', uid=funcs['uid'])
         # we really want to use preexec_fn:

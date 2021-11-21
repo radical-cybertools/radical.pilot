@@ -125,7 +125,7 @@ class Srun(LaunchMethod):
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [rank['node_name'] for rank in slots['ranks']]
             nodefile = '%s/%s.nodes' % (sbox, uid)
-            with open(nodefile, 'w') as fout:
+            with ru.ru_open(nodefile, 'w') as fout:
                 fout.write(','.join(nodelist))
                 fout.write('\n')
 
