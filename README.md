@@ -37,4 +37,3 @@ These badges show the state of the current integration tests on different HPCs R
 
 [![ORNL Summit Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/summit.yml)
 [![PSC Bridges2 Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/bridges.yml)
-[![SDSC Comet Integration Tests](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/comet.yml)
