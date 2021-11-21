@@ -52,7 +52,7 @@ class TestSession(TestCase):
     #
     def test_get_resource_config(self):
 
-        rcfg_label = 'xsede.comet_ssh'
+        rcfg_label = 'xsede.bridges2'
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)

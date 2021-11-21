@@ -9,8 +9,6 @@ RESOURCE_PRINCETON
 TIGER_CPU
 *********
 
-
-
 * **Resource label**    : ``princeton.tiger_cpu``
 * **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
 * **Note**              : 
@@ -24,8 +22,6 @@ TIGER_CPU
 
 TIGER_GPU
 *********
-
-
 
 * **Resource label**    : ``princeton.tiger_gpu``
 * **Raw config**        : :download:`resource_princeton.json <../../src/radical/pilot/configs/resource_princeton.json>`
@@ -56,41 +52,6 @@ The FU Berlin 'Allegro' cluster at IMP (http://www.allegro.imp.fu-berlin.de).
  * ``access_schema :ssh``
 
 * **Available schemas** : ``ssh``
-
-RESOURCE_OSG
-============
-
-XSEDE-VIRT-CLUST
-****************
-
-XSEDE OSG Virtual Cluster is a Condor pool overlay on top of OSG resources. (https://portal.xsede.org/OSG-User-Guide).
-
-* **Resource label**    : ``osg.xsede-virt-clust``
-* **Raw config**        : :download:`resource_osg.json <../../src/radical/pilot/configs/resource_osg.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-CONNECT
-*******
-
-OSG Connect. (https://osgconnect.net).
-
-* **Resource label**    : ``osg.connect``
-* **Raw config**        : :download:`resource_osg.json <../../src/radical/pilot/configs/resource_osg.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :None``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
 
 RESOURCE_ORNL
 =============
@@ -126,22 +87,6 @@ The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facilit
  * ``access_schema :local``
 
 * **Available schemas** : ``local, ssh, go``
-
-SUMMITDEV
-*********
-
-The Cray XK7 supercomputer located at the Oak Ridge Leadership Computing Facility (OLCF), (https://www.olcf.ornl.gov/titan/)
-
-* **Resource label**    : ``ornl.summitdev``
-* **Raw config**        : :download:`resource_ornl.json <../../src/radical/pilot/configs/resource_ornl.json>`
-* **Note**              : Requires the use of an RSA SecurID on every connection.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :batch``
- * ``sandbox       :$HOME``
- * ``access_schema :local``
-
-* **Available schemas** : ``local``
 
 SUMMIT
 ******
@@ -459,8 +404,6 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 FRONTERA
 ********
 
-
-
 * **Resource label**    : ``xsede.frontera``
 * **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
 * **Note**              : 
@@ -503,54 +446,6 @@ The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
  * ``access_schema :gsissh``
 
 * **Available schemas** : ``gsissh, ssh``
-
-COMET_SSH
-*********
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-COMET_SSH_FUNCS
-***************
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_ssh_funcs``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
-
-COMET_SPARK
-***********
-
-The Comet HPC resource at SDSC 'HPC for the 99%%' (http://www.sdsc.edu/services/hpc/hpc_systems.html#comet).
-
-* **Resource label**    : ``xsede.comet_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
-* **Default values** for PilotDescription attributes:
-
- * ``queue         :compute``
- * ``sandbox       :$HOME``
- * ``access_schema :ssh``
-
-* **Available schemas** : ``ssh, gsissh``
 
 SUPERMIC_SSH
 ************
