@@ -1,10 +1,4 @@
 {
-    "comet" : {
-      "cores_per_node"   : 24,
-      "gpus_per_node"    : 0,
-      "ssh_path"         : "/bin/ssh",
-      "resource"         : "xsede.comet"
-    },
     "bridges2" : {
         "cores_per_node" : 40,
         "gpus_per_node"  : 0,
