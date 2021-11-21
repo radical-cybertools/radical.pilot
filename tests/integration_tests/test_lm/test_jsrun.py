@@ -34,7 +34,7 @@ class TestTask(TestCase):
         if not hostfile:
             return
 
-        with open(hostfile) as hosts:
+        with ru.ru_open(hostfile) as hosts:
             nodes = hosts.readlines()
 
         cls.node_name       = nodes[1].strip()
