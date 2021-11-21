@@ -1,3 +1,4 @@
+
 {
     "localhost" : {
         "cores_per_node"   : 4,
@@ -8,12 +9,7 @@
         "mpi_version"      : "2.1.1",
         "resource"         : "local.localhost"
     },
-    "comet" : {
-        "cores_per_node"   : 24,
-        "gpus_per_node"    : 0,
-        "ssh_path"         : "/bin/ssh",
-        "resource"         : "xsede.comet"
-    },
+
     "bridges2" : {
         "cores_per_node"   : 40,
         "gpus_per_node"    : 0,
@@ -22,6 +18,7 @@
         "mpi_version"      : "3.1.6",
         "resource"         : "xsede.bridges2"
     },
+
     "summit" : {
         "cores_per_node"   : 168,
         "gpus_per_node"    : 6,
@@ -30,3 +27,4 @@
         "resource"         : "ornl.summit"
     }
 }
+
