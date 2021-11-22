@@ -330,7 +330,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             if cores_per_executor > cores_per_node:
 
                 nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
-                if nodes_per_executor % len(node_list) == 0:
+                if len(node_list) % nodes_per_executor == 0:
 
                     for i in range(nodes_per_executor):
                         slots['nodes'].append({'name' : node_list[i][0],
@@ -399,7 +399,7 @@ class MPIFUNCS(AgentExecutingComponent) :
         if cores_per_executor > cores_per_node:
             # Case 5.1 Let's find out how many nodes our executor requires
             nodes_per_executor = math.ceil(cores_per_executor / cores_per_node)
-            if nodes_per_executor % len(node_list) == 0:
+            if len(node_list) % nodes_per_executor == 0:
                 executors_to_start = len(node_list) // nodes_per_executor
                 for executors_to_start_id in range(executors_to_start):
                     self._prof.prof('exec_warmup_start',
