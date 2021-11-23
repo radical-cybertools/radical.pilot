@@ -235,7 +235,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             '''
             For a given set of cores and gpus, chunk them into sub-sets so that each
             sub-set can host one application process and all threads of that
-            process. 
+            process.
 
             example:
                 cores : 8 and we convert it to ==> [1, 2, 3, 4, 5, 6, 7, 8]
@@ -277,7 +277,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                                             'cpu_processes': cores_per_executor,
                                             'environment'  : [],
                                             },
-                            'task_sandbox_path'            : pwd,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+                            'task_sandbox_path'            : pwd,
                             'slots'      : slots,
                             'cfg'        : {'req_get'      : self.req_cfg['get'],
                                             'res_put'      : self.res_cfg['put'],
@@ -291,7 +291,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             slots          = {}
             to_pop         = []
             slots['nodes'] = []
-            
+
             core_map = _get_node_maps(cores_per_node, 1)
 
             # 1 slot (slot = node) per executor
@@ -306,7 +306,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             if cores_per_executor < cores_per_node:
 
                 # Calculate how many executors to fit in a single node and limit it to 2 per node
-                # 
+                #
                 executors_per_node = math.floor(cores_per_node / cores_per_executor)
 
                 if executors_per_node > 2:
@@ -355,8 +355,8 @@ class MPIFUNCS(AgentExecutingComponent) :
                 node_list.remove(node)
             return slots
 
-        
-        # Case 1 (if the mpi executor requires only 1 core, 
+
+        # Case 1 (if the mpi executor requires only 1 core,
         # then simply it does not make sense to use MPI acort!)
         if cores_per_executor <= 1:
             raise ValueError('can not start mpi executor with size %d cores' % (cores_per_executor))
@@ -394,7 +394,7 @@ class MPIFUNCS(AgentExecutingComponent) :
                     self._prof.prof('exec_warmup_stop',
                                     uid = 'func_exec.%04d' % executors_to_start_id)
 
-        # Case 5 (If we can not fit one executor per node, 
+        # Case 5 (If we can not fit one executor per node,
         # then we need more than one node per executor)
         if cores_per_executor > cores_per_node:
             # Case 5.1 Let's find out how many nodes our executor requires

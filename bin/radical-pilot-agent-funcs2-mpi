@@ -119,7 +119,7 @@ class MPIExecutor(object):
             self._prof.prof('work_start', uid = self._uid)
             self.single_work_master()
             self._prof.prof('work_stop', uid = self._uid)
-        else: 
+        else:
             self.work_worker()
 
 
@@ -139,6 +139,7 @@ class MPIExecutor(object):
         #    work : what method to call
         #    args : what arguments to pass to the method
 
+        # AM: the master is *always* rank 0, so why the if?
         if self.rank == 0:
 
             _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
@@ -261,7 +262,7 @@ class MPIExecutor(object):
 
         # define a static list of tasks and send all of them at once to
         # workers.
-        # We assume in this mode that the tasks ranks all can fit in 
+        # We assume in this mode that the tasks ranks all can fit in
         # self.resources:
         #
         #    uid  : duh!
