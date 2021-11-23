@@ -167,6 +167,14 @@
         "gpus"     : 0
     },
 
+    "ornl.spock"  : {
+        "project"  : "csc449",
+        "queue"    : "ecp",
+        "schema"   : "local",
+        "cores"    : 64,
+        "gpus"     : 4
+    },
+
     "ornl.summit"  : {
         "project"  : "CSC343",
         "queue"    : "batch",
