@@ -3,6 +3,16 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.10.0 Release                                                        2021-11-22
+--------------------------------------------------------------------------------
+
+  - Add fallback for ssh tunnel on ifconfig-less nodes
+  - cleanup old resources
+  - removed OSG leftovers
+  - updating test cases
+  - fix recursive flag
+
+
 1.9.2  Hotfix Release                                                 2021-10-27
 --------------------------------------------------------------------------------
 
