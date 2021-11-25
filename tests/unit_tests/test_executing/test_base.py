@@ -24,8 +24,10 @@ class TestBaseExecuting(TestCase):
     def test_create(self, mocked_popen_init):
 
         class NewExecuting(AgentExecutingComponent):
+
             def command_cb(self, topic, msg):
                 pass
+
             def work(self, tasks):
                 pass
 
