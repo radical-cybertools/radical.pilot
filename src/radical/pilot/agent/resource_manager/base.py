@@ -20,7 +20,6 @@ from ... import constants as rpc
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
 RM_NAME_CCM         = 'CCM'
-RM_NAME_LOADLEVELER = 'LOADLEVELER'
 RM_NAME_LSF         = 'LSF'
 RM_NAME_PBSPRO      = 'PBSPRO'
 RM_NAME_SLURM       = 'SLURM'
@@ -110,8 +109,7 @@ class ResourceManager(object):
     Schedulers can rely on these information to be available.  Specific
     ResourceManager incarnation may have additional information available -- but
     schedulers relying on those are invariably bound to the specific
-    ResourceManager.  An example is the Torus Scheduler which relies on detailed
-    torus layout information from the LoadLevelerRM (which describes the BG/Q).
+    ResourceManager.
 
     The ResourceManager will reserve nodes for the agent execution, by deriving
     the respectively required node count from the config's 'agents' section.
@@ -384,7 +382,6 @@ class ResourceManager(object):
 
         from .ccm         import CCM
         from .fork        import Fork
-        from .loadleveler import LoadLeveler
         from .lsf         import LSF
         from .pbspro      import PBSPro
         from .slurm       import Slurm
@@ -400,7 +397,6 @@ class ResourceManager(object):
         impl = {
             RM_NAME_FORK        : Fork,
             RM_NAME_CCM         : CCM,
-            RM_NAME_LOADLEVELER : LoadLeveler,
             RM_NAME_LSF         : LSF,
             RM_NAME_PBSPRO      : PBSPro,
             RM_NAME_SLURM       : Slurm,

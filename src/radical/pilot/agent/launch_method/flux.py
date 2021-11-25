@@ -77,19 +77,19 @@ class Flux(LaunchMethod):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_launch_cmds(self, task):
+    def get_launch_cmds(self, task, exec_path):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_launcher_env(self, task):
+    def get_launcher_env(self):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_rank_cmd(self, task):
+    def get_rank_cmd(self):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_rank_exec(self, task):
+    def get_rank_exec(self, task, rank_id, rank):
         raise RuntimeError('method cannot be used on Flux LM')
 
 

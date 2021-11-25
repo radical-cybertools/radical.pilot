@@ -118,7 +118,7 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, msg):
+    def command_cb(self, topic, msg):
 
         raise NotImplementedError('work is not implemented')
 
