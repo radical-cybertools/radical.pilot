@@ -24,7 +24,10 @@ class TestBaseExecuting(TestCase):
     def test_create(self, mocked_popen_init):
 
         class NewExecuting(AgentExecutingComponent):
-            pass
+            def command_cb(self, topic, msg):
+                pass
+            def work(self, tasks):
+                pass
 
         with self.assertRaises(TypeError):
             # method `create` is allowed to be called by the base class only
