@@ -1609,11 +1609,16 @@ get_tunnel(){
     echo "# Setting up forward tunnel to $addr."
 
     # Bind to localhost
-    BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
-
-    if test -z "$BIND_ADDRESS"
+    # Check if ifconfig exists
+    if test -f /sbin/ifconfig
     then
-        BIND_ADDRESS=$(/sbin/ifconfig lo | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+        BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
+        if test -z "$BIND_ADDRESS"
+        then
+            BIND_ADDRESS=$(/sbin/ifconfig lo0 | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+        fi
+    else
+        BIND_ADDRESS=$(host `hostname` | awk '{print $NF}')
     fi
 
     if test -z "$BIND_ADDRESS"
