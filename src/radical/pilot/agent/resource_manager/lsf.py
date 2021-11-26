@@ -1,13 +1,11 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-
+__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 
-import radical.utils as ru
-
-from .base import ResourceManager
+from ...constants import DOWN
+from .base        import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -16,64 +14,81 @@ class LSF(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        ResourceManager.__init__(self, cfg, session)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        lsf_hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
-        if lsf_hostfile is None:
-            msg = "$LSB_DJOB_HOSTFILE not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
-
-        lsb_mcpu_hosts = os.environ.get('LSB_MCPU_HOSTS')
-        if lsb_mcpu_hosts is None:
-            msg = "$LSB_MCPU_HOSTS not set!"
-            self._log.error(msg)
-            raise RuntimeError(msg)
-
-        # parse LSF hostfile
-        # format:
-        # <hostnameX>
-        # <hostnameX>
-        # <hostnameY>
-        # <hostnameY>
+        # LSF hostfile format:
         #
-        # There are in total "-n" entries (number of tasks)
-        # and "-R" entries per host (tasks per host).
-        # (That results in "-n" / "-R" unique hosts)
+        #     node_1
+        #     node_1
+        #     ...
+        #     node_2
+        #     node_2
+        #     ...
         #
-        lsf_nodes = [line.strip() for line in open(lsf_hostfile)]
-        self._log.info("Found LSB_DJOB_HOSTFILE %s. Expanded to: %s",
-                       lsf_hostfile, lsf_nodes)
-        lsf_node_list = list(set(lsf_nodes))
+        # There are in total "-n" entries (number of tasks of the job)
+        # and "-R" entries per node (tasks per host).
+        #
+        hostfile = os.environ.get('LSB_DJOB_HOSTFILE')
+        if not hostfile:
+            raise RuntimeError('$LSB_DJOB_HOSTFILE not set')
 
-        # Grab the core (slot) count from the environment
-        # Format: hostX N hostY N hostZ N
-        lsf_cores_count_list = list(map(int, lsb_mcpu_hosts.split()[1::2]))
-        lsf_core_counts      = list(set(lsf_cores_count_list))
-        lsf_cores_per_node   = min(lsf_core_counts)
-        lsf_gpus_per_node    = self._cfg.get('gpus_per_node', 0)  # FIXME GPU
-        lsf_lfs_per_node     = {'path': ru.expand_env(
-                                           self._cfg.get('lfs_path_per_node')),
-                                'size':    self._cfg.get('lfs_size_per_node', 0)
-                               }
-        lsf_mem_per_node     = self._cfg.get('mem_per_node', 0)
+        smt   = rm_info.threads_per_core
+        nodes = self._parse_nodefile(hostfile, smt=smt)
 
-        self._log.info("Found unique core counts: %s Using: %d",
-                      lsf_core_counts, lsf_cores_per_node)
+        # LSF adds login and batch nodes to the hostfile (with 1 core) which
+        # needs filtering out.
+        #
+        # It is possible that login/batch nodes were not marked at hostfile
+        # and were not filtered out, thus we assume that there is only one
+        # such node with 1 core (otherwise assertion error will be raised later)
+        # *) affected machine(s): Lassen@LLNL
+        filtered = list()
+        for node in nodes:
+            if   'login' in node[0]: continue
+            elif 'batch' in node[0]: continue
+            elif 1       == node[1]: continue
+            filtered.append(node)
 
-        # node names are unique, so can serve as node uids
-        self.node_list        = [[node, node] for node in lsf_node_list]
-        self.cores_per_node   = lsf_cores_per_node
-        self.gpus_per_node    = lsf_gpus_per_node
-        self.lfs_per_node     = lsf_lfs_per_node
-        self.mem_per_node     = lsf_mem_per_node
+        nodes = filtered
+
+        if not rm_info.cores_per_node:
+            rm_info.cores_per_node = self._get_cores_per_node(nodes)
+
+        self._log.debug('found %d nodes with %d cores',
+                        len(nodes), rm_info.cores_per_node)
+
+        # While LSF node names are unique and could serve as node uids, we
+        # need an integer index later on for resource set specifications.
+        # (LSF starts node indexes at 1, not 0)
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
+
+        # Summit cannot address the last core of the second socket at the
+        # moment, so we mark it as `DOWN` and the scheduler skips it.  We need
+        # to check the SMT setting to make sure the right logical cores are
+        # marked.  The error we see on those cores is: "ERF error: 1+ cpus are
+        # not available"
+        #
+        # This is related to the known issue listed on
+        #     https://www.olcf.ornl.gov/for-users/system-user-guides \
+        #                              /summit/summit-user-guide/
+        #     "jsrun explicit resource file (ERF) allocates incorrect resources"
+        #
+        if rm_info.cores_per_node > 40 and \
+           'JSRUN' in self._cfg['resource_cfg']['launch_methods']:
+
+            for node in rm_info.node_list:
+                for i in range(smt):
+                    node['cores'][21 * smt + i] = DOWN
+
+            rm_info.cores_per_node -= 1
+
+
+        # node uids need to be indexes starting at 1 in order to be usable for
+        # jsrun ERF spec files
+        for idx, node in enumerate(rm_info.node_list):
+            node['node_id'] = str(idx + 1)
+
+        return rm_info
 
 
 # ------------------------------------------------------------------------------

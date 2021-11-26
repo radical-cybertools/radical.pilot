@@ -6,6 +6,8 @@ import argparse
 from github import Github
 from datetime import date
 
+import radical.utils as ru
+
 
 # ------------------------------------------------------------------------------
 #
@@ -25,7 +27,7 @@ g = Github(token)
 repo = g.get_repo("radical-cybertools/radical.pilot")
 
 
-with open(args.log) as fin:
+with ru.ru_open(args.log) as fin:
 
     title = "Integration Tests failed on %s : %s" % (args.resource, date.today())
     body  = '```python\n' + fin.read() + '\n```'

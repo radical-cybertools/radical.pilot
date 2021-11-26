@@ -1,7 +1,6 @@
 
 import os
 import time
-import errno
 
 import radical.utils as ru
 
@@ -18,7 +17,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
     # manageable(the size of mongodb documents is limited).
 
     if not txt:
-        return txt
+        return ''
 
     if len(txt) > maxlen:
         return "[... CONTENT SHORTENED ...]\n%s" % txt[-maxlen:]
@@ -42,23 +41,6 @@ def get_rusage():
 
     return "real %3f sec | user %.3f sec | system %.3f sec | mem %.2f kB" \
          % (rtime, utime, stime, rss)
-
-
-# ------------------------------------------------------------------------------
-#
-def rec_makedir(target):
-
-    # recursive makedir which ignores errors if dir already exists
-
-    try:
-        os.makedirs(target)
-
-    except OSError as e:
-        # ignore failure on existing directory
-        if e.errno == errno.EEXIST and os.path.isdir(os.path.dirname(target)):
-            pass
-        else:
-            raise
 
 
 # ----------------------------------------------------------------------------------
