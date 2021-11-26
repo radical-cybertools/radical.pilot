@@ -49,8 +49,8 @@
         "task_launch_method"          : "MPIRUN",
         "mpi_launch_method"           : "MPIRUN",
         "pre_bootstrap_0"             : [
-                                         ". /home/$USER/.miniconda3/etc/profile.d/conda.sh"
-                                        ],
+            ". /home/$USER/.miniconda3/etc/profile.d/conda.sh"
+        ],
         "valid_roots"                 : ["$HOME"],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
@@ -60,5 +60,42 @@
         "system_architecture"         : {"options": ["mig-mode=True"]},
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0
+    },
+
+    "arcticus": {
+        "description": "JLSE Aurora testbed; 17x Coyote Pass nodes, 2x XeHP_SDV",
+        "notes"      : "Duo two-factor login. Local instance of MongoDB and virtualenv should be used.",
+        "schemas"                     : [ "local" ],
+        "local"                       : {
+            "job_manager_hop"         : "cobalt://localhost/",
+            "job_manager_endpoint"    : "cobalt://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+      # "forward_tunnel_endpoint"     : "jlselogin5",
+        "default_queue"               : "full-node",
+        "resource_manager"            : "COBALT",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "agent_launch_method"         : "SSH",
+        "task_launch_method"          : "MPIRUN",
+        "mpi_launch_method"           : "MPIRUN",
+        "pre_bootstrap_0"             : [
+                                         "module purge",
+                                         "module use  /soft/modulefiles",
+                                         "module load spack/linux-rhel7-x86_64",
+                                         "module load openmpi/4.1.1-gcc",
+                                         "module load py-virtualenv"
+                                        ],
+        "valid_roots"                 : [ "$HOME" ],
+        "default_remote_workdir"      : "$HOME",
+        "virtenv_mode"                : "local",
+        "stage_cacerts"               : true,
+        "cores_per_node"              : 96,
+        "gpus_per_node"               : 2,
+        "system_architecture"         : { "gpu": "XeHP_SDV" },
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0
     }
 }
+
