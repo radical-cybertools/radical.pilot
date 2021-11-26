@@ -1,4 +1,6 @@
-#!/bin/bash -l
+#!/bin/sh
+# combine stdout and stderr
+exec 2>&1
 
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
@@ -8,6 +10,50 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
+# ------------------------------------------------------------------------------
+# replica RU env dump
+env_grep(){
+    grep -v \
+         -e '^LS_COLORS=' \
+         -e '^PS1=' \
+         -e '^_=' \
+         -e '^SHLVL='
+}
+
+env_dump(){
+    local tgt
+    local OPTIND OPTARG OPTION
+    while getopts "t:" OPTION; do
+        case $OPTION in
+            t)  tgt="$OPTARG" ;;
+            *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+                return 1;;
+        esac
+    done
+
+    dump() {
+        awk 'END {
+          for (k in ENVIRON) {
+            v=ENVIRON[k];
+            gsub(/\n/,"\\n",v);
+            print k"="v;
+          }
+        }' < /dev/null
+    }
+
+    if test -z "$tgt"; then
+        dump | sort | env_grep
+    else
+        dump | sort | env_grep > "$tgt"
+    fi
+}
+
+
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+mkdir -p env
+env_dump -t env/bs0_orig.env
+
 
 # Report where we are, as this is not always what you expect ;-)
 # Save environment, useful for debugging
@@ -15,11 +61,6 @@ echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
-
-# store the sorted env for logging, but also so that we can dig original env
-# settings for task environments, if needed
-env | sort > env.orig
-
 
 # create a `deactivate` script
 old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
@@ -29,7 +70,6 @@ old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
 echo "export PATH='$old_path'"          > deactivate
 echo "export PYTHONPATH='$old_pypath'" >> deactivate
 echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -155,30 +195,19 @@ export MAKEFLAGS="-j"
 #
 create_deactivate()
 {
-    # capture the current environment
-    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
-        > env.bs_0
+    # at this point we activated the agent VE and thus have RU availale.  Use
+    # `radical-utils-env.sh` to create a script to recover the virgin env
+    # (`bs0_orig.env`) from the current state (`bs0_acivate.env`)
+    which radical-utils-env.sh
+    . radical-utils-env.sh
+    env_dump -t env/bs0_active.env
+    env_prep -s env/bs0_orig.env -r env/bs0_active.env -t env/bs0_orig.sh
 
-    # find all variables which changed
-    changed=$(diff -w env.orig env.bs_0 | grep '='        \
-                                        | cut -f 3 -d ' ' \
-                                        | cut -f 1 -d '=' \
-                                        | sort -u)
-
-    # capture the original values in `deactivate`.  If no original value exists,
-    # unset the variable
-    for var in $changed
-    do
-        orig=$(grep -e "^export $var=" env.orig)
-        if test -z "$orig"
-        then
-            # var did not exist
-            echo "unset  $var" >> deactivate
-        else
-            # var existed, value may or may not be empty
-            echo "$orig" >> deactivate
-        fi
-    done
+    # we also prepare a script to return to the `pre_bootstrap_0` state: all
+    # pre_bootstrap_0 commands have been run, but the virtualenv is not yet
+    # activated.  This can be used in case a different VE is to be created or
+    # used.
+    env_prep -s env/bs0_pre_0.env -r env/bs0_active.env -t env/bs0_pre_0.sh
 }
 
 
@@ -194,28 +223,28 @@ create_gtod()
         if ! contains "$tmp" '%'
         then
             # we can use the system tool
-            echo "#!/bin/sh"       > ./gtod
-            echo "date '+%s.%6N'" >> ./gtod
+            echo "#!/bin/sh"       > ./gtod.sh
+            echo "date '+%s.%6N'" >> ./gtod.sh
         fi
     else
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                > ./gtod
-        echo "export LC_NUMERIC=C"                    >> ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
-        echo "then"                                   >> ./gtod
-        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
-        echo "else"                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
-        echo "fi"                                     >> ./gtod
+        echo "#!$SHELL"                                > ./gtod.sh
+        echo "export LC_NUMERIC=C"                    >> ./gtod.sh
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod.sh
+        echo "then"                                   >> ./gtod.sh
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod.sh
+        echo "else"                                   >> ./gtod.sh
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod.sh
+        echo "fi"                                     >> ./gtod.sh
     fi
 
-    chmod 0755 ./gtod
+    chmod 0755 ./gtod.sh
 
     # initialize profile
     PROFILE="bootstrap_0.prof"
-    now=$(./gtod)
+    now=$(./gtod.sh)
     echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
 
     ip=$(ip addr \
@@ -234,6 +263,25 @@ create_gtod()
 
 # ------------------------------------------------------------------------------
 #
+create_prof(){
+
+    cat > ./prof <<EOT
+#!/bin/sh
+
+test -z "\$RP_PROF_TGT" && exit
+
+now=\$(\$RP_GTOD)
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_TASK_ID,AGENT_EXECUTING,\\\n" \$now\\
+    >> "\$RP_PROF_TGT"
+
+EOT
+
+    chmod 0755 ./prof
+}
+
+
+# ------------------------------------------------------------------------------
+#
 profile_event()
 {
     if test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
@@ -245,7 +293,7 @@ profile_event()
 
     event=$1
     msg=$2
-    now=$(./gtod)
+    now=$(./gtod.sh)
 
     # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
     # EVENT  = 1  # event ID (string)                           mandatory
@@ -256,7 +304,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -312,7 +360,7 @@ waitfor()
     TIMEOUT="$1";  shift
     COMMAND="$*"
 
-    START=`echo \`./gtod\` | cut -f 1 -d .`
+    START=`echo \`./gtod.sh\` | cut -f 1 -d .`
     END=$((START + TIMEOUT))
     NOW=$START
 
@@ -329,7 +377,7 @@ waitfor()
         else
             echo "COND ok ($RET)"
         fi
-        NOW=`echo \`./gtod\` | cut -f 1 -d .`
+        NOW=`echo \`./gtod.sh\` | cut -f 1 -d .`
     done
 
     if test "$RET" = 0
@@ -1328,14 +1376,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
-    radical-stack
- (  $PYTHON -c 'import radical.utils as ru; print("RU: %s %s" % (ru.version_detail, ru.__file__))' \
- && $PYTHON -c 'import radical.saga  as rs; print("RS: %s %s" % (rs.version_detail, rs.__file__))' \
- && $PYTHON -c 'import radical.pilot as rp; print("RP: %s %s" % (rp.version_detail, rp.__file__))' \
- && (echo 'install ok!'; true) \
- ) \
- || (echo 'install failed!'; false) \
- || exit 1
+    $PYTHON $(which radical-stack) \
+        || (echo 'install failed!'; false) \
+        || exit 1
     echo
     echo "---------------------------------------------------------------------"
     echo
@@ -1498,6 +1541,9 @@ while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
+# pre_bootstrap_0 is done at this point, save resulting env
+env_dump -t env/bs0_pre_0.env
+
 echo '# -------------------------------------------------------------------'
 echo '# untar sandbox'
 echo '# -------------------------------------------------------------------'
@@ -1551,14 +1597,10 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+echo 'create gtod, prof'
+create_gtod
+create_prof
+pilot_state="PMGR_ACTIVE_PENDING"
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1696,6 +1738,7 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
                  "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
+create_deactivate
 
 # ------------------------------------------------------------------------------
 # launch the radical agent
@@ -1710,19 +1753,15 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
-# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
-# then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
-# else
-#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
-# fi
+
 
 # after all is said and done, we should end up with a usable python version.
 # Verify it
 verify_install
 
-# we should have a better `gtod` now
-test -z $(which radical-gtod) || cp $(which radical-gtod ./gtod)
+# all is installed - keep a local copy of `radical-gtod` so that task profiling
+# is independent of its location in the pilot VE
+test -z $(which radical-gtod) || cp $(which radical-gtod) ./gtod
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
@@ -1826,108 +1865,33 @@ $PREBOOTSTRAP2_EXPANDED
 if test "\$1" = 'services'
 then
     # start the services script
-    exec ./services 1> services.out 2> services.err
+    exec ./services 1>> services.out 2>> services.err
 else
     # start a sub-agent
-    exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+    exec $AGENT_CMD "\$1" 1>>"\$1.out" 2>>"\$1.err"
 fi
 
 EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
-#
-# Create a barrier to start the agent.
-# This can be used by experimental scripts to push all tasks to the DB before
-# the agent starts.
-#
-if ! test -z "$RADICAL_PILOT_BARRIER"
-then
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
-    echo "# -------------------------------------------------------------------"
-
-    profile_event 'client_barrier_start'
-
-    while ! test -f $RADICAL_PILOT_BARRIER
-    do
-        sleep 1
-    done
-
-    profile_event 'client_barrier_stop'
-
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Leaving barrier"
-    echo "# -------------------------------------------------------------------"
-fi
-
-# # I am ashamed that we have to resort to this -- lets hope it's temporary...
-# cat > packer.sh <<EOT
-# #!/bin/sh
-#
-# PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-# LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-#
-# echo "start packing profiles / logfiles [\$(date)]"
-# while ! test -e exit.signal
-# do
-#
-#     if test -z "\$(ls *.prof )"
-#     then
-#         echo "skip  packing profiles [\$(date)]"
-#     else
-#         echo "check packing profiles [\$(date)]"
-#         mkdir prof/
-#         cp  *.prof prof/
-#         tar -czf "\$PROFILES_TARBALL.tmp" prof/ || true
-#         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
-#         rm -rf prof/
-#     fi
-#
-#
-#     # we always have a least the cfg file
-#     if true
-#     then
-#         echo "check packing logfiles [\$(date)]"
-#         mkdir log/
-#         cp  *.log *.out *.err *,cfg log/
-#         tar -czf "\$LOGFILES_TARBALL.tmp" log/ || true
-#         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
-#         rm -rf log/
-#     fi
-#
-#     ls -l *.tgz
-#     sleep 10
-# done
-# echo "stop  packing profiles / logfiles [\$(date)]"
-# EOT
-# chmod 0755 packer.sh
-# ./packer.sh 2>&1 >> bootstrap_0.out &
-# PACKER_ID=$!
-
-# all env settings are done, bootstrap stages are created - as last action
-# capture the resulting env differences in a deactivate script
-create_deactivate
-
 # add a `wait` to the services script
 test -f ./services && echo 'wait' >> ./services
 test -f ./services && chmod 0755     ./services
-
 
 # start the master agent instance (zero)
 profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 else
     ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
+pilot_state="PMGR_ACTIVE"
 
 while true
 do

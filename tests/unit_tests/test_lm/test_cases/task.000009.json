@@ -1,0 +1,43 @@
+
+{
+    "task": {
+        "uid"               : "task.000009",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {"test_env": "test_val"}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lfs_per_node"  : 0,
+                "task_offsets"  : [1],
+                "ranks"         : [{"node_name" : "node1",
+                                    "node_id"   : "node1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "lfs"       : 0}]
+            }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "mpiexec"     : {
+                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "mpiexec_mpt" : {
+                "launch_cmd" : "export MPI_SHEPHERD=true\nmpiexec_mpt node1 -n 1 omplace",
+                "rank_exec"  : "/bin/sleep"
+            }
+        }
+    }
+}
+

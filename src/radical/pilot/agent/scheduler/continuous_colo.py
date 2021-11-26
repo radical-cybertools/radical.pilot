@@ -65,54 +65,49 @@ class ContinuousColo(Continuous):
 
     # --------------------------------------------------------------------------
     # overload the main method from the base class
-    def _schedule_tasks(self, tasks):
+    def schedule_task(self, task):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
-        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(task, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         with self._lock:
 
             # cache ID int to avoid repeated parsing
-            for task in tasks:
+            uid      = task['uid']
+            descr    = task['description']
+            colo_tag = descr.get('tags', {}).get('colocate')
 
-                uid      = task['uid']
-                descr    = task['description']
-                colo_tag = descr.get('tags', {}).get('colocate')
+            # tasks w/o order info are handled as usual, and we don't keep
+            # any infos around
+            if not colo_tag:
+              # self._log.debug('no tags for %s', uid)
+                self._unordered.append(task)
+                return
 
-                # tasks w/o order info are handled as usual, and we don't keep
-                # any infos around
-                if not colo_tag:
-                  # self._log.debug('no tags for %s', uid)
-                    self._unordered.append(task)
-                    continue
+            # this uniit wants to be ordered - keep it in our registry
+            assert(uid not in self._tasks), 'duplicated task %s' % uid
+            self._tasks[uid] = task
 
-                # this uniit wants to be ordered - keep it in our registry
-                assert(uid not in self._tasks), 'duplicated task %s' % uid
-                self._tasks[uid] = task
+            bag   = colo_tag['bag']
+            size  = colo_tag['size']
 
-                bag   = colo_tag['bag']
-                size  = colo_tag['size']
+          # self._log.debug('tags %s: %s : %d', uid, bag, size)
 
-              # self._log.debug('tags %s: %s : %d', uid, bag, size)
+            # initiate bag if needed
+            if bag not in self._bags:
+                self._bags[bag]         = copy.deepcopy(self._bag_init)
+                self._bags[bag]['size'] = size
 
-                # initiate bag if needed
-                if bag not in self._bags:
-                    self._bags[bag]         = copy.deepcopy(self._bag_init)
-                    self._bags[bag]['size'] = size
+            else:
+                assert(size == self._bags[bag]['size']), \
+                       'inconsistent bag size'
 
-                else:
-                    assert(size == self._bags[bag]['size']), \
-                           'inconsistent bag size'
-
-                # add task to order
-                self._bags[bag]['uids'].append(uid)
+            # add task to order
+            self._bags[bag]['uids'].append(uid)
 
         # try to schedule known tasks
         self._try_schedule()
 
-        return True
+        return
 
 
     # --------------------------------------------------------------------------
@@ -243,11 +238,11 @@ class ContinuousColo(Continuous):
         # we got an allocation for the pseudo task, not dissassemble the slots
         # and assign back to the individual tasks in the bag
         slots = copy.deepcopy(pseudo['slots'])
-        cpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['core_map'])
-        gpus  = copy.deepcopy(pseudo['slots']['nodes'][0]['gpu_map'])
+        cpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['core_map'])
+        gpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['gpu_map'])
 
-        slots['nodes'][0]['core_map'] = list()
-        slots['nodes'][0]['gpu_map']  = list()
+        slots['ranks'][0]['core_map'] = list()
+        slots['ranks'][0]['gpu_map']  = list()
 
         for task in tasks:
 
@@ -258,13 +253,13 @@ class ContinuousColo(Continuous):
                 block = list()
                 for _ in range(descr['cpu_threads']):
                     block.append(cpus.pop(0)[0])
-                tslots['nodes'][0]['core_map'].append(block)
+                tslots['ranks'][0]['core_map'].append(block)
 
             for _ in range(descr['gpu_processes']):
 
                 block = list()
                 block.append(gpus.pop(0)[0])
-                tslots['nodes'][0]['gpu_map'].append(block)
+                tslots['ranks'][0]['gpu_map'].append(block)
 
             task['slots'] = tslots
 

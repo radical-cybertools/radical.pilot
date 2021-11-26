@@ -6,7 +6,7 @@ import os
 
 import radical.utils as ru
 
-from .base import ResourceManager
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -15,44 +15,37 @@ class Cobalt(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        ResourceManager.__init__(self, cfg, session)
+        if not rm_info.cores_per_node:
+            raise RuntimeError('cores_per_node undetermined')
 
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
+        if 'COBALT_NODEFILE' in os.environ:
 
-        try:
             # this env variable is used for GPU nodes
-            with open(os.environ['COBALT_NODEFILE'], 'r') as f:
-                node_names = [node.strip() for node in f.readlines() if node]
-        except KeyError:
+            nodefile = os.environ['COBALT_NODEFILE']
+            nodes    = self._parse_nodefile(nodefile, rm_info.cores_per_node)
+
+        elif 'COBALT_PARTNAME' in os.environ:
+
             node_range = os.environ['COBALT_PARTNAME']
-            node_names = ru.get_hostlist_by_range(node_range, 'nid', 5)
+            nodes = [(node, rm_info.cores_per_node)
+                     for node in ru.get_hostlist_by_range(node_range, 'nid', 5)]
 
             # Another option is to run `aprun` with the rank of nodes
             # we *think* we have, and with `-N 1` to place one rank per node,
             # and run `hostname` - that gives the list of hostnames.
             # (The number of nodes we receive from `$COBALT_PARTSIZE`.)
             #   out = ru.sh_callout('aprun -q -n %d -N 1 hostname' % n_nodes)[0]
-            #   node_names = out.split()
+            #   nodes = out.split()
 
-        self.node_list = [[n, str(i + 1)] for i, n in enumerate(node_names)]
+        else:
+            raise RuntimeError('no $COBALT_NODEFILE nor $COBALT_PARTNAME set')
 
-        # get info about core count per node:
-        #   cmd = 'cat /proc/cpuinfo | grep processor | wc -l'
-        #   out = ru.sh_callout('aprun -q -n %d -N 1 %s' % (n_nodes, cmd))[0]
-        #   core_counts = set([int(x) for x in out.split()])
-        #   print('=== out 2 : [%s] [%s]' % (out, core_counts))
-        #   assert(len(core_counts) == 1), core_counts
-        #   cores_per_node = core_counts[0]
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
 
-        self.cores_per_node = self._cfg.get('cores_per_node', 1)
-        self.gpus_per_node  = self._cfg.get('gpus_per_node', 0)
-        self.mem_per_node   = self._cfg.get('mem_per_node', 0)
-        self.lfs_per_node   = {'path': ru.expand_env(
-                                       self._cfg.get('lfs_path_per_node')),
-                               'size': self._cfg.get('lfs_size_per_node', 0)}
+        return rm_info
+
 
 # ------------------------------------------------------------------------------
+
