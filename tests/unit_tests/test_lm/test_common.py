@@ -6,14 +6,16 @@ import glob
 
 import radical.utils as ru
 
+base = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
 def setUp(test_type, test_name):
 
-    ret = list()
-    pwd = os.path.dirname(__file__)
-    for fin in glob.glob('%s/../test_cases/task.*.json' % pwd):
+    ret  = list()
+
+    for fin in glob.glob('%s/test_cases/task.*.json' % base):
 
         tc                = ru.read_json(fin)
         task              = tc['task'   ]

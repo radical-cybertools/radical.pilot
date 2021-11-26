@@ -94,17 +94,15 @@ class TMGRSchedulingComponent(rpu.Component):
         from .round_robin  import RoundRobin
         from .backfilling  import Backfilling
 
-        try:
-            impl = {
-                SCHEDULER_ROUND_ROBIN : RoundRobin,
-                SCHEDULER_BACKFILLING : Backfilling
-            }[name]
+        impl = {
+            SCHEDULER_ROUND_ROBIN : RoundRobin,
+            SCHEDULER_BACKFILLING : Backfilling
+        }
 
-            impl = impl(cfg, session)
-            return impl
+        if name not in impl:
+            raise ValueError('Scheduler %s unknown' % name)
 
-        except KeyError as e:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
+        return impl[name](cfg, session)
 
 
     # --------------------------------------------------------------------------
