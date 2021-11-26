@@ -1,0 +1,32 @@
+
+{
+    "task": {
+        "uid"               : "task.000001",
+        "description": {
+            "executable"    : "python",
+            "arguments"     : ["test.py"],
+            "cpu_processes" : 4,
+            "cpu_threads"   : 2,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "ranks"         : [],
+                "cores_per_node": 24,
+                "gpus_per_node" : 0
+            }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "ibrun" : "AssertionError",
+            "jsrun" : "AssertionError"
+        }
+    }
+}
+

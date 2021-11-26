@@ -2,50 +2,105 @@
 
 from unittest import mock, TestCase
 
-import radical.utils as ru
-
-from .test_common                            import setUp
+from .test_common import setUp
 from radical.pilot.agent.launch_method.aprun import APRun
 
 
+# ------------------------------------------------------------------------------
+#
 class TestAPRun(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(APRun, '__init__',   return_value=None)
-    @mock.patch('radical.utils.raise_on')
+    @mock.patch.object(APRun, '__init__', return_value=None)
     @mock.patch('radical.utils.which', return_value='/usr/bin/aprun')
-    def test_configure(self, mocked_init, mocked_raise_on, mocked_which):
+    def test_init_from_scratch(self, mocked_which, mocked_init):
 
-        component = APRun(name=None, cfg=None, session=None)
-        component._configure()
-        self.assertEqual('/usr/bin/aprun', component.launch_command)
+        lm_aprun = APRun('', {}, None, None, None)
 
+        lm_info = lm_aprun._init_from_scratch({}, '')
+        self.assertEqual(lm_info['command'], mocked_which())
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(APRun, '__init__', return_value=None)
+    def test_init_from_info(self, mocked_init):
+
+        lm_aprun = APRun('', {}, None, None, None)
+
+        lm_info = {'env'        : {'test_env': 'test_value'},
+                   'env_sh'     : 'env/lm_aprun.sh',
+                   'command'    : '/usr/bin/aprun',
+                   'mpi_version': '1.1.1',
+                   'mpi_flavor' : APRun.MPI_FLAVOR_UNKNOWN}
+        lm_aprun._init_from_info(lm_info)
+        self.assertEqual(lm_aprun._env,         lm_info['env'])
+        self.assertEqual(lm_aprun._env_sh,      lm_info['env_sh'])
+        self.assertEqual(lm_aprun._command,     lm_info['command'])
+        self.assertEqual(lm_aprun._mpi_version, lm_info['mpi_version'])
+        self.assertEqual(lm_aprun._mpi_flavor,  lm_info['mpi_flavor'])
+
+        lm_info['command'] = ''
+        with self.assertRaises(AssertionError):
+            lm_aprun._init_from_info(lm_info)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(APRun, '__init__', return_value=None)
+    def test_can_launch(self, mocked_init):
+
+        lm_aprun = APRun('', {}, None, None, None)
+        self.assertTrue(lm_aprun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_aprun.can_launch(
+            task={'description': {'executable': None}})[0])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(APRun, '__init__', return_value=None)
+    def test_get_launcher_env(self, mocked_init):
+
+        lm_aprun = APRun('', {}, None, None, None)
+        lm_info = {'env'        : {'test_env': 'test_value'},
+                   'env_sh'     : 'env/lm_aprun.sh',
+                   'command'    : '/usr/bin/aprun',
+                   'mpi_version': '1.1.1',
+                   'mpi_flavor' : APRun.MPI_FLAVOR_UNKNOWN}
+        lm_aprun._init_from_info(lm_info)
+
+        self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'],
+                      lm_aprun.get_launcher_env())
+
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(APRun, '__init__',   return_value=None)
-    @mock.patch.object(APRun, '_configure', return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    def test_construct_command(self, mocked_init, mocked_configure, mocked_raise_on):
+    @mock.patch('radical.utils.Logger')
+    def test_get_launch_rank_cmds(self, mocked_logger, mocked_init):
+
+        lm_aprun = APRun('', {}, None, None, None)
+        lm_aprun._log     = mocked_logger
+        lm_aprun._command = 'aprun'
 
         test_cases = setUp('lm', 'aprun')
-        component  = APRun(name=None, cfg=None, session=None)
-
-        component.launch_command = 'aprun'
-        component.name           = 'aprun'
-        component._log           = ru.Logger('dummy')
-
         for task, result in test_cases:
-            command, hop = component.construct_command(task, None)
-            self.assertEqual([command, hop], result)
+
+            command = lm_aprun.get_launch_cmds(task, '')
+            self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+            command = lm_aprun.get_rank_exec(task, None, None)
+            self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
     tc = TestAPRun()
-    tc.test_configure()
-    tc.test_construct_command()
+    tc.test_init_from_scratch()
+    tc.test_init_from_info()
+    tc.test_can_launch()
+    tc.test_get_launcher_env()
+    tc.test_get_launch_rank_cmds()
 
 
 # ------------------------------------------------------------------------------

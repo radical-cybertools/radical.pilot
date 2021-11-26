@@ -252,10 +252,18 @@ class Worker(rpu.Component):
             pre  = data.get('pre_exec', '')
             code = data['code']
 
+            # create a wrapper function around the given code
+            lines = code.split('\n')
+            outer = 'def _my_exec():\n'
+            for line in lines:
+                outer += '    ' + line + '\n'
+
+            # call that wrapper function via exec, and keep the return value
+            src = '%s\n\n%s\n\nresult=_my_exec()' % (pre, outer)
+
             # assign a local variable to capture the code's return value.
             loc = dict()
-            src = '%s\nresult = {%s}' % (pre, code)
-            exec(src, {}, loc)
+            exec(src, {}, loc)                           # pylint: disable=W0122
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -362,7 +370,7 @@ class Worker(rpu.Component):
             ret      = proc.returncode
 
         except Exception as e:
-            self._log.exception('_exec failed: %s' % (data))
+            self._log.exception('popen failed: %s' % (data))
             out = None
             err = 'exec failed: %s' % e
             ret = 1
@@ -534,7 +542,7 @@ class Worker(rpu.Component):
                     #       right now.  alloc_task is not a proper scheduler,
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
-                  #     self._log.debug('=== req_alloc_wait %s', task['uid'])
+                  #     self._log.debug('req_alloc_wait %s', task['uid'])
 
                     time.sleep(0.01)
 
@@ -589,7 +597,7 @@ class Worker(rpu.Component):
 
 
     def _after_fork():
-        with open('/tmp/after_fork', 'a+') as fout:
+        with ru.ru_open('/tmp/after_fork', 'a+') as fout:
             fout.write('after fork %s %s\n' % (os.getpid(), mt.current_thread().name))
 
     # --------------------------------------------------------------------------
@@ -611,7 +619,7 @@ class Worker(rpu.Component):
             os.environ[k] = v
 
         # ----------------------------------------------------------------------
-        def _dispatch_thread(tlock):
+        def _dispatch_proc(res_lock):
             # FIXME: do we still need this thread?
 
             import setproctitle
@@ -623,9 +631,10 @@ class Worker(rpu.Component):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['resources']['gpus'])
 
-            out, err, ret = self._modes[mode](task.get('data'))
-            with tlock:
-                res = [task, str(out), str(err), int(ret)]
+            out, err, ret, val = self._modes[mode](task.get('data'))
+            res = [task, str(out), str(err), int(ret), val]
+
+            with res_lock:
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
@@ -639,26 +648,30 @@ class Worker(rpu.Component):
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
-            out, err, ret = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret)]
-            self._log.debug('put 1 result: task %s', task['uid'])
-            self._result_queue.put(res)
+          # result = self._modes[mode](task.get('data'))
+          # self._log.debug('got result: task %s: %s', task['uid'], result)
+          # out, err, ret, val = result
+          # # TODO: serialize `val`?
+          # res = [task, str(out), str(err), int(ret), val]
+          # self._result_queue.put(res)
 
-          # dispatcher = mp.Process(target=_dispatch_thread)
-          # dispatcher.daemon = True
-          # dispatcher.start()
-          # dispatcher.join(timeout=tout)
-          #
-          # if dispatcher.is_alive():
-          #     dispatcher.kill()
-          #     dispatcher.join()
-          #     out = None
-          #     err = 'timeout (>%s)' % tout
-          #     ret = 1
-          #     res = [task, str(out), str(err), int(ret)]
-          #     self._log.debug('put 2 result: task %s', task['uid'])
-          #     self._result_queue.put(res)
-          #     self._log.debug('dispatcher killed: %s', task['uid'])
+            res_lock = mp.Lock()
+            dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
+            dispatcher.daemon = True
+            dispatcher.start()
+            dispatcher.join(timeout=tout)
+
+            with res_lock:
+                if dispatcher.is_alive():
+                    dispatcher.terminate()
+                    dispatcher.join()
+                    out = None
+                    err = 'timeout (>%s)' % tout
+                    ret = 1
+                    res = [task, str(out), str(err), int(ret), None]
+                    self._log.debug('put 2 result: task %s', task['uid'])
+                    self._result_queue.put(res)
+                    self._log.debug('dispatcher killed: %s', task['uid'])
 
         except Exception as e:
 
@@ -666,7 +679,7 @@ class Worker(rpu.Component):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret)]
+            res = [task, str(out), str(err), int(ret), None]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
 
@@ -712,7 +725,7 @@ class Worker(rpu.Component):
     def _result_cb(self, result):
 
         try:
-            task, out, err, ret = result
+            task, out, err, ret, val = result
             self._log.debug('result cb: task %s', task['uid'])
 
             with self._plock:
@@ -725,7 +738,8 @@ class Worker(rpu.Component):
             res = {'req': task['uid'],
                    'out': out,
                    'err': err,
-                   'ret': ret}
+                   'ret': ret,
+                   'val': val}
 
             self._res_put.put(res)
             self.task_post_exec(task)

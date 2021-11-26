@@ -87,6 +87,13 @@ CREATE_PARENTS = _rsf.CREATE_PARENTS  # Create parent directories if needed
 RECURSIVE      = _rsf.RECURSIVE       # recursive copy of directories
 NON_FATAL      = 8192                 # Don't fail the Task if input is missing
 
+#
+# Defaults
+#
+DEFAULT_ACTION   = TRANSFER
+DEFAULT_PRIORITY = 0
+DEFAULT_FLAGS    = CREATE_PARENTS
+
 
 #
 # Task MPI flags
@@ -98,12 +105,10 @@ GPU            = 'GPU'
 GPU_MPI        = 'GPU_MPI'
 GPU_OpenMP     = 'GPU_OpenMP'
 
-#
-# Defaults
-#
-DEFAULT_ACTION   = TRANSFER
-DEFAULT_PRIORITY = 0
-DEFAULT_FLAGS    = CREATE_PARENTS
+# process / thread types (for both, CPU and GPU processes/threads)
+POSIX          = 'POSIX'   # native threads / application threads
+CUDA           = 'CUDA'
+FUNC           = 'FUNC'
 
 
 # scheduler names (and backwards compat)

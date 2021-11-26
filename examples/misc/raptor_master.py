@@ -7,10 +7,6 @@ import sys
 import radical.utils as ru
 import radical.pilot as rp
 
-print('RP: %s %s' % (rp.__file__, dir(rp)))
-sys.stdout.flush()
-
-
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
 # It will:
@@ -37,6 +33,8 @@ class MyMaster(rp.raptor.Master):
     #
     def __init__(self, cfg):
 
+        self._cnt = 0
+
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
         rp.raptor.Master.__init__(self, cfg=cfg)
@@ -44,7 +42,7 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def create_work_items(self):
+    def submit_tasks(self):
 
         self._prof.prof('create_start')
 
@@ -63,8 +61,8 @@ class MyMaster(rp.raptor.Master):
                     'cores':  1,
                   # 'gpus' :  1,
                     'data' : {
-                        'code': 'print("hello stdout"); return "hello world"'
-                   }}
+                        'code': 'print("hello world")'
+                    }}
             self.request(item)
 
 
@@ -102,6 +100,7 @@ class MyMaster(rp.raptor.Master):
                    }}
             self.request(item)
 
+
             uid  = 'request.shell.%06d' % idx
             item = {'uid'  :   uid,
                     'mode' :  'shell',
@@ -119,11 +118,35 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, requests):
+    def request_cb(self, requests):
 
-        for r in requests:
-            sys.stdout.write('result_cb %s: %s [%s]\n' % (r.uid, r.state, r.result))
-            sys.stdout.flush()
+        for req in requests:
+
+            self._log.debug('=== request_cb %s\n' % (req['uid']))
+
+            # for each `shell` mode request, submit one more `proc` mode request
+            if req['mode'] == 'call':
+
+                uid  = 'request.extra.%06d' % self._cnt
+                item = {'uid'  :   uid,
+                        'mode' :  'proc',
+                        'cores':  1,
+                        'data' : {'exe' : '/bin/echo',
+                                  'args': ['hello', 'world']
+                       }}
+                self.request(item)
+                self._cnt += 1
+
+        # return the original request for execution
+        return requests
+
+
+    # --------------------------------------------------------------------------
+    #
+    def result_cb(self, req):
+
+        self._log.debug('=== result_cb  %s: %s [%s]\n'
+                       % (req.uid, req.state, req.result))
 
 
 # ------------------------------------------------------------------------------
@@ -142,11 +165,7 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
     pwd        = os.getcwd()
-
-    # add data staging to worker: link input_dir, impress_dir, and oe_license
-    descr['arguments']     = [os.path.basename(worker)]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -169,6 +188,7 @@ if __name__ == '__main__':
   # master.wait(count=nworkers)
 
     master.start()
+    master.submit_tasks()
     master.join()
     master.stop()
 

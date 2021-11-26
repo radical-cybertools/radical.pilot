@@ -74,14 +74,15 @@ class Request(object):
 
     # --------------------------------------------------------------------------
     #
-    def set_result(self, out, err, ret):
+    def set_result(self, out, err, ret, val):
         '''
         This is called by the master to fulfill the future
         '''
 
         self._result = {'out': out,
                         'err': err,
-                        'ret': ret}
+                        'ret': ret,
+                        'val': val}
 
         if ret: self._state = 'FAILED'
         else  : self._state = 'DONE'

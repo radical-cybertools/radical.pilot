@@ -1,140 +1,162 @@
-
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
 
-import radical.utils as ru
-
-from   .test_common                             import setUp
-from   radical.pilot.agent.launch_method.mpirun import MPIRun
+from .test_common import setUp
+from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 
+# ------------------------------------------------------------------------------
+#
 class TestMPIRun(TestCase):
 
-    # ------------------------------------------------------------------------------
-    #
-    @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value='/usr/bin/mpirun')
-    def test_configure(self, mocked_init, mocked_get_mpi_info, mocked_raise_on,
-                       mocked_which):
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'MPIRun'
-        component._cfg = mock.Mock(resource='localhost')
-        component._configure()
-        self.assertEqual('mpirun', component.launch_command)
-        self.assertEqual(5, component.mpi_version)
-        self.assertEqual('ORTE', component.mpi_flavor)
-
-
-    # ------------------------------------------------------------------------------
-    #
-    @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value='/usr/bin/mpirun')
-    def test_configure_rsh(self, mocked_init, mocked_get_mpi_info, mocked_raise_on,
-                       mocked_which):
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'MPIRun_rsh'
-        component._cfg = mock.Mock(resource='localhost')
-        component._configure()
-        self.assertEqual('mpirun', component.launch_command)
-        self.assertEqual(5, component.mpi_version)
-        self.assertEqual('ORTE', component.mpi_flavor)
-
-
-    # ------------------------------------------------------------------------------
-    #
-    @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value='/usr/bin/mpirun')
-    def test_configure_mpt(self, mocked_init, mocked_get_mpi_info, mocked_raise_on,
-                       mocked_which):
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'MPIRun_mpt'
-        component._cfg = mock.Mock(resource='localhost')
-        component._configure()
-        self.assertEqual('mpirun', component.launch_command)
-        self.assertEqual(5, component.mpi_version)
-        self.assertEqual('ORTE', component.mpi_flavor)
-
-
-    # ------------------------------------------------------------------------------
-    #
-    @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value='/usr/bin/mpirun')
-    def test_configure_ccmrun(self, mocked_init, mocked_get_mpi_info, mocked_raise_on,
-                       mocked_which):
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'MPIRun_ccmrun'
-        component._cfg = mock.Mock(resource='localhost')
-        component._configure()
-        self.assertEqual('mpirun', component.launch_command)
-        self.assertEqual(5, component.mpi_version)
-        self.assertEqual('ORTE', component.mpi_flavor)
-
-
-    # ------------------------------------------------------------------------------
-    #
-    @mock.patch.object(MPIRun, '__init__',   return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5,'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value='/usr/bin/mpirun')
-    def test_configure_dplace(self, mocked_init, mocked_get_mpi_info, mocked_raise_on,
-                       mocked_which):
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name = 'MPIRun_dplace'
-        component._cfg = mock.Mock(resource='localhost')
-        component._configure()
-        self.assertEqual('mpirun', component.launch_command)
-        self.assertEqual(5, component.mpi_version)
-        self.assertEqual('ORTE', component.mpi_flavor)
-
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIRun, '__init__', return_value=None)
-    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=[5, 'ORTE'])
-    @mock.patch('radical.utils.raise_on')
-    def test_construct_command(self, mocked_init,
-                               mocked_get_mpi_info,
-                               mocked_raise_on):
+    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=['1.1.1', 'ORTE'])
+    @mock.patch('radical.utils.which', return_value='/bin/mpirun')
+    @mock.patch('radical.utils.get_hostname', return_value='localhost')
+    def test_init_from_scratch(self, mocked_hostname, mocked_which,
+                               mocked_mpi_info, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun.name = 'mpirun'
+
+        env    = {'test_env': 'test_value'}
+        env_sh = 'env/lm_%s.sh' % lm_mpirun.name.lower()
+
+        lm_info = lm_mpirun._init_from_scratch(env, env_sh)
+        self.assertEqual(lm_info['env'],     env)
+        self.assertEqual(lm_info['env_sh'],  env_sh)
+        self.assertEqual(lm_info['command'], mocked_which())
+        self.assertFalse(lm_info['mpt'])
+        self.assertFalse(lm_info['rsh'])
+        self.assertFalse(lm_info['ccmrun'])
+        self.assertFalse(lm_info['dplace'])
+        self.assertFalse(lm_info['omplace'])
+        self.assertEqual(lm_info['mpi_version'], mocked_mpi_info()[0])
+        self.assertEqual(lm_info['mpi_flavor'],  mocked_mpi_info()[1])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__', return_value=None)
+    @mock.patch.object(MPIRun, '_get_mpi_info', return_value=['1.1.1', 'ORTE'])
+    @mock.patch('radical.utils.which', return_value='/bin/mpirun')
+    @mock.patch('radical.utils.get_hostname', return_value='localhost')
+    def test_init_from_scratch_with_name(self, mocked_hostname, mocked_which,
+                                         mocked_mpi_info, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+
+        for _flag in ['mpt', 'rsh']:
+            lm_mpirun.name = 'mpirun_%s' % _flag
+            lm_info = lm_mpirun._init_from_scratch({}, '')
+            self.assertTrue(lm_info[_flag])
+
+        for _flavor in ['ccmrun', 'dplace']:
+            lm_mpirun.name = 'mpirun_%s' % _flavor
+            mocked_which.return_value = '/usr/bin/%s' % _flavor
+            lm_info = lm_mpirun._init_from_scratch({}, '')
+            self.assertEqual(lm_info[_flavor], mocked_which())
+            with self.assertRaises(AssertionError):
+                mocked_which.return_value = ''
+                lm_mpirun._init_from_scratch({}, '')
+
+        lm_mpirun.name = 'mpirun'
+        mocked_hostname.return_value = 'cheyenne'
+        mocked_which.return_value = '/usr/bin/omplace'
+        lm_info = lm_mpirun._init_from_scratch({}, '')
+        self.assertEqual(lm_info['omplace'], mocked_which())
+        self.assertTrue(lm_info['mpt'])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__', return_value=None)
+    def test_init_from_info(self, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+
+        lm_info = {
+            'env'        : {'test_env': 'test_value'},
+            'env_sh'     : 'env/lm_mpirun.sh',
+            'command'    : '/bin/mpirun',
+            'mpt'        : True,
+            'rsh'        : False,
+            'ccmrun'     : '/bin/ccmrun',
+            'dplace'     : '/bin/dplace',
+            'omplace'    : '/bin/omplace',
+            'mpi_version': '1.1.1',
+            'mpi_flavor' : 'ORTE'
+        }
+        lm_mpirun._init_from_info(lm_info)
+        self.assertEqual(lm_mpirun._env,         lm_info['env'])
+        self.assertEqual(lm_mpirun._env_sh,      lm_info['env_sh'])
+        self.assertEqual(lm_mpirun._command,     lm_info['command'])
+        self.assertEqual(lm_mpirun._mpt,         lm_info['mpt'])
+        self.assertEqual(lm_mpirun._rsh,         lm_info['rsh'])
+        self.assertEqual(lm_mpirun._ccmrun,      lm_info['ccmrun'])
+        self.assertEqual(lm_mpirun._dplace,      lm_info['dplace'])
+        self.assertEqual(lm_mpirun._omplace,     lm_info['omplace'])
+        self.assertEqual(lm_mpirun._mpi_version, lm_info['mpi_version'])
+        self.assertEqual(lm_mpirun._mpi_flavor,  lm_info['mpi_flavor'])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__', return_value=None)
+    def test_can_launch(self, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+        self.assertTrue(lm_mpirun.can_launch(
+            task={'description': {'executable': 'script'}})[0])
+        self.assertFalse(lm_mpirun.can_launch(
+            task={'description': {'executable': None}})[0])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__', return_value=None)
+    def test_get_launcher_env(self, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun._env_sh = 'env/lm_mpirun.sh'
+
+        lm_env = lm_mpirun.get_launcher_env()
+        self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_mpirun._env_sh, lm_env)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__',   return_value=None)
+    def test_get_launch_rank_cmds(self, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun.name     = 'mpirun'
+        lm_mpirun._command = 'mpirun'
+        lm_mpirun._mpt     = False
+        lm_mpirun._rsh     = False
+        lm_mpirun._ccmrun  = ''
+        lm_mpirun._dplace  = ''
+        lm_mpirun._omplace = ''
 
         test_cases = setUp('lm', 'mpirun')
-
-        component = MPIRun(name=None, cfg=None, session=None)
-        component.name    = 'MPIRun'
-        component._log    = ru.Logger('dummy')
-        component._cfg    = mock.Mock(resource='localhost')
-        component._mpt    = False
-        component._rsh    = False
-        component._ccmrun = ''
-        component._dplace = ''
-
-        component._configure()
-        component.launch_command = 'mpirun'
-        component.mpi_flavor     = None
-
         for task, result in test_cases:
-            command, hop = component.construct_command(task, None)
-            self.assertEqual([command, hop], result, task['uid'])
+
+            command = lm_mpirun.get_launch_cmds(task, '')
+            self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+            command = lm_mpirun.get_rank_exec(task, None, None)
+            self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
     tc = TestMPIRun()
-    tc.test_construct_command()
-    tc.test_configure()
+    tc.test_init_from_scratch()
+    tc.test_init_from_scratch_with_name()
+    tc.test_init_from_info()
+    tc.test_can_launch()
+    tc.test_get_launcher_env()
+    tc.test_get_launch_rank_cmds()
 
 
 # ------------------------------------------------------------------------------

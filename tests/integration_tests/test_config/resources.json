@@ -1,5 +1,14 @@
 
 {
+    "localhost" : {
+        "cores_per_node" : 4,
+        "gpus_per_node"  : 0,
+        "ssh_path"       : "/usr/bin/ssh",
+        "mpirun_path"    : "/usr/bin/mpirun",
+        "mpi_flavor"     : "OMPI",
+        "mpi_version"    : "2.1.1",
+        "resource"       : "local.localhost"
+
     "arcticus" : {
         "cores_per_node" : 48,
         "gpus_per_node"  : 2,
@@ -20,9 +29,10 @@
     },
 
     "summit" : {
-      "cores_per_node"   : 42,
-      "gpus_per_node"    : 0,
-      "jsrun_path"       : "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun",
+        "cores_per_node" : 168,
+        "gpus_per_node"  : 6,
+        "smt"            : 4,
+        "jsrun_path"     : "/opt/ibm/spectrum_mpi/jsm_pmix/bin/jsrun",
         "resource"       : "ornl.summit"
     }
 }
