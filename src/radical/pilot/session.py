@@ -45,7 +45,8 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True, **close_options):
+    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True,
+                 **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -210,7 +211,6 @@ class Session(rs.Session):
     #
     def close(self, **kwargs):
         '''
-
         Closes the session.  All subsequent attempts access objects attached to
         the session will result in an error.
 
@@ -234,8 +234,10 @@ class Session(rs.Session):
 
         # Merge kwargs with current defaults stored in self._close_options
         self._close_options.update(kwargs)
-        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
-                                      # to their types if needed (but None value will stay if it is set)
+        self._close_options.verify()
+
+        # to call for `_verify` method and to convert attributes
+        # to their types if needed (but None value will stay if it is set)
 
         options = self._close_options
 
@@ -990,15 +992,16 @@ class Session(rs.Session):
 # ------------------------------------------------------------------------------
 #
 class _CloseOptions(ru.Munch):
-    """Options and validation for Session.close().
+    '''
+    Options and validation for Session.close().
 
     **Arguments:**
         * **download** (`bool`):
           Fetch pilot profiles and database entries. (default False)
         * **terminate** (`bool`):
           Shut down all pilots associated with the session. (default True)
+    '''
 
-    """
     _schema = {
         'download' : bool,
         'terminate': bool
@@ -1008,6 +1011,14 @@ class _CloseOptions(ru.Munch):
         'download' : False,
         'terminate': True
     }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if self.get('cleanup') and not self.get('terminate'):
+            self.terminate = True
 
 
 # ------------------------------------------------------------------------------

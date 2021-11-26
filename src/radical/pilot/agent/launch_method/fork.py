@@ -3,6 +3,8 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import radical.utils as ru
+
 from .base import LaunchMethod
 
 
@@ -12,25 +14,45 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        self.node_name: str = ru.get_hostname() or ''
+
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
+<<<<<<< HEAD
     def _configure(self):
 
         self.launch_command = ''
 
+=======
+    def _init_from_scratch(self, env, env_sh):
+
+        lm_info = {'env'   : env,
+                   'env_sh': env_sh}
+
+        return lm_info
+
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_info(self, lm_info):
 
-        # NOTE: ignore thread and process counts, and expect application to do
-        #       the needful
+        self._env    = lm_info['env']
+        self._env_sh = lm_info['env_sh']
 
+>>>>>>> devel
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+<<<<<<< HEAD
         td          = t['description']
         task_exec   = td['executable']
         task_args   = td.get('arguments') or []
@@ -39,6 +61,58 @@ class Fork(LaunchMethod):
         command = "%s %s" % (task_exec, task_argstr)
 
         return command.strip(), None
+=======
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if len(task['slots']['ranks']) > 1:
+            return False, 'more than one rank'
+
+        node = task['slots']['ranks'][0]['node_name']
+        if node not in ['localhost', self.node_name]:
+            return False, 'not on localhost'
+
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True, ''
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
+
+        return exec_path
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return 'export RP_RANK=0'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
+>>>>>>> devel
 
 
 # ------------------------------------------------------------------------------

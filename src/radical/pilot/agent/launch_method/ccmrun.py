@@ -10,38 +10,96 @@ from .base import LaunchMethod
 
 # ------------------------------------------------------------------------------
 #
+# ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
+#
 class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        self._command : str = ''
+        self.node_name: str = ru.get_hostname() or ''
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-        # ccmrun: Cluster Compatibility Mode (CCM) job launcher for Cray systems
-        self.launch_command = ru.which('ccmrun')
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_scratch(self, env, env_sh):
+
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('ccmrun')}
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info):
+
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
+
+        assert self._command
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True, ''
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
 
         # NOTE: we actually ignore the slots defined by the scheduler
+        # FIXME: cpu_threads
+        task_cores = task['description']['cpu_processes']
+        cmd = '%s -n %d %s' % (self._command, task_cores, exec_path)
 
-        td          = t['description']
-        task_exec    = td['executable']
-        task_cores   = td['cpu_processes']  # FIXME: cpu_threads
-        task_args    = td.get('arguments') or []
-        task_argstr  = self._create_arg_string(task_args)
+        return cmd.rstrip()
 
-        ccmrun_command = "%s -n %d %s %s" % (self.launch_command, task_cores,
-                                             task_exec, task_argstr)
 
-        return ccmrun_command, None
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return 'export RP_RANK=0'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

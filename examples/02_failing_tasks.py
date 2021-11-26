@@ -112,7 +112,7 @@ if __name__ == '__main__':
         report.info('\n')
         for task in tasks:
             if task.state in [rp.FAILED, rp.CANCELED]:
-                report.plain('  * %s: %s, exit: %5s, err: %35s'
+                report.plain('  * %s: %s, exit: %5s, err: -%35s-'
                             % (task.uid, task.state[:4],
                                task.exit_code, task.stderr))
                 report.error('>>err\n')

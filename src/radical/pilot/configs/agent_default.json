@@ -28,8 +28,24 @@
         "agent_executing_queue"      : {"kind": "queue"},
         "agent_staging_output_queue" : {"kind": "queue"},
 
+<<<<<<< HEAD
         "funcs_req_queue"            : {"kind": "queue"},
         "funcs_res_queue"            : {"kind": "queue"},
+=======
+        "raptor_scheduling_queue"    : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+
+        "funcs_req_queue"            : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+        "funcs_res_queue"            : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+>>>>>>> devel
 
         "agent_unschedule_pubsub"    : {"kind": "pubsub"},
         "agent_schedule_pubsub"      : {"kind": "pubsub"},

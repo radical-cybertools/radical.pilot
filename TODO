@@ -257,8 +257,13 @@ others
   - `PRTE` switches in scheduler should become `partition` switches, where the
     partitions are defined by the RM
 
+<<<<<<< HEAD
   - stager and other RPC like workers should get a proper async RPC channel
     (req/res).  That should be built upon `ru.zmq.Service`.  The client side
     should wrap the request into a proper async Future.
 
+=======
+
+  - create_named_env needs to issue a client error on failures
+>>>>>>> devel
 
