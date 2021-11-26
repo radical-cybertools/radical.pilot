@@ -40,16 +40,6 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        # make sure that parent finalizers are called
-        super(Hombre, self).finalize_child()
-
-
-    # --------------------------------------------------------------------------
-    #
     def _configure(self):
 
         # * oversubscribe:
@@ -90,8 +80,8 @@ class Hombre(AgentSchedulingComponent):
                        'gpu_thread_type'  : td['gpu_thread_type' ],
                        }
 
-        self.cpn     = self._rm_cores_per_node
-        self.gpn     = self._rm_gpus_per_node
+        self.cpn     = self._rm.info.cores_per_node
+        self.gpn     = self._rm.info.gpus_per_node
 
         self.free    = list()     # list of free chunks
         self.lock    = ru.Lock()  # lock for the above list
@@ -144,10 +134,9 @@ class Hombre(AgentSchedulingComponent):
                 del(slot['ncblocks'])
                 del(slot['ngblocks'])
                 self.free.append(slot)
-            return {'nodes'         : list(),
+            return {'ranks'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
-                    'lm_info'       : self._rm_lm_info,
                     'ncblocks'      : 0,
                     'ngblocks'      : 0}
         # ---------------------------------------------------------------------
@@ -162,17 +151,17 @@ class Hombre(AgentSchedulingComponent):
                 slot = next_slot(slot)
 
             node  = self.nodes[nidx]
-            nuid  = node['uid']
-            nname = node['name']
+            nuid  = node['node_id']
+            nname = node['node_name']
             ok    = True
 
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
-                                          'core_map': [cblock],
-                                          'gpu_map' : []})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [cblock],
+                                          'gpu_map'  : []})
                     slot['ncblocks'] += 1
                 else:
                     ok = False
@@ -184,10 +173,10 @@ class Hombre(AgentSchedulingComponent):
                     # move the process onto core `0` (oversubscribed)
                     # enabled)
                     gblock = node['gblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
-                                          'core_map': [[0]],
-                                          'gpu_map' : [gblock]})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [[0]],
+                                          'gpu_map'  : [gblock]})
                     slot['ngblocks'] += 1
                 else:
                     ok = False
@@ -214,6 +203,13 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def schedule_task(self, task):
+
+        return self._allocate_slot(task['description'])
+
+
+    # --------------------------------------------------------------------------
+    #
     def _allocate_slot(self, td):
         '''
         This is the main method of this implementation, and is triggered when
@@ -229,9 +225,9 @@ class Hombre(AgentSchedulingComponent):
                 raise ValueError('hetbre?  %d != %d' % (v, td[k]))
 
       # self._log.debug('find new slot')
-        slots = self._find_slots(td)
+        slots = self._find_slots()
         if slots:
-            self._log.debug('allocate slot %s', slots['nodes'])
+            self._log.debug('allocate slot %s', slots['ranks'])
         else:
             self._log.debug('allocate slot %s', slots)
 
@@ -239,6 +235,14 @@ class Hombre(AgentSchedulingComponent):
 
 
         return slots
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        return self._release_slot(task['slots'])
 
 
     # --------------------------------------------------------------------------
@@ -251,7 +255,7 @@ class Hombre(AgentSchedulingComponent):
         '''
 
       # self._log.debug('=> release  [%d]', len(self.free))
-        self._log.debug('release  slot %s', slots['nodes'])
+        self._log.debug('release  slot %s', slots['ranks'])
         with self.lock:
             self.free.append(slots)
       # self._log.debug('<= release  [%d]', len(self.free))
@@ -259,7 +263,7 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_slots(self, cores_requested):
+    def _find_slots(self):
 
         # check if we have free chunks laying around - return one
         with self.lock:

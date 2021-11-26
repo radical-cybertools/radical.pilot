@@ -35,13 +35,13 @@ class Context (rs.Context):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def from_dict(cls, thedict):
+    def from_dict(cls, seed):
         """
         Creates a new object instance from a string.
         c._from_dict(x.as_dict) == x
         """
 
-        return cls(thedict)
+        return cls(seed)
 
 
 # ------------------------------------------------------------------------------

@@ -21,21 +21,24 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load gnu/9.1.0",
+                                                 "module load openmpi"
+                                                 ]
+                                             }
+                                        },
         "pre_bootstrap_0"             : [
                                          "module purge",
                                          "module load python/3.7.5",
-                                         "module load gnu/9.1.0",
-                                         "module load openmpi",
                                          "module list"
                                          ],
         "pre_bootstrap_1"             : [
                                          "module purge",
-                                         "module load python/3.7.5",
-                                         "module load gnu/9.1.0",
-                                         "module load openmpi"
+                                         "module load python/3.7.5"
                                          ],
         "forward_tunnel_endpoint"     : "cheyenne1",
         "default_remote_workdir"      : "$TMPDIR",
@@ -69,21 +72,23 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIEXEC_MPT",
-        "task_launch_method"          : "MPIEXEC_MPT",
-        "mpi_launch_method"           : "MPIEXEC_MPT",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIEXEC_MPT"],
+                                         "FORK"  : {},
+                                         "MPIEXEC_MPT": {
+                                             "pre_exec_cached": [
+                                                     "module load gnu/9.1.0",
+                                                     "module load mpt/2.22"
+                                                 ]
+                                             }
+                                        },
         "pre_bootstrap_0"             : [
                                          "module purge",
-                                         "module load python/3.7.5",
-                                         "module load gnu/9.1.0",
-                                         "module load mpt/2.22",
-                                         "module list"
+                                         "module load python/3.7.5"
                                          ],
         "pre_bootstrap_1"             : [
                                          "module purge",
-                                         "module load python/3.7.5",
-                                         "module load gnu/9.1.0",
-                                         "module load mpt/2.22"
+                                         "module load python/3.7.5"
                                          ],
         "forward_tunnel_endpoint"     : "cheyenne1",
         "default_remote_workdir"      : "$TMPDIR",
