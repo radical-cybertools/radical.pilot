@@ -355,13 +355,8 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-<<<<<<< HEAD
-            node_uid  = node['uid']
-            node_name = node['name']
-=======
             node_id   = node['node_id']
             node_name = node['node_name']
->>>>>>> devel
 
             self._log.debug_3('next %s : %s', node_id, node_name)
             self._log.debug_3('req1: %s = %s + %s', req_slots, rem_slots,

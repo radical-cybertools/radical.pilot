@@ -90,23 +90,6 @@ class APRun(LaunchMethod):
         #       'cpu_threads'      : 2,
         #       'gpu_processes     : 2,
         #       'slots':
-<<<<<<< HEAD
-        #       {   # 'ranks': [{'node': node_name,
-        #           #            'node_id': node_uid,
-        #           #            'core_map': [core_map],
-        #           #            'gpu_map': [gpu_map],
-        #           #            'lfs': lfs}],
-        #         'nodes'         : [{  'name': node_1,
-        #                               'uid': node_uid_1,
-        #                               'core_map': [[0, 2], [4, 6]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024},
-        #                            {  'name': node_2,
-        #                               'uid': node_uid_2,
-        #                               'core_map': [[1, 3], [5, 7]],
-        #                               'gpu_map': [[0]],
-        #                               'lfs': 1024}
-=======
         #       {   # 'ranks': [{'node_name': node_name,
         #           #            'node_id'  : node_id,
         #           #            'core_map' : [core_map],
@@ -122,7 +105,6 @@ class APRun(LaunchMethod):
         #                               'core_map' : [[1, 3], [5, 7]],
         #                               'gpu_map'  : [[0]],
         #                               'lfs'      : 1024}
->>>>>>> devel
         #                            ],
         #         'cores_per_node': 8,
         #         'gpus_per_node' : 1,

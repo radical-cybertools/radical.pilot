@@ -652,7 +652,6 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
     def rpc(self, rpc, args):
         '''
         Send a pilot command, wait for the response, and return the result.
@@ -668,8 +667,6 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-=======
->>>>>>> devel
     def stage_out(self, sds=None):
         '''
         Fetch files (default:`staging_output.tgz`) from the pilot sandbox.

@@ -532,10 +532,6 @@ class Default(PMGRLaunchingComponent):
             # direct staging, use first pilot for staging context
             # NOTE: this implies that the SDS can only refer to session
             #       sandboxes, not to pilot sandboxes!
-<<<<<<< HEAD
-            self._log.debug(info['sds'])
-=======
->>>>>>> devel
             self._stage_in(pilots[0], info['sds'])
 
         for ft in ft_list:
@@ -686,16 +682,9 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-<<<<<<< HEAD
-        agent_launch_method     = rcfg.get('agent_launch_method')
-        agent_service_url       = rcfg.get('agent_service_url', service_url)
-        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
-=======
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
+        agent_service_url       = rcfg.get('agent_service_url',   service_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
->>>>>>> devel
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
@@ -873,22 +862,12 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-<<<<<<< HEAD
         RE = RuntimeError
         if not python_dist        : raise RE("missing python distribution")
         if not virtenv_dist       : raise RE("missing virtualenv distribution")
         if not agent_spawner      : raise RE("missing agent spawner")
         if not agent_scheduler    : raise RE("missing agent scheduler")
         if not resource_manager   : raise RE("missing resource manager")
-        if not agent_launch_method: raise RE("missing agentlaunch method")
-        if not task_launch_method : raise RE("missing task launch method")
-=======
-        if not python_dist     : raise RuntimeError("missing python distribution")
-        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner   : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
-        if not resource_manager: raise RuntimeError("missing resource manager")
->>>>>>> devel
 
         # massage some values
         if not queue:

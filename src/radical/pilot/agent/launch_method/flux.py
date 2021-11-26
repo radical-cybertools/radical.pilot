@@ -63,11 +63,7 @@ class Flux(LaunchMethod):
         self._fh = ru.FluxHelper()
         self._fh.connect_flux(uri=self._details['flux_uri'])
 
-<<<<<<< HEAD
-            log.info('starting flux watcher')
-=======
         self._prof.prof('flux_reconnect_ok')
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------

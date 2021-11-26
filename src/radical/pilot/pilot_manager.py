@@ -402,20 +402,6 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
-    def _pilot_prepare_env(self, pid, env_spec):
-
-        if not env_spec:
-            return
-
-        # FIXME: MongoDB
-      # self._session._dbs.pilot_command('prep_env', env_spec, [pid])
-
-
-    # --------------------------------------------------------------------------
-    #
-=======
->>>>>>> devel
     def _pilot_staging_input(self, sds):
         '''
         Run some staging directives for a pilot.
@@ -618,18 +604,8 @@ class PilotManager(rpu.Component):
         #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
-<<<<<<< HEAD
         # immediately send first heartbeat and any other commands which are
         # included in the pilot description
-=======
-        if self._session._rec:
-            self._rec_id += 1
-
-        # insert pilots into the database, as a bulk.
-        self._session._dbs.insert_pilots(pilot_docs)
-
-        # immediately send first heartbeat
->>>>>>> devel
         for pilot_doc in pilot_docs:
             pid = pilot_doc['uid']
             self._pilot_send_hb(pid)

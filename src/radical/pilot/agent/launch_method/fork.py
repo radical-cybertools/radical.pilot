@@ -23,12 +23,6 @@ class Fork(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
-    def _configure(self):
-
-        self.launch_command = ''
-
-=======
     def _init_from_scratch(self, env, env_sh):
 
         lm_info = {'env'   : env,
@@ -44,7 +38,6 @@ class Fork(LaunchMethod):
         self._env    = lm_info['env']
         self._env_sh = lm_info['env_sh']
 
->>>>>>> devel
 
     # --------------------------------------------------------------------------
     #
@@ -52,16 +45,6 @@ class Fork(LaunchMethod):
 
         pass
 
-<<<<<<< HEAD
-        td          = t['description']
-        task_exec   = td['executable']
-        task_args   = td.get('arguments') or []
-        task_argstr = self._create_arg_string(task_args)
-
-        command = "%s %s" % (task_exec, task_argstr)
-
-        return command.strip(), None
-=======
 
     # --------------------------------------------------------------------------
     #
@@ -112,7 +95,6 @@ class Fork(LaunchMethod):
         command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
->>>>>>> devel
 
 
 # ------------------------------------------------------------------------------

@@ -155,31 +155,12 @@ class LaunchMethod(object):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
-<<<<<<< HEAD
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .jsrun          import JSRUN
-        from .yarn           import Yarn
-        from .spark          import Spark
-=======
->>>>>>> devel
 
     # --------------------------------------------------------------------------
     #
     def _init_from_info(self, lm_info):
 
-<<<<<<< HEAD
-        impl = {
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_JSRUN         : JSRUN,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark,
-=======
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------

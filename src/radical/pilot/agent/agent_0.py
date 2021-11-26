@@ -7,13 +7,10 @@ import os
 import pprint
 import stat
 import time
-<<<<<<< HEAD
 import pprint
 import threading           as mt
 import subprocess          as sp
 import multiprocessing     as mp
-=======
->>>>>>> devel
 
 import radical.utils       as ru
 
@@ -50,12 +47,8 @@ class Agent_0(rpu.Worker):
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
         self._session = session
-<<<<<<< HEAD
         self._sid     = self._session.uid
         self._log     = session._log
-=======
-        self._log     = ru.Logger(self._uid, ns='radical.pilot')
->>>>>>> devel
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -108,11 +101,7 @@ class Agent_0(rpu.Worker):
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
-<<<<<<< HEAD
         freq = 100
-=======
-        freq = 60
->>>>>>> devel
         tint = freq / 3
         tout = freq * 10
         self._hb = ru.Heartbeat(uid=self._uid,
@@ -305,19 +294,6 @@ class Agent_0(rpu.Worker):
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
-<<<<<<< HEAD
-=======
-        # sub-agents are started, components are started, bridges are up: we are
-        # ready to roll!  Update pilot state.
-        pilot = {'type'             : 'pilot',
-                 'uid'              : self._pid,
-                 'state'            : rps.PMGR_ACTIVE,
-                 'resource_details' : {
-                     # 'lm_info'      : self._rm.lm_info.get('version_info'),
-                     # 'lm_detail'    : self._rm.lm_info.get('lm_detail'),
-                     'rm_info'      : self._rm.info},
-                 '$set'             : ['resource_details']}
->>>>>>> devel
         self.advance(pilot, publish=True, push=False)
 
 
@@ -361,7 +337,6 @@ class Agent_0(rpu.Worker):
         if self._rm:
             self._rm.stop()
 
-<<<<<<< HEAD
         self._log.info('rusage: %s', rpu.get_rusage())
 
         out, err, log = '', '', ''
@@ -372,9 +347,8 @@ class Agent_0(rpu.Worker):
         except: pass
         try   : log = open('./agent.0.log', 'r').read(1024)
         except: pass
-=======
+
         self._reg_service.stop()
->>>>>>> devel
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
@@ -393,31 +367,10 @@ class Agent_0(rpu.Worker):
                  'logfile': log,
                  'state'  : state}
 
-<<<<<<< HEAD
         self._log.debug('=== push final state update')
         self._log.debug('update state: %s: %s', state, self._final_cause)
         self.publish(rpc.PROXY_STATE_PUBSUB,
                      topic=rpc.STATE_PUBSUB, msg=[pilot])
-=======
-        out, err, log = '', '', ''
-
-        try   : out   = ru.ru_open('./agent.0.out', 'r').read(1024)
-        except: pass
-        try   : err   = ru.ru_open('./agent.0.err', 'r').read(1024)
-        except: pass
-        try   : log   = ru.ru_open('./agent.0.log', 'r').read(1024)
-        except: pass
-
-        ret = self._dbs._c.update({'type' : 'pilot',
-                                   'uid'  : self._pid},
-                                  {'$set' : {'stdout' : rpu.tail(out),
-                                             'stderr' : rpu.tail(err),
-                                             'logfile': rpu.tail(log),
-                                             'state'  : state},
-                                   '$push': {'states' : state}
-                                  })
-        self._log.debug('update ret: %s', ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------
@@ -603,64 +556,6 @@ class Agent_0(rpu.Worker):
                                            'lfs'          : 0,
                                            'mem'          : 0}]}
                 }
-<<<<<<< HEAD
-                cmd, hop = agent_lm.construct_command(agent_cmd,
-                        launch_script_hop='/usr/bin/env RP_SPAWNER_HOP=TRUE "%s"' % ls_name)
-
-                with open (ls_name, 'w') as ls:
-                    # note that 'exec' only makes sense if we don't add any
-                    # commands (such as post-processing) after it.
-                    ls.write('#!/bin/sh\n\n')
-                    for k,v in agent_cmd['description'].get('environment', {}).items():
-                        ls.write('export "%s"="%s"\n' % (k, v))
-                    ls.write('\n')
-                    for pe_cmd in agent_cmd['description'].get('pre_exec', []):
-                        ls.write('%s\n' % pe_cmd)
-                    ls.write('\n')
-                    ls.write('exec %s\n\n' % cmd)
-                    st = os.stat(ls_name)
-                    os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
-
-                if hop : cmdline = hop
-                else   : cmdline = ls_name
-
-            # ------------------------------------------------------------------
-            class _SA(mp.Process):
-
-                def __init__(self, sa, cmd, log):
-                    self._name = sa
-                    self._cmd  = cmd.split()
-                    self._log  = log
-                    self._proc = None
-                    super(_SA, self).__init__(name=self._name)
-
-                    self.start()
-
-
-                def run(self):
-
-                    sys.stdout = open('%s.out' % self._name, 'w')
-                    sys.stderr = open('%s.err' % self._name, 'w')
-                    out        = open('%s.out' % self._name, 'w')
-                    err        = open('%s.err' % self._name, 'w')
-                    self._proc = sp.Popen(args=self._cmd, stdout=out, stderr=err)
-                    self._log.debug('sub-agent %s spawned [%s]', self._name,
-                            self._proc)
-
-                    assert(self._proc)
-
-                    # FIXME: lifetime, use daemon agent launcher
-                    while True:
-                        time.sleep(0.1)
-                        if self._proc.poll() is None:
-                            return True   # all is well
-                        else:
-                            return False  # proc is gone - terminate
-            # ------------------------------------------------------------------
-
-            # spawn the sub-agent
-            assert(cmdline)
-=======
 
                 # find a launcher to use
                 launcher = self._rm.find_launcher(agent_task)
@@ -695,7 +590,6 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
->>>>>>> devel
             self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
                                       stderr='%s.err' % sa)
@@ -730,36 +624,11 @@ class Agent_0(rpu.Worker):
         self.publish(rpc.PROXY_STATE_PUBSUB, topic=topic, msg=msg)
 
 
-<<<<<<< HEAD
     # --------------------------------------------------------------------------
     #
     def _proxy_control_cb(self, topic, msg):
-=======
-            self._log.debug('pilot command: %s: %s', cmd, arg)
-            self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
-
-            if cmd == 'heartbeat' and arg['pmgr'] == self._pmgr:
-                self._hb.beat(uid=self._pmgr)
-
-            elif cmd == 'cancel_pilot':
-                self._log.info('cancel pilot cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
-                                                  'arg' : None})
-                self._final_cause = 'cancel'
-                self.stop()
-
-                return False  # we are done
-
-            elif cmd == 'cancel_tasks':
-                self._log.info('cancel_tasks cmd')
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
-                                                  'arg' : arg})
-            else:
-                self._log.warn('could not interpret cmd "%s" - ignore', cmd)
->>>>>>> devel
 
         self._log.debug('=== proxy control: %s', msg)
-
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -773,10 +642,6 @@ class Agent_0(rpu.Worker):
             self._hb.beat(uid=self._pmgr)
             return True
 
-<<<<<<< HEAD
-=======
-        self._log.debug('rpc req: %s', rpc_req)
->>>>>>> devel
 
         if cmd == 'prep_env':
 
@@ -834,12 +699,10 @@ class Agent_0(rpu.Worker):
 
         ret     = None
         rpc_res = {'uid': arg['uid']}
+
         try:
-<<<<<<< HEAD
-            print(arg)
             ret = None
-=======
->>>>>>> devel
+
             if req == 'hello'   :
                 ret = 'hello %s' % ' '.join(arg['arg'])
 
@@ -867,88 +730,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
-    def _prepare_env(self, eid, env_spec):
-=======
-    def _check_state(self):
-
-        # Make sure that we haven't exceeded the runtime - otherwise terminate.
-        if self._cfg.runtime:
-
-            if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
-
-                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
-                self._final_cause = 'timeout'
-                self.stop()
-                return False  # we are done
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_tasks_cb(self):
-
-        # Check for tasks waiting for input staging and log pull.
-        #
-        # FIXME: Unfortunately, 'find_and_modify' is not bulkable, so we have
-        #        to use 'find'.  To avoid finding the same tasks over and over
-        #        again, we update the 'control' field *before* running the next
-        #        find -- so we do it right here.
-        #        This also blocks us from using multiple ingest threads, or from
-        #        doing late binding by task pull :/
-        task_cursor = self._dbs._c.find({'type'    : 'task',
-                                         'pilot'   : self._pid,
-                                         'control' : 'agent_pending'})
-        if not task_cursor.count():
-            self._log.info('tasks pulled:    0')
-            return True
-
-        # update the tasks to avoid pulling them again next time.
-        task_list = list(task_cursor)
-        task_uids = [task['uid'] for task in task_list]
-
-        self._dbs._c.update({'type'  : 'task',
-                             'uid'   : {'$in'     : task_uids}},
-                            {'$set'  : {'control' : 'agent'}},
-                            multi=True)
-
-        self._log.info("tasks pulled: %4d", len(task_list))
-        self._prof.prof('get', msg='bulk: %d' % len(task_list), uid=self._pid)
-
-        for task in task_list:
-
-            # make sure the tasks obtain env settings (if needed)
-            if 'task_environment' in self._cfg:
-                if not task['description'].get('environment'):
-                    task['description']['environment'] = dict()
-                for k,v in self._cfg['task_environment'].items():
-                    task['description']['environment'][k] = v
-
-            # we need to make sure to have the correct state:
-            task['state'] = rps._task_state_collapse(task['states'])
-            self._prof.prof('get', uid=task['uid'])
-
-            # FIXME: raise or fail task!
-            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
-                self._log.error('invalid state: %s', (pprint.pformat(task)))
-
-            task['control'] = 'agent'
-
-        # now we really own the CUs, and can start working on them (ie. push
-        # them into the pipeline).  We don't publish nor profile as advance,
-        # since that happened already on the module side when the state was set.
-        self.advance(task_list, publish=False, push=True)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def _prepare_env(self, env_name, env_spec):
-
-        print(env_spec)
->>>>>>> devel
 
         etype = env_spec['type']
         evers = env_spec['version']

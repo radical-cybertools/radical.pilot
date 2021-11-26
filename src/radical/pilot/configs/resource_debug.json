@@ -11,24 +11,14 @@
         },
         "default_queue"               : "",
         "resource_manager"            : "FORK",
-<<<<<<< HEAD
-        "lfs_per_node"                : "/tmp",
-        "agent_config"                : "debug_sa",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SLEEP",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "NOOP",
-        "mpi_launch_method"           : "NOOP",
-=======
         "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_spawner"               : "SLEEP",
         "launch_methods"              : {
                                          "order" : ["FORK", "MPIRUN"],
                                          "FORK"  : {},
                                          "MPIRUN": {}
                                         },
->>>>>>> devel
         "pre_bootstrap_0"             : [],
         "pre_bootstrap_1"             : [],
         "default_remote_workdir"      : "$HOME/",
@@ -73,12 +63,6 @@
         "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system",
-<<<<<<< HEAD
-        "cores_per_node"              :  42,
-        "gpus_per_node"               :   6,
-        "lfs_per_node"                :  {"path" : "/tmp",
-                                          "size" : 100}
-=======
         "cores_per_node"              : 42,
         "gpus_per_node"               :  6,
         "lfs_path_per_node"           : "/tmp",
@@ -203,7 +187,6 @@
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "fake_resources"              : true
->>>>>>> devel
     }
 }
 

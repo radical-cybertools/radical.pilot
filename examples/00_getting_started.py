@@ -43,11 +43,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         config = ru.read_json('%s/config.json'
-<<<<<<< HEAD
-                             % os.path.dirname(os.path.abspath(__file__)))
-=======
                             % os.path.dirname(__file__)).get(resource, {})
->>>>>>> devel
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -60,18 +56,11 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 120,  # pilot runtime (min)
                    'exit_on_error' : True,
-<<<<<<< HEAD
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue',   None),
-                   'access_schema' : config[resource].get('schema',  None),
-                   'cores'         : config[resource].get('cores',   None),
-=======
                    'project'       : config.get('project', None),
                    'queue'         : config.get('queue', None),
                    'access_schema' : config.get('schema', None),
                    'cores'         : config.get('cores', None),
                    'gpus'          : config.get('gpus', 0),
->>>>>>> devel
                   }
         pdesc = rp.PilotDescription(pd_init)
 
@@ -91,19 +80,6 @@ if __name__ == '__main__':
         tds = list()
         for i in range(0, n):
 
-            # create a new task description, and fill it.
-<<<<<<< HEAD
-            tds.append(rp.TaskDescription({
-
-                    'sandbox'         : 'task_sandbox',
-                    'executable'      : '%s/examples/hello_rp.sh' % os.getcwd(),
-                    'arguments'       : [random.randint(1,10) + 10],
-                    'cpu_process_type': rp.MPI,
-                    'cpu_processes'   : random.choice([1, 2, 4, 8, 16]),
-                    'cpu_threads'     : random.randint(1,2),
-                    'gpu_processes'   : random.choice([0,0,0,0,0,0,1,2]),
-            }))
-=======
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.stage_on_error = True
@@ -111,7 +87,6 @@ if __name__ == '__main__':
             td.cpu_processes  = 1
 
             tds.append(td)
->>>>>>> devel
             report.progress()
 
         report.progress_done()

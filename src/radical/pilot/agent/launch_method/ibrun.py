@@ -67,17 +67,6 @@ class IBRun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-<<<<<<< HEAD
-        slots       = t['slots']
-        td          = t['description']
-
-        task_exec   = td['executable']
-        task_args   = td.get('arguments') or []
-        task_argstr = self._create_arg_string(task_args)
-        task_env    = td.get('environment') or {}
-
-        n_tasks     = td['cpu_processes']
-=======
         return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
 
@@ -88,7 +77,6 @@ class IBRun(LaunchMethod):
         slots   = task['slots']
         td      = task['description']
         n_tasks = td['cpu_processes']
->>>>>>> devel
 
         # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)
@@ -119,13 +107,6 @@ class IBRun(LaunchMethod):
         if offsets:
             ibrun_offset = min(offsets)
 
-<<<<<<< HEAD
-        ibrun_command = "%s -n %s -o %d %s %s" % \
-                        (self.launch_command, n_tasks,
-                         ibrun_offset, task_exec, task_argstr)
-
-        return ibrun_command.strip(), None
-=======
         cmd = '%s -n %s -o %d %s' % (self._command, n_tasks, ibrun_offset,
                                      exec_path)
         return cmd.rstrip()
@@ -153,7 +134,6 @@ class IBRun(LaunchMethod):
         command     = '%s %s' % (task_exec, task_argstr)
 
         return command.rstrip()
->>>>>>> devel
 
 
 # ------------------------------------------------------------------------------
