@@ -189,7 +189,7 @@ class Update(rpu.Worker):
                 return True
 
             if cmd == 'insert':
-                self._dbs.insert_units(ru.as_list(things))
+                self._dbs.insert_tasks(ru.as_list(things))
                 return True
 
 

@@ -1,0 +1,77 @@
+
+{
+    "task": {
+        "uid"               : "task.000000",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "cpu_threads"   : 1,
+            "gpu_processes" : 0,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lfs_per_node"  : 0,
+                "partition_id"  : "1",
+                "ranks"         : [{"node_name" : "node1",
+                                    "node_id"   : "node1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "lfs"       : 0}]
+            },
+            "dvm_list"          : {"1": {"dvm_uri": "dvm_uri",
+                                         "nodes"  : ["node1"]}},
+            "task_sandbox": "./"
+        }
+    },
+
+    "results": {
+        "lm": {
+            "fork"    : {
+                "rank_exec"  : "/bin/sleep"
+            },
+            "aprun"   : {
+                "launch_cmd" : "aprun -n 1 -N 1 -L node1 -d 1 -cc 0",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "mpirun"  : {
+                "launch_cmd" : "mpirun  -np 1   -host node1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "ibrun"   : {
+                "launch_cmd" : "ibrun -n 1 -o 0",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "ccmrun"  : {
+                "launch_cmd" : "ccmrun -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "jsrun"   : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000000",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "mpiexec" : {
+                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "prte"    : {
+                "launch_cmd" : "prun --dvm-uri \"dvm_uri\" --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose",
+                "rank_exec"  : "/bin/sleep"
+            }
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}}\n"]
+        },
+        "resource_filename": {
+            "jsrun" : "rs_layout_task_000000"
+        }
+    }
+}
+

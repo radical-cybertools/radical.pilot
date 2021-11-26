@@ -1,0 +1,61 @@
+
+{
+    "task": {
+        "uid"                  : "task.000000",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["10"],
+            "environment"      : {},
+            "cpu_processes"    : 2,
+            "cpu_threads"      : 1,
+            "cpu_process_type" : "",
+            "gpu_processes"    : 1,
+            "gpu_process_type" : "",
+            "mem_per_process"  : 128,
+            "lfs_per_process"  : 0,
+            "tags"             : {"colocate": "tag.0000"}
+        },
+        "task_sandbox_path"    : "/tmp"
+    },
+
+    "setup": {
+        "nodes": [
+            {
+                "node_name"  : "a",
+                "node_id"    : "1",
+                "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 0, 0, 0],
+                "lfs"        : 0,
+                "mem"        : 1024
+            },
+            {
+                "node_name"  : "b",
+                "node_id"    : 2,
+                "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 0, 0, 0],
+                "lfs"        : 0,
+                "mem"        : 1024
+            }
+        ]
+    },
+
+    "result": {
+        "slots": {
+            "partition_id"     : null,
+            "ranks"            : [{"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[0]],
+                                   "gpu_map"   : [[0]],
+                                   "mem"       : 128,
+                                   "lfs"       : 0},
+                                  {"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[1]],
+                                   "gpu_map"   : [[1]],
+                                   "mem"       : 128,
+                                   "lfs"       : 0}]
+        },
+        "colo_history": {"tag.0000": ["1", "1"]}
+    }
+}
+
