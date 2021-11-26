@@ -31,6 +31,13 @@
         "cores"    : 64
     },
 
+    "local.localhost_flux" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 64
+    },
+
     "local.localhost_funcs" : {
         "project"  : null,
         "queue"    : null,
@@ -103,10 +110,10 @@
         "cores"    : 56
     },
 
-    "xsede.frontera" : {
-        "project"  : "FTA-Jha",
+    "tacc.frontera" : {
+        "project"  : "MCB20006",
         "queue"    : "development",
-        "schema"   : "local",
+        "schema"   : "ssh",
         "cores"    : 64
     },
 
@@ -166,6 +173,14 @@
         "schema"   : "local",
         "cores"    : 30,
         "gpus"     : 0
+    },
+
+    "ornl.spock"  : {
+        "project"  : "csc449",
+        "queue"    : "ecp",
+        "schema"   : "local",
+        "cores"    : 64,
+        "gpus"     : 4
     },
 
     "ornl.summit"  : {
