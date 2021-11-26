@@ -52,6 +52,14 @@
         "cores"    : 64
     },
 
+    "anl.arcticus" : {
+        "project"  : null,
+        "queue"    : "arcticus",
+        "schema"   : "local",
+        "cores"    : 96,
+        "gpus"     : 2
+    },
+
     "nersc.edison" : {
         "project"  : null,
         "queue"    : "debug",
@@ -152,10 +160,10 @@
     },
 
     "ncar.cheyenne": {
-	    "project"  : "URTG0014",
-	    "queue"    : "regular",
-	    "schema"   : "local",
-	    "cores"    : 72
+        "project"  : "URTG0014",
+        "queue"    : "regular",
+        "schema"   : "local",
+        "cores"    : 72
     },
 
     "llnl.lassen"  : {
@@ -198,22 +206,7 @@
         "cores"    : 64
     },
 
-    "fub.allegro"   : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : "ssh",
-        "cores"    : 36,
-        "gpus"     : 12
-    },
-
-    "radical.one" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : "ssh",
-        "cores"    : 8
-    },
-
-    "radical.two" : {
+    "radical.three" : {
         "project"  : null,
         "queue"    : null,
         "schema"   : "ssh",
