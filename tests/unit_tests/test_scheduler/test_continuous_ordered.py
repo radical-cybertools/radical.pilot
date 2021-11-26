@@ -82,7 +82,9 @@ class TestContinuousOrdered(TestCase):
                                  "lfs_per_process": 2
                                 },
                 }]
-        component._schedule_tasks(tasks)
+
+        for task in tasks:
+            component._schedule_task(task)
 
 
     # ------------------------------------------------------------------------------

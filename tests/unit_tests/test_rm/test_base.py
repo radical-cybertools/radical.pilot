@@ -115,15 +115,18 @@ class RMBaseTestCase(TestCase):
                                            tc_map['rm_cfg'],
                                            tc_map['result']):
 
-            def _init_from_scratch(rm_info_input):
-                return ru.Munch(rm_info)
+            def _init_from_scratch(foo, rm_info_input):
+                return ru.Munch(foo)
+
+            from functools import partial
 
             rm._cfg = ru.Munch(rm_cfg)
-            rm._init_from_scratch = _init_from_scratch
+            rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
             rm_info_output = rm.init_from_scratch()
 
             self.assertEqual(rm_info_output.node_list, result)
+
 
     # --------------------------------------------------------------------------
     #

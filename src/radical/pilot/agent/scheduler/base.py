@@ -28,7 +28,6 @@ SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
 
 # SCHEDULER_NAME_YARN               = "YARN"
@@ -293,15 +292,7 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .flux               import Flux
-        from .torus              import Torus
         from .noop               import Noop
-
-      # from .yarn               import Yarn
-      # from .spark              import Spark
-      # from .continuous_summit  import ContinuousSummit
-      # from .continuous_fifo    import ContinuousFifo
-      # from .scattered          import Scattered
-
 
         impl = {
 
@@ -310,14 +301,7 @@ class AgentSchedulingComponent(rpu.Component):
             SCHEDULER_NAME_CONTINUOUS         : Continuous,
             SCHEDULER_NAME_HOMBRE             : Hombre,
             SCHEDULER_NAME_FLUX               : Flux,
-            SCHEDULER_NAME_TORUS              : Torus,
             SCHEDULER_NAME_NOOP               : Noop,
-
-          # SCHEDULER_NAME_YARN               : Yarn,
-          # SCHEDULER_NAME_SPARK              : Spark,
-          # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
-          # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
-          # SCHEDULER_NAME_SCATTERED          : Scattered,
         }
 
         if name not in impl:

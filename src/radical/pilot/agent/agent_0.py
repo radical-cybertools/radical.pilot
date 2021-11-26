@@ -275,7 +275,7 @@ class Agent_0(rpu.Worker):
 
         # NOTE: we do not push the final pilot state, as that is done by the
         #       bootstrapper *after* this pilot *actually* finished.
-        with open('./killme.signal', 'w') as fout:
+        with ru.ru_open('./killme.signal', 'w') as fout:
             fout.write('%s\n' % state)
 
         # we don't rely on the existence / viability of the update worker at
@@ -285,11 +285,11 @@ class Agent_0(rpu.Worker):
 
         out, err, log = '', '', ''
 
-        try   : out   = open('./agent.0.out', 'r').read(1024)
+        try   : out   = ru.ru_open('./agent.0.out', 'r').read(1024)
         except: pass
-        try   : err   = open('./agent.0.err', 'r').read(1024)
+        try   : err   = ru.ru_open('./agent.0.err', 'r').read(1024)
         except: pass
-        try   : log   = open('./agent.0.log', 'r').read(1024)
+        try   : log   = ru.ru_open('./agent.0.log', 'r').read(1024)
         except: pass
 
         ret = self._dbs._c.update({'type' : 'pilot',
@@ -382,14 +382,14 @@ class Agent_0(rpu.Worker):
         cmds = launcher.get_launch_cmd(service_task, ex_name)
         tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
 
-        with open(ls_name, 'w') as fout:
+        with ru.ru_open(ls_name, 'w') as fout:
             fout.write(tmp)
 
         tmp  = '#!/bin/sh\n\n'
         tmp += '. ./env/service.env\n'
         tmp += '/bin/sh -l ./services\n\n'
 
-        with open(ex_name, 'w') as fout:
+        with ru.ru_open(ex_name, 'w') as fout:
             fout.write(tmp)
 
 
@@ -499,7 +499,7 @@ class Agent_0(rpu.Worker):
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
                 tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
 
-                with open(launch_script, 'w') as fout:
+                with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
 
 
@@ -507,7 +507,7 @@ class Agent_0(rpu.Worker):
                 tmp += '. ./env/agent.env\n'
                 tmp += '/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa
 
-                with open(exec_script, 'w') as fout:
+                with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
 
                 # make sure scripts are executable
@@ -814,7 +814,7 @@ class Agent_0(rpu.Worker):
 
         # prepare the env to be loaded in task exec scripts
         ve_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
-        with open('%s.sh' % ve_path, 'w') as fout:
+        with ru.ru_open('%s.sh' % ve_path, 'w') as fout:
             fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler

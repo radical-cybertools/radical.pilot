@@ -40,16 +40,6 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        # make sure that parent finalizers are called
-        super(Hombre, self).finalize_child()
-
-
-    # --------------------------------------------------------------------------
-    #
     def _configure(self):
 
         # * oversubscribe:
@@ -90,8 +80,8 @@ class Hombre(AgentSchedulingComponent):
                        'gpu_thread_type'  : td['gpu_thread_type' ],
                        }
 
-        self.cpn     = self._rm_cores_per_node
-        self.gpn     = self._rm_gpus_per_node
+        self.cpn     = self._rm.info.cores_per_node
+        self.gpn     = self._rm.info.gpus_per_node
 
         self.free    = list()     # list of free chunks
         self.lock    = ru.Lock()  # lock for the above list
@@ -213,6 +203,13 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def schedule_task(self, task):
+
+        return self._allocate_slot(task['description'])
+
+
+    # --------------------------------------------------------------------------
+    #
     def _allocate_slot(self, td):
         '''
         This is the main method of this implementation, and is triggered when
@@ -228,7 +225,7 @@ class Hombre(AgentSchedulingComponent):
                 raise ValueError('hetbre?  %d != %d' % (v, td[k]))
 
       # self._log.debug('find new slot')
-        slots = self._find_slots(td)
+        slots = self._find_slots()
         if slots:
             self._log.debug('allocate slot %s', slots['ranks'])
         else:
@@ -238,6 +235,14 @@ class Hombre(AgentSchedulingComponent):
 
 
         return slots
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        return self._release_slot(task['slots'])
 
 
     # --------------------------------------------------------------------------
@@ -258,7 +263,7 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_slots(self, cores_requested):
+    def _find_slots(self):
 
         # check if we have free chunks laying around - return one
         with self.lock:

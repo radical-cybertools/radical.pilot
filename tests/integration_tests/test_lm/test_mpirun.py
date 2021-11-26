@@ -14,6 +14,7 @@ from radical.pilot.agent.launch_method.mpirun import MPIRun
 
 base = os.path.abspath(os.path.dirname(__file__))
 
+
 # ------------------------------------------------------------------------------
 #
 class TestTask(TestCase):

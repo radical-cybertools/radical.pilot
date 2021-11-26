@@ -745,7 +745,6 @@ def get_session_description(sid, src=None, dburl=None):
 #
 def get_node_index(node_list, node_uid, pn):
 
-    global _node_index
     if not _node_index:
         for idx,n in enumerate(node_list):
             _node_index[n['node_id']] = idx

@@ -77,7 +77,7 @@ class RoundRobin(TMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_tasks(self, tasks):
+    def update_tasks(self, uids):
 
         # RR scheduling is not concerned about task states
         pass

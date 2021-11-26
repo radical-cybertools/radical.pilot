@@ -116,7 +116,7 @@ class Flux(AgentSchedulingComponent):
 
         ru.rec_makedir(sbox)
         exec_script = '%s/%s.flux.sh' % (sbox, uid)
-        with open(exec_script, 'w') as fout:
+        with ru.ru_open(exec_script, 'w') as fout:
             fout.write(self._helper % {'out': stdout,
                                        'err': stderr,
                                        'log': '%s.flux.log' % uid,
@@ -152,7 +152,7 @@ class Flux(AgentSchedulingComponent):
         }
 
         if td['gpu_processes']:
-            spec['resources']['with'].append({
+            spec['resources'][0]['with'].append({
                     'count': td['gpu_processes'],
                     'type' : 'gpu'})
 
