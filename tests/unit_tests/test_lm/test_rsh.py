@@ -1,79 +1,107 @@
-
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-import os
+from unittest import mock, TestCase
 
-from   unittest     import mock, TestCase
-from   .test_common import setUp
-
-import radical.utils as ru
-
-from   radical.pilot.agent.launch_method.rsh import RSH
+from .test_common import setUp
+from radical.pilot.agent.launch_method.rsh import RSH
 
 
+# ------------------------------------------------------------------------------
+#
 class TestRSH(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(RSH, '__init__',   return_value=None)
-    @mock.patch('radical.utils.raise_on')
+    @mock.patch.object(RSH, '__init__', return_value=None)
     @mock.patch('radical.utils.which', return_value='/usr/bin/rsh')
-    def test_configure(self, mocked_init, mocked_raise_on, mocked_which):
+    def test_init_from_scratch(self, mocked_which, mocked_init):
 
-        component = RSH(name=None, cfg=None, session=None)
-        component._configure()
-        self.assertEqual('/usr/bin/rsh', component.launch_command)
+        lm_rsh = RSH('', {}, None, None, None)
 
+        lm_info = lm_rsh._init_from_scratch({}, '')
+        self.assertEqual(lm_info['command'], mocked_which())
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(RSH, '__init__',   return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.which', return_value=None)
-    def test_configure_fail(self, mocked_init, mocked_raise_on, mocked_which):
+    @mock.patch.object(RSH, '__init__', return_value=None)
+    def test_init_from_info(self, mocked_init):
 
-        component = RSH(name=None, cfg=None, session=None)
-        with self.assertRaises(RuntimeError):
-            component._configure()
+        lm_rsh = RSH('', {}, None, None, None)
 
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_rsh.sh',
+                   'command': '/usr/bin/rsh'}
+        lm_rsh._init_from_info(lm_info)
+        self.assertEqual(lm_rsh._env,     lm_info['env'])
+        self.assertEqual(lm_rsh._env_sh,  lm_info['env_sh'])
+        self.assertEqual(lm_rsh._command, lm_info['command'])
 
-    # ------------------------------------------------------------------------------
+        lm_info['command'] = ''
+        with self.assertRaises(AssertionError):
+            lm_rsh._init_from_info(lm_info)
+
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(RSH, '__init__',   return_value=None)
-    @mock.patch.object(RSH, '_configure', return_value=None)
-    @mock.patch.dict(os.environ,
-                     {'PATH': 'test_path', 'LD_LIBRARY_PATH': '/usr/local/lib/'},
-                     clear=True)
-    @mock.patch('radical.utils.raise_on')
-    def test_construct_command(self, mocked_init,
-                               mocked_configure,
-                               mocked_raise_on):
+    @mock.patch.object(RSH, '__init__', return_value=None)
+    def test_can_launch(self, mocked_init):
+
+        # ensure single rank
+        # (NOTE: full task and rank descriptions are NOT provided)
+
+        lm_rsh = RSH('', {}, None, None, None)
+        self.assertTrue(lm_rsh.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+        self.assertFalse(lm_rsh.can_launch(
+            task={'slots': {'ranks': [{'node_id': '00001'},
+                                      {'node_id': '00002'}]}})[0])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(RSH, '__init__', return_value=None)
+    def test_get_launcher_env(self, mocked_init):
+
+        lm_rsh = RSH('', {}, None, None, None)
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_ssh.sh',
+                   'command': '/usr/bin/ssh'}
+        lm_rsh._init_from_info(lm_info)
+        lm_env = lm_rsh.get_launcher_env()
+
+        self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(RSH, '__init__', return_value=None)
+    def test_get_launch_rank_cmds(self, mocked_init):
+
+        lm_rsh = RSH('', {}, None, None, None)
+        lm_rsh._command = 'rsh'
 
         test_cases = setUp('lm', 'rsh')
-        component  = RSH(name=None, cfg=None, session=None)
-        component._log           = ru.Logger('dummy')
-        component.name           = 'RSH'
-        component.mpi_flavor     = None
-        component.launch_command = 'rsh'
-
         for task, result in test_cases:
-            if result == "ValueError":
-                with self.assertRaises(ValueError):
-                    _, _ = component.construct_command(task, None)
-            elif result == "RuntimeError":
+
+            if result == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
-                    _, _ = component.construct_command(task, 1)
+                    lm_rsh.get_launch_cmds(task, '')
+
             else:
-                command, hop = component.construct_command(task, 1)
-                self.assertEqual([command, hop], result)
+                command = lm_rsh.get_launch_cmds(task, '')
+                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+                command = lm_rsh.get_rank_exec(task, None, None)
+                self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
     tc = TestRSH()
-    tc.test_configure()
-    tc.test_configure_fail()
-    tc.test_construct_command()
+    tc.test_init_from_scratch()
+    tc.test_init_from_info()
+    tc.test_can_launch()
+    tc.test_get_launcher_env()
+    tc.test_get_launch_rank_cmds()
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter

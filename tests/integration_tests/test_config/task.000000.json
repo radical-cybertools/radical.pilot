@@ -1,26 +1,27 @@
 {
     "task": {
-             "uid":         "task.000000",
-             "description": {"executable"   : "hello_jsrun",
-                             "arguments"    : ["|", "sort"],
-                             "cpu_processes" : 1
-                            },
-             "task_sandbox_path": ".",
-             "slots": {
-                       "cores_per_node": 42,
-                       "gpus_per_node" : 6,
-                       "lfs_per_node"  : 0,
-                       "nodes"         : [{"name"    : "1",
-                                           "uid"     : 1,
-                                           "core_map": [[0]],
-                                           "gpu_map" : [],
-                                           "lfs"     : {"size": 0,
-                                                        "path": null}
-                                           }]
-                       }
-             },
-    "result": ["\n",
-               "---------- MPI Ranks: 1, OpenMP Threads: 1, GPUs per Resource Set: 0 ----------\n",
-               "MPI Rank 000 of 001 on HWThread 000 of Node {node}, OMP_threadID 0 of 1\n"]
+        "uid"                : "task.000000",
+        "description": {
+            "executable"     : "hello_jsrun",
+            "arguments"      : ["|", "sort"],
+            "cpu_processes"  : 1
+        },
+        "task_sandbox_path"  : ".",
+        "slots": {
+            "cores_per_node" : 42,
+            "gpus_per_node"  : 6,
+            "lfs_per_node"   : 0,
+            "ranks"          : [{"node_name" : "node1",
+                                 "node_id"   : "1",
+                                 "core_map"  : [[0]],
+                                 "gpu_map"   : [],
+                                 "lfs"       : 0}]
+        }
+    },
+    "result": [
+        "\n",
+        "---------- MPI Ranks: 1, OpenMP Threads: 1, GPUs per Resource Set: 0 ----------\n",
+        "MPI Rank 000 of 001 on HWThread 000 of Node {node}, OMP_threadID 0 of 1\n"
+    ]
 }
 

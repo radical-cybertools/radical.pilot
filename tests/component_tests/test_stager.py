@@ -36,7 +36,8 @@ class StagerTestCase(TestCase):
         src_file_content = 'to be staged'
 
         ru.rec_makedir(src_dir)
-        with open(src_file, 'w') as fd: fd.write(src_file_content)
+        with ru.ru_open(src_file, 'w') as fd:
+            fd.write(src_file_content)
 
         # directory to directory
 
@@ -63,7 +64,7 @@ class StagerTestCase(TestCase):
         stager._handle_staging(sds)
 
         self.assertTrue(os.path.exists(tgt_file))
-        with open(tgt_file) as fd:
+        with ru.ru_open(tgt_file) as fd:
             self.assertEqual(fd.readlines()[0], src_file_content)
 
 # ------------------------------------------------------------------------------

@@ -28,6 +28,7 @@ class TestComponent(TestCase):
             return (env_id, spec)
 
         agent_cmp = Agent_0(None, None)
+        agent_cmp._log = mock.Mock()
         agent_cmp.publish = mock.MagicMock(side_effect=_publish_side_effect)
         agent_cmp._prepare_env = mock.MagicMock(
                                            side_effect=_prepare_env_side_effect)
@@ -80,8 +81,8 @@ class TestComponent(TestCase):
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0000',
-                       'rpc': 'prep_env',
-                       'arg': {'env_id'  : 'radical',
+                       'rpc': 'prepare_env',
+                       'arg': {'env_name': 'radical',
                                'env_spec': 'spec'}
                       }
               }

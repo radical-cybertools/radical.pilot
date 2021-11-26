@@ -165,11 +165,7 @@ if __name__ == '__main__':
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
-    worker     = os.path.basename(cfg.worker.replace('py', 'sh'))
     pwd        = os.getcwd()
-
-    # add data staging to worker: link input_dir, impress_dir, and oe_license
-    descr['arguments']     = [os.path.basename(worker)]
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on

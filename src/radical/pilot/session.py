@@ -43,7 +43,8 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True, **close_options):
+    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True,
+                 **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -235,7 +236,6 @@ class Session(rs.Session):
     #
     def close(self, **kwargs):
         '''
-
         Closes the session.  All subsequent attempts access objects attached to
         the session will result in an error. If cleanup is set to True,
         the session data is removed from the database.
@@ -260,8 +260,10 @@ class Session(rs.Session):
 
         # Merge kwargs with current defaults stored in self._close_options
         self._close_options.update(kwargs)
-        self._close_options.verify()  # in case to call for `_verify` method and to convert attributes
-                                      # to their types if needed (but None value will stay if it is set)
+        self._close_options.verify()
+
+        # to call for `_verify` method and to convert attributes
+        # to their types if needed (but None value will stay if it is set)
 
         options = self._close_options
 
@@ -971,10 +973,10 @@ class Session(rs.Session):
 
 
 # ------------------------------------------------------------------------------
-
-
+#
 class _CloseOptions(ru.Munch):
-    """Options and validation for Session.close().
+    '''
+    Options and validation for Session.close().
 
     **Arguments:**
         * **cleanup**   (`bool`):
@@ -983,8 +985,8 @@ class _CloseOptions(ru.Munch):
           Fetch pilot profiles and database entries. (default False)
         * **terminate** (`bool`):
           Shut down all pilots associated with the session. (default True)
+    '''
 
-    """
     _schema = {
         'cleanup'  : bool,
         'download' : bool,
@@ -996,10 +998,15 @@ class _CloseOptions(ru.Munch):
         'download' : False,
         'terminate': True
     }
-    # Warning: Previously, passing `cleanup=None` would reverse the default and
-    # result in cleanup == True.
 
+
+    # --------------------------------------------------------------------------
+    #
     def _verify(self):
-        if self.cleanup and not self.terminate:
-            # cleanup implies terminate
-            raise ValueError('cleanup implies terminate.')
+
+        if self.get('cleanup') and not self.get('terminate'):
+            self.terminate = True
+
+
+# ------------------------------------------------------------------------------
+

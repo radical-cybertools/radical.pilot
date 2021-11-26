@@ -249,8 +249,8 @@ class Worker(rpu.Component):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            pre   = data.get('pre_exec', '')
-            code  = data['code']
+            pre  = data.get('pre_exec', '')
+            code = data['code']
 
             # create a wrapper function around the given code
             lines = code.split('\n')
@@ -263,7 +263,7 @@ class Worker(rpu.Component):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            exec(src, {}, loc)
+            exec(src, {}, loc)                           # pylint: disable=W0122
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -542,7 +542,7 @@ class Worker(rpu.Component):
                     #       right now.  alloc_task is not a proper scheduler,
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
-                  #     self._log.debug('=== req_alloc_wait %s', task['uid'])
+                  #     self._log.debug('req_alloc_wait %s', task['uid'])
 
                     time.sleep(0.01)
 
@@ -597,7 +597,7 @@ class Worker(rpu.Component):
 
 
     def _after_fork():
-        with open('/tmp/after_fork', 'a+') as fout:
+        with ru.ru_open('/tmp/after_fork', 'a+') as fout:
             fout.write('after fork %s %s\n' % (os.getpid(), mt.current_thread().name))
 
     # --------------------------------------------------------------------------
@@ -619,7 +619,7 @@ class Worker(rpu.Component):
             os.environ[k] = v
 
         # ----------------------------------------------------------------------
-        def _dispatch_thread(res_lock):
+        def _dispatch_proc(res_lock):
             # FIXME: do we still need this thread?
 
             import setproctitle
@@ -633,6 +633,7 @@ class Worker(rpu.Component):
 
             out, err, ret, val = self._modes[mode](task.get('data'))
             res = [task, str(out), str(err), int(ret), val]
+
             with res_lock:
                 self._result_queue.put(res)
         # ----------------------------------------------------------------------
@@ -655,14 +656,14 @@ class Worker(rpu.Component):
           # self._result_queue.put(res)
 
             res_lock = mp.Lock()
-            dispatcher = mp.Process(target=_dispatch_thread, args=[res_lock])
+            dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
             dispatcher.daemon = True
             dispatcher.start()
             dispatcher.join(timeout=tout)
 
             with res_lock:
                 if dispatcher.is_alive():
-                    dispatcher.kill()
+                    dispatcher.terminate()
                     dispatcher.join()
                     out = None
                     err = 'timeout (>%s)' % tout
@@ -678,7 +679,7 @@ class Worker(rpu.Component):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret)]
+            res = [task, str(out), str(err), int(ret), None]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
 
