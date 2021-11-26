@@ -52,9 +52,9 @@ class StagingDirective(ru.Description):
 
             from_dict = {'source': src.strip(),
                          'target': tgt.strip(),
-                         'action': DEFAULT_ACTION,
-                         'flags' : DEFAULT_FLAGS,
-                         }
+                         'action': rpc.DEFAULT_ACTION,
+                         'flags' : rpc.DEFAULT_FLAGS,
+                        }
 
         ru.Description.__init__(self, from_dict=from_dict)
 

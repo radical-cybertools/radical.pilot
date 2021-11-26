@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import math
-import os
 
 import radical.utils as ru
 
@@ -33,66 +32,82 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        self._command: str = ''
+
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self, env, env_sh):
 
-        self.launch_command = ru.which('srun')
+        command = ru.which('srun')
 
-        out, err, ret = ru.sh_callout('%s -V' % self.launch_command)
+        out, err, ret = ru.sh_callout('%s -V' % command)
         if ret:
             raise RuntimeError('cannot use srun [%s] [%s]' % (out, err))
 
         self._version = out.split()[-1]
         self._log.debug('using srun from %s [%s]',
-                        self.launch_command, self._version)
+                        command, self._version)
+
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': command}
+
+        return lm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_info(self, lm_info):
 
-        slots          = t.get('slots')
-        uid            = t['uid']
-        td            = t['description']
-        sbox           = t['task_sandbox_path']
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
 
-        task_exec      = td['executable']
-        task_argstr    = self._create_arg_string(td.get('arguments') or [])
-        task_env       = td.get('environment') or dict()
+        assert self._command
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True, ''
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['export SLURM_CPU_BIND=verbose',  # debug mapping
+                '. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
+
+        uid            = task['uid']
+        slots          = task['slots']
+        td             = task['description']
+        sbox           = task['task_sandbox_path']
 
         n_tasks        = td['cpu_processes']
         n_task_threads = td.get('cpu_threads', 1)
         n_gpus         = td.get('gpu_processes', 1)
-
-        # construct the task executable and arguments
-        if task_argstr: task_cmd = "%s %s" % (task_exec, task_argstr)
-        else          : task_cmd = task_exec
-
-        # use `ALL` to export vars pre_exec and RP, and add task env explicitly
-        env = '--export=ALL'
-        for k, v in task_env.items():
-            env += ',%s="%s"' % (k, v)
-
-        if not slots:
-            nodefile = None
-            n_nodes = int(math.ceil(float(n_tasks) /
-                                    self._cfg.get('cores_per_node', 1)))
-        else:
-            # the scheduler did place tasks - we can't honor the core and gpu
-            # mapping (see above), but we at least honor the nodelist.
-            nodelist = [node['name'] for node in slots['nodes']]
-            nodefile = '%s/%s.nodes' % (sbox, uid)
-            with open(nodefile, 'w') as fout:
-                fout.write(','.join(nodelist))
-                fout.write('\n')
-
-            n_nodes = len(set(nodelist))
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -100,9 +115,21 @@ class Srun(LaunchMethod):
         # placed on, and otherwise have to rely on the `--exclusive` flag to get
         # a decent auto mapping.  In cases where the scheduler did not place
         # the task we leave the node placement to srun as well.
-        #
-        # debug mapping
-        os.environ['SLURM_CPU_BIND'] = 'verbose'
+
+        if not slots:
+            nodefile = None
+            n_nodes  = int(math.ceil(float(n_tasks) /
+                                     self._rm_info.get('cores_per_node', 1)))
+        else:
+            # the scheduler did place tasks - we can't honor the core and gpu
+            # mapping (see above), but we at least honor the nodelist.
+            nodelist = [rank['node_name'] for rank in slots['ranks']]
+            nodefile = '%s/%s.nodes' % (sbox, uid)
+            with ru.ru_open(nodefile, 'w') as fout:
+                fout.write(','.join(nodelist))
+                fout.write('\n')
+
+            n_nodes = len(set(nodelist))
 
         # use `--exclusive` to ensure all tasks get individual resources.
         # do not use core binding: it triggers warnings on some installations
@@ -114,21 +141,39 @@ class Srun(LaunchMethod):
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
-        if self._cfg.get('gpus'):
+        if self._rm_info.get('gpus'):
             mapping += ' --gpus-per-task %d' % n_gpus
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
 
-        cmd = '%s %s %s %s' % (self.launch_command, mapping, env, task_cmd)
-        return cmd, None
+        cmd = '%s %s %s' % (self._command, mapping, exec_path)
+        return cmd.rstrip()
 
 
     # --------------------------------------------------------------------------
     #
     def get_rank_cmd(self):
 
-        return "echo $PMIX_RANK"
+        # FIXME: does SRUN set a rank env?
+        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------
+

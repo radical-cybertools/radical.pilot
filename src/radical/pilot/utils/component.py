@@ -1,6 +1,7 @@
 
 # pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
 # pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+# pylint: disable=global-statement   # W0603 global `_components`
 
 import os
 import sys
@@ -14,9 +15,26 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 
+# ------------------------------------------------------------------------------
+#
 def out(msg):
     sys.stdout.write('%s\n' % msg)
     sys.stdout.flush()
+
+
+# ------------------------------------------------------------------------------
+#
+_components = list()
+
+
+def _atfork_child():
+    global _components
+    for c in _components:
+        c._subscribers = dict()
+    _components = list()
+
+
+ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 
 # ------------------------------------------------------------------------------
@@ -36,6 +54,8 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
+
+        _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
@@ -419,9 +439,9 @@ class Component(object):
         self._workers    = dict()       # methods to work on things
         self._publishers = dict()       # channels to send notifications to
         self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = ru.RLock('%s.cb_lock' % self._uid)
+        self._cb_lock    = mt.RLock()
                                         # guard threaded callback invokations
-        self._work_lock  = ru.RLock('%s.work_lock' % self._uid)
+        self._work_lock  = mt.RLock()
                                         # guard threaded callback invokations
 
         self._subscribers = dict()      # ZMQ Subscriber classes
@@ -441,7 +461,7 @@ class Component(object):
       #                            scope='entity',
       #                            start='get',
       #                            stop=['put', 'drop'])
-        self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
+      # self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
         self._q    = None
         self._in   = None
@@ -616,7 +636,7 @@ class Component(object):
 
         # set controller callback to handle cancellation requests
         self._cancel_list = list()
-        self._cancel_lock = ru.RLock('%s.cancel_lock' % self._uid)
+        self._cancel_lock = mt.RLock()
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
 
         # call component level initialize
@@ -1042,7 +1062,7 @@ class Component(object):
         attempt on getting a thing is up.
         '''
 
-        # if no action occurs in this iteration, idle
+        # if there is nothing to check, idle a bit
         if not self._inputs:
             time.sleep(0.1)
             return True
@@ -1059,6 +1079,7 @@ class Component(object):
             things = ru.as_list(things)
 
             if not things:
+                # return to have a chance to catch term signals
                 return True
 
             # the worker target depends on the state of things, so we

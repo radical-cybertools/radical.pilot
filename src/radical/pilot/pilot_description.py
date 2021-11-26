@@ -20,8 +20,8 @@ RUNTIME           = 'runtime'
 APP_COMM          = 'app_comm'
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
-
 LAYOUT            = 'layout'
+SERVICES          = 'services'
 
 NODES             = 'nodes'
 CORES             = 'cores'
@@ -181,35 +181,18 @@ class PilotDescription(ru.Description):
        [type: `bool` | default: `True`] Flag to trigger app termination in case
        of the pilot failure.
 
+    .. data:: services
+
+       [Type: [`str`] | default: `[]`] [optional] A list of commands which get
+       started on a separate service compute node right after bootstrapping, and
+       before any RP task is launched.  That service compute node will not be
+       used for any other tasks.
+
     .. data:: layout
 
        [type: `str` or `dict` | default: `"default"`] Point to a json file or
        an explicit (dict) description of the pilot layout: number and size of
        partitions and their configuration.
-
-    .. data:: prepare_env
-
-       [type: `dict` | default: `{}`] Specification of task environments to be
-       prepared by the pilot. The parameter is expected to be a dictionary of
-       the form::
-
-             {
-                'env_1' : {'type'   : 'virtualenv',
-                           'version': '3.6',
-                           'setup'  : ['radical.pilot==1.0', 'pandas']},
-                'env_N' : {'type'   : 'conda',
-                           'version': '3.8',
-                           'setup'  : ['numpy']}
-             }
-
-       where the `type` specifies the environment type, `version` specifies the
-       env version to deploy, and `setup` specifies how the environment is to
-       be prepared.
-
-       At this point, the implementation only accepts `virtualenv` type
-       requests, where `version` specifies the Python version to use, and
-       `setup` is expected to be a list of module specifiers which need to be
-       installed into the environment.
 
     """
 
@@ -233,6 +216,7 @@ class PilotDescription(ru.Description):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
+        SERVICES        : [str]      ,
     }
 
     _defaults = {
@@ -255,6 +239,7 @@ class PilotDescription(ru.Description):
         OUTPUT_STAGING  : []         ,
         PREPARE_ENV     : {}         ,
         LAYOUT          : 'default'  ,
+        SERVICES        : []         ,
     }
 
 

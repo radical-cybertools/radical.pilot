@@ -2,7 +2,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import os
 import stat
 import time
@@ -12,13 +11,11 @@ import subprocess
 
 import radical.utils as ru
 
-from ...  import utils     as rpu
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states    as rps
+from ...   import constants as rpc
 
-from ..   import LaunchMethod
-
-from .base           import AgentExecutingComponent
+from ..    import LaunchMethod
+from .base import AgentExecutingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -71,10 +68,13 @@ class FUNCS(AgentExecutingComponent) :
 
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
+        # FIXME: env isolation
         self._launcher = LaunchMethod.create(
                 name    = self._cfg.get('agent_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+                lm_cfg  = self._cfg,
+                rm_info = {},
+                log     = self._log,
+                prof    = self._prof)
 
         # now run the func launcher on all nodes
         ve  = os.environ.get('VIRTUAL_ENV',  '')
@@ -83,7 +83,7 @@ class FUNCS(AgentExecutingComponent) :
         if not exe:
             exe = '%s/rp_install/bin/radical-pilot-agent-funcs' % self._pwd
 
-        for idx, node in enumerate(self._cfg['rm_info']['node_list']):
+        for idx, node in enumerate(self._rm.info.node_list):
             uid   = 'func_exec.%04d' % idx
             pwd   = '%s/%s' % (self._pwd, uid)
             funcs = {'uid'        : uid,
@@ -92,11 +92,10 @@ class FUNCS(AgentExecutingComponent) :
                                      'cpu_processes': 1,
                                      'environment'  : [],
                                     },
-                     'slots'      : {'nodes'        : [{'name'  : node[0],
-                                                        'uid'   : node[1],
-                                                        'cores' : [[0]],
-                                                        'gpus'  : []
-                                                       }]
+                     'slots'      : {'ranks' : [{'node_name': node['node_name'],
+                                                 'node_id'  : node['node_id'],
+                                                 'cores'    : [[0]],
+                                                 'gpus'     : []}]
                                     },
                      'cfg'        : {'req_get'      : req_cfg['get'],
                                      'res_put'      : res_cfg['put']
@@ -134,7 +133,7 @@ class FUNCS(AgentExecutingComponent) :
         cfgname = '%s/%s.cfg' % (sandbox,   funcs['uid'])
         descr   = funcs['description']
 
-        rpu.rec_makedir(sandbox)
+        ru.rec_makedir(sandbox)
         ru.write_json(funcs.get('cfg'), cfgname)
 
         launch_cmd, hop_cmd = launcher.construct_command(funcs, fname)
@@ -142,7 +141,7 @@ class FUNCS(AgentExecutingComponent) :
         if hop_cmd : cmdline = hop_cmd
         else       : cmdline = fname
 
-        with open(fname, "w") as fout:
+        with ru.ru_open(fname, "w") as fout:
 
             fout.write('#!/bin/sh\n\n')
 
@@ -168,8 +167,8 @@ class FUNCS(AgentExecutingComponent) :
         st = os.stat(fname)
         os.chmod(fname, st.st_mode | stat.S_IEXEC)
 
-        fout = open('%s/%s.out' % (sandbox, funcs['uid']), "w")
-        ferr = open('%s/%s.err' % (sandbox, funcs['uid']), "w")
+        fout = ru.ru_open('%s/%s.out' % (sandbox, funcs['uid']), "w")
+        ferr = ru.ru_open('%s/%s.err' % (sandbox, funcs['uid']), "w")
 
         self._prof.prof('exec_start', uid=funcs['uid'])
         # we really want to use preexec_fn:

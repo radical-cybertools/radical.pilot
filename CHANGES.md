@@ -3,6 +3,78 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.10.0 Release                                                        2021-11-22
+--------------------------------------------------------------------------------
+
+  - Add fallback for ssh tunnel on ifconfig-less nodes
+  - cleanup old resources
+  - removed OSG leftovers
+  - updating test cases
+  - fix recursive flag
+
+
+1.9.2  Hotfix Release                                                 2021-10-27
+--------------------------------------------------------------------------------
+
+  - fix shell escaping for task arguments
+
+
+1.9.0  Release                                                        2021-10-18
+--------------------------------------------------------------------------------
+
+  - amarel cfg
+
+
+1.8.0  Release                                                        2021-09-23
+--------------------------------------------------------------------------------
+
+  - fixed pilot staging for input directories
+  - clean up configs
+  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - refreshed module list for Summit
+  - return virtenv setup parameters
+  - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
+  - use local virtual env (either venv or conda) for Summit
+
+
+1.6.8  Hotfix Release                                                 2021-08-24
+--------------------------------------------------------------------------------
+
+  - adapt flux integration to changes in flux event model
+  - fix a merge problem on flux termination handling
+
+
+1.6.7  Release                                                        2021-07-09
+--------------------------------------------------------------------------------
+
+  - artifact upload for RA integration test
+  - encapsulate kwargs handling for Session.close().
+  - ensure state updates
+  - fail tasks which can never be scheduled
+  - fixed jsrun resource_set_file to use `cpu_index_using: logical`
+  - separate cpu/gpu utilization
+  - fix error handling in data stager
+  - use methods from the new module `host` within RU (>=1.6.7)
+
+
+1.6.6  Release                                                        2021-05-18
+--------------------------------------------------------------------------------
+
+  - added flags to keep `prun` aware of gpus (PRTE2 LM)
+  - add service node support
+  - Bridges mpiexec confing fix
+  - task level profiling now python independent
+  - executor errors should not affect task bulks
+  - revive ibrun support, include layout support
+  - MPI standard prescribes -H, not -host
+  - remove pilot staging area
+  - reduce profiling verbosity
+  - restore original env before task execution
+  - scattered repex staging fixes
+  - slurm env fixes
+  - updated documentation for `PilotDescription` and `TaskDescription`
+
+
 1.6.5  Release                                                        2021-04-14
 --------------------------------------------------------------------------------
 

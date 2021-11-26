@@ -1,45 +1,62 @@
+#!/usr/bin/env python3
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
+
+__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 
 from unittest import mock, TestCase
 
-import radical.utils as ru
-
+from radical.pilot.agent.resource_manager        import RMInfo
 from radical.pilot.agent.resource_manager.cobalt import Cobalt
 
 
-class TestCobalt(TestCase):
+# ------------------------------------------------------------------------------
+#
+class CobaltTestCase(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     @mock.patch.object(Cobalt, '__init__', return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    @mock.patch('radical.utils.sh_callout', side_effect=[('node1', None, None),
-                                                         ('16', None, None)])
-    def test_configure(self, mocked_init, mocked_raise_on, mocked_sh_callout):
+    def test_init_from_scratch(self, mocked_init):
 
-        # Test 1 no config file
-        os.environ['COBALT_PARTSIZE'] = '1'
+        os.environ['COBALT_PARTNAME'] = '1'  # node id -> node name: 'nid00001'
 
-        component = Cobalt(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {'cores_per_node': None}
-        component._configure()
+        rm_cobalt = Cobalt(cfg=None, log=None, prof=None)
 
-        self.assertEqual(component.node_list, [['node1','node1']])
-        self.assertEqual(component.cores_per_node, 16)
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
+        rm_info = rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
+
+        self.assertEqual(rm_info.node_list[0]['node_name'], 'nid00001')
+        self.assertEqual(rm_info.node_list[0]['cores'], [0])  # list of cores
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Cobalt, '__init__', return_value=None)
+    def test_init_from_scratch_error(self, mocked_init):
+
+        rm_cobalt = Cobalt(cfg=None, log=None, prof=None)
+
+        with self.assertRaises(RuntimeError):
+            # `cores_per_node` not defined
+            rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': None}))
+
+        for cobalt_env_var in ['COBALT_NODEFILE', 'COBALT_PARTNAME']:
+            if cobalt_env_var in os.environ:
+                del os.environ[cobalt_env_var]
+        with self.assertRaises(RuntimeError):
+            # both $COBALT_NODEFILE and $COBALT_PARTNAME are not set
+            rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
-    tc = TestCobalt()
-    tc.test_configure()
+    tc = CobaltTestCase()
+    tc.test_init_from_scratch()
+    tc.test_init_from_scratch_error()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -1,0 +1,33 @@
+
+{
+    "task": {
+        "uid"               : "task.000002",
+        "description": {
+            "executable"    : "/bin/sh",
+            "arguments"     : ["test.py"],
+            "cpu_processes" : 1,
+            "cpu_threads"   : 1,
+            "gpu_processes" : 0,
+            "environment"   : {}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+             "slots": {
+                 "ranks"         : [],
+                 "cores_per_node": 24,
+                 "gpus_per_node" : 0
+             }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "ibrun" : "AssertionError",
+            "prte"  : "RuntimeError"
+        }
+    }
+}
+

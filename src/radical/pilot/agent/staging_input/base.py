@@ -45,16 +45,14 @@ class AgentStagingInputComponent(rpu.Component):
 
         from .default import Default
 
-        try:
-            impl = {
-                RP_ASI_NAME_DEFAULT: Default
-            }[name]
+        impl = {
+            RP_ASI_NAME_DEFAULT: Default
+        }
 
-            impl = impl(cfg, session)
-            return impl
+        if name not in impl:
+            raise ValueError('AgentStagingInputComponent %s unknown' % name)
 
-        except KeyError:
-            raise ValueError("AgentStagingInputComponent '%s' unknown or defunct" % name)
+        return impl[name](cfg, session)
 
 
     # --------------------------------------------------------------------------

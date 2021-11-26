@@ -16,11 +16,15 @@ Sessions
    :members:
    :special-members: __init__
 
+.. py:module:: radical.pilot.context
+
 Security Contexts
 -----------------
 .. autoclass:: radical.pilot.Context
    :members:
    :special-members: __init__
+
+.. seealso:: :ref:`ssh_config`
 
 Pilots and PilotManagers
 ========================
@@ -65,6 +69,9 @@ Task
 
     State Models
     ============
+
+    .. If this doc section is reactivated, it could become the target for :py:mod:`radical.pilot.states` instead of overview.rst
+    .. .. py:module:: radical.pilot.states
 
     Task State Model
     -----------------------
@@ -202,4 +209,3 @@ Task
     +-------------------------+------------------------+------------------------------+
     |  FAILED                 | FAILED                 | FAILED                       |
     +-------------------------+------------------------+------------------------------+
-

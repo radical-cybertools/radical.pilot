@@ -133,7 +133,7 @@ class Backfilling(TMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_tasks(self, tasks):
+    def update_tasks(self, uids):
 
       # self._log.debug('update  tasks: %s', [u['uid'] for u in tasks])
 
@@ -141,9 +141,12 @@ class Backfilling(TMGRSchedulingComponent):
 
         with self._pilots_lock, self._wait_lock:
 
-            for task in tasks:
+            for uid in uids:
 
-                uid   = task['uid']
+                task = self._wait_pool.get(uid)
+                if not task:
+                    continue
+
                 state = task['state']
                 pid   = task.get('pilot', '')
 
