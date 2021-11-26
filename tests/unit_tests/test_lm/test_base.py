@@ -1,76 +1,111 @@
-
-# pylint: disable=protected-access, unused-argument, no-value-for-parameter
-
-from unittest import TestCase
-from unittest import mock
-
-from radical.pilot.agent.launch_method.base import LaunchMethod
+# pylint: disable=protected-access,unused-argument,no-value-for-parameter,abstract-method
 
 import radical.utils as ru
 
+from unittest import mock, TestCase
+
+from radical.pilot.agent.launch_method.base import LaunchMethod
+
 
 # ------------------------------------------------------------------------------
-class TestBase(TestCase):
-
-    def test_configure(self):
-
-        session = mock.Mock()
-        session._log = mock.Mock()
-        with self.assertRaises(NotImplementedError):
-            LaunchMethod(name='test', cfg={}, session=session)
-
+#
+class TestBaseLaunchMethod(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(LaunchMethod,'__init__',return_value=None)
-    def test_get_mpi_info(self, mocked_init):
+    @mock.patch('radical.utils.zmq.server.Logger')
+    @mock.patch('radical.utils.zmq.server.Profiler')
+    @mock.patch('radical.utils.env_eval')
+    def test_init_from_registry(self, mocked_env_eval, mocked_prof, mocked_log):
 
-        lm = LaunchMethod(name=None, cfg={}, session=None)
-        lm._log = mock.Mock()
-        ru.sh_callout = mock.Mock()
-        ru.sh_callout.side_effect = [['test',1,0]]
+        class NewLaunchMethod(LaunchMethod):
+
+            def _init_from_info(self, lm_info):
+                self._env     = lm_info['env']
+                self._env_sh  = lm_info['env_sh']
+                self._command = lm_info['command']
+                assert self._command
+
+        # check initialization from registry data only,
+
+        reg = ru.zmq.Registry()
+        reg.start()
+
+        lm_name = 'NewLaunchMethod'
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_new.sh',
+                   'command': '/usr/bin/test'}
+
+        c = ru.zmq.RegistryClient(url=reg.addr)
+        c.put('lm.%s' % lm_name.lower(), lm_info)
+        c.close()
+
+        lm = NewLaunchMethod(lm_name, ru.Munch({'reg_addr': reg.addr}), None,
+                             mock.Mock(), mock.Mock())
+
+        self.assertEqual(lm._env,     lm_info['env'])
+        self.assertEqual(lm._env_sh,  lm_info['env_sh'])
+        self.assertEqual(lm._command, lm_info['command'])
+
+        reg.stop()
+        reg.wait()
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(LaunchMethod, '__init__', return_value=None)
+    @mock.patch('radical.utils.sh_callout')
+    @mock.patch('radical.utils.Logger')
+    def test_get_mpi_info(self, mocked_logger, mocked_sh_callout, mocked_init):
+
+        lm = LaunchMethod('', {}, None, None, None)
+        lm._log = mocked_logger
+
+        with self.assertRaises(ValueError):
+            # no executable found
+            lm._get_mpi_info(exe='')
+
+        mocked_sh_callout.return_value = ['19.05.2', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
-        self.assertIsNone(version)
-        self.assertEqual(flavor, 'unknown')
+        self.assertIsNone(version)  # correct version is not set
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_UNKNOWN)
 
-        ru.sh_callout.side_effect = [['test',1,1],['mpirun (Open MPI) 2.1.2\n\n\
-                 Report bugs to http://www.open-mpi.org/community/help/\n',3,0]]
+        mocked_sh_callout.return_value = [
+            'mpirun (Open MPI) 2.1.2\n\n'
+            'Report bugs to https://www.open-mpi.org/community/help/\n', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertEqual(version, '2.1.2')
-        self.assertEqual(flavor,'OMPI')
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_OMPI)
 
-        ru.sh_callout.side_effect = [['test',1,1],['HYDRA build details:',3,0]]
+        mocked_sh_callout.return_value = ['HYDRA build details:', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertEqual(version, '')
-        self.assertEqual(flavor, 'HYDRA')
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_HYDRA)
 
-        ru.sh_callout.side_effect = [
-                ['test',1,1],
-                ['Intel(R) MPI Library for Linux* OS,\n\n\
-                  Version 2019 Update 5 Build 20190806\n\n\
-                  Copyright 2003-2019, Intel Corporation.',3,0]]
+        mocked_sh_callout.return_value = [
+            'Intel(R) MPI Library for Linux* OS,\n\n'
+            'Version 2019 Update 5 Build 20190806\n\n'
+            'Copyright 2003-2019, Intel Corporation.', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertEqual(version, '')
-        self.assertEqual(flavor, 'HYDRA')
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_HYDRA)
 
-        ru.sh_callout.side_effect = [
-                ['test',1,1],
-                ['HYDRA build details:\n\n\
-                  Version: 3.2\n\n\
-                  Release Date: unreleased development copy\n\n\
-                  /var/tmp/Intel-mvapich2/OFEDRPMS/BUILD/mvapich2\n\n\
-                  2.3b-10/src/openpa/src',3,0]]
+        mocked_sh_callout.return_value = [
+            'HYDRA build details:\n\n'
+            'Version: 3.2\n\n'
+            'Release Date: unreleased development copy\n\n'
+            '/var/tmp/Intel-mvapich2/OFEDRPMS/BUILD/mvapich2\n\n'
+            '2.3b-10/src/openpa/src', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertEqual(version, '')
-        self.assertEqual(flavor,'HYDRA')
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_HYDRA)
+
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
-    tc = TestBase()
-    tc.test_configure()
+    tc = TestBaseLaunchMethod()
     tc.test_get_mpi_info()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter

@@ -1,98 +1,67 @@
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import logging
+import collections
 import math
 import os
 import signal
 import time
 
-import threading     as mt
 import subprocess    as mp
+import threading     as mt
 
 import radical.utils as ru
 
 from .base import LaunchMethod
 
-PTL_BASE_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
+PTL_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
+
+DVM_URI_FILE_TPL   = '%(base_path)s/prrte.%(dvm_id)04d.uri'
+DVM_HOSTS_FILE_TPL = '%(base_path)s/prrte.%(dvm_id)04d.hosts'
 
 
 # ------------------------------------------------------------------------------
 #
 class PRTE(LaunchMethod):
-
+    """
+    PMIx Reference Run Time Environment v2
+    (https://github.com/openpmix/prrte)
+    """
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
-
-        LaunchMethod.__init__(self, name, cfg, session)
-
-        # We remove all PRUN related environment variables from the launcher
-        # environment, so that we can use PRUN for both launch of the
-        # (sub-)agent and Task execution.
-        self.env_removables.extend(["OMPI_", "OPAL_", "PMIX_"])
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
         self._verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
 
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
     # --------------------------------------------------------------------------
     #
-    def get_rank_cmd(self):
+    def __del__(self):
 
-        return "echo $PMIX_RANK"
-
-
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def _watch_dvm(dvm_process, dvm_id, log):
-
-        log.info('start prte-%s watcher', dvm_id)
-
-        retval = dvm_process.poll()
-        while retval is None:
-            line = dvm_process.stdout.readline().strip()
-            if line:
-                log.debug('prte-%s output: %s', dvm_id, line)
-            else:
-                time.sleep(1.)
-
-        if retval != 0:
-            # send a kill signal to the main thread.
-            # We know that Python and threading are likely not to play well
-            # with signals - but this is an exceptional case, and not part
-            # of the standard termination sequence.  If the signal is
-            # swallowed, the next `prun` call will trigger
-            # termination anyway.
-            os.kill(os.getpid(), signal.SIGKILL)
-            raise RuntimeError('PRTE DVM died')
-
-        log.info('prte-%s watcher stopped (%d)', dvm_id, dvm_process.returncode)
-
+        self._terminate()
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
+    def _configure(self):
 
         prte_cmd = ru.which('prte')
         if not prte_cmd:
             raise Exception('prte command not found')
 
-        # get OpenRTE/PRTE version
-        out, _, _ = ru.sh_callout('prte_info | grep "RTE"', shell=True)
-        prte_info = {}
+        prte_prefix = os.environ.get('UMS_OMPIX_PRRTE_DIR')
+
+        prte_info = {}  # get OpenRTE/PRTE version
+        out = ru.sh_callout('prte_info | grep "RTE"', shell=True)[0]
         for line in out.split('\n'):
 
             line = line.strip()
 
             if not prte_info.get('name'):
-                if 'Open RTE' in line:
-                    prte_info['name'] = 'Open RTE'
-                elif 'PRTE' in line:
-                    prte_info['name'] = 'PRTE'
+                if   'Open RTE' in line: prte_info['name'] = 'Open RTE'
+                elif 'PRTE'     in line: prte_info['name'] = 'PRTE'
 
             if 'RTE:' in line:
                 prte_info['version'] = line.split(':')[1].strip()
@@ -100,269 +69,349 @@ class PRTE(LaunchMethod):
                 prte_info['version_detail'] = line.split(':')[1].strip()
 
         if prte_info.get('name'):
-            log.info('version of %s: %s [%s]',
-                     prte_info['name'],
-                     prte_info.get('version'),
-                     prte_info.get('version_detail'))
+            self._log.info('version of %s: %s [%s]',
+                           prte_info['name'],
+                           prte_info.get('version'),
+                           prte_info.get('version_detail'))
         else:
-            log.info('version of OpenRTE/PRTE not determined')
+            self._log.info('version of OpenRTE/PRTE not determined')
 
-        # get `dvm_count` from resource config
-        # FIXME: another option is to introduce `nodes_per_dvm` in config
-        #        dvm_count = math.ceil(num_nodes / nodes_per_dvm)
-        num_nodes      = len(rm.node_list)
-        dvm_count      = cfg['resource_cfg'].get('dvm_count') or 1
-        nodes_per_dvm  = math.ceil(num_nodes / dvm_count)
+        # get `dvm_count` from resource config (LM config section)
+        # FIXME: another option is to introduce `nodes_per_dvm` in LM config
+        #        dvm_count = math.ceil(len(rm_info.node_list) / nodes_per_dvm)
+        dvm_count     = self._lm_cfg.get('dvm_count') or 1
+        nodes_per_dvm = math.ceil(len(self._rm_info['node_list']) / dvm_count)
 
-        # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
-        # `nodes` will be moved to RM, and the rest is LM details per partition
-        partitions     = {}
+        # additional info to form prrte related files (uri-/hosts-file)
+        dvm_file_info = {'base_path': os.getcwd()}
 
-        # go through every dvm instance
-        for dvm_id in range(dvm_count):
+        # ----------------------------------------------------------------------
+        def _watch_dvm(dvm_process, dvm_id, dvm_ready_flag):
 
-            node_list = rm.node_list[dvm_id       * nodes_per_dvm:
-                                     (dvm_id + 1) * nodes_per_dvm]
-            furi      = '%s/prrte.%s.uri'   % (os.getcwd(), dvm_id)
-            fhosts    = '%s/prrte.%s.hosts' % (os.getcwd(), dvm_id)
-            with open(fhosts, 'w') as fout:
-                num_slots = rm.cores_per_node * rm.smt
-                for node in node_list:
-                    fout.write('%s slots=%d\n' % (node[0], num_slots))
-            vm_size = len(node_list)
+            self._log.info('prte-%s watcher started', dvm_id)
 
-            prte  = '%s'               % prte_cmd
-            prte += ' --prefix %s'     % os.environ['PRRTE_PREFIX']
-            prte += ' --report-uri %s' % furi
-            prte += ' --hostfile %s'   % fhosts
+            retval = dvm_process.poll()
+            while retval is None:
+                line = dvm_process.stdout.readline().strip()
+                if line:
+                    self._log.debug('prte-%s output: %s', dvm_id, line)
 
-            if profiler.enabled:
-                prte += ' --pmca orte_state_base_verbose 1'  # prte profiling
+                    # final confirmation that DVM has started successfully
+                    if not dvm_ready_flag.is_set() and 'DVM ready' in str(line):
+                        dvm_ready_flag.set()
+                        self._log.info('prte-%s is ready', dvm_id)
+                        self._prof.prof(event='dvm_ready',
+                                        uid=self._lm_cfg['pid'],
+                                        msg='dvm_id=%s' % dvm_id)
+
+                else:
+                    time.sleep(1.)
+
+            if retval != 0:
+                # send a kill signal to the main thread.
+                # We know that Python and threading are likely not to play well
+                # with signals - but this is an exceptional case, and not part
+                # of the standard termination sequence. If the signal is
+                # swallowed, the next prun-call will trigger termination anyway.
+                os.kill(os.getpid(), signal.SIGKILL)
+                raise RuntimeError('PRTE DVM died (dvm_id=%s)' % dvm_id)
+
+            self._log.info('prte-%s watcher stopped', dvm_id)
+
+        # ----------------------------------------------------------------------
+        def _start_dvm(dvm_id, dvm_size, dvm_ready_flag):
+
+            file_info = dict(dvm_file_info)
+            file_info['dvm_id'] = dvm_id
+
+            prte  = '%s' % prte_cmd
+            if prte_prefix: prte += ' --prefix %s' % prte_prefix
+            prte += ' --report-uri %s' % DVM_URI_FILE_TPL   % file_info
+            prte += ' --hostfile %s'   % DVM_HOSTS_FILE_TPL % file_info
 
             # large tasks imply large message sizes, we need to account for that
             # FIXME: need to derive the message size from DVM size - smaller
             #        DVMs will never need large messages, as they can't run
             #        large tasks
-            prte += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
-          # prte += ' --pmca rmaps_base_verbose 5'
+            prte += ' --pmixmca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
+            prte += ' --prtemca routed_radix %d'           % dvm_size
+            # 2 tweaks on Summit, which should not be needed in the long run:
+            # - ensure 1 ssh per dvm
+            prte += ' --prtemca plm_rsh_num_concurrent %d' % dvm_size
+            # - avoid 64 node limit (ssh connection limit)
+            prte += ' --prtemca plm_rsh_no_tree_spawn 1'
 
-            # debug mapper problems for large tasks
-            if log.isEnabledFor(logging.DEBUG):
-                prte += ' -pmca orte_rmaps_base_verbose 100'
-
-            # we apply two temporary tweaks on Summit which should not be needed
-            # in the long run:
-            #
-            # avoid 64 node limit (ssh connection limit)
-            prte += ' --pmca plm_rsh_no_tree_spawn 1'
-
-            # ensure 1 ssh per dvm
-            prte += ' --pmca plm_rsh_num_concurrent %d' % vm_size
+            # to select a set of hardware threads that should be used for
+            # processing the following option should set hwthread IDs:
+            #   --prtemca hwloc_default_cpu_list "0-83,88-171"
 
             # Use (g)stdbuf to disable buffering.  We need this to get the
             # "DVM ready" message to ensure DVM startup completion
             #
-            # The command seems to be generally available on our Cray's,
+            # The command seems to be generally available on Cray's,
             # if not, we can code some home-cooked pty stuff (TODO)
             stdbuf_cmd = ru.which(['stdbuf', 'gstdbuf'])
             if not stdbuf_cmd:
                 raise Exception('(g)stdbuf command not found')
             stdbuf_arg = '-oL'
 
-            # Additional (debug) arguments to prte
+            # base command = (g)stdbuf <args> + prte <args>
+            cmd = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
+
+            # additional (debug) arguments to prte
             verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
             if verbose:
-                debug_strings = ['--debug-devel',
-                                 '--pmca odls_base_verbose 100',
-                                 '--pmca rml_base_verbose 100']
-            else:
-                debug_strings = []
+                cmd += ' '.join(['--prtemca plm_base_verbose 5'])
 
-            # Base command = (g)stdbuf <args> + prte + prte-args + debug-args
-            cmdline  = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
-            cmdline += ' '.join(debug_strings)
-            cmdline  = cmdline.strip()
+            cmd = cmd.strip()
 
-            log.info('start prte-%s on %d nodes [%s]', dvm_id, vm_size, cmdline)
-            profiler.prof(event='dvm_start',
-                          uid=cfg['pid'],
-                          msg='dvm_id=%s' % dvm_id)
+            self._log.info('start prte-%s on %d nodes [%s]',
+                           dvm_id, dvm_size, cmd)
+            self._prof.prof(event='dvm_start',
+                            uid=self._lm_cfg['pid'],
+                            msg='dvm_id=%s' % dvm_id)
 
-            dvm_uri     = None
-            dvm_process = mp.Popen(cmdline.split(),
+            dvm_process = mp.Popen(cmd.split(),
                                    stdout=mp.PIPE,
                                    stderr=mp.STDOUT)
-            dvm_watcher = mt.Thread(target=cls._watch_dvm,
-                                    args=[dvm_process, dvm_id, log])
-            dvm_watcher.daemon = True
+            dvm_watcher = mt.Thread(target=_watch_dvm,
+                                    args=(dvm_process, dvm_id, dvm_ready_flag),
+                                    daemon=True)
             dvm_watcher.start()
 
-            for _ in range(100):
+            dvm_uri = None
+            for _ in range(30):
                 time.sleep(.5)
 
                 try:
-                    with open(furi, 'r') as fin:
+                    with ru.ru_open(DVM_URI_FILE_TPL % file_info, 'r') as fin:
                         for line in fin.readlines():
                             if '://' in line:
                                 dvm_uri = line.strip()
                                 break
                 except Exception as e:
-                    log.debug('DVM check: uri file missing: %s...', str(e)[:24])
-                    time.sleep(.5)
+                    self._log.debug('DVM URI file missing: %s...', str(e)[:24])
 
                 if dvm_uri:
                     break
 
             if not dvm_uri:
-                raise Exception('DVM_URI not found!')
+                raise Exception('DVM URI not found')
 
-            log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
+            self._log.info('prte-%s startup successful: [%s]', dvm_id, dvm_uri)
+            self._prof.prof(event='dvm_uri',
+                            uid=self._lm_cfg['pid'],
+                            msg='dvm_id=%s' % dvm_id)
 
-            profiler.prof(event='dvm_uri',
-                          uid=cfg['pid'],
-                          msg='dvm_id=%s' % dvm_id)
+            return dvm_uri
 
-            partitions[str(dvm_id)] = {
-                'nodes'  : [node[1] for node in node_list],
-                'dvm_uri': dvm_uri}
+        # ----------------------------------------------------------------------
 
-        lm_info = {'partitions'  : partitions,
-                   'version_info': prte_info,
-                   'cvd_id_mode' : 'physical'}
+        # format: {<id>: {'nodes': [...], 'dvm_uri': <uri>}}
+        dvm_list = {}
 
-        # extra time to allow the DVM(s) to stabilize
-        time.sleep(10)
+        # go through every dvm instance
+        for _dvm_id in range(dvm_count):
 
-        # we need to inform the actual LaunchMethod instance about partitions
-        # (`partition_id` per task and `dvm_uri` per partition). List of nodes
-        # will be stored in ResourceManager and the rest details about
-        # partitions will be kept in `lm_info`, which will be passed as part of
-        # the slots via the scheduler.
-        return lm_info
+            node_list = self._rm_info['node_list'][_dvm_id      * nodes_per_dvm:
+                                                  (_dvm_id + 1) * nodes_per_dvm]
+            dvm_file_info.update({'dvm_id': _dvm_id})
+            # write hosts file
+            with ru.ru_open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
+                num_slots = self._rm_info['cores_per_node'] * \
+                            self._rm_info['threads_per_core']
+                for node in node_list:
+                    fout.write('%s slots=%d\n' % (node['node_name'], num_slots))
+
+            _dvm_size  = len(node_list)
+            _dvm_ready = mt.Event()
+            _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
+
+            dvm_list[str(_dvm_id)] = {
+                'nodes'  : [node['node_id'] for node in node_list],
+                'dvm_uri': _dvm_uri}
+
+            # extra time to confirm that "DVM ready" was just delayed
+            if _dvm_ready.wait(timeout=15.):
+                continue
+
+            self._log.info('prte-%s to be re-started', _dvm_id)
+
+            # terminate DVM (if it is still running)
+            try   : ru.sh_callout('pterm --dvm-uri "%s"' % _dvm_uri)
+            except: pass
+
+            # re-start DVM
+            dvm_list[str(_dvm_id)]['dvm_uri'] = \
+                _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
+
+            # FIXME: with the current approach there is only one attempt to
+            #        restart DVM(s). If a failure during the start process
+            #        will keep appears then need to consider re-assignment
+            #        of nodes from failed DVM(s) + add time for re-started
+            #        DVM to stabilize: `time.sleep(10.)`
+
+        lm_details = {'dvm_list'    : dvm_list,
+                      'version_info': prte_info,
+                      'cvd_id_mode' : 'physical'}
+
+        return lm_details
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
-        """
-        This hook is symmetric to the config hook above, and is called during
-        shutdown sequence, for the sake of freeing allocated resources.
-        """
-        prun = ru.which('prun')
-        if not prun:
-            raise Exception("Couldn't find prun")
+    def get_partitions(self):
 
-        for p_id, p_data in lm_info.get('partitions', {}).items():
+        partitions = dict()
+
+        for k, v in self._details['dvm_list'].items():
+            partitions[str(k)] = v['nodes']
+
+        return partitions
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _terminate(self):
+        """
+        This hook is symmetric to the hook `rm_config_hook`, it is called
+        during shutdown sequence, for the sake of freeing allocated resources.
+        """
+        cmd = ru.which('pterm')
+        if not cmd:
+            raise Exception('termination command not found')
+
+        for p_id, p_data in self._details.get('dvm_list', {}).items():
             dvm_uri = p_data['dvm_uri']
             try:
-                log.info('terminating prte-%s (%s)', p_id, dvm_uri)
-                ru.sh_callout('%s --hnp %s --terminate' % (prun, dvm_uri))
-                profiler.prof(event='dvm_stop',
-                              uid=cfg['pid'],
-                              msg='dvm_id=%s' % p_id)
+                self._log.info('terminating prte-%s (%s)', p_id, dvm_uri)
+                _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
+                self._log.debug('termination state: %s', err.strip('\n') or '-')
+                self._prof.prof(event='dvm_stop', uid=self._lm_cfg['pid'],
+                                msg='dvm_id=%s' % p_id)
+
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                profiler.prof(event='dvm_fail',
-                              uid=cfg['pid'],
-                              msg='dvm_id=%s | error: %s' % (p_id, e))
-                log.debug('prte-%s termination failed (%s)', p_id, dvm_uri)
+                self._log.debug('prte-%s termination failed (%s)', p_id, dvm_uri)
+                self._prof.prof(event='dvm_fail', uid=self._lm_cfg['pid'],
+                                msg='dvm_id=%s | error: %s' % (p_id, e))
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_scratch(self, env, env_sh):
+
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('prun'),
+                   'details': self._configure()}
+
+        return lm_info
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info):
+
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
+        self._details = lm_info['details']
+
+        assert self._command
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        self._terminate()
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True, ''
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def get_launcher_env(self):
 
-        # ensure that `prun` is in the path (`which` will raise otherwise)
-        ru.which('prun')
-        self.launch_command = 'prun'
-
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def get_launch_cmds(self, task, exec_path):
 
-        time.sleep(0.1)
+        # latest implementation of PRRTE is able to handle bulk submissions
+        # of prun-commands, but in case errors will come out then the delay
+        # should be set: `time.sleep(.1)`
 
-        slots        = t['slots']
-        td           = t['description']
-        task_exec    = td['executable']
-        task_env     = td.get('environment') or dict()
-        task_args    = td.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
+        slots     = task['slots']
+        td        = task['description']
 
-        n_procs      = t['description'].get('cpu_processes') or 1
-        n_threads    = t['description'].get('cpu_threads')   or 1
+        n_procs   = td['cpu_processes']
+        n_threads = td['cpu_threads']
+        n_gpus    = td['gpu_processes']
 
-        self._log.debug('prep %s', t['uid'])
+        if not self._details.get('dvm_list'):
+            raise RuntimeError('details with dvm_list not set (%s)' % self.name)
 
-        if 'lm_info' not in slots:
-            raise RuntimeError('No lm_info to launch via %s: %s'
-                               % (self.name, slots))
-
-        if not slots['lm_info']:
-            raise RuntimeError('lm_info missing for %s: %s'
-                               % (self.name, slots))
-
-        if 'partitions' not in slots['lm_info']:
-            raise RuntimeError('no partitions in lm_info for %s: %s'
-                               % (self.name, slots))
-
-        partitions = slots['lm_info']['partitions']
+        dvm_list  = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
-        partition_id = slots.get('partition_id') or partitions.keys()[0]
-        dvm_uri = '--hnp "%s"' % partitions[partition_id]['dvm_uri']
+        dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]
+        dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
-        if task_argstr: task_command = '%s %s' % (task_exec, task_argstr)
-        else          : task_command = task_exec
+        flags = ''
+        if n_gpus:
+            # input data is edited here to keep PRUN setup within LM
+            td['environment'] \
+                ['PMIX_MCA_pmdl_ompi_include_envars'] = 'OMPI_*,CUDA_*'
+            flags += '--personality ompi '
 
-        env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
-            for var in env_list:
-                env_string += '-x "%s" ' % var
+        flags += '--np %d '                                   % n_procs
+        flags += '--map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE ' % n_threads
+        flags += '--bind-to hwthread:overload-allowed'
 
-        map_flag  = ' -np %d --cpus-per-proc %d' % (n_procs, n_threads)
-        map_flag += ' --bind-to hwthread:overload-allowed --use-hwthread-cpus'
-        map_flag += ' --oversubscribe'
-
-        # see DVM startup
-        map_flag += ' --pmca ptl_base_max_msg_size %d' % PTL_BASE_MAX_MSG_SIZE
-      # map_flag += ' --pmca rmaps_base_verbose 5'
-
-        if 'nodes' not in slots:
-            # this task is unscheduled - we leave it to PRRTE/PMI-X to
-            # correctly place the task
-            pass
-
-        else:
-            # FIXME: ensure correct binding for procs and threads via slotfile
-
-            # enact the scheduler's host placement.  For now, we leave socket,
-            # core and thread placement to the prted, and just add all process
-            # slots to the host list.
-            hosts = [node['name'] for node in slots['nodes']]
-            map_flag += ' -host %s' % ','.join(hosts)
-            # another way to provide list of hosts:
-            #    map_flag += ' -host %s:%s' % (hosts[0], n_procs)
-
-        # Additional (debug) arguments to prun
         if self._verbose:
-            debug_string = ' '.join(['--verbose',
-                                     # '--debug-devel',
-                                     # '-display-devel-map',
-                                     # '-display-allocation',
-                                     '--report-bindings'])
+            flags += ':REPORT'
+
+        if 'ranks' not in slots:
+            # this task is unscheduled - we leave it to PRRTE/PMI-X
+            # to correctly place the task
+            pass
         else:
-            debug_string = '--verbose'  # needed to get prte profile events
+            ranks = collections.defaultdict(int)
+            for rank in slots['ranks']:
+                ranks[rank['node_name']] += 1
+            flags += ' --host ' + ','.join(['%s:%s' % x for x in ranks.items()])
 
-      # env_string = ''  # FIXME
-        command = '%s %s %s %s %s %s' % (self.launch_command,
-                  dvm_uri, map_flag, debug_string, env_string, task_command)
+        flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
+        flags += ' --verbose'  # needed to get prte profile events
 
-        return command, None
+        cmd = '%s %s %s %s' % (self._command, dvm_uri, flags, exec_path)
 
+        return cmd.strip()
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return 'export RP_RANK=$PMIX_RANK'
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td['arguments']
+        task_argstr  = self._create_arg_string(task_args)
+        command      = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 # ------------------------------------------------------------------------------
 

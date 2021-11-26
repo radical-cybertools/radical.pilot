@@ -194,30 +194,6 @@ class PilotDescription(ru.Description):
        an explicit (dict) description of the pilot layout: number and size of
        partitions and their configuration.
 
-    .. data:: prepare_env
-
-       [type: `dict` | default: `{}`] Specification of task environments to be
-       prepared by the pilot. The parameter is expected to be a dictionary of
-       the form::
-
-             {
-                'env_1' : {'type'   : 'virtualenv',
-                           'version': '3.6',
-                           'setup'  : ['radical.pilot==1.0', 'pandas']},
-                'env_N' : {'type'   : 'conda',
-                           'version': '3.8',
-                           'setup'  : ['numpy']}
-             }
-
-       where the `type` specifies the environment type, `version` specifies the
-       env version to deploy, and `setup` specifies how the environment is to
-       be prepared.
-
-       At this point, the implementation only accepts `virtualenv` type
-       requests, where `version` specifies the Python version to use, and
-       `setup` is expected to be a list of module specifiers which need to be
-       installed into the environment.
-
     """
 
     _schema = {

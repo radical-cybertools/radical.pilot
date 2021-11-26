@@ -1,72 +1,58 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-from unittest import mock, TestCase
+__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import radical.utils as ru
 
+from unittest import mock, TestCase
+
+from radical.pilot.agent.resource_manager      import RMInfo
 from radical.pilot.agent.resource_manager.fork import Fork
 
 
-class TestFork(TestCase):
-    # ------------------------------------------------------------------------------
-    # Test 1 config file
+# ------------------------------------------------------------------------------
+#
+class ForkTestCase(TestCase):
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(Fork, '__init__', return_value=None)
-    @mock.patch('radical.utils.raise_on')
     @mock.patch('multiprocessing.cpu_count', return_value=24)
-    def test_configure(self, mocked_init, mocked_raise_on,
-                       mocked_multiprocessing_cpu_count):
+    @mock.patch('radical.utils.Logger')
+    def test_init_from_scratch(self, mocked_logger, mocked_mp_cpu_count,
+                               mocked_init):
 
-        # configuration #1
-        component = Fork(cfg=None, session=None)
-        component.requested_cores = 2
-        component.requested_gpus  = 0
-        component._log = ru.Logger('dummy')
-        component._cfg = ru.Config(cfg={'resource_cfg': {'fake_resources': 1}})
-        component._configure()
+        rm_info = RMInfo({'requested_nodes': 1,
+                          'requested_cores': 16,
+                          'cores_per_node' : 16})
 
-        self.assertEqual(component.cores_per_node, 2)
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.mem_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
+        rm_fork = Fork(cfg=None, log=None, prof=None)
+        rm_fork._cfg = ru.Munch({'resource_cfg': {'fake_resources': False}})
+        rm_fork._log = mocked_logger
 
-        # configuration #2
-        component = Fork(cfg=None, session=None)
-        component.requested_cores = 48
-        component.requested_gpus  = 0
-        component._log = ru.Logger('dummy')
-        component._cfg = ru.Config(cfg={'cores_per_node': 24,
-                                        'gpus_per_node': 0,
-                                        'lfs_path_per_node': 'test/',
-                                        'lfs_size_per_node': 100,
-                                        'resource_cfg': {'fake_resources': 1}})
-        component._configure()
+        rm_info = rm_fork._init_from_scratch(rm_info)
+        self.assertEqual(len(rm_info.node_list), 1)
 
-        self.assertEqual(component.cores_per_node, 24)
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.mem_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': 'test/', 'size': 100})
-        # number of nodes is calculated based on number of requested CPUs
-        self.assertEqual(len(component.node_list), 2)
+        # not fake resource, but request more cores than available
+        rm_info.requested_cores = 36
+        with self.assertRaises(RuntimeError):
+            rm_fork._init_from_scratch(rm_info)
 
-        # configuration #3
-        component = Fork(cfg=None, session=None)
-        component.requested_cores = 48
-        component.requested_gpus  = 8
-        component._log = ru.Logger('dummy')
-        component._cfg = ru.Config(cfg={'cores_per_node': 24,
-                                        'gpus_per_node': 2,
-                                        'resource_cfg': {'fake_resources': 1}})
-        component._configure()
+        # fake resource, request more cores than available
+        rm_fork._cfg.resource_cfg.fake_resources = True
+        rm_info = rm_fork._init_from_scratch(rm_info)
+        self.assertGreater(rm_info.requested_cores, mocked_mp_cpu_count())
 
-        # number of nodes is calculated based on number of requested GPUs
-        self.assertEqual(len(component.node_list), 4)
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
-    tc = TestFork()
-    tc.test_configure()
+    tc = ForkTestCase()
+    tc.test_init_from_scratch()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
