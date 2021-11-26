@@ -83,58 +83,53 @@ class ContinuousOrdered(Continuous):
 
     # --------------------------------------------------------------------------
     # overload the main method from the base class
-    def _schedule_tasks(self, tasks):
+    def _schedule_task(self, task):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
-        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self.advance(task, rps.AGENT_SCHEDULING, publish=True, push=False)
 
         with self._lock:
 
             # cache ID int to avoid repeated parsing
-            for task in tasks:
+            uid       = task['uid']
+            descr     = task['description']
+            order_tag = descr.get('tags', {}).get('order')
 
-                uid       = task['uid']
-                descr     = task['description']
-                order_tag = descr.get('tags', {}).get('order')
+            # tasks w/o order info are handled as usual, and we don't keep
+            # any infos around
+            if not order_tag:
+              # self._log.debug('no tags for %s', uid)
+                self._unordered.append(task)
+                return
 
-                # tasks w/o order info are handled as usual, and we don't keep
-                # any infos around
-                if not order_tag:
-                  # self._log.debug('no tags for %s', uid)
-                    self._unordered.append(task)
-                    continue
+            # this uniit wants to be ordered - keep it in our registry
+            assert(uid not in self._tasks), 'duplicated task %s' % uid
+            self._tasks[uid] = task
 
-                # this uniit wants to be ordered - keep it in our registry
-                assert(uid not in self._tasks), 'duplicated task %s' % uid
-                self._tasks[uid] = task
+            ns    = order_tag['ns']
+            order = order_tag['order']
+            size  = order_tag['size']
 
-                ns    = order_tag['ns']
-                order = order_tag['order']
-                size  = order_tag['size']
+          # self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
+            # initiate ns if needed
+            if ns not in self._ns:
+                self._ns[ns] = copy.deepcopy(self._ns_init)
 
-              # self._log.debug('tags %s: %s : %d : %d', uid, ns, order, size)
-                # initiate ns if needed
-                if ns not in self._ns:
-                    self._ns[ns] = copy.deepcopy(self._ns_init)
+            # initiate order if needed
+            if order not in self._ns[ns]:
+                self._ns[ns][order] = copy.deepcopy(self._order_init)
+                self._ns[ns][order]['size'] = size
 
-                # initiate order if needed
-                if order not in self._ns[ns]:
-                    self._ns[ns][order] = copy.deepcopy(self._order_init)
-                    self._ns[ns][order]['size'] = size
+            # ensure that order information are consistent
+            assert(size == self._ns[ns][order]['size']), \
+                   'inconsistent order size'
 
-                # ensure that order information are consistent
-                assert(size == self._ns[ns][order]['size']), \
-                       'inconsistent order size'
-
-                # add task to order
-                self._ns[ns][order]['uids'].append(uid)
+            # add task to order
+            self._ns[ns][order]['uids'].append(uid)
 
         # try to schedule known tasks
         self._try_schedule()
 
-        return True
+        return
 
 
     # --------------------------------------------------------------------------

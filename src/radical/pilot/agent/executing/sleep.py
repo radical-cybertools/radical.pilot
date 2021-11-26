@@ -135,5 +135,21 @@ class Sleep(AgentExecutingComponent) :
                                     publish=True, push=True)
 
 
+    # --------------------------------------------------------------------------
+    #
+    def command_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg['cmd']
+
+        if cmd == 'cancel_tasks':
+
+            # FIXME: clarify how to cancel tasks
+            pass
+
+        return True
+
+
 # ------------------------------------------------------------------------------
 

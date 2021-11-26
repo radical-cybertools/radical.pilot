@@ -1,9 +1,9 @@
-# pylint: disable=subprocess-popen-preexec-fn
+# pylint: disable=subprocess-popen-preexec-fn,unused-argument
 # FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
 #        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
 import os
@@ -13,14 +13,11 @@ import queue
 import atexit
 import pprint
 import signal
-import tempfile
 import threading as mt
 import subprocess
 
 import radical.utils as ru
 
-from ...  import agent     as rpa
-from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
@@ -34,6 +31,9 @@ _pids = list()
 
 def _kill():
     for pid in _pids:
+        if not isinstance(pid, int):
+            # skip test mocks
+            continue
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 
@@ -44,37 +44,34 @@ atexit.register(_kill)
 
 # ------------------------------------------------------------------------------
 #
-class Popen(AgentExecutingComponent) :
+class Popen(AgentExecutingComponent):
+
+    _header    = '#!/bin/sh\n'
+    _separator = '# ' + '-' * 78
+
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
 
-        self._watcher   = None
-        self._terminate = mt.Event()
+      # session._log.debug('popen init start')
+        AgentExecutingComponent.__init__(self, cfg, session)
 
-        AgentExecutingComponent.__init__ (self, cfg, session)
+        self._proc_term = mt.Event()
+      # session._log.debug('popen init stop')
 
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-        self._pwd = os.getcwd()
+      # self._log.debug('popen initialize start')
+        AgentExecutingComponent.initialize(self)
 
-        self.register_input(rps.AGENT_EXECUTING_PENDING,
-                            rpc.AGENT_EXECUTING_QUEUE, self.work)
-
-        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
-
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
-
-        self._cancel_lock     = ru.RLock()
+        self._cancel_lock     = mt.RLock()
         self._tasks_to_cancel = list()
         self._tasks_to_watch  = list()
-        self._watch_queue     = queue.Queue ()
+        self._watch_queue     = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -83,21 +80,14 @@ class Popen(AgentExecutingComponent) :
       # self._watcher.daemon = True
         self._watcher.start()
 
-        # The AgentExecutingComponent needs the LaunchMethod to construct
-        # commands.
-        self._task_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('task_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+      # self._log.debug('popen initialize stop')
 
-        self._mpi_launcher = rpa.LaunchMethod.create(
-                name    = self._cfg.get('mpi_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
 
-        self.gtod   = "%s/gtod" % self._pwd
-        self.tmpdir = tempfile.gettempdir()
-
+        # FIXME: should be moved to base class `AgentExecutingComponent`?
+        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -110,12 +100,11 @@ class Popen(AgentExecutingComponent) :
 
         if cmd == 'cancel_tasks':
 
-            self._log.info("cancel_tasks command (%s)" % arg)
+            self._log.info('cancel_tasks command (%s)' % arg)
             with self._cancel_lock:
                 self._tasks_to_cancel.extend(arg['uids'])
 
         return True
-
 
     # --------------------------------------------------------------------------
     #
@@ -143,6 +132,8 @@ class Popen(AgentExecutingComponent) :
                 self._prof.prof('unschedule_start', uid=task['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
+                task['control'] = 'tmgr_pending'
+                task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
 
@@ -150,192 +141,296 @@ class Popen(AgentExecutingComponent) :
     #
     def _handle_task(self, task):
 
-        td = task['description']
+        # before we start handling the task, check if it should run in a named
+        # env.  If so, inject the activation of that env in the task's pre_exec
+        # directives.
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
 
-        # ensure that the named env exists
-        env = td.get('named_env')
-        if env:
-            if not os.path.isdir('%s/%s' % (self._pwd, env)):
-                raise ValueError('invalid named env %s for task %s'
-                                % (env, task['uid']))
-            pre = ru.as_list(td.get('pre_exec'))
-            pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-            pre.insert(0, '. %s/deactivate'      % (self._pwd))
-            td['pre_exec'] = pre
+        # prepare stdout/stderr
+        task['stdout'] = ''
+        task['stderr'] = ''
 
+        stdout_file    = td.get('stdout') or '%s.out' % (tid)
+        stderr_file    = td.get('stderr') or '%s.err' % (tid)
 
+        if stdout_file[0] != '/':
+            task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
+            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % (stdout_file)
+        else:
+            task['stdout_file']       = stdout_file
+            task['stdout_file_short'] = stdout_file
+
+        if stderr_file[0] != '/':
+            task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
+            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % (stderr_file)
+        else:
+            task['stderr_file']       = stderr_file
+            task['stderr_file_short'] = stderr_file
+
+        # create two shell scripts: a launcher script (task.launch.sh) which
+        # sets the launcher environment, performs pre_launch commands, and then
+        # launches the second script which executes the task.
+        #
+        # The second script (`task.exec.sh`) is instantiated once per task rank.
+        # It first resets the environment created by the launcher, then prepares
+        # the environment for the tasks.  Next it runs the `pre_exec` directives
+        # for all ranks, then the individual `pre_rank` directives are executed,
+        # and then, after all ranks are synchronized, finally the task ranks
+        # begin to run.
+        #
+        # The scripts thus show the following structure:
+        #
+        # Launcher Script (`task.000000.launch.sh`):
+        # ----------------------------------------------------------------------
+        # #!/bin/sh
+        #
+        # # `pre_launch` commands
+        # date > data.input
+        #
+        # # launcher specific environment setup
+        # module load openmpi
+        #
+        # # launch the task script
+        # mpirun -n 4 ./task.000000.exec.sh
+        # ----------------------------------------------------------------------
+        #
+        # Task Script (`task.000000.exec.sh`)
+        # ----------------------------------------------------------------------
+        # #!/bin/sh
+        #
+        # # clean launch environment
+        # module unload mpi
+        #
+        # # task environment setup (`pre_exec`)
+        # module load gromacs
+        #
+        # # rank specific setup (`pre_rank`)
+        # touch task.000000.ranks
+        # if test "$MPI_RANK" = 0; then
+        #   export CUDA_VISIBLE_DEVICES=0
+        #   export OENMP_NUM_THREADS=2
+        #   export RANK_0_VAR=foo
+        #   echo 0 >> task.000000.ranks
+        # fi
+        #
+        # if test "$MPI_RANK" = 1; then
+        #   export CUDA_VISIBLE_DEVICES=1
+        #   export OENMP_NUM_THREADS=4
+        #   export RANK_1_VAR=bar
+        #   echo 1 >> task.000000.ranks
+        # fi
+        #
+        # # synchronize ranks
+        # while $(cat task.000000.ranks | wc -l) != $MPI_RANKS; do
+        #   sleep 1
+        # done
+        #
+        # # run the task
+        # mdrun -i ... -o ... -foo ... 1> task.000000.$MPI_RANK.out \
+        #                              2> task.000000.$MPI_RANK.err
+        #
+        # # now do the very same stuff for the `post_rank` and `post_exec`
+        # # directives
+        # ...
+        #
+        # ----------------------------------------------------------------------
+        #
+        # NOTE: MongoDB only accepts string keys, and thus the rank IDs in
+        #       pre_rank and post_rank dictionaries are rendered as strings.
+        #       This should be changed to more intuitive integers once MongoDB
+        #       is phased out.
+        #
         # prep stdout/err so that we can append w/o checking for None
         task['stdout'] = ''
         task['stderr'] = ''
 
-        cpt = td['cpu_process_type']
-      # gpt = td['gpu_process_type']  # FIXME: use
-
-        # FIXME: this switch is insufficient for mixed tasks (MPI/OpenMP)
-        if cpt == 'MPI': launcher = self._mpi_launcher
-        else           : launcher = self._task_launcher
+        launcher = self._rm.find_launcher(task)
 
         if not launcher:
-            raise RuntimeError("no launcher (process type = %s)" % cpt)
+            raise RuntimeError('no launcher found for task %s' % tid)
 
-        self._log.debug("Launching task with %s (%s).",
-                        launcher.name, launcher.launch_command)
+        self._log.debug('Launching task with %s', launcher.name)
 
-        # Start a new subprocess to launch the task
-        self.spawn(launcher=launcher, task=task)
+        launch_script = '%s.launch.sh'        % tid
+        exec_script   = '%s.exec.sh'          % tid
+        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
+
+        ru.rec_makedir(sbox)
+
+        with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
+
+            tmp  = ''
+            tmp += self._header
+            tmp += self._separator
+            tmp += self._get_rp_env(task)
+            tmp += self._separator
+            tmp += self._get_prof('launch_start', tid)
+
+            tmp += self._separator
+            tmp += '# change to task sandbox\n'
+            tmp += 'cd $RP_TASK_SANDBOX\n'
+
+            tmp += self._separator
+            tmp += '# prepare launcher env\n'
+            tmp += self._get_launch_env(task, launcher)
+
+            tmp += self._separator
+            tmp += '# pre-launch commands\n'
+            tmp += self._get_prof('launch_pre', tid)
+            tmp += self._get_pre_launch(task, launcher)
+
+            tmp += self._separator
+            tmp += '# launch commands\n'
+            tmp += self._get_prof('launch_submit', tid)
+            tmp += '%s\n' % self._get_launch_cmds(task, launcher, exec_path)
+            tmp += 'RP_RET=$?\n'
+            tmp += self._get_prof('launch_collect', tid)
+
+            tmp += self._separator
+            tmp += '# post-launch commands\n'
+            tmp += self._get_prof('launch_post', tid)
+            tmp += self._get_post_launch(task, launcher)
+
+            tmp += self._separator
+            tmp += self._get_prof('launch_stop', tid)
+            tmp += 'exit $RP_RET\n'
+
+            tmp += self._separator
+            tmp += '\n'
+
+            fout.write(tmp)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def spawn(self, launcher, task):
+        ranks   = task['slots']['ranks']
+        n_ranks = len(ranks)
 
-        td      = task['description']
-        tid     = task['uid']
-        sbox = task['task_sandbox_path']
+        with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
+
+            tmp  = ''
+            tmp += self._header
+            tmp += self._separator
+            tmp += '# rank ID\n'
+            tmp += self._get_rank_ids(n_ranks, launcher)
+
+            tmp += self._separator
+            tmp += self._get_rp_env(task)
+            tmp += self._separator
+            tmp += self._get_prof('exec_start', tid)
+
+            tmp += '# task environment\n'
+            tmp += self._get_task_env(task, launcher)
+
+            tmp += self._separator
+            tmp += '# pre-exec commands\n'
+            tmp += self._get_prof('exec_pre', tid)
+            tmp += self._get_pre_exec(task)
+
+            # pre_rank list is applied to rank 0, dict to the ranks listed
+            pre_rank = td['pre_rank']
+            if isinstance(pre_rank, list): pre_rank = {'0': pre_rank}
+
+            if pre_rank:
+                tmp += self._separator
+                tmp += self._get_prof('rank_pre', tid)
+                tmp += '# pre-rank commands\n'
+                tmp += 'case "$RP_RANK" in\n'
+                for rank_id, cmds in pre_rank.items():
+                    rank_id = int(rank_id)
+                    tmp += '    %d)\n' % rank_id
+                    tmp += self._get_pre_rank(rank_id, cmds)
+                    tmp += '        ;;\n'
+                tmp += 'esac\n\n'
+
+                tmp += self._get_rank_sync('pre_rank', n_ranks)
+
+            tmp += self._separator
+            tmp += '# execute ranks\n'
+            tmp += self._get_prof('rank_start', tid)
+            tmp += 'case "$RP_RANK" in\n'
+            for rank_id, rank in enumerate(ranks):
+                tmp += '    %d)\n' % rank_id
+                tmp += self._get_rank_exec(task, rank_id, rank, launcher)
+                tmp += '        ;;\n'
+            tmp += 'esac\n'
+            tmp += 'RP_RET=$?\n'
+            tmp += self._get_prof('rank_stop', tid)
+
+            # post_rank list is applied to rank 0, dict to the ranks listed
+            post_rank = td['post_rank']
+            if isinstance(post_rank, list): post_rank = {'0': post_rank}
+
+            if post_rank:
+                tmp += self._separator
+                tmp += self._get_prof('rank_post', tid)
+                tmp += self._get_rank_sync('post_rank', n_ranks)
+
+                tmp += '\n# post-rank commands\n'
+                tmp += 'case "$RP_RANK" in\n'
+                for rank_id, cmds in post_rank.items():
+                    rank_id = int(rank_id)
+                    tmp += '    %d)\n' % rank_id
+                    tmp += self._get_post_rank(rank_id, cmds)
+                    tmp += '        ;;\n'
+                tmp += 'esac\n\n'
+
+            tmp += self._separator
+            tmp += self._get_prof('exec_post', tid)
+            tmp += '# post exec commands\n'
+            tmp += self._get_post_exec(task)
+
+            tmp += self._separator
+            tmp += self._get_prof('exec_stop', tid)
+            tmp += 'exit $RP_RET\n'
+
+            tmp += self._separator
+            tmp += '\n'
+
+            fout.write(tmp)
+
+
+      # # ensure that the named env exists
+      # env = td.get('named_env')
+      # if env:
+      #     if not os.path.isdir('%s/%s' % (self._pwd, env)):
+      #         raise ValueError('invalid named env %s for task %s'
+      #                         % (env, task['uid']))
+      #     pre = ru.as_list(td.get('pre_exec'))
+      #     pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
+      #     pre.insert(0, '. %s/deactivate'      % (self._pwd))
+      #     td['pre_exec'] = pre
+
+        # make sure scripts are executable
+        st_l = os.stat('%s/%s' % (sbox, launch_script))
+        st_e = os.stat('%s/%s' % (sbox, exec_script))
+        os.chmod('%s/%s' % (sbox, launch_script), st_l.st_mode | stat.S_IEXEC)
+        os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
+
+        # make sure the sandbox exists
+        slots_fname = '%s/%s.sl' % (sbox, tid)
+
+        with ru.ru_open(slots_fname, 'w') as fout:
+            fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         # make sure the sandbox exists
         self._prof.prof('exec_mkdir', uid=tid)
-        rpu.rec_makedir(sbox)
+        ru.rec_makedir(sbox)
         self._prof.prof('exec_mkdir_done', uid=tid)
 
-        launch_script_name = '%s/%s.sh' % (sbox, tid)
-        slots_fname        = '%s/%s.sl' % (sbox, tid)
+        # launch and exec script are done, get ready for execution.
+        cmdline = '/bin/sh %s' % launch_script
 
-        self._log.debug("Created launch_script: %s", launch_script_name)
+        self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
-        # prep stdout/err so that we can append w/o checking for None
-        task['stdout'] = ''
-        task['stderr'] = ''
-
-        with open(slots_fname, "w") as launch_script:
-            launch_script.write('\n%s\n\n' % pprint.pformat(task['slots']))
-
-        with open(launch_script_name, "w") as launch_script:
-
-            launch_script.write('#!/bin/sh\n\n')
-
-            # Create string for environment variable setting
-            env_string = ''
-          # env_string += '. %s/env.orig\n'                % self._pwd
-            env_string += 'export RADICAL_BASE="%s"\n'     % self._pwd
-            env_string += 'export RP_SESSION_ID="%s"\n'    % self._cfg['sid']
-            env_string += 'export RP_PILOT_ID="%s"\n'      % self._cfg['pid']
-            env_string += 'export RP_AGENT_ID="%s"\n'      % self._cfg['aid']
-            env_string += 'export RP_SPAWNER_ID="%s"\n'    % self.uid
-            env_string += 'export RP_TASK_ID="%s"\n'       % tid
-            env_string += 'export RP_TASK_NAME="%s"\n'     % td.get('name')
-            env_string += 'export RP_GTOD="%s"\n'          % self.gtod
-            env_string += 'export RP_TMP="%s"\n'           % self._task_tmp
-            env_string += 'export RP_PILOT_SANDBOX="%s"\n' % self._pwd
-            env_string += 'export RP_PILOT_STAGING="%s"\n' % self._pwd
-
-            if self._prof.enabled:
-                env_string += 'export RP_PROF="%s/%s.prof"\n' % (sbox, tid)
-
-            else:
-                env_string += 'unset  RP_PROF\n'
-
-            if 'RP_APP_TUNNEL' in os.environ:
-                env_string += 'export RP_APP_TUNNEL="%s"\n' \
-                        % os.environ['RP_APP_TUNNEL']
-
-            env_string += '''
-prof(){
-    if test -z "$RP_PROF"
-    then
-        return
-    fi
-    event=$1
-    msg=$2
-    now=$($RP_GTOD)
-    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING,$msg" >> $RP_PROF
-}
-'''
-
-            # FIXME: this should be set by an LaunchMethod filter or something
-            env_string += 'export OMP_NUM_THREADS="%s"\n' % td['cpu_threads']
-
-            # The actual command line, constructed per launch-method
-            try:
-                launch_command, hop_cmd = launcher.construct_command(task,
-                                                             launch_script_name)
-
-                if hop_cmd : cmdline = hop_cmd
-                else       : cmdline = launch_script_name
-
-            except Exception as e:
-                msg = "Error in spawner (%s)" % e
-                self._log.exception(msg)
-                raise RuntimeError (msg) from e
-
-            # also add any env vars requested in the task description
-            if td['environment']:
-                for key, val in td['environment'].items():
-                    env_string += 'export %s="%s"\n' % (key, val)
-
-            launch_script.write('\n# Environment variables\n%s\n' % env_string)
-            launch_script.write('prof task_start\n')
-            launch_script.write('\n# Change to task sandbox\ncd %s\n' % sbox)
-
-            # FIXME: task_pre_exec should be LM specific
-            if self._cfg.get('task_pre_exec'):
-                for val in self._cfg['task_pre_exec']:
-                    launch_script.write("%s\n"  % val)
-
-            if td['pre_exec']:
-                fail = ' (echo "pre_exec failed"; false) || exit'
-                pre  = ''
-                for elem in td['pre_exec']:
-                    pre += "%s || %s\n" % (elem, fail)
-                # Note: extra spaces below are for visual alignment
-                launch_script.write("\n# Pre-exec commands\n")
-                launch_script.write('prof task_pre_start\n')
-                launch_script.write(pre)
-                launch_script.write('prof task_pre_stop\n')
-
-            launch_script.write("\n# The command to run\n")
-            launch_script.write('prof task_exec_start\n')
-            launch_script.write('%s\n' % launch_command)
-            launch_script.write('RETVAL=$?\n')
-            launch_script.write('prof task_exec_stop\n')
-
-            # After the universe dies the infrared death, there will be nothing
-            if td['post_exec']:
-                fail = ' (echo "post_exec failed"; false) || exit'
-                post = ''
-                for elem in td['post_exec']:
-                    post += "%s || %s\n" % (elem, fail)
-                launch_script.write("\n# Post-exec commands\n")
-                launch_script.write('prof task_post_start\n')
-                launch_script.write('%s\n' % post)
-                launch_script.write('prof task_post_stop "$ret=RETVAL"\n')
-
-            launch_script.write("\n# Exit script with command return code\n")
-            launch_script.write("prof task_stop\n")
-            launch_script.write("exit $RETVAL\n")
-
-        # done writing to launch script, get it ready for execution.
-        st = os.stat(launch_script_name)
-        os.chmod(launch_script_name, st.st_mode | stat.S_IEXEC)
-
-        # prepare stdout/stderr
-        stdout_file = td.get('stdout') or '%s.out' % tid
-        stderr_file = td.get('stderr') or '%s.err' % tid
-
-        task['stdout_file'] = os.path.join(sbox, stdout_file)
-        task['stderr_file'] = os.path.join(sbox, stderr_file)
-
-        _stdout_file_h = open(task['stdout_file'], 'a')
-        _stderr_file_h = open(task['stderr_file'], 'a')
-
-        self._log.info("Launching task %s via %s in %s", tid, cmdline, sbox)
+        _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
         self._prof.prof('exec_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,
                                         executable = None,
                                         stdin      = None,
-                                        stdout     = _stdout_file_h,
-                                        stderr     = _stderr_file_h,
+                                        stdout     = _launch_out_h,
+                                        stderr     = subprocess.STDOUT,
                                         close_fds  = True,
                                         shell      = True,
                                         cwd        = sbox)
@@ -355,7 +450,7 @@ prof(){
     def _watch(self):
 
         try:
-            while not self._terminate.is_set():
+            while not self._proc_term.is_set():
 
                 tasks = list()
                 try:
@@ -388,7 +483,7 @@ prof(){
                     time.sleep(0.1)
 
         except Exception as e:
-            self._log.exception("Error in ExecWorker watch loop (%s)" % e)
+            self._log.exception('Error in ExecWorker watch loop (%s)' % e)
             # FIXME: this should signal the ExecWorker for shutdown...
 
 
@@ -474,6 +569,242 @@ prof(){
                                    publish=True, push=True)
 
         return action
+
+
+    # --------------------------------------------------------------------------
+    def _get_check(self, event):
+
+        return '\\\n        || (echo "%s failed"; false) || exit 1\n' % event
+
+
+    # --------------------------------------------------------------------------
+    #
+    # launcher
+    #
+    def _get_prof(self, event, tid, msg=''):
+
+        return '$RP_PROF %s\n' % event
+
+
+    # --------------------------------------------------------------------------
+    #
+    # launcher
+    #
+    def _get_launch_env(self, task, launcher):
+
+        ret  = ''
+        cmds = launcher.get_launcher_env()
+        for cmd in cmds:
+            ret += '%s %s' % (cmd, self._get_check('launcher env'))
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_pre_launch(self, task, launcher):
+
+        ret  = ''
+        cmds = task['description']['pre_launch']
+        for cmd in cmds:
+            ret += '%s %s' % (cmd, self._get_check('pre_launch'))
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_launch_cmds(self, task, launcher, exec_path):
+
+        ret  = '( \\\n'
+        cmds = ru.as_list(launcher.get_launch_cmds(task, exec_path))
+        for cmd in cmds:
+            ret += '  %s \\\n' % cmd
+
+        ret += ') 1> %s\n  2> %s %s' % (task['stdout_file_short'],
+                                        task['stderr_file_short'],
+                                        self._get_check('launch'))
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_post_launch(self, task, launcher):
+
+        ret  = ''
+        cmds = task['description']['post_launch']
+        for cmd in cmds:
+            ret += '%s %s' % (cmd, self._get_check('post_launch'))
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    # exec
+    #
+    def _get_rp_env(self, task):
+
+        tid  = task['uid']
+        name = task.get('name') or tid
+        sbox = os.path.realpath(task['task_sandbox_path'])
+
+        if sbox.startswith(self._pwd):
+            sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
+
+        ret  = ''
+        ret += 'export RP_TASK_ID="%s"\n'          % tid
+        ret += 'export RP_TASK_NAME="%s"\n'        % name
+        ret += 'export RP_PILOT_ID="%s"\n'         % self._pid
+        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
+        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
+        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
+        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
+        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
+        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        # FIXME AM
+      # ret += 'export RP_LFS="%s"\n'              % self.lfs
+        ret += 'export RP_GTOD="%s"\n'             % self.gtod
+        ret += 'export RP_PROF="%s"\n'             % self.prof
+
+        if self._prof.enabled:
+            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
+        else:
+            ret += 'unset  RP_PROF_TGT'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    # exec
+    #
+    def _get_task_env(self, task, launcher):
+
+        ret = ''
+        td  = task['description']
+
+        # named_env's are prepared by the launcher
+        if td['named_env']:
+            ret += '\n# named environment\n'
+            ret += '. %s\n' % launcher.get_task_named_env(td['named_env'])
+
+        # also add any env vars requested in the task description
+        if td['environment']:
+            ret += '\n# task env settings\n'
+            for key,val in td['environment'].items():
+                ret += 'export %s="%s"\n' % (key, val)
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_pre_exec(self, task):
+
+        ret  = ''
+
+        cmds = task['description']['pre_exec']
+        for cmd in cmds:
+            ret += '%s %s' % (cmd, self._get_check('pre_exec'))
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_ids(self, n_ranks, launcher):
+
+        ret  = ''
+        ret += 'export RP_RANKS=%s\n' % n_ranks
+        ret += launcher.get_rank_cmd()
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_post_exec(self, task):
+
+        ret  = ''
+        cmds = task['description']['post_exec']
+        for cmd in cmds:
+            ret += '%s %s' % (cmd, self._get_check('post_exec'))
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    # rank
+    #
+    def _get_pre_rank(self, rank_id, cmds=None):
+
+        ret = ''
+        cmds = cmds or []
+        for cmd in cmds:
+            # FIXME: exit on error, but don't stall other ranks on sync
+            ret += '        %s\n' % cmd
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_sync(self, sig, ranks):
+
+        # FIXME: only sync if LM needs it (`if lm._ranks_need_sync`)
+
+        if ranks == 1:
+            return ''
+
+        # FIXME: make sure that all ranks are alive
+        ret  = '# sync ranks before %s commands\n' % sig
+        ret += 'echo $RP_RANK >> %s.sig\n\n' % sig
+        ret += 'while test $(cat %s.sig | wc -l) -lt $RP_RANKS; do\n' % sig
+        ret += '    sleep 1\n'
+        ret += 'done\n\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_exec(self, task, rank_id, rank, launcher):
+
+        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        #        with exactly one entry, corresponding to the rank process to be
+        #        started.
+
+        ret  = ''
+        gmap = rank['gpu_map']
+
+        # FIXME: need to distinguish between logical and physical IDs
+        if gmap:
+            # equivalent to the 'physical' value for original `cvd_id_mode`
+            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
+            ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
+
+        cmap = rank['core_map'][0]
+        ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
+
+        # FIXME: core pinning goes here
+
+
+        cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
+        for cmd in cmds:
+            ret += '        %s\n' % cmd
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_post_rank(self, rank_id, cmds=None):
+
+        ret = ''
+        cmds = cmds or []
+        for cmd in cmds:
+            ret += '        %s %s' % (cmd, self._get_check('post_rank'))
+
+        return ret
 
 
 # ------------------------------------------------------------------------------

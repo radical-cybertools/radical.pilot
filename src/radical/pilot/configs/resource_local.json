@@ -24,50 +24,46 @@
         "agent_scheduler"             : "CONTINUOUS",
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {},
+                                         "MPIRUN" : {}
+                                        },
         "rp_version"                  : "local",
+      # "virtenv_mode"                : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 1024,
-        "memory_per_node"             : 4096,
+        "mem_per_node"                : 4096,
         "fake_resources"              : true
     },
 
     "localhost_test": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
+        "schemas"                     : ["local"],
         "local"                       :
         {
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
-        "pre_bootstrap_1"             : [
-            "export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
-            "echo  $RP_APP_TUNNEL_ADDR"
-        ],
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
-      # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "local",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+        },
         "python_dist"                 : "default",
+        "virtenv_mode"                : "local",
+        "rp_version"                  : "installed",
         "cores_per_node"              : 2,
         "gpus_per_node"               : 1,
         "lfs_path_per_node"           : "/tmp",
@@ -94,88 +90,16 @@
         "resource_manager"            : "FORK",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "FORK",
-        "task_launch_method"          : "FORK",
-        "mpi_launch_method"           : "MPIEXEC",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 1024,
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
-
-    "localhost_prte": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-      # "agent_type"                  : "default",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SHELLFS",
-        "agent_launch_method"         : "PRTE",
-        "task_launch_method"          : "PRTE",
-        "mpi_launch_method"           : "PRTE",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-      # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export PRRTE_PREFIX=$HOME/radical/prte/install.tn/",
-            "export PATH=$PRRTE_PREFIX/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"
-        ],
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
-
-    "localhost_flux": {
-        "description"                 : "",
-        "notes"                       : "",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-        "agent_type"                  : "default",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "FLUX",
-        "agent_spawner"               : "FLUX",
-        "agent_launch_method"         : "FORK",
-        "func_launch_method"          : "FUNC",
-        "task_launch_method"          : "FLUX",
-        "mpi_launch_method"           : "FLUX",
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "$HOME/radical/radical.pilot.test/ve3/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export FLUX_DIR=/home/merzky/projects/flux/install/",
-            "export PATH=$PATH:$FLUX_DIR/bin",
-            "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.7/site-packages/"
-        ],
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1
     },
@@ -198,9 +122,10 @@
         "resource_manager"            : "FORK",
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "FUNCS",
-      # "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order": ["FUNCS"],
+                                         "FUNCS": {}
+                                        },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",

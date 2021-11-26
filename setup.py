@@ -67,7 +67,7 @@ def get_version(_mod_root):
         if not src_root:
             src_root = '.'
 
-        with open(src_root + '/VERSION', 'r') as f:
+        with open(src_root + '/VERSION', 'r', encoding='utf-8') as f:
             _version_base = f.readline().strip()
 
         # attempt to get version detail information from git
@@ -105,7 +105,7 @@ def get_version(_mod_root):
 
         # make sure the version files exist for the runtime version inspection
         _path = '%s/%s' % (src_root, _mod_root)
-        with open(_path + '/VERSION', 'w') as f:
+        with open(_path + '/VERSION', 'w', encoding='utf-8') as f:
             f.write(_version_base + '\n')
             f.write(_version      + '\n')
 
@@ -130,7 +130,7 @@ def get_version(_mod_root):
                         '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')              # restore version
 
-        with open(_path + '/SDIST', 'w') as f:
+        with open(_path + '/SDIST', 'w', encoding='utf-8') as f:
             f.write(_sdist_name + '\n')
 
         return _version_base, _version_detail, _sdist_name, _path
@@ -154,7 +154,7 @@ version, version_detail, sdist_name, path = get_version(mod_root)
 #
 def read(fname):
     try:
-        return open(fname).read()
+        return open(fname, encoding='utf-8').read()
     except Exception:
         return ''
 
@@ -245,8 +245,8 @@ setup_args = {
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.6.7',
-                            'radical.saga>=1.6.6',
+    'install_requires'   : ['radical.utils>=1.8.4',
+                            'radical.saga>=1.8.0',
                             'pymongo',
                             'setproctitle'
                            ],

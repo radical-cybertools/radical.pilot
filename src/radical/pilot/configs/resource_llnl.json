@@ -10,16 +10,16 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
       # "forward_tunnel_endpoint"     : "`hostname -f`",
-        "cores_per_node"              : 40,
         "gpus_per_node"               : 4,
-        "sockets_per_node"            : 2,
         "default_queue"               : "pbatch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "JSRUN",
-        "task_launch_method"          : "JSRUN",
-        "mpi_launch_method"           : "JSRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "JSRUN"],
+                                         "FORK"  : {},
+                                         "JSRUN" : {}
+                                        },
         "pre_bootstrap_0"             : ["module load jsrun"],
         "default_remote_workdir"      : "/p/gpfs1/$USER",
         "valid_roots"                 : ["/p/gpfs1/$USER",
