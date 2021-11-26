@@ -11,9 +11,11 @@ import time
 import pprint
 import shutil
 import tempfile
+import threading as mt
 
-import radical.saga            as rs
+import radical.gtod            as rg
 import radical.utils           as ru
+import radical.saga            as rs
 
 from ...  import states        as rps
 from ...  import constants     as rpc
@@ -58,12 +60,12 @@ class Default(PMGRLaunchingComponent):
         # pilot jobs to the resource management system (ResourceManager).
 
         self._pilots        = dict()      # dict for all known pilots
-        self._pilots_lock   = ru.RLock()  # lock on maipulating the above
+        self._pilots_lock   = mt.RLock()  # lock on maipulating the above
         self._checking      = list()      # pilots to check state on
-        self._check_lock    = ru.RLock()  # lock on maipulating the above
+        self._check_lock    = mt.RLock()  # lock on maipulating the above
         self._saga_js_cache = dict()      # cache of saga job services
         self._sandboxes     = dict()      # cache of resource sandbox URLs
-        self._cache_lock    = ru.RLock()  # lock for cache
+        self._cache_lock    = mt.RLock()  # lock for cache
 
         self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
         self._root_dir      = "%s/../../"   % self._mod_dir
@@ -82,7 +84,7 @@ class Default(PMGRLaunchingComponent):
         # also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock('launcher_sds_lock')
+        self._sds_lock   = mt.Lock()
 
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
@@ -344,7 +346,6 @@ class Default(PMGRLaunchingComponent):
                     job   = self._pilots[pid]['job']
 
                     # don't overwrite resource_details from the agent
-                    #
                     if 'resource_details' in pilot:
                         del(pilot['resource_details'])
 
@@ -519,14 +520,13 @@ class Default(PMGRLaunchingComponent):
             output_staging = pilot['description'].get('output_staging')
             if output_staging:
                 fname = '%s/%s/staging_output.txt' % (tmp_dir, pilot['uid'])
-                with open(fname, 'w') as fout:
+                with ru.ru_open(fname, 'w') as fout:
                     for entry in output_staging:
                         fout.write('%s\n' % entry)
 
             # direct staging, use first pilot for staging context
             # NOTE: this implies that the SDS can only refer to session
             #       sandboxes, not to pilot sandboxes!
-            self._log.debug('%s', info['sds'])
             self._stage_in(pilots[0], info['sds'])
 
         for ft in ft_list:
@@ -546,7 +546,7 @@ class Default(PMGRLaunchingComponent):
             if src == '/dev/null':
                 # we want an empty file -- touch it (tar will refuse to
                 # handle a symlink to /dev/null)
-                open('%s/%s' % (tmp_dir, tgt), 'a').close()
+                ru.ru_open('%s/%s' % (tmp_dir, tgt), 'a').close()
             else:
                 # use a shell callout to account for wildcard expansion
                 cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
@@ -674,7 +674,6 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_launch_method     = rcfg.get('agent_launch_method')
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
@@ -683,27 +682,28 @@ class Default(PMGRLaunchingComponent):
         default_queue           = rcfg.get('default_queue')
         forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
         resource_manager        = rcfg.get('resource_manager')
-        mpi_launch_method       = rcfg.get('mpi_launch_method', '')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
-        task_launch_method      = rcfg.get('task_launch_method')
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
         virtenv                 = rcfg.get('virtenv',             default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node', None)
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node',  0)
+        lfs_path_per_node       = rcfg.get('lfs_path_per_node')
+        lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
         virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
         stage_cacerts           = rcfg.get('stage_cacerts', False)
+        task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
+        task_pre_rank           = rcfg.get('task_pre_rank')
+        task_post_launch        = rcfg.get('task_post_launch')
         task_post_exec          = rcfg.get('task_post_exec')
-        export_to_task          = rcfg.get('export_to_task')
+        task_post_rank          = rcfg.get('task_post_rank')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
@@ -855,13 +855,11 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist        : raise RuntimeError("missing python distribution")
-        if not virtenv_dist       : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner      : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler    : raise RuntimeError("missing agent scheduler")
-        if not resource_manager   : raise RuntimeError("missing resource manager")
-        if not agent_launch_method: raise RuntimeError("missing agentlaunch method")
-        if not task_launch_method : raise RuntimeError("missing task launch method")
+        if not python_dist     : raise RuntimeError("missing python distribution")
+        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
+        if not agent_spawner   : raise RuntimeError("missing agent spawner")
+        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
+        if not resource_manager: raise RuntimeError("missing resource manager")
 
         # massage some values
         if not queue:
@@ -910,9 +908,15 @@ class Default(PMGRLaunchingComponent):
             sdist_names = list()
             sdist_paths = list()
         else:
-            sdist_names = [ru.sdist_name, rs.sdist_name, self._rp_sdist_name]
-            sdist_paths = [ru.sdist_path, rs.sdist_path, self._rp_sdist_path]
-            bootstrap_args += " -d '%s'" % ':'.join(sdist_names)
+            sdist_names = [rg.sdist_name,
+                           ru.sdist_name,
+                           rs.sdist_name,
+                           self._rp_sdist_name]
+            sdist_paths = [rg.sdist_path,
+                           ru.sdist_path,
+                           rs.sdist_path,
+                           self._rp_sdist_path]
+            bootstrap_args += " -d '%s'" % (':'.join(sdist_names))
 
         bootstrap_args += " -p '%s'" % pid
         bootstrap_args += " -s '%s'" % sid
@@ -956,17 +960,17 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
         agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['agent_launch_method'] = agent_launch_method
-        agent_cfg['task_launch_method']  = task_launch_method
-        agent_cfg['mpi_launch_method']   = mpi_launch_method
         agent_cfg['cores_per_node']      = cores_per_node
         agent_cfg['gpus_per_node']       = gpus_per_node
         agent_cfg['lfs_path_per_node']   = lfs_path_per_node
         agent_cfg['lfs_size_per_node']   = lfs_size_per_node
         agent_cfg['task_tmp']            = task_tmp
-        agent_cfg['export_to_task']        = export_to_task
+        agent_cfg['task_pre_launch']     = task_pre_launch
         agent_cfg['task_pre_exec']       = task_pre_exec
+        agent_cfg['task_pre_rank']       = task_pre_rank
+        agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
+        agent_cfg['task_post_rank']      = task_post_rank
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 

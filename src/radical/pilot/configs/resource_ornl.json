@@ -13,10 +13,13 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
-        "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"
+        ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
@@ -37,10 +40,13 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
-        "pre_bootstrap_0"             : ["source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"],
+        "launch_methods"              : {
+                                         "order" : ["SRUN"],
+                                         "SRUN"  : {}
+                                        },
+        "pre_bootstrap_0"             : [
+            "source /sw/andes/python/3.7/anaconda-base/etc/profile.d/conda.sh"
+        ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
@@ -48,6 +54,46 @@
         "cores_per_node"              : 28,
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "k80"}
+    },
+
+    "spock": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "local"                       : {
+            "job_manager_hop"         : "fork://localhost/",
+            "job_manager_endpoint"    : "slurm://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN": {
+                                             "pre_exec_cached": [
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                        ],
+        "pre_bootstrap_1"             : [
+                                        ],
+        "valid_roots"                 : ["$MEMBERWORK/"],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "python_dist"                 : "default",
+        "virtenv_dist"                : "default",
+        "virtenv_mode"                : "local",
+        "rp_version"                  : "installed",
+        "stage_cacerts"               : true,
+        "gpus_per_node"               : 4,
+        "cores_per_node"              : 64,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0
+      # "system_architecture"         : {"smt": 4,
+      #                                  "options": ["gpumps", "nvme"]}
     },
 
     "summit": {
@@ -60,28 +106,32 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "JSRUN",
-        "task_launch_method"          : "JSRUN",
-        "mpi_launch_method"           : "JSRUN",
-        "pre_bootstrap_0"             : ["module unload xl",
-                                         "module unload xalt",
-                                         "module unload spectrum-mpi",
+        "launch_methods"              : {
+                                         "order": ["JSRUN"],
+                                         "JSRUN": {
+                                             "pre_exec_cached": [
+                                                 "module unload xl",
+                                                 "module unload xalt"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module unload py-pip",
+                                         "module unload py-virtualenv",
+                                         "module unload py-setuptools",
                                          "module load   gcc/9.1.0",
                                          "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3",
-                                         "module list"],
-        "pre_bootstrap_1"             : ["module unload xl",
-                                         "module unload xalt",
-                                         "module unload spectrum-mpi",
-                                         "module load   gcc/9.1.0",
+                                         "module load   python/3.7-anaconda3"
+                                        ],
+        "pre_bootstrap_1"             : ["module load   gcc/9.1.0",
                                          "module load   libzmq/4.3.3",
                                          "module load   python/3.7-anaconda3",
-                                         # increase process limit on node
-                                         "ulimit -u 65536"],
+                                         "ulimit -u 65536"
+                                        ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "python_dist"                 : "default",
@@ -90,8 +140,8 @@
         "rp_version"                  : "local",
         "stage_cacerts"               : true,
         "gpus_per_node"               : 6,
-        "sockets_per_node"            : 2,
         "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
         "system_architecture"         : {"smt": 4,
                                          "options": ["gpumps", "nvme"]}
     },
@@ -106,37 +156,51 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "batch",
-        "resource_manager"            : "LSF_SUMMIT",
+        "resource_manager"            : "LSF",
+        "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "PRTE2",
-        "mpi_launch_method"           : "PRTE2",
-        "pre_bootstrap_0"             : ["module unload xl xalt spectrum-mpi",
-                                         "module load   gcc/9.1.0",
-                                         "module load   python/3.7-anaconda3",
-                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-                                       # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
-                                       # "module load   prrte/master",
-                                         "module load   prrte/2.0.0"
-                                         ],
-        "pre_bootstrap_1"             : ["module unload xl xalt spectrum-mpi",
-                                         "module load   gcc/9.1.0",
-                                         "module load   python/3.7-anaconda3",
-                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-                                       # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
-                                       # "module load   prrte/master",
-                                         "module load   prrte/2.0.0",
-                                         "ulimit -u 65536"],
+        "launch_methods"              : {
+                                         "order": ["PRTE", "SSH"],
+                                         # for sub-agent
+                                         "SSH"  : {},
+                                         "PRTE" : {
+                                             "pre_exec_cached": [
+                                                 "module unload xl xalt spectrum-mpi",
+                                                 "module load   gcc/9.1.0",
+                                                 "module load   python/3.7-anaconda3",
+                                                 "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                               # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
+                                               # "module load   prrte/master"
+                                                 "module load   prrte/2.0.0"
+                                             ],
+                                             "dvm_count": 1
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+            "module unload xl xalt spectrum-mpi",
+            "module load   gcc/9.1.0",
+            "module load   python/3.7-anaconda3",
+            "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+            "module load   prrte/2.0.0"
+        ],
+        "pre_bootstrap_1"             : [
+            "module unload xl xalt spectrum-mpi",
+            "module load   gcc/9.1.0",
+            "module load   python/3.7-anaconda3",
+            "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+            "module load   prrte/2.0.0",
+            "ulimit -u 65536"
+        ],
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
         "stage_cacerts"               : true,
         "gpus_per_node"               : 6,
-        "sockets_per_node"            : 2,
         "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
         "system_architecture"         : {"smt": 4,
-                                         "options": ["gpumps", "nvme"]},
-        "dvm_count"                   : 1
+                                         "options": ["gpumps", "nvme"]}
     }
 }
+

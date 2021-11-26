@@ -1,0 +1,32 @@
+
+{
+    "task": {
+        "uid"               : "task.000008",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "environment"   : {"test_env": "test_val"}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lfs_per_node"  : 0,
+                "ranks"         : []
+            }
+        }
+    },
+
+    "results": {
+        "lm": {
+            "ssh"   : "RuntimeError",
+            "rsh"   : "RuntimeError"
+        }
+    }
+}
+
