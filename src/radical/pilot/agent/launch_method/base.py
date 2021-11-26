@@ -1,7 +1,7 @@
 # pylint: disable=protected-access
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 import shlex
@@ -23,25 +23,10 @@ LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
 LM_NAME_PRTE          = 'PRTE'
-LM_NAME_PRTE2         = 'PRTE2'
 LM_NAME_FLUX          = 'FLUX'
-LM_NAME_ORTE          = 'ORTE'
-LM_NAME_ORTE_LIB      = 'ORTE_LIB'
 LM_NAME_RSH           = 'RSH'
 LM_NAME_SSH           = 'SSH'
-LM_NAME_YARN          = 'YARN'
-LM_NAME_SPARK         = 'SPARK'
 LM_NAME_SRUN          = 'SRUN'
-
-# deprecated
-# LM_NAME_POE           = 'POE'
-# LM_NAME_DPLACE        = 'DPLACE'
-# LM_NAME_RUNJOB        = 'RUNJOB'
-
-# deprecated
-# LM_NAME_POE           = 'POE'
-# LM_NAME_DPLACE        = 'DPLACE'
-# LM_NAME_RUNJOB        = 'RUNJOB'
 
 PWD = os.getcwd()
 
@@ -50,47 +35,58 @@ PWD = os.getcwd()
 #
 class LaunchMethod(object):
 
-    # List of environment variables that designated Launch Methods should export
-    # FIXME: we should find out what env vars are changed or added by
-    #        td.pre_exec, and then should also export those.  That would make
-    #        our launch script ore complicated though...
-    EXPORT_ENV_VARIABLES = [
-        'LD_LIBRARY_PATH',
-        'PATH',
-        'PYTHONPATH',
-        'OMP_NUM_THREADS',
-        'RP_AGENT_ID',
-        'RP_GTOD',
-        'RP_PILOT_ID',
-        'RP_PILOT_STAGING',
-        'RP_PROF',
-        'RP_SESSION_ID',
-        'RP_SPAWNER_ID',
-        'RP_TMP',
-        'RP_TASK_ID',
-        'RP_TASK_NAME',
-        'RP_PILOT_SANDBOX',
-        'RADICAL_BASE'
-    ]
-
     MPI_FLAVOR_OMPI    = 'OMPI'
     MPI_FLAVOR_HYDRA   = 'HYDRA'
     MPI_FLAVOR_UNKNOWN = 'unknown'
 
+
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self.name     = name
-        self._cfg     = cfg
-        self._session = session
-        self._log     = self._session._log    # pylint: disable=protected-access
-        self._log.debug('create LaunchMethod: %s', type(self))
+        self.name      = name
+        self._lm_cfg   = lm_cfg
+        self._rm_info  = rm_info
+        self._log      = log
+        self._prof     = prof
+        self._pwd      = os.getcwd()
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
-        # A per-launch_method list of env vars to remove from the Task env
-        self.env_removables = []
+        reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
+        lm_info = reg.get('lm.%s' % self.name.lower())
+      # import pprint
+      # self._log.debug('addr: %s', self._lm_cfg.reg_addr)
+      # self._log.debug('name: %s', self.name)
+      # self._log.debug('info: %s', pprint.pformat(lm_info))
 
-        self._configure()
+        if not lm_info:
+
+            # The registry does not yet contain any info for this LM - we need
+            # to initialize the LM from scratch.  That happens in the env
+            # defined by lm_cfg (derived from the original bs0 env)
+            env_orig = ru.env_eval('env/bs0_orig.env')
+            env_sh   = 'env/lm_%s.sh' % self.name.lower()
+            env_lm   = ru.env_prep(environment=env_orig,
+                          pre_exec=lm_cfg.get('pre_exec'),
+                          pre_exec_cached=lm_cfg.get('pre_exec_cached'),
+                          script_path=env_sh)
+
+            # run init_from_scratch in a process under that derived env
+            # FIXME
+          # envp = ru.EnvProcess(env=env_lm)
+          # with envp:
+          #     data = self._init_from_scratch(env_lm, env_sh)
+          #     envp.put(data)
+          # lm_info = envp.get()
+
+            lm_info = self._init_from_scratch(env_lm, env_sh)
+
+            # store the info in the registry for any other instances of the LM
+            reg.put('lm.%s' % self.name.lower(), lm_info)
+          # self._log.debug('INFO: %s', pprint.pformat(lm_info))
+
+        reg.close()
+        self._init_from_info(lm_info)
 
 
     # --------------------------------------------------------------------------
@@ -98,7 +94,7 @@ class LaunchMethod(object):
     # This class-method creates the appropriate sub-class for the Launch Method.
     #
     @classmethod
-    def create(cls, name, cfg, session):
+    def create(cls, name, lm_cfg, rm_info, log, prof):
 
         # Make sure that we are the base-class!
         if cls != LaunchMethod:
@@ -116,31 +112,10 @@ class LaunchMethod(object):
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
         from .prte           import PRTE
-        from .prte2          import PRTE2
         from .flux           import Flux
         from .rsh            import RSH
         from .ssh            import SSH
-        from .yarn           import Yarn
-        from .spark          import Spark
         from .srun           import Srun
-
-      # # deprecated
-      # from .orte           import ORTE
-      # from .orte_lib       import ORTELib
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
-      # from .mpirun_ccmrun  import MPIRunCCMRun
-      # from .mpirun_dplace  import MPIRunDPlace
-      # from .mpirun_mpt     import MPIRun_MPT
-      # from .mpirun_rsh     import MPIRunRSH
-      # from .dplace         import DPlace
-      # from .poe            import POE
-      # from .runjob         import Runjob
 
         try:
             impl = {
@@ -157,125 +132,81 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
                 LM_NAME_PRTE          : PRTE,
-                LM_NAME_PRTE2         : PRTE2,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
                 LM_NAME_SSH           : SSH,
-                LM_NAME_YARN          : Yarn,
-                LM_NAME_SPARK         : Spark,
                 LM_NAME_SRUN          : Srun,
 
-              # # deprecated
-              # LM_NAME_ORTE          : ORTE,
-              # LM_NAME_ORTE_LIB      : ORTELib,
-              # LM_NAME_DPLACE        : DPlace,
-              # LM_NAME_POE           : POE,
-              # LM_NAME_RUNJOB        : Runjob,
-            }[name]
-            return impl(name, cfg, session)
+            }
 
-        except KeyError:
-            session._log.exception('invalid lm %s' % name)
-            return None
+            if name not in impl:
+                raise ValueError('LaunchMethod %s unknown' % name)
+
+            return impl[name](name, lm_cfg, rm_info, log, prof)
 
         except Exception:
-            session._log.exception('unusable lm %s' % name)
-            return None
+            log.exception('unusable lm %s' % name)
+            raise
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_config_hook(cls, name, cfg, rm, log, profiler):
-        '''
-        This hook will allow the ResourceManager to perform launch methods
-        specific configuration steps.  The ResourceManager layer MUST ensure
-        that this hook is called exactly once (globally).  This will be a NOOP
-        for LaunchMethods which do not overload this method.  Exceptions fall
-        through to the ResourceManager.
-        '''
+    def _init_from_scratch(self, env, env_sh):
 
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod config hook only available to base class!")
-
-        from .fork           import Fork
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-        from .flux           import Flux
-        from .jsrun          import JSRUN
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_FORK          : Fork,
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-            LM_NAME_FLUX          : Flux,
-            LM_NAME_JSRUN         : JSRUN,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark,
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-
-        }.get(name)
-
-        if not impl:
-            log.info('no config hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager config hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_config_hook(name, cfg, rm, log, profiler)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def rm_shutdown_hook(cls, name, cfg, rm, lm_info, log, profiler):
-        '''
-        This hook is symmetric to the config hook above, and is called during
-        shutdown sequence, for the sake of freeing allocated resources.
-        '''
+    def _init_from_info(self, lm_info):
 
-        # Make sure that we are the base-class!
-        if cls != LaunchMethod:
-            raise TypeError("LaunchMethod shutdown hook only available to base class!")
-
-        from .prte           import PRTE
-        from .prte2          import PRTE2
-      # from .flux           import Flux
-        from .yarn           import Yarn
-        from .spark          import Spark
-
-        # # deprecated
-        # from .orte           import ORTE
-
-        impl = {
-            LM_NAME_PRTE          : PRTE,
-            LM_NAME_PRTE2         : PRTE2,
-          # LM_NAME_FLUX          : Flux,
-            LM_NAME_YARN          : Yarn,
-            LM_NAME_SPARK         : Spark
-
-            # # deprecated
-            # LM_NAME_ORTE          : ORTE,
-        }.get(name)
-
-        if not impl:
-            log.info('no shutdown hook defined for LaunchMethod %s' % name)
-            return None
-
-        log.info('ResourceManager shutdown hook for LaunchMethod %s: %s' % (name, impl))
-        return impl.rm_shutdown_hook(name, cfg, rm, lm_info, log, profiler)
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_task_named_env(self, env_name):
+
+        # we assume that the launcher env is still active in the task execution
+        # script.  We thus remove the launcher env from the task env before
+        # applying the task env's pre_exec commands
+        base = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+        src  = '%s.env'                 %  base
+        tgt  = '%s.%s.env'              % (base, self.name.lower())
+
+        # the env does not yet exists - create
+        # FIXME: this would need some file locking for concurrent executors. or
+        #        add self._uid to path name
+        if not os.path.isfile(tgt):
+            ru.env_prep(ru.env_read(src), script_path=tgt)
+
+        return tgt
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -289,9 +220,16 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def get_rank_exec(self, task, rank_id, rank):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_partitions(self):
+
+        return None
 
 
     # --------------------------------------------------------------------------
@@ -317,7 +255,7 @@ class LaunchMethod(object):
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
 
-        out, _, ret = ru.sh_callout('%s -v' % exe)
+        out, _, ret = ru.sh_callout('%s -V' % exe)
 
         if ret:
             out, _, ret = ru.sh_callout('%s --version' % exe)

@@ -1,62 +1,40 @@
 {
     "task": {
-        "uid":         "task.000000",
-        "description": {"environment"      : {},
-                        "executable"       : "/bin/sleep",
-                        "arguments"        : ["10"],
-                        "pre_exec"         : ["test_pre_exec"],
-                        "post_exec"        : ["test_post_exec"],
-                        "gpu_processes"    : 0,
-                        "cpu_processes"    : 1,
-                        "cpu_threads"      : 0,
-                        "cpu_process_type" : null,
-                        "gpu_process_type" : null,
-                        "gpu_thread_type"  : null,
-                        "mem_per_process"  : 128,
-                        "lfs_per_process"  : 0,
-                        "name"             : "task.0000",
-                        "stdout": null,
-                        "stderr": null
-                       },
-        "task_sandbox_path": "/tmp",
-        "gtod": null
-    },
+         "uid"                  : "task.000000",
+         "name"                 : "test_task",
+         "description": {
+             "executable"       : "/bin/sleep",
+             "arguments"        : ["10"],
+             "environment"      : {},
+             "pre_exec"         : ["test_pre_exec"],
+             "post_exec"        : ["test_post_exec"],
+             "cpu_processes"    : 1,
+             "cpu_threads"      : 0,
+             "cpu_process_type" : null,
+             "gpu_processes"    : 0,
+             "gpu_process_type" : null,
+             "gpu_thread_type"  : null,
+             "mem_per_process"  : 128,
+             "lfs_per_process"  : 0,
+             "name"             : "test_task",
+             "stdout"           : null,
+             "stderr"           : null,
+             "named_env"        : "",
+             "pre_launch"       : [],
+             "post_launch"      : [],
+             "pre_rank"         : [],
+             "post_rank"        : []
+         },
+         "task_sandbox_path"    : "/tmp"
+     },
 
-    "setup" : {
-        "lm" : {
-            "slots": {
-                "cores_per_node": 16,
-                "gpus_per_node" : 0,
-                "task_offsets"  : [0],
-                "lm_info"       : {
-                                   "dvm_uri" : "dvm_uri"
-                                  },
-                "lfs_per_node"  : 0,
-                "nodes"         : [{"name"    : "a",
-                                    "uid"     : "1",
-                                    "cores"   : [1],
-                                    "gpus"    : [1],
-                                    "core_map": [[0]],
-                                    "gpu_map" : [[0]],
-                                    "mem"     : 0,
-                                    "lfs"     : {"size": 0,
-                                                 "path": "/dev/null"}
-                }]
-            },
-            "task_sandbox": "./"
+    "setup": {
+        "slots": {"ranks"       : [{"node_name" : "a",
+                                    "node_id"   : "1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "mem"       : 0,
+                                    "lfs"       : 0}]
         }
-    },
-
-    "results": {
-        "lm": {
-            "fork"    : ["/bin/sleep \"10\" ", null]
-        },
-        "resource_file": {
-            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
-        },
-        "resource_filename": {
-            "jsrun": "rs_layout_task_000000"
-        },
-        "script": "\n# Task environment\nexport RP_SESSION_ID=test_sid\nexport RP_PILOT_ID=test_pid\nexport RP_AGENT_ID=test_aid\nexport RP_SPAWNER_ID=exec.0000\nexport RP_TASK_ID=task.000000\nexport RP_TASK_NAME=\"task.0000\"\nexport RP_GTOD=\"None\"\nexport RP_PILOT_STAGING=\"./\"\nexport RP_PROF=\"/tmp/task.000000.prof\"\n\nprof(){\n    if test -z \"$RP_PROF\"\n    then\n        return\n    fi\n    event=$1\n    now=$($RP_GTOD)\n    echo \"$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING,\" >> $RP_PROF\n}\n\n\nprof task_start\n\n# ------------------------------------------------------\n# Task sandbox\nmkdir -p /tmp\ncd       /tmp\n\n\n# Task pre-exec\nprof task_pre_start\ntest_pre_exec ||  (echo \"pre_exec failed\"; false) || exit\n\nprof task_pre_stop\n\n\n# Task execution\nprof task_exec_start\nsome_exe 1>task.000000.out 2>task.000000.err \n\nRETVAL=$?\nprof task_exec_stop\n\n# Task post-exec\nprof task_post_start\ntest_post_exec ||  (echo \"post_exec failed\"; false) || exit\nprof task_post_stop\n\nexit $RETVAL\n# ------------------------------------------------------\n\n"
     }
 }

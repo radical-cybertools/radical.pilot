@@ -238,8 +238,8 @@ class DBSession(object):
             pids = [pids]
 
         try:
-            cmd_spec = {'cmd' : cmd,
-                        'arg' : arg}
+            cmd_spec = {'cmd': cmd,
+                    'arg': arg}
 
             self._log.debug('insert cmd: %s %s %s', pids, cmd, arg)
 
@@ -304,6 +304,9 @@ class DBSession(object):
                 if not rpc_res:
                     # response was empty
                     continue
+
+                import pprint
+                self._log.debug('rpc result: %s', pprint.pformat(rpc_res))
 
                 if rpc_res['err']:
                     # NOTE: we could raise a pickled exception - but how useful

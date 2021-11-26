@@ -41,15 +41,14 @@ class TMGRStagingOutputComponent(rpu.Component):
 
         from .default import Default
 
-        try:
-            impl = {
-                RP_USO_NAME_DEFAULT: Default
-            }[name]
-            return impl(cfg, session)
+        impl = {
+            RP_USO_NAME_DEFAULT: Default
+        }
 
-        except KeyError as e:
-            raise ValueError("TMGRStagingOutputComponent '%s' unknown" % name) \
-                from e
+        if name not in impl:
+            raise ValueError('Scheduler %s unknown' % name)
+
+        return impl[name](cfg, session)
 
 
 # ------------------------------------------------------------------------------

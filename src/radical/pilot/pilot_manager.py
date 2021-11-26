@@ -93,9 +93,9 @@ class PilotManager(rpu.Component):
 
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('%s.pilots_lock' % self._uid)
+        self._pilots_lock = mt.RLock()
         self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock('%s.pcb_lock' % self._uid)
+        self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
@@ -409,16 +409,6 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_prepare_env(self, pid, env_spec):
-
-        if not env_spec:
-            return
-
-        self._session._dbs.pilot_command('prep_env', env_spec, [pid])
-
-
-    # --------------------------------------------------------------------------
-    #
     def _pilot_staging_input(self, sds):
         '''
         Run some staging directives for a pilot.
@@ -631,14 +621,10 @@ class PilotManager(rpu.Component):
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
 
-        # immediately send first heartbeat and any other commands which are
-        # included in the pilot description
+        # immediately send first heartbeat
         for pilot_doc in pilot_docs:
             pid = pilot_doc['uid']
-            pd  = pilot_doc['description']
-
             self._pilot_send_hb(pid)
-            self._pilot_prepare_env(pid, pd.get('prepare_env'))
 
         # Only after the insert/update can we hand the pilots over to the next
         # components (ie. advance state).
@@ -882,9 +868,9 @@ class PilotManager(rpu.Component):
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._pcb_lock:
-            cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb,
-                                                'cb_data' : cb_data}
+            cb_id = id(cb)
+            self._callbacks[metric][cb_id] = {'cb'      : cb,
+                                              'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -906,16 +892,16 @@ class PilotManager(rpu.Component):
             for metric in metrics:
 
                 if cb:
-                    to_delete = [cb.__name__]
+                    to_delete = [id(cb)]
                 else:
                     to_delete = list(self._callbacks[metric].keys())
 
-                for cb_name in to_delete:
+                for cb_id in to_delete:
 
-                    if cb_name not in self._callbacks[metric]:
-                        raise ValueError("unknown callback '%s'" % cb_name)
+                    if cb_id not in self._callbacks[metric]:
+                        raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del(self._callbacks[metric][cb_name])
+                    del(self._callbacks[metric][cb_id])
 
 
     # --------------------------------------------------------------------------

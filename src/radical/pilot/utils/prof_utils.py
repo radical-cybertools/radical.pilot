@@ -8,7 +8,8 @@ import radical.utils as ru
 from ..       import states as s
 from .session import fetch_json
 
-_debug = os.environ.get('RP_PROF_DEBUG')
+_debug      = os.environ.get('RP_PROF_DEBUG')
+_node_index = dict()
 
 
 # ------------------------------------------------------------------------------
@@ -742,9 +743,13 @@ def get_session_description(sid, src=None, dburl=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_node_index(node_list, node, pn):
+def get_node_index(node_list, node_uid, pn):
 
-    r0 = node_list.index(node) * pn
+    if not _node_index:
+        for idx,n in enumerate(node_list):
+            _node_index[n['node_id']] = idx
+
+    r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
 
     return [r0, r1]
@@ -839,7 +844,7 @@ def _get_pilot_provision(pilot, rtype):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node, pn)
+            r0, r1 = get_node_index(nodes, node['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -940,15 +945,15 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
-        if tdurations:
-            # print('DEBUG: using tdurations')
-            task_durations = tdurations
-        elif pilot.cfg['task_launch_method'] == 'PRTE':
-            # print('DEBUG: using prte configuration')
-            task_durations = TASK_DURATIONS_PRTE
-        else:
-            # print('DEBUG: using default configuration')
-            task_durations = TASK_DURATIONS_DEFAULT
+      # if tdurations:
+      #     # print('DEBUG: using tdurations')
+      #     task_durations = tdurations
+      # elif pilot.cfg['task_launch_method'] == 'PRTE':
+      #     # print('DEBUG: using prte configuration')
+      #     task_durations = TASK_DURATIONS_PRTE
+      # else:
+      #     # print('DEBUG: using default configuration')
+      #     task_durations = TASK_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
         log.debug('timestamps:')
@@ -981,7 +986,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode, pn)
+            idx = get_node_index(nodes, pnode['node_id'], pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
 
@@ -991,25 +996,25 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
                 continue
 
             try:
-                snodes = task.cfg['slots']['nodes']
+                ranks  = task.cfg['slots']['ranks']
                 tts    = task.timestamps
-                u_min  = tts(event=task_durations['consume']['exec_queue'][0])[0]
-                u_max  = tts(event=task_durations['consume']['unschedule'][1])[-1]
+                task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
+                task_max  = tts(event=task['consume']['unschedule'][1])[-1]
+
             except:
                 continue
 
-            for snode in snodes:
+            for rank in ranks:
 
-                node  = [snode['name'], snode['uid']]
-                r0, _ = get_node_index(nodes, node, pn)
+                r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
-                for core_map in snode[rmap]:
-                    for core in core_map:
-                        idx = r0 + core
+                for resource_map in rank[rmap]:
+                    for resource in resource_map:
+                        idx   = r0 + resource
                         t_min = resources[idx][0]
                         t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
+                        if t_min is None or t_min > task_min: t_min = task_min
+                        if t_max is None or t_max < task_max: t_max = task_max
                         resources[idx] = [t_min, t_max]
 
         # now sift through resources and find buckets of pairs with same t_min
@@ -1130,7 +1135,7 @@ def _get_pilot_consumption(pilot, rtype):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode, pn)
+            r0, r1 = get_node_index(nodes, anode['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1146,7 +1151,7 @@ def _get_pilot_consumption(pilot, rtype):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node, pn)
+                r0, r1 = get_node_index(nodes, node['node_id'], pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1189,16 +1194,15 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     if 'slots' not in task.cfg:
         return dict()
 
-    snodes    = task.cfg['slots']['nodes']
+    ranks     = task.cfg['slots']['ranks']
     resources = list()
-    for snode in snodes:
+    for rank in ranks:
 
-        node  = [snode['name'], snode['uid']]
-        r0, _ = get_node_index(nodes, node, pn)
+        r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
-        for core_map in snode[rmap]:
-            for core in core_map:
-                resources.append(r0 + core)
+        for resource_map in rank[rmap]:
+            for resource in resource_map:
+                resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)
@@ -1207,7 +1211,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     # traces
     if tdurations:
         task_durations = tdurations
-    elif pilot.cfg['task_launch_method'] == 'PRTE':
+    elif 'PRTE' in pilot.cfg['resource_cfg']['launch_methods']:
         task_durations = TASK_DURATIONS_PRTE
     else:
         task_durations = TASK_DURATIONS_DEFAULT
@@ -1259,7 +1263,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
 def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
 
     if not task_metrics:
-        if pilot.cfg['task_launch_method'] == 'PRTE':
+        if 'PRTE' in pilot.cfg['resource_cfg']['launch_methods']:
             task_metrics = TASK_DURATIONS_PRTE
         else:
             task_metrics = TASK_DURATIONS_DEFAULT
@@ -1271,12 +1275,12 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     # we try to find points in time where resource usage moved from purpose A to
     # purpose B.  For example, consider this metric:
     #
-    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-    #                    {ru.STATE: s.AGENT_EXECUTING        }],
-    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
-    #                    {ru.EVENT: 'exec_start'             }],
-    #   'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-    #                    {ru.EVENT: 'cu_start'               }],
+    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'    },
+    #                    {ru.STATE: s.AGENT_EXECUTING}],
+    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING},
+    #                    {ru.EVENT: 'exec_start'     }],
+    #   'exec_rp'     : [{ru.EVENT: 'exec_start'     },
+    #                    {ru.EVENT: 't_start'        }],
     #
     # then we convert this into the following structure:
     #
@@ -1285,7 +1289,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
     #   [{ru.EVENT: 'schedule_ok'    },  None,        'exec_queue'],
     #   [{ru.STATE: s.AGENT_EXECUTING}, 'exec_queue', 'exec_prep'],
     #   [{ru.EVENT: 'exec_start'     }, 'exec_prep',  'exec_rp'],
-    #   [{ru.EVENT: 'cu_start'       }, 'exec_rp',    'None]
+    #   [{ru.EVENT: 't_start'        }, 'exec_rp',    'None]
     # ]
     #
     # which we will use like this:

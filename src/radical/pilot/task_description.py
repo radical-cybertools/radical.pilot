@@ -32,14 +32,19 @@ MEM_PER_PROCESS        = 'mem_per_process'
 INPUT_STAGING          = 'input_staging'
 OUTPUT_STAGING         = 'output_staging'
 STAGE_ON_ERROR         = 'stage_on_error'
+PRE_LAUNCH             = 'pre_launch'
 PRE_EXEC               = 'pre_exec'
+PRE_RANK               = 'pre_rank'
+POST_LAUNCH            = 'post_launch'
 POST_EXEC              = 'post_exec'
+POST_RANK              = 'post_rank'
 KERNEL                 = 'kernel'
 CLEANUP                = 'cleanup'
 PILOT                  = 'pilot'
 STDOUT                 = 'stdout'
 STDERR                 = 'stderr'
 RESTARTABLE            = 'restartable'
+SCHEDULER              = 'scheduler'
 TAGS                   = 'tags'
 METADATA               = 'metadata'
 
@@ -201,12 +206,33 @@ class TaskDescription(ru.Description):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
+    .. data:: pre_launch
+
+       [type: `list` | default: `[]`] Like `pre_exec`, but runs befor launching,
+       potentially on a batch node which is different from the node the task is
+       placed on.
+
+    .. data:: pre_rank
+
+       [type: `dict` | default: `{}`] A dictionary which maps a set of
+       `pre_exec` like commands to each rank.  The commands are executed on the
+       respective nodes where the ranks are places, and the actual rank startup
+       will be delayed until all `pre_rank` commands have completed.
+
     .. data:: post_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform after
        this task finishes. The same remarks as on `pre_exec` apply, inclusive
        the point on error handling, which again will cause the task to fail,
        even if the actual execution was successful.
+
+    .. data:: post_launch
+
+       ...
+
+    .. data:: post_rank
+
+       ...
 
     .. data:: kernel
 
@@ -219,6 +245,11 @@ class TaskDescription(ru.Description):
        [type: `bool` | default: `False`] If the task starts to execute on
        a pilot, but cannot finish because the pilot fails or is canceled,
        the task can be restarted.
+
+    .. data:: scheduler
+
+       Request the task to be handled by a specific agent scheduler
+
 
     .. data:: tags
 
@@ -299,6 +330,66 @@ class TaskDescription(ru.Description):
         the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
+
+    Task Environment
+    ================
+
+    RP tasks are expected to be executed in isolation, meaning that their
+    runtime environment is completely independent from the environment of other
+    tasks, independent from the launch mechanism used to start the task, and
+    also independent from the environment of the RP stack itself.
+
+    The task description provides several hooks to help setting up the
+    environment in that context.  It is important to understand the way those
+    hooks interact with respect to the environments mentioned above.
+
+      - `pre_launch` directives are set and executed before the task is passed
+        on to the task launch method.  As such, `pre_launch` usually executed
+        on the node where RP's agent is running, and *not* on the tasks target
+        node.  Executing `pre_launch` directives for many tasks can thus
+        negatively impact RP's performance (*).  Note also that `pre_launch`
+        directives can in some cases interfere with the launch method.
+
+        Use `pre_launch` directives for rare, heavy-weight operations which
+        prepare the runtime environment for multiple tasks: fetch data from
+        a remote source, unpack input data, create global communication
+        channels, etc.
+
+      - `pre_exec` directives are set and executed *after* the launch method
+        placed the task on the compute nodes and are thus running on the target
+        node.  Note that for MPI tasks, the `pre_exec` directives are executed
+        once per rank.  Running large numbers of `pre_exec` directives
+        concurrently can lead to system performance degradation (*), for example
+        when those  directives concurrently hot the shared files system (for
+        loading modules or Python virtualenvs etc).
+
+        Use `pre_exec` directives for task environment setup such as `module
+        load`, `virtualenv activate`, `export` whose effects are expected to be
+        applied to all task ranks.  Avoid file staging operations at this point
+        (files would be redundantly staged multiple times - once per rank).
+
+      - `pre_rank` directives are executed only for the specified rank.  Note
+        that environment settings specified in `pre_rank` will thus only apply
+        to that specific rank, not to other ranks.  All other ranks stall until
+        the last `pre_rank` directive has been completed -- only then is the
+        actual workload task being executed on all ranks.
+
+        Use `pre_rank` directives on rank 0 to prepare task input data: the
+        operations are performed once per task, and all ranks will stall until
+        the directives are completed, i.e., until input data are available.
+        Avoid using `pre_rank` directives for environment settings - `pre_exec`
+        will generally perform better in this case.
+
+    (*) The performance impact of repeated concurrent access to the system's
+    shared file system can be significant and can pose a major bottleneck for
+    your application.  Specifically `module load` and `virtualenv activate`
+    operations and the like are heavy on file system I/O, and executing those
+    for many tasks is ill advised.  Having said that: RP attempts to optimize
+    those operations: if it identifies that identical `pre_exec` directives are
+    shared between multiple tasks, RP will execute the directives exactly *once*
+    and will cache the resulting environment settings - those cached settings
+    are then applied to all other tasks with the same directives, without
+    executing the directives again.
     """
 
     _schema = {
@@ -310,8 +401,12 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : [str]       ,
         ENVIRONMENT     : {str: str}  ,
         NAMED_ENV       : str         ,
+        PRE_LAUNCH      : [str]       ,
         PRE_EXEC        : [str]       ,
+        PRE_RANK        : {int: None} ,
+        POST_LAUNCH     : [str]       ,
         POST_EXEC       : [str]       ,
+        POST_RANK       : {int: None} ,
         STDOUT          : str         ,
         STDERR          : str         ,
         INPUT_STAGING   : [None]      ,
@@ -330,6 +425,7 @@ class TaskDescription(ru.Description):
         MEM_PER_PROCESS : int         ,
 
         RESTARTABLE     : bool        ,
+        SCHEDULER       : str         ,
         TAGS            : {None: None},
         METADATA        : None        ,
         CLEANUP         : bool        ,
@@ -345,8 +441,12 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : list()      ,
         ENVIRONMENT     : dict()      ,
         NAMED_ENV       : ''          ,
+        PRE_LAUNCH      : list()      ,
         PRE_EXEC        : list()      ,
+        PRE_RANK        : dict()      ,
+        POST_LAUNCH     : list()      ,
         POST_EXEC       : list()      ,
+        POST_RANK       : dict()      ,
         STDOUT          : ''          ,
         STDERR          : ''          ,
         INPUT_STAGING   : list()      ,
@@ -365,6 +465,7 @@ class TaskDescription(ru.Description):
         MEM_PER_PROCESS : 0           ,
 
         RESTARTABLE     : False       ,
+        SCHEDULER       : ''          ,
         TAGS            : dict()      ,
         METADATA        : None        ,
         CLEANUP         : False       ,
