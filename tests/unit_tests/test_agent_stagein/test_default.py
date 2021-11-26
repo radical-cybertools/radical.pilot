@@ -9,6 +9,8 @@ import radical.utils as ru
 
 from radical.pilot.agent.staging_input.default import Default
 
+base = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
@@ -18,8 +20,7 @@ class TestDefault(TestCase):
     #
     def setUp(self):
         ret = list()
-        pwd = os.path.dirname(__file__)
-        for fin in glob.glob('%s/test_cases/task.*.json' % pwd):
+        for fin in glob.glob('%s/test_cases/task.*.json' % base):
             tc     = ru.read_json(fin)
             task   = tc['task'   ]
             result = tc['results']

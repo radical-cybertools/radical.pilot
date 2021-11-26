@@ -39,6 +39,11 @@ class Request(object):
 
 
     @property
+    def task(self):
+        return self._req.get('task')
+
+
+    @property
     def work(self):
         return self._req
 
@@ -58,6 +63,7 @@ class Request(object):
         # FIXME: we should not need to reconstruict the dict
         return {'uid'      : self._uid,
                 'state'    : self._state,
+                'task'     : self._req.get('task'),
                 'cpus'     : self._req.get('cores', 1),
                 'gpus'     : self._req.get('gpus',  0),
                 'timeout'  : self._req.get('timeout'),
@@ -68,14 +74,15 @@ class Request(object):
 
     # --------------------------------------------------------------------------
     #
-    def set_result(self, out, err, ret):
+    def set_result(self, out, err, ret, val):
         '''
         This is called by the master to fulfill the future
         '''
 
         self._result = {'out': out,
                         'err': err,
-                        'ret': ret}
+                        'ret': ret,
+                        'val': val}
 
         if ret: self._state = 'FAILED'
         else  : self._state = 'DONE'
