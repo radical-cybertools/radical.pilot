@@ -1,11 +1,12 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
-import os
-import time
-import queue
+import copy
 import logging
+import queue
+import time
+import threading          as mt
 
 import multiprocessing    as mp
 
@@ -14,6 +15,8 @@ import radical.utils      as ru
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
+
+from ..resource_manager import ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -25,7 +28,6 @@ SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
 
 # SCHEDULER_NAME_YARN               = "YARN"
@@ -46,7 +48,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # The base class provides the following functionality to the implementations:
 #
 #   - obtain configuration settings from config files and environments
-#   - create aself._nodes list to represent available resources;
+#   - create self.nodes list to represent available resources;
 #   - general control and data flow:
 #
 #       # main loop
@@ -131,12 +133,9 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #       'cpu_threads'     : 2,
 #       'gpu_processes    : 2,
 #       'slots' :
-#       {                 # [[node,   node_uid,   [cpu idx],        [gpu idx]]]
-#         'nodes'         : [[node_1, node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
-#         'cores_per_node': 8,
-#         'gpus_per_node' : 1,
-#         'lm_info'       : { ... }
+#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -151,27 +150,15 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
-# intent to support the launch methods to enact the placement decition made by
+# intent to support the launch methods to enact the placement decision made by
 # the scheduler.  In fact, a scheduler may use a completely different slot
 # structure than above - but then is likely bound to a specific launch method
-# which can interpret that structure.  A notable example is the BG/Q torus
-# scheduler which will only work in combination with the dplace launch methods.
-# `lm_info` is an opaque field which allows to communicate specific settings
-# from the rm to the launch method.
-#
-# FIXME: `lm_info` should be communicated to the LM instances in creation, not
-#        as part of the slots.  Its constant anyway, as lm_info is set only
-#        once during rm startup.
-#
-# NOTE:  While the nodelist resources are listed as strings above, we in fact
-#        use a list of integers, to simplify some operations, and to
-#        specifically avoid string copies on manipulations.  We only convert
-#        to a stringlist for visual representation (`self.slot_status()`).
+# which can interpret that structure.
 #
 # NOTE:  The scheduler will allocate one core per node and GPU, as some startup
 #        methods only allow process placements to *cores*, even if GPUs are
 #        present and requested (hi aprun).  We should make this decision
-#        dependent on the `lm_info` field - but at this point we don't have this
+#        dependent on the launch method - but at this point we don't have this
 #        information (at least not readily available).
 #
 # TODO:  use named tuples for the slot structure to make the code more readable,
@@ -201,10 +188,10 @@ class AgentSchedulingComponent(rpu.Component):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'name'  : 'name-of-node',
-    #       'uid'   : 'uid-of-node',
-    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
-    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
+    #     { 'node_name' : 'name-of-node',
+    #       'node_id'   : 'uid-of-node',
+    #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
     #   ]
     #
@@ -215,7 +202,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     def __init__(self, cfg, session):
 
-        self.nodes = None
+        self.nodes = []
         rpu.Component.__init__(self, cfg, session)
 
 
@@ -226,31 +213,12 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize(self):
 
-        # The scheduler needs the ResourceManager information which have been collected
-        # during agent startup.  We dig them out of the config at this point.
-        #
-        # NOTE: this information is insufficient for the torus scheduler!
-        self._pid               = self._cfg['pid']
-        self._rm_info           = self._cfg['rm_info']
-        self._rm_lm_info        = self._cfg['rm_info']['lm_info']
-        self._rm_node_list      = self._cfg['rm_info']['node_list']
-        self._rm_partitions     = self._cfg['rm_info']['partitions']
-        self._rm_cores_per_node = self._cfg['rm_info']['cores_per_node']
-        self._rm_gpus_per_node  = self._cfg['rm_info']['gpus_per_node']
-        self._rm_lfs_per_node   = self._cfg['rm_info']['lfs_per_node']
-        self._rm_mem_per_node   = self._cfg['rm_info']['mem_per_node']
+        # The scheduler needs the ResourceManager information which have been
+        # collected during agent startup.
+        self._rm = ResourceManager.create(self._cfg.resource_manager,
+                                          self._cfg, self._log, self._prof)
 
-        if not self._rm_node_list:
-            raise RuntimeError("ResourceManager %s didn't _configure node_list."
-                              % self._rm_info['name'])
-
-        if self._rm_cores_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure cores_per_node."
-                              % self._rm_info['name'])
-
-        if self._rm_gpus_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure gpus_per_node."
-                              % self._rm_info['name'])
+        self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -260,7 +228,7 @@ class AgentSchedulingComponent(rpu.Component):
         self._ts_map     = dict()
         self._ts_valid   = False   # set to False to trigger re-binning
         self._active_cnt = 0       # count of currently scheduled tasks
-        self._log.debug('=== active: %s', self._active_cnt)
+        self._named_envs = list()  # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -270,14 +238,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        self.nodes = list()
-        for node, node_uid in self._rm_node_list:
-            self.nodes.append({'uid'  : node_uid,
-                               'name' : node,
-                               'cores': [rpc.FREE] * self._rm_cores_per_node,
-                               'gpus' : [rpc.FREE] * self._rm_gpus_per_node,
-                               'lfs'  :              self._rm_lfs_per_node,
-                               'mem'  :              self._rm_mem_per_node})
+        self.nodes = copy.deepcopy(self._rm.info.node_list)
 
         # configure the scheduler instance
         self._configure()
@@ -331,39 +292,86 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .flux               import Flux
-        from .torus              import Torus
         from .noop               import Noop
 
-      # from .yarn               import Yarn
-      # from .spark              import Spark
-      # from .continuous_summit  import ContinuousSummit
-      # from .continuous_fifo    import ContinuousFifo
-      # from .scattered          import Scattered
+        impl = {
 
-        try:
-            impl = {
+            SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+            SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS         : Continuous,
+            SCHEDULER_NAME_HOMBRE             : Hombre,
+            SCHEDULER_NAME_FLUX               : Flux,
+            SCHEDULER_NAME_NOOP               : Noop,
+        }
 
-                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
-                SCHEDULER_NAME_CONTINUOUS         : Continuous,
-                SCHEDULER_NAME_HOMBRE             : Hombre,
-                SCHEDULER_NAME_FLUX               : Flux,
-                SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_NOOP               : Noop,
+        if name not in impl:
+            raise ValueError('Scheduler %s unknown' % name)
 
-              # SCHEDULER_NAME_YARN               : Yarn,
-              # SCHEDULER_NAME_SPARK              : Spark,
-              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
-              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
-              # SCHEDULER_NAME_SCATTERED          : Scattered,
+        return impl[name](cfg, session)
 
-            }[name]
 
-            impl = impl(cfg, session)
-            return impl
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
+        '''
+        We listen on the control channel for raptor queue registration commands
+        '''
 
-        except KeyError as e:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name) from e
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'register_named_env':
+
+            env_name = arg['env_name']
+            self._named_envs.append(env_name)
+
+
+        if cmd == 'register_raptor_queue':
+
+            name  = arg['name']
+            queue = arg['queue']
+            addr  = arg['addr']
+
+            self._log.debug('register raptor queue: %s', name)
+
+            with self._raptor_lock:
+
+                self._raptor_queues[name] = ru.zmq.Putter(queue, addr)
+
+                if name in self._raptor_tasks:
+
+                    tasks = self._raptor_tasks[name]
+                    del(self._raptor_tasks[name])
+
+                    self._log.debug('relay %d tasks to raptor %d', len(tasks), name)
+                    self._raptor_queues[name].put(tasks)
+
+
+        elif cmd == 'unregister_raptor_queue':
+
+            name = arg['name']
+            self._log.debug('unregister raptor queue: %s', name)
+
+            with self._raptor_lock:
+
+                if name not in self._raptor_queues:
+                    self._log.warn('raptor queue %s unknown [%s]', name, msg)
+
+                else:
+                    del(self._raptor_queues[name])
+
+                if name in self._raptor_tasks:
+                    tasks = self._raptor_tasks[name]
+                    del(self._raptor_tasks[name])
+
+                    self._log.debug('fail %d tasks: %d', len(tasks), name)
+                    self.advance(tasks, state=rps.FAILED,
+                                        publish=True, push=False)
+
+        else:
+            self._log.debug('command ignored: [%s]', cmd)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -381,12 +389,12 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_uid, cores, gpus in slots['nodes']:
-        for slot_node in slots['nodes']:
+        # for node_name, node_id, cores, gpus in slots['ranks']:
+        for rank in slots['ranks']:
 
             # Find the entry in the the slots list
 
-            # TODO: [Optimization] Assuming 'uid' is the ID of the node, it
+            # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
@@ -396,7 +404,7 @@ class AgentSchedulingComponent(rpu.Component):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['uid'] == slot_node['uid']:
+                if node['node_id'] == rank['node_id']:
                     node_found = True
                     break
 
@@ -404,27 +412,27 @@ class AgentSchedulingComponent(rpu.Component):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = slot_node['core_map']
+            cores = rank['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
-            gpus = slot_node['gpu_map']
+            gpus = rank['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if slot_node['lfs']['path']:
+            if rank['lfs']:
                 if new_state == rpc.BUSY:
-                    node['lfs']['size'] -= slot_node['lfs']['size']
+                    node['lfs'] -= rank['lfs']
                 else:
-                    node['lfs']['size'] += slot_node['lfs']['size']
+                    node['lfs'] += rank['lfs']
 
-            if slot_node['mem']:
+            if rank['mem']:
                 if new_state == rpc.BUSY:
-                    node['mem'] -= slot_node['mem']
+                    node['mem'] -= rank['mem']
                 else:
-                    node['mem'] += slot_node['mem']
+                    node['mem'] += rank['mem']
 
 
 
@@ -544,6 +552,9 @@ class AgentSchedulingComponent(rpu.Component):
         tasks.
         '''
 
+        #  FIXME: the component does not clean out subscribers after fork :-/
+        self._subscribers = dict()
+
         # The loop alternates between
         #
         #   - scheduling tasks from a waitpool;
@@ -582,6 +593,13 @@ class AgentSchedulingComponent(rpu.Component):
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
 
+        #  subscribe to control messages, e.g., to register raptor queues
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+
+        # also keep a backlog of raptor tasks until their queues are registered
+        self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
+        self._raptor_tasks  = dict()           # raptor_master_id : [task]
+        self._raptor_lock   = mt.Lock()        # lock for the above
 
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
@@ -593,8 +611,8 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-          # self._log.debug('=== schedule tasks 0: %s, w: %d', resources,
-          #         len(self._waitpool))
+            self._log.debug_3('=== schedule tasks 0: %s, w: %d', resources,
+                    len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
 
@@ -603,14 +621,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-              # self._log.debug('=== schedule tasks w: %s %s', r_wait, a)
+                self._log.debug_3('=== schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-          # self._log.debug('=== schedule tasks i: %s %s', r_inc, a)
+            self._log.debug_3('=== schedule tasks i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -625,12 +643,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-          # self._log.debug('=== schedule tasks c: %s %s', r, a)
+            self._log.debug_3('=== schedule tasks c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule tasks x: %s %s', resources, active)
+            self._log.debug_3('=== schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -655,16 +673,11 @@ class AgentSchedulingComponent(rpu.Component):
         #
         to_wait    = list()
         to_test    = list()
-        named_envs = dict()
 
         for task in self._waitpool.values():
             named_env = task['description'].get('named_env')
             if named_env:
-                if not named_envs.get(named_env):
-                    # [re]check env: (1) first time check; (2) was not set yet
-                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
-
-                if named_envs[named_env]:
+                if named_env in self._named_envs:
                     to_test.append(task)
                 else:
                     to_wait.append(task)
@@ -676,10 +689,13 @@ class AgentSchedulingComponent(rpu.Component):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
+      # self._log.debug('=== before bisec: %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+      # self._log.debug('=== after  bisec: %d : %d : %d', len(scheduled),
+      #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
             task['stderr']       = error
@@ -717,34 +733,67 @@ class AgentSchedulingComponent(rpu.Component):
     def _schedule_incoming(self):
 
         # fetch all tasks from the queue
-        tasks = list()
+        to_schedule = list()  # some tasks get scheduled here
+        to_raptor   = dict()  # some tasks get forwared to raptor
         try:
 
             while not self._proc_term.is_set():
+
                 data = self._queue_sched.get(timeout=0.001)
 
                 if not isinstance(data, list):
                     data = [data]
 
                 for task in data:
-                    self._set_tuple_size(task)
-                    tasks.append(task)
+                    # check if this task is to be scheduled by sub-schedulers
+                    # like raptor
+                    raptor = task['description'].get('scheduler')
+                    if raptor:
+                        if raptor not in to_raptor:
+                            to_raptor[raptor] = [task]
+                        else:
+                            to_raptor[raptor].append(task)
+
+                    else:
+                        # no raptor - schedule it here
+                        self._set_tuple_size(task)
+                        to_schedule.append(task)
 
         except queue.Empty:
             # no more unschedule requests
             pass
 
-        if not tasks:
+        # forward raptor tasks to their designated raptor
+        if to_raptor:
+
+            with self._raptor_lock:
+
+                for name in to_raptor:
+
+                    if name in self._raptor_queues:
+                        self._log.debug('fwd %s: %d', name,
+                                        len(to_raptor[name]))
+                        self._raptor_queues[name].put(to_raptor[name])
+
+                    else:
+                        self._log.debug('cache %s: %d', name,
+                                        len(to_raptor[name]))
+
+                        if name not in self._raptor_tasks:
+                            self._raptor_tasks[name] = to_raptor[name]
+                        else:
+                            self._raptor_tasks[name] += to_raptor[name]
+
+        if not to_schedule:
             # no resource change, no activity
             return None, False
 
-      # self.slot_status("before schedule incoming [%d]" % len(tasks))
+      # self.slot_status("before schedule incoming [%d]" % len(to_schedule))
 
-        # handle largest tasks first
+        # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
         to_wait    = list()
-        named_envs = dict()
-        for task in sorted(tasks, key=lambda x: x['tuple_size'][0],
+        for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
             # FIXME: This is a slow and inefficient way to wait for named VEs.
@@ -753,11 +802,7 @@ class AgentSchedulingComponent(rpu.Component):
             # FIXME: Note that this code is duplicated in _schedule_waitpool
             named_env = task['description'].get('named_env')
             if named_env:
-                if not named_envs.get(named_env):
-                    # [re]check env: (1) first time check; (2) was not set yet
-                    named_envs[named_env] = os.path.exists('%s.ok' % named_env)
-
-                if not named_envs[named_env]:
+                if named_env not in self._named_envs:
                     to_wait.append(task)
                     self._log.debug('delay %s, no env %s',
                                     task['uid'], named_env)
@@ -829,9 +874,9 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
-                task = self._queue_unsched.get(timeout=0.001)
+                task = self._queue_unsched.get(timeout=0.01)
                 to_unschedule.append(task)
-                if len(to_unschedule) > 128:
+                if len(to_unschedule) > 512:
                     break
 
         except queue.Empty:
@@ -913,6 +958,8 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         uid = task['uid']
+      # td  = task['description']
+
       # self._prof.prof('schedule_try', uid=uid)
 
         slots = self.schedule_task(task)
@@ -936,123 +983,10 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
 
-        if slots['lfs_per_node']['path']:
-            task['description']['environment']['NODE_LFS_PATH'] = \
-                slots['lfs_per_node']['path']
-
-        self._handle_cuda(task)
-
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_cuda(self, task):
-
-        # Check if task requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
-        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
-        # now, and will isse a warning on non-uniform ones.
-        #
-        # The default setting is ``
-        #
-        # FIXME: This code should probably live elsewhere, not in this
-        #        performance critical scheduler base class
-        #
-        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually Launch
-        #        Method dependent.  Assume the scheduler assigns the second GPU.
-        #        Manually, one would set `CVD=1`.  That also holds for launch
-        #        methods like `fork` which leave GPU indexes unaltered.  Other
-        #        launch methods like `jsrun` mask the system GPUs and only the
-        #        second GPU is visible to the task.  To CUDA the system now
-        #        seems to have only one GPU, and we need set it to `CVD=0`.
-        #
-        #        In other words, CVD sometimes needs to be set to the physical
-        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
-        #        visible to the task).  This also implies that this code should
-        #        actually live within the launch method.  On the upside, the
-        #        Launch Method should also be able to handle heterogeneus tasks.
-        #
-        #        For now, we default the CVD ID mode to `physical`, thus
-        #        assuming that unassigned GPUs are not masked away, as for
-        #        example with `fork` and 'prte'.
-
-        lm_info     = self._cfg['rm_info']['lm_info']
-        cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
-
-        gpu_maps = list()
-        for node in task['slots']['nodes']:
-            if node['gpu_map'] not in gpu_maps:
-                gpu_maps.append(node['gpu_map'])
-
-        if not gpu_maps or not gpu_maps[0]:
-            # no gpu maps, nothing to do
-            pass
-
-        elif len(gpu_maps) > 1:
-            # FIXME: this does not actually check for uniformity
-            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
-                           'GPU schedule (%s) - task may fail!' % gpu_maps)
-
-        else:
-            # uniform, non-zero gpu map
-            gpu_map = gpu_maps[0]
-
-            if cvd_id_mode == 'physical':
-                task['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                    ','.join([str(gpu_set[0]) for gpu_set in gpu_map])
-
-            elif cvd_id_mode == 'logical':
-                task['description']['environment']['CUDA_VISIBLE_DEVICES'] = \
-                    ','.join([str(x) for x in range(len(gpu_map))])
-
-            else:
-                raise ValueError('invalid CVD mode %s' % cvd_id_mode)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_node_maps(self, cores, gpus, threads_per_proc):
-        '''
-        For a given set of cores and gpus, chunk them into sub-sets so that each
-        sub-set can host one application process and all threads of that
-        process.  Note that we currently consider all GPU applications to be
-        single-threaded.
-
-        example:
-            cores  : [1, 2, 3, 4, 5, 6, 7, 8]
-            gpus   : [1, 2]
-            tpp    : 4
-            result : [[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]]
-
-        For more details, see top level comment of `base.py`.
-        '''
-
-        core_map = list()
-        gpu_map  = list()
-
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  int(len(cores) / threads_per_proc)
-
-        idx = 0
-        for _ in range(n_procs):
-            p_map = list()
-            for _ in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
-
-        assert(idx == len(cores)), \
-              ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
-
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
-
-        return core_map, gpu_map
 
 
     # --------------------------------------------------------------------------

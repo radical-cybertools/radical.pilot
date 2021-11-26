@@ -1,6 +1,7 @@
 
 # pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
 # pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+# pylint: disable=global-statement   # W0603 global `_components`
 
 import os
 import sys
@@ -14,9 +15,26 @@ from ..          import constants      as rpc
 from ..          import states         as rps
 
 
+# ------------------------------------------------------------------------------
+#
 def out(msg):
     sys.stdout.write('%s\n' % msg)
     sys.stdout.flush()
+
+
+# ------------------------------------------------------------------------------
+#
+_components = list()
+
+
+def _atfork_child():
+    global _components
+    for c in _components:
+        c._subscribers = dict()
+    _components = list()
+
+
+ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 
 # ------------------------------------------------------------------------------
@@ -36,6 +54,8 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
+
+        _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
@@ -441,7 +461,7 @@ class Component(object):
       #                            scope='entity',
       #                            start='get',
       #                            stop=['put', 'drop'])
-        self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
+      # self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
 
         self._q    = None
         self._in   = None

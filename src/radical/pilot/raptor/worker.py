@@ -1,6 +1,6 @@
 
 
-
+import io
 import os
 import sys
 import time
@@ -114,13 +114,15 @@ class Worker(rpu.Component):
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides three builtin methods:
-        #     eval:  evaluate a piece of python code
-        #     exec:  execute  a command line (fork/exec)
-        #     shell: execute  a shell command
+        #     eval:  evaluate a piece of python code with `eval`
+        #     exec:  evaluate a piece of python code with `exec`
         #     call:  execute  a method or function call
-        self.register_mode('call',  self._call)
+        #     proc:  execute  a command line (fork/exec)
+        #     shell: execute  a shell command
         self.register_mode('eval',  self._eval)
         self.register_mode('exec',  self._exec)
+        self.register_mode('call',  self._call)
+        self.register_mode('proc',  self._proc)
         self.register_mode('shell', self._shell)
 
         self.pre_exec()
@@ -134,12 +136,19 @@ class Worker(rpu.Component):
         # to the master.  This can be used to communicate, for example, worker
         # specific communication endpoints.
 
+        # make sure that channels are up before registering
+        time.sleep(1)
+
         # `info` is a placeholder for any additional meta data communicated to
         # the worker.  Only first rank publishes.
-        if self._cfg['rank'] == 0:
+        if self._cfg['rank'] == 0 or True:
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['wid'],
                                                       'info': self._info}})
+
+
+      # self._log.debug('cores %s', str(self._resources['cores']))
+      # self._log.debug('gpus  %s', str(self._resources['gpus']))
 
         # prepare base env dict used for all tasks
         self._task_env = dict()
@@ -180,6 +189,104 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _eval(self, data):
+        '''
+        We expect data to have a single entry: 'code', containing the Python
+        code to be eval'ed
+        '''
+
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
+        strout = None
+        strerr = None
+
+        try:
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
+
+            val = eval(data['code'])
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            ret = 0
+
+        except Exception as e:
+            self._log.exception('_eval failed: %s' % (data))
+            self._log.exception('_eval failed: %s' % (data))
+            val = None
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\neval failed: %s' % e)
+            ret = 1
+
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, val
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _exec(self, data):
+        '''
+        We expect data to have a single entry: 'code', containing the Python
+        code to be exec'ed.  Data can have an optional entry `pre_exec` which
+        can be used for any import statements and the like which need to run
+        before the executed code.
+        '''
+
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
+        strout = None
+        strerr = None
+
+        try:
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
+
+            pre  = data.get('pre_exec', '')
+            code = data['code']
+
+            # create a wrapper function around the given code
+            lines = code.split('\n')
+            outer = 'def _my_exec():\n'
+            for line in lines:
+                outer += '    ' + line + '\n'
+
+            # call that wrapper function via exec, and keep the return value
+            src = '%s\n\n%s\n\nresult=_my_exec()' % (pre, outer)
+
+            # assign a local variable to capture the code's return value.
+            loc = dict()
+            exec(src, {}, loc)                           # pylint: disable=W0122
+            val = loc['result']
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            ret = 0
+
+        except Exception as e:
+            self._log.exception('_exec failed: %s' % (data))
+            val = None
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\nexec failed: %s' % e)
+            ret = 1
+
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, val
+
+
+    # --------------------------------------------------------------------------
+    #
     def _call(self, data):
         '''
         We expect data to have a three entries: 'method' or 'function',
@@ -205,73 +312,41 @@ class Worker(rpu.Component):
         args   = data.get('args',   [])
         kwargs = data.get('kwargs', {})
 
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+
+        strout = None
+        strerr = None
+
         try:
-            out = to_call(*args, **kwargs)
-            err = None
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
+
+            val = to_call(*args, **kwargs)
+            out = strout.getvalue()
+            err = strerr.getvalue()
             ret = 0
 
         except Exception as e:
             self._log.exception('_call failed: %s' % (data))
-            out = None
-            err = 'call failed: %s' % e
+            val = None
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\ncall failed: %s' % e)
             ret = 1
 
-        return out, err, ret
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+
+        return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: an MPI call mode should be added.  That could work along these
-    #        lines of:
-    #
-    # --------------------------------------------------------------------------
-    #  def _mpi(self, data):
-    #
-    #      try:
-    #          cmd = rp.agent.launch_method.construct_command(data,
-    #                  executable=self.exe, args=data['func'])
-    #          out = rp.sh_callout(cmd)
-    #          err = None
-    #          ret = 0
-    #
-    #      except Exception as e:
-    #          self._log.exception('_mpi failed: %s' % (data))
-    #          out = None
-    #          err = 'mpi failed: %s' % e
-    #          ret = 1
-    #
-    #      return out, err, ret
-    # --------------------------------------------------------------------------
-    #
-    # For that to work we would need to be able to create a LM here, but ideally
-    # not replicate the work done in the agent executor.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _eval(self, data):
-        '''
-        We expect data to have a single entry: 'code', containing the Python
-        code to be eval'ed
-        '''
-
-        try:
-            out = eval(data['code'])
-            err = None
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_eval failed: %s' % (data))
-            out = None
-            err = 'eval failed: %s' % e
-            ret = 1
-
-        return out, err, ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _exec(self, data):
+    def _proc(self, data):
         '''
         We expect data to have two entries: 'exe', containing the executabele to
         run, and `args` containing a list of arguments (strings) to pass as
@@ -295,12 +370,12 @@ class Worker(rpu.Component):
             ret      = proc.returncode
 
         except Exception as e:
-            self._log.exception('_exec failed: %s' % (data))
+            self._log.exception('popen failed: %s' % (data))
             out = None
             err = 'exec failed: %s' % e
             ret = 1
 
-        return out, err, ret
+        return out, err, ret, None
 
 
     # --------------------------------------------------------------------------
@@ -320,7 +395,35 @@ class Worker(rpu.Component):
             err = 'shell failed: %s' % e
             ret = 1
 
-        return out, err, ret
+        return out, err, ret, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    # FIXME: an MPI call mode should be added.  That could work along these
+    #        lines of:
+    #
+    # --------------------------------------------------------------------------
+    #  def _mpi(self, data):
+    #
+    #      try:
+    #          cmd = rp.agent.launch_method.construct_command(data,
+    #                  executable=self.exe, args=data['func'])
+    #          out = rp.sh_callout(cmd)
+    #          err = None
+    #          ret = 0
+    #
+    #      except Exception as e:
+    #          self._log.exception('_mpi failed: %s' % (data))
+    #          out = None
+    #          err = 'mpi failed: %s' % e
+    #          ret = 1
+    #
+    #      return out, err, ret, None
+    # --------------------------------------------------------------------------
+    #
+    # For that to work we would need to be able to create a LM here, but ideally
+    # not replicate the work done in the agent executor.
 
 
     # --------------------------------------------------------------------------
@@ -393,17 +496,39 @@ class Worker(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def task_pre_exec(self, task):
+        '''
+        This method is called upon receiving a new request, and can be
+        overloaded to perform any preperatory action before the request is acted
+        upon
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def task_post_exec(self, task):
+        '''
+        This method is called upon completing a request, and can be
+        overloaded to perform any cleanup action before the request is reported
+        as complete.
+        '''
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _request_cb(self, tasks):
         '''
         grep call type from tasks, check if methods are registered, and
         invoke them.
         '''
 
-        self._log.debug('=== req_loop %s', len(ru.as_list(tasks)))
         for task in ru.as_list(tasks):
 
-            self._log.debug('=== req_recv %s', task['uid'])
             task['worker'] = self._uid
+
+            self.task_pre_exec(task)
 
             try:
 
@@ -411,14 +536,13 @@ class Worker(rpu.Component):
                 # many cpus and gpus we need to mark as busy
                 while not self._alloc_task(task):
 
-                    self._log.debug('=== req_alloc %s', task['uid'])
                     # no resource - wait for new resources
                     #
                     # NOTE: this will block smaller tasks from being executed
                     #       right now.  alloc_task is not a proper scheduler,
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
-                  #     self._log.debug('=== req_alloc_wait %s', task['uid'])
+                  #     self._log.debug('req_alloc_wait %s', task['uid'])
 
                     time.sleep(0.01)
 
@@ -429,7 +553,6 @@ class Worker(rpu.Component):
                     self._res_evt.clear()
 
 
-                self._log.debug('=== req_alloced %s', task['uid'])
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
                 # we got an allocation for this task, and can run it, so apply
@@ -457,8 +580,6 @@ class Worker(rpu.Component):
                 self._log.debug('applied: %s: %s: %s',
                                 task['uid'], proc.pid, self._pool.keys())
 
-                self._log.debug('=== req_started %s: %s', task['uid'], proc.pid)
-
 
             except Exception as e:
 
@@ -474,11 +595,9 @@ class Worker(rpu.Component):
 
                 self._res_put.put(res)
 
-        self._log.debug('=== req_looped')
-
 
     def _after_fork():
-        with open('/tmp/after_fork', 'a+') as fout:
+        with ru.ru_open('/tmp/after_fork', 'a+') as fout:
             fout.write('after fork %s %s\n' % (os.getpid(), mt.current_thread().name))
 
     # --------------------------------------------------------------------------
@@ -500,13 +619,23 @@ class Worker(rpu.Component):
             os.environ[k] = v
 
         # ----------------------------------------------------------------------
-        def _dispatch_thread():
+        def _dispatch_proc(res_lock):
+            # FIXME: do we still need this thread?
+
             import setproctitle
-            setproctitle.setproctitle('dispatch.%s' % task['uid'])
-            out, err, ret = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret)]
-            self._log.debug('put 1 result: task %s', task['uid'])
-            self._result_queue.put(res)
+            setproctitle.setproctitle('rp.dispatch.%s' % task['uid'])
+
+            # make CUDA happy
+            # FIXME: assume physical device numbering for now
+            if task['resources']['gpus']:
+                os.environ['CUDA_VISIBLE_DEVICES'] = \
+                             ','.join(str(i) for i in task['resources']['gpus'])
+
+            out, err, ret, val = self._modes[mode](task.get('data'))
+            res = [task, str(out), str(err), int(ret), val]
+
+            with res_lock:
+                self._result_queue.put(res)
         # ----------------------------------------------------------------------
 
 
@@ -516,32 +645,33 @@ class Worker(rpu.Component):
             mode = task['mode']
             assert(mode in self._modes), 'no such call mode %s' % mode
 
-            self._log.debug('=== debug %s: %s', task['uid'], task)
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
-            out, err, ret = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret)]
-            self._log.debug('put 1 result: task %s', task['uid'])
-            self._result_queue.put(res)
+          # result = self._modes[mode](task.get('data'))
+          # self._log.debug('got result: task %s: %s', task['uid'], result)
+          # out, err, ret, val = result
+          # # TODO: serialize `val`?
+          # res = [task, str(out), str(err), int(ret), val]
+          # self._result_queue.put(res)
 
-          # dispatcher = mp.Process(target=_dispatch_thread)
-          # dispatcher.daemon = True
-          # dispatcher.start()
-          # self._log.debug('=== join %s: %s', task['uid'], task)
-          # dispatcher.join(timeout=tout)
-          # self._log.debug('=== joined %s: %s', task['uid'], tout)
-          #
-          # if dispatcher.is_alive():
-          #     dispatcher.kill()
-          #     dispatcher.join()
-          #     out = None
-          #     err = 'timeout (>%s)' % tout
-          #     ret = 1
-          #     res = [task, str(out), str(err), int(ret)]
-          #     self._log.debug('put 2 result: task %s', task['uid'])
-          #     self._result_queue.put(res)
-          #     self._log.debug('dispatcher killed: %s', task['uid'])
+            res_lock = mp.Lock()
+            dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
+            dispatcher.daemon = True
+            dispatcher.start()
+            dispatcher.join(timeout=tout)
+
+            with res_lock:
+                if dispatcher.is_alive():
+                    dispatcher.terminate()
+                    dispatcher.join()
+                    out = None
+                    err = 'timeout (>%s)' % tout
+                    ret = 1
+                    res = [task, str(out), str(err), int(ret), None]
+                    self._log.debug('put 2 result: task %s', task['uid'])
+                    self._result_queue.put(res)
+                    self._log.debug('dispatcher killed: %s', task['uid'])
 
         except Exception as e:
 
@@ -549,7 +679,7 @@ class Worker(rpu.Component):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret)]
+            res = [task, str(out), str(err), int(ret), None]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
 
@@ -572,8 +702,6 @@ class Worker(rpu.Component):
         try:
             while not self._term.is_set():
 
-              # self._log.debug('=== waiting for results')
-
                 try:
                     res = self._result_queue.get(timeout=0.1)
                     self._log.debug('got   result: %s', res)
@@ -586,10 +714,10 @@ class Worker(rpu.Component):
             raise
 
         finally:
-            self._log.debug('=== send unregister')
             if self._cfg['rank'] == 0:
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
-                                                  'arg': {'uid' : self._cfg['wid']}})
+                self.publish(rpc.CONTROL_PUBSUB,
+                             {'cmd': 'worker_unregister',
+                              'arg': {'uid' : self._cfg['wid']}})
 
 
     # --------------------------------------------------------------------------
@@ -597,8 +725,8 @@ class Worker(rpu.Component):
     def _result_cb(self, result):
 
         try:
-            task, out, err, ret = result
-          # self._log.debug('result cb: task %s', task['uid'])
+            task, out, err, ret, val = result
+            self._log.debug('result cb: task %s', task['uid'])
 
             with self._plock:
                 pid  = task['pid']
@@ -610,10 +738,13 @@ class Worker(rpu.Component):
             res = {'req': task['uid'],
                    'out': out,
                    'err': err,
-                   'ret': ret}
+                   'ret': ret,
+                   'val': val}
 
             self._res_put.put(res)
+            self.task_post_exec(task)
             self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
+
         except:
             self._log.exception('result cb failed')
             raise
@@ -656,6 +787,16 @@ class Worker(rpu.Component):
 
         while not self._term.is_set():
             time.sleep(1.0)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def test(self, idx, seconds):
+        # pylint: disable=reimported
+        import time
+        print('start idx %6d: %.1f' % (idx, time.time()))
+        time.sleep(seconds)
+        print('stop  idx %6d: %.1f' % (idx, time.time()))
 
 
 # ------------------------------------------------------------------------------

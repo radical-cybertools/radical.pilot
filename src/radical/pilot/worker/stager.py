@@ -79,6 +79,7 @@ class Stager(rpu.Worker):
             for sd in sds:
                 sd['state'] = rps.FAILED
                 sd['error'] = str(e)
+                self._log.exception('staging failed')
 
         finally:
             self.publish(rpc.STAGER_RESPONSE_PUBSUB,

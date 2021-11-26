@@ -8,6 +8,7 @@ import sys
 #
 _seen = list()
 
+
 def _warn(old_type, new_type):
     if old_type not in _seen:
         _seen.append(old_type)
@@ -17,6 +18,7 @@ def _warn(old_type, new_type):
 # ------------------------------------------------------------------------------
 #
 from .task_description import TaskDescription
+
 
 class ComputeUnitDescription(TaskDescription):
 
@@ -30,6 +32,7 @@ class ComputeUnitDescription(TaskDescription):
 #
 from .task import Task
 
+
 class ComputeUnit(Task):
 
     def __init__(self, *args, **kwargs):
@@ -42,7 +45,8 @@ class ComputeUnit(Task):
 #
 from .pilot_description import PilotDescription
 
-class ComputePilotDescription(TaskDescription):
+
+class ComputePilotDescription(PilotDescription):
 
     def __init__(self, *args, **kwargs):
 
@@ -53,6 +57,7 @@ class ComputePilotDescription(TaskDescription):
 # ------------------------------------------------------------------------------
 #
 from .pilot import Pilot
+
 
 class ComputePilot(Pilot):
 
@@ -65,6 +70,7 @@ class ComputePilot(Pilot):
 # ------------------------------------------------------------------------------
 #
 from .task_manager import TaskManager
+
 
 class UnitManager(TaskManager):
 

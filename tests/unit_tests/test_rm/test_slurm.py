@@ -1,159 +1,75 @@
 #!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
+
+__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 
 from unittest import mock, TestCase
 
-import radical.utils as ru
-
+from radical.pilot.agent.resource_manager       import RMInfo
 from radical.pilot.agent.resource_manager.slurm import Slurm
 
 
-class TestSlurm(TestCase):
+# ------------------------------------------------------------------------------
+#
+class SlurmTestCase(TestCase):
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Slurm, '__init__',   return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    def test_configure(self, mocked_init, mocked_raise_on):
+    @classmethod
+    def setUpClass(cls) -> None:
 
-        # Test 1 no config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        os.environ['SLURM_NPROCS'] = '48'
-        os.environ['SLURM_NNODES'] = '2'
+        os.environ['SLURM_NODELIST']     = 'node-[1-2]'
         os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {'cores_per_node': None}
-        import sys
-        sys.stderr.write('%s' % os.environ.get('SLURM_NODELIST'))
-        sys.stderr.flush()
-        component._configure()
-
-        self.assertEqual(component.node_list,
-                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
-        self.assertEqual(component.cores_per_node, 24)
-        self.assertEqual(component.gpus_per_node, 0)
-        self.assertEqual(component.lfs_per_node, {'path': None, 'size': 0})
-
-        # Test 2 config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        os.environ['SLURM_NPROCS'] = '48'
-        os.environ['SLURM_NNODES'] = '2'
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {'cores_per_node': 24,
-                          'gpus_per_node': 1,
-                          'lfs_path_per_node': 'test/',
-                          'lfs_size_per_node': 100}
-        component.lm_info = {'cores_per_node': None}
-        component._configure()
-        self.assertEqual(component.node_list,
-                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
-        self.assertEqual(component.cores_per_node, 24)
-        self.assertEqual(component.gpus_per_node, 1)
-        self.assertEqual(component.lfs_per_node, {'path': 'test/', 'size': 100})
-
-        # Test 3 config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        os.environ['SLURM_NPROCS'] = '48'
-        os.environ['SLURM_NNODES'] = '2'
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
-        os.environ['LOCAL'] = '/local_folder/'
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {'cores_per_node': 24,
-                          'gpus_per_node': 1,
-                          'lfs_path_per_node': '${LOCAL}',
-                          'lfs_size_per_node': 100}
-        component.lm_info = {'cores_per_node': None}
-        component._configure()
-        self.assertEqual(component.node_list,
-                         [['nodes-1', 'nodes-1'], ['nodes-2', 'nodes-2']])
-        self.assertEqual(component.cores_per_node, 24)
-        self.assertEqual(component.gpus_per_node, 1)
-        self.assertEqual(component.lfs_per_node, {'path': '/local_folder/', 'size': 100})
-
-    # ------------------------------------------------------------------------------
-
-
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Slurm, '__init__',   return_value=None)
-    @mock.patch('radical.utils.raise_on')
-    def test_configure_error(self, mocked_init, mocked_raise_on):
+    @mock.patch.object(Slurm, '__init__', return_value=None)
+    @mock.patch('radical.utils.Logger')
+    def test_init_from_scratch(self, mocked_logger, mocked_init):
 
-        # Test 1 no config file
+        rm_slurm = Slurm(cfg=None, log=None, prof=None)
+        rm_slurm._log = mocked_logger
+
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
+                                                      'gpus_per_node' : 1}))
+
+        node_names = sorted([n['node_name'] for n in rm_info.node_list])
+        self.assertEqual(node_names, ['node-1', 'node-2'])
+        self.assertEqual(rm_info.cores_per_node, 24)
+        self.assertEqual(rm_info.gpus_per_node,  1)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Slurm, '__init__', return_value=None)
+    @mock.patch('radical.utils.Logger')
+    def test_init_from_scratch_error(self, mocked_logger, mocked_init):
+
+        rm_slurm = Slurm(cfg=None, log=None, prof=None)
+        rm_slurm._log = mocked_logger
+
+        if 'SLURM_CPUS_ON_NODE' in os.environ:
+            del os.environ['SLURM_CPUS_ON_NODE']
+        with self.assertRaises(RuntimeError):
+            rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None}))
+        os.environ['SLURM_CPUS_ON_NODE'] = '24'
+
         if 'SLURM_NODELIST' in os.environ:
             del os.environ['SLURM_NODELIST']
-
-        os.environ['SLURM_NPROCS'] = '48'
-        os.environ['SLURM_NNODES'] = '2'
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {}
-
         with self.assertRaises(RuntimeError):
-            component._configure()
+            rm_slurm._init_from_scratch(RMInfo())
 
-        # Test 2 config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        del os.environ['SLURM_NPROCS']
-        os.environ['SLURM_NNODES'] = '2'
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {}
-
-        with self.assertRaises(RuntimeError):
-            component._configure()
-
-        # Test 2 config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        os.environ['SLURM_NPROCS'] = '48'
-        del os.environ['SLURM_NNODES']
-        os.environ['SLURM_CPUS_ON_NODE'] = '24'
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {}
-
-        with self.assertRaises(RuntimeError):
-            component._configure()
-
-        # Test 2 config file
-        os.environ['SLURM_NODELIST'] = 'nodes-[1-2]'
-        os.environ['SLURM_NPROCS'] = '48'
-        os.environ['SLURM_NNODES'] = '2'
-        del os.environ['SLURM_CPUS_ON_NODE']
-
-        component = Slurm(cfg=None, session=None)
-        component._log = ru.Logger('dummy')
-        component._cfg = {}
-        component.lm_info = {}
-
-        with self.assertRaises(RuntimeError):
-            component._configure()
+# ------------------------------------------------------------------------------
 
 
 if __name__ == '__main__':
 
-    tc = TestSlurm()
-    tc.test_configure()
-    tc.test_configure_error()
+    tc = SlurmTestCase()
+    tc.test_init_from_scratch()
+    tc.test_init_from_scratch_error()
 
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
