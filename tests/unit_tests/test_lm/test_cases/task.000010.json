@@ -1,0 +1,30 @@
+
+{
+    "task": {
+        "uid"               : "task.000010",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : null,
+            "cpu_processes" : 1,
+            "cpu_threads"   : 4,
+            "gpu_processes" : 0,
+            "environment"   : {"test_env": "test_val"}
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {}
+        }
+    },
+
+    "results": {
+        "lm": {
+            "srun": {
+                "launch_cmd" : "srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 0 --cpus-per-task 4",
+                "rank_exec"  : "/bin/sleep"
+            }
+        }
+    }
+}

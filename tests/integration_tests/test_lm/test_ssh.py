@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
+
 import os
 import socket
 
@@ -20,6 +23,9 @@ class TestTask(TestCase):
         resources = ru.read_json(path)
         hostname = socket.gethostname()
 
+        if ru.is_localhost(hostname):
+            hostname = 'localhost'
+
         for host in resources.keys():
             if host in hostname:
                 return resources[host]
@@ -27,21 +33,29 @@ class TestTask(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(SSH, '__init__',   return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_configure(self, mocked_init, mocked_Logger):
+    def test_configure(self, mocked_init):
         cfg = self.setUp()
 
         if not cfg:
             return
 
-        component = SSH(name=None, cfg=None, session=None)
-        component._log = mocked_Logger
-        component._cfg = {}
-        component.env_removables = []
-        component._configure()
+        component = SSH('', {}, None, None, None)
+        component._log = mock.Mock()
+        lm_info = component._init_from_scratch({}, '')
+        component._init_from_info(lm_info)
+
         command = cfg['ssh_path'] + ' -o StrictHostKeyChecking=no -o ControlMaster=auto'
-        self.assertEqual(component.launch_command, command)
-    # --------------------------------------------------------------------------
+        self.assertEqual(component._command, command)
+
 
 # ------------------------------------------------------------------------------
-# pylint: enable=protected-access, unused-argument, no-value-for-parameter
+#
+if __name__ == '__main__':
+
+    tc = TestTask()
+    tc.setUpClass()
+    tc.test_configure()
+
+
+# ------------------------------------------------------------------------------
+

@@ -24,21 +24,28 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SSH",
-        "mpi_launch_method"           : "IBRUN",
-        "pre_bootstrap_0"             : ["module load TACC",
-                                         "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+        "launch_methods"              : {
+                                         "order": ["SSH", "IBRUN"],
+                                         "SSH"  : {
+                                             "pre_exec_cached": [
+                                                 "module load TACC"
+                                             ]
+                                         },
+                                         "IBRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             :["module load TACC",
+                                        "module load intel/18.0.0",
+                                        "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
         "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -66,9 +73,15 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "MPIRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
@@ -78,9 +91,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : ["module restore"]
     },
 
@@ -109,9 +119,15 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "IBRUN",
-        "task_launch_method"          : "IBRUN",
-        "mpi_launch_method"           : "IBRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "IBRUN"],
+                                         "FORK"  : {},
+                                         "IBRUN" : {
+                                             "pre_exec_cached": [
+                                                 "module load TACC"
+                                             ]
+                                         }
+                                        },
       # "blocked_cores"               : [64, 65, 66, 67],
       # "blocked_gpus"                : [0],
         "pre_bootstrap_0"             : ["module load TACC",
@@ -123,9 +139,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -196,9 +209,16 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {
+                                             "pre_exec_cached": [
+                                                 "module load TACC",
+                                                 "module load intel/18.0.0",
+                                                 "module load python3/3.7.0"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
@@ -208,9 +228,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -236,25 +253,31 @@
         },
         "default_queue"               : "RM",
         "resource_manager"            : "SLURM",
-        "lfs_path_per_node"           : "$LOCAL",
+        "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 3713368,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "MPIEXEC",
-        "mpi_launch_method"           : "MPIEXEC",
-        "pre_bootstrap_0"             : ["module purge",
-                                         "module load slurm",
-                                         "module load anaconda3",
-                                         "module load intel/19.3",
-                                         "module load mpi/intel_openmpi/19.3"
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "SSH", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "SSH"    : {},
+                                         "MPIEXEC": {
+                                             "pre_exec_cached": [
+                                                 "module load intel/19.3",
+                                                 "module load mpi/intel_openmpi/19.3"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module purge",
+                                       # "module load slurm",
+                                         "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["/home", "/pylon1", "/pylon5"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_task"                : [],
         "task_pre_exec"               : [],
         "system_architecture"         : {"gpu": "p100"},
         "gpus_per_node"               : 2
@@ -286,12 +309,19 @@
         "lfs_size_per_node"           : 2516582,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SSH", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SSH"   : {},
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load gcc",
+                                                 "module load openmpi/3.1.6-gcc8.3.1"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module reset",
-                                         "module load gcc",
-                                         "module load openmpi/3.1.6-gcc8.3.1",
+                                       # "module load slurm",
                                          "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$PROJECT",
@@ -299,7 +329,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
-        "export_to_task"              : [],
         "task_pre_exec"               : [],
         "gpus_per_node"               : 8,
         "system_architecture"         : {"gpu": "v100"}
