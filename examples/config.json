@@ -189,7 +189,7 @@
         "queue"    : "batch",
         "schema"   : "local",
         "cores"    : 64
-    }
+    },
 
     "radical.three" : {
         "project"  : null,
