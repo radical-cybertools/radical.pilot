@@ -1,9 +1,8 @@
 
-__copyright__ = "Copyright 2018, http://radical.rutgers.edu"
-__license__ = "MIT"
+__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
-
-from .base import ResourceManager
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -12,56 +11,18 @@ class Debug(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
-        '''
-        This ResourceManager will digest whatever the respective configs throw at it.
-        '''
+    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        for k,v in list(cfg['resource_cfg'].items()):
-            cfg[k] = v
+        nodes = [('localhost', rm_info.cores_per_node)
+                 for idx in range(rm_info.requested_nodes)]
 
-        ResourceManager.__init__(self, cfg, session)
+        rm_info.node_list = self._get_node_list(nodes, rm_info)
 
+        # UIDs need to be made unique
+        for idx, node in enumerate(rm_info.node_list):
+            node['node_id'] = '%s_%04d' % (node['node_name'], idx)
 
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        cps      = self._cfg['cores_per_socket']
-        gps      = self._cfg['gpus_per_socket' ]
-        spn      = self._cfg['sockets_per_node']
-        lpn      = self._cfg['lfs_per_node'    ]
-
-        cpn      = (cps * spn)
-        cores    = self._cfg['cores']
-        nnodes   = cores / cpn + int(bool(cores % cpn))
-
-        self.node_list = []
-        for n in range(nnodes):
-            self.node_list.append(['node_%d' % n, n])
-
-        self.sockets_per_node = spn
-        self.cores_per_socket = cps
-        self.gpus_per_socket  = gps
-
-        self.cores_per_node   = cps * spn
-        self.gpus_per_node    = gps * spn
-        self.lfs_per_node     = lpn
-
-        self.cores_per_node   = spn * cps
-
-        self.rm_info = {'name'               : self.name,
-                        'lm_info'            : self.lm_info,
-                        'node_list'          : self.node_list,
-                        'agent_nodes'        : self.agent_nodes,
-                        'sockets_per_node'   : self.sockets_per_node,
-                        'cores_per_socket'   : self.cores_per_socket,
-                        'gpus_per_socket'    : self.gpus_per_socket,
-                        'lfs_per_node'       : self.lfs_per_node,
-                       }
-
-        import pprint
-        pprint.pprint(self.rm_info)
+        return rm_info
 
 
 # ------------------------------------------------------------------------------

@@ -18,26 +18,29 @@
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 56,
+        "gpus_per_node"               : 0,
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
-        "pre_bootstrap_0"             :["module load TACC",
-                                        "module unload intel",
-                                        "module unload impi",
-                                        "module load   intel",
-                                        "module load   python3/3.7.0"
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {
+                                             "pre_exec_cached": [
+                                                 "module load TACC",
+                                                 "module unload intel",
+                                                 "module unload impi",
+                                                 "module load   intel"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             :[
+                                        "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -77,9 +80,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
         "task_pre_exec"               : []
     },
 
@@ -104,21 +104,30 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "PRTE2",
-        "mpi_launch_method"           : "PRTE2",
+        "launch_methods"              : {
+                                         "order": ["PRTE", "SSH"],
+                                         "SSH"  : {},
+                                         "PRTE" : {
+                                             "pre_exec_cached": [
+                                                 "module unload pmix hwloc impi xalt",
+                                                 "module load   gcc/6.3.0",
+                                                 "module use    /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+                                                 "module load   prrte/master"
+                                             ],
+                                             "dvm_count": 1
+                                         }
+                                        },
         "pre_bootstrap_0"             : [
             "module unload pmix hwloc impi xalt",
-            "module load gcc/6.3.0",
-            "module use /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
-            "module load prrte/master"
+            "module load   gcc/6.3.0",
+            "module use    /work2/05445/naughton/rp/ums/ompix/gcc/6.3.0/modules",
+            "module load   prrte/master"
         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "python_dist"                 : "default",
         "virtenv_mode"                : "create",
-        "rp_version"                  : "local",
-        "dvm_count"                   : 1
+        "rp_version"                  : "local"
     },
 
     "longhorn": {
@@ -141,22 +150,31 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "MPIRUN",
-        "mpi_launch_method"           : "MPIRUN",
-        "pre_bootstrap_0"             : ["module load gcc/7.3.0",
-                                         "module load openmpi/3.1.2",
-                                         "module --expert load xl",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "SRUN", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "SRUN"  : {
+                                             "pre_exec_cached": [
+                                                 "module load gcc/7.3.0",
+                                                 "module load openmpi/3.1.2",
+                                                 "module --expert load xl"
+                                             ]
+                                         },
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load gcc/7.3.0",
+                                                 "module load openmpi/3.1.2",
+                                                 "module --expert load xl"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
                                          "module load python3/3.8.1"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
-        "export_to_task"              : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"
-                                        ]
+        "python_dist"                 : "default"
     }
 }

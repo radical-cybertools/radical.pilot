@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         config = ru.read_json('%s/config.json'
-                            % os.path.dirname(os.path.abspath(__file__)))
+                            % os.path.dirname(__file__)).get(resource, {})
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -55,11 +55,11 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),
+                   'project'       : config.get('project', None),
+                   'queue'         : config.get('queue', None),
+                   'access_schema' : config.get('schema', None),
+                   'cores'         : config.get('cores', None),
+                   'gpus'          : config.get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
 
@@ -82,8 +82,10 @@ if __name__ == '__main__':
             # create a new task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable    = '/bin/date'
-            td.cpu_processes = 1
+            td.stage_on_error = True
+            td.executable     = '/bin/date'
+            td.cpu_processes  = 1
+
             tds.append(td)
             report.progress()
 

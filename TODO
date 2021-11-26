@@ -255,3 +255,6 @@ term iv
   - `PRTE` switches in scheduler should become `partition` switches, where the
     partitions are defined by the RM
 
+
+  - create_named_env needs to issue a client error on failures
+

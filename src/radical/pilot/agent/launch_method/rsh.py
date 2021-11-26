@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import radical.utils as ru
 
 from .base import LaunchMethod
@@ -15,65 +14,90 @@ class RSH(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
-
-        # Instruct the ExecWorkers to unset this environment variable.
-        # Otherwise this will break nested RSH with SHELL spawner, i.e. when
-        # both the sub-agent and CUs are started using RSH.
-        self.env_removables.extend(["RP_SPAWNER_HOP"])
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _init_from_scratch(self, env, env_sh):
 
-        # Find rsh command
-        self.launch_command = ru.which('rsh')
+        lm_info = {'env'    : env,
+                   'env_sh' : env_sh,
+                   'command': ru.which('rsh')}
 
-        if not self.launch_command:
-            raise RuntimeError("rsh not found!")
+        return lm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, t, launch_script_hop):
+    def _init_from_info(self, lm_info):
 
-        slots        = t['slots']
-        td          = t['description']
-        task_exec    = td['executable']
-        task_env     = td.get('environment') or dict()
-        task_args    = td.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
+        self._env     = lm_info['env']
+        self._env_sh  = lm_info['env_sh']
+        self._command = lm_info['command']
 
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
+        assert self._command
 
-        if not launch_script_hop:
-            raise ValueError("RSH launch method needs launch_script_hop!")
 
-        if 'nodes' not in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s'
-                              % (self.name, slots))
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
 
-        if len(slots['nodes']) > 1:
-            raise RuntimeError('rsh cannot run multinode tasks')
+        pass
 
-        host = slots['nodes'][0]['name']
 
-        # Pass configured and available environment variables to the remote shell
-        export_vars  = ' '.join(['%s=%s' % (var, os.environ[var])
-                                 for var in self.EXPORT_ENV_VARIABLES
-                                  if var in os.environ])
-        export_vars += ' '.join(['%s=%s' % (var, task_env[var])
-                                 for var in task_env])
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
 
-        # Command line to execute launch script via rsh on host
-        rsh_hop_cmd = "%s %s %s %s" % (self.launch_command, host,
-                                       export_vars, launch_script_hop)
+        # ensure single rank
+        if len(task['slots']['ranks']) > 1:
+            return False, 'more than one rank'
 
-        return task_command, rsh_hop_cmd
+        return True, ''
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
+
+        slots = task['slots']
+
+        if len(slots['ranks']) != 1:
+            raise RuntimeError('rsh cannot run multi-rank tasks')
+
+        host = slots['ranks'][0]['node_name']
+        cmd  = '%s %s %s' % (self._command, host, exec_path)
+        return cmd.rstrip()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        return 'export RP_RANK=0'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td          = task['description']
+        task_exec   = td['executable']
+        task_args   = td.get('arguments')
+        task_argstr = self._create_arg_string(task_args)
+        command     = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------
