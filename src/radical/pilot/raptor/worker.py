@@ -40,21 +40,15 @@ class Worker(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        # connect to master
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
 
-        # connect to the request / response ZMQ queues
-        self._res_put = ru.zmq.Putter('to_res', self._info.res_addr_put)
-        self._req_get = ru.zmq.Getter('to_req', self._info.req_addr_get,
-                                                cb=self.request_cb)
-
-        # make sure that channels are up before registering
-        time.sleep(1)
-
-        # `info` is a placeholder for any additional meta data communicated to
-        # the master.  Only first rank publishes.
         if register:
+            self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+            self.register_publisher(rpc.CONTROL_PUBSUB)
+
+            time.sleep(1)
+
+            # `info` is a placeholder for any additional meta data communicated
+            # to the master.
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                               'arg': {'uid' : self._cfg['uid'],
                                                       'info': self._info}})
@@ -77,6 +71,8 @@ class Worker(rpu.Component):
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
             from .worker_default import DefaultWorker
+            from .worker_mpi_am  import MPIWorker
+
             wclass = rpu.get_type(cname)
 
         if not wclass:
@@ -85,16 +81,6 @@ class Worker(rpu.Component):
         worker = wclass(cfg)
         worker.start()
         worker.join()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def request_cb(self, tasks):
-        '''
-        the request callback MUST be implemented by inheriting classes
-        '''
-
-        raise NotImplementedError('`request_cb` not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -123,8 +109,8 @@ class Worker(rpu.Component):
     #
     def join(self):
 
-        while not self._term.is_set():
-            time.sleep(1.0)
+        while not self._term.wait(timeout=1.0):
+            pass
 
 
 # ------------------------------------------------------------------------------
