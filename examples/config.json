@@ -145,6 +145,13 @@
         "cores"    : 128
     },
 
+    "xsede.expanse_funcs_mpirun": {
+        "project"  : null,
+        "queue"    : "compute",
+        "schema"   : "ssh",
+        "cores"    : 128
+    },
+
     "xsede.wrangler" : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
