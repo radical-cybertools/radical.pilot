@@ -60,7 +60,7 @@ class AgentExecutingComponent(rpu.Component):
             EXECUTING_NAME_FLUX     : Flux,
             EXECUTING_NAME_SLEEP    : Sleep,
             EXECUTING_NAME_FUNCS    : FUNCS,
-            EXECUTING_NAME_MPIFUNCS : FUNCS,
+            EXECUTING_NAME_MPIFUNCS : MPIFUNCS,
         }
 
         if name not in impl:

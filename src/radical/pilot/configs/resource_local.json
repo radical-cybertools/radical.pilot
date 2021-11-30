@@ -154,9 +154,9 @@
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "MPIFUNCS",
         "launch_methods"              : {
-                                         "order"   : ["FORK", "MPIFUNCS"],
+                                         "order"   : ["FORK", "MPIRUN"],
                                          "FORK"    : {},
-                                         "MPIFUNCS": {}
+                                         "MPIRUN": {}
                                         },
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",

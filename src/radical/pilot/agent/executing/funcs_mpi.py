@@ -16,11 +16,11 @@ import subprocess
 
 import radical.utils as ru
 
-from ...   import utils     as rpu
 from ...   import states    as rps
 from ...   import constants as rpc
 
 from ..    import LaunchMethod
+from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
 
@@ -87,11 +87,15 @@ class MPIFUNCS(AgentExecutingComponent) :
         self._collector.daemon = True
         self._collector.start()
 
+        # we get an instance of the resource manager (init from registry info)
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                          cfg=self._cfg, log=self._log,
+                                          prof=self._prof)
+
         # Set a specific launch method
-        self._launcher = LaunchMethod.create(
-                name    = self._cfg.get('agent_launch_method'),
-                cfg     = self._cfg,
-                session = self._session)
+        lm_cfg         = self._cfg.resource_cfg.launch_methods.get('MPIRUN')
+        self._launcher = LaunchMethod.create('MPIRUN', lm_cfg, 
+                                             self._cfg, self._log, self._prof)
 
         # get address of control pubsub
         fname   = '%s/%s.cfg' % (self._cfg.path, rpc.CONTROL_PUBSUB)
@@ -130,13 +134,12 @@ class MPIFUNCS(AgentExecutingComponent) :
         cfgname = '%s/%s.cfg' % (sandbox,   funcs['uid'])
         descr   = funcs['description']
 
-        rpu.rec_makedir(sandbox)
+        ru.rec_makedir(sandbox)
         ru.write_json(funcs.get('cfg'), cfgname)
 
-        launch_cmd, hop_cmd = launcher.construct_command(funcs, fname)
-
-        if hop_cmd : cmdline = hop_cmd
-        else       : cmdline = fname
+        cmdline    = fname
+        exec_path  = launcher.get_rank_exec(funcs, None, None)
+        launch_cmd = launcher.get_launch_cmds(funcs, exec_path)
 
         with open(fname, "w") as fout:
 
@@ -149,7 +152,6 @@ class MPIFUNCS(AgentExecutingComponent) :
             fout.write('export RP_SPAWNER_ID="%s"\n'      % self.uid)
             fout.write('export RP_FUNCS_ID="%s"\n'        % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'            % self.gtod)
-            fout.write('export RP_TMP="%s"\n'             % self._task_tmp)
             fout.write('export RP_PILOT_SANDBOX="%s"\n'   % self._pwd)
             fout.write('export RP_PILOT_STAGING="%s"\n'   % self._pwd)
 
@@ -222,7 +224,8 @@ class MPIFUNCS(AgentExecutingComponent) :
         else:
             slurm_cpn  = int(os.environ['SLURM_CPUS_ON_NODE'])
 
-        node_list            = copy.deepcopy(self._cfg['rm_info']['node_list'])
+        self._log.debug(self._rm.info.node_list)
+        node_list            = copy.deepcopy(self._rm.info.node_list)
         cores_per_node       = slurm_cpn if rp_cfg_cpn == 0 else rp_cfg_cpn
         cores_per_pilot      = self._cfg['cores']
         cores_per_executor   = self._cfg['max_task_cores']
@@ -290,17 +293,17 @@ class MPIFUNCS(AgentExecutingComponent) :
 
             slots          = {}
             to_pop         = []
-            slots['nodes'] = []
+            slots['ranks'] = []
 
             core_map = _get_node_maps(cores_per_node, 1)
 
             # 1 slot (slot = node) per executor
             if cores_per_executor == cores_per_node:
-                slots['nodes'].append({'name' : node_list[0][0],
-                                       'uid'  : node_list[0][1],
+                slots['ranks'].append({'node_name': node_list[0]['node_name'],
+                                       'node_id'  : node_list[0]['node_id'],
                                        'core_map' : core_map,
-                                       'gpus'     : []})
-                to_pop.append([node_list[0][0], node_list[0][1]])
+                                       'gpu_map'  : []})
+                to_pop.append(node_list[0])
 
             # If this is true then we can fit more than one executor per node
             if cores_per_executor < cores_per_node:
@@ -316,11 +319,11 @@ class MPIFUNCS(AgentExecutingComponent) :
 
                 for executor in range(executors_per_node):
 
-                    slots['nodes'].append({'name' : node_list[0][0],
-                                           'uid'  : node_list[0][1],
+                    slots['ranks'].append({'node_name': node_list[0]['node_name'],
+                                           'node_id'  : node_list[0]['node_id'],
                                            'core_map' : core_map,
-                                           'gpus'     : []})
-                    to_pop.append([node_list[0][0], node_list[0][1]])
+                                           'gpu_map'  : []})
+                    to_pop.append(node_list[0])
 
                 self._log.debug(node_list)
                 node_list.pop(0)
@@ -333,19 +336,19 @@ class MPIFUNCS(AgentExecutingComponent) :
                 if len(node_list) % nodes_per_executor == 0:
 
                     for i in range(nodes_per_executor):
-                        slots['nodes'].append({'name' : node_list[i][0],
-                                               'uid'  : node_list[i][1],
+                        slots['ranks'].append({'node_name': node_list[i]['node_name'],
+                                               'node_id'  : node_list[i]['node_id'],
                                                'core_map' : core_map,
-                                               'gpus'     : []})
-                        to_pop.append([node_list[i][0], node_list[i][1]])
+                                               'gpu_map'  : []})
+                        to_pop.append(node_list[i])
 
                 else:
                     for i in range(math.floor(len(node_list) / nodes_per_executor)):
-                        slots['nodes'].append({'name' : node_list[i][0],
-                                               'uid'  : node_list[i][1],
+                        slots['ranks'].append({'node_name': node_list[i]['node_name'],
+                                               'node_id'  : node_list[i]['node_id'],
                                                'core_map' : core_map,
-                                               'gpus'     : []})
-                        to_pop.append([node_list[i][0], node_list[i][1]])
+                                               'gpu_map'  : []})
+                        to_pop.append(node_list[i])
 
             self._log.debug(slots)
             self._log.debug(to_pop)
