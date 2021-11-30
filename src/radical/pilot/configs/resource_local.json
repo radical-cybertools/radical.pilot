@@ -124,7 +124,7 @@
         "agent_spawner"               : "FUNCS",
         "launch_methods"              : {
                                          "order": ["FORK", "FUNCS"],
-                                         "FORK" : {}
+                                         "FORK" : {},
                                          "FUNCS": {}
                                         },
         "rp_version"                  : "local",
@@ -155,7 +155,7 @@
         "agent_spawner"               : "MPIFUNCS",
         "launch_methods"              : {
                                          "order"   : ["FORK", "MPIFUNCS"],
-                                         "FORK"    : {}
+                                         "FORK"    : {},
                                          "MPIFUNCS": {}
                                         },
         "rp_version"                  : "local",
