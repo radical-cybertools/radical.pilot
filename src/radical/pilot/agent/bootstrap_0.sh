@@ -162,10 +162,10 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
-"pyzmq netifaces setproctitle msgpack regex dill mpi4py whichcraft"
+"pyzmq netifaces setproctitle msgpack regex dill mpi4py"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
-"zmq netifaces setproctitle msgpack regex dill mpi4py whichcraft"
+"zmq netifaces setproctitle msgpack regex dill mpi4py"
 
 if ! test -z "$RADICAL_DEBUG"
 then
