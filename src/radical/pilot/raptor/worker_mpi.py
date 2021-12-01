@@ -1,3 +1,4 @@
+
 import os
 import dill
 import time
@@ -25,42 +26,34 @@ BUSY = True
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
+
 # -----------------------------------------------------------------------------
 #
-
-
 class MPIWorker(Worker):
-
-    """
+    '''
     MPIWorker diagram
     ---------------------------------------------------------------------------
-        Raptor Master     |                      Raptor MPIWorker           
-    ----------------------|----------------------------------------------------                                                    
+        Raptor Master     |                      Raptor MPIWorker
+    ----------------------|----------------------------------------------------
                           |                           |
-    (1)  register OK!   <--->     [registered]        |   
-                          |                           |  
+    (1)  register OK!   <--->     [registered]        |
+                          |                           |
                           |                       (MPI_send)
                           |                           |
-                                                      v      
+                                                      v
     (2)  send MPI_func  <--->  request_cb[recv task] (3) --> | mpi_worker
                           |                                  | (execute)
                           |                                  |     |
                           |                                  |     v
                           |                                  | queue.put(res)
     ---------------------------------------------------------------------------
-    """
+    '''
 
     # -------------------------------------------------------------------------
     #
     def __init__(self, cfg=None, session=None):
-        rank = None
 
-        if rank is None: rank = os.environ.get('PMIX_RANK')
-        if rank is None: rank = os.environ.get('PMI_RANK')
-        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
-
-        if rank is None: rank = 0
-        else           : rank = int(rank)
+        rank = int(os.environ.get('RP_RANK', 0))
 
         # only rank 0 registers with the master
         if rank == 0: register = True
@@ -100,11 +93,13 @@ class MPIWorker(Worker):
             self.resources = [IDLE] * (self._world.size - 1)
 
         self.register_mode('mpi_worker',  self.mpi_worker)
+
         # prepare base env dict used for all tasks
         self._task_env = dict()
         for k,v in os.environ.items():
             if k.startswith('RP_'):
                 self._task_env[k] = v
+
 
     # --------------------------------------------------------------------------
     #
@@ -148,7 +143,7 @@ class MPIWorker(Worker):
     def request_cb(self, tasks):
 
         # define a static list of tasks and send single one per time to the workers
-        # we assume in this mode that the task is large enough to occupy the 
+        # we assume in this mode that the task is large enough to occupy the
         # resources:
         # task[ranks] == self.resources
         # uid  : recieved task id
@@ -157,6 +152,7 @@ class MPIWorker(Worker):
         # args : what arguments to pass to the method
 
         # resources are initially all free
+        # NOTE: can rank ever be not null?  Only rank 0 registers...
         if self.rank == 0:
 
             for task in ru.as_list(tasks):
@@ -415,6 +411,7 @@ class MPIWorker(Worker):
                    'ret': ret,
                    'val': val}
 
+            # NOTE: _res_put is not defined
             self._res_put.put(res)
             self.task_post_exec(task)
             self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
@@ -430,3 +427,7 @@ class MPIWorker(Worker):
 
         self._log.debug('error: %s', error)
         raise RuntimeError(error)
+
+
+# ------------------------------------------------------------------------------
+
