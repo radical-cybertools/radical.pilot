@@ -7,11 +7,6 @@ import codecs
 import pickle
 import msgpack
 
-# FIXME: I beleive RP hangs here
-# removing this line will allow RP
-# to continue executing until failing
-from mpi4py import MPI
-
 import threading         as mt
 import multiprocessing   as mp
 
@@ -23,8 +18,6 @@ from .worker import Worker
 
 IDLE = False
 BUSY = True
-
-MPI.pickle.__init__(dill.dumps, dill.loads)
 
 
 # -----------------------------------------------------------------------------
@@ -52,6 +45,14 @@ class MPIWorker(Worker):
     # -------------------------------------------------------------------------
     #
     def __init__(self, cfg=None, session=None):
+
+        # FIXME: I beleive RP hangs here
+        # removing this line will allow RP
+        # to continue executing until failing
+        from mpi4py import MPI
+
+        MPI.pickle.__init__(dill.dumps, dill.loads)
+
 
         rank = int(os.environ.get('RP_RANK', 0))
 
@@ -238,6 +239,10 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def mpi_worker(self):
+
+        from mpi4py import MPI
+
+        MPI.pickle.__init__(dill.dumps, dill.loads)
 
         # wait for termination message
         while True:
