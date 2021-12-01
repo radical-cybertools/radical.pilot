@@ -83,5 +83,66 @@ def create_tar(tgt: str, dnames: str) -> None:
     fout.close()
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+#
+def get_type(type_name: str) -> Optional[type]:
+    '''
+    get a type object from a type name (str)
+    '''
+
+    # check builtin types
+    ret = getattr(builtins, type_name, None)
+    if isinstance(ret, type):
+        return ret
+
+    # check global types
+    ret = globals().get(type_name)
+    if isinstance(ret, type):
+        return ret
+
+    # check local types of the calling frame
+    ret = inspect.currentframe().f_back.f_locals.get(type_name)
+    if isinstance(ret, type):
+        return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def load_class(fpath: str,
+               cname: str,
+               ctype: Optional[Union[type,str]] = None) -> Optional[Any]:
+    '''
+    load class `cname` from a source file at location `fpath`
+    and return it (the class, not an instance).
+    '''
+
+    from importlib import util as imp
+
+    if not os.path.isfile(fpath):
+        raise ValueError('no source file at [%s]' % fpath)
+
+    pname  = os.path.splitext(os.path.basename(fpath))[0]
+    spec   = imp.spec_from_file_location(pname, fpath)
+    plugin = imp.module_from_spec(spec)
+
+    spec.loader.exec_module(plugin)
+
+    ret = getattr(plugin, cname)
+
+    if ctype:
+
+        if isinstance(ctype, str):
+            ctype_name = ctype
+            ctype = get_type(ctype_name)
+
+            if not ctype:
+                raise ValueError('cannot type check %s' % ctype_name)
+
+        if not issubclass(ret, ctype):
+            return None
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
 
