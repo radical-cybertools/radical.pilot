@@ -18,14 +18,16 @@ if __name__ == '__main__':
     cfg_fname =                 os.path.basename(cfg_file)
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    cpn       = cfg.worker_descr.cores_per_rank
-    gpn       = cfg.worker_descr.gpus_per_rank
+    cpn       = cfg.cpn
+    gpn       = cfg.gpn
     n_masters = cfg.n_masters
     n_workers = cfg.n_workers
     workload  = cfg.workload
 
     # each master uses a node, and each worker on each master uses a node
-    nodes     = n_masters + (n_masters * n_workers)
+    nodes     =  n_masters + (n_masters * n_workers)
+    print('nodes', nodes)
+
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -78,10 +80,10 @@ if __name__ == '__main__':
             # work serialization goes here
             work = json.dumps({'mode'   :  'call',
                                'cores'  :  1,
-                               'timeout':  10,
-                               'data'   : {'method': 'test',
-                                           'kwargs': {'idx'    : i,
-                                                      'seconds': 0}}})
+                               'timeout':  100,
+                               'data'   : {'method': 'hello',
+                                           'kwargs': {'count': i,
+                                                      'uid'  : uid}}})
             # ------------------------------------------------------------------
             requests.append(rp.TaskDescription({
                                'uid'       : uid,
