@@ -61,13 +61,6 @@ then
     $ENV_SETUP
 fi
 
-
-# setuptools="setuptools==0.6c11"
-# pip="pip==1.4.1"
-
-setuptools="setuptools"
-pip="pip"
-
 # ------------------------------------------------------------------------------
 #
 help(){
@@ -105,10 +98,10 @@ EOT
 progress(){
   while read X
   do
-    echo $X
-  # echo -n .
+  # echo $X
+    echo -n .
   done
-# echo
+  echo
 }
 
 
@@ -179,45 +172,12 @@ echo -n "create  virtualenv "
 echo stdbuf -oL $VIRTENV_CMD "$PREFIX"
 stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
 
-# echo ==================
-# which python3
-# radical-stack || true
-# echo ==================
-#
-# # need to deactivate here
-# if ! test -z "$VIRTUAL_ENV"
-# then
-#     echo ================ clean 1
-#     env | grep ve3
-#     echo ================ clean 2
-#     unset VIRTUAL_ENV
-#     REMOVE=$(dirname `which python3`)
-#     p=$(echo $PATH \
-#         | tr ":" "\n" \
-#         | grep -v "$REMOVE" \
-#         | tr "\n" ":")
-#     PATH=$(echo ${p%:})
-#     echo ================ clean 3
-#     env | grep ve3
-#     echo ================ clean 4
-# fi
-#
-# echo ==================
-# which python3
-# radical-stack || true
-# echo ==================
-.          "$PREFIX"/bin/activate
+. "$PREFIX"/bin/activate
 
-# echo ==================
-# which python3
-# radical-stack || true
-# echo ==================
+env | sort > env.clean5
 
-echo -n "update  setuptools "
-pip install --no-cache-dir --upgrade $setuptools | progress || exit 1
-
-echo -n "update  pip "
-pip install --no-cache-dir --upgrade $pip        | progress || exit 1
+echo -n "update  setuptools pip wheel"
+pip install --no-cache-dir --upgrade setuptools pip wheel| progress || exit 1
 
 for mod in $MODULES
 do
@@ -237,14 +197,12 @@ echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"
 echo "MODULES   : $MODULES"
 echo "DEFAULTS  : $DEFAULTS"
-echo "PYTHON    : `which $PYTHON` (`python -V`)"
+echo "PYTHON    : $(which $PYTHON) ($($PYTHON -V))"
 echo "PYTHONPATH: $PYTHONPATH"
+echo "RCT_STACK : $(radical-stack || true)"
 echo
 echo "---------------------------------------------------------------------"
 echo
 
-echo ==================
-which python3
-radical-stack || true
 echo ==================
 

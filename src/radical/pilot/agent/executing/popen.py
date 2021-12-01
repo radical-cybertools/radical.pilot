@@ -47,7 +47,7 @@ atexit.register(_kill)
 class Popen(AgentExecutingComponent):
 
     _header    = '#!/bin/sh\n'
-    _separator = '# ' + '-' * 78
+    _separator = '\n# ' + '-' * 78 + '\n'
 
 
     # --------------------------------------------------------------------------
