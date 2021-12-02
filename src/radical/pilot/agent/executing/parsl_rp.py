@@ -190,7 +190,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                   "args"       : [],
                   "kwargs"     : kwargs,
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                  "ptype"      : rp.FUNC if 'ptype' not in kwargs else rp.MPI_FUNC,
+                  "ptype"      : rp.MPI_FUNC if 'ptype' not in kwargs else kwargs['ptype'],
                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
                   "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}

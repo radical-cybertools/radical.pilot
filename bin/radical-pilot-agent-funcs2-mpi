@@ -5,7 +5,6 @@ import dill
 import time
 import codecs
 import pickle
-import msgpack
 from mpi4py import MPI
 
 import radical.utils as ru
@@ -177,9 +176,10 @@ class MPIExecutor(object):
 
                             task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
 
-                            task['work']  = task_info["_cud_code"]
-                            task['args']  = task_info["_cud_args"]
-                            task['ranks'] = task_ranks
+                            task['work']   = task_info["_cud_code"]
+                            task['args']   = task_info["_cud_args"]
+                            task['kwargs'] = task_info["_cud_kwargs"]
+                            task['ranks']  = task_ranks
 
                         except Exception as e:
                             self._log.debug('ERROR %s', str(e))
@@ -203,23 +203,12 @@ class MPIExecutor(object):
                         # send the task to each of the workers
                         self._log.debug('send task %s  to  %s' % (task['uid'], workers))
                         for worker in workers:
-                            self._world.send(msgpack.packb(task), dest=worker, tag=0)
+                            self._world.send(task, dest=worker, tag=0)
 
                         # once a single task is sent out, collect results
-                        task = msgpack.unpackb(self._world.recv(tag=1))
+                        task = self._world.recv(tag=1)
                         self._log.debug('recv %s with state %s' % (task['uid'],
                                                                   task['state']))
-
-                        if  task['state'] == 'DONE':
-                            task['stdout'] = task['result']
-                            task['stderr'] = None
-                            task['work']   = str(task['work'])
-
-                        else:
-                            task['stdout'] = None
-                            task['stderr'] = task['error']
-                            task['work']   = str(task['work'])
-
                         _zmq_res.put(task)
 
                         # once the task executing is finished mark the workers as IDLE
@@ -250,110 +239,7 @@ class MPIExecutor(object):
         # once all results are received, send termination signal to workers
         for worker in range(self.size - 1):
             self._log.debug('send term to %s' % (worker + 1))
-            self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
-
-
-
-    # --------------------------------------------------------------------------
-    #
-    def batch_work_master(self):
-        # keep track of busy and idle workers (not really used, yet)
-        resources = [IDLE] * (self.size - 1)
-
-        # define a static list of tasks and send all of them at once to
-        # workers.
-        # We assume in this mode that the tasks ranks all can fit in
-        # self.resources:
-        #
-        #    uid  : duh!
-        #    ranks: how many workers to use in the task's communicator
-        #    work : what method to call
-        #    args : what arguments to pass to the method
-
-        if self.rank == 0:
-
-            _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
-
-            addr_req  = _cfg.get('req_get')
-            addr_res  = _cfg.get('res_put')
-            addr_ctrl = _cfg.get('ctrl')
-
-            assert(addr_req)
-            assert(addr_res)
-            assert(addr_ctrl)
-
-
-            _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
-            _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
-            _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
-
-
-        while True:
-            if self.rank == 0:
-                tasks = _zmq_req.get_nowait(1000)
-
-                if tasks:
-
-                    for task in tasks:
-                        self._log.debug('got %s', task['uid'])
-                        task_descr = task['description']
-                        task_exe   = task_descr['executable']
-                        task_args  = task_descr.get('arguments', list())
-                        task_pres  = task_descr.get('pre_exec',  list())
-                        task_ranks = task_descr['cpu_processes']
-
-                        try:
-
-                            task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
-
-                            task['work']  = task_info["_cud_code"]
-                            task['args']  = task_info["_cud_args"]
-                            task['ranks'] = task_ranks
-
-                        except Exception as e:
-                            self._log.debug('ERROR %s', str(e))
-
-                        # find workers and mark as busy
-                        workers = list()
-                        for idx, worker in enumerate(resources):
-                            if worker == IDLE:
-                                workers.append(idx + 1)
-                                resources[idx] = BUSY
-                                if len(workers) == task_ranks:
-                                    self._log.debug('enough workers found')
-                                    break
-
-                        # make sure we did find workers!
-                        assert(len(workers) == task_ranks)
-
-                        # workers need to know who is part of the sub-communicator
-                        task['workers'] = workers
-
-                        # send the task to each of the workers
-                        self._log.debug('send %s to %s' % (task['uid'], workers))
-                        for worker in workers:
-                            self._world.send(msgpack.packb(task), dest=worker, tag=0)
-
-                    # once all tasks are sent out, collect results
-                    for task in tasks:
-                        task = msgpack.unpackb(self._world.recv(tag=1))
-                        if  task['state'] == 'DONE':
-                            task['stdout'] = task['result']
-                            task['stderr'] = None
-                            task['work']   = str(task['work'])
-
-                        else:
-                            task['stdout'] = None
-                            task['stderr'] = task['error']
-                            task['work']   = str(task['work'])
-
-                        _zmq_res.put(task)
-
-                    # once all results are received, send termination signal to workers
-                    for worker in range(self.size - 1):
-                        self._log.debug('send term to %s' % (worker + 1))
-                        self._world.send(msgpack.packb(None), dest=worker + 1, tag=0)
-
+            self._world.send(None, dest=worker + 1, tag=0)
 
 
     # --------------------------------------------------------------------------
@@ -363,17 +249,16 @@ class MPIExecutor(object):
         # wait for termination message
         while True:
 
-            task = msgpack.unpackb(self._world.recv(source=0, tag=0))
+            task = self._world.recv(source=0, tag=0)
 
             if not task:
                 self._log.debug('terminate!')
                 break
 
-            self._log.debug('recv task %s from Master >>>' % (task['uid']))
-            assert(self.rank in task['workers'])
-
             comm  = None
             group = None
+            self._log.debug('recv task %s from Master >>>' % (task['uid']))
+            assert(self.rank in task['workers'])
 
             try:
                 # create new communicator with all workers assigned to this task
@@ -382,25 +267,35 @@ class MPIExecutor(object):
                 assert(comm)
 
                 # work on task
-                fn = MPI.pickle.loads(task['work'])
-                result = fn(*task['args'])
+                func   = MPI.pickle.loads(task['work'])
+                result = func(*task['args'], **task['kwargs'])
 
                 # result is only reported back by rank 0 (of sub-communicator)
                 if comm.rank == 0:
-                    task['result'] = result
-                    task['state']  = "DONE"
+                    # FIXME: we need to send the result back in the queue pickled
+                    # **always! and then unpickle in the client side.
+                    if isinstance(result, (tuple, list, set, int, float, dict)):
+                        task['stdout'] = result
+                    else:
+                        task['stdout'] = str(MPI.pickle.dumps(result))
+
+                    task['state'] = "DONE"
+                    task['args']  = None
+                    task['work']  = None
                     self._log.debug('send %s result to master <<< ' % (task['uid']))
-                    self._world.send(msgpack.packb(task), dest=0, tag=1)
+                    self._world.send(task, dest=0, tag=1)
 
             except Exception as e:
                 if comm.rank == 0:
-                    task['error']  = str(e)
+                    task['stderr'] = str(e)
+                    task['stdout'] = None
                     task['state']  = "FAILED"
-                    task['result'] = None
+                    task['args']   = None
+                    task['work']   = None
 
                 self._log.error('%s %s (%s)' % (task['uid'], task['state'],
-                                                task['error']))
-                self._world.send(msgpack.packb(task), dest=0, tag=1)
+                                                task['stderr']))
+                self._world.send(task, dest=0, tag=1)
                 raise
 
             finally:
