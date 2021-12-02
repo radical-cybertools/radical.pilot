@@ -268,9 +268,9 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         def _start_mpi_executor(cores_per_executor, slots, executors_to_start_id):
 
-            exe = ru.which('radical-pilot-agent-funcs2-mpi')
+            exe = ru.which('radical-pilot-agent-funcs-mpi')
             if not exe:
-                exe = '%s/rp_install/bin/radical-pilot-agent-funcs2-mpi' % self._pwd
+                exe = '%s/rp_install/bin/radical-pilot-agent-funcs-mpi' % self._pwd
 
             uid   = 'func_exec.%04d' % executors_to_start_id
             pwd   = '%s/%s' % (self._pwd, uid)
