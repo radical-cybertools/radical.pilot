@@ -27,16 +27,21 @@ from .base import AgentExecutingComponent
 _pids = list()
 
 
-def _kill():
+def _kill(*args, **kwargs):
+
     for pid in _pids:
+
+        # skip test mocks
         if not isinstance(pid, int):
-            # skip test mocks
             continue
+
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 
 
 atexit.register(_kill)
+signal.signal(signal.SIGTERM, _kill)
+signal.signal(signal.SIGINT,  _kill)
 # ------------------------------------------------------------------------------
 
 

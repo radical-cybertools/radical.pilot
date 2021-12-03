@@ -4,57 +4,74 @@ __license__   = 'MIT'
 
 import radical.utils as ru
 
+# task modules
+RP_EXECUTABLE    = 'executable'
+RP_FUNCTION      = 'function'
+RP_EVAL          = 'eval'
+RP_EXEC          = 'exec'
+RP_PROC          = 'proc'
+RP_SHELL         = 'shell'
 
-# ------------------------------------------------------------------------------
-# Attribute description keys
-#
-UID                    = 'uid'
-NAME                   = 'name'
-EXECUTABLE             = 'executable'
-ARGUMENTS              = 'arguments'
-ENVIRONMENT            = 'environment'
-NAMED_ENV              = 'named_env'
-SANDBOX                = 'sandbox'
+# task description attributes
+UID              = 'uid'
+NAME             = 'name'
+MODE             = 'mode'                     # executable or function
 
-CPU_PROCESSES          = 'cpu_processes'
-CPU_PROCESS_TYPE       = 'cpu_process_type'
-CPU_THREADS            = 'cpu_threads'
-CPU_THREAD_TYPE        = 'cpu_thread_type'
+# mode: executable
+EXECUTABLE       = 'executable'
+ARGUMENTS        = 'arguments'
 
-GPU_PROCESSES          = 'gpu_processes'
-GPU_PROCESS_TYPE       = 'gpu_process_type'
-GPU_THREADS            = 'gpu_threads'
-GPU_THREAD_TYPE        = 'gpu_thread_type'
+# mode: function:{exec,call,eval,proc,shell}
+CODE             = 'code'
+FUNCTION         = 'function'
+ARGS             = 'args'
+KWARGS           = 'kwargs'
+COMMAND          = 'command'
 
-LFS_PER_PROCESS        = 'lfs_per_process'
-MEM_PER_PROCESS        = 'mem_per_process'
+# environment
+ENVIRONMENT      = 'environment'
+NAMED_ENV        = 'named_env'
+SANDBOX          = 'sandbox'
 
-INPUT_STAGING          = 'input_staging'
-OUTPUT_STAGING         = 'output_staging'
-STAGE_ON_ERROR         = 'stage_on_error'
-PRE_LAUNCH             = 'pre_launch'
-PRE_EXEC               = 'pre_exec'
-PRE_RANK               = 'pre_rank'
-POST_LAUNCH            = 'post_launch'
-POST_EXEC              = 'post_exec'
-POST_RANK              = 'post_rank'
-KERNEL                 = 'kernel'
-CLEANUP                = 'cleanup'
-PILOT                  = 'pilot'
-STDOUT                 = 'stdout'
-STDERR                 = 'stderr'
-RESTARTABLE            = 'restartable'
-SCHEDULER              = 'scheduler'
-TAGS                   = 'tags'
-METADATA               = 'metadata'
+# resource requirements
+CPU_PROCESSES    = 'cpu_processes'            # ranks
+CPU_PROCESS_TYPE = 'cpu_process_type'         # MPI?
+CPU_THREADS      = 'cpu_threads'              # cores per rank
+CPU_THREAD_TYPE  = 'cpu_thread_type'          # OpenMP?
+
+GPU_PROCESSES    = 'gpu_processes'            # gpus per rank
+GPU_PROCESS_TYPE = 'gpu_process_type'         # CUDA?
+GPU_THREADS      = 'gpu_threads'              # part of gpu?
+GPU_THREAD_TYPE  = 'gpu_thread_type'          # ?
+
+LFS_PER_PROCESS  = 'lfs_per_process'          # disk space per rank
+MEM_PER_PROCESS  = 'mem_per_process'          # memory per rank
+
+INPUT_STAGING    = 'input_staging'
+OUTPUT_STAGING   = 'output_staging'
+STAGE_ON_ERROR   = 'stage_on_error'
+PRE_LAUNCH       = 'pre_launch'
+PRE_EXEC         = 'pre_exec'
+PRE_RANK         = 'pre_rank'
+POST_LAUNCH      = 'post_launch'
+POST_EXEC        = 'post_exec'
+POST_RANK        = 'post_rank'
+CLEANUP          = 'cleanup'
+PILOT            = 'pilot'
+STDOUT           = 'stdout'
+STDERR           = 'stderr'
+RESTARTABLE      = 'restartable'
+SCHEDULER        = 'scheduler'
+TAGS             = 'tags'
+METADATA         = 'metadata'
 
 # process / thread types (for both, CPU and GPU processes/threads)
-POSIX                  = 'POSIX'   # native threads / application threads
-MPI                    = 'MPI'
-OpenMP                 = 'OpenMP'
-CUDA                   = 'CUDA'
-FUNC                   = 'FUNC'
-# FIXME: move process/thread types to `radical.pilot.constants`
+POSIX            = 'POSIX'   # native threads / application threads
+MPI              = 'MPI'
+OpenMP           = 'OpenMP'
+CUDA             = 'CUDA'
+FUNC             = 'FUNC'
+# FIXME: move task/process/thread types to `radical.pilot.constants`
 
 
 # ------------------------------------------------------------------------------
@@ -67,7 +84,7 @@ class TaskDescription(ru.Description):
     a new task.
 
     .. note:: A TaskDescription **MUST** define at least an
-              `executable` or `kernel` -- all other elements are optional.
+              `executable` -- all other elements are optional.
 
     .. data:: uid
 
@@ -80,11 +97,84 @@ class TaskDescription(ru.Description):
        attribute can be used to map individual tasks back to application level
        workloads.
 
+    .. data:: mode
+
+       [type: `str` | default: `"executable"`] The execution mode to be used for
+       this task.  The following modes are accepted:
+
+         - EXECUTABLE: the task is spawned as an external executable via a
+           resource specific launch method (srun, aprun, mpiexec, etc).
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+         - FUNCTION: the task references a python function to be called.
+           required attributes: `function`
+           related  attributes: `args`
+           related  attributes: `kwargs`
+
+         - EVAL: the task is a code snippet to be evaluated.
+           required attributes: `code`
+
+         - EXEC: the task is a code snippet to be `exec`'ed.
+           required attributes: `code`
+
+         - SHELL: the task is a shell command line to be run.
+           required attributes: `command`
+
+         - PROC: the task is a single core process to be executed.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+        There exists a certain overlap between `EXECUTABLE`, `SHELL` and `PROC`
+        modes.  As a general rule, `SHELL` and `PROC` should be used for short
+        running tasks which require a single core and no additional resources
+        (gpus, storage, memory).  `EXECUTABLE` should be used for all other
+        tasks and is in fact the default.  `SHELL` should only be used if the
+        command to be run requires shell specific functionality (pipes, I/O
+        redirection) which cannot easily be mapped to other task attributes.
+
+
     .. data:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
        is expected to be either available via `$PATH` on the target resource,
        or to be an absolute path.
+
+    .. data:: arguments
+
+       [type: `list` | default: `[]`] The command line arguments for the given
+       `executable` (`list` of `strings`).
+
+    .. data:: code
+
+       [type: `str` | default: `""`] The code to run.  This field is expected to
+       contain valid python code which is executed when the task mode is
+       `code:exec` or `code:eval`.
+
+    ..data: function
+
+       [type: `str` | default: `""`] The function to run.  This field is
+       expected to contain a python function name which can be resolved in the
+       scope of the respective RP worker implementation (see documentation
+       there).  The task mode must be set to `function:call`.  `args` and
+       `kwargs` are passed as function parameters.
+
+    .. data:: args
+
+       [type: `list` | default: `[]`] Unnamed arguments to be passed to the
+       `function` (see above).  This field will be serialized  with `msgpack`
+       and can thus contain any serializable data types.
+
+    .. data:: kwargs
+
+       [type: `dict` | default: `{}`] Named arguments to be passed to the
+       `function` (see above).  This field will be serialized  with `msgpack`
+       and can thus contain any serializable data types.
+
+    .. data:: command
+
+       [type: `str` | default: `""`] A shell command to be executed.  This
+       attribute is used for the `SHELL` task mode.
 
     .. data:: cpu_processes
 
@@ -135,11 +225,6 @@ class TaskDescription(ru.Description):
 
        [type: `int` | default: `0`] Amount of physical memory required per
        process.
-
-    .. data:: arguments
-
-       [type: `list` | default: `[]`] The command line arguments for the given
-       `executable` (`list` of `strings`).
 
     .. data:: environment
 
@@ -233,12 +318,6 @@ class TaskDescription(ru.Description):
     .. data:: post_rank
 
        ...
-
-    .. data:: kernel
-
-       [type: `str` | default: `""`] Name of a simulation kernel, which expands
-       to description attributes once the task is scheduled to a pilot and
-       resource. `TODO: explain in detail, referencing EnTK.`
 
     .. data:: restartable
 
@@ -395,10 +474,17 @@ class TaskDescription(ru.Description):
     _schema = {
         UID             : str         ,
         NAME            : str         ,
+        MODE            : str         ,
+
         EXECUTABLE      : str         ,
-        KERNEL          : str         ,
-        SANDBOX         : str         ,
         ARGUMENTS       : [str]       ,
+        CODE            : str         ,
+        FUNCTION        : str         ,
+        ARGS            : [None]      ,
+        KWARGS          : {str: None} ,
+        COMMAND         : str         ,
+
+        SANDBOX         : str         ,
         ENVIRONMENT     : {str: str}  ,
         NAMED_ENV       : str         ,
         PRE_LAUNCH      : [str]       ,
@@ -435,10 +521,17 @@ class TaskDescription(ru.Description):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
+        MODE            : 'executable',
+
         EXECUTABLE      : ''          ,
-        KERNEL          : ''          ,
-        SANDBOX         : ''          ,
         ARGUMENTS       : list()      ,
+        CODE            : ''          ,
+        FUNCTION        : ''          ,
+        ARGS            : list()      ,
+        KWARGS          : dict()      ,
+        COMMAND         : ''          ,
+
+        SANDBOX         : ''          ,
         ENVIRONMENT     : dict()      ,
         NAMED_ENV       : ''          ,
         PRE_LAUNCH      : list()      ,
@@ -484,9 +577,42 @@ class TaskDescription(ru.Description):
     #
     def _verify(self):
 
-        if not self.get('executable') and \
-           not self.get('kernel')     :
-            raise ValueError("Task description needs 'executable' or 'kernel'")
+        if not self.get('mode'):
+            self['mode'] = RP_EXECUTABLE
+
+
+        if self.mode == RP_EXECUTABLE:
+            if not self.get('executable'):
+                raise ValueError("RP_EXECUTABLE Task needs 'executable'")
+
+        elif self.mode == RP_FUNCTION:
+            if not self.get('function'):
+                raise ValueError("RP_FUNCTION Task needs 'function'")
+
+        elif self.mode == RP_PROC:
+            if not self.get('executable'):
+                raise ValueError("RP_PROC Task needs 'executable'")
+
+        elif self.mode == RP_EVAL:
+            if not self.get('code'):
+                raise ValueError("RP_EVAL Task needs 'code'")
+
+        elif self.mode == RP_EXEC:
+            if not self.get('code'):
+                raise ValueError("RP_EXEC Task needs 'code'")
+
+        elif self.mode == RP_SHELL:
+            if not self.get('command'):
+                raise ValueError("RP_SHELL Task needs 'command'")
+
+
+        if self.mode in [RP_SHELL, RP_PROC]:
+
+            if self.get('cpu_processes', 1) * self.get('cpu_threads', 1) > 1:
+                raise ValueError("RP_SHELL and RP_PROC Tasks must be single core")
+
+            if self.get('gpu_processes', 0) > 0:
+                raise ValueError("RP_SHELL and RP_PROC Tasks canont use GPUs")
 
 
 # ------------------------------------------------------------------------------

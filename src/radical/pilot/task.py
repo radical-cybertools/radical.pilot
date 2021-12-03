@@ -16,6 +16,23 @@ from . import task_description as td
 from .staging_directives import expand_description
 
 
+_uids = list()
+
+
+# ------------------------------------------------------------------------------
+#
+def _check_uid(uid):
+    # ensure that uid is not yet known
+
+    global _uids
+
+    if uid in _uids:
+        return False
+    else:
+        _uids.append(uid)
+        return True
+
+
 # ------------------------------------------------------------------------------
 #
 class Task(object):
@@ -52,11 +69,6 @@ class Task(object):
     #
     def __init__(self, tmgr, descr):
 
-        # NOTE GPU: we allow `mpi` for backward compatibility - but need to
-        #      convert the bool into a decent value for `cpu_process_type`
-        if  descr[td.CPU_PROCESS_TYPE] in [True, 'True']:
-            descr[td.CPU_PROCESS_TYPE] = td.MPI
-
         # ensure that the description is viable
         descr.verify()
 
@@ -81,7 +93,7 @@ class Task(object):
 
         # ensure uid is unique
         if self._uid:
-            if not self._tmgr.check_uid(self._uid):
+            if not _check_uid(self._uid):
                 raise ValueError('uid %s is not unique' % self._uid)
         else:
             self._uid = ru.generate_id('task.%(item_counter)06d', ru.ID_CUSTOM,

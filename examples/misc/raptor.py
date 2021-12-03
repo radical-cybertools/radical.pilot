@@ -18,19 +18,18 @@ if __name__ == '__main__':
     cfg_fname =                 os.path.basename(cfg_file)
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    cpn       = cfg.worker_descr.cores_per_rank
-    gpn       = cfg.worker_descr.gpus_per_rank
+    cpn       = cfg.worker_descr.cpu_processes
+    gpn       = cfg.worker_descr.gpu_processes
     n_masters = cfg.n_masters
     n_workers = cfg.n_workers
     workload  = cfg.workload
 
     # each master uses a node, and each worker on each master uses a node
-    nodes     = n_masters + (n_masters * n_workers)
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = nodes * cpn + cpn
-        pd.gpus    = nodes * gpn + gpn
+        pd.cores   = n_masters + n_workers * cpn
+        pd.gpus    =             n_workers * gpn
         pd.runtime = cfg.runtime
 
         tds = list()
@@ -40,8 +39,8 @@ if __name__ == '__main__':
             td.uid            = ru.generate_id('master.%(item_counter)06d',
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
-            td.cpu_threads    = cpn
-            td.gpu_processes  = gpn
+            td.cpu_processes  = 1
+            td.gpu_processes  = 0
             td.arguments      = [cfg_file, i]
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
@@ -69,32 +68,26 @@ if __name__ == '__main__':
 
 
 
-        requests = list()
+        tds = list()
         for i in range(eval(cfg.workload.total)):
 
-            td  = rp.TaskDescription()
-            uid = 'request.req.%06d' % i
-            # ------------------------------------------------------------------
-            # work serialization goes here
-            work = json.dumps({'mode'   :  'call',
-                               'cores'  :  1,
-                               'timeout':  10,
-                               'data'   : {'method': 'test',
-                                           'kwargs': {'idx'    : i,
-                                                      'seconds': 0}}})
-            # ------------------------------------------------------------------
-            requests.append(rp.TaskDescription({
-                               'uid'       : uid,
-                               'executable': '-',
-                               'scheduler' : 'master.%06d' % (i % n_masters),
-                               'arguments' : [work]}))
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.RP_FUNCTION,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'function'        : 'test_mpi',
+                'kwargs'          : {'msg': 'task.mpi.%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
-        tmgr.submit_tasks(requests)
+        tasks = tmgr.submit_tasks(tds)
 
         tmgr.add_pilots(pilot)
-        tmgr.wait_tasks(uids=[r['uid'] for r in requests])
+        tmgr.wait_tasks(uids=[t.uid for t in tasks])
 
-        time.sleep(120)
+        for task in tasks:
+            print('%s: %s' % (task.uid, task.stdout))
 
     finally:
         session.close(download=True)

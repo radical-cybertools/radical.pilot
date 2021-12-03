@@ -20,9 +20,9 @@ DEFAULTS=       # install default modules
 ENV_SETUP=''    # command(s) to set up starting environment
 
 pre_exec(){
-    echo "=== pre exec: $*"
+    echo "pre exec: $*"
     $*
-    echo "=== pre exec done"
+    echo "pre exec done"
 }
 
 while getopts "e:p:P:v:m:d" OPTION; do
@@ -203,6 +203,4 @@ echo "RCT_STACK : $(radical-stack || true)"
 echo
 echo "---------------------------------------------------------------------"
 echo
-
-echo ==================
 

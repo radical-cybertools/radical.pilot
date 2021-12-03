@@ -42,7 +42,7 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self):
+    def submit(self):
 
         self._prof.prof('create_start')
 
@@ -55,61 +55,39 @@ class MyMaster(rp.raptor.Master):
         total = int(eval(self._cfg.workload.total))                       # noqa
         while idx < total:
 
-            uid  = 'request.eval.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'eval',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {
-                        'code': 'print("hello world")'
-                    }}
-            self.request(item)
+            td = rp.TaskDescription({'uid'        : 'task.eval.%06d' % idx,
+                                     'mode'       : rp.RP_EVAL,
+                                     'code'       : 'print("hello world")'})
+            self.submit_tasks(td)
 
+            td = rp.TaskDescription({'uid'        : 'task.exec.%06d' % idx,
+                                     'mode'       : rp.RP_EXEC,
+                                     'pre_exec'   : ['import time'],
+                                     'code'       : 'print("hello stdout"); '
+                                                    'return "hello world"'
+                                     })
+            self.submit_tasks(td)
 
-            uid  = 'request.exec.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'exec',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {
-                        'pre_exec': 'import time',
-                        'code'    : 'print("hello stdout"); return "hello world"'
-                    }}
-            self.request(item)
+            td = rp.TaskDescription({'uid'        : 'task.call.%06d' % idx,
+                                     'mode'       : rp.RP_FUNCTION,
+                                     'function'   : 'test',
+                                     'kwargs'     : {'msg': 'task.call.%06d' % idx}
+                                    })
+            self.submit_tasks(td)
 
+            td = rp.TaskDescription({'uid'        : 'task.proc.%06d' % idx,
+                                     'mode'       : rp.RP_PROC,
+                                     'executable' : '/bin/echo',
+                                     'arguments'  : ['hello', 'world']
+                                    })
+            self.submit_tasks(td)
 
-            uid  = 'request.call.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'call',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'method': 'hello',
-                              'kwargs': {'count': idx,
-                                         'uid'  : uid}
-                   }}
-            self.request(item)
-
-
-            uid  = 'request.proc.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'proc',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'exe' : '/bin/echo',
-                              'args': ['hello', 'world']
-                   }}
-            self.request(item)
-
-
-            uid  = 'request.shell.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'shell',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'env' : {'WORLD': 'world'},
-                              'cmd' : '/bin/echo "hello $WORLD"'
-                   }}
-            self.request(item)
+            td = rp.TaskDescription({'uid'        : 'task.shell.%06d' % idx,
+                                     'mode'       : rp.RP_SHELL,
+                                     'environment': {'WORLD': 'world'},
+                                     'command'    : '/bin/echo "hello $WORLD"'
+                                    })
+            self.submit_tasks(td)
 
             idx += world_size
 
@@ -118,35 +96,36 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, requests):
+    def request_cb(self, tasks):
 
-        for req in requests:
+        for task in tasks:
 
-            self._log.debug('=== request_cb %s\n' % (req['uid']))
+            self._log.debug('request_cb %s\n' % (task['uid']))
 
-            # for each `shell` mode request, submit one more `proc` mode request
-            if req['mode'] == 'call':
+            # for each `function` mode task, submit one more `proc` mode request
+            if task['description']['mode'] == rp.RP_FUNCTION:
 
                 uid  = 'request.extra.%06d' % self._cnt
-                item = {'uid'  :   uid,
-                        'mode' :  'proc',
-                        'cores':  1,
-                        'data' : {'exe' : '/bin/echo',
-                                  'args': ['hello', 'world']
-                       }}
-                self.request(item)
+                td   = rp.TaskDescription({'uid'          : uid,
+                                           'mode'         : rp.RP_PROC,
+                                           'cpu_processes': 1,
+                                           'executable'   : '/bin/echo',
+                                           'arguments'    : ['hello', 'world']
+                                          })
+                self.submit_tasks(td)
                 self._cnt += 1
 
         # return the original request for execution
-        return requests
+        return tasks
 
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, req):
+    def result_cb(self, task):
 
-        self._log.debug('=== result_cb  %s: %s [%s]\n'
-                       % (req.uid, req.state, req.result))
+        self._log.debug('result_cb  %s: %s [%s] [%s]\n'
+                       % (task['uid'], task['state'], task['stdout'],
+                          task['return_value']))
 
 
 # ------------------------------------------------------------------------------
@@ -179,7 +158,7 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=n_workers)
+    master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
@@ -187,7 +166,7 @@ if __name__ == '__main__':
   # master.wait(count=nworkers)
 
     master.start()
-    master.submit_tasks()
+    master.submit()
     master.join()
     master.stop()
 

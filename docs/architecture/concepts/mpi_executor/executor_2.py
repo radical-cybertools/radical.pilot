@@ -93,7 +93,6 @@ class MPIExecutor(object):
         test workload - collect rank IDs of sub-communicator
         '''
 
-
         if comm.rank == 0:
             # collect data from all other ranks
             result = [data, 0]
@@ -233,7 +232,7 @@ class MPIExecutor(object):
         # slave is spawned and lives in a new MPI_COMM_WORLD
         comm   = MPI.COMM_WORLD
         parent = comm.Get_parent()
-        task = msgpack.unpackb(parent.recv(source=0, tag=2))
+        task   = msgpack.unpackb(parent.recv(source=0, tag=2))
 
         self._out('recv task %s as slave >>>' % (task['uid']))
 

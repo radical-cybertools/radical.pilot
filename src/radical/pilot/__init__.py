@@ -23,6 +23,8 @@ from .task_manager              import TaskManager
 from .task                      import Task
 from .task_description          import TaskDescription
 from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task_description          import RP_EXECUTABLE, RP_FUNCTION
+from .task_description          import RP_EXEC, RP_EVAL, RP_PROC, RP_SHELL
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot

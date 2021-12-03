@@ -2,10 +2,11 @@
 import copy
 import json
 import os
+from re import L
 import sys
 import time
 
-from typing import Dict, Union, Any
+from typing import Dict, Union
 
 import threading         as mt
 
@@ -14,7 +15,8 @@ import radical.utils     as ru
 from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
-from .. import Session, TaskDescription
+
+from .. import Session, Task, TaskDescription
 
 from .request import Request
 
@@ -41,7 +43,7 @@ class Master(rpu.Component):
         self._name     = os.environ['RP_TASK_NAME']
 
         self._workers  = dict()      # wid: worker
-        self._requests = dict()      # bookkeeping of submitted requests
+        self._tasks    = dict()      # bookkeeping of submitted requests
         self._lock     = mt.Lock()   # lock the request dist on updates
         self._term     = mt.Event()  # termination signal
         self._thread   = None        # run loop
@@ -196,9 +198,9 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, requests):
+    def request_cb(self, tasks):
 
-        return requests
+        return tasks
 
 
     # --------------------------------------------------------------------------
@@ -266,9 +268,8 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit(self,
-               descr: Dict[str, Union[str, int]],
-               count: int) -> None:
+    def submit_workers(self, descr: Dict[str, Union[str, int]],
+                             count: int) -> None:
         '''
         Submit`count` workers per given `descr`, and pass the queue info as
         configuration file.  Do *not* wait for the workers to come up - they are
@@ -291,8 +292,6 @@ class Master(rpu.Component):
 
             tasks    = list()
             base     = descr['worker_class'].split('.')[-1].lower()
-            uid_base = ru.generate_id(base + '.%(item_counter)06d',
-                                      ru.ID_CUSTOM, ns=self._session.uid)
 
             cfg          = copy.deepcopy(self._cfg)
             cfg['descr'] = descr
@@ -308,11 +307,11 @@ class Master(rpu.Component):
 
                 td = dict()
                 td['named_env']        = descr['named_env']
-                td['cpu_processes']    = descr['ranks']
+                td['cpu_processes']    = descr['cpu_processes']
                 td['cpu_process_type'] = 'MPI'
                 td['cpu_thread_type']  = 'POSIX'
-                td['cpu_threads']      = descr['cores_per_rank']
-                td['gpu_processes']    = descr['gpus_per_rank']
+              # td['cpu_threads']      = descr['cpu_threads']
+                td['gpu_processes']    = descr['gpu_processes']
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
@@ -459,29 +458,34 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def request(self, reqs):
+    def submit_tasks(self, tasks):
         '''
-        submit a list of work request (function call spec) to the request queue
+        submit a list of tasks to the task queue
         '''
 
-        reqs  = ru.as_list(reqs)
-        dicts = list()
-        objs  = list()
+        # `tasks` can be task instances, task dicts, task description instances,
+        # or task description dicts...
+        task_dicts = list()
+        for thing in ru.as_list(tasks):
+            try:
+                if isinstance(thing, Task):
+                    task_dicts.append(thing.as_dict())
+                elif isinstance(thing, TaskDescription):
+                    task = Task(self, thing)
+                    task_dicts.append(task.as_dict())
+                elif isinstance(thing, dict):
+                    if 'description' in thing:
+                        task_dicts.append(thing)
+                    else:
+                        task = Task(self, TaskDescription(thing))
+                        task_dicts.append(task.as_dict())
+            except:
+                import pprint
+                self._log.exception('=== %s\n', pprint.pformat(td))
 
-        # create request and add to bookkeeping dict.  That response object will
-        # be updated once a response for the respective request UID arrives.
-        with self._lock:
-            for req in reqs:
-                request = Request(req=req)
-                self._requests[request.uid] = request
-                dicts.append(request.as_dict())
-                objs.append(request)
 
         # push the request message (as dictionary) onto the request queue
-        self._req_put.put(dicts)
-
-        # return the request to the master script for inspection etc.
-        return objs
+        self._req_put.put(task_dicts)
 
 
     # --------------------------------------------------------------------------
@@ -490,62 +494,34 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
-        requests = list()
-        for task in tasks:
-
-            # FIXME: abuse of arguments
-            req = json.loads(task['description']['arguments'][0])
-
-            req['is_task'] = True
-            req['uid']     = task['uid']
-            req['task']    = task  # this duplicates the request :-/
-            requests.append(req)
-
         try:
-            filtered = self.request_cb(requests)
+            filtered = self.request_cb(tasks)
             if filtered:
-                self.request(filtered)
+                self.submit_tasks(filtered)
 
         except:
             self._log.exception('request cb failed')
             # FIXME: fail the request
 
 
-
-
     # --------------------------------------------------------------------------
     #
-    def _result_cb(self, msgs):
+    def _result_cb(self, tasks):
 
-        for msg in ru.as_list(msgs):
-
-            # update result and error information for the corresponding request UID
-            uid = msg['req']
-            out = msg['out']
-            err = msg['err']
-            ret = msg['ret']
-            val = msg['val']
-
-            req = self._requests[uid]
-            req.set_result(out, err, ret, val)
+        for task in ru.as_list(tasks):
 
             try:
-                self.result_cb(req)
+                self.result_cb(task)
+
             except:
                 self._log.exception('result callback failed')
 
-            # if the request is a task, also push it into the output queue
-            if req.task:
+            ret = task['exit_code']
+            if ret == 0: task['target_state'] = rps.DONE
+            else       : task['target_state'] = rps.FAILED
 
-                req.task['stdout']    = out
-                req.task['stderr']    = err
-                req.task['exit_code'] = ret
-
-                if ret == 0: req.task['target_state'] = rps.DONE
-                else       : req.task['target_state'] = rps.FAILED
-
-                self.advance(req.task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                       publish=True, push=True)
+            self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                               publish=True, push=True)
 
 
     # --------------------------------------------------------------------------

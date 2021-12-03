@@ -1,24 +1,18 @@
 
 
-import io
 import os
 import sys
 import time
-import queue
-
-import threading         as mt
-import multiprocessing   as mp
 
 import radical.utils     as ru
 
-from .. import Session
 from .. import utils     as rpu
 from .. import constants as rpc
 
 
 # ------------------------------------------------------------------------------
 #
-class Worker(rpu.Component):
+class Worker(object):
 
     # --------------------------------------------------------------------------
     #
@@ -29,30 +23,36 @@ class Worker(rpu.Component):
         if cfg is None:
             cfg = dict()
 
-        if isinstance(cfg, str): cfg = ru.Config(cfg=ru.read_json(cfg))
-        else                   : cfg = ru.Config(cfg=cfg)
+        if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
+        else                   : self._cfg = ru.Config(cfg=cfg)
 
-        cfg.uid    = os.environ['RP_TASK_ID']
-        self._info = ru.Config(cfg=cfg.get('info', {}))
-
-        if not self._session:
-            self._session = Session(cfg=cfg, uid=cfg.sid, _primary=False)
-
-        rpu.Component.__init__(self, cfg, self._session)
-
+        self._uid    = os.environ['RP_TASK_ID']
+        self._log    = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
+                                 level='DEBUG', targets=['.'], path=os.getcwd())
+        self._prof   = ru.Profiler(name=self._uid, ns='radical.pilot.worker')
 
         if register:
-            self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-            self.register_publisher(rpc.CONTROL_PUBSUB)
 
+            ppath  = os.environ['RP_PILOT_SANDBOX']
+            ctrl_cfg = ru.read_json('%s/%s.cfg' % (ppath, rpc.CONTROL_PUBSUB))
+
+            self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
+                                                  url=ctrl_cfg['sub'],
+                                                  log=self._log,
+                                                  prof=self._prof,
+                                                  cb=self._control_cb)
+
+            self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
+                                              url=ctrl_cfg['pub'],
+                                              log=self._log,
+                                              prof=self._prof)
+            # let ZMQ settle
             time.sleep(1)
 
-            # `info` is a placeholder for any additional meta data communicated
-            # to the master.
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
-                                              'arg': {'uid' : self._cfg['uid'],
-                                                      'info': self._info}})
-        self.enable_bulk_start = True
+            # `info` is a placeholder for any additional meta data
+            self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
+                                                    'arg': {'uid' : self._uid,
+                                                            'info': {}}})
 
 
     # --------------------------------------------------------------------------
@@ -89,29 +89,36 @@ class Worker(rpu.Component):
     def _control_cb(self, topic, msg):
 
         if msg['cmd'] == 'terminate':
-            self._term.set()
+            self.stop()
+            self.join()
+            sys.exit()
 
         elif msg['cmd'] == 'worker_terminate':
-            if msg['arg']['uid'] == self._cfg['uid']:
-                self._term.set()
+            if msg['arg']['uid'] == self._uid:
+                self.stop()
+                self.join()
+                sys.exit()
 
 
     # --------------------------------------------------------------------------
     #
     def start(self):
 
-        # note that this overwrites `Component.start()` - this worker component
-        # is not using the registered input channels, but listens to it's own
-        # set of channels in `request_cb`.
-        pass
+        raise NotImplementedError('`start()` must be implemented by child class')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        raise NotImplementedError('`run()` must be implemented by child class')
 
 
     # --------------------------------------------------------------------------
     #
     def join(self):
 
-        while not self._term.wait(timeout=1.0):
-            pass
+        raise NotImplementedError('`join()` must be implemented by child class')
 
 
 # ------------------------------------------------------------------------------
