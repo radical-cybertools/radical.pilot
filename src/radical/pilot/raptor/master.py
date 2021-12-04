@@ -306,12 +306,12 @@ class Master(rpu.Component):
                 ru.write_json(cfg, fname)
 
                 td = dict()
-                td['named_env']        = descr['named_env']
+                td['named_env']        = descr.get('named_env')
                 td['cpu_processes']    = descr['cpu_processes']
                 td['cpu_process_type'] = 'MPI'
                 td['cpu_thread_type']  = 'POSIX'
-              # td['cpu_threads']      = descr['cpu_threads']
-                td['gpu_processes']    = descr['gpu_processes']
+                td['cpu_threads']      = descr.get('cpu_threads', 1)
+                td['gpu_processes']    = descr.get('gpu_processes', 0)
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker

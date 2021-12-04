@@ -606,13 +606,13 @@ class TaskDescription(ru.Description):
                 raise ValueError("RP_SHELL Task needs 'command'")
 
 
-        if self.mode in [RP_SHELL, RP_PROC]:
-
-            if self.get('cpu_processes', 1) * self.get('cpu_threads', 1) > 1:
-                raise ValueError("RP_SHELL and RP_PROC Tasks must be single core")
-
-            if self.get('gpu_processes', 0) > 0:
-                raise ValueError("RP_SHELL and RP_PROC Tasks canont use GPUs")
+      # if self.mode in [RP_SHELL, RP_PROC]:
+      #
+      #     if self.get('cpu_processes', 1) * self.get('cpu_threads', 1) > 1:
+      #         raise ValueError("RP_SHELL and RP_PROC Tasks must be single core")
+      #
+      #     if self.get('gpu_processes', 0) > 0:
+      #         raise ValueError("RP_SHELL and RP_PROC Tasks canont use GPUs")
 
 
 # ------------------------------------------------------------------------------

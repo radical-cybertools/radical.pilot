@@ -3,14 +3,14 @@ import io
 import os
 import sys
 import time
+import shlex
 
 import threading         as mt
 import radical.utils     as ru
 
 from .worker            import Worker
-from ..task_description import MPI, FUNCTION
-from ..task_description import RP_EXECUTABLE, RP_FUNCTION
-from ..task_description import RP_EVAL, RP_EXEC, RP_PROC, RP_SHELL
+from ..task_description import MPI
+from ..task_description import RP_FUNCTION, RP_EVAL, RP_EXEC, RP_PROC, RP_SHELL
 
 
 # MPI message tags
@@ -33,7 +33,7 @@ from inspect import currentframe
 
 def debug():
     cf = currentframe()
-    print('=== %s' % cf.f_back.f_lineno)
+    print('%s' % cf.f_back.f_lineno)
 
 
 # ------------------------------------------------------------------------------
@@ -123,7 +123,7 @@ class _Resources(object):
         # FIXME: handle threads
         # FIXME: handle GPUs
 
-        self._log.debug('==== alloc %s', task['uid'])
+        self._log.debug_5('alloc %s', task['uid'])
 
         cores = task['description'].get('cpu_processes', 1)
 
@@ -131,7 +131,7 @@ class _Resources(object):
             raise ValueError('insufficient resources to run task (%d >= %d'
                     % (cores, self._ranks))
 
-        self._log.debug('==== alloc %s: %s', task['uid'], cores)
+        self._log.debug_5('alloc %s: %s', task['uid'], cores)
 
         while True:
 
@@ -318,7 +318,6 @@ class _ResultPusher(mt.Thread):
         '''
 
         cpt = task['description'].get('cpu_process_type')
-        self._log.debug('==== %s: cpt: %s', task['uid'], cpt)
 
         if cpt == MPI:
 
@@ -328,16 +327,11 @@ class _ResultPusher(mt.Thread):
             if uid not in self._cache:
                 self._cache[uid] = list()
 
-            self._log.debug('==== %s: len 1:  %s', task['uid'], len(self._cache[uid]))
 
             self._cache[uid].append(task)
-            self._log.debug('==== %s: len 2:  %s', task['uid'], len(self._cache[uid]))
-            self._log.debug('==== %s: ranks:  %s', task['uid'], ranks)
 
             if len(self._cache[uid]) < ranks:
                 return False
-
-            self._log.debug('==== %s: collect', task['uid'])
 
             task['stdout']       = [t['stdout']       for t in self._cache[uid]]
             task['stderr']       = [t['stderr']       for t in self._cache[uid]]
@@ -388,12 +382,9 @@ class _ResultPusher(mt.Thread):
                     continue
 
                 try:
-                    self._log.debug('==== check %s', task['uid'])
                     if not self._check_mpi(task):
-                        self._log.debug('==== collect %s', task['uid'])
                         continue
 
-                    self._log.debug('==== push  %s', task['uid'])
                     self._resources.dealloc(task)
                     self._result_pusher.put(task)
 
@@ -460,7 +451,7 @@ class _Worker(mt.Thread):
                 if not task:
                     continue
 
-                self._log.debug('==== recv task %s: %s', task['uid'], task['ranks'])
+                self._log.debug('recv task %s: %s', task['uid'], task['ranks'])
 
                 if self._rank not in task['ranks']:
                     raise RuntimeError('internal error: inconsistent rank info')
@@ -470,7 +461,7 @@ class _Worker(mt.Thread):
 
                 try:
                     out, err, ret, val = self._dispatch(task)
-                    self._log.debug('==== dispatch result: %s: %s', task['uid'], out)
+                    self._log.debug('dispatch result: %s: %s', task['uid'], out)
 
                     task['error']        = None
                     task['stdout']       = out
@@ -504,32 +495,51 @@ class _Worker(mt.Thread):
     #
     def _dispatch(self, task):
 
+        env = {'RP_TASK_ID'         : task['uid'],
+               'RP_TASK_NAME'       : task.get('name'),
+               'RP_TASK_SANDBOX'    : os.environ['RP_TASK_SANDBOX'],  # FIXME?
+               'RP_PILOT_ID'        : os.environ['RP_PILOT_ID'],
+               'RP_SESSION_ID'      : os.environ['RP_SESSION_ID'],
+               'RP_RESOURCE'        : os.environ['RP_RESOURCE'],
+               'RP_RESOURCE_SANDBOX': os.environ['RP_RESOURCE_SANDBOX'],
+               'RP_SESSION_SANDBOX' : os.environ['RP_SESSION_SANDBOX'],
+               'RP_PILOT_SANDBOX'   : os.environ['RP_PILOT_SANDBOX'],
+               'RP_GTOD'            : os.environ['RP_GTOD'],
+               'RP_PROF'            : os.environ['RP_PROF'],
+               'RP_PROF_TGT'        : os.environ['RP_PROF_TGT']}
+
         if task['description'].get('cpu_process_type') == MPI:
-            self._log.debug('==== dispatch via mpi: %s', task['uid'])
-            return self._dispatch_mpi(task)
+            return self._dispatch_mpi(task, env)
+
         else:
-            self._log.debug('==== dispatch normally: %s', task['uid'])
-            return self._dispatch_non_mpi(task)
+            return self._dispatch_non_mpi(task, env)
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_mpi(self, task):
+    def _dispatch_mpi(self, task, env):
 
-        # we can only handle task modes where the new communicator can be passed
-        # as additional argument to a function call
-        if task['description']['mode'] not in [FUNCTION]:
-            raise RuntimeError('only FUNCTION tasks can use mpi')
+      # # we can only handle task modes where the new communicator can be passed
+      # # as additional argument to a function call
+      # if task['description']['mode'] not in [FUNCTION]:
+      #     raise RuntimeError('only FUNCTION tasks can use mpi')
+
+        # NOTE: we cannot pass the new MPI communicator to shell, proc, exec or
+        #       eval tasks.  Nevertheless, we *can* run the requested number of
+        #       ranks.
 
         # create new communicator with all workers assigned to this task
         group = self._group.Incl(task['ranks'])
         comm  = self._world.Create_group(group)
         assert(comm)
 
+        env['RP_RANK']  = str(comm.rank)
+        env['RP_RANKS'] = str(comm.size)
+
         task['description']['args'].insert(0, comm)
 
         try:
-            return self._dispatch_non_mpi(task)
+            return self._dispatch_non_mpi(task, env)
 
         finally:
             # remove comm from args again
@@ -538,21 +548,21 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_non_mpi(self, task, comm=None):
+    def _dispatch_non_mpi(self, task, env):
 
         # work on task
         mode = task['description']['mode']
-        if   mode == RP_FUNCTION: return self._dispatch_function(task)
-        elif mode == RP_EVAL    : return self._dispatch_eval(task)
-        elif mode == RP_EXEC    : return self._dispatch_exec(task)
-        elif mode == RP_PROC    : return self._dispatch_proc(task)
-        elif mode == RP_SHELL   : return self._dispatch_shell(task)
+        if   mode == RP_FUNCTION: return self._dispatch_function(task, env)
+        elif mode == RP_EVAL    : return self._dispatch_eval(task, env)
+        elif mode == RP_EXEC    : return self._dispatch_exec(task, env)
+        elif mode == RP_PROC    : return self._dispatch_proc(task, env)
+        elif mode == RP_SHELL   : return self._dispatch_shell(task, env)
         else: raise ValueError('cannot handle task mode %s' % mode)
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_function(self, task):
+    def _dispatch_function(self, task, env):
         '''
         We expect three attributes: 'function', containing the name of the
         member method or free function to call, `args`, an optional list of
@@ -588,6 +598,11 @@ class _Worker(mt.Thread):
         strout = None
         strerr = None
 
+        old_env = os.environ.copy()
+
+        for k, v in env.items():
+            os.environ[k] = v
+
         try:
             # redirect stdio to capture them during execution
             sys.stdout = strout = io.StringIO()
@@ -610,13 +625,15 @@ class _Worker(mt.Thread):
             sys.stdout = bak_stdout
             sys.stderr = bak_stderr
 
+            os.environ = old_env
+
 
         return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_eval(self, task):
+    def _dispatch_eval(self, task, env):
         '''
         We expect a single attribute: 'code', containing the Python
         code to be eval'ed
@@ -631,12 +648,17 @@ class _Worker(mt.Thread):
         strout = None
         strerr = None
 
+        old_env = os.environ.copy()
+
+        for k, v in env.items():
+            os.environ[k] = v
+
         try:
             # redirect stdio to capture them during execution
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            self._log.debug('=== eval [%s] [%s]' % (code, task['uid']))
+            self._log.debug('eval [%s] [%s]' % (code, task['uid']))
 
             val = eval(code)
             out = strout.getvalue()
@@ -644,7 +666,6 @@ class _Worker(mt.Thread):
             ret = 0
 
         except Exception as e:
-            self._log.exception('_eval failed: %s' % task['uid'])
             self._log.exception('_eval failed: %s' % task['uid'])
             val = None
             out = strout.getvalue()
@@ -656,12 +677,14 @@ class _Worker(mt.Thread):
             sys.stdout = bak_stdout
             sys.stderr = bak_stderr
 
+            os.environ = old_env
+
         return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_exec(self, task):
+    def _dispatch_exec(self, task, env):
         '''
         We expect a single attribute: 'code', containing the Python code to be
         exec'ed.  The optional attribute `pre_exec` can be used for any import
@@ -673,6 +696,11 @@ class _Worker(mt.Thread):
 
         strout = None
         strerr = None
+
+        old_env = os.environ.copy()
+
+        for k, v in env.items():
+            os.environ[k] = v
 
         try:
             # redirect stdio to capture them during execution
@@ -711,12 +739,14 @@ class _Worker(mt.Thread):
             sys.stdout = bak_stdout
             sys.stderr = bak_stderr
 
+            os.environ = old_env
+
         return out, err, ret, val
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_proc(self, task):
+    def _dispatch_proc(self, task, env):
         '''
         We expect two attributes: 'executable', containing the executabele to
         run, and `arguments` containing a list of arguments (strings) to pass as
@@ -730,18 +760,21 @@ class _Worker(mt.Thread):
 
             exe  = task['description']['executable']
             args = task['description'].get('arguments', list())
-            env  = task['description'].get('environment', dict())
+            tenv = task['description'].get('environment', dict())
 
-            args = '%s %s' % (exe, ' '.join(args))
+            for k, v in env.items():
+                tenv[k] = v
 
-            proc = sp.Popen(args=args,      env=env,
-                            stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
+            cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
+            self._log.debug('=== proc: --%s--', args)
+            proc = sp.Popen(cmd, env=tenv,  stdin=None,
+                            stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
 
         except Exception as e:
-            self._log.exception('popen failed: %s' % task['uid'])
+            self._log.exception('proc failed: %s' % task['uid'])
             out = None
             err = 'exec failed: %s' % e
             ret = 1
@@ -751,21 +784,29 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_shell(self, task):
+    def _dispatch_shell(self, task, env):
         '''
         We expect a single attribute: 'command', containing the command
         line to be called as string.
         '''
 
+      # old_env = os.environ.copy()
+      #
+      # for k, v in env.items():
+      #     os.environ[k] = v
+
         try:
             cmd = task['description']['command']
-            out, err, ret = ru.sh_callout(cmd, shell=True)
+            self._log.debug('=== shell: --%s--', cmd)
+            out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % task['uid'])
             out = None
             err = 'shell failed: %s' % e
             ret = 1
+
+      # os.environ = old_env
 
         return out, err, ret, None
 
@@ -951,7 +992,7 @@ class MPIWorkerAM(Worker):
     #
     def test_mpi(self, comm, msg):
 
-        print('hello mpi %d/%d: %s' % (comm.rank, comm.size, msg))
+        print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
 
 
 # ------------------------------------------------------------------------------
