@@ -5,31 +5,31 @@ __license__   = 'MIT'
 import radical.utils as ru
 
 # task modes
-RP_EXECUTABLE    = 'executable'
-RP_FUNCTION      = 'function'
-RP_EVAL          = 'eval'
-RP_EXEC          = 'exec'
-RP_PROC          = 'proc'
-RP_SHELL         = 'shell'
+TASK_EXECUTABLE  = 'executable'
+TASK_FUNCTION    = 'function'
+TASK_EVAL        = 'eval'
+TASK_EXEC        = 'exec'
+TASK_PROC        = 'proc'
+TASK_SHELL       = 'shell'
 
 # task description attributes
 UID              = 'uid'
 NAME             = 'name'
 MODE             = 'mode'
 
-# mode: executable
+# mode: TASK_EXECUTABLE
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
 
-# mode: function
+# mode: TASK_FUNCTION
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
 
-# mode: exec,eval
+# mode: TASK_EXEC, TASK_EVAL
 CODE             = 'code'
 
-# mode: proc,shell
+# mode: TASK_PROC, TASK_SHELL
 COMMAND          = 'command'
 
 # environment
@@ -106,36 +106,37 @@ class TaskDescription(ru.Description):
        [type: `str` | default: `"executable"`] The execution mode to be used for
        this task.  The following modes are accepted:
 
-         - EXECUTABLE: the task is spawned as an external executable via a
+         - TASK_EXECUTABLE: the task is spawned as an external executable via a
            resource specific launch method (srun, aprun, mpiexec, etc).
            required attributes: `executable`
            related  attributes: `arguments`
 
-         - FUNCTION: the task references a python function to be called.
+         - TASK_FUNCTION: the task references a python function to be called.
            required attributes: `function`
            related  attributes: `args`
            related  attributes: `kwargs`
 
-         - EVAL: the task is a code snippet to be evaluated.
+         - TASK_EVAL: the task is a code snippet to be evaluated.
            required attributes: `code`
 
-         - EXEC: the task is a code snippet to be `exec`'ed.
+         - TASK_EXEC: the task is a code snippet to be `exec`'ed.
            required attributes: `code`
 
-         - SHELL: the task is a shell command line to be run.
+         - TASK_SHELL: the task is a shell command line to be run.
            required attributes: `command`
 
-         - PROC: the task is a single core process to be executed.
+         - TASK_PROC: the task is a single core process to be executed.
            required attributes: `executable`
            related  attributes: `arguments`
 
-        There exists a certain overlap between `EXECUTABLE`, `SHELL` and `PROC`
-        modes.  As a general rule, `SHELL` and `PROC` should be used for short
-        running tasks which require a single core and no additional resources
-        (gpus, storage, memory).  `EXECUTABLE` should be used for all other
-        tasks and is in fact the default.  `SHELL` should only be used if the
-        command to be run requires shell specific functionality (pipes, I/O
-        redirection) which cannot easily be mapped to other task attributes.
+        There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+        and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
+        should be used for short running tasks which require a single core and
+        no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
+        should be used for all other tasks and is in fact the default.
+        `TASK_SHELL` should only be used if the command to be run requires shell
+        specific functionality (pipes, I/O redirection) which cannot easily be
+        mapped to other task attributes.
 
 
     .. data:: executable
@@ -153,14 +154,14 @@ class TaskDescription(ru.Description):
 
        [type: `str` | default: `""`] The code to run.  This field is expected to
        contain valid python code which is executed when the task mode is
-       `code:exec` or `code:eval`.
+       `TASK_EXEC` or `TASK_EVAL`.
 
     ..data: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
        scope of the respective RP worker implementation (see documentation
-       there).  The task mode must be set to `function:call`.  `args` and
+       there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
        `kwargs` are passed as function parameters.
 
     .. data:: args
@@ -178,7 +179,7 @@ class TaskDescription(ru.Description):
     .. data:: command
 
        [type: `str` | default: `""`] A shell command to be executed.  This
-       attribute is used for the `SHELL` task mode.
+       attribute is used for the `TASK_SHELL` mode.
 
     .. data:: cpu_processes
 
@@ -582,41 +583,41 @@ class TaskDescription(ru.Description):
     def _verify(self):
 
         if not self.get('mode'):
-            self['mode'] = RP_EXECUTABLE
+            self['mode'] = TASK_EXECUTABLE
 
 
-        if self.mode == RP_EXECUTABLE:
+        if self.mode == TASK_EXECUTABLE:
             if not self.get('executable'):
-                raise ValueError("RP_EXECUTABLE Task needs 'executable'")
+                raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
 
-        elif self.mode == RP_FUNCTION:
+        elif self.mode == TASK_FUNCTION:
             if not self.get('function'):
-                raise ValueError("RP_FUNCTION Task needs 'function'")
+                raise ValueError("TASK_FUNCTION Task needs 'function'")
 
-        elif self.mode == RP_PROC:
+        elif self.mode == TASK_PROC:
             if not self.get('executable'):
-                raise ValueError("RP_PROC Task needs 'executable'")
+                raise ValueError("TASK_PROC Task needs 'executable'")
 
-        elif self.mode == RP_EVAL:
+        elif self.mode == TASK_EVAL:
             if not self.get('code'):
-                raise ValueError("RP_EVAL Task needs 'code'")
+                raise ValueError("TASK_EVAL Task needs 'code'")
 
-        elif self.mode == RP_EXEC:
+        elif self.mode == TASK_EXEC:
             if not self.get('code'):
-                raise ValueError("RP_EXEC Task needs 'code'")
+                raise ValueError("TASK_EXEC Task needs 'code'")
 
-        elif self.mode == RP_SHELL:
+        elif self.mode == TASK_SHELL:
             if not self.get('command'):
-                raise ValueError("RP_SHELL Task needs 'command'")
+                raise ValueError("TASK_SHELL Task needs 'command'")
 
 
-      # if self.mode in [RP_SHELL, RP_PROC]:
+      # if self.mode in [TASK_SHELL, TASK_PROC]:
       #
       #     if self.get('cpu_processes', 1) * self.get('cpu_threads', 1) > 1:
-      #         raise ValueError("RP_SHELL and RP_PROC Tasks must be single core")
+      #         raise ValueError("TASK_SHELL and TASK_PROC Tasks must be single core")
       #
       #     if self.get('gpu_processes', 0) > 0:
-      #         raise ValueError("RP_SHELL and RP_PROC Tasks canont use GPUs")
+      #         raise ValueError("TASK_SHELL and TASK_PROC Tasks canont use GPUs")
 
 
 # ------------------------------------------------------------------------------

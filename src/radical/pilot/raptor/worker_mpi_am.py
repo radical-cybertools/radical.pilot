@@ -10,7 +10,8 @@ import radical.utils     as ru
 
 from .worker            import Worker
 from ..task_description import MPI
-from ..task_description import RP_FUNCTION, RP_EVAL, RP_EXEC, RP_PROC, RP_SHELL
+from ..task_description import TASK_FUNCTION, TASK_EVAL
+from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL
 
 
 # MPI message tags
@@ -552,11 +553,11 @@ class _Worker(mt.Thread):
 
         # work on task
         mode = task['description']['mode']
-        if   mode == RP_FUNCTION: return self._dispatch_function(task, env)
-        elif mode == RP_EVAL    : return self._dispatch_eval(task, env)
-        elif mode == RP_EXEC    : return self._dispatch_exec(task, env)
-        elif mode == RP_PROC    : return self._dispatch_proc(task, env)
-        elif mode == RP_SHELL   : return self._dispatch_shell(task, env)
+        if   mode == TASK_FUNCTION: return self._dispatch_function(task, env)
+        elif mode == TASK_EVAL    : return self._dispatch_eval(task, env)
+        elif mode == TASK_EXEC    : return self._dispatch_exec(task, env)
+        elif mode == TASK_PROC    : return self._dispatch_proc(task, env)
+        elif mode == TASK_SHELL   : return self._dispatch_shell(task, env)
         else: raise ValueError('cannot handle task mode %s' % mode)
 
 
