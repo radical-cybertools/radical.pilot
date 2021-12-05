@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.%06d' % i,
-                'mode'            : rp.RP_EXECUTABLE,
+                'mode'            : rp.TASK_EXECUTABLE,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
@@ -80,7 +80,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.RP_FUNCTION,
+                'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
@@ -90,7 +90,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.RP_EVAL,
+                'mode'            : rp.TASK_EVAL,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'code'            :
@@ -101,7 +101,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exec.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.RP_EXEC,
+                'mode'            : rp.TASK_EXEC,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'code'            :
@@ -112,7 +112,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.proc.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.RP_PROC,
+                'mode'            : rp.TASK_PROC,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
@@ -123,7 +123,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.shell.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.RP_SHELL,
+                'mode'            : rp.TASK_SHELL,
                 'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',

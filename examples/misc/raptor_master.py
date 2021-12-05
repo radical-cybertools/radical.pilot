@@ -56,12 +56,12 @@ class MyMaster(rp.raptor.Master):
         while idx < total:
 
             td = rp.TaskDescription({'uid'        : 'task.eval.%06d' % idx,
-                                     'mode'       : rp.RP_EVAL,
+                                     'mode'       : rp.TASK_EVAL,
                                      'code'       : 'print("hello world")'})
             self.submit_tasks(td)
 
             td = rp.TaskDescription({'uid'        : 'task.exec.%06d' % idx,
-                                     'mode'       : rp.RP_EXEC,
+                                     'mode'       : rp.TASK_EXEC,
                                      'pre_exec'   : ['import time'],
                                      'code'       : 'print("hello stdout"); '
                                                     'return "hello world"'
@@ -69,21 +69,21 @@ class MyMaster(rp.raptor.Master):
             self.submit_tasks(td)
 
             td = rp.TaskDescription({'uid'        : 'task.call.%06d' % idx,
-                                     'mode'       : rp.RP_FUNCTION,
+                                     'mode'       : rp.TASK_FUNCTION,
                                      'function'   : 'test',
-                                     'kwargs'     : {'msg': 'task.call.%06d' % idx}
+                                     'kwargs'     : {'msg': 'world'}
                                     })
             self.submit_tasks(td)
 
             td = rp.TaskDescription({'uid'        : 'task.proc.%06d' % idx,
-                                     'mode'       : rp.RP_PROC,
+                                     'mode'       : rp.TASK_PROC,
                                      'executable' : '/bin/echo',
                                      'arguments'  : ['hello', 'world']
                                     })
             self.submit_tasks(td)
 
             td = rp.TaskDescription({'uid'        : 'task.shell.%06d' % idx,
-                                     'mode'       : rp.RP_SHELL,
+                                     'mode'       : rp.TASK_SHELL,
                                      'environment': {'WORLD': 'world'},
                                      'command'    : '/bin/echo "hello $WORLD"'
                                     })
@@ -103,11 +103,11 @@ class MyMaster(rp.raptor.Master):
             self._log.debug('request_cb %s\n' % (task['uid']))
 
             # for each `function` mode task, submit one more `proc` mode request
-            if task['description']['mode'] == rp.RP_FUNCTION:
+            if task['description']['mode'] == rp.TASK_FUNCTION:
 
                 uid  = 'request.extra.%06d' % self._cnt
                 td   = rp.TaskDescription({'uid'          : uid,
-                                           'mode'         : rp.RP_PROC,
+                                           'mode'         : rp.TASK_PROC,
                                            'cpu_processes': 1,
                                            'executable'   : '/bin/echo',
                                            'arguments'    : ['hello', 'world']
