@@ -4,7 +4,7 @@ __license__   = 'MIT'
 
 import radical.utils as ru
 
-# task modules
+# task modes
 RP_EXECUTABLE    = 'executable'
 RP_FUNCTION      = 'function'
 RP_EVAL          = 'eval'
@@ -15,17 +15,21 @@ RP_SHELL         = 'shell'
 # task description attributes
 UID              = 'uid'
 NAME             = 'name'
-MODE             = 'mode'                     # executable or function
+MODE             = 'mode'
 
 # mode: executable
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
 
-# mode: function:{exec,call,eval,proc,shell}
-CODE             = 'code'
+# mode: function
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
+
+# mode: exec,eval
+CODE             = 'code'
+
+# mode: proc,shell
 COMMAND          = 'command'
 
 # environment
