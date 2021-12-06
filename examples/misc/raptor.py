@@ -18,21 +18,19 @@ if __name__ == '__main__':
     cfg_fname =                 os.path.basename(cfg_file)
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    cpn       = cfg.cpn
-    gpn       = cfg.gpn
+    cpn       = cfg.worker_descr.cpu_processes or 1
+    gpn       = cfg.worker_descr.gpu_processes or 0
     n_masters = cfg.n_masters
     n_workers = cfg.n_workers
     workload  = cfg.workload
 
     # each master uses a node, and each worker on each master uses a node
-    nodes     =  n_masters + (n_masters * n_workers)
-    print('nodes', nodes)
-
+    # use 8 additional cores for non-raptor tasks
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = nodes * cpn + cpn
-        pd.gpus    = nodes * gpn + gpn
+        pd.cores   = n_masters + n_workers * cpn + 8
+        pd.gpus    =             n_workers * gpn
         pd.runtime = cfg.runtime
 
         tds = list()
@@ -42,8 +40,6 @@ if __name__ == '__main__':
             td.uid            = ru.generate_id('master.%(item_counter)06d',
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
-            td.cpu_threads    = cpn
-            td.gpu_processes  = gpn
             td.arguments      = [cfg_file, i]
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
@@ -69,34 +65,77 @@ if __name__ == '__main__':
                                     'version': '3.8',
                                     'setup'  : ['radical.pilot']})
 
-
-
-        requests = list()
+        tds = list()
         for i in range(eval(cfg.workload.total)):
 
-            td  = rp.TaskDescription()
-            uid = 'request.req.%06d' % i
-            # ------------------------------------------------------------------
-            # work serialization goes here
-            work = json.dumps({'mode'   :  'call',
-                               'cores'  :  1,
-                               'timeout':  100,
-                               'data'   : {'method': 'hello',
-                                           'kwargs': {'count': i,
-                                                      'uid'  : uid}}})
-            # ------------------------------------------------------------------
-            requests.append(rp.TaskDescription({
-                               'uid'       : uid,
-                               'executable': '-',
-                               'scheduler' : 'master.%06d' % (i % n_masters),
-                               'arguments' : [work]}))
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exe.%06d' % i,
+                'mode'            : rp.TASK_EXECUTABLE,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                           '$RP_TASK_ID"']}))
 
-        tmgr.submit_tasks(requests)
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'function'        : 'test_mpi',
+                'kwargs'          : {'msg': 'task.mpi.%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.eval.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EVAL,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exec.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EXEC,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.proc.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PROC,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                           '$RP_TASK_ID"'],
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.shell.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_SHELL,
+                'cpu_processes'   : 4,
+                'cpu_process_type': rp.MPI,
+                'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+        tasks = tmgr.submit_tasks(tds)
 
         tmgr.add_pilots(pilot)
-        tmgr.wait_tasks(uids=[r['uid'] for r in requests])
+        tmgr.wait_tasks(uids=[t.uid for t in tasks])
 
-        time.sleep(120)
+        for task in tasks:
+            print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))
 
     finally:
         session.close(download=True)

@@ -119,8 +119,17 @@ class Default(AgentStagingOutputComponent):
     #
     def _handle_task_stdio(self, task):
 
-        sbox = task['task_sandbox_path']
+        if task.get('stdio'):
+            # no need to fetch stdio, the LM or launcher did that
+            # FIXME: do we need to pull profile events?
+            return
+
+        sbox = task.get('task_sandbox_path')
         uid  = task['uid']
+
+        # no sbox, no io
+        if not sbox:
+            return
 
         self._prof.prof('staging_stdout_start', uid=uid)
       # self._log.debug('out: %s', task.get('stdout_file'))

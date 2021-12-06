@@ -1,6 +1,4 @@
-# pylint: disable=subprocess-popen-preexec-fn,unused-argument
-# FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
-#        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
+# pylint: disable=unused-argument
 
 __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -29,16 +27,21 @@ from .base import AgentExecutingComponent
 _pids = list()
 
 
-def _kill():
+def _kill(*args, **kwargs):
+
     for pid in _pids:
+
+        # skip test mocks
         if not isinstance(pid, int):
-            # skip test mocks
             continue
+
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 
 
 atexit.register(_kill)
+signal.signal(signal.SIGTERM, _kill)
+signal.signal(signal.SIGINT,  _kill)
 # ------------------------------------------------------------------------------
 
 
@@ -47,7 +50,7 @@ atexit.register(_kill)
 class Popen(AgentExecutingComponent):
 
     _header    = '#!/bin/sh\n'
-    _separator = '# ' + '-' * 78
+    _separator = '\n# ' + '-' * 78 + '\n'
 
 
     # --------------------------------------------------------------------------

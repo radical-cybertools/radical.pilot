@@ -7,7 +7,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.DefaultWorker):
+class MyWorker(rp.raptor.MPIWorker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
@@ -18,7 +18,7 @@ class MyWorker(rp.raptor.DefaultWorker):
     #
     def __init__(self, cfg):
 
-        rp.raptor.DefaultWorker.__init__(self, cfg)
+        rp.raptor.MPIWorker.__init__(self, cfg)
 
         self._enable_bulk_start = True
 

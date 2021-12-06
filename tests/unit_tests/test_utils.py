@@ -1,14 +1,28 @@
+#!/usr/bin/env python3
 
 from unittest import TestCase
 
-import radical.utils as ru
+import radical.utils       as ru
+import radical.pilot       as rp
+import radical.pilot.utils as rpu
+
 from radical.pilot import states as s
+
 from radical.pilot.utils.prof_utils import _expand_sduration, _convert_sdurations
 
 
-class TestDurations(TestCase):
+# ------------------------------------------------------------------------------
+#
+# Helper for the `load_class` test
+#
+class Foo(rp.PilotDescription): pass
 
-    # ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+#
+class TestUtils(TestCase):
+
+    # --------------------------------------------------------------------------
     #
     def test_expand_sduration(self):
 
@@ -73,8 +87,24 @@ class TestDurations(TestCase):
                                    ru.STATE: 'arbitrary'}]})
 
 
+    # --------------------------------------------------------------------------
+    #
+    def test_load_class(self):
+
+        f = rpu.load_class(fpath=__file__, cname='Foo',
+                           ctype=rp.PilotDescription)
+        assert(isinstance(f(), rp.PilotDescription))
+
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
-    tc = TestDurations()
+    tc = TestUtils()
     tc.test_convert_sdurations()
     tc.test_expand_sduration()
+    tc.test_load_class()
+
+
+# ------------------------------------------------------------------------------
+
