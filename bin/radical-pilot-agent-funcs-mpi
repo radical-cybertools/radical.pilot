@@ -274,7 +274,7 @@ class MPIExecutor(object):
                 if comm.rank == 0:
                     # FIXME: we need to send the result back in the queue pickled
                     # **always! and then unpickle in the client side.
-                    if isinstance(result, (tuple, list, set, int, float, dict)):
+                    if not result or isinstance(result, (tuple, list, set, int, float, dict)):
                         task['stdout'] = result
                     else:
                         task['stdout'] = str(MPI.pickle.dumps(result))
