@@ -767,7 +767,7 @@ class _Worker(mt.Thread):
                 tenv[k] = v
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
-            self._log.debug('=== proc: --%s--', args)
+          # self._log.debug('proc: --%s--', args)
             proc = sp.Popen(cmd, env=tenv,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
@@ -798,7 +798,7 @@ class _Worker(mt.Thread):
 
         try:
             cmd = task['description']['command']
-            self._log.debug('=== shell: --%s--', cmd)
+          # self._log.debug('shell: --%s--', cmd)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
 
         except Exception as e:
