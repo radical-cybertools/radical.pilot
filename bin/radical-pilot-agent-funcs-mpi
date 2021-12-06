@@ -223,7 +223,7 @@ class MPIExecutor(object):
                         self._prof.prof('func_stop', uid=task['uid'])
 
                 if not tasks and MAX_WAIT_TIME != 0:
-                    MAX_WAIT_TIME = MAX_WAIT_TIME - 1
+                    MAX_WAIT_TIME -= 1
                     time.sleep(0.1)
                     continue
 

@@ -3,16 +3,13 @@
 import os
 import sys
 import time
+import queue
 import pickle
 import codecs
-from io import StringIO
 import multiprocessing as mp
 import threading       as mt
 
 import radical.utils   as ru
-
-# wtf
-import queue
 
 # FIXME: the func executor may need a small bootstrapper
 # FIXME: the func executor need to recieve "term" signal from
@@ -232,11 +229,9 @@ class Executor(object):
         from radical.pilot.serialize import serializer as serialize
         
         try:
- 
-           fn = serialize.FuncSerializer.deserialize_obj(code)
+            fn = serialize.FuncSerializer.deserialize_obj(code)
         except Exception as e:
-           self._log.error("preparing function for execution failed due to: %s", e)
-           self._log.error(fn)
+            self._log.error("preparing function for execution failed due to: %s", e)
 
         return fn, args, kwargs
 

@@ -15,6 +15,7 @@ from ...   import states    as rps
 from ...   import constants as rpc
 
 from ..    import LaunchMethod
+from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
 
@@ -66,15 +67,17 @@ class FUNCS(AgentExecutingComponent) :
         self._collector.daemon = True
         self._collector.start()
 
+        # we get an instance of the resource manager (init from registry info)
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                          cfg=self._cfg, log=self._log,
+                                          prof=self._prof)
+
+        # Set a specific launch method
+        lm_cfg = self._cfg.resource_cfg.launch_methods.get('FORK')
         # we need to launch the executors on all nodes, and use the
         # agent_launcher for that
-        # FIXME: env isolation
-        self._launcher = LaunchMethod.create(
-                name    = self._cfg.get('agent_launch_method'),
-                lm_cfg  = self._cfg,
-                rm_info = {},
-                log     = self._log,
-                prof    = self._prof)
+        self._launcher = LaunchMethod.create('FORK', lm_cfg, 
+                                             self._cfg, self._log, self._prof)
 
         # get address of control pubsub
         fname   = '%s/%s.cfg' % (self._cfg.path, rpc.CONTROL_PUBSUB)
@@ -98,8 +101,8 @@ class FUNCS(AgentExecutingComponent) :
                                     },
                      'slots'      : {'ranks' : [{'node_name': node['node_name'],
                                                  'node_id'  : node['node_id'],
-                                                 'cores'    : [[0]],
-                                                 'gpus'     : []}]
+                                                 'core_map' : [[0]],
+                                                 'gpu_map'  : []}]
                                     },
                      'cfg'        : {'req_get'      : req_cfg['get'],
                                      'res_put'      : res_cfg['put'],
@@ -141,10 +144,9 @@ class FUNCS(AgentExecutingComponent) :
         ru.rec_makedir(sandbox)
         ru.write_json(funcs.get('cfg'), cfgname)
 
-        launch_cmd, hop_cmd = launcher.construct_command(funcs, fname)
-
-        if hop_cmd : cmdline = hop_cmd
-        else       : cmdline = fname
+        cmdline    = fname
+        exec_path  = launcher.get_rank_exec(funcs, None, None)
+        launch_cmd = launcher.get_launch_cmds(funcs, exec_path)
 
         with ru.ru_open(fname, "w") as fout:
 
@@ -157,7 +159,6 @@ class FUNCS(AgentExecutingComponent) :
             fout.write('export RP_SPAWNER_ID="%s"\n' % self.uid)
             fout.write('export RP_FUNCS_ID="%s"\n'   % funcs['uid'])
             fout.write('export RP_GTOD="%s"\n'       % self.gtod)
-            fout.write('export RP_TMP="%s"\n'        % self._task_tmp)
 
             # also add any env vars requested in the task description
             if descr.get('environment', []):
