@@ -5,7 +5,8 @@ __license__   = 'MIT'
 import pprint
 
 import math as m
-import pprint
+
+import radical.utils as ru
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
@@ -115,7 +116,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_task(self, task):
+    def unschedule_task(self, tasks):
         '''
         This method is called when previously aquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
@@ -123,7 +124,8 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(task['slots'], rpc.FREE)
+        for task in ru.as_list(tasks):
+            self._change_slot_states(task['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------

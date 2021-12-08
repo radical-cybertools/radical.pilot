@@ -228,6 +228,17 @@ class PilotManager(rpu.Component):
         self._rep.ok('>>ok\n')
 
 
+        # dump json
+        json = self.as_dict()
+      # json['_id']  = self.uid
+        json['type'] = 'pmgr'
+        json['uid']  = self.uid
+
+        tgt = '%s/%s.json' % (self._session.path, self.uid)
+        ru.write_json(json, tgt)
+
+
+
     # --------------------------------------------------------------------------
     #
     def as_dict(self):

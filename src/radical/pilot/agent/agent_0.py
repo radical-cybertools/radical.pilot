@@ -170,7 +170,8 @@ class Agent_0(rpu.Worker):
         # listen for completed tasks to foward to client
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
-                            self._proxy_output_cb)
+                            qname='default',
+                            cb=self._proxy_output_cb)
 
         # and register output
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
@@ -183,7 +184,7 @@ class Agent_0(rpu.Worker):
     #
     def _proxy_input_cb(self, msg):
 
-        self._log.debug('=== proxy input cb: %s', len(msg))
+        self._log.debug('proxy input cb: %s', len(msg))
 
         to_advance = list()
 
@@ -227,7 +228,7 @@ class Agent_0(rpu.Worker):
     #
     def _client_ctrl_cb(self, topic, msg):
 
-        self._log.debug('=== ctl sub cb: %s %s', topic, msg)
+        self._log.debug('ctl sub cb: %s %s', topic, msg)
 
 
     # --------------------------------------------------------------------------
@@ -284,7 +285,7 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
-        rm_info = self._rm.rm_info
+        rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
 
         pilot = {'type'     : 'pilot',
@@ -367,7 +368,7 @@ class Agent_0(rpu.Worker):
                  'logfile': log,
                  'state'  : state}
 
-        self._log.debug('=== push final state update')
+        self._log.debug('push final state update')
         self._log.debug('update state: %s: %s', state, self._final_cause)
         self.publish(rpc.PROXY_STATE_PUBSUB,
                      topic=rpc.STATE_PUBSUB, msg=[pilot])
@@ -628,7 +629,7 @@ class Agent_0(rpu.Worker):
     #
     def _proxy_control_cb(self, topic, msg):
 
-        self._log.debug('=== proxy control: %s', msg)
+        self._log.debug('proxy control: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -656,10 +657,10 @@ class Agent_0(rpu.Worker):
         if cmd == 'cancel_pilots':
 
             if self._pid not in arg.get('uids'):
-                self._log.debug('=== ignore cancel %s', msg)
+                self._log.debug('ignore cancel %s', msg)
                 return True
 
-            self._log.info('=== cancel pilot cmd')
+            self._log.info('cancel pilot cmd')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                               'arg' : None})
             self._final_cause = 'cancel'
@@ -670,7 +671,7 @@ class Agent_0(rpu.Worker):
 
         # all other messages (such as cancel_tasks) are forwarded to the agent
         # control pubsub, to be picked up by the respective target components
-        self._log.debug('=== fwd control msg %s', msg)
+        self._log.debug('fwd control msg %s', msg)
         self.publish(rpc.CONTROL_PUBSUB, msg)
 
         return True

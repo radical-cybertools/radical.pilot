@@ -239,16 +239,19 @@ class ZMQBridge(ru.zmq.Server):
             proxy_cp = ru.zmq.PubSub(cfg={'channel': 'proxy_control_pubsub',
                                           'uid'    : 'proxy_control_pubsub',
                                           'type'   : 'pubsub',
+                                          'log_lvl': 'debug',
                                           'path'   : sid})
 
             proxy_sp = ru.zmq.PubSub(cfg={'channel': 'proxy_state_pubsub',
                                           'uid'    : 'proxy_state_pubsub',
                                           'type'   : 'pubsub',
+                                          'log_lvl': 'debug',
                                           'path'   : sid})
 
             proxy_aq = ru.zmq.Queue (cfg={'channel': 'proxy_task_queue',
                                           'uid'    : 'proxy_task_queue',
                                           'type'   : 'queue',
+                                          'log_lvl': 'debug',
                                           'path'   : sid})
 
             proxy_cp.start()

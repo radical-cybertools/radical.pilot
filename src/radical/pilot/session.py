@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import os
 import copy
+import glob
 import time
 
 import threading as mt
@@ -129,11 +130,6 @@ class Session(rs.Session):
         self._log  = self._get_logger  (name=self._uid,
                                         level=self._cfg.get('debug'))
 
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s' % rp_version_detail)
-        self._log.info('radical.saga  version: %s' % rs.version_detail)
-        self._log.info('radical.utils version: %s' % ru.version_detail)
-
         self._prof.prof('session_start', uid=self._uid)
 
         # now we have config and uid - initialize base class (saga session)
@@ -177,17 +173,12 @@ class Session(rs.Session):
                 self._service = ru.zmq.Client(url=self._cfg.service_url)
                 response      = self._service.request('client_lookup',
                                                       {'sid': self._uid})
-                if response.err:
-                    for line in response.exc:
-                        self._log.error(line)
-                    raise RuntimeError('request failed: %s' % response.err)
-
-                self._cfg.proxy = response.res
-
+                self._cfg.proxy = response
                 self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
 
 
         # for mostly debug purposes, dump the used session config
+
         ru.write_json(self._cfg, '%s/%s.cfg' % (self._cfg.path, self._uid))
 
         # at this point we have a bridge connection, logger, etc, and are done
@@ -268,11 +259,10 @@ class Session(rs.Session):
 
         self._closed = True
 
-
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
         if options.download:
-)
+
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = os.getcwd()
@@ -289,6 +279,33 @@ class Session(rs.Session):
                           % (self._t_stop - self._t_start))
             self._rep.ok('>>ok\n')
 
+            # dump json
+            json = {'session' : self.as_dict(),
+                    'pmgr'    : list(),
+                    'pilot'   : list(),
+                    'tmgr'    : list(),
+                    'task'    : list()}
+
+          # json['session']['_id']      = self.uid
+            json['session']['type']     = 'session'
+            json['session']['uid']      = self.uid
+            json['session']['metadata'] = self._metadata
+
+            for fname in glob.glob('%s/pmgr.*.json' % self.path):
+                json['pmgr'].append(ru.read_json(fname))
+
+            for fname in glob.glob('%s/pilot.*.json' % self.path):
+                json['pilot'].append(ru.read_json(fname))
+
+            for fname in glob.glob('%s/tmgr.*.json' % self.path):
+                json['tmgr'].append(ru.read_json(fname))
+
+            for fname in glob.glob('%s/tasks.*.json' % self.path):
+                json['task'] += ru.read_json(fname)
+
+            tgt = '%s/%s.json' % (self.path, self.uid)
+            ru.write_json(json, tgt)
+
 
     # --------------------------------------------------------------------------
     #
@@ -304,12 +321,8 @@ class Session(rs.Session):
         self._service = ru.zmq.Client(url=self._cfg.service_url)
         response      = self._service.request('client_register',
                                               {'sid': self._uid})
-        if response.err:
-            for line in response.exc:
-                self._log.error(line)
-            raise RuntimeError('request failed: %s' % response.err)
 
-        self._cfg.proxy = response.res
+        self._cfg.proxy = response
         self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
 
         # now that the proxy bridges have been created on the service host,
@@ -330,12 +343,17 @@ class Session(rs.Session):
         # make sure we send heartbeats to the proxy
         self._run_proxy_hb()
 
+        from . import version_detail as rp_version_detail
+        self._log.info('radical.pilot version: %s' % rp_version_detail)
+        self._log.info('radical.saga  version: %s' % rs.version_detail)
+        self._log.info('radical.utils version: %s' % ru.version_detail)
+
       # FIXME MONGODB: to json
-      # self.inject_metadata({'radical_stack':
-      #                              {'rp': rp_version_detail,
-      #                               'rs': rs.version_detail,
-      #                               'ru': ru.version_detail,
-      #                               'py': py_version_detail}})
+        self._metadata = {'radical_stack':
+                                     {'rp': rp_version_detail,
+                                      'rs': rs.version_detail,
+                                      'ru': ru.version_detail}}
+                                    # 'py': py_version_detail}}
 
         pwd = self._cfg.path
 
@@ -387,9 +405,9 @@ class Session(rs.Session):
 
         object_dict = {
             "uid"        : self._uid,
-            "created"    : self.created,
-            "connected"  : self.connected,
-            "closed"     : self.closed,
+          # "created"    : self.created,
+          # "connected"  : self.connected,
+          # "closed"     : self.closed,
             "service_url": str(self.service_url),
             "cfg"        : copy.deepcopy(self._cfg)
         }

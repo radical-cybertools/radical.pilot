@@ -874,8 +874,8 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._proc_term.is_set():
-                task = self._queue_unsched.get(timeout=0.01)
-                to_unschedule.append(task)
+                tasks = self._queue_unsched.get(timeout=0.01)
+                to_unschedule += ru.as_list(tasks)
                 if len(to_unschedule) > 512:
                     break
 

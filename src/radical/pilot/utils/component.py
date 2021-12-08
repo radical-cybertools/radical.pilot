@@ -577,7 +577,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-        self._log.debug('command incoming: %s', msg)
+      # self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -598,8 +598,8 @@ class Component(object):
             self._log.info('got termination command')
             self.stop()
 
-        else:
-            self._log.debug('command ignored: %s', cmd)
+      # else:
+      #     self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -731,7 +731,7 @@ class Component(object):
                               'qname'  : qname,
                               'states' : states}
 
-        self._log.debug('registered input %s', name)
+        self._log.debug('registered input %s [%s] [%s]', name, queue, qname)
 
         # we want exactly one worker associated with a state -- but a worker
         # can be responsible for multiple states
@@ -1072,6 +1072,9 @@ class Component(object):
             time.sleep(0.1)
             return True
 
+        # TODO: should a poller over all inputs, or better yet register
+        #       a callback
+
         for name in self._inputs:
 
             queue  = self._inputs[name]['queue']
@@ -1086,9 +1089,10 @@ class Component(object):
           #                                         qname, len(things))
 
             if not things:
+                # next input
+                continue
 
-                # return to have a chance to catch term signals
-                return True
+          # self._log.debug('work_cb ===== : %d', len(things))
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
@@ -1279,8 +1283,8 @@ class Component(object):
                     # empty output -- drop thing
                   # for thing in _things:
                   #     self._log.debug('=== drop  %s [%s]', thing['uid'], _state)
-                  #   # self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #   #                 ts=ts)
+                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
+                  #                     ts=ts)
                     continue
 
                 output = self._outputs[_state]

@@ -4,6 +4,7 @@ __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import os
+from re import A
 import sys
 import random
 
@@ -58,16 +59,15 @@ if __name__ == '__main__':
                    'exit_on_error' : True,
                    'project'       : config.get('project', None),
                    'queue'         : config.get('queue', None),
-                   'access_schema' : config.get('schema', None),
                    'cores'         : config.get('cores', None),
+                   'cores'         : 1024,
                    'gpus'          : config.get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
 
-        # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024 * 1024  # number of tasks to run
+        n = 1  # 024 * 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.

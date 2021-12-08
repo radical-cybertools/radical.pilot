@@ -160,11 +160,21 @@ class Pilot(object):
     #
     def _default_state_cb(self, pilot, state=None):
 
-
         uid   = self.uid
         state = self.state
 
         self._log.info("[Callback]: pilot %s state: %s.", uid, state)
+
+        if state in rps.FINAL:
+            # dump json
+            json = self.as_dict()
+          # json['_id']  = self.uid
+            json['type'] = 'pilot'
+            json['uid']  = self.uid
+
+            tgt = '%s/%s.json' % (self._session.path, self.uid)
+            ru.write_json(json, tgt)
+
 
         if state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)

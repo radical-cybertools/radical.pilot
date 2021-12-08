@@ -220,7 +220,7 @@ setup_args = {
     'package_dir'        : {'': 'src'},
     'scripts'            : [
                             'bin/radical-pilot-agent',
-                            'bin/radical-pilot-agent-bridge',
+                          # 'bin/radical-pilot-agent-bridge',
                             'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
