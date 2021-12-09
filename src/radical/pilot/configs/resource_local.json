@@ -123,15 +123,16 @@
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "FUNCS",
         "launch_methods"              : {
-                                         "order": ["FORK", "FUNCS"],
+                                         "order": ["FORK", "SSH"],
                                          "FORK" : {},
-                                         "FUNCS": {}
+                                         "SSH"  : {}
                                         },
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
         "python_dist"                 : "default",
+	    "virtenv"                     : "/home/aymenalsaadi/ve/mpi/",
         "pre_bootstrap_0"             : [],
-        "cores_per_node"              : 8,
+        "cores_per_node"              : 4,
         "gpus_per_node"               : 1
     },
 
@@ -158,11 +159,12 @@
                                          "FORK"    : {},
                                          "MPIRUN": {}
                                         },
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "use",
         "python_dist"                 : "default",
+	    "virtenv"                     : "/home/aymenalsaadi/ve/mpi/",
         "pre_bootstrap_0"             : [],
-        "cores_per_node"              : 8,
+        "cores_per_node"              : 4,
         "gpus_per_node"               : 1
     }
 }

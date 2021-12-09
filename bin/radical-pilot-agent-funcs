@@ -4,18 +4,24 @@ import os
 import sys
 import time
 import queue
+import dill
 import pickle
 import codecs
 import multiprocessing as mp
 import threading       as mt
 
 import radical.utils   as ru
-
+from colmena.redis.queue import RedisQueue
+from radical.pilot.serialize import serializer as serialize
 # FIXME: the func executor may need a small bootstrapper
 # FIXME: the func executor need to recieve "term" signal from
 #        `funcs.py` to trigger the termination of the workers here
 
-pwd = sys.argv[1]
+pwd  = sys.argv[1]
+#try:
+#    host = sys.argv[2]
+#    port = sys.argv[3]
+#except: pass
 
 
 # ------------------------------------------------------------------------------
@@ -54,11 +60,19 @@ class Executor(object):
     #
     def __init__(self, n_workers=None):
 
-        self._nw   = n_workers
-        self._uid  = os.environ['RP_FUNCS_ID']
-        self._log  = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
-        self._prof = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
-        self._cfg  = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
+        self._nw        = n_workers
+        self._uid       = os.environ['RP_FUNCS_ID']
+        self._log       = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
+        self._prof      = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
+        self._cfg       = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
+        self._host      = '127.0.0.1'#host if host else None
+        self._port      = 59465# if no port else port
+
+        self._enable_redis = False
+        if self._host and self._port:
+            self.redis  = RedisQueue(self._host, self._port, 
+                                     topics = ['rp task queue', 'rp result queue'])
+            self._enable_redis = True
 
         self._initialize()
 
@@ -116,6 +130,11 @@ class Executor(object):
             self._nw = mp.cpu_count()
 
         self._log.debug('#workers: %d', self._nw)
+
+        # make sure we are in redis mode
+        if self._enable_redis:
+            # connect to redis server
+            self.redis.connect()
 
         self._workers = list()
         for i in range(self._nw):
@@ -187,8 +206,6 @@ class Executor(object):
                 # send task individually to load balance workers
                 for task in tasks:
                     self._mpq_work.put(task)
-
-
     # --------------------------------------------------------------------------
     #
     def _get_results(self):
@@ -206,9 +223,8 @@ class Executor(object):
                 continue
 
             if task:
-                self._log.debug(task)
+                self._log.debug('got result of %s', task['uid'])
                 self._zmq_res.put(task)
-
 
     # --------------------------------------------------------------------------
     #
@@ -225,8 +241,6 @@ class Executor(object):
         code        = function_info["_cud_code"]
         args        = function_info["_cud_args"]
         kwargs      = function_info["_cud_kwargs"]
-
-        from radical.pilot.serialize import serializer as serialize
         
         try:
             fn = serialize.FuncSerializer.deserialize_obj(code)
@@ -257,72 +271,56 @@ class Executor(object):
             descr = task['description']
             exe   = descr['executable']
             args  = descr.get('arguments') or list()
-            pres  = descr.get('pre_exec')  or list()
-            cmd   = '%s(%s)' % (exe, ','.join(args))
-            res   = None
+
+            if self._enable_redis:
+                # make sure we are conneced
+                assert self.redis.is_connected == True
+                 # ypull from redis queue if we have a colmena task
+                redis_task = self.redis.get(topic = 'rp task queue')[1]
+                if task['name'] == 'colmena':
+                    # now wait until you get the message from redis
+                    if redis_task:
+                        self._log.debug('got a colmena tasks')
+                        exe = redis_task
+                    else:
+                        continue
 
             self._prof.prof('task_get', comp=wid, uid=tid)
-
-            def check_obj(obj):
-                '''
-                Check the object type if pickled or not
-                to distinguish between exec and eval
-                '''
-                try:
-                    obj = pickle.loads(codecs.decode(exe.encode(),"base64"))
-                    if isinstance(obj, dict) is True:
-                        return True
-
-                except Exception as e:
-                    self._log.exception(str(e))
-                    return False
-
+            task['stdout'] = None
+            task['stderr'] = None
             try:
-                task['stderr'] = ''
-                task['stdout'] = ''
-                for pre in pres:
-                    if pre.split()[0] == 'import':
-                        for mod in pre.split()[1:]:
-                            if mod not in globals():
-                                globals()[mod] = ru.import_module(mod)
-                                locals() [mod] = globals()[mod]
-
-                if check_obj(exe) is True:
-
-                    try:
-                        self._prof.prof('func_prep', comp=wid, uid=tid)
-
-                        fn, args, kwargs = self.prepare_func(exe)
-                        self._prof.prof('func_start', comp=wid, uid=tid)
-                        res = fn(*args, **kwargs)
-                        self._prof.prof('func_stop', comp=wid, uid=tid)
-
-                        # if our output does not need serialization
-                        if isinstance(res, int) or isinstance(res, str):
-                            task['stdout'] = res
-                        # else serialize it to send it via ZMQ
-                        else:
-                            task['stdout'] = str(pickle.dumps(res))
-                        task['state']  = 'DONE'
-                    except Exception as e:
-                        self._log.exception('=== Function execution failed')
-                        task['stderr'] = str(e)
-                        task['state']  = 'FAILED'
-                        raise
+                self._prof.prof('func_start', comp=wid, uid=tid)
+                if task['name'] == 'colmena':
+                    func = eval(exe)
+                    func = dill.loads(func)
+                    args   = func['args']
+                    kwargs = func['kwargs']
+                    func   = func['func']
                 else:
-                    task['stdout'] = eval(cmd)
+                    func, args, kwargs = self.prepare_func(exe)
 
-                task['stderr'] = None
+                result = func(*args, **kwargs)
+                self._prof.prof('func_stop', comp=wid, uid=tid)
+
+                task['stdout'] = result
                 task['state']  = 'DONE'
             except Exception as e:
-                self._log.exception('=== Function handling failed')
-                task['stdout'] = None
+                self._log.exception('=== Function execution failed')
                 task['stderr'] = str(e)
                 task['state']  = 'FAILED'
-
+        
+            # put the task in the regular queue or Redis queue
             self._prof.prof('task_put', comp=wid, uid=tid)
-
             task['wid'] = wid
+            if self._enable_redis:
+                if task['name'] == 'colmena':
+                    # make sure we are conneced
+                    assert self.redis.is_connected == True
+                    STDOUT = str(dill.dumps(task['stdout']))
+                    self.redis.put(STDOUT, topic='rp result queue')
+                    task['stdout'] = 'redirected_to_redis'
+                    task['description']['executable'] = None
+                    self._log.debug('task_redis_put')
             self._mpq_result.put(task)
 
 

@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 from .agent_0          import Agent_0
 from .agent_n          import Agent_n
-from .mpi_worker       import MPI_Func_Worker
 
 from .resource_manager import ResourceManager
 from .launch_method    import LaunchMethod
