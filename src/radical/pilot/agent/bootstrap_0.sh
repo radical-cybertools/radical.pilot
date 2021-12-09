@@ -29,15 +29,6 @@ echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
-# create a `deactivate` script
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
@@ -128,7 +119,7 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
+VIRTENV_RADICAL_DEPS="'pymongo<4' colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
@@ -469,10 +460,18 @@ rehash()
     # we need to do this again after the virtenv is loaded
     if test -z "$explicit_python"
     then
-        PYTHON=`which python`
+        PYTHON=`which python3`
     else
         PYTHON="$explicit_python"
     fi
+
+    if test -z "$PYTHON"
+    then
+        echo "ERROR: no python"
+        env_dump no_python.env
+        exit 1
+    fi
+
     PYTHON_VERSION=`$PYTHON -c 'from distutils.sysconfig import get_python_version; print(get_python_version())'`
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
@@ -1124,7 +1123,7 @@ virtenv_update()
     #       modules on india etc.
     for dep in $VIRTENV_RADICAL_DEPS
     do
-        run_cmd "install $dep" \
+        run_cmd "install '$dep'" \
                 "$PIP install --upgrade $dep" \
              || echo "Couldn't update $dep! Lets see how far we get ..."
     done
@@ -1720,6 +1719,13 @@ create_deactivate
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
+
+if test -z "$PILOT_SCRIPT"
+then
+    echo "ERROR: rp installation incomplete?"
+    env_dump > env.rp.error
+    exit 1
+fi
 
 
 # after all is said and done, we should end up with a usable python version.

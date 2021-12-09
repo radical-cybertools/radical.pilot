@@ -1,6 +1,5 @@
 
 import os
-import dill
 import time
 import queue
 import codecs
@@ -51,6 +50,7 @@ class MPIWorker(Worker):
         # to continue executing until failing
         from mpi4py import MPI
 
+        import dill
         MPI.pickle.__init__(dill.dumps, dill.loads)
 
 
@@ -242,6 +242,7 @@ class MPIWorker(Worker):
     def mpi_worker(self):
 
         from mpi4py import MPI
+        import dill
 
         MPI.pickle.__init__(dill.dumps, dill.loads)
 

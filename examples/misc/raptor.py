@@ -69,7 +69,10 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                    'setup'  : ['radical.pilot']})
+                                    'setup'  : [
+                                        'pip install git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
+                                        'pip install git+https://github.com/radical-cybertools/radical.utils.git@project/texascale_5',
+                                        ]})
 
         # submit some test tasks
         tds = list()
