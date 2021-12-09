@@ -1,9 +1,11 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/ParSL
 """
 import re
+import sys
+import time
 import shlex
 import parsl
-import pickle
+import dill
 import inspect
 import typeguard
 
@@ -15,9 +17,11 @@ from radical.pilot import PythonTask
 from concurrent.futures import Future
 from typing import Optional, Union
 
+from colmena.redis.queue import RedisQueue
 from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
 
+IDEAL_BSON_SIZE = 48
 
 class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
@@ -52,10 +56,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
                  max_task_cores: int = 1,
+                 cores_per_task: int = 1,
                  gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
                  partition : Optional[str] = " ",
-                 project: Optional[str] = " ",):
+                 project: Optional[str] = " ",
+                 enable_redis = False,
+                 redis_port: int = 59465,
+                 redis_host = None):
 
         self.label              = label
         self.project            = project
@@ -67,10 +75,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.managed            = managed
         self.max_tasks          = max_tasks  # Pilot cores
         self.max_task_cores     = max_task_cores  # executor cores
+        self.cores_per_task     = cores_per_task  # task cores
         self.gpus               = gpus
         self._task_counter      = 0
         self.run_dir            = '.'
         self.worker_logdir_root = worker_logdir_root
+        self.enable_redis       = enable_redis
+        self.redis_port         = redis_port
+        self.redis_host         = redis_host
 
         self.logger  = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
         self.report  = ru.Reporter(name='radical.pilot')
@@ -78,25 +90,63 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                       mode=ru.ID_PRIVATE))
 
         self.report.title('RP version %s :' % rp.version)
-        self.report.header("Initializing RADICALExecutor (Parsl version: %s)" % parsl.__version__)
-        self.pmgr    = rp.PilotManager(session=self.session)
-        self.tmgr    = rp.TaskManager(session=self.session)
+        self.report.header("RADICALExecutor started (Parsl version: %s)" % parsl.__version__)
+        self.pmgr = rp.PilotManager(session=self.session)
+        self.tmgr = rp.TaskManager(session=self.session)
+
+        # check if we have redis mode enabled
+        if self.enable_redis:
+            self.redis = RedisQueue(self.redis_host, port = self.redis_port, 
+                                    topics = ['rp task queue', 'rp result queue'])
+
+    def get_redis_task(self):
+        '''
+        Pull a result object from redis queue
+        '''
+        if self.enable_redis:
+            # make sure we are connected to redis
+            assert self.redis.is_connected == True
+            message = self.redis.get(topic = 'rp result queue')
+
+            if message:
+                self.logger.debug('pulled result from redis')
+                result = eval(message[1])
+                try:
+                    STDOUT = dill.loads(result)
+                except Exception as e:
+                    self.logger.error(str(e))
+            return STDOUT
+
+    def put_redis_task(self, tu):
+        '''
+        Push a result object to redis queue
+        '''
+        if self.enable_redis:
+            # make sure we are connected to redis
+            assert self.redis.is_connected == True
+            source_code = str(dill.dumps(tu))
+            self.redis.put(source_code, topic = 'rp task queue')
+            self.logger.debug('task pushed to redis')
 
     def task_state_cb(self, task, state):
-
         """
         Update the state of Parsl Future tasks
         Based on RP task state
         """
-        parsl_task = self.future_tasks[task.name]
+        parsl_task = self.future_tasks[task.uid]
         STDOUT = task.stdout
         if state == rp.DONE:
-            try:
-                STDOUT = pickle.loads(eval(task.stdout))
-            except: pass 
+            if task.name == 'colmena':
+                self.logger.debug('got a colmena result')
+                try:
+                    STDOUT = self.get_redis_task()
+                except Exception as e:
+                    self.logger.debug(e)
+            else:
+                pass
             parsl_task.set_result(STDOUT)
-            print('\t+ %s: %-10s: %10s: %s'
-                  % (task.uid, task.state, task.pilot, STDOUT))
+            print('\t+ %s: %-10s: %10s'
+                  % (task.uid, task.state, task.pilot))
 
         if state == rp.CANCELED:
             parsl_task.cancel()
@@ -126,8 +176,12 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pdesc = rp.PilotDescription(pd_init)
         pilot = self.pmgr.submit_pilots(pdesc)
         self.tmgr.add_pilots(pilot)
-        pilot.wait(state=rp.PMGR_ACTIVE)
+        self.tmgr.register_callback(self.task_state_cb)
         self.report.header('PMGR Is Active submitting tasks now')
+        try:
+            self.redis.connect()
+        except Exception as e:
+            self.logger.exception('failed to connect to redis queue (%s)',str(e))
 
         return True
 
@@ -151,7 +205,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             if task_type.startswith('@bash_app'):
                 source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
                 temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
-                                                                            comments=True, posix=True)))
+                                                                    comments=True, posix=True)))
                 task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
                 if 'exe' in kwargs:
                     code = "{0} {1}".format(kwargs['exe'], task_exe)
@@ -166,7 +220,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 code  = PythonTask(self.unwrap(func), *args, **kwargs) 
 
 
-            cu =  {"source_code": code,
+            tu=  {"source_code": code,
                    "name"       : func.__name__,
                    "args"       : [],
                    "kwargs"     : kwargs,
@@ -184,18 +238,23 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             new_args.pop(0)
             args = tuple(new_args)
 
+            # MongoDB can not handle it, we will pull it from
+            # the Redis server (agent side)
+            name = func.__name__
+            if sys.getsizeof(args) >= IDEAL_BSON_SIZE:
+                name = 'colmena'
 
-            cu = {"source_code": PythonTask(rp_func, *args, **kwargs),
-                  "name"       : func.__name__,
+            tu= {"source_code" : PythonTask(rp_func, *args, **kwargs),
+                  "name"       : name,
                   "args"       : [],
                   "kwargs"     : kwargs,
                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                  "ptype"      : rp.MPI_FUNC if 'ptype' not in kwargs else kwargs['ptype'],
-                  "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
+                  "ptype"      : rp.MPI_FUNC if 'mpi' in self.resource else rp.FUNC,
+                  "nproc"      : self.cores_per_task,
                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
                   "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
 
-        return cu
+        return tu
 
     def submit(self, func, *args, **kwargs):
         """
@@ -208,19 +267,19 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self.logger.debug("Got a task from the parsl.dataflow.dflow")
+        self.logger.debug("Got a task from the parsl.dfk")
 
         self._task_counter += 1
         task_id = str(self._task_counter)
         self.future_tasks[task_id] = Future()
-        tu = self.task_translate(func, args, kwargs)
+        tu = self.task_translate(func, args, kwargs)            
 
         try:
-            self.tmgr.register_callback(self.task_state_cb) 
             self.report.progress_tgt(self._task_counter, label='create')
 
             task                  = rp.TaskDescription()
-            task.name             = task_id
+            task.uid              = task_id
+            task.name             = tu['name']
             task.pre_exec         = tu['pre_exec']
             task.executable       = tu['source_code']
             task.arguments        = tu['args']
@@ -230,6 +289,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task.gpu_processes    = tu['ngpus']
             task.gpu_process_type = None
             self.report.progress()
+
+            if tu['name'] == 'colmena':
+                self.put_redis_task(tu['source_code'])
+                tu['source_code']['args'] = ()
+            
             self.tmgr.submit_tasks(task)
 
         except Exception as e:
