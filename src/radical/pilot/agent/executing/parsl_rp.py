@@ -2,10 +2,9 @@
 """
 import re
 import sys
-import time
+import dill
 import shlex
 import parsl
-import dill
 import inspect
 import typeguard
 
@@ -22,6 +21,7 @@ from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
 
 IDEAL_BSON_SIZE = 48
+
 
 class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     """Executor designed for cluster-scale
@@ -105,7 +105,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         '''
         if self.enable_redis:
             # make sure we are connected to redis
-            assert self.redis.is_connected == True
+            assert(self.redis.is_connected)
             message = self.redis.get(topic = 'rp result queue')
 
             if message:
@@ -123,7 +123,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         '''
         if self.enable_redis:
             # make sure we are connected to redis
-            assert self.redis.is_connected == True
+            assert(self.redis.is_connected)
             source_code = str(dill.dumps(tu))
             self.redis.put(source_code, topic = 'rp task queue')
             self.logger.debug('task pushed to redis')
@@ -220,7 +220,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 code  = PythonTask(self.unwrap(func), *args, **kwargs) 
 
 
-            tu=  {"source_code": code,
+            tu =  {"source_code": code,
                    "name"       : func.__name__,
                    "args"       : [],
                    "kwargs"     : kwargs,
@@ -244,7 +244,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             if sys.getsizeof(args) >= IDEAL_BSON_SIZE:
                 name = 'colmena'
 
-            tu= {"source_code" : PythonTask(rp_func, *args, **kwargs),
+            tu = {"source_code" : PythonTask(rp_func, *args, **kwargs),
                   "name"       : name,
                   "args"       : [],
                   "kwargs"     : kwargs,
@@ -293,7 +293,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             if tu['name'] == 'colmena':
                 self.put_redis_task(tu['source_code'])
                 tu['source_code']['args'] = ()
-            
+
             self.tmgr.submit_tasks(task)
 
         except Exception as e:

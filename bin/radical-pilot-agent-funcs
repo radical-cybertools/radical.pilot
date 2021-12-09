@@ -16,12 +16,13 @@ from radical.pilot.serialize import serializer as serialize
 # FIXME: the func executor may need a small bootstrapper
 # FIXME: the func executor need to recieve "term" signal from
 #        `funcs.py` to trigger the termination of the workers here
-
+# FIXME: find a way to provide this executor with port and host if 
+#        called from the RP-PARSL Executor
 pwd  = sys.argv[1]
-#try:
-#    host = sys.argv[2]
-#    port = sys.argv[3]
-#except: pass
+try:
+    host = sys.argv[2]
+    port = sys.argv[3]
+except: pass
 
 
 # ------------------------------------------------------------------------------
@@ -65,8 +66,8 @@ class Executor(object):
         self._log       = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
         self._prof      = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
         self._cfg       = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
-        self._host      = '127.0.0.1'#host if host else None
-        self._port      = 59465# if no port else port
+        self._host      = '127.0.0.1'  # host if host else None
+        self._port      = 59465  # if no port else port
 
         self._enable_redis = False
         if self._enable_redis:
@@ -242,7 +243,7 @@ class Executor(object):
         code        = function_info["_cud_code"]
         args        = function_info["_cud_args"]
         kwargs      = function_info["_cud_kwargs"]
-        
+
         try:
             fn = serialize.FuncSerializer.deserialize_obj(code)
         except Exception as e:
@@ -275,7 +276,7 @@ class Executor(object):
 
             if self._enable_redis:
                 # make sure we are conneced
-                assert self.redis.is_connected == True
+                assert(self.redis.is_connected)
                  # ypull from redis queue if we have a colmena task
                 redis_task = self.redis.get(topic = 'rp task queue')[1]
                 if task['name'] == 'colmena':
@@ -309,14 +310,14 @@ class Executor(object):
                 self._log.exception('=== Function execution failed')
                 task['stderr'] = str(e)
                 task['state']  = 'FAILED'
-        
+
             # put the task in the regular queue or Redis queue
             self._prof.prof('task_put', comp=wid, uid=tid)
             task['wid'] = wid
             if self._enable_redis:
                 if task['name'] == 'colmena':
                     # make sure we are conneced
-                    assert self.redis.is_connected == True
+                    assert(self.redis.is_connected)
                     STDOUT = str(dill.dumps(task['stdout']))
                     self.redis.put(STDOUT, topic='rp result queue')
                     task['stdout'] = 'redirected_to_redis'
