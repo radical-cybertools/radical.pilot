@@ -66,8 +66,9 @@ class MPIWorker(Worker):
         self._cfg['rank'] = rank
         self._cfg['uid']  = '%s.%03d' % (self._cfg['uid'], rank)
 
-        self._n_cores = self._cfg.worker_descr.cores_per_rank
-        self._n_gpus  = self._cfg.worker_descr.gpus_per_rank
+        self._n_cores = self._cfg.worker_descr.get('cpu_processes', 1) * \
+                        self._cfg.worker_descr.get('cpu_threads', 1)
+        self._n_gpus  = self._cfg.worker_descr.get('gpu_processes', 0)
 
         self._res_evt = mp.Event()          # set on free resources
         self._mlock   = ru.Lock(self._uid)  # lock `_modes`

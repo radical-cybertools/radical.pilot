@@ -48,12 +48,18 @@ test -z "$GPU_INFO" && GPU_INFO="$CUDA_VISIBLE_DEVICES"
 test -z "$GPU_INFO" && GPU_INFO="$GPU_DEVICE_ORDINAL"
 GPU_INFO=$(echo " $GPU_INFO " | tr ',' ' ')
 
-LSPCI=$(which lspci 2> /dev/null)
-test -z "$LSPCI" && LSPCI='/sbin/lspci'
-test -f "$LSPCI" || LSPCI='/usr/sbin/lspci'
-test -f "$LSPCI" || LSPCI='true'
-GPU_NBITS=$($LSPCI | grep -e " VGA " -e ' GV100GL ' | wc -l)
+UID=$(id -u)
+LSPCI_CACHE="/tmp/lspci.$UID"
+if ! test -f "$LSPCI_CACHE"
+then
+    LSPCI=$(which lspci 2> /dev/null)
+    test -z "$LSPCI" && LSPCI='/sbin/lspci'
+    test -f "$LSPCI" || LSPCI='/usr/sbin/lspci'
+    test -f "$LSPCI" || LSPCI='true'
+    $LSPCI | grep -e " VGA " -e ' GV100GL ' | wc -l > "$LSPCI_CACHE"
+fi
 
+GPU_NBITS=$(cat "$LSPCI_CACHE")
 GPU_BITS=''
 n=0
 while test "$n" -lt "$GPU_NBITS"

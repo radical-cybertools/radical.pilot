@@ -16,7 +16,7 @@ from .. import utils     as rpu
 from .. import states    as rps
 from .. import constants as rpc
 
-from .. import Session, Task, TaskDescription
+from .. import Session, Task, TaskDescription, TASK_EXECUTABLE
 
 from .request import Request
 
@@ -30,14 +30,9 @@ def out(msg):
 #
 class Master(rpu.Component):
 
-    # FIXME: instead of the input and output queue, use the default component
-    #        facilities
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg=None, backend='zmq'):
-
-        self._backend  = backend     # FIXME: use
 
         self._uid      = os.environ['RP_TASK_ID']
         self._name     = os.environ['RP_TASK_NAME']
@@ -53,7 +48,7 @@ class Master(rpu.Component):
 
         cfg.sid        = os.environ['RP_SESSION_ID']
         cfg.base       = os.environ['RP_PILOT_SANDBOX']
-        cfg.path       = os.environ['RP_PILOT_SANDBOX']
+        cfg.path       = os.environ['RP_TASK_SANDBOX']
         self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
         cfg            = self._get_config(cfg)
 
@@ -71,11 +66,11 @@ class Master(rpu.Component):
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
-        qname = '%s_input_queue' % self._uid
+        qname = '%s.input_queue' % self._uid
         input_cfg = ru.Config(cfg={'channel'   : qname,
                                    'type'      : 'queue',
                                    'uid'       : '%s_input' % self._uid,
-                                   'path'      : os.getcwd(),
+                                   'path'      : self._cfg.path,
                                    'stall_hwm' : 0,
                                    'bulk_size' : 56})
 
@@ -91,14 +86,14 @@ class Master(rpu.Component):
         req_cfg = ru.Config(cfg={'channel'   : 'request',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.req',
-                                 'path'      : os.getcwd(),
+                                 'path'      : self._cfg.path,
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1024})
 
         res_cfg = ru.Config(cfg={'channel'   : 'result',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.res',
-                                 'path'      : os.getcwd(),
+                                 'path'      : self._cfg.path,
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1024})
 
@@ -119,7 +114,7 @@ class Master(rpu.Component):
         # delivered via an async callback (`self._result_cb`).
         self._req_put = ru.zmq.Putter('request', self._req_addr_put)
         self._res_get = ru.zmq.Getter('result',  self._res_addr_get,
-                                      cb=self._result_cb)
+                                                 cb=self._result_cb)
 
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
@@ -179,7 +174,7 @@ class Master(rpu.Component):
         del(cfg['channel'])
         del(cfg['cmgr'])
 
-        cfg['log_lvl'] = 'debug'
+        cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
 
@@ -263,7 +258,16 @@ class Master(rpu.Component):
                         with self._lock:
                             self._workers[uid]['state'] = 'DONE'
 
+            self.state_cb(ru.as_list(arg))
+
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def state_cb(self, tasks):
+
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -327,7 +331,7 @@ class Master(rpu.Component):
 
 
                 # all workers run in the same sandbox as the master
-                sbox = os.getcwd()
+                sbox = os.environ['RP_TASK_SANDBOX']
                 task = dict()
 
                 task['description']       = TaskDescription(td).as_dict()
@@ -341,7 +345,6 @@ class Master(rpu.Component):
                 task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
                 task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
                 task['pilot']             = os.environ['RP_PILOT_ID']
-              # task['tmgr']              = 'tmgr.0000'  # FIXME
                 task['resources']         = {'cpu': td['cpu_processes'] *
                                                     td.get('cpu_threads', 1),
                                              'gpu': td['gpu_processes']}
@@ -421,7 +424,6 @@ class Master(rpu.Component):
 
         rpu.Component.stop(self, timeout=timeout)
 
-        # FIXME: this *should* get triggered by the base class
         self.terminate()
 
 
@@ -446,8 +448,6 @@ class Master(rpu.Component):
     #
     def _run(self):
 
-        # FIXME: only now subscribe to request input channels
-
         # wait for the submitted requests to complete
         while not self._term.is_set():
 
@@ -461,31 +461,81 @@ class Master(rpu.Component):
     def submit_tasks(self, tasks):
         '''
         submit a list of tasks to the task queue
+        We expect to get either `TaskDescription` instances which will then get
+        converted into task dictionaries and pushed out, or we get task
+        dictionaries which are used as is.
         '''
 
-        # `tasks` can be task instances, task dicts, task description instances,
-        # or task description dicts...
-        task_dicts = list()
-        for thing in ru.as_list(tasks):
-            try:
-                if isinstance(thing, Task):
-                    task_dicts.append(thing.as_dict())
-                elif isinstance(thing, TaskDescription):
-                    task = Task(self, thing)
-                    task_dicts.append(task.as_dict())
-                elif isinstance(thing, dict):
-                    if 'description' in thing:
-                        task_dicts.append(thing)
-                    else:
-                        task = Task(self, TaskDescription(thing))
-                        task_dicts.append(task.as_dict())
-            except:
-                import pprint
-                self._log.exception('=== %s\n', pprint.pformat(td))
+        raptor_tasks     = list()
+        executable_tasks = list()
+        for task in ru.as_list(tasks):
+
+            if isinstance(task, TaskDescription):
+                # convert to task dict
+                task = Task(self, task).as_dict()
+
+            assert('description' in task)
+
+            mode = task['description'].get('mode', TASK_EXECUTABLE)
+            if mode == TASK_EXECUTABLE:
+                executable_tasks.append(task)
+            else:
+                raptor_tasks.append(task)
+
+        self._submit_raptor_tasks(raptor_tasks)
+        self._submit_executable_tasks(executable_tasks)
 
 
-        # push the request message (as dictionary) onto the request queue
-        self._req_put.put(task_dicts)
+    # --------------------------------------------------------------------------
+    #
+    def _submit_raptor_tasks(self, tasks):
+
+        if tasks:
+            # push the request message (as dictionary) onto the request queue
+            self._req_put.put(tasks)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _submit_executable_tasks(self, tasks):
+        '''
+        Submit tasks per given task description to the agent this
+        master is running in.
+        '''
+
+        if not tasks:
+            return
+
+        for task in tasks:
+
+            self._log.debug('submit %s', task['uid'])
+
+            td = task['description']
+
+            sbox = '%s/%s' % (os.environ['RP_TASK_SANDBOX'], td['uid'])
+
+          # task['uid']               = td.get('uid')
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['task_sandbox_path'] = sbox
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
+            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
+            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
+            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
+                                                td.get('cpu_threads',   1),
+                                         'gpu': td.get('gpu_processes', 0)}
+
+            # NOTE: the order of insert / state update relies on that order
+            #       being maintained through the component's message push,
+            #       the update worker's message receive up to the insertion
+            #       order into the update worker's DB bulk op.
+            self._log.debug('insert %s', td['uid'])
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
+
+        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+                            publish=True, push=True)
+
 
 
     # --------------------------------------------------------------------------
@@ -497,11 +547,13 @@ class Master(rpu.Component):
         try:
             filtered = self.request_cb(tasks)
             if filtered:
+                for task in filtered:
+                    self._log.debug('req cb: %s' % task['uid'])
                 self.submit_tasks(filtered)
 
         except:
             self._log.exception('request cb failed')
-            # FIXME: fail the request
+            # FIXME: fail tasks
 
 
     # --------------------------------------------------------------------------

@@ -127,6 +127,8 @@ class Default(AgentStagingOutputComponent):
             # FIXME: do we need to pull profile events?
             return
 
+        return
+
         sbox = task.get('task_sandbox_path')
         uid  = task['uid']
 
@@ -182,12 +184,15 @@ class Default(AgentStagingOutputComponent):
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
-                        if line:
-                            ts, event, comp, tid, _uid, state, msg = \
-                                                                 line.split(',')
-                            self._prof.prof(ts=float(ts), event=event,
-                                            comp=comp, tid=tid, uid=_uid,
-                                            state=state, msg=msg)
+                        if not line:
+                            continue
+                        if line[0] == '#':
+                            continue
+                        ts, event, comp, tid, _uid, state, msg = \
+                                                             line.split(',')
+                        self._prof.prof(ts=float(ts), event=event,
+                                        comp=comp, tid=tid, uid=_uid,
+                                        state=state, msg=msg)
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 

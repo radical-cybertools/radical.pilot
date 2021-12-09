@@ -20,8 +20,6 @@ class MyWorker(rp.raptor.MPIWorker):
 
         rp.raptor.MPIWorker.__init__(self, cfg)
 
-        self._enable_bulk_start = True
-
 
     # --------------------------------------------------------------------------
     #

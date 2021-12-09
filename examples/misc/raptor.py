@@ -13,9 +13,10 @@ import radical.pilot as rp
 #
 if __name__ == '__main__':
 
-    cfg_file  = sys.argv[1]
-    cfg_dir   = os.path.abspath(os.path.dirname(cfg_file))
-    cfg_fname =                 os.path.basename(cfg_file)
+    if len(sys.argv) < 2:
+        cfg_file = './raptor.cfg'
+    else:
+        cfg_file = sys.argv[1]
 
     cfg       = ru.Config(cfg=ru.read_json(cfg_file))
     cpn       = cfg.worker_descr.cpu_processes or 1
@@ -59,14 +60,20 @@ if __name__ == '__main__':
         pmgr  = rp.PilotManager(session=session)
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
+
+        pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
+                        'target': 'radical-pilot-hello.sh',
+                        'action': rp.TRANSFER})
+
         task  = tmgr.submit_tasks(tds)
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     'setup'  : ['radical.pilot']})
 
+        # submit some test tasks
         tds = list()
-        for i in range(eval(cfg.workload.total)):
+        for i in range(1):
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.%06d' % i,
@@ -132,7 +139,7 @@ if __name__ == '__main__':
         tasks = tmgr.submit_tasks(tds)
 
         tmgr.add_pilots(pilot)
-        tmgr.wait_tasks(uids=[t.uid for t in tasks])
+        tmgr.wait_tasks()  # uids=[t.uid for t in tasks])
 
         for task in tasks:
             print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))

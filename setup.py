@@ -231,6 +231,7 @@ setup_args = {
                             'bin/radical-pilot-fetch-profiles',
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-json',
+                            'bin/radical-pilot-hello.sh',
                             'bin/radical-pilot-inspect',
                             'bin/radical-pilot-prte2prof',
                             'bin/radical-pilot-run-session',
@@ -248,6 +249,7 @@ setup_args = {
     'install_requires'   : ['radical.utils>=1.8.4',
                             'radical.saga>=1.8.0',
                             'pymongo',
+                            'mpi4py',
                             'setproctitle'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},

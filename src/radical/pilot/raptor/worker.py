@@ -94,6 +94,7 @@ class Worker(object):
             sys.exit()
 
         elif msg['cmd'] == 'worker_terminate':
+            self._log.debug('==== terminate signal')
             if msg['arg']['uid'] == self._uid:
                 self.stop()
                 self.join()

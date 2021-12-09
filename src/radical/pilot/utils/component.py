@@ -1259,7 +1259,8 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._log.debug("lost  %s [%s] : %s", thing['uid'],
+                                _state, self._outputs)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue

@@ -3,6 +3,8 @@
 
 import os
 import sys
+import copy
+import time
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -34,6 +36,18 @@ class MyMaster(rp.raptor.Master):
     def __init__(self, cfg):
 
         self._cnt = 0
+        self._submitted = {rp.TASK_EXECUTABLE : 0,
+                           rp.TASK_FUNCTION   : 0,
+                           rp.TASK_EVAL       : 0,
+                           rp.TASK_EXEC       : 0,
+                           rp.TASK_PROC       : 0,
+                           rp.TASK_SHELL      : 0}
+        self._collected = {rp.TASK_EXECUTABLE : 0,
+                           rp.TASK_FUNCTION   : 0,
+                           rp.TASK_EVAL       : 0,
+                           rp.TASK_EXEC       : 0,
+                           rp.TASK_PROC       : 0,
+                           rp.TASK_SHELL      : 0}
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
@@ -48,17 +62,23 @@ class MyMaster(rp.raptor.Master):
 
         world_size = self._cfg.n_masters
         rank       = self._cfg.rank
+        psbox      = os.environ['RP_PILOT_SANDBOX']
 
         # create an initial list of work items to be distributed to the workers.
         # Work items MUST be serializable dictionaries.
-        idx   = rank
-        total = int(eval(self._cfg.workload.total))                       # noqa
-        while idx < total:
+        idx    = rank
+        stop   = time.time() + (self._cfg.workload.runtime * 60)
+
+        self._log.debug('==== submit 1 until %.1f', stop)
+
+        while time.time() < stop:
+            self._log.debug('==== submit 2 until %.1f', stop)
 
             td = rp.TaskDescription({'uid'        : 'task.eval.%06d' % idx,
                                      'mode'       : rp.TASK_EVAL,
                                      'code'       : 'print("hello world")'})
             self.submit_tasks(td)
+            self._submitted[rp.TASK_EVAL] += 1
 
             td = rp.TaskDescription({'uid'        : 'task.exec.%06d' % idx,
                                      'mode'       : rp.TASK_EXEC,
@@ -67,6 +87,7 @@ class MyMaster(rp.raptor.Master):
                                                     'return "hello world"'
                                      })
             self.submit_tasks(td)
+            self._submitted[rp.TASK_EXEC] += 1
 
             td = rp.TaskDescription({'uid'        : 'task.call.%06d' % idx,
                                      'mode'       : rp.TASK_FUNCTION,
@@ -74,6 +95,7 @@ class MyMaster(rp.raptor.Master):
                                      'kwargs'     : {'msg': 'world'}
                                     })
             self.submit_tasks(td)
+            self._submitted[rp.TASK_FUNCTION] += 1
 
             td = rp.TaskDescription({'uid'        : 'task.proc.%06d' % idx,
                                      'mode'       : rp.TASK_PROC,
@@ -81,6 +103,7 @@ class MyMaster(rp.raptor.Master):
                                      'arguments'  : ['hello', 'world']
                                     })
             self.submit_tasks(td)
+            self._submitted[rp.TASK_PROC] += 1
 
             td = rp.TaskDescription({'uid'        : 'task.shell.%06d' % idx,
                                      'mode'       : rp.TASK_SHELL,
@@ -88,44 +111,108 @@ class MyMaster(rp.raptor.Master):
                                      'command'    : '/bin/echo "hello $WORLD"'
                                     })
             self.submit_tasks(td)
+            self._submitted[rp.TASK_SHELL] += 1
+
+            td = rp.TaskDescription({'uid'        : '%s.task.%06d' % (self._uid, idx),
+                                     'mode'       : rp.TASK_EXECUTABLE,
+                                     'executable' : '/bin/sh',
+                                     'arguments'  : [
+                                         '%s/radical-pilot-hello.sh' % psbox
+                                     ]
+                                    })
+            self.submit_tasks(td)
+          # self._submitted[rp.TASK_EXECUTABLE] += 1
 
             idx += world_size
 
+            # slow down if we have too many tasks submitted
+            # FIXME: use larger chunks above
+            while True:
+                completed = sum(self._collected.values())
+                submitted = sum(self._submitted.values())
+
+                if completed >= submitted - 2024:
+                    self._log.debug('==== submit cont: %d >= %d ',
+                                     completed, submitted - 1024)
+                    break
+                self._log.debug('==== wait   cont: %d >= %d ',
+                                     completed, submitted - 1024)
+
+                time.sleep(1)
+
+        self._log.debug('==== submit stopped')
+
         self._prof.prof('create_stop')
 
+        import pprint
+        self._log.debug('==== submitted: %s', pprint.pformat(self._submitted))
+        self._log.debug('==== collected: %s', pprint.pformat(self._collected))
+
+
+        # after runtime is out we wait for the remaining outstanding tasks to
+        # complete
+        while True:
+            completed = sum(self._collected.values())
+            submitted = sum(self._submitted.values())
+
+            self._log.debug('==== exec done?: %d >= %d ', completed, submitted)
+            if completed >= submitted:
+                self._log.debug('==== exec done!')
+                self.stop()
+                break
+
+            time.sleep(1)
+
+        self._log.debug('==== exec done!!')
 
     # --------------------------------------------------------------------------
     #
     def request_cb(self, tasks):
 
-        for task in tasks:
-
-            self._log.debug('request_cb %s\n' % (task['uid']))
-
-            # for each `function` mode task, submit one more `proc` mode request
-            if task['description']['mode'] == rp.TASK_FUNCTION:
-
-                uid  = 'request.extra.%06d' % self._cnt
-                td   = rp.TaskDescription({'uid'          : uid,
-                                           'mode'         : rp.TASK_PROC,
-                                           'cpu_processes': 1,
-                                           'executable'   : '/bin/echo',
-                                           'arguments'    : ['hello', 'world']
-                                          })
-                self.submit_tasks(td)
-                self._cnt += 1
-
-        # return the original request for execution
         return tasks
+
+      # for task in tasks:
+      #
+      #     self._log.debug('=== request_cb %s\n' % (task['uid']))
+      #
+      #     # for each `function` mode task, submit one more `proc` mode request
+      #     if task['description']['mode'] == rp.TASK_FUNCTION:
+      #
+      #         uid  = 'task.extra.%06d' % self._cnt
+      #         td   = rp.TaskDescription({'uid'          : uid,
+      #                                    'mode'         : rp.TASK_PROC,
+      #                                    'cpu_processes': 1,
+      #                                    'executable'   : '/bin/echo',
+      #                                    'arguments'    : ['hello', 'world']
+      #                                   })
+      #         self.submit_tasks(td)
+      #         self._cnt += 1
+      #         self._submitted[rp.TASK_PROC] += 1
+      #
+      # return tasks
 
 
     # --------------------------------------------------------------------------
     #
     def result_cb(self, task):
 
-        self._log.debug('result_cb  %s: %s [%s] [%s]\n'
-                       % (task['uid'], task['state'], task['stdout'],
-                          task['return_value']))
+        completed = sum(self._collected.values())
+        submitted = sum(self._submitted.values())
+        mode      = task['description']['mode']
+
+        self._collected[mode] += 1
+        self._log.debug('=== result_cb  %s: %s [%s] [%s] [%s] [%s]\n',
+                       task['uid'], task['state'], task['stdout'],
+                       task['return_value'], completed, submitted)
+
+
+    def state_cb(self, tasks):
+
+        for task in tasks:
+            uid = task['uid']
+
+            if uid.startswith(self._uid + '.task.'):
+                self._collected[rp.TASK_EXECUTABLE] += 1
 
 
 # ------------------------------------------------------------------------------
