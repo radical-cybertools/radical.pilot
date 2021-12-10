@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import dill
 import time
 import codecs
@@ -14,7 +15,10 @@ BUSY = True
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
-
+try:
+    host = sys.argv[1]
+    port = sys.argv[2]
+except: pass
 # ------------------------------------------------------------------------------
 #
 class MPIExecutor(object):
@@ -75,6 +79,16 @@ class MPIExecutor(object):
         self._uid        = os.environ.get('RP_FUNCS_ID')
         self._log        = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._prof       = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
+        self._host      = '127.0.0.1'  # host if host else None
+        self._port      = 59465  # if no port else port
+
+        if self._world.rank == 0:
+            self._enable_redis = False
+            if self._host and self._port:
+                from colmena.redis.queue import RedisQueue
+                self.redis  = RedisQueue(self._host, self._port, 
+                                        topics = ['rp task queue', 'rp result queue'])
+                self._enable_redis = True
 
 
     # --------------------------------------------------------------------------
@@ -139,103 +153,125 @@ class MPIExecutor(object):
         #    args : what arguments to pass to the method
 
         # AM: the master is *always* rank 0, so why the if?
-        if self.rank == 0:
+    
+        _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
 
-            _cfg      = ru.read_json('%s/%s.cfg' % (self._pwd, self._uid))
+        addr_req  = _cfg.get('req_get')
+        addr_res  = _cfg.get('res_put')
+        addr_ctrl = _cfg.get('ctrl')
 
-            addr_req  = _cfg.get('req_get')
-            addr_res  = _cfg.get('res_put')
-            addr_ctrl = _cfg.get('ctrl')
-
-            assert(addr_req)
-            assert(addr_res)
-            assert(addr_ctrl)
+        assert(addr_req)
+        assert(addr_res)
+        assert(addr_ctrl)
 
 
-            _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
-            _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
-            _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
+        _zmq_req  = ru.zmq.Getter(channel='funcs_req_queue', url=addr_req)
+        _zmq_res  = ru.zmq.Putter(channel='funcs_res_queue', url=addr_res)
+        _zmq_ctrl = ru.zmq.Getter(channel='control_pubsub',  url=addr_ctrl)
 
+        # make sure we are in redis mode
+        if self._enable_redis:
+            # connect to redis server
+            self.redis.connect()
 
         while True:
             self._log.debug(MAX_WAIT_TIME)
-            if self.rank == 0:
-                tasks = _zmq_req.get_nowait(1000)
-                if tasks:
-                    MAX_WAIT_TIME = 100
-                    for task in tasks:
-                        self._prof.prof('func_start', uid= task['uid'])
-                        self._log.debug('got %s', task['uid'])
-                        task_descr = task['description']
-                        task_exe   = task_descr['executable']
-                        task_args  = task_descr.get('arguments', list())
-                        task_pres  = task_descr.get('pre_exec',  list())
-                        task_ranks = task_descr['cpu_processes']
+            tasks = _zmq_req.get_nowait(1000)
+            if tasks:
+                MAX_WAIT_TIME = 100
+                for task in tasks:
+                    self._log.debug('got %s', task['uid'])
 
-                        try:
+                    task_descr    = task['description']
+                    task_exe      = task_descr['executable']
+                    task['ranks'] = task_descr['cpu_processes']
 
+                    if task['name'] == 'colmena' and self._enable_redis:
+                        # make sure we are conneced
+                        assert(self.redis.is_connected)
+                        # pull from redis queue if we have a colmena task
+                        redis_task = self.redis.get(topic = 'rp task queue')[1]
+                        if redis_task:
+                            self._log.debug('got a colmena tasks')
+                            task_exe = redis_task
+                        else:
+                            continue
+                    try:
+                        
+                        self._prof.prof('func_prep_start', uid= task['uid'])
+                        if task['name'] == 'colmena':
+                            task['work'] = eval(task_exe)
+                        else:
                             task_info = pickle.loads(codecs.decode(task_exe.encode(),"base64"))
 
                             task['work']   = task_info["_cud_code"]
                             task['args']   = task_info["_cud_args"]
                             task['kwargs'] = task_info["_cud_kwargs"]
-                            task['ranks']  = task_ranks
+                        self._prof.prof('func_prep_stop', uid= task['uid'])
 
-                        except Exception as e:
-                            self._log.debug('ERROR %s', str(e))
+                    except Exception as e:
+                        self._log.debug('ERROR %s', str(e))
+                    
+                    self._prof.prof('func_start', uid= task['uid'])
+                    # find workers and mark as busy
+                    workers = list()
+                    for idx, worker in enumerate(resources):
+                        if worker == IDLE:
+                            workers.append(idx + 1)
+                            resources[idx] = BUSY
+                            if len(workers) == task['ranks']:
+                                self._log.debug('enough workers found')
+                                break
 
-                        # find workers and mark as busy
-                        workers = list()
-                        for idx, worker in enumerate(resources):
-                            if worker == IDLE:
-                                workers.append(idx + 1)
-                                resources[idx] = BUSY
-                                if len(workers) == task_ranks:
-                                    self._log.debug('enough workers found')
-                                    break
+                    # make sure we did find workers!
+                    assert(len(workers) == task['ranks'])
 
-                        # make sure we did find workers!
-                        assert(len(workers) == task_ranks)
+                    # workers need to know who is part of the sub-communicator
+                    task['workers'] = workers
 
-                        # workers need to know who is part of the sub-communicator
-                        task['workers'] = workers
+                    # send the task to each of the workers
+                    self._log.debug('send task %s  to  %s' % (task['uid'], workers))
+                    for worker in workers:
+                        self._world.send(task, dest=worker, tag=0)
 
-                        # send the task to each of the workers
-                        self._log.debug('send task %s  to  %s' % (task['uid'], workers))
-                        for worker in workers:
-                            self._world.send(task, dest=worker, tag=0)
+                    # once a single task is sent out, collect results
+                    task = self._world.recv(tag=1)
+                    self._log.debug('recv %s with state %s' % (task['uid'],
+                                                                task['state']))
+                    
+                    if task['name'] == 'colmena' and self._enable_redis:
+                        assert(self.redis.is_connected)
+                        self.redis.put(task['stdout'], topic='rp result queue')
+                        task['stdout'] = 'redirected_to_redis'
+                        task['description']['executable'] = None
+                        self._log.debug('task_redis_put')
+                    _zmq_res.put(task)
 
-                        # once a single task is sent out, collect results
-                        task = self._world.recv(tag=1)
-                        self._log.debug('recv %s with state %s' % (task['uid'],
-                                                                  task['state']))
-                        _zmq_res.put(task)
+                    # once the task executing is finished mark the workers as IDLE
+                    idle_workers = []
+                    for idx, worker in enumerate(resources):
+                        if worker == BUSY:
+                            resources[idx] = IDLE
+                            self._log.debug('marked worker number %d as IDLE' % (idx))
+                            idle_workers.append(idx)
+                            if  len(idle_workers) == task['ranks']:
+                                break
+                    self._prof.prof('func_stop', uid=task['uid'])
 
-                        # once the task executing is finished mark the workers as IDLE
-                        idle_workers = []
-                        for idx, worker in enumerate(resources):
-                            if worker == BUSY:
-                                resources[idx] = IDLE
-                                self._log.debug('marked worker number %d as IDLE' % (idx))
-                                idle_workers.append(idx)
-                                if  len(idle_workers) == task['ranks']:
-                                    break
-                        self._prof.prof('func_stop', uid=task['uid'])
+            if not tasks and MAX_WAIT_TIME != 0:
+                MAX_WAIT_TIME -= 1
+                time.sleep(0.1)
+                continue
 
-                if not tasks and MAX_WAIT_TIME != 0:
-                    MAX_WAIT_TIME -= 1
+            # If the countdown is 0 but some/all resource still BUSY
+            # then wait for them to become IDLE
+            if not tasks and MAX_WAIT_TIME == 0:
+                self._log.debug("waiting for resource to be IDLE to terminate")
+                if all(worker == IDLE for worker in resources):
+                    break
+                else:
                     time.sleep(0.1)
                     continue
-
-                # If the countdown is 0 but some/all resource still BUSY
-                # then wait for them to become IDLE
-                if not tasks and MAX_WAIT_TIME == 0:
-                    self._log.debug("waiting for resource to be IDLE to terminate")
-                    if all(worker == IDLE for worker in resources):
-                        break
-                    else:
-                        time.sleep(0.1)
-                        continue
         # once all results are received, send termination signal to workers
         for worker in range(self.size - 1):
             self._log.debug('send term to %s' % (worker + 1))
@@ -267,7 +303,15 @@ class MPIExecutor(object):
                 assert(comm)
 
                 # work on task
-                func   = MPI.pickle.loads(task['work'])
+                if task['name'] == 'colmena':
+
+                    func = MPI.pickle.loads(task['work'])
+                    task['args']   = func['args']
+                    task['kwargs'] = func['kwargs']
+                    func           = func['func']
+                else:
+                    func = MPI.pickle.loads(task['work'])
+                    
                 result = func(*task['args'], **task['kwargs'])
 
                 # result is only reported back by rank 0 (of sub-communicator)

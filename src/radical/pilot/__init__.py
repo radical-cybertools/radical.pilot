@@ -46,9 +46,6 @@ from . import serialize
 
 from .agent  import Agent_0
 from .agent  import Agent_n
-from .agent  import MPI_Func_Worker
-
-from .raptor import Master, Worker
 
 
 # ------------------------------------------------------------------------------

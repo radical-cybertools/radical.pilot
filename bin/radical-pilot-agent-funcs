@@ -70,11 +70,10 @@ class Executor(object):
         self._port      = 59465  # if no port else port
 
         self._enable_redis = False
-        if self._enable_redis:
-            if self._host and self._port:
-                self.redis  = RedisQueue(self._host, self._port, 
-                                        topics = ['rp task queue', 'rp result queue'])
-                self._enable_redis = True
+        if self._host and self._port:
+            self.redis  = RedisQueue(self._host, self._port, 
+                                    topics = ['rp task queue', 'rp result queue'])
+            self._enable_redis = True
 
         self._initialize()
 
