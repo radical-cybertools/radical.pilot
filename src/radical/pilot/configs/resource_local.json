@@ -159,10 +159,9 @@
                                          "FORK"    : {},
                                          "MPIRUN": {}
                                         },
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-	    "virtenv"                     : "/home/aymenalsaadi/ve/mpi/",
         "pre_bootstrap_0"             : [],
         "cores_per_node"              : 4,
         "gpus_per_node"               : 1

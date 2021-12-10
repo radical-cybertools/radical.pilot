@@ -79,8 +79,8 @@ class MPIExecutor(object):
         self._uid        = os.environ.get('RP_FUNCS_ID')
         self._log        = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._prof       = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
-        self._host      = '127.0.0.1'  # host if host else None
-        self._port      = 59465  # if no port else port
+        self._host      = None#'127.0.0.1'  # host if host else None
+        self._port      = None#59465  # if no port else port
 
         if self._world.rank == 0:
             self._enable_redis = False
