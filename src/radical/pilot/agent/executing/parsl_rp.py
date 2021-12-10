@@ -36,15 +36,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     .. code:: python
                                                                                                                      RADICAL Executor
-        ----------------------------------------------------------------------------------------------------------------------------------------------------
-                        ParSL API                          |         ParSL DFK/dflow               |      Task Translator      |     RP-Client/Task-Manager
-        ---------------------------------------------------|---------------------------------------|---------------------------|----------------------------                                                     
-                                                           |                                       |                           |
-         parsl_tasks_description ------>  ParSL_tasks{}----+-> Dep. check ------> ParSL_tasks{} <--+--> ParSL Task/Tasks desc. | tmgr.submit_Tasks(RP_tasks)
-                                           +api.submit     | Data management          +dfk.submit  |             |             |
-                                                           |                                       |             v             |
-                                                           |                                       |     RP Task/Tasks desc. --+->   
-        ----------------------------------------------------------------------------------------------------------------------------------------------------
+    ------------------------------------------------------------------------------------------------
+             Parsl DFK/dflow               |      Task Translator      |     RP-Client/Task-Manager
+    ---------------------------------------|---------------------------|----------------------------                                                     
+                                           |                           |
+    -> Dep. check ------> Parsl_tasks{} <--+--> Parsl Task/Tasks desc. | tmgr.submit_Tasks(RP_tasks)
+     Data management          +dfk.submit  |             |             |
+                                           |             v             |
+                                           |     RP Task/Tasks desc. --+->   
+    ------------------------------------------------------------------------------------------------
     """        
 
     @typeguard.typechecked
@@ -86,13 +86,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         self.logger  = ru.Logger(name='radical.pilot.parsl.executor', level='DEBUG')
         self.report  = ru.Reporter(name='radical.pilot')
-        self.session = rp.Session(uid=ru.generate_id('parsl.radical_executor.session',
-                                                      mode=ru.ID_PRIVATE))
 
-        self.report.title('RP version %s :' % rp.version)
-        self.report.header("RADICALExecutor started (Parsl version: %s)" % parsl.__version__)
-        self.pmgr = rp.PilotManager(session=self.session)
-        self.tmgr = rp.TaskManager(session=self.session)
+        self.session = None
+        self.pmgr    = None
+        self.tmgr    = None
 
         # check if we have redis mode enabled
         if self.enable_redis:
@@ -161,6 +158,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     def start(self):
         """Create the Pilot process and pass it.
         """
+        self.report.header("starting RADICALExecutor")
+        self.report.header('Parsl: %s' % parsl.__version__)
+        self.report.header('RADICAL pilot: %s' % rp.version)
+        self.session = rp.Session(uid=ru.generate_id('parsl.radical.session',
+                                                      mode=ru.ID_PRIVATE))
         if self.resource is None : self.logger.error("specify remoute or local resource")
 
         else : pd_init = {'resource'      : self.resource,
@@ -174,14 +176,19 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'gpus'          : self.gpus,}
 
         pdesc = rp.PilotDescription(pd_init)
+
+        self.pmgr = rp.PilotManager(session=self.session)
+        self.tmgr = rp.TaskManager(session=self.session)
+
+        # submit pilot(s)
         pilot = self.pmgr.submit_pilots(pdesc)
+
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
         self.report.header('PMGR Is Active submitting tasks now')
-        try:
+
+        if self.enable_redis:
             self.redis.connect()
-        except Exception as e:
-            self.logger.exception('failed to connect to redis queue (%s)',str(e))
 
         return True
 
