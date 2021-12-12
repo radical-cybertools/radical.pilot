@@ -88,8 +88,17 @@ printf "$PREFIX : RANK    : $MPI_RANK\n"
 printf "$PREFIX : THREADS : $THREAD_NUM\n"
 printf "$PREFIX : SLEEP   : $ARG\n"
 
-# if so requested, sleep for a bit
-sleep $ARG
+# check if `stress-ng` is installed
+export PATH="$PATH:$RADICAL_RESOURCE_SBOX/install/bin"
+STRESS=$(which stress-ng)
+
+# if so requested, sleep/stress for a bit
+if test -z "$STRESS"
+then
+    sleep $ARG
+else
+    $STRESS -c 1 -t ${ARG}s
+fi
 
 $RP_PROF "app_stop"
 

@@ -496,8 +496,9 @@ class Agent_0(rpu.Worker):
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
                     tmp += '%s || exit 1\n' % cmd
+
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
-                tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
+                tmp += '%s\nexit $?\n\n' % cmds
 
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)

@@ -4,25 +4,36 @@ import os
 import sys
 import time
 import shlex
+import msgpack
+
+from mpi4py import MPI
+print('=== MPI: ', MPI.__file__)
+
+
+sys.path.append('/opt/apps/intel19/impi19_0/python3/3.9.2/lib/python3.9/site-packages')
 
 import threading         as mt
 import radical.utils     as ru
 
 from .worker            import Worker
-from ..task_description import MPI
+from ..task_description import MPI as RP_MPI
 from ..task_description import TASK_FUNCTION, TASK_EVAL
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL
 
 
 # MPI message tags
-TAG_REGISTER_REQUESTS    = 10
-TAG_REGISTER_REQUESTS_OK = 11
-TAG_REGISTER_RESULTS     = 20
-TAG_REGISTER_RESULTS_OK  = 21
+TAG_REGISTER_REQUESTS    = 110
+TAG_REGISTER_REQUESTS_OK = 111
+TAG_SEND_TASK            = 120
+TAG_RECV_RESULT          = 121
+TAG_REGISTER_RESULTS     = 130
+TAG_REGISTER_RESULTS_OK  = 131
 
 # message payload constants
-MSG_OK  = 10
-MSG_NOK = 20
+MSG_PING  = 210
+MSG_PONG  = 211
+MSG_OK    = 220
+MSG_NOK   = 221
 
 # resource allocation flags
 FREE = 0
@@ -37,42 +48,12 @@ def debug():
     print('%s' % cf.f_back.f_lineno)
 
 
-# ------------------------------------------------------------------------------
-#
-# small helper to collect reply messages from all ranks
-#
-def _collect_replies(comm, ranks, tag, expected, timeout, log):
-    '''
-    small helper to collect reply messages from all ranks
-    '''
+def pack(msg):
+    return msgpack.packb(msg)
 
-    log.debug('start collect for tag %s', tag)
 
-    # wait for workers to ping back
-    start = time.time()
-    ok    = 0
-
-    while ok < ranks:
-
-        if time.time() - start > timeout:
-            break
-
-        log.debug('probe for tag %s', tag)
-        check = comm.Iprobe(tag=tag)
-        if not check:
-            time.sleep(0.1)
-            continue
-
-        log.debug('recv  for tag %s', tag)
-        msg = comm.recv(tag=tag)
-        log.debug('recvd for tag %s: %s', tag)
-
-        if msg != expected:
-            raise RuntimeError('worker rank failed: %s' % msg)
-        ok += 1
-
-    if ok != ranks:
-        raise RuntimeError('could not collect from all workers')
+def unpack(data):
+    return msgpack.unpackb(data)
 
 
 # ------------------------------------------------------------------------------
@@ -129,7 +110,10 @@ class _Resources(object):
         # FIXME: handle threads
         # FIXME: handle GPUs
 
-        self._log.debug_5('alloc %s', task['uid'])
+        uid = task['uid']
+
+        self._log.debug_5('alloc %s', uid)
+        self._prof.prof('schedule_try', uid=uid)
 
         cores = task['description'].get('cpu_processes', 1)
 
@@ -158,6 +142,7 @@ class _Resources(object):
                             ranks.append(rank)
 
                             if len(ranks) == cores:
+                                self._prof.prof('schedule_ok', uid=uid)
                                 return ranks
             else:
                 self._res_evt.wait(timeout=0.1)
@@ -170,7 +155,9 @@ class _Resources(object):
         deallocate task ranks
         '''
 
+        uid   = task['uid']
         ranks = task['ranks']
+        self._prof.prof('unschedule_start', uid=uid)
 
         with self._res_lock:
 
@@ -180,6 +167,7 @@ class _Resources(object):
             # signal available resources
             self._res_evt.set()
 
+            self._prof.prof('unschedule_stop', uid=uid)
             return True
 
 
@@ -196,8 +184,6 @@ class _TaskPuller(mt.Thread):
         super().__init__()
 
         self.daemon = True
-
-        from mpi4py import MPI
 
         self._pull_addr = pull_addr
         self._push_addr = push_addr
@@ -234,28 +220,6 @@ class _TaskPuller(mt.Thread):
             # also connect to the master's result queue to inform about errors
             self._result_pusher = ru.zmq.Putter('results', self._push_addr)
 
-            # for each worker, create one push pipe endpoint.  The worker will
-            # pull work from that pipe once work gets assigned to it
-            self._log.debug('==== create pipes')
-            self._pipes  = dict()
-            for rank in range(self._ranks):
-                pipe = ru.zmq.Pipe()
-                pipe.connect_push()
-                self._pipes[rank] = pipe
-
-            # inform the ranks about their pipe endpoint
-            self._log.debug('==== send init')
-            for rank in range(self._ranks):
-                data = {'pipe_requests': self._pipes[rank].url}
-                self._world.send(data, dest=rank, tag=TAG_REGISTER_REQUESTS)
-
-            self._log.debug('pipe info sent')
-
-            _collect_replies(self._world, self._ranks,
-                             tag=TAG_REGISTER_REQUESTS_OK, expected=MSG_OK,
-                             timeout=60, log=self._log)
-            self._log.debug('pipe info acknowledged')
-
             # setup is completed - signal main thread
             self._event.set()
 
@@ -275,7 +239,9 @@ class _TaskPuller(mt.Thread):
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._pipes[rank].put(task)
+                            self._log.info('===> %s from %d to %d (%s)', task['uid'], self._world.rank, rank, TAG_SEND_TASK)
+                            self._world.send(pack(task), dest=rank,
+                                             tag=TAG_SEND_TASK)
 
                     except Exception as e:
                         self._log.exception('failed to place task')
@@ -301,8 +267,6 @@ class _ResultPusher(mt.Thread):
 
         self.daemon = True
 
-        from mpi4py import MPI
-
         self._push_addr = push_addr
         self._event     = event
         self._resources = resources
@@ -313,7 +277,8 @@ class _ResultPusher(mt.Thread):
         self._ranks     = self._resources.ranks
         self._term      = self._resources.term
 
-        self._log.debug('==== init result pusher [%d] [%d]', self._world.rank, self._world.size)
+        self._log.debug('==== init result pusher [%d] [%d]',
+                        self._world.rank, self._world.size)
 
         # collect the results from all MPI ranks before returning
         self._cache = dict()
@@ -331,7 +296,7 @@ class _ResultPusher(mt.Thread):
 
         cpt = task['description'].get('cpu_process_type')
 
-        if cpt == MPI:
+        if cpt == RP_MPI:
 
             uid   = task['uid']
             ranks = task['description'].get('cpu_processes', 1)
@@ -369,32 +334,21 @@ class _ResultPusher(mt.Thread):
             # connect to the master's result queue
             self._result_pusher = ru.zmq.Putter('results', self._push_addr)
 
-            # create a result pipe for the workers to report results back
-            self._getter = ru.zmq.Pipe()
-            self._getter.connect_pull()
-
-            # inform the ranks about the pipe endpoint
-            # FIXME: use scatter
-            for rank in range(self._ranks):
-                data = {'pipe_results': self._getter.url}
-                self._world.send(data, dest=rank, tag=TAG_REGISTER_RESULTS)
-
-            # wait for workers to ping back
-            _collect_replies(self._world, self._ranks,
-                             tag=TAG_REGISTER_RESULTS_OK, expected=MSG_OK,
-                             timeout=60, log=self._log)
-
             # signal success
             self._event.set()
 
             while not self._term.is_set():
 
-                task = self._getter.get_nowait(timeout=0.1)
-
-                if not task:
-                    continue
-
+                task = None
                 try:
+                    # FIXME: make async, use `Iprobe`
+                    self._log.info('<=== recv %d from * (%s)', self._world.rank, TAG_RECV_RESULT)
+                    task = unpack(self._world.recv(tag=TAG_RECV_RESULT))
+                    self._log.info('<=== recv %d from * (%s): %s', self._world.rank, TAG_RECV_RESULT, task['uid'])
+
+                    if not task:
+                        continue
+
                     if not self._check_mpi(task):
                         continue
 
@@ -403,8 +357,9 @@ class _ResultPusher(mt.Thread):
 
                 except Exception as e:
                     self._log.exception('failed to collect task')
-                    task['error'] = str(e)
-                    self._result_pusher.put(task)
+                    if task:
+                        task['error'] = str(e)
+                        self._result_pusher.put(task)
 
         except:
             self._log.exception('result pusher thread failed')
@@ -432,8 +387,6 @@ class _Worker(mt.Thread):
     #
     def run(self):
 
-        from mpi4py import MPI
-
         self._world = MPI.COMM_WORLD
         self._group = self._world.Get_group()
         self._rank  = self._world.rank
@@ -441,35 +394,29 @@ class _Worker(mt.Thread):
         self._log.debug('==== init worker [%d] [%d]', self._world.rank, self._world.size)
 
         try:
-            # wait for a first initialization message which will provide us
-            # with the addresses of the pipe to pull tasks from and the pipe
-            # to push results to.
-            req_info = self._world.recv(source=0, tag=TAG_REGISTER_REQUESTS)
-            res_info = self._world.recv(source=0, tag=TAG_REGISTER_RESULTS)
-
-            self._world.send(MSG_OK, dest=0, tag=TAG_REGISTER_REQUESTS_OK)
-            self._world.send(MSG_OK, dest=0, tag=TAG_REGISTER_RESULTS_OK)
-
             # get tasks, do them, push results back
-            getter = ru.zmq.Pipe()
-            getter.connect_pull(req_info['pipe_requests'])
-
-            putter = ru.zmq.Pipe()
-            putter.connect_push(res_info['pipe_results'])
-
             # FIXME: when does this rank stop?
             while not self._term.is_set():
 
                 # fetch task, join communicator, run task
-                task = getter.get_nowait(timeout=0.1)
+                # FIXME: make async with `Iprobe`
+                try:
+                    self._log.info('<=== recv %d from 0 (%s)', self._rank, TAG_SEND_TASK)
+                    task = unpack(self._world.recv(source=0, tag=TAG_SEND_TASK))
+                    self._log.info('<=== recv %d from 0 (%s): %s', self._rank,
+                            TAG_SEND_TASK, task['uid'])
+                except:
+                    self._log.exception('recv problem')
+                    continue
 
                 if not task:
                     continue
 
                 self._log.debug('recv task %s: %s', task['uid'], task['ranks'])
 
-                if self._rank not in task['ranks']:
-                    raise RuntimeError('internal error: inconsistent rank info')
+              # FIXME: how can that be?
+              # if self._rank not in task['ranks']:
+              #     raise RuntimeError('internal error: inconsistent rank info')
 
                 comm  = None
                 group = None
@@ -493,14 +440,19 @@ class _Worker(mt.Thread):
                     task['stderr']       = str(e)
                     task['exit_code']    = -1
                     task['return_value'] = None
-                    self._log.error('recv err  %s  to  0' % (task['uid']))
+                    self._log.exception('recv err  %s  to  0' % (task['uid']))
 
                 finally:
-                    # sub-communicator must alwaus be destroyed
+                    # sub-communicator must always be destroyed
                     if group: group.Free()
                     if comm : comm.Free()
 
-                    putter.put(task)
+                    # send task back to rank 0
+                    self._log.info('===> %s from %d to %d (%s)', task['uid'], self._rank, 0, TAG_RECV_RESULT)
+                    try:
+                        self._world.send(pack(task), dest=0, tag=TAG_RECV_RESULT)
+                    except:
+                        self._log.exception('error send failed')
 
         except:
             self._log.exception('work thread failed [%s]', self._rank)
@@ -523,11 +475,18 @@ class _Worker(mt.Thread):
                'RP_PROF'            : os.environ['RP_PROF'],
                'RP_PROF_TGT'        : os.environ['RP_PROF_TGT']}
 
-        if task['description'].get('cpu_process_type') == MPI:
-            return self._dispatch_mpi(task, env)
 
-        else:
-            return self._dispatch_non_mpi(task, env)
+        uid = task['uid']
+        self._prof.prof('rp_exec_start', uid=uid)
+        try:
+            if task['description'].get('cpu_process_type') == RP_MPI:
+                return self._dispatch_mpi(task, env)
+            else:
+                return self._dispatch_non_mpi(task, env)
+
+        finally:
+            self._prof.prof('rp_exec_stop', uid=uid)
+
 
 
     # --------------------------------------------------------------------------
@@ -546,7 +505,12 @@ class _Worker(mt.Thread):
         # create new communicator with all workers assigned to this task
         group = self._group.Incl(task['ranks'])
         comm  = self._world.Create_group(group)
-        assert(comm)
+        if not comm:
+            out = None
+            err = 'MPI setup failed'
+            ret = 1
+            val = None
+            return out, err, ret, val
 
         env['RP_RANK']  = str(comm.rank)
         env['RP_RANKS'] = str(comm.size)
@@ -588,6 +552,7 @@ class _Worker(mt.Thread):
               unnamed argument.
         '''
 
+        uid       = task['uid']
         func_name = task['description']['function']
         assert(func_name)
 
@@ -623,7 +588,9 @@ class _Worker(mt.Thread):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
+            self._prof.prof('app_start', uid=uid)
             val = to_call(*args, **kwargs)
+            self._prof.prof('app_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             ret = 0
@@ -654,6 +621,7 @@ class _Worker(mt.Thread):
         code to be eval'ed
         '''
 
+        uid  = task['uid']
         code = task['description']['code']
         assert(code)
 
@@ -675,7 +643,9 @@ class _Worker(mt.Thread):
 
             self._log.debug('eval [%s] [%s]' % (code, task['uid']))
 
+            self._prof.prof('app_start', uid=uid)
             val = eval(code)
+            self._prof.prof('app_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             ret = 0
@@ -722,6 +692,7 @@ class _Worker(mt.Thread):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
+            uid  = task['uid']
             pre  = task['description'].get('pre_exec', [])
             code = task['description']['code']
 
@@ -736,7 +707,9 @@ class _Worker(mt.Thread):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
+            self._prof.prof('app_start', uid=uid)
             exec(src, {}, loc)
+            self._prof.prof('app_stop', uid=uid)
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -773,6 +746,7 @@ class _Worker(mt.Thread):
         try:
             import subprocess as sp
 
+            uid  = task['uid']
             exe  = task['description']['executable']
             args = task['description'].get('arguments', list())
             tenv = task['description'].get('environment', dict())
@@ -782,11 +756,13 @@ class _Worker(mt.Thread):
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
+            self._prof.prof('app_start', uid=uid)
             proc = sp.Popen(cmd, env=tenv,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
+            self._prof.prof('app_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('proc failed: %s' % task['uid'])
@@ -811,9 +787,12 @@ class _Worker(mt.Thread):
       #     os.environ[k] = v
 
         try:
+            uid = task['uid']
             cmd = task['description']['command']
           # self._log.debug('shell: --%s--', cmd)
+            self._prof.prof('app_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
+            self._prof.prof('app_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % task['uid'])
@@ -828,7 +807,7 @@ class _Worker(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class MPIWorkerAM(Worker):
+class MPIWorkerAM2(Worker):
     '''
     This worker manages a certain number of cores and gpus.  The master will
     start this worker by placing one rank per managed core (the GPUs are used
@@ -852,13 +831,11 @@ class MPIWorkerAM(Worker):
     #
     def __init__(self, cfg=None, session=None):
 
-        from mpi4py import MPI
-
         self._world = MPI.COMM_WORLD
         self._group = self._world.Get_group()
 
-        self._rank  = int(os.environ.get('RP_RANK',  -1))
-        self._ranks = int(os.environ.get('RP_RANKS', -1))
+        self._rank  = self._world.rank
+        self._ranks = self._world.size
 
         self._term  = mt.Event()
 
@@ -875,6 +852,9 @@ class MPIWorkerAM(Worker):
         # to the task and result queues
         super().__init__(cfg=cfg, session=session, register=self._manager)
 
+        self._log.info('==== init: %d [%d] - %d [%d] - %s', self._rank,
+                self._ranks, self._world.rank, self._world.size, self._manager)
+
 
     # --------------------------------------------------------------------------
     #
@@ -890,7 +870,7 @@ class MPIWorkerAM(Worker):
         # the master, one to push results back to the master
         if self._manager:
 
-            self._log.debug('rank %s starts managers', self._rank)
+            self._log.info('rank %s starts managers', self._rank)
             resources = _Resources(self._log,   self._prof,
                                    self._ranks, self._term)
 
@@ -998,16 +978,18 @@ class MPIWorkerAM(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test(self, msg):
+    def test(self, msg, sleep):
 
         print('hello: %s' % msg)
+        time.sleep(sleep)
 
 
     # --------------------------------------------------------------------------
     #
-    def test_mpi(self, comm, msg):
+    def test_mpi(self, comm, msg, sleep):
 
         print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+        time.sleep(sleep)
 
 
 # ------------------------------------------------------------------------------

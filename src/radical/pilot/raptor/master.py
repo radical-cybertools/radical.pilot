@@ -295,7 +295,7 @@ class Master(rpu.Component):
         with self._lock:
 
             tasks    = list()
-            base     = descr['worker_class'].split('.')[-1].lower()
+            base     = os.environ['RP_TASK_ID']
 
             cfg          = copy.deepcopy(self._cfg)
             cfg['descr'] = descr
@@ -303,7 +303,7 @@ class Master(rpu.Component):
 
             for i in range(count):
 
-                uid        = '%s.%04d' % (base, i)
+                uid        = '%s.worker.%04d' % (base, i)
                 cfg['uid'] = uid
 
                 fname = './%s.json' % uid
@@ -316,6 +316,7 @@ class Master(rpu.Component):
                 td['cpu_thread_type']  = 'POSIX'
                 td['cpu_threads']      = descr.get('cpu_threads', 1)
                 td['gpu_processes']    = descr.get('gpu_processes', 0)
+                td['environment']      = descr.get('environment', {})
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
@@ -597,12 +598,13 @@ class Master(rpu.Component):
 
         # wait for workers to terminate
         uids = self._workers.keys()
-        while True:
-            states = [self._workers[uid]['state'] for uid in uids]
-            if set(states) == {'DONE'}:
-                break
-            self._log.debug('term states: %s', states)
-            time.sleep(1)
+      # FIXME TS
+      # while True:
+      #     states = [self._workers[uid]['state'] for uid in uids]
+      #     if set(states) == {'DONE'}:
+      #         break
+      #     self._log.debug('term states: %s', states)
+      #     time.sleep(1)
 
         self._log.debug('all workers terminated')
 

@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import time
+import random
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -18,20 +19,36 @@ if __name__ == '__main__':
     else:
         cfg_file = sys.argv[1]
 
-    cfg       = ru.Config(cfg=ru.read_json(cfg_file))
-    cpn       = cfg.worker_descr.cpu_processes or 1
-    gpn       = cfg.worker_descr.gpu_processes or 0
-    n_masters = cfg.n_masters
-    n_workers = cfg.n_workers
-    workload  = cfg.workload
+    cfg         = ru.Config(cfg=ru.read_json(cfg_file))
+    sleep       = int(cfg.sleep)
+    cpn         = cfg.cpn
+    gpn         = cfg.gpn
+    n_masters   = cfg.n_masters
+    n_workers   = cfg.n_workers
+    masters_pn  = cfg.masters_pn
+    nodes_pw    = cfg.nodes_pw
+    nodes_rp    = cfg.nodes_rp
+    workload    = cfg.workload
+    tasks_rp    = cfg.tasks_rp
+    nodes_agent = cfg.nodes_agent
 
     # each master uses a node, and each worker on each master uses a node
     # use 8 additional cores for non-raptor tasks
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters + n_workers * cpn + 8
-        pd.gpus    =             n_workers * gpn
+        pd.cores   = n_masters * (cpn / masters_pn)
+        pd.gpus    = 0
+
+        pd.cores  += n_masters * n_workers * cpn * nodes_pw
+        pd.gpus   += n_masters * n_workers * gpn * nodes_pw
+
+        pd.cores  += nodes_agent * cpn
+        pd.gpus   += nodes_agent * gpn
+
+        pd.cores  += nodes_rp * cpn
+        pd.gpus   += nodes_rp * gpn
+
         pd.runtime = cfg.runtime
 
         tds = list()
@@ -42,6 +59,7 @@ if __name__ == '__main__':
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
             td.arguments      = [cfg_file, i]
+            td.cpu_threads    = int(cpn / masters_pn)
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -60,12 +78,12 @@ if __name__ == '__main__':
         pmgr  = rp.PilotManager(session=session)
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
+        task  = tmgr.submit_tasks(tds)
 
+      # pmgr.wait_pilots(uid=pilot.uid, state=[rp.PMGR_ACTIVE])
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
-
-        task  = tmgr.submit_tasks(tds)
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
@@ -76,7 +94,7 @@ if __name__ == '__main__':
 
         # submit some test tasks
         tds = list()
-        for i in range(1):
+        for i in range(tasks_rp):
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.%06d' % i,
@@ -134,7 +152,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.shell.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
-                'cpu_processes'   : 4,
+                'cpu_processes'   : random.choice([10, 20, 40, 80]) * cpn,
                 'cpu_process_type': rp.MPI,
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
@@ -144,8 +162,8 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks()  # uids=[t.uid for t in tasks])
 
-        for task in tasks:
-            print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))
+      # for task in tasks:
+      #     print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))
 
     finally:
         session.close(download=True)

@@ -62,6 +62,7 @@ if __name__ == '__main__':
                    'gpus'          : config.get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
+        ru.write_json('/tmp/pd_e.json', pdesc.as_dict())
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
