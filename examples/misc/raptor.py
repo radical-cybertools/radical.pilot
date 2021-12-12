@@ -90,7 +90,7 @@ if __name__ == '__main__':
                                     'setup'  : [
                                         'pip install git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
                                         'pip install git+https://github.com/radical-cybertools/radical.utils.git@project/texascale_5',
-                                        ]})
+                                    ]})
 
         # submit some test tasks
         tds = list()
@@ -99,11 +99,10 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.%06d' % i,
                 'mode'            : rp.TASK_EXECUTABLE,
-                'cpu_processes'   : 4,
+                'cpu_processes'   : random.choice([10, 20, 40, 80]) * cpn,
                 'cpu_process_type': rp.MPI,
-                'executable'      : '/bin/sh',
-                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-                                           '$RP_TASK_ID"']}))
+                'executable'      : 'radical-pilot-hello.sh',
+                'arguments'       : [sleep]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi.%06d' % i,
@@ -152,7 +151,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.shell.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
-                'cpu_processes'   : random.choice([10, 20, 40, 80]) * cpn,
+                'cpu_processes'   : 4,
                 'cpu_process_type': rp.MPI,
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
@@ -162,8 +161,8 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks()  # uids=[t.uid for t in tasks])
 
-      # for task in tasks:
-      #     print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))
+        for task in tasks:
+            print('%s : %s : %s' % (task.uid, task.stdout, task.stderr))
 
     finally:
         session.close(download=True)
