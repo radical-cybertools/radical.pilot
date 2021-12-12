@@ -91,9 +91,9 @@ class Srun(LaunchMethod):
     # -------------------------------------------------------------------------
     #
     def get_slurm_ver(self):
-        
-        version = eval(self._version.strip('\n'))
-        major_version = version.strip('\n slurm').strip(".")[:2]
+
+        version = self._version.strip('\n')
+        major_version = eval(version.strip('\n slurm').strip(".")[:2])
         return major_version
 
 
