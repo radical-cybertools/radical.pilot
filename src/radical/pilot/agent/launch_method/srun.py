@@ -88,6 +88,15 @@ class Srun(LaunchMethod):
         return True, ''
 
 
+    # -------------------------------------------------------------------------
+    #
+    def get_slurm_ver(self):
+        
+        version = eval(self._version.strip('\n'))
+        major_version = version.strip('\n slurm').strip(".")[:2]
+        return major_version
+
+
     # --------------------------------------------------------------------------
     #
     def get_launcher_env(self):
@@ -145,7 +154,10 @@ class Srun(LaunchMethod):
             mapping += ' --gpus-per-task %d' % n_gpus
 
         if nodefile:
-            mapping += ' --nodefile=%s' % nodefile
+            if self.get_slurm_ver() <= 18:
+                mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
+            else:
+                mapping += ' --nodefile=%s' % nodefile
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
         return cmd.rstrip()
