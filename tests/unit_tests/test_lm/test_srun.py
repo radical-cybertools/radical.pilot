@@ -118,13 +118,10 @@ class TestSrun(TestCase):
             if result != 'RuntimeError':
                 command = lm_srun.get_launch_cmds(task, '')
 
-                if task['uid'] == 'task.000015':
-                    try:
-                        self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
-                    except AssertionError:
-                        print('Expected assertion error as SLURM >18')
-                else:
+                try:
                     self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+                except AssertionError:
+                    print('Expected assertion error as SLURM >18')
 
                 if task.get('slots'):
                     file_name = '%(task_sandbox_path)s/%(uid)s.nodes' % task
