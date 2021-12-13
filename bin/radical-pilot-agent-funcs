@@ -19,11 +19,6 @@ from radical.pilot.serialize import serializer as serialize
 # FIXME: find a way to provide this executor with port and host if 
 #        called from the RP-PARSL Executor
 pwd  = sys.argv[1]
-try:
-    host = sys.argv[2]
-    port = sys.argv[3]
-except: pass
-
 
 # ------------------------------------------------------------------------------
 # activate virtenv if needed
@@ -66,8 +61,13 @@ class Executor(object):
         self._log       = ru.Logger(self._uid,   ns='radical.pilot', path=pwd)
         self._prof      = ru.Profiler(self._uid, ns='radical.pilot', path=pwd)
         self._cfg       = ru.read_json('%s/%s.cfg' % (pwd, self._uid))
-        self._host      = None#'127.0.0.1'  # host if host else None
-        self._port      = None#59465  # if no port else port
+        self._host      = None
+        self._port      = None
+        try:
+            self._host      = os.environ['REDIS_HOST']
+            self._port      = int(os.environ['REDIS_PORT'])
+        except KeyError:
+            pass
 
         self._enable_redis = False
         if self._host and self._port:

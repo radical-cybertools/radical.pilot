@@ -163,7 +163,12 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.report.header('RADICAL pilot: %s' % rp.version)
         self.session = rp.Session(uid=ru.generate_id('parsl.radical.session',
                                                       mode=ru.ID_PRIVATE))
+        pilot_redis_url = None
+        if self.enable_redis and self.redis_host and self.redis_port:
+            pilot_redis_url = '{}:{}'.format(self.redis_host, self.redis_port)
+
         if self.resource is None : self.logger.error("specify remoute or local resource")
+
 
         else : pd_init = {'resource'      : self.resource,
                           'runtime'       : self.walltime,
@@ -173,7 +178,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'access_schema' : self.login_method,
                           'cores'         : 1 * self.max_tasks,
                           'max_task_cores': self.max_task_cores,
-                          'gpus'          : self.gpus,}
+                          'gpus'          : self.gpus,
+                          'redis_link'    : pilot_redis_url}
 
         pdesc = rp.PilotDescription(pd_init)
 

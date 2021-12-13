@@ -33,6 +33,7 @@ INPUT_STAGING     = 'input_staging'
 OUTPUT_STAGING    = 'output_staging'
 
 PREPARE_ENV       = 'prepare_env'
+REDIS_LINK        = ''
 
 
 # ------------------------------------------------------------------------------
@@ -219,6 +220,7 @@ class PilotDescription(ru.Description):
         LAYOUT          : None       ,
         SERVICES        : [str]      ,
         MAX_TASK_CORES  : int        ,
+        REDIS_LINK      : str        ,
     }
 
     _defaults = {
@@ -243,6 +245,7 @@ class PilotDescription(ru.Description):
         LAYOUT          : 'default'  ,
         SERVICES        : []         ,
         MAX_TASK_CORES  : 1          ,
+        REDIS_LINK      : None       ,
     }
 
 

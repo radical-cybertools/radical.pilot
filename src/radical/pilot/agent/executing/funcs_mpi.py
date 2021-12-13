@@ -172,6 +172,13 @@ class MPIFUNCS(AgentExecutingComponent) :
             if descr.get('environment', []):
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
+            
+            if self._cfg['redis_link']:
+                redis_link = self._cfg['redis_link'].split(':')
+                host = redis_link[0]
+                port = redis_link[1]
+                fout.write('export REDIS_HOST="%s"\n' % host)
+                fout.write('export REDIS_PORT="%s"\n' % port)
 
             # FIXME: maybe exposing this option on the API level
             # would be easier to deal with.

@@ -347,7 +347,11 @@
         "lfs_size_per_node"           : 1000000,
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "MPIFUNCS",
-        "agent_launch_method"         : "MPIRUN",
+        "launch_methods"              : {
+                                         "order" : ["FORK", "MPIRUN"],
+                                         "FORK"  : {},
+                                         "MPIRUN": {}
+                                        },
         "task_launch_method"          : "MPIFUNCS",
         "pre_bootstrap_0"             : ["module purge",
                                          "module load cpu",
@@ -355,11 +359,11 @@
                                          "module load gcc",
                                          "module load openmpi"
                                         ],
-        "default_remote_workdir"      : "$PROJECT",
+        "default_remote_workdir"      : "$HOME",
         "valid_roots"                 : ["/home"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda",
+        "python_dist"                 : "default",
         "export_to_task"              : [],
         "executor_pre_exec"           : [],
         "gpus_per_node"               : 4,

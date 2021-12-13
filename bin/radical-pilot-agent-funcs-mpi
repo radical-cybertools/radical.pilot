@@ -15,10 +15,7 @@ BUSY = True
 
 MPI.pickle.__init__(dill.dumps, dill.loads)
 
-try:
-    host = sys.argv[1]
-    port = sys.argv[2]
-except: pass
+
 # ------------------------------------------------------------------------------
 #
 class MPIExecutor(object):
@@ -79,8 +76,13 @@ class MPIExecutor(object):
         self._uid        = os.environ.get('RP_FUNCS_ID')
         self._log        = ru.Logger(self._uid,   ns='radical.pilot', path=self._pwd)
         self._prof       = ru.Profiler(self._uid, ns='radical.pilot', path=self._pwd)
-        self._host      = None#'127.0.0.1'  # host if host else None
-        self._port      = None#59465  # if no port else port
+        self._host      = None
+        self._port      = None
+        try:
+            self._host      = os.environ['REDIS_HOST']
+            self._port      = int(os.environ['REDIS_PORT'])
+        except KeyError:
+            pass
 
         if self._world.rank == 0:
             self._enable_redis = False
