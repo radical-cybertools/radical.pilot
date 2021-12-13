@@ -98,7 +98,7 @@ class TestSrun(TestCase):
         lm_srun = Srun('', {}, None, None, None)
         test_cases = ['slurm 18.0.1', 'slurm 20.02.3', 'slurm 120.2.5']
         major_version = [18, 20, 120]
-        for case, i in enumerate(test_cases):
+        for i, case in enumerate(test_cases):
             lm_srun._version = case
             self.assertEqual(lm_srun.get_slurm_ver(), major_version[i])
 
