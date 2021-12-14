@@ -214,7 +214,7 @@ class MPIExecutor(object):
                     except Exception as e:
                         self._log.debug('ERROR %s', str(e))
                     
-                    self._prof.prof('func_start', uid= task['uid'])
+                    self._prof.prof('func_aloc_start', uid= task['uid'])
                     # find workers and mark as busy
                     workers = list()
                     for idx, worker in enumerate(resources):
@@ -224,6 +224,7 @@ class MPIExecutor(object):
                             if len(workers) == task['ranks']:
                                 self._log.debug('enough workers found')
                                 break
+                    self._prof.prof('func_aloc_stop', uid= task['uid'])
 
                     # make sure we did find workers!
                     assert(len(workers) == task['ranks'])
@@ -233,6 +234,7 @@ class MPIExecutor(object):
 
                     # send the task to each of the workers
                     self._log.debug('send task %s  to  %s' % (task['uid'], workers))
+                    self._prof.prof('func_start', uid= task['uid'])
                     for worker in workers:
                         self._world.send(task, dest=worker, tag=0)
 
@@ -240,7 +242,7 @@ class MPIExecutor(object):
                     task = self._world.recv(tag=1)
                     self._log.debug('recv %s with state %s' % (task['uid'],
                                                                 task['state']))
-                    
+                    self._prof.prof('func_stop', uid= task['uid'])
                     if task['name'] == 'colmena' and self._enable_redis:
                         assert(self.redis.is_connected)
                         self.redis.put(task['stdout'], topic='rp result queue')
@@ -251,6 +253,7 @@ class MPIExecutor(object):
 
                     # once the task executing is finished mark the workers as IDLE
                     idle_workers = []
+                    self._prof.prof('func_daloc_start', uid= task['uid'])
                     for idx, worker in enumerate(resources):
                         if worker == BUSY:
                             resources[idx] = IDLE
@@ -258,7 +261,7 @@ class MPIExecutor(object):
                             idle_workers.append(idx)
                             if  len(idle_workers) == task['ranks']:
                                 break
-                    self._prof.prof('func_stop', uid=task['uid'])
+                    self._prof.prof('func_daloc_stop', uid=task['uid'])
 
             if not tasks and MAX_WAIT_TIME != 0:
                 MAX_WAIT_TIME -= 1
