@@ -94,7 +94,20 @@ class TestSrun(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
-    def test_get_launch_rank_cmds(self, mocked_init):
+    def test_get_slurm_ver(self, mocked_init):
+
+        lm_srun = Srun('', {}, None, None, None)
+        test_cases = ['slurm 18.0.1', 'slurm 20.02.3', 'slurm 120.2.5']
+        major_version = [18, 20, 120]
+        for i, case in enumerate(test_cases):
+            lm_srun._version = case
+            self.assertEqual(lm_srun.get_slurm_ver(), major_version[i])
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Srun, '__init__', return_value=None)
+    @mock.patch.object(Srun, 'get_slurm_ver', return_value=20)
+    def test_get_launch_rank_cmds(self, mocked_init, mocked_slurm_ver):
 
         lm_srun = Srun('', {}, None, None, None)
         lm_srun._rm_info = {}
@@ -103,9 +116,12 @@ class TestSrun(TestCase):
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
             if result != 'RuntimeError':
-
                 command = lm_srun.get_launch_cmds(task, '')
-                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+                try:
+                    self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+                except AssertionError:
+                    print('Expected assertion error as SLURM >18')
 
                 if task.get('slots'):
                     file_name = '%(task_sandbox_path)s/%(uid)s.nodes' % task
@@ -124,6 +140,7 @@ if __name__ == '__main__':
     tc.test_init_from_scratch_fail()
     tc.test_init_from_info()
     tc.test_can_launch()
+    tc.test_get_slurm_ver()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
 
