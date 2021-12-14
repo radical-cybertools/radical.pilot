@@ -147,7 +147,7 @@ class _Resources(object):
 
 # ------------------------------------------------------------------------------
 #
-class _TaskPuller(object):
+class _TaskPuller(mt.Thread):
     '''
     This class will pull tasks from the master, allocate suitable ranks for
     it's execution, and push the task to those ranks
@@ -892,6 +892,9 @@ class MPIWorkerAM2(Worker):
                                        resources   = resources,
                                        log         = self._log,
                                        prof        = self._prof)
+
+            self._pull.start()
+            self._push.start()
 
             pull_ok.wait(timeout=60)
             push_ok.wait(timeout=60)
