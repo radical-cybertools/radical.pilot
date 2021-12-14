@@ -178,6 +178,8 @@ class _TaskPuller(mt.Thread):
         a task arrives for which no resources are available, the thread will
         block until such resources do become available.
         '''
+        self._log.debug('task puller 0 [%s] [%s] [%s]',
+                        self._from_master, self._to_master, self._to_ranks)
 
         try:
             # register callback to receive tasks
