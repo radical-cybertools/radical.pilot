@@ -789,6 +789,8 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
+        self._log.debug('=== env_spec: %s', env_spec)
+
         etype = env_spec['type']
         evers = env_spec['version']
         path  = env_spec.get('path')
@@ -807,11 +809,18 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
-        if path and os.path.isdir(path):
+        create_ve = True
+        if path:
             ve_path = path
 
+            if os.path.isdir(path):
+                # nothing to do
+                create_ve = False
+
         else:
-            ve_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+            ve_path = path
+
+        if create_ve:
             rp_cse = ru.which('radical-pilot-create-static-ve')
             ve_cmd = '/bin/bash %s -d -p %s -v %s %s %s | tee -a env.log 2>&1' \
                    % (rp_cse, ve_path, evers, mods, pre_exec)
@@ -823,6 +832,8 @@ class Agent_0(rpu.Worker):
 
             if ret:
                 raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
+
+        self._log.debug('=== ve_path: %s', ve_path)
 
         # prepare the env to be loaded in task exec scripts
         sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)

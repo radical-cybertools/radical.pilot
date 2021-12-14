@@ -87,6 +87,7 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
+                                    'path'   : '/home/merzky/radical.pilot.sandbox/ve_raptor',
                                     'setup'  : [
                                         'pip install git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
                                         'pip install git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
