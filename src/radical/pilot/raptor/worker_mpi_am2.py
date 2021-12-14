@@ -196,6 +196,9 @@ class _TaskPuller(mt.Thread):
             # setup is completed - signal main thread
             self._event.set()
 
+            self._log.debug('task puller [%s] [%s] [%s]',
+                            self._from_master, self._to_master, self._to_ranks)
+
             while True:
 
                 tasks = from_master.get_nowait(timeout=100)
@@ -214,7 +217,8 @@ class _TaskPuller(mt.Thread):
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._log.debug('=== %s 1 - task send to %d', task['uid'], rank)
+                            self._log.debug('=== %s 1 - task send to %d',
+                                             task['uid'], rank)
                             to_ranks.put(task, qname=str(rank))
 
                     except Exception as e:
@@ -319,7 +323,7 @@ class _ResultPusher(mt.Thread):
 
                 task = None
                 try:
-                    self._log.info('<=== recv')
+                    self._log.info('<=== results? recv')
                     task = from_ranks.get_nowait(timeout=100)
 
                     if not task:
@@ -328,7 +332,7 @@ class _ResultPusher(mt.Thread):
                     if not self._check_mpi(task):
                         continue
 
-                    self._log.info('<=== recv: %s', task['uid'])
+                    self._log.info('<=== results! recv: %s', task['uid'])
 
                     self._resources.dealloc(task)
                     to_master.put(task)
