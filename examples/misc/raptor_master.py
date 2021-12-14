@@ -75,7 +75,7 @@ class MyMaster(rp.raptor.Master):
         while time.time() < stop:
 
             self._log.info('==== submit 2 until %.1f', stop)
-            for _ in range(1024):
+            for _ in range(1):
 
                 sleep = 6
                 size  = random.choice([1, 1, 1, 1, 2, 4])
@@ -152,6 +152,9 @@ class MyMaster(rp.raptor.Master):
                 self._submitted[rp.TASK_EXECUTABLE] += 1
 
                 idx += world_size
+
+            # FIXME
+            break
 
             # slow down if we have too many tasks submitted
             # FIXME: use larger chunks above
