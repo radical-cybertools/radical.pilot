@@ -171,7 +171,7 @@ class _TaskPuller(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def run(self, tasks):
+    def run(self):
         '''
         This callback gets tasks from the master, schedules resources for the
         tasks, and pushes them out to the respective ranks for execution.  If
