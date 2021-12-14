@@ -3,6 +3,12 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.10.1 Hotfix Release                                                 2021-12-14
+--------------------------------------------------------------------------------
+
+  - constrain mongodb version dependency
+
+
 1.10.0 Release                                                        2021-11-22
 --------------------------------------------------------------------------------
 
