@@ -209,10 +209,12 @@ class _TaskPuller(mt.Thread):
                 # TODO: sort tasks by size
                 for task in ru.as_list(tasks):
 
+                    self._log.debug('=== %s 0 - task pulled', task['uid'])
+
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._log.info('===> %s to %d', task['uid'], rank)
+                            self._log.debug('=== %s 1 - task send to %d', task['uid'], rank)
                             to_ranks.put(task, qname=str(rank))
 
                     except Exception as e:
@@ -391,13 +393,12 @@ class _Worker(mt.Thread):
             while True:
 
                 # FIXME: make async with `Iprobe`
-                self._log.info('<=== recv %d from 0', self._rank)
                 task = to_ranks.get_nowait(qname=str(self._rank), timeout=100)
 
                 if not task:
                     continue
 
-                self._log.debug('recv task %s: %s', task['uid'], task['ranks'])
+                self._log.debug('=== %s 2 - task recv by %d', task['uid'], self._rank)
 
                 # FIXME: how can that be?
                 if self._rank not in task['ranks']:
