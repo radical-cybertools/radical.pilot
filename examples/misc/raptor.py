@@ -89,7 +89,7 @@ if __name__ == '__main__':
                                     'version': '3.8',
                                     'setup'  : [
                                         'pip install git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
-                                        'pip install git+https://github.com/radical-cybertools/radical.utils.git@project/texascale_5',
+                                        'pip install git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
                                     ]})
 
         # submit some test tasks

@@ -156,6 +156,9 @@ class _TaskPuller(object):
     def __init__(self, from_master, to_master, to_ranks, event,
                        resources, log, prof):
 
+        super().__init__()
+
+        self.daemon       = True
         self._from_master = from_master
         self._to_master   = to_master
         self._to_ranks    = to_ranks
@@ -163,13 +166,7 @@ class _TaskPuller(object):
         self._resources   = resources
         self._log         = log
         self._prof        = prof
-
         self._ranks       = self._resources.ranks
-        self.daemon       = True
-
-        super().__init__()
-
-        self._log.debug('init task puller [%s] [%s]', from_master, to_master)
 
 
     # --------------------------------------------------------------------------
@@ -238,16 +235,15 @@ class _ResultPusher(mt.Thread):
 
     def __init__(self, to_master, from_ranks, event, resources, log, prof):
 
+        super().__init__()
+
+        self.daemon      = True
         self._to_master  = to_master
         self._from_ranks = from_ranks
         self._event      = event
         self._resources  = resources
         self._log        = log
         self._prof       = prof
-
-        self.daemon      = True
-
-        super().__init__()
 
 
     # --------------------------------------------------------------------------
@@ -353,16 +349,15 @@ class _Worker(mt.Thread):
     #
     def __init__(self, to_ranks, from_ranks, event, log, prof, base):
 
+        super().__init__()
+
+        self.daemon      = True
         self._to_ranks   = to_ranks
         self._from_ranks = from_ranks
         self._event      = event
         self._log        = log
         self._prof       = prof
         self._base       = base
-
-        self.daemon      = True
-
-        super().__init__()
 
 
     # --------------------------------------------------------------------------
