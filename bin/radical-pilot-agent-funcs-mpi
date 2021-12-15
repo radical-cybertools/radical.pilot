@@ -240,9 +240,9 @@ class MPIExecutor(object):
 
                     # once a single task is sent out, collect results
                     task = self._world.recv(tag=1)
+                    self._prof.prof('func_stop', uid= task['uid'])
                     self._log.debug('recv %s with state %s' % (task['uid'],
                                                                 task['state']))
-                    self._prof.prof('func_stop', uid= task['uid'])
                     if task['name'] == 'colmena' and self._enable_redis:
                         assert(self.redis.is_connected)
                         self.redis.put(task['stdout'], topic='rp result queue')
