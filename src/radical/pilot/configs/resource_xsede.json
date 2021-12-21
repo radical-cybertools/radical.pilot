@@ -326,7 +326,7 @@
         "system_architecture"         : {"gpu": "v100"}
     },
 
-    "expanse_funcs_mpirun": {
+    "expanse_funcs_mpi": {
         "description"                 : "(https://www.sdsc.edu/support/user_guides/expanse.html).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["local", "ssh"],
