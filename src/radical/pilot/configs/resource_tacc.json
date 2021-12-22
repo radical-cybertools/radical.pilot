@@ -64,8 +64,8 @@
         "cores_per_node"              : 56,
         "gpus_per_node"               : 0,
         "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
+        "agent_scheduler"             : "NOOP",
+        "agent_spawner"               : "MPIFUNCS",
         "launch_methods"              : {
                                          "order": ["MPIRUN"],
                                          "MPIRUN" : {
@@ -73,7 +73,7 @@
                                                  "module load TACC",
                                                  "module unload intel",
                                                  "module unload impi",
-                                                 "module load   intel"
+                                                 "module load intel"
                                              ]
                                          }
                                         },
