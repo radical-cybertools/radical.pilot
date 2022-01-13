@@ -172,7 +172,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             if descr.get('environment', []):
                 for key,val in descr['environment'].items():
                     fout.write('export "%s=%s"\n' % (key, val))
-            
+
             if self._cfg['redis_link']:
                 redis_link = self._cfg['redis_link'].split(':')
                 host = redis_link[0]
@@ -185,11 +185,11 @@ class MPIFUNCS(AgentExecutingComponent) :
             if self._cfg.get('executor_pre_exec'):
                 for val in self._cfg['executor_pre_exec']:
                     fout.write("%s\n"  % val)
-            
+
             if funcs['slots']['ranks'][0]['gpu_map']:
-               gpus = funcs['slots']['ranks'][0]['gpu_map']
-               gpu_list = [item for elem in gpus for item in elem]
-               fout.write('export CUDA_VISIBLE_DEVICES="%s"\n' % ",".join(str(x) for x in gpu_list))
+                gpus = funcs['slots']['ranks'][0]['gpu_map']
+                gpu_list = [item for elem in gpus for item in elem]
+                fout.write('export CUDA_VISIBLE_DEVICES="%s"\n' % ",".join(str(x) for x in gpu_list))
 
             fout.write('\n%s\n\n' % launch_cmd)
             fout.write('RETVAL=$?\n')
@@ -266,7 +266,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             # make sure the core sets can host the requested number of threads
             assert(not len(cores) % threads_per_proc)
             n_procs =  int(len(cores) / threads_per_proc)
-            n_gpus  =  int(len(gpus) /threads_per_proc) 
+            n_gpus  =  int(len(gpus) / threads_per_proc) 
 
             idx = 0
             for _ in range(n_procs):
@@ -340,11 +340,10 @@ class MPIFUNCS(AgentExecutingComponent) :
                     pass
 
                 for executor in range(executors_per_node):
-
                     slots['ranks'].append({'node_name': node_list[0]['node_name'],
                                            'node_id'  : node_list[0]['node_id'],
-                                           'core_map' : core_map[::2] if executor %2 == 0 else core_map[1::2],
-                                           'gpu_map'  : gpu_map[::2] if executor %2 == 0 else gpu_map[1::2]})
+                                           'core_map' : core_map[::2] if executor % 2 == 0 else core_map[1::2],
+                                           'gpu_map'  : gpu_map[::2] if executor % 2 == 0 else gpu_map[1::2]})
                 to_pop.append(node_list[0])
 
 
@@ -369,9 +368,6 @@ class MPIFUNCS(AgentExecutingComponent) :
                                                'gpu_map'  : []})
                         to_pop.append(node_list[i])
 
-            self._log.debug(slots)
-            self._log.debug(to_pop)
-            self._log.debug(node_list)
 
             for node in to_pop:
                 node_list.remove(node)
@@ -401,21 +397,25 @@ class MPIFUNCS(AgentExecutingComponent) :
         # Case 4 fit more than one executor (limit is 2) per node!
         if cores_per_executor < cores_per_node:
             executors_per_node = math.floor(cores_per_node / cores_per_executor)
+            self._log.debug(node_list)
+            self._log.debug(executors_per_node)
             if executors_per_node > 2:
                 executors_per_node = 2
             else:
                 pass
 
-            for node in range(len(node_list)):
+            exec_id = 0
+            for _ in range(len(node_list)):
                 slots = _find_slots(cores_per_node, cores_per_executor)
                 # We limit the number of executors per node to 2
                 for executors_to_start_id in range(executors_per_node):
                     slot = {'ranks': [slots['ranks'][executors_to_start_id]]}
                     self._prof.prof('exec_warmup_start',
-                                    uid = 'func_exec.%04d' % executors_to_start_id)
-                    _start_mpi_executor(cores_per_executor, slot, executors_to_start_id)
+                                    uid = 'func_exec.%04d' % exec_id)
+                    _start_mpi_executor(cores_per_executor, slot, exec_id)
                     self._prof.prof('exec_warmup_stop',
-                                    uid = 'func_exec.%04d' % executors_to_start_id)
+                                    uid = 'func_exec.%04d' % exec_id)
+                    exec_id += 1
 
         # Case 5 (If we can not fit one executor per node,
         # then we need more than one node per executor)
