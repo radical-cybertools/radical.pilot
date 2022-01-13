@@ -185,6 +185,11 @@ class MPIFUNCS(AgentExecutingComponent) :
             if self._cfg.get('executor_pre_exec'):
                 for val in self._cfg['executor_pre_exec']:
                     fout.write("%s\n"  % val)
+            
+            if funcs['slots']['ranks'][0]['gpu_map']:
+               gpus = funcs['slots']['ranks'][0]['gpu_map']
+               gpu_list = [item for elem in gpus for item in elem]
+               fout.write('export CUDA_VISIBLE_DEVICES="%s"\n' % ",".join(str(x) for x in gpu_list))
 
             fout.write('\n%s\n\n' % launch_cmd)
             fout.write('RETVAL=$?\n')
@@ -233,14 +238,15 @@ class MPIFUNCS(AgentExecutingComponent) :
 
         self._log.debug(self._rm.info.node_list)
         node_list            = copy.deepcopy(self._rm.info.node_list)
-        cores_per_node       = slurm_cpn if rp_cfg_cpn == 0 else rp_cfg_cpn
+        gpus_per_node        = self._cfg.get('gpus_per_node')
+        cores_per_node       = slurm_cpn if rp_cfg_cpn == 0 else rp_cfg_cpn   
         cores_per_pilot      = self._cfg['cores']
         cores_per_executor   = self._cfg['max_task_cores']
 
         ve  = os.environ.get('VIRTUAL_ENV',  '')
 
 
-        def _get_node_maps(cores, threads_per_proc):
+        def _get_node_maps(cores, gpus,threads_per_proc):
 
             '''
             For a given set of cores and gpus, chunk them into sub-sets so that each
@@ -254,11 +260,13 @@ class MPIFUNCS(AgentExecutingComponent) :
             For more details, see top level comment of `agent/scheduler/base.py`.
             '''
             cores    = list(range(cores))
+            gpus     = list(range(gpus))
             core_map = list()
-
+            gpu_map = list()
             # make sure the core sets can host the requested number of threads
             assert(not len(cores) % threads_per_proc)
             n_procs =  int(len(cores) / threads_per_proc)
+            n_gpus  =  int(len(gpus) /threads_per_proc) 
 
             idx = 0
             for _ in range(n_procs):
@@ -267,11 +275,18 @@ class MPIFUNCS(AgentExecutingComponent) :
                     p_map.append(cores[idx])
                     idx += 1
                 core_map.append(p_map)
+            idx = 0
+            for _ in range(n_gpus):
+                g_map =  list()
+                for _ in range(threads_per_proc):
+                    g_map.append(gpus[idx])
+                    idx += 1
+                gpu_map.append(g_map)
 
-            assert(idx == len(cores)), \
-                ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
+            #assert(idx == len(cores)), \
+            #    ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
 
-            return core_map
+            return core_map, gpu_map
 
         def _start_mpi_executor(cores_per_executor, slots, executors_to_start_id):
 
@@ -302,7 +317,7 @@ class MPIFUNCS(AgentExecutingComponent) :
             to_pop         = []
             slots['ranks'] = []
 
-            core_map = _get_node_maps(cores_per_node, 1)
+            core_map, gpu_map = _get_node_maps(cores_per_node, gpus_per_node, 1)
 
             # 1 slot (slot = node) per executor
             if cores_per_executor == cores_per_node:
@@ -328,13 +343,10 @@ class MPIFUNCS(AgentExecutingComponent) :
 
                     slots['ranks'].append({'node_name': node_list[0]['node_name'],
                                            'node_id'  : node_list[0]['node_id'],
-                                           'core_map' : core_map,
-                                           'gpu_map'  : []})
-                    to_pop.append(node_list[0])
+                                           'core_map' : core_map[::2] if executor %2 == 0 else core_map[1::2],
+                                           'gpu_map'  : gpu_map[::2] if executor %2 == 0 else gpu_map[1::2]})
+                to_pop.append(node_list[0])
 
-                self._log.debug(node_list)
-                node_list.pop(0)
-                self._log.debug(node_list)
 
             # more than 1 slot (node) per executor
             if cores_per_executor > cores_per_node:
@@ -398,9 +410,10 @@ class MPIFUNCS(AgentExecutingComponent) :
                 slots = _find_slots(cores_per_node, cores_per_executor)
                 # We limit the number of executors per node to 2
                 for executors_to_start_id in range(executors_per_node):
+                    slot = {'ranks': [slots['ranks'][executors_to_start_id]]}
                     self._prof.prof('exec_warmup_start',
                                     uid = 'func_exec.%04d' % executors_to_start_id)
-                    _start_mpi_executor(cores_per_executor, slots, executors_to_start_id)
+                    _start_mpi_executor(cores_per_executor, slot, executors_to_start_id)
                     self._prof.prof('exec_warmup_stop',
                                     uid = 'func_exec.%04d' % executors_to_start_id)
 
