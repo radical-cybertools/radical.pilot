@@ -144,7 +144,7 @@ class MPIExecutor(object):
         # keep track of busy and idle workers
         resources = [IDLE] * (self.size - 1)
 
-        MAX_WAIT_TIME = 100
+        MAX_WAIT_TIME = 10000
 
         # define a static list of tasks and send single one per time to the workers
         # We assume in this mode that the task is large enough where:
@@ -180,7 +180,7 @@ class MPIExecutor(object):
             self._log.debug(MAX_WAIT_TIME)
             tasks = _zmq_req.get_nowait(1000)
             if tasks:
-                MAX_WAIT_TIME = 100
+                MAX_WAIT_TIME = 10000
                 for task in tasks:
                     self._log.debug('got %s', task['uid'])
 
@@ -316,7 +316,8 @@ class MPIExecutor(object):
                     func           = func['func']
                 else:
                     func = MPI.pickle.loads(task['work'])
-                    
+                
+                task['kwargs']['comm'] = comm 
                 result = func(*task['args'], **task['kwargs'])
 
                 # result is only reported back by rank 0 (of sub-communicator)
@@ -328,9 +329,10 @@ class MPIExecutor(object):
                     else:
                         task['stdout'] = str(MPI.pickle.dumps(result))
 
-                    task['state'] = "DONE"
-                    task['args']  = None
-                    task['work']  = None
+                    task['state']  = "DONE"
+                    task['args']   = None
+                    task['kwargs'] = None
+                    task['work']   = None
                     self._log.debug('send %s result to master <<< ' % (task['uid']))
                     self._world.send(task, dest=0, tag=1)
 
@@ -340,6 +342,7 @@ class MPIExecutor(object):
                     task['stdout'] = None
                     task['state']  = "FAILED"
                     task['args']   = None
+                    task['kwargs'] = None
                     task['work']   = None
 
                 self._log.error('%s %s (%s)' % (task['uid'], task['state'],
