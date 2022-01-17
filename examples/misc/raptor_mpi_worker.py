@@ -7,7 +7,7 @@ import radical.pilot as rp
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.MPIWorker):
+class MyWorker(rp.raptor.MPIWorkerAM2):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
@@ -36,7 +36,6 @@ class MyWorker(rp.raptor.MPIWorker):
         self._log.debug(out)
 
         self._prof.prof('app_stop', uid=uid)
-      # self._prof.flush()
 
         return out
 

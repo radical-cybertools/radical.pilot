@@ -789,7 +789,7 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
-        self._log.debug('=== env_spec: %s', env_spec)
+        self._log.debug('env_spec: %s', env_spec)
 
         etype = env_spec['type']
         evers = env_spec['version']
@@ -809,18 +809,12 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
-        create_ve = True
-        if path:
-            ve_path = path
+        ve_local_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+        if path: ve_path = path
+        else   : ve_path = ve_local_path
 
-            if os.path.isdir(path):
-                # nothing to do
-                create_ve = False
-
-        else:
-            ve_path = path
-
-        if create_ve:
+        if not os.path.isdir(ve_path):
+            # ve does not exist - create
             rp_cse = ru.which('radical-pilot-create-static-ve')
             ve_cmd = '/bin/bash %s -d -p %s -v %s %s %s | tee -a env.log 2>&1' \
                    % (rp_cse, ve_path, evers, mods, pre_exec)
@@ -833,7 +827,12 @@ class Agent_0(rpu.Worker):
             if ret:
                 raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
 
-        self._log.debug('=== ve_path: %s', ve_path)
+        # if the ve lives outside of the pilot sandbox, link it
+        if path:
+            os.symlink(path,          ve_local_path)
+            os.symlink(path + '.env', ve_local_path + '.env')
+
+        self._log.debug('ve_path: %s', ve_path)
 
         # prepare the env to be loaded in task exec scripts
         sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)

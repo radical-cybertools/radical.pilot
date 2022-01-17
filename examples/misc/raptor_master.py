@@ -77,79 +77,79 @@ class MyMaster(rp.raptor.Master):
             self._log.info('==== submit 2 until %.1f', stop)
             for _ in range(1):
 
-                sleep = 6
-                size  = random.choice([1, 1, 1, 1, 2, 4])
+              # sleep = 6
+              # size  = 2
+              #
+              # td = rp.TaskDescription({
+              #     'uid'  : 'task.eval.m.%06d' % idx,
+              #     'mode' : rp.TASK_EVAL,
+              #     'code' : 'print("hello world", time.sleep(%d))' % sleep
+              # })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_EVAL] += 1
 
-                td = rp.TaskDescription({
-                    'uid'  : 'task.eval.%06d' % idx,
-                    'mode' : rp.TASK_EVAL,
-                    'code' : 'print("hello world", time.sleep(%d))' % sleep
-                })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_EVAL] += 1
-
-                td = rp.TaskDescription({
-                    'uid'        : 'task.exec.%06d' % idx,
-                    'mode'       : rp.TASK_EXEC,
-                    'pre_exec'   : ['import time'],
-                    'code'       : 'import time; '            \
-                                 + 'print("hello stdout"); '  \
-                                 + 'time.sleep(%d); ' % sleep \
-                                 + 'return "hello world"'
-                })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_EXEC] += 1
-
-                if size == 1:
-                    td = rp.TaskDescription({
-                        'uid'             : 'task.call.%06d' % idx,
-                        'mode'            : rp.TASK_FUNCTION,
-                        'function'        : 'test',
-                        'kwargs'          : {'msg'  : 'world',
-                                             'sleep': sleep}
-                    })
-                else:
-                    td = rp.TaskDescription({
-                        'uid'             : 'task.call.%06d' % idx,
-                        'mode'            : rp.TASK_FUNCTION,
-                        'cpu_processes'   : size,
-                        'cpu_process_type': rp.MPI,
-                        'function'        : 'test_mpi',
-                        'kwargs'          : {'msg'  : 'world',
-                                             'sleep': sleep}
-                    })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_FUNCTION] += 1
-
-                td = rp.TaskDescription({
-                    'uid'        : 'task.proc.%06d' % idx,
-                    'mode'       : rp.TASK_PROC,
-                    'executable' : '%s/radical-pilot-hello.sh' % psbox,
-                    'arguments'  : [str(sleep)]
-                })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_PROC] += 1
-
-                td = rp.TaskDescription({
-                    'uid'        : 'task.shell.%06d' % idx,
-                    'mode'       : rp.TASK_SHELL,
-                    'environment': {'WORLD': 'world'},
-                    'command'    : '/bin/echo "hello $WORLD$(sleep %s)"' % sleep
-                })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_SHELL] += 1
-
-                td = rp.TaskDescription({
-                    'uid'             : '%s.task.%06d' % (self._uid, idx),
-                    'mode'            : rp.TASK_EXECUTABLE,
-                    'cpu_processes'   : size * 56 * 4,
-                    'cpu_process_type': rp.MPI,
-                    'executable'      : '/bin/sh',
-                    'arguments'       : ['%s/radical-pilot-hello.sh' % psbox,
-                                         str(sleep * 100)]
-                })
-                self.submit_tasks(td)
-                self._submitted[rp.TASK_EXECUTABLE] += 1
+              # td = rp.TaskDescription({
+              #     'uid'        : 'task.exec.%06d' % idx,
+              #     'mode'       : rp.TASK_EXEC,
+              #     'pre_exec'   : ['import time'],
+              #     'code'       : 'import time; '            \
+              #                  + 'print("hello stdout"); '  \
+              #                  + 'time.sleep(%d); ' % sleep \
+              #                  + 'return "hello world"'
+              # })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_EXEC] += 1
+              #
+              # if size == 1:
+              #     td = rp.TaskDescription({
+              #         'uid'             : 'task.call.%06d' % idx,
+              #         'mode'            : rp.TASK_FUNCTION,
+              #         'function'        : 'test',
+              #         'kwargs'          : {'msg'  : 'world',
+              #                              'sleep': sleep}
+              #     })
+              # else:
+              #     td = rp.TaskDescription({
+              #         'uid'             : 'task.call.%06d' % idx,
+              #         'mode'            : rp.TASK_FUNCTION,
+              #         'cpu_processes'   : size,
+              #         'cpu_process_type': rp.MPI,
+              #         'function'        : 'test_mpi',
+              #         'kwargs'          : {'msg'  : 'world',
+              #                              'sleep': sleep}
+              #     })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_FUNCTION] += 1
+              #
+              # td = rp.TaskDescription({
+              #     'uid'        : 'task.proc.%06d' % idx,
+              #     'mode'       : rp.TASK_PROC,
+              #     'executable' : '%s/radical-pilot-hello.sh' % psbox,
+              #     'arguments'  : [str(sleep)]
+              # })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_PROC] += 1
+              #
+              # td = rp.TaskDescription({
+              #     'uid'        : 'task.shell.%06d' % idx,
+              #     'mode'       : rp.TASK_SHELL,
+              #     'environment': {'WORLD': 'world'},
+              #     'command'    : '/bin/echo "hello $WORLD$(sleep %s)"' % sleep
+              # })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_SHELL] += 1
+              #
+              # td = rp.TaskDescription({
+              #     'uid'             : '%s.task.%06d' % (self._uid, idx),
+              #     'mode'            : rp.TASK_EXECUTABLE,
+              #     'cpu_processes'   : size * 56 * 4,
+              #     'cpu_process_type': rp.MPI,
+              #     'executable'      : '/bin/sh',
+              #     'arguments'       : ['%s/radical-pilot-hello.sh' % psbox,
+              #                          str(sleep * 100)]
+              # })
+              # self.submit_tasks(td)
+              # self._submitted[rp.TASK_EXECUTABLE] += 1
 
                 idx += world_size
 
@@ -187,13 +187,13 @@ class MyMaster(rp.raptor.Master):
             completed = sum(self._collected.values())
             submitted = sum(self._submitted.values())
 
-            self._log.info('==== exec done?: %d >= %d ', completed, submitted)
+            self._log.info('exec done?: %d >= %d ', completed, submitted)
             if completed >= submitted:
                 self._log.info('==== exec done!')
               # self.stop()
                 break
 
-            time.sleep(1)
+            time.sleep(10)
 
         self._log.info('==== exec done!!')
 
@@ -233,6 +233,7 @@ class MyMaster(rp.raptor.Master):
         mode      = task['description']['mode']
 
         self._collected[mode] += 1
+        # FIXME: state?
         self._log.debug('=== result_cb  %s: %s [%s] [%s] [%s] [%s]\n',
                        task['uid'], task['state'], task['stdout'],
                        task['return_value'], completed, submitted)

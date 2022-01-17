@@ -43,16 +43,14 @@ class Master(rpu.Component):
         self._term     = mt.Event()  # termination signal
         self._thread   = None        # run loop
 
-        if not cfg:
-            cfg = ru.Config(cfg={})
-
-        cfg.sid        = os.environ['RP_SESSION_ID']
-        cfg.base       = os.environ['RP_PILOT_SANDBOX']
-        cfg.path       = os.environ['RP_TASK_SANDBOX']
-        self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
         cfg            = self._get_config(cfg)
+        self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
 
         rpu.Component.__init__(self, cfg, self._session)
+
+        import pprint
+        self._log.debug('==== cfg  path: %s', cfg.path)
+        self._log.debug('==== self path: %s', self._cfg.path)
 
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
@@ -83,14 +81,16 @@ class Master(rpu.Component):
 
         # set up zmq queues between this master and all workers for request
         # distribution and result collection
-        req_cfg = ru.Config(cfg={'channel'   : 'request',
+        req_cfg = ru.Config(cfg={'channel'   : 'raptor_tasks',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.req',
                                  'path'      : self._cfg.path,
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1024})
 
-        res_cfg = ru.Config(cfg={'channel'   : 'result',
+        self._log.debug('==== req queue %s', pprint.pformat(req_cfg))
+
+        res_cfg = ru.Config(cfg={'channel'   : 'raptor_results',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.res',
                                  'path'      : self._cfg.path,
@@ -109,12 +109,17 @@ class Master(rpu.Component):
         self._res_addr_put = str(self._res_queue.addr_put)
         self._res_addr_get = str(self._res_queue.addr_get)
 
+        self._log.debug('==== 0 req put: %s', self._req_addr_put)
+        self._log.debug('==== 1 req get: %s', self._req_addr_get)
+        self._log.debug('==== 2 res put: %s', self._res_addr_put)
+        self._log.debug('==== 3 res get: %s', self._res_addr_get)
+
         # this master will put requests onto the request queue, and will get
         # responses from the response queue.  Note that the responses will be
         # delivered via an async callback (`self._result_cb`).
-        self._req_put = ru.zmq.Putter('request', self._req_addr_put)
-        self._res_get = ru.zmq.Getter('result',  self._res_addr_get,
-                                                 cb=self._result_cb)
+        self._req_put = ru.zmq.Putter('raptor_tasks',    self._req_addr_put)
+        self._res_get = ru.zmq.Getter('raptor_results',  self._res_addr_get,
+                                                         cb=self._result_cb)
 
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
@@ -137,9 +142,8 @@ class Master(rpu.Component):
 
 
         # begin to receive tasks in that queue
-        self._input_getter = ru.zmq.Getter(qname,
-                                      self._input_queue.addr_get,
-                                      cb=self._request_cb)
+        self._input_getter = ru.zmq.Getter(qname, self._input_queue.addr_get,
+                                           cb=self._request_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue')
@@ -177,6 +181,11 @@ class Master(rpu.Component):
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
         cfg['base']    = pwd
+        cfg['sid']     = os.environ['RP_SESSION_ID']
+        cfg['base']    = os.environ['RP_PILOT_SANDBOX']
+
+        # FIXME: use registry for comm EP info exchange, not cfg files
+      # cfg['path'] = os.environ['RP_TASK_SANDBOX']
 
         cfg = ru.Config(cfg=cfg)
         cfg['uid'] = self._uid
@@ -471,6 +480,8 @@ class Master(rpu.Component):
         executable_tasks = list()
         for task in ru.as_list(tasks):
 
+            self._log.debug('=== submit?  %s', task['uid'])
+
             if isinstance(task, TaskDescription):
                 # convert to task dict
                 task = Task(self, task).as_dict()
@@ -479,12 +490,14 @@ class Master(rpu.Component):
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
             if mode == TASK_EXECUTABLE:
+                self._log.debug('=== submit 1 %s', task['uid'])
                 executable_tasks.append(task)
             else:
+                self._log.debug('=== submit 2 %s', task['uid'])
                 raptor_tasks.append(task)
 
-        self._submit_raptor_tasks(raptor_tasks)
         self._submit_executable_tasks(executable_tasks)
+        self._submit_raptor_tasks(raptor_tasks)
 
 
     # --------------------------------------------------------------------------
@@ -492,7 +505,14 @@ class Master(rpu.Component):
     def _submit_raptor_tasks(self, tasks):
 
         if tasks:
-            # push the request message (as dictionary) onto the request queue
+            self._log.debug('=== put REQs %s', len(tasks))
+
+            for task in tasks:
+                self._log.debug('=== put REQ %s [%s]', task['uid'], task['state'])
+
+            self.advance(tasks, state=rps.AGENT_EXECUTING,
+                                publish=True, push=False)
+
             self._req_put.put(tasks)
 
 
@@ -509,7 +529,7 @@ class Master(rpu.Component):
 
         for task in tasks:
 
-            self._log.debug('submit %s', task['uid'])
+            self._log.debug('=== submit %s', task['uid'])
 
             td = task['description']
 
@@ -549,7 +569,7 @@ class Master(rpu.Component):
             filtered = self.request_cb(tasks)
             if filtered:
                 for task in filtered:
-                    self._log.debug('req cb: %s' % task['uid'])
+                    self._log.debug('REQ cb: %s' % task['uid'])
                 self.submit_tasks(filtered)
 
         except:
@@ -563,13 +583,15 @@ class Master(rpu.Component):
 
         for task in ru.as_list(tasks):
 
+            self._log.debug('==== get 1 %s', task['uid'])
+
             try:
                 self.result_cb(task)
 
             except:
                 self._log.exception('result callback failed')
 
-            ret = task['exit_code']
+            ret = int(task.get('exit_code', -1))
             if ret == 0: task['target_state'] = rps.DONE
             else       : task['target_state'] = rps.FAILED
 

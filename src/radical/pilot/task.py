@@ -11,9 +11,8 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as td
-
 from .staging_directives import expand_description
+from .task_description   import TaskDescription
 
 
 _uids = list()
@@ -36,7 +35,7 @@ def _check_uid(uid):
 # ------------------------------------------------------------------------------
 #
 class Task(object):
-    """
+    '''
     A Task represent a 'task' that is executed on a Pilot.
     Tasks allow to control and query the state of this task.
 
@@ -51,8 +50,7 @@ class Task(object):
                       ud.executable = "/bin/date"
 
                       task = tmgr.submit_tasks(ud)
-    """
-
+    '''
     # --------------------------------------------------------------------------
     # In terms of implementation, a Task is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
@@ -507,6 +505,26 @@ class Task(object):
         """
 
         self._tmgr.cancel_tasks(self.uid)
+
+
+# ------------------------------------------------------------------------------
+#
+class TaskDict(ru.Munch):
+    '''
+    rp.Task is an API level object and as that is not a useful internal
+    representation of an task on the level of RP components and message
+    channels.  Instead, a task is there represented as a dictionary.  To
+    facilitate a minimum of documentation and type consistency, this class
+    defines such task dictionaries as Munch objects.
+    '''
+
+    _schema = {
+            'description': TaskDescription
+    }
+
+    _defaults = {
+            'description': None
+    }
 
 
 # ------------------------------------------------------------------------------

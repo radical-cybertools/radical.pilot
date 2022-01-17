@@ -127,8 +127,6 @@ class Default(AgentStagingOutputComponent):
             # FIXME: do we need to pull profile events?
             return
 
-        return
-
         sbox = task.get('task_sandbox_path')
         uid  = task['uid']
 

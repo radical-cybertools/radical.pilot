@@ -3,11 +3,12 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
-import logging
-import queue
 import time
-import threading          as mt
+import queue
+import pprint
+import logging
 
+import threading          as mt
 import multiprocessing    as mp
 
 import radical.utils      as ru
@@ -971,6 +972,8 @@ class AgentSchedulingComponent(rpu.Component):
             # if schedule fails while no other task is scheduled, then the
             # `schedule_task` will never be able to succeed - fail that task
             if self._active_cnt == 0:
+                self._log.error('task cannot be scheduled ever: %s',
+                        pprint.pformat(task['description']))
                 raise RuntimeError('insufficient resources')
 
             return False
