@@ -51,7 +51,7 @@ if ! test -z "$DEFAULTS"
 then
     # by default, install all RCT dependencies
     MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
-    MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo"
+    MODULES="$MODULES msgpack-python netifaces ntplib parse pymongo<4"
     MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
 fi
 
@@ -222,7 +222,7 @@ pip install --no-cache-dir --upgrade $pip        | progress || exit 1
 for mod in $MODULES
 do
     echo -n "install $mod "
-    stdbuf -oL pip install -I --no-cache-dir --upgrade $mod || exit 1
+    stdbuf -oL pip install -I --no-cache-dir --upgrade "'$mod'" || exit 1
 done
 
 env_dump -t "$PREFIX.env"
