@@ -108,7 +108,7 @@ class SSH(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        return 'export RP_RANK=0'
+        return 'export RP_RANK=0\n'
 
 
     # --------------------------------------------------------------------------
