@@ -25,7 +25,7 @@
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order"  : ["FORK", "MPIEXEC", "MPIRUN"],
+                                         "order"  : ["MPIEXEC", "MPIRUN", "FORK"],
                                          "FORK"   : {},
                                          "MPIEXEC": {},
                                          "MPIRUN" : {}
