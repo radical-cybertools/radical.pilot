@@ -399,7 +399,7 @@ class PRTE(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        return 'export RP_RANK=$PMIX_RANK'
+        return 'export RP_RANK=$PMIX_RANK\n'
 
     # --------------------------------------------------------------------------
     #
