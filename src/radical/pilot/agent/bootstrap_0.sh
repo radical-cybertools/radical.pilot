@@ -161,7 +161,7 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
+VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
@@ -1130,7 +1130,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation $dep" \
+                "$PIP --no-cache-dir install --no-build-isolation '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
