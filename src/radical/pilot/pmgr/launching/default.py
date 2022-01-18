@@ -1003,6 +1003,15 @@ class Default(PMGRLaunchingComponent):
                            'target': '%s/bootstrap_0.sh' % pilot['pilot_sandbox'],
                            'action': rpc.TRANSFER})
 
+        # always stage RU env helper
+        env_helper = ru.which('radical-utils-env.sh')
+        assert(env_helper)
+        self._log.debug('env %s -> %s', env_helper, pilot_sandbox)
+        ret['sds'].append({'source': env_helper,
+                           'target': '%s/%s' % (pilot['pilot_sandbox'],
+                                                os.path.basename(env_helper)),
+                           'action': rpc.TRANSFER})
+
         # ----------------------------------------------------------------------
         # we also touch the log and profile tarballs in the target pilot sandbox
         ret['fts'].append({'src': '/dev/null',
