@@ -1,6 +1,4 @@
-# pylint: disable=subprocess-popen-preexec-fn,unused-argument
-# FIXME: review pylint directive - https://github.com/PyCQA/pylint/pull/2087
-#        (https://docs.python.org/3/library/subprocess.html#popen-constructor)
+# pylint: disable=unused-argument
 
 __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -47,7 +45,7 @@ atexit.register(_kill)
 class Popen(AgentExecutingComponent):
 
     _header    = '#!/bin/sh\n'
-    _separator = '# ' + '-' * 78
+    _separator = '\n# ' + '-' * 78 + '\n'
 
 
     # --------------------------------------------------------------------------

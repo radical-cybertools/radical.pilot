@@ -10,44 +10,11 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
-# ------------------------------------------------------------------------------
-# replica RU env dump
-env_grep(){
-    grep -v \
-         -e '^LS_COLORS=' \
-         -e '^PS1=' \
-         -e '^_=' \
-         -e '^SHLVL='
-}
+# we should always find the RU env helper in our cwd
+. ./radical-utils-env.sh
 
-env_dump(){
-    local tgt
-    local OPTIND OPTARG OPTION
-    while getopts "t:" OPTION; do
-        case $OPTION in
-            t)  tgt="$OPTARG" ;;
-            *)  echo "Unknown option: '$OPTION'='$OPTARG'"
-                return 1;;
-        esac
-    done
-
-    dump() {
-        awk 'END {
-          for (k in ENVIRON) {
-            v=ENVIRON[k];
-            gsub(/\n/,"\\n",v);
-            print k"="v;
-          }
-        }' < /dev/null
-    }
-
-    if test -z "$tgt"; then
-        dump | sort | env_grep
-    else
-        dump | sort | env_grep > "$tgt"
-    fi
-}
-
+# get out of any virtual or conda env (from .bashrc etc)
+env_deactivate
 
 # store the sorted env for logging, but also so that we can dig original env
 # settings for task environments, if needed
@@ -161,7 +128,7 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama ntplib "\
+VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
@@ -1130,7 +1097,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation $dep" \
+                "$PIP --no-cache-dir install --no-build-isolation '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
