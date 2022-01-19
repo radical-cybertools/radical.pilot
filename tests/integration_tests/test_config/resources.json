@@ -8,6 +8,7 @@
         "mpi_flavor"     : "OMPI",
         "mpi_version"    : "2.1.1",
         "resource"       : "local.localhost"
+    },
 
     "arcticus" : {
         "cores_per_node" : 48,
