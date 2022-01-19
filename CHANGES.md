@@ -3,6 +3,37 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.12.0  Release                                                       2022-01-19
+--------------------------------------------------------------------------------
+
+  - improve environment isolation for tasks and RCT components
+  - add test for LM Srun
+  - add resource manager instance to Executor base class
+  - add test for blocked cores and gpus parameters (RM base)
+  - add unittest to test LM base class initialization from Registry
+  - add raptor test
+  - add prepare_env example
+  - add raptor request and result cb registration
+  - avoid shebang use during bootstrap, pip sometimes screws it up
+  - detect slurm version and use node file/list
+  - enable nvme on summit
+  - ensure correct out/err file paths
+  - extended GPU handling
+  - fix configs to be aligned with env isolation setup
+  - fix LM PRTE rank setup command
+  - fix `cfg.task_environment` handling
+  - simplify BS env setup
+  - forward resource reqs for raptor tasks
+  - iteration on flux executor integration
+  - limit pymongo version
+  - provision radical-gtod
+  - reconcile named env with env isolation
+  - support Spock
+  - support ALCF/JLSE Arcticus and Iris testbeds
+  - fix staging behavior under `stage_on_error`
+  - removed dead code
+
+
 1.10.2 Hotfix Release                                                 2021-12-14
 --------------------------------------------------------------------------------
 
