@@ -3,7 +3,7 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
-1.2.0  Release                                                        2022-01-19
+1.12.0  Release                                                       2022-01-19
 --------------------------------------------------------------------------------
 
   - improve environment isolation for tasks and RCT components
