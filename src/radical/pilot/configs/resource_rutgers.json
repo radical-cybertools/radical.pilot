@@ -18,9 +18,10 @@
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SRUN",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
         "pre_bootstrap_0"             :["module use /projects/community/modulefiles",
                                         "module load gcc/5.4",
                                         "module load py-data-science-stack/5.1.0-kp807",
