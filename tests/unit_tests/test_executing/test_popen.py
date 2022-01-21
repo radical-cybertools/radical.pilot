@@ -135,6 +135,25 @@ class TestPopen(TestCase):
         pex._check_running()
         self.assertEqual(task['target_state'], rps.FAILED)
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Popen, '__init__', return_value=None)
+    def test_get_rank_ids(self, mocked_init):
+
+        pex = Popen(cfg=None, session=None)
+
+        launcher = mock.Mock()
+        launcher.get_rank_cmd = mock.Mock(
+            return_value='test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n')
+
+        for n_ranks in [1, 5]:
+            ranks_str = pex._get_rank_ids(n_ranks=n_ranks, launcher=launcher)
+            self.assertTrue(launcher.get_rank_cmd.called)
+            self.assertIn('RP_RANKS=%s' % n_ranks, ranks_str)
+
+            if n_ranks > 1:
+                self.assertIn('"$RP_RANK" && exit 1', ranks_str)
+
 
 # ------------------------------------------------------------------------------
 #
