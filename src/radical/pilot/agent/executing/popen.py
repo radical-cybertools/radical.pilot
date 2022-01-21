@@ -714,6 +714,12 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_RANKS=%s\n' % n_ranks
         ret += launcher.get_rank_cmd()
 
+        if n_ranks > 1:
+
+            # make sure that RP_RANK is known (otherwise task fails silently)
+            ret += 'test -z "$RP_RANK" && echo "Cannot determine rank"\n'
+            ret += 'test -z "$RP_RANK" && exit 1\n'
+
         return ret
 
 
