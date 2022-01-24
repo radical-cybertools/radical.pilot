@@ -146,7 +146,7 @@ class Pilot(object):
     #
     def __repr__(self):
 
-        return str(self)
+        return '<%s object, uid %s>' % (self.__class__.__qualname__, self._uid)
 
 
     # --------------------------------------------------------------------------
