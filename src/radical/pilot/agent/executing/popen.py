@@ -720,6 +720,9 @@ class Popen(AgentExecutingComponent):
             ret += 'test -z "$RP_RANK" && echo "Cannot determine rank"\n'
             ret += 'test -z "$RP_RANK" && exit 1\n'
 
+        else:
+            ret += 'test -z "$RP_RANK" && export RP_RANK=0\n'
+
         return ret
 
 
