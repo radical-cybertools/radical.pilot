@@ -92,6 +92,13 @@ class Srun(LaunchMethod):
     #
     def get_slurm_ver(self):
 
+        command = ru.which('srun')
+
+        out, err, ret = ru.sh_callout('%s -V' % command)
+        if ret:
+            raise RuntimeError('cannot use srun [%s] [%s]' % (out, err))
+
+        self._version = out.split()[-1]
         major_version = int(self._version.split('.')[0].split()[-1])
         return major_version
 
