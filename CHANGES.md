@@ -3,7 +3,7 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
-1.11.1  Hotfix Release                                                2022-01-21
+1.11.2  Hotfix Release                                                2022-01-21
 --------------------------------------------------------------------------------
 
   - for non-mpi tasks, ensure that `$RP_RANK` is set to `0`
