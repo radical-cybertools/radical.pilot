@@ -31,12 +31,16 @@ class Noop(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
+    def schedule_task(self, task):
 
-        # make sure that parent finalizers are called
-        super(Noop, self).finalize_child()
+        return
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        return
 
 
     # --------------------------------------------------------------------------

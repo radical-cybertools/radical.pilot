@@ -11,8 +11,6 @@ from unittest import TestCase, mock
 
 from radical.pilot.session import Session
 
-TEST_CASES_PATH = '%s/test_cases' % os.path.dirname(__file__)
-
 
 # ------------------------------------------------------------------------------
 #
@@ -52,7 +50,7 @@ class TestSession(TestCase):
     #
     def test_get_resource_config(self):
 
-        rcfg_label = 'xsede.comet_ssh'
+        rcfg_label = 'xsede.bridges2'
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)
@@ -74,6 +72,7 @@ class TestSession(TestCase):
         with self.assertRaises(RuntimeError):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
+
 
     # --------------------------------------------------------------------------
     #
@@ -102,12 +101,11 @@ class TestSession(TestCase):
         self._session.fetch_logfiles.assert_called()
 
         self._session._closed = False
-        with self.assertRaises(ValueError):
-            self._session.close(cleanup=True, terminate=False)
+        self._session.close(cleanup=True, terminate=True)
+
 
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestSession()

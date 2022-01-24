@@ -1,17 +1,7 @@
 #!/bin/sh
 # test the correct startup of mixed OpenMP / MPI / CPU / GPU tasks
 
-prof(){
-    if test -z "$RP_PROF"
-    then
-        return
-    fi
-    event=$1
-    now=$($RP_GTOD)
-    echo "$now,$event,task_script,MainThread,$RP_TASK_ID,AGENT_EXECUTING," >> $RP_PROF
-}
-
-prof "app_start"
+$RP_PROF "app_start"
 
 # basic information
 ARG=$1
@@ -25,6 +15,7 @@ MPI_RANK=""
 test -z "$MPI_RANK" && MPI_RANK="$ALPS_APP_PE"
 test -z "$MPI_RANK" && MPI_RANK="$PMIX_RANK"
 test -z "$MPI_RANK" && MPI_RANK="$PMI_RANK"
+test -z "$MPI_RANK" && MPI_RANK="$SLURM_PROCID"
 test -z "$MPI_RANK" && MPI_RANK="0"
 
 # obtain number of threads
@@ -94,5 +85,5 @@ printf "$PREFIX : SLEEP   : $ARG\n"
 # if so requested, sleep for a bit
 sleep $ARG
 
-prof "app_stop"
+$RP_PROF "app_stop"
 

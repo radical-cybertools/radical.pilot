@@ -1,9 +1,11 @@
 
-__copyright__ = "Copyright 2017, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2017, http://radical.rutgers.edu'
+__license__   = 'MIT'
 
 
-import json
+import os
+import shlex
+import textwrap
 
 import radical.utils        as ru
 
@@ -30,15 +32,37 @@ class Flux(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+        # create execution helper, i.e., a small shell script which manages I/O
+        # redirection for us (Flux does not support it just yet)
+        self._helper = textwrap.dedent('''\
+                #/bin/sh
+
+                exec >>%(log)s 2>&1
+
+                %(cmd)s 1>"%(out)s" 2>"%(err)s"
+
+                ''')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def schedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        # this abstract method is not used in this implementation
+        assert(False)
+
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-
-        import flux
-
-        flux_url   = self._cfg['rm_info']['lm_info']['flux_env']['FLUX_URI']
-        self._flux = flux.Flux(url=flux_url)
 
         # don't advance tasks via the component's `advance()`, but push them
         # toward the executor *without state change* - state changes are
@@ -49,10 +73,11 @@ class Flux(AgentSchedulingComponent):
         cfg     = ru.read_json(fname)
         self._q = ru.zmq.Putter(qname, cfg['put'])
 
-        # create job spec via the flux LM
-        self._lm = LaunchMethod.create(name    = 'FLUX',
-                                       cfg     = self._cfg,
-                                       session = self._session)
+        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self._cfg.pid
+        lm_cfg['reg_addr']  = self._cfg.reg_addr
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+                                                  self._log, self._prof)
 
 
     # --------------------------------------------------------------------------
@@ -60,89 +85,78 @@ class Flux(AgentSchedulingComponent):
     def work(self, tasks):
 
         # overload the base class work method
-
-        from flux import job as flux_job
-
+        self._log.debug('submit tasks?')
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
 
-        for task in tasks:
+        # FIXME: need actual job description, obviously
+        jds = [self.task_to_spec(task) for task in tasks]
+        self._log.debug('submit tasks: %s', [jd for jd in jds])
+        jids = self._lm.fh.submit_jobs([jd for jd in jds])
+        self._log.debug('submitted tasks')
 
-          # # FIXME: transfer from executor
-          # self._task_environment = self._populate_task_environment()
-
-            jd  = json.dumps(ru.read_json('/home/merzky/projects/flux/spec.json'))
-            jid = flux_job.submit(self._flux, jd)
+        for task, jid in zip(tasks, jids):
+            self._log.debug('submit tasks %s -> %s', task['uid'], jid)
             task['flux_id'] = jid
 
-            # publish without state changes - those are retroactively applied
-            # based on flux event timestamps.
-            # TODO: apply some bulking, submission is not really fast.
-            #       But at the end performance is determined by flux now, so
-            #       communication only affects timelyness of state updates.
-            self._q.put(task)
+        self._q.put(tasks)
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def _populate_task_environment(self):
-  #
-  #     import tempfile
-  #
-  #     self.gtod   = "%s/gtod" % self._pwd
-  #     self.tmpdir = tempfile.gettempdir()
-  #
-  #     # if we need to transplant any original env into the Task, we dig the
-  #     # respective keys from the dump made by bootstrap_0.sh
-  #     self._env_task_export = dict()
-  #     if self._cfg.get('export_to_task'):
-  #         with open('env.orig', 'r') as f:
-  #             for line in f.readlines():
-  #                 if '=' in line:
-  #                     k,v = line.split('=', 1)
-  #                     key = k.strip()
-  #                     val = v.strip()
-  #                     if key in self._cfg['export_to_task']:
-  #                         self._env_task_export[key] = val
-  #
-  #
-  # # --------------------------------------------------------------------------
-  # #
-  # def _populate_task_environment(self):
-  #     """Derive the environment for the t's from our own environment."""
-  #
-  #     # Get the environment of the agent
-  #     new_env = copy.deepcopy(os.environ)
-  #
-  #     #
-  #     # Mimic what virtualenv's "deactivate" would do
-  #     #
-  #     old_path = new_env.pop('_OLD_VIRTUAL_PATH', None)
-  #     if old_path:
-  #         new_env['PATH'] = old_path
-  #
-  #     old_ppath = new_env.pop('_OLD_VIRTUAL_PYTHONPATH', None)
-  #     if old_ppath:
-  #         new_env['PYTHONPATH'] = old_ppath
-  #
-  #     old_home = new_env.pop('_OLD_VIRTUAL_PYTHONHOME', None)
-  #     if old_home:
-  #         new_env['PYTHON_HOME'] = old_home
-  #
-  #     old_ps = new_env.pop('_OLD_VIRTUAL_PS1', None)
-  #     if old_ps:
-  #         new_env['PS1'] = old_ps
-  #
-  #     new_env.pop('VIRTUAL_ENV', None)
-  #
-  #     # Remove the configured set of environment variables from the
-  #     # environment that we pass to Popen.
-  #     for e in list(new_env.keys()):
-  #         for r in self._lm.env_removables:
-  #             if e.startswith(r):
-  #                 new_env.pop(e, None)
-  #
-  #     return new_env
+    # --------------------------------------------------------------------------
+    #
+    def task_to_spec(self, task):
 
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
+        cmd  = '%s %s' % (td['executable'], args)
+
+        ru.rec_makedir(sbox)
+        exec_script = '%s/%s.flux.sh' % (sbox, uid)
+        with ru.ru_open(exec_script, 'w') as fout:
+            fout.write(self._helper % {'out': stdout,
+                                       'err': stderr,
+                                       'log': '%s.flux.log' % uid,
+                                       'cmd': cmd})
+        os.chmod(exec_script, 0o0755)
+        spec = {
+            'tasks': [{
+                'slot' : 'task',
+                'count': {
+                    'per_slot': 1
+                },
+                'command': [exec_script],
+            }],
+            'attributes': {
+                'system': {
+                    'cwd'     : sbox,
+                    'duration': 0,
+                }
+            },
+            'version': 1,
+            'resources': [{
+                'count': td['cpu_processes'],
+                'type' : 'slot',
+                'label': 'task',
+                'with' : [{
+                    'count': td['cpu_threads'],
+                    'type' : 'core'
+                    # }, {
+                    #     'count': td['gpu_processes'],
+                    #     'type' : 'gpu'
+                }]
+            }]
+        }
+
+        if td['gpu_processes']:
+            spec['resources'][0]['with'].append({
+                    'count': td['gpu_processes'],
+                    'type' : 'gpu'})
+
+        return spec
 
 # ------------------------------------------------------------------------------
 

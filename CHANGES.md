@@ -3,6 +3,90 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.11.2  Hotfix Release                                                2022-01-21
+--------------------------------------------------------------------------------
+
+  - for non-mpi tasks, ensure that `$RP_RANK` is set to `0`
+
+
+1.11.0  Release                                                       2022-01-19
+--------------------------------------------------------------------------------
+
+  - improve environment isolation for tasks and RCT components
+  - add test for LM Srun
+  - add resource manager instance to Executor base class
+  - add test for blocked cores and gpus parameters (RM base)
+  - add unittest to test LM base class initialization from Registry
+  - add raptor test
+  - add prepare_env example
+  - add raptor request and result cb registration
+  - avoid shebang use during bootstrap, pip sometimes screws it up
+  - detect slurm version and use node file/list
+  - enable nvme on summit
+  - ensure correct out/err file paths
+  - extended GPU handling
+  - fix configs to be aligned with env isolation setup
+  - fix LM PRTE rank setup command
+  - fix `cfg.task_environment` handling
+  - simplify BS env setup
+  - forward resource reqs for raptor tasks
+  - iteration on flux executor integration
+  - limit pymongo version
+  - provision radical-gtod
+  - reconcile named env with env isolation
+  - support Spock
+  - support ALCF/JLSE Arcticus and Iris testbeds
+  - fix staging behavior under `stage_on_error`
+  - removed dead code
+
+
+1.10.2 Hotfix Release                                                 2021-12-14
+--------------------------------------------------------------------------------
+
+  - constrain mongodb version dependency
+
+
+1.10.0 Release                                                        2021-11-22
+--------------------------------------------------------------------------------
+
+  - Add fallback for ssh tunnel on ifconfig-less nodes
+  - cleanup old resources
+  - removed OSG leftovers
+  - updating test cases
+  - fix recursive flag
+
+
+1.9.2  Hotfix Release                                                 2021-10-27
+--------------------------------------------------------------------------------
+
+  - fix shell escaping for task arguments
+
+
+1.9.0  Release                                                        2021-10-18
+--------------------------------------------------------------------------------
+
+  - amarel cfg
+
+
+1.8.0  Release                                                        2021-09-23
+--------------------------------------------------------------------------------
+
+  - fixed pilot staging for input directories
+  - clean up configs
+  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - refreshed module list for Summit
+  - return virtenv setup parameters
+  - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
+  - use local virtual env (either venv or conda) for Summit
+
+
+1.6.8  Hotfix Release                                                 2021-08-24
+--------------------------------------------------------------------------------
+
+  - adapt flux integration to changes in flux event model
+  - fix a merge problem on flux termination handling
+
+
 1.6.7  Release                                                        2021-07-09
 --------------------------------------------------------------------------------
 

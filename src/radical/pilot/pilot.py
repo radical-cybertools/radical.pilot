@@ -3,7 +3,6 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-
 import copy
 import time
 
@@ -254,7 +253,7 @@ class Pilot(object):
                'js_url':           str(self._pilot_jsurl),
                'js_hop':           str(self._pilot_jshop),
                'description':      self.description,  # this is a deep copy
-             # 'resource_details': self.resource_details
+               'resource_details': self.resource_details
               }
 
         return ret
@@ -320,7 +319,7 @@ class Pilot(object):
     @property
     def state(self):
         '''
-        Returns the current state of the pilot.
+        Returns the current :py:mod:`state <radical.pilot.states>` of the pilot.
 
         **Returns:**
             * state (string enum)
@@ -521,8 +520,8 @@ class Pilot(object):
         **Arguments:**
 
             * **state** [`list of strings`]
-              The state(s) that pilot has to reach in order for the
-              call to return.
+              The :py:mod:`state(s) <radical.pilot.states>` that pilot has to reach in
+              order for the call to return.
 
               By default `wait` waits for the pilot to reach a **final**
               state, which can be one of the following:
@@ -586,40 +585,35 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def prepare_env(self, env_spec):
+    def prepare_env(self, env_name, env_spec):
         '''
         request the preparation of a task or worker environment on the target
-        resource.  This call will return immediately, and the request will be
-        enacted asynchronously.  Any task or worker depending on the named
-        environment will be delayed until the env preparation completed, or will
-        fail if the env preparation failed.
+        resource.  This call will block until the env is created.
 
-        Format: see `PilotDescription`
+        env_name: name of the environment to prepare (str)
+        env_spec: specification of the environment to prepare (dict), like:
+
+            {'type'   : 'virtualenv',
+             'version': '3.6',
+             'setup'  : ['radical.pilot==1.0', 'pandas']},
+
+            {'type'   : 'conda',
+             'version': '3.8',
+             'setup'  : ['numpy']}
+
+
+        where the `type` specifies the environment type, `version` specifies the
+        env version to deploy, and `setup` specifies how the environment is to
+        be prepared.
+
+        At this point, the implementation only accepts `virtualenv` type
+        requests, where `version` specifies the Python version to use, and
+        `setup` is expected to be a list of module specifiers which need to be
+        installed into the environment.
         '''
 
-        # send the prep_env request to the pilot
-        self._pmgr._pilot_prepare_env(self.uid, env_spec)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def stage_in(self, sds):
-        '''
-        Stages the content of the staging directive into the pilot's
-        staging area
-        '''
-
-        sds = ru.as_list(sds)
-
-        for sd in sds:
-            sd['prof_id'] = self.uid
-
-        for sd in sds:
-            sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
-
-        # ask the pmgr to send the staging reuests to the stager
-        self._pmgr._pilot_staging_input(sds)
+        self.rpc('prepare_env', {'env_name': env_name,
+                                 'env_spec': env_spec})
 
 
     # --------------------------------------------------------------------------
@@ -637,9 +631,32 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def stage_in(self, sds):
+        '''
+        Stages the content of the :py:mod:`~radical.pilot.staging_directives` into the
+        pilot's staging area.
+        '''
+
+        sds = ru.as_list(sds)
+
+        for sd in sds:
+            sd['prof_id'] = self.uid
+
+        for sd in sds:
+            sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
+            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
+
+        # ask the pmgr to send the staging reuests to the stager
+        self._pmgr._pilot_staging_input(sds)
+
+
+    # --------------------------------------------------------------------------
+    #
     def stage_out(self, sds=None):
         '''
-        fetch files (default:`staging_output.tgz`) from the pilot sandbox
+        Fetch files (default:`staging_output.tgz`) from the pilot sandbox.
+
+        See :py:mod:`radical.pilot.staging_directives`.
         '''
 
         sds = ru.as_list(sds)

@@ -1,0 +1,66 @@
+
+{
+    "task": {
+        "uid"                  : "task.000006",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["10"],
+            "cpu_processes"    : 2,
+            "cpu_threads"      : 2,
+            "cpu_process_type" : "MPI",
+            "environment"      : {}
+        },
+        "task_sandbox_path"    : "/tmp"
+    },
+
+    "setup" : {
+        "lm" : {
+            "slots": {
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lfs_per_node"  : 0,
+                "ranks"         : [{"node_name" : "node1",
+                                    "node_id"   : "node1",
+                                    "core_map"  : [[0, 1], [2, 3]],
+                                    "gpu_map"   : [],
+                                    "lfs"       : 0}]
+            },
+            "task_sandbox": "./"
+        }
+    },
+
+    "results": {
+        "lm": {
+            "fork"  : {
+                "rank_exec"  : "/bin/sleep 10"
+            },
+            "aprun" : {
+                "launch_cmd" : "aprun -n 2 -N 2 -L node1 -d 2 -cc 0,1:2,3",
+                "rank_exec"  : "/bin/sleep 10"
+            },
+            "mpirun": {
+                "launch_cmd" : "mpirun  -np 2   -host node1,node1",
+                "rank_exec"  : "/bin/sleep 10"
+            },
+            "ibrun" : {
+                "launch_cmd" : "ibrun -n 2 -o 0",
+                "rank_exec"  : "/bin/sleep 10"
+            },
+            "ssh"   : {
+                "launch_cmd" : "ssh node1",
+                "rank_exec"  : "/bin/sleep 10"
+            },
+            "jsrun" : {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000006",
+                "rank_exec"  : "/bin/sleep 10"
+            }
+        },
+        "resource_file": {
+            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0,1}}\n","rank: 1: { host: node1; cpu: {2,3}}\n"]
+        },
+        "resource_filename": {
+            "jsrun" : "rs_layout_task_000006"
+        }
+    }
+}
+
