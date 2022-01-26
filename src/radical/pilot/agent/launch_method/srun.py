@@ -130,8 +130,7 @@ class Srun(LaunchMethod):
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [rank['node_name'] for rank in slots['ranks']]
 
-            # newer slurm versions need a nodefile
-            # FIXME: is this really true?
+            # older slurm versions don't accept nodefiles
             if self._vmajor > 18:
                 nodefile = '%s/%s.nodes' % (sbox, uid)
                 with ru.ru_open(nodefile, 'w') as fout:
