@@ -27,7 +27,12 @@ class TestWorker(TestCase):
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
 
-        os.environ['RP_TASK_ID'] = 'task.000000'
+        os.environ['RP_TASK_ID']       = 'task.000000'
+        os.environ['RP_PILOT_SANDBOX'] = '/tmp'
+
+        with open('/tmp/control_pubsub.cfg', 'w') as fout:
+            fout.write('{"sub": "tcp://localhost:10000", '
+                       ' "pub": "tcp://localhost:10001"}\n')
 
         rp.raptor.Worker.publish = mock.Mock()
 
@@ -71,6 +76,8 @@ class TestWorker(TestCase):
         worker._dealloc_task(task_3)
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
+
+        os.unlink('touch /tmp/control_pubsub.cfg')
 
 
 # ------------------------------------------------------------------------------
