@@ -671,6 +671,7 @@ class Default(PMGRLaunchingComponent):
         cleanup         = pilot['description']['cleanup']
         candidate_hosts = pilot['description']['candidate_hosts']
         services        = pilot['description']['services']
+        redis_link      = pilot['description']['redis_link']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -948,6 +949,7 @@ class Default(PMGRLaunchingComponent):
         agent_cfg['cores']               = number_cores
         agent_cfg['gpus']                = number_gpus
         agent_cfg['spawner']             = agent_spawner
+        agent_cfg['redis_link']          = redis_link
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm

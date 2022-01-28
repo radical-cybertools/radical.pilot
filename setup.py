@@ -250,7 +250,8 @@ setup_args = {
                             'radical.saga>=1.8.0',
                             'pymongo<4',
                             'mpi4py',
-                            'setproctitle'
+                            'setproctitle',
+                            'dill'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',

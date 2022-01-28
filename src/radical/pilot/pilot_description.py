@@ -32,7 +32,7 @@ INPUT_STAGING     = 'input_staging'
 OUTPUT_STAGING    = 'output_staging'
 
 PREPARE_ENV       = 'prepare_env'
-
+REDIS_LINK        = ''
 
 # ------------------------------------------------------------------------------
 #
@@ -217,6 +217,7 @@ class PilotDescription(ru.Description):
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
         SERVICES        : [str]      ,
+        REDIS_LINK      : str ,
     }
 
     _defaults = {
@@ -240,6 +241,7 @@ class PilotDescription(ru.Description):
         PREPARE_ENV     : {}         ,
         LAYOUT          : 'default'  ,
         SERVICES        : []         ,
+        REDIS_LINK      : None ,
     }
 
 
