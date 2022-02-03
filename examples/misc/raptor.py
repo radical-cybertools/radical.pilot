@@ -87,24 +87,22 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                    'path'   : '/home/merzky/radical.pilot.sandbox/ve_raptor',
-                                    'setup'  : [
-                                      # 'pip install git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
-                                      # 'pip install git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
-                                    ]})
+                                  # 'path'   : '/home/merzky/j/sbox/ve_raptor',
+                                  # 'setup'  : ['radical.pilot']
+                                    })
 
         # submit some test tasks
         tds = list()
         for i in range(tasks_rp):
 
-          # tds.append(rp.TaskDescription({
-          #     'uid'             : 'task.exe.%06d' % i,
-          #     'mode'            : rp.TASK_EXECUTABLE,
-          #     'cpu_processes'   : 2,
-          #     'cpu_process_type': rp.MPI,
-          #     'executable'      : '/bin/sh',
-          #     'arguments'       : ['-c',
-          #                          'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exe.%06d' % i,
+                'mode'            : rp.TASK_EXECUTABLE,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c',
+                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi.%06d' % i,
@@ -163,8 +161,8 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
         tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
-      # for task in tasks:
-      #     print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
+        for task in tasks:
+            print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
 
     finally:
         session.close(download=True)

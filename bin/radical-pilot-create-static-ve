@@ -182,7 +182,7 @@ pip install --no-cache-dir --upgrade setuptools pip wheel| progress || exit 1
 for mod in $MODULES
 do
     echo -n "install $mod "
-    stdbuf -oL pip install -I --no-cache-dir --upgrade "'$mod'" || exit 1
+    stdbuf -oL pip install -I --no-cache-dir --upgrade "$mod" || exit 1
 done
 
 if ! test -z "$MODULES"
