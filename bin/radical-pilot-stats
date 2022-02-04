@@ -33,10 +33,10 @@ _EVENT_ENCODING = {
         'pmgr': {
         },
         'pilot' : {
-            rp.PENDING_LAUNCH          :  1,
-            rp.LAUNCHING               :  2,
-            rp.PENDING_ACTIVE          :  3,
-            rp.ACTIVE                  :  4,
+            rp.PMGR_LAUNCHING_PENDING  :  1,
+            rp.PMGR_LAUNCHING          :  2,
+            rp.PMGR_ACTIVE_PENDING     :  3,
+            rp.PMGR_ACTIVE             :  4,
             rp.DONE                    :  5,
             rp.CANCELED                :  6,
             rp.FAILED                  :  7
@@ -45,16 +45,16 @@ _EVENT_ENCODING = {
         },
         'task': {
             rp.NEW                          :  1,
-            rp.SCHEDULING                   :  2,
-            rp.PENDING_INPUT_STAGING        :  3,
-            rp.STAGING_INPUT                :  4,
+            rp.AGENT_SCHEDULING             :  2,
+            rp.AGENT_STAGING_INPUT_PENDING  :  3,
+            rp.AGENT_STAGING_INPUT          :  4,
             rp.AGENT_STAGING_INPUT_PENDING  :  5,
             rp.AGENT_STAGING_INPUT          :  6,
-            rp.PENDING_EXECUTION            :  7,
-            rp.ALLOCATING                   :  8,
-            rp.EXECUTING                    :  9,
-            rp.PENDING_OUTPUT_STAGING       : 10,
-            rp.STAGING_OUTPUT               : 11,
+            rp.AGENT_EXECUTING_PENDING      :  7,
+            #rp.ALLOCATING                  :  8,
+            rp.AGENT_EXECUTING              :  9,
+            rp.AGENT_STAGING_OUTPUT_PENDING : 10,
+            rp.AGENT_STAGING_OUTPUT         : 11,
             rp.AGENT_STAGING_OUTPUT_PENDING : 12,
             rp.AGENT_STAGING_OUTPUT         : 13,
             rp.DONE                         : 14,
@@ -69,20 +69,20 @@ _EVENT_ENCODING = {
 # FAILED
 #
 # # pilot states
-# PENDING_LAUNCH
-# LAUNCHING
-# PENDING_ACTIVE
-# ACTIVE
+# PMGR_LAUNCHING_PENDING
+# PMGR_LAUNCHING
+# PMGR_ACTIVE_PENDING
+# PMGR_ACTIVE
 #
 # # Task States
 # NEW
 # PENDING_INPUT_TRANSFER
 # TRANSFERRING_INPUT
 #
-# PENDING_EXECUTION
-# SCHEDULING
+# AGENT_EXECUTING_PENDING
+# AGENT_SCHEDULING
 # ALLOCATING
-# EXECUTING
+# AGENT_EXECUTING
 #
 # PENDING_OUTPUT_TRANSFER
 # TRANSFERRING_OUTPUT
@@ -615,7 +615,7 @@ def plot_session (db, session, cachedir, term) :
                             maxqueue    = max (maxqueue, queue_size)
                             dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
 
-                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.EXECUTING] :
+                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.AGENT_EXECUTING] :
                         if  not uid in dequeued :
                             dequeued.append (uid)
                             seconds     = ru.time_diff (start, event[4])
@@ -756,18 +756,18 @@ def plot_session (db, session, cachedir, term) :
     BEGIN  = ">"
     END    = "<"
     ONCE   = "!"
-    COLORS = {rp.NEW                     : ' 1',
-              rp.SCHEDULING              : ' 2',
-              rp.PENDING_INPUT_STAGING   : ' 3',
-              rp.STAGING_INPUT           : ' 4',
-              rp.PENDING_EXECUTION       : ' 5',
-              rp.ALLOCATING              : ' 6',
-              rp.EXECUTING               : ' 7',
-              rp.PENDING_OUTPUT_STAGING  : ' 8',
-              rp.STAGING_OUTPUT          : ' 9',
-              rp.DONE                    : '10',
-              rp.CANCELED                : '11',
-              rp.FAILED                  : '12'}
+    COLORS = {rp.NEW                           : ' 1',
+              rp.AGENT_SCHEDULING              : ' 2',
+              rp.AGENT_STAGING_INPUT_PENDING   : ' 3',
+              rp.AGENT_STAGING_INPUT           : ' 4',
+              rp.AGENT_EXECUTING_PENDING       : ' 5',
+              rp.ALLOCATING                    : ' 6',
+              rp.AGENT_EXECUTING               : ' 7',
+              rp.AGENT_STAGING_OUTPUT_PENDING  : ' 8',
+              rp.AGENT_STAGING_OUTPUT          : ' 9',
+              rp.DONE                          : '10',
+              rp.CANCELED                      : '11',
+              rp.FAILED                        : '12'}
 
     for pilot in docs['pilot'] :
 
@@ -802,7 +802,7 @@ def plot_session (db, session, cachedir, term) :
 
                         if  not uid in entity_states :
 
-                            if  state not in [rp.EXECUTING] :
+                            if  state not in [rp.AGENT_EXECUTING] :
                                 continue
 
                             entity_states[uid] = state
@@ -843,7 +843,7 @@ def plot_session (db, session, cachedir, term) :
                     continue
 
                 if  otype == 'task' :
-                    if  state in [rp.EXECUTING] :
+                    if  state in [rp.AGENT_EXECUTING] :
                         idxs.append (uid)
 
             for idx_id in idxs :
