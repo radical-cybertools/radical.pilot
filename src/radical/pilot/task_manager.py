@@ -1207,8 +1207,10 @@ class TaskManager(rpu.Component):
     #
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
-        if not metrics: metrics = [rpc.TMGR_METRICS]
-        else          : metrics = ru.as_list(metrics)
+        if not metrics:
+            metrics = rpc.TMGR_METRICS
+
+        metrics = ru.as_list(metrics)
 
         if not uid:
             uid = '*'
@@ -1240,10 +1242,10 @@ class TaskManager(rpu.Component):
 
                 for cb_id in to_delete:
 
-                    if cb_id not in self._callbacks[uid][metric]:
+                    if cb_id not in self._callbacks[metric][uid]:
                         raise ValueError("cb %s not registered" % cb_id)
 
-                    del(self._callbacks[uid][metric][cb_id])
+                    del(self._callbacks[metric][uid][cb_id])
 
 
     # --------------------------------------------------------------------------
