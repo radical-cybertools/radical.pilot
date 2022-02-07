@@ -1137,6 +1137,8 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    # TODO: `metric` -> `metrics`, for consistency with `unregister_callback()`
+    #
     def register_callback(self, cb, cb_data=None, metric=None, uid=None):
         """
         Registers a new callback function with the TaskManager.  Manager-level
@@ -1180,8 +1182,7 @@ class TaskManager(rpu.Component):
         if not metric:
             metric = rpc.TASK_STATE
 
-        if  metric not in rpc.TMGR_METRICS:
-            raise ValueError ("Metric '%s' not available on the tmgr" % metric)
+        metrics = ru.as_list(metric)
 
         if not uid:
             uid = '*'
@@ -1191,16 +1192,22 @@ class TaskManager(rpu.Component):
 
 
         with self._tcb_lock:
-            cb_id = id(cb)
 
-            if metric not in self._callbacks:
-                self._callbacks[metric] = dict()
+            for metric in metrics:
 
-            if uid not in self._callbacks[metric]:
-                self._callbacks[metric][uid] = dict()
+                if  metric not in rpc.TMGR_METRICS:
+                    raise ValueError ("Metric '%s' available on tmgr" % metric)
 
-            self._callbacks[metric][uid][cb_id] = {'cb'      : cb,
-                                                   'cb_data' : cb_data}
+                cb_id = id(cb)
+
+                if metric not in self._callbacks:
+                    self._callbacks[metric] = dict()
+
+                if uid not in self._callbacks[metric]:
+                    self._callbacks[metric][uid] = dict()
+
+                self._callbacks[metric][uid][cb_id] = {'cb'     : cb,
+                                                       'cb_data': cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -1208,7 +1215,7 @@ class TaskManager(rpu.Component):
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
         if not metrics:
-            metrics = rpc.TMGR_METRICS
+            metrics = rpc.TASK_STATE
 
         metrics = ru.as_list(metrics)
 
