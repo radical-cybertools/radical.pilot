@@ -4,8 +4,7 @@ __license__   = 'MIT'
 
 import os
 
-from ...constants import DOWN
-from .base        import RMInfo, ResourceManager
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
