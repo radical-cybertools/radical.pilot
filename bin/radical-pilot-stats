@@ -42,6 +42,16 @@ _EVENT_ENCODING = {
             rp.FAILED                  :  7
         },
         'tmgr': {
+            rp.NEW                          :  0,
+            rp.TMGR_SCHEDULING_PENDING      :  1,
+            rp.TMGR_SCHEDULING              :  2,
+            rp.TMGR_STAGING_INPUT_PENDING   :  3,
+            rp.TMGR_STAGING_INPUT           :  4,
+            rp.TMGR_STAGING_OUTPUT_PENDING  :  5,
+            rp.TMGR_STAGING_OUTPUT          :  6,
+            rp.DONE                         :  7,
+            rp.FAILED                       :  8,
+            rp.CANCELED                     :  9
         },
         'task': {
             rp.NEW                          :  1,
@@ -51,15 +61,14 @@ _EVENT_ENCODING = {
             rp.AGENT_STAGING_INPUT_PENDING  :  5,
             rp.AGENT_STAGING_INPUT          :  6,
             rp.AGENT_EXECUTING_PENDING      :  7,
-            #rp.ALLOCATING                  :  8,
-            rp.AGENT_EXECUTING              :  9,
-            rp.AGENT_STAGING_OUTPUT_PENDING : 10,
-            rp.AGENT_STAGING_OUTPUT         : 11,
-            rp.AGENT_STAGING_OUTPUT_PENDING : 12,
-            rp.AGENT_STAGING_OUTPUT         : 13,
-            rp.DONE                         : 14,
-            rp.CANCELED                     : 15,
-            rp.FAILED                       : 16
+            rp.AGENT_EXECUTING              :  8,
+            rp.AGENT_STAGING_OUTPUT_PENDING :  9,
+            rp.AGENT_STAGING_OUTPUT         : 10,
+            rp.AGENT_STAGING_OUTPUT_PENDING : 11,
+            rp.AGENT_STAGING_OUTPUT         : 12,
+            rp.DONE                         : 13,
+            rp.CANCELED                     : 14,
+            rp.FAILED                       : 15
         }
     }
 
@@ -79,11 +88,18 @@ _EVENT_ENCODING = {
 # PENDING_INPUT_TRANSFER
 # TRANSFERRING_INPUT
 #
+# # TMGR states
+# TMGR_SCHEDULING
+#
+# # Agent States
 # AGENT_EXECUTING_PENDING
 # AGENT_SCHEDULING
-# ALLOCATING
 # AGENT_EXECUTING
 #
+# # PMGR states
+# PMGR_LAUNCHING
+# PMGR_ACTIVE
+# 
 # PENDING_OUTPUT_TRANSFER
 # TRANSFERRING_OUTPUT
 
@@ -761,13 +777,12 @@ def plot_session (db, session, cachedir, term) :
               rp.AGENT_STAGING_INPUT_PENDING   : ' 3',
               rp.AGENT_STAGING_INPUT           : ' 4',
               rp.AGENT_EXECUTING_PENDING       : ' 5',
-              rp.ALLOCATING                    : ' 6',
-              rp.AGENT_EXECUTING               : ' 7',
-              rp.AGENT_STAGING_OUTPUT_PENDING  : ' 8',
-              rp.AGENT_STAGING_OUTPUT          : ' 9',
-              rp.DONE                          : '10',
-              rp.CANCELED                      : '11',
-              rp.FAILED                        : '12'}
+              rp.AGENT_EXECUTING               : ' 6',
+              rp.AGENT_STAGING_OUTPUT_PENDING  : ' 7',
+              rp.AGENT_STAGING_OUTPUT          : ' 8',
+              rp.DONE                          :  '9',
+              rp.CANCELED                      : '10',
+              rp.FAILED                        : '11'}
 
     for pilot in docs['pilot'] :
 
