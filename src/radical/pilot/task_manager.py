@@ -1195,8 +1195,8 @@ class TaskManager(rpu.Component):
 
             for metric in metrics:
 
-                if  metric not in rpc.TMGR_METRICS:
-                    raise ValueError ("Metric '%s' available on tmgr" % metric)
+                if metric not in rpc.TMGR_METRICS:
+                    raise ValueError("invalid tmgr metric '%s'" % metric)
 
                 cb_id = id(cb)
 
@@ -1226,15 +1226,12 @@ class TaskManager(rpu.Component):
             raise ValueError('no such task %s' % uid)
 
         for metric in metrics:
-            if metric not in rpc.TMGR_METRICS :
-                raise ValueError ("invalid tmgr metric '%s'" % metric)
+            if metric not in rpc.TMGR_METRICS:
+                raise ValueError("invalid tmgr metric '%s'" % metric)
 
         with self._tcb_lock:
 
             for metric in metrics:
-
-                if metric not in rpc.TMGR_METRICS :
-                    raise ValueError("cb metric '%s' unknown" % metric)
 
                 if metric not in self._callbacks:
                     raise ValueError("cb metric '%s' invalid" % metric)
