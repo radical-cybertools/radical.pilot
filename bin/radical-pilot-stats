@@ -55,20 +55,23 @@ _EVENT_ENCODING = {
         },
         'task': {
             rp.NEW                          :  1,
-            rp.AGENT_SCHEDULING             :  2,
-            rp.AGENT_STAGING_INPUT_PENDING  :  3,
-            rp.AGENT_STAGING_INPUT          :  4,
-            rp.AGENT_STAGING_INPUT_PENDING  :  5,
-            rp.AGENT_STAGING_INPUT          :  6,
-            rp.AGENT_EXECUTING_PENDING      :  7,
-            rp.AGENT_EXECUTING              :  8,
-            rp.AGENT_STAGING_OUTPUT_PENDING :  9,
-            rp.AGENT_STAGING_OUTPUT         : 10,
-            rp.AGENT_STAGING_OUTPUT_PENDING : 11,
-            rp.AGENT_STAGING_OUTPUT         : 12,
-            rp.DONE                         : 13,
-            rp.CANCELED                     : 14,
-            rp.FAILED                       : 15
+            rp.TMGR_SCHEDULING_PENDING      :  2,
+            rp.TMGR_SCHEDULING              :  3,
+            rp.TMGR_STAGING_INPUT_PENDING   :  4,
+            rp.TMGR_STAGING_INPUT           :  5,
+            rp.AGENT_STAGING_INPUT_PENDING  :  6,
+            rp.AGENT_STAGING_INPUT          :  7,
+            rp.AGENT_SCHEDULING_PENDING     :  8,
+            rp.AGENT_SCHEDULING             :  9,
+            rp.AGENT_EXECUTING_PENDING      : 10,
+            rp.AGENT_EXECUTING              : 11,
+            rp.AGENT_STAGING_OUTPUT_PENDING : 12,
+            rp.AGENT_STAGING_OUTPUT         : 13,
+            rp.TMGR_STAGING_OUTPUT_PENDING  : 14,
+            rp.TMGR_STAGING_OUTPUT          : 15,
+            rp.DONE                         : 16,
+            rp.CANCELED                     : 17,
+            rp.FAILED                       : 18
         }
     }
 
@@ -91,17 +94,13 @@ _EVENT_ENCODING = {
 # # TMGR states
 # TMGR_SCHEDULING
 #
-# # Agent States
-# AGENT_EXECUTING_PENDING
-# AGENT_SCHEDULING
-# AGENT_EXECUTING
-#
 # # PMGR states
 # PMGR_LAUNCHING
 # PMGR_ACTIVE
 # 
 # PENDING_OUTPUT_TRANSFER
 # TRANSFERRING_OUTPUT
+
 
 # ------------------------------------------------------------------------------
 #
@@ -284,7 +283,6 @@ def get_stats (docs, events, slothist) :
 
     n_tasks               = 0
     n_pilots              = 0
-    task_state_durations  = dict()
     pilot_stats           = dict()
     tasks                 = dict()
 
@@ -392,10 +390,10 @@ def stat_session (db, session, cachedir) :
   # print task_df
   # sys.exit ()
 
-    t_x_start  = None   # first task started executing
-    t_y_start  = None   # last  task started executing
-    t_x_stop   = None   # last task finished executing
-    task_cores = dict() # sum of core counts from all tasks per pilot
+    t_x_start  = None    # first task started executing
+    t_y_start  = None    # last  task started executing
+    t_x_stop   = None    # last task finished executing
+    task_cores = dict()  # sum of core counts from all tasks per pilot
 
     for task in docs['task'] :
         if not t_x_start : t_x_start =     task['started']
@@ -671,12 +669,12 @@ def plot_session (db, session, cachedir, term) :
 
     timetics = 10
     for i in range(1,10) :
-        if  maxtime  > 1*(10**i) :
-            timetics = 1*(10**(i-1))
-        if  maxtime  > 2*(10**i) :
-            timetics = 2*(10**(i-1))
-        if  maxtime  > 5*(10**i) :
-            timetics = 5*(10**(i-1))
+        if  maxtime  > 1 * (10 ** i) :
+            timetics = 1 * (10 ** (i - 1))
+        if  maxtime  > 2 * (10 ** i) :
+            timetics = 2 * (10 ** (i - 1))
+        if  maxtime  > 5 * (10 ** i) :
+            timetics = 5 * (10 ** (i - 1))
 
   # mtimetics = 10
 
@@ -687,28 +685,28 @@ def plot_session (db, session, cachedir, term) :
     # maxslots is larger we also use the same scale.
     max_scale  = max(maxslots, maxqueue)
     min_scale  = min(maxslots, maxqueue)
-    mean_scale = (maxslots+maxqueue)/2
+    mean_scale = (maxslots + maxqueue) / 2
     scale_25   = 0.25 * mean_scale
 
     if  maxslots > maxqueue :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxslots+(nodesize/2)
+        slotsscale = maxslots + (nodesize / 2)
+        queuescale = maxslots + (nodesize / 2)
 
     elif (mean_scale + scale_25) > max_scale and \
         (mean_scale - scale_25) < min_scale :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxslots+(nodesize/2)
+        slotsscale = maxslots + (nodesize / 2)
+        queuescale = maxslots + (nodesize / 2)
 
     else :
-        slotsscale = maxslots+(nodesize/2)
-        queuescale = maxqueue+(nodesize/2)
+        slotsscale = maxslots + (nodesize / 2)
+        queuescale = maxqueue + (nodesize / 2)
 
-    slotsscale = int(max(slotsscale, maxslots*1.1))
-    queuescale = int(max(queuescale, maxqueue*1.1))
+    slotsscale = int(max(slotsscale, maxslots * 1.1))
+    queuescale = int(max(queuescale, maxqueue * 1.1))
 
     terms = " ".join (term.split (','))
 
-    cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime+10)
+    cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime + 10)
     cmd +=        " -e  timetics=%d "       % timetics
   # cmd +=        " -e  mtimetics=%d "      % mtimetics
     cmd +=        " -e  maxslots=%d "       % maxslots
@@ -933,11 +931,10 @@ def handle_session (db, mode, dbname, session, cachedir, pname) :
                 db.drop_collection (name)
                 print("  removed collection %s" % name)
             except :
-                pass # ignore errors
+                pass  # ignore errors
 
         else :
             handle_coll (db, mode, name, pname)
-
 
 
 # ------------------------------------------------------------------------------
@@ -962,15 +959,15 @@ def handle_coll (db, mode, cname, pname) :
             print(" | | +-- doc  %s" % name)
 
         elif  mode == 'remove' :
-            if (not pname) or (str(name)==str(pname)) :
+            if (not pname) or (str(name) == str(pname)) :
                 try :
                     collection.remove (name)
                     print("  removed document %s" % name)
                 except Exception as e:
-                    pass # ignore errors
+                    pass  # ignore errors
 
         else :
-            if (not pname) or (str(name)==str(pname)) :
+            if (not pname) or (str(name) == str(pname)) :
                 handle_doc (collection, mode, doc)
 
 
@@ -1005,7 +1002,9 @@ def handle_doc (collection, mode, doc) :
                 txt_out += '\n'
                 lnum    += 1
 
-            print(" | | | +-- %-10s : %s" % (key, txt_out[:-1])) # remove last \n
+            print(" | | | +-- %-10s : %s" % (key, txt_out[:-1]))  # remove last \n
+
+
 # ------------------------------------------------------------------------------
 #
 def parse_commandline():
