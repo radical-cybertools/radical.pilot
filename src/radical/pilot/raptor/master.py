@@ -456,8 +456,6 @@ class Master(rpu.Component):
         executable_tasks = list()
         for task in ru.as_list(tasks):
 
-            self._log.debug('=== submit?  %s', task['uid'])
-
             if isinstance(task, TaskDescription):
                 # convert to task dict
                 task = Task(self, task).as_dict()
@@ -466,10 +464,8 @@ class Master(rpu.Component):
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
             if mode == TASK_EXECUTABLE:
-                self._log.debug('=== submit 1 %s', task['uid'])
                 executable_tasks.append(task)
             else:
-                self._log.debug('=== submit 2 %s', task['uid'])
                 raptor_tasks.append(task)
 
         self._submit_executable_tasks(executable_tasks)
@@ -481,10 +477,6 @@ class Master(rpu.Component):
     def _submit_raptor_tasks(self, tasks):
 
         if tasks:
-            self._log.debug('=== put REQs %s', len(tasks))
-
-            for task in tasks:
-                self._log.debug('=== put REQ %s [%s]', task['uid'], task['state'])
 
             self.advance(tasks, state=rps.AGENT_EXECUTING,
                                 publish=True, push=False)
@@ -504,8 +496,6 @@ class Master(rpu.Component):
             return
 
         for task in tasks:
-
-            self._log.debug('=== submit %s', task['uid'])
 
             td = task['description']
 
@@ -541,11 +531,10 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
-        self._log.debug('==== get task requests: %d', len(tasks))
+        self._log.debug('request_cb: %d', len(tasks))
 
         try:
             filtered = self.request_cb(tasks)
-            self._log.debug('==== filtered requests: %d', len(filtered))
             if filtered:
                 for task in filtered:
                     self._log.debug('REQ cb: %s' % task['uid'])
@@ -562,7 +551,7 @@ class Master(rpu.Component):
 
         for task in ru.as_list(tasks):
 
-            self._log.debug('==== get 1 %s', task['uid'])
+            self._log.debug('result for %s', task['uid'])
 
             try:
                 self.result_cb(task)
