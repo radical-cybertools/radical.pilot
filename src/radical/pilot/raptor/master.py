@@ -48,10 +48,6 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        import pprint
-        self._log.debug('==== cfg  path: %s', cfg.path)
-        self._log.debug('==== self path: %s', self._cfg.path)
-
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
@@ -70,7 +66,7 @@ class Master(rpu.Component):
                                    'uid'       : '%s_input' % self._uid,
                                    'path'      : self._cfg.path,
                                    'stall_hwm' : 0,
-                                   'bulk_size' : 56})
+                                   'bulk_size' : 1})
 
         self._input_queue = ru.zmq.Queue(input_cfg)
         self._input_queue.start()
@@ -86,16 +82,14 @@ class Master(rpu.Component):
                                  'uid'       : self._uid + '.req',
                                  'path'      : self._cfg.path,
                                  'stall_hwm' : 0,
-                                 'bulk_size' : 1024})
-
-        self._log.debug('==== req queue %s', pprint.pformat(req_cfg))
+                                 'bulk_size' : 1})
 
         res_cfg = ru.Config(cfg={'channel'   : 'raptor_results',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.res',
                                  'path'      : self._cfg.path,
                                  'stall_hwm' : 0,
-                                 'bulk_size' : 1024})
+                                 'bulk_size' : 1})
 
         self._req_queue = ru.zmq.Queue(req_cfg)
         self._res_queue = ru.zmq.Queue(res_cfg)
@@ -109,11 +103,6 @@ class Master(rpu.Component):
         self._res_addr_put = str(self._res_queue.addr_put)
         self._res_addr_get = str(self._res_queue.addr_get)
 
-        self._log.debug('==== 0 req put: %s', self._req_addr_put)
-        self._log.debug('==== 1 req get: %s', self._req_addr_get)
-        self._log.debug('==== 2 res put: %s', self._res_addr_put)
-        self._log.debug('==== 3 res get: %s', self._res_addr_get)
-
         # this master will put requests onto the request queue, and will get
         # responses from the response queue.  Note that the responses will be
         # delivered via an async callback (`self._result_cb`).
@@ -126,24 +115,11 @@ class Master(rpu.Component):
         self._info = {'req_addr_get': self._req_addr_get,
                       'res_addr_put': self._res_addr_put}
 
-
         # make sure the channels are up before allowing to submit requests
         time.sleep(1)
 
-        # set up zmq queues between the agent scheduler and this master so that
-        # we can receive new requests from RP tasks
-        qname = '%s_input_queue' % self._uid
-        input_cfg = ru.Config(cfg={'channel'   : qname,
-                                   'type'      : 'queue',
-                                   'uid'       : '%s_input' % self._uid,
-                                   'path'      : os.getcwd(),
-                                   'stall_hwm' : 0,
-                                   'bulk_size' : 56})
-
-
         # begin to receive tasks in that queue
-        self._input_getter = ru.zmq.Getter(qname, self._input_queue.addr_get,
-                                           cb=self._request_cb)
+        ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue')
@@ -459,11 +435,11 @@ class Master(rpu.Component):
     def _run(self):
 
         # wait for the submitted requests to complete
-        while not self._term.is_set():
+        while not self._term.wait(timeout=60):
 
             self._log.debug('still alive')
 
-            time.sleep(1.0)
+        self._log.debug('terminate')
 
 
     # --------------------------------------------------------------------------
@@ -565,8 +541,11 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
+        self._log.debug('==== get task requests: %d', len(tasks))
+
         try:
             filtered = self.request_cb(tasks)
+            self._log.debug('==== filtered requests: %d', len(filtered))
             if filtered:
                 for task in filtered:
                     self._log.debug('REQ cb: %s' % task['uid'])

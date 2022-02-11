@@ -318,8 +318,11 @@ class AgentSchedulingComponent(rpu.Component):
         We listen on the control channel for raptor queue registration commands
         '''
 
+
         cmd = msg['cmd']
         arg = msg['arg']
+
+        self._log.debug('==== ctrl-cb: %s', cmd)
 
         if cmd == 'register_named_env':
 
@@ -327,24 +330,33 @@ class AgentSchedulingComponent(rpu.Component):
             self._named_envs.append(env_name)
 
 
-        if cmd == 'register_raptor_queue':
+        elif cmd == 'register_raptor_queue':
 
             name  = arg['name']
             queue = arg['queue']
             addr  = arg['addr']
 
             self._log.debug('register raptor queue: %s', name)
-
             with self._raptor_lock:
 
                 self._raptor_queues[name] = ru.zmq.Putter(queue, addr)
 
+                # send tasks which were collected for this queue
                 if name in self._raptor_tasks:
 
                     tasks = self._raptor_tasks[name]
                     del(self._raptor_tasks[name])
 
-                    self._log.debug('relay %d tasks to raptor %d', len(tasks), name)
+                    self._log.debug('==== relay %d tasks to raptor %s', len(tasks), name)
+                    self._raptor_queues[name].put(tasks)
+
+                # also send any tasks which were collected for *any* queue
+                if '*' in self._raptor_tasks:
+
+                    tasks = self._raptor_tasks['*']
+                    del(self._raptor_tasks['*'])
+
+                    self._log.debug('==== * relay %d tasks to raptor %s', len(tasks), name)
                     self._raptor_queues[name].put(tasks)
 
 
@@ -772,11 +784,24 @@ class AgentSchedulingComponent(rpu.Component):
                 for name in to_raptor:
 
                     if name in self._raptor_queues:
+                        # forward to specified raptor queue
                         self._log.debug('fwd %s: %d', name,
                                         len(to_raptor[name]))
                         self._raptor_queues[name].put(to_raptor[name])
 
+                    elif self._raptor_queues and name == '*':
+                        # round robin to available raptor queues
+                        names   = list(self._raptor_queues.keys())
+                        n_names = len(names)
+                        for idx in range(len(to_raptor[name])):
+                            task  = to_raptor[name][idx]
+                            qname = names[idx % n_names]
+                            self._log.debug('==== * put task %s to rq %s',
+                                    task['uid'], qname)
+                            self._raptor_queues[qname].put(task)
+
                     else:
+                        # keep around until a raptor queue registers
                         self._log.debug('cache %s: %d', name,
                                         len(to_raptor[name]))
 

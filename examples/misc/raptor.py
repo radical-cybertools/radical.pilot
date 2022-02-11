@@ -51,6 +51,8 @@ if __name__ == '__main__':
 
         pd.runtime = cfg.runtime
 
+        pd.redis_link = ''
+
         tds = list()
 
         for i in range(n_masters):
@@ -88,8 +90,13 @@ if __name__ == '__main__':
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                   # 'path'   : '/home/merzky/j/sbox/ve_raptor',
-                                  # 'setup'  : ['radical.pilot']
-                                    })
+                                    'setup'  : [
+        '/home/merzky/j/rp.test/',
+      # 'radical.pilot',
+      # 'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
+        'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
+                                               ]
+                                   })
 
         # submit some test tasks
         tds = list()
