@@ -203,29 +203,29 @@ class _TaskPuller(mt.Thread):
 
             while True:
 
-                self._log.debug('=== wtq pull now')
+              # self._log.debug('=== wtq pull now')
                 tasks = None
                 try:
                     tasks = worker_task_q.get_nowait(timeout=1)
                 except:
                     self._log.exception('pull error')
-                self._log.debug('=== wtq pull result: %s', tasks)
+              # self._log.debug('=== wtq pull result: %s', tasks)
 
                 if not tasks:
                     continue
 
                 tasks = ru.as_list(tasks)
-                self._log.debug('=== tasks: %s', len(tasks))
+                self._log.debug('=== wtq tasks: %s', len(tasks))
 
                 # TODO: sort tasks by size
                 for task in ru.as_list(tasks):
 
-                    self._log.debug('=== %s 0 - task pulled', task['uid'])
+                    self._log.debug('=== wtq %s 0 - task pulled', task['uid'])
 
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._log.debug('=== %s 1 - task send to %d',
+                            self._log.debug('wtq === %s 1 - task send to %d',
                                              task['uid'], rank)
                             rank_task_q.put(task, qname=str(rank))
 
@@ -412,7 +412,7 @@ class _Worker(mt.Thread):
                 assert(len(tasks) == 1)
                 task = tasks[0]
 
-                self._log.debug('=== %s 2 - task recv by %d', task['uid'], self._rank)
+                self._log.debug('==== %s 2 - task recv by %d', task['uid'], self._rank)
 
                 # FIXME: how can that be?
                 if self._rank not in task['ranks']:
@@ -850,12 +850,8 @@ class MPIWorkerAM2(Worker):
         # to the task and result queues
         super().__init__(cfg=cfg, session=session, register=self._manager)
 
-        # rank 0 knows about the master comm channels
-        self._log.info('==== %s', __file__)
-        self._log.info('==== init: %d [%d] - %d [%d] - %s', self._rank,
-                self._ranks, self._world.rank, self._world.size, self._manager)
 
-        # we start two ZMQ queues: one to send tasks to the worker ranks
+        # rank 0 starts two ZMQ queues: one to send tasks to the worker ranks
         # (rank_task_q), and one to collect results from the ranks
         # (rank_result_q)
         info = None
@@ -875,14 +871,8 @@ class MPIWorkerAM2(Worker):
                     'rank_result_q_put': str(self._rank_result_q.addr_put),
                     'rank_result_q_get': str(self._rank_result_q.addr_get)}
 
-            self._log.debug('==== 0 rrq_put:%s', info['rank_result_q_put'])
-            self._log.debug('==== 1 rrq_get:%s', info['rank_result_q_get'])
-            self._log.debug('==== 2 rtq_put:%s', info['rank_task_q_put'])
-            self._log.debug('==== 3 rtq_get:%s', info['rank_task_q_get'])
-            self._log.debug('==== 4 wrq_put:%s', self._worker_result_q_put)
-            self._log.debug('==== 5 wtq_get:%s', self._worker_task_q_get)
-
-            time.sleep(5)
+            # let channels settle
+            time.sleep(1)
 
         # broadcast the queue endpoint addresses to all worker ranks
         info = self._world.bcast(info, root=0)
