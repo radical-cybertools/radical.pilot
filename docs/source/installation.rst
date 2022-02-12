@@ -114,7 +114,6 @@ you.
 MPI Implementation Library (Optional)
 -------
 
-
 The MPI is used in launch method. There are several MPI flavours and implementations available
 for MPI. MPI dependency is usually installed at a system level and managed by distro's package
 manager. Please search your package manager for mpi packages.
