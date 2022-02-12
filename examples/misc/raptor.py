@@ -89,14 +89,10 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                  # 'path'   : '/home/merzky/j/sbox/ve_raptor',
-                                    'setup'  : [
-        '/home/merzky/j/rp.test/',
-      # 'radical.pilot',
-      # 'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
-        'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
-                                               ]
-                                   })
+                                    'path'   : '$HOME/radical.pilot.sandbox/ve_raptor',
+                                    'setup'  : ['$HOME/radical.pilot/',
+                                                'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
+                                                'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',]})
 
         # submit some test tasks
         tds = list()
