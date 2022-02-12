@@ -51,6 +51,8 @@ if __name__ == '__main__':
 
         pd.runtime = cfg.runtime
 
+        pd.redis_link = ''
+
         tds = list()
 
         for i in range(n_masters):
@@ -88,16 +90,23 @@ if __name__ == '__main__':
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                   # 'path'   : '/home/merzky/j/sbox/ve_raptor',
-                                  # 'setup'  : ['radical.pilot']
-                                    })
+                                    'setup'  : [
+        '/home/merzky/j/ru/',
+        '/home/merzky/j/rp.test/',
+      # 'radical.pilot',
+      # 'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
+        'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
+                                               ]
+                                   })
 
         # submit some test tasks
         tds = list()
         for i in range(tasks_rp):
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.exe.%06d' % i,
+                'uid'             : 'task.exe.c.%06d' % i,
                 'mode'            : rp.TASK_EXECUTABLE,
+                'scheduler'       : None,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
@@ -105,13 +114,13 @@ if __name__ == '__main__':
                                      'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.mpi.%06d' % i,
+                'uid'             : 'task.call.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
-                'kwargs'          : {'msg': 'task.mpi.%06d' % i},
+                'kwargs'          : {'msg': 'task.call.c.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
@@ -126,7 +135,7 @@ if __name__ == '__main__':
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.exec.%06d' % i,
+                'uid'             : 'task.exec.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXEC,
                 'cpu_processes'   : 2,
@@ -137,7 +146,7 @@ if __name__ == '__main__':
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.proc.%06d' % i,
+                'uid'             : 'task.proc.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PROC,
                 'cpu_processes'   : 2,
@@ -148,7 +157,7 @@ if __name__ == '__main__':
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.shell.%06d' % i,
+                'uid'             : 'task.shell.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
                 'cpu_processes'   : 2,
