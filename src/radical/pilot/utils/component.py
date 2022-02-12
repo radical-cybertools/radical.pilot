@@ -577,7 +577,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-        self._log.debug('command incoming: %s', msg)
+      # self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -598,8 +598,8 @@ class Component(object):
             self._log.info('got termination command')
             self.stop()
 
-        else:
-            self._log.debug('command ignored: %s', cmd)
+      # else:
+      #     self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -1174,8 +1174,6 @@ class Component(object):
 
         things = ru.as_list(things)
 
-        self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
-
         # assign state, sort things by state
         buckets = dict()
         for thing in things:
@@ -1197,6 +1195,10 @@ class Component(object):
             if _state not in buckets:
                 buckets[_state] = list()
             buckets[_state].append(thing)
+
+        for _state,_things in buckets.items():
+            self._log.debug('advance bulk: %s [%s, %s, %s]',
+                            len(_things), push, publish, _state)
 
         # should we publish state information on the state pubsub?
         if publish:

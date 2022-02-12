@@ -393,17 +393,6 @@ class Popen(AgentExecutingComponent):
             fout.write(tmp)
 
 
-      # # ensure that the named env exists
-      # env = td.get('named_env')
-      # if env:
-      #     if not os.path.isdir('%s/%s' % (self._pwd, env)):
-      #         raise ValueError('invalid named env %s for task %s'
-      #                         % (env, task['uid']))
-      #     pre = ru.as_list(td.get('pre_exec'))
-      #     pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-      #     pre.insert(0, '. %s/deactivate'      % (self._pwd))
-      #     td['pre_exec'] = pre
-
         # make sure scripts are executable
         st_l = os.stat('%s/%s' % (sbox, launch_script))
         st_e = os.stat('%s/%s' % (sbox, exec_script))

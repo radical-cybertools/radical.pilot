@@ -29,11 +29,11 @@ class TestTask(TestCase):
             # no either `executable` or `kernel`
             rp.Task(tmgr, descr)
 
-        descr = rp.TaskDescription({'uid'       : 'foo',
+        descr = rp.TaskDescription({'uid'       : 'foo.1',
                                     'name'      : 'bar',
                                     'executable': './exec'})
         task = rp.Task(tmgr, descr)
-        self.assertEqual(task.uid,  'foo')
+        self.assertEqual(task.uid,  'foo.1')
         self.assertEqual(task.name, 'bar')
         self.assertEqual(task.state, rp.NEW)
         self.assertIsInstance(task.as_dict(), dict)
@@ -66,11 +66,11 @@ class TestTask(TestCase):
             # no either `executable` or `kernel`
             rp.ComputeUnit(umgr, descr)
 
-        descr = rp.ComputeUnitDescription({'uid'       : 'foo',
+        descr = rp.ComputeUnitDescription({'uid'       : 'foo.2',
                                            'name'      : 'bar',
                                            'executable': './exec'})
         task = rp.ComputeUnit(umgr, descr)
-        self.assertEqual(task.uid,  'foo')
+        self.assertEqual(task.uid,  'foo.2')
         self.assertEqual(task.name, 'bar')
         self.assertEqual(task.state, rp.NEW)
         self.assertIsInstance(task.as_dict(), dict)
