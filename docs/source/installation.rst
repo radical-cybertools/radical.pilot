@@ -111,6 +111,15 @@ If you don't have access to a suitable machine with a public IP, you can open
 a ticket with RADICAL lab and we will provide a testing MongoDB instance for
 you.
 
+MPI Implementation Library (Optional)
+-------
+
+
+The MPI is used in launch method. There are several MPI flavours and implementations available
+for MPI. MPI dependency is usually installed at a system level and managed by distro's package
+manager. Please search your package manager for mpi packages.
+
+
 Installation
 ============
 
