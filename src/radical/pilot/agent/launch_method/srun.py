@@ -44,18 +44,19 @@ class Srun(LaunchMethod):
     def _init_from_scratch(self, env, env_sh):
 
         command = ru.which('srun')
-
         out, err, ret = ru.sh_callout('%s -V' % command)
         if ret:
             raise RuntimeError('cannot use srun [%s] [%s]' % (out, err))
 
-        self._version = out.split()[-1]
-        self._log.debug('using srun from %s [%s]',
-                        command, self._version)
+        version = out.split()[-1]
+        vmajor  = int(version.split('.')[0])
+        self._log.debug('using srun from %s [v.%s]', command, version)
 
-        lm_info = {'env'    : env,
-                   'env_sh' : env_sh,
-                   'command': command}
+        lm_info = {'env'     : env,
+                   'env_sh'  : env_sh,
+                   'command' : command,
+                   'version' : version,
+                   'vmajor'  : vmajor}
 
         return lm_info
 
@@ -67,6 +68,8 @@ class Srun(LaunchMethod):
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
         self._command = lm_info['command']
+        self._version = lm_info['version']
+        self._vmajor  = lm_info['vmajor']
 
         assert self._command
 
@@ -86,14 +89,6 @@ class Srun(LaunchMethod):
             return False, 'no executable'
 
         return True, ''
-
-
-    # -------------------------------------------------------------------------
-    #
-    def get_slurm_ver(self):
-
-        major_version = int(self._version.split('.')[0].split()[-1])
-        return major_version
 
 
     # --------------------------------------------------------------------------
@@ -124,18 +119,23 @@ class Srun(LaunchMethod):
         # a decent auto mapping.  In cases where the scheduler did not place
         # the task we leave the node placement to srun as well.
 
+        nodefile = None
+        nodelist = list()
+
         if not slots:
-            nodefile = None
             n_nodes  = int(math.ceil(float(n_tasks) /
                                      self._rm_info.get('cores_per_node', 1)))
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [rank['node_name'] for rank in slots['ranks']]
-            nodefile = '%s/%s.nodes' % (sbox, uid)
-            with ru.ru_open(nodefile, 'w') as fout:
-                fout.write(','.join(nodelist))
-                fout.write('\n')
+
+            # older slurm versions don't accept nodefiles
+            if self._vmajor > 18:
+                nodefile = '%s/%s.nodes' % (sbox, uid)
+                with ru.ru_open(nodefile, 'w') as fout:
+                    fout.write(','.join(nodelist))
+                    fout.write('\n')
 
             n_nodes = len(set(nodelist))
 
@@ -152,11 +152,12 @@ class Srun(LaunchMethod):
         if self._rm_info.get('gpus'):
             mapping += ' --gpus-per-task %d' % n_gpus
 
-        if nodefile:
-            if self.get_slurm_ver() <= 18:
-                mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
-            else:
+        if self._vmajor > 18:
+            if nodefile:
                 mapping += ' --nodefile=%s' % nodefile
+        else:
+            if nodelist:
+                mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
         return cmd.rstrip()

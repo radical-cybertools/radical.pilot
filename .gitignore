@@ -2,6 +2,7 @@
 .DS_Store
 src/radical/pilot/VERSION
 src/radical/pilot/VERSION.git
+rp.session.*
 
 # C extensions
 *.so
