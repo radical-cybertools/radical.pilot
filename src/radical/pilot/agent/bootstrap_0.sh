@@ -469,7 +469,7 @@ rehash()
     # we need to do this again after the virtenv is loaded
     if test -z "$explicit_python"
     then
-        PYTHON=`which python`
+        PYTHON=`which python3`
     else
         PYTHON="$explicit_python"
     fi
