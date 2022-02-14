@@ -34,7 +34,7 @@
                 "rank_exec"  : "/bin/sleep 10"
             },
             "aprun"  : {
-                "launch_cmd" : "aprun -n 1 -N 1 -L node1 -d 1 -cc 0",
+                "launch_cmd" : "aprun -N 1 -n 1 -d 1",
                 "rank_exec"  : "/bin/sleep 10"
             },
             "mpirun" : {
