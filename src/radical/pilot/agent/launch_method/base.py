@@ -192,10 +192,10 @@ class LaunchMethod(object):
         # script.  We thus remove the launcher env from the task env before
         # applying the task env's pre_exec commands
         base = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
-        src  = '%s.sh'                  %  base
+        src  = '%s.env'                 %  base
         tgt  = '%s.%s.sh'               % (base, self.name.lower())
 
-        # the env does not yet exists - create
+        # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
