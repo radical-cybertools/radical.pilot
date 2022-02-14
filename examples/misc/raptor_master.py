@@ -61,190 +61,154 @@ class MyMaster(rp.raptor.Master):
 
         self._prof.prof('create_start')
 
-        world_size = self._cfg.n_masters
-        rank       = self._cfg.rank
-        psbox      = os.environ['RP_PILOT_SANDBOX']
+        # create additional tasks to be distributed to the workers.
 
-        # create an initial list of work items to be distributed to the workers.
-        # Work items MUST be serializable dictionaries.
-        idx    = rank
-        stop   = time.time() + (self._cfg.workload.runtime * 60)
+        tds = list()
+        for i in range(1):
 
-        self._log.debug('==== submit 1 until %.1f', stop)
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exe.m.%06d' % i,
+                'mode'            : rp.TASK_EXECUTABLE,
+                'scheduler'       : None,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c',
+                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
-        while time.time() < stop:
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.call.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'function'        : 'test_mpi',
+                'kwargs'          : {'msg': 'task.call.m.%06d' % i},
+                'scheduler'       : 'master.000000'}))
 
-            self._log.info('==== submit 2 until %.1f', stop)
-            for _ in range(1):
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.eval.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EVAL,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.000000'}))
 
-              # sleep = 6
-              # size  = 2
-              #
-              # td = rp.TaskDescription({
-              #     'uid'  : 'task.eval.m.%06d' % idx,
-              #     'mode' : rp.TASK_EVAL,
-              #     'code' : 'print("hello world", time.sleep(%d))' % sleep
-              # })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_EVAL] += 1
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exec.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EXEC,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.000000'}))
 
-              # td = rp.TaskDescription({
-              #     'uid'        : 'task.exec.%06d' % idx,
-              #     'mode'       : rp.TASK_EXEC,
-              #     'pre_exec'   : ['import time'],
-              #     'code'       : 'import time; '            \
-              #                  + 'print("hello stdout"); '  \
-              #                  + 'time.sleep(%d); ' % sleep \
-              #                  + 'return "hello world"'
-              # })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_EXEC] += 1
-              #
-              # if size == 1:
-              #     td = rp.TaskDescription({
-              #         'uid'             : 'task.call.%06d' % idx,
-              #         'mode'            : rp.TASK_FUNCTION,
-              #         'function'        : 'test',
-              #         'kwargs'          : {'msg'  : 'world',
-              #                              'sleep': sleep}
-              #     })
-              # else:
-              #     td = rp.TaskDescription({
-              #         'uid'             : 'task.call.%06d' % idx,
-              #         'mode'            : rp.TASK_FUNCTION,
-              #         'cpu_processes'   : size,
-              #         'cpu_process_type': rp.MPI,
-              #         'function'        : 'test_mpi',
-              #         'kwargs'          : {'msg'  : 'world',
-              #                              'sleep': sleep}
-              #     })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_FUNCTION] += 1
-              #
-              # td = rp.TaskDescription({
-              #     'uid'        : 'task.proc.%06d' % idx,
-              #     'mode'       : rp.TASK_PROC,
-              #     'executable' : '%s/radical-pilot-hello.sh' % psbox,
-              #     'arguments'  : [str(sleep)]
-              # })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_PROC] += 1
-              #
-              # td = rp.TaskDescription({
-              #     'uid'        : 'task.shell.%06d' % idx,
-              #     'mode'       : rp.TASK_SHELL,
-              #     'environment': {'WORLD': 'world'},
-              #     'command'    : '/bin/echo "hello $WORLD$(sleep %s)"' % sleep
-              # })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_SHELL] += 1
-              #
-              # td = rp.TaskDescription({
-              #     'uid'             : '%s.task.%06d' % (self._uid, idx),
-              #     'mode'            : rp.TASK_EXECUTABLE,
-              #     'cpu_processes'   : size * 56 * 4,
-              #     'cpu_process_type': rp.MPI,
-              #     'executable'      : '/bin/sh',
-              #     'arguments'       : ['%s/radical-pilot-hello.sh' % psbox,
-              #                          str(sleep * 100)]
-              # })
-              # self.submit_tasks(td)
-              # self._submitted[rp.TASK_EXECUTABLE] += 1
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.proc.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PROC,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                           '$RP_TASK_ID"'],
+                'scheduler'       : 'master.000000'}))
 
-                idx += world_size
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.shell.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_SHELL,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'scheduler'       : 'master.000000'}))
 
-            # FIXME
-            break
 
-            # slow down if we have too many tasks submitted
-            # FIXME: use larger chunks above
-            lwm = 1024 * 2
-            while True:
-                completed = sum(self._collected.values())
-                submitted = sum(self._submitted.values())
-
-                if completed >= submitted - 2024:
-                    self._log.info('==== submit cont: %d >= %d ',
-                                     completed, submitted - lwm)
-                    break
-                self._log.info('==== wait   cont: %d >= %d ',
-                                     completed, submitted - lwm)
-
-                time.sleep(1)
-
-        self._log.info('==== submit stopped')
+        self.submit_tasks(tds)
 
         self._prof.prof('create_stop')
 
-        import pprint
-        self._log.info('==== submitted: %s', pprint.pformat(self._submitted))
-        self._log.info('==== collected: %s', pprint.pformat(self._collected))
-
-
-        # after runtime is out we wait for the remaining outstanding tasks to
-        # complete
+        # wait for outstanding tasks to complete
         while True:
+
             completed = sum(self._collected.values())
             submitted = sum(self._submitted.values())
 
-            self._log.info('exec done?: %d >= %d ', completed, submitted)
-            if completed >= submitted:
-                self._log.info('==== exec done!')
-              # self.stop()
-                break
+            if submitted:
+                # request_cb has been called, so we can wait for completion
 
-            time.sleep(10)
+                self._log.info('exec done?: %d >= %d ', completed, submitted)
 
-        self._log.info('==== exec done!!')
+                if completed >= submitted:
+                  # self.stop()
+                    break
+
+            time.sleep(1)
+
+        self._log.info('=== exec done!')
+
 
     # --------------------------------------------------------------------------
     #
     def request_cb(self, tasks):
 
-        return tasks
+        for task in tasks:
 
-      # for task in tasks:
-      #
-      #     self._log.debug('=== request_cb %s\n' % (task['uid']))
-      #
-      #     # for each `function` mode task, submit one more `proc` mode request
-      #     if task['description']['mode'] == rp.TASK_FUNCTION:
-      #
-      #         uid  = 'task.extra.%06d' % self._cnt
-      #         td   = rp.TaskDescription({'uid'          : uid,
-      #                                    'mode'         : rp.TASK_PROC,
-      #                                    'cpu_processes': 1,
-      #                                    'executable'   : '/bin/echo',
-      #                                    'arguments'    : ['hello', 'world']
-      #                                   })
-      #         self.submit_tasks(td)
-      #         self._cnt += 1
-      #         self._submitted[rp.TASK_PROC] += 1
-      #
-      # return tasks
+            self._log.debug('=== request_cb %s\n' % (task['uid']))
+
+            mode = task['description']['mode']
+            uid  = task['description']['uid']
+
+            self._submitted[mode] += 1
+
+            # for each `function` mode task, submit one more `proc` mode request
+            if mode == rp.TASK_FUNCTION:
+                self.submit_tasks(rp.TaskDescription(
+                    {'uid'             : uid.replace('call', 'extra'),
+                   # 'timeout'         : 10,
+                     'mode'            : rp.TASK_PROC,
+                     'cpu_processes'   : 2,
+                     'cpu_process_type': rp.MPI,
+                     'executable'      : '/bin/sh',
+                     'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                                '$RP_TASK_ID"'],
+                     'scheduler'       : 'master.000000'}))
+
+
+        return tasks
 
 
     # --------------------------------------------------------------------------
     #
     def result_cb(self, task):
 
-        completed = sum(self._collected.values())
-        submitted = sum(self._submitted.values())
-        mode      = task['description']['mode']
-
+        mode = task['description']['mode']
         self._collected[mode] += 1
-        # FIXME: state?
-        self._log.debug('=== result_cb  %s: %s [%s] [%s] [%s] [%s]\n',
-                       task['uid'], task['state'], task['stdout'],
-                       task['return_value'], completed, submitted)
+
+        # NOTE: `state` will be `AGENT_EXECUTING`
+        self._log.debug('=== result_cb  %s: %s [%s] [%s]',
+                        task['uid'],
+                        task['state'],
+                        sorted(task['stdout']),
+                        task['return_value'])
+
+        print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
+                                          task['stdout'], task['return_value']))
 
 
+    # --------------------------------------------------------------------------
+    #
     def state_cb(self, tasks):
 
         for task in tasks:
             uid = task['uid']
 
-            if uid.startswith(self._uid + '.task.'):
+            if uid.startswith(self._uid + '.task.m.'):
                 self._collected[rp.TASK_EXECUTABLE] += 1
 
 

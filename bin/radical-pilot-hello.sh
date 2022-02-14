@@ -48,8 +48,8 @@ test -z "$GPU_INFO" && GPU_INFO="$CUDA_VISIBLE_DEVICES"
 test -z "$GPU_INFO" && GPU_INFO="$GPU_DEVICE_ORDINAL"
 GPU_INFO=$(echo " $GPU_INFO " | tr ',' ' ')
 
-UID=$(id -u)
-LSPCI_CACHE="/tmp/lspci.$UID"
+USERID=$(id -u)
+LSPCI_CACHE="/tmp/lspci.$USERID"
 if ! test -f "$LSPCI_CACHE"
 then
     LSPCI=$(which lspci 2> /dev/null)
@@ -90,7 +90,7 @@ printf "$PREFIX : SLEEP   : $ARG\n"
 
 # check if `stress-ng` is installed
 export PATH="$PATH:$RADICAL_RESOURCE_SBOX/install/bin"
-STRESS=$(which stress-ng)
+STRESS=$(which stress-ng 2> /dev/null)
 
 # if so requested, sleep/stress for a bit
 if test -z "$STRESS"
