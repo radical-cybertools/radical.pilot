@@ -4,8 +4,7 @@ __license__   = 'MIT'
 
 import os
 
-from ...constants import DOWN
-from .base        import RMInfo, ResourceManager
+from .base import RMInfo, ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -62,26 +61,13 @@ class LSF(ResourceManager):
         # (LSF starts node indexes at 1, not 0)
         rm_info.node_list = self._get_node_list(nodes, rm_info)
 
-        # Summit cannot address the last core of the second socket at the
-        # moment, so we mark it as `DOWN` and the scheduler skips it.  We need
-        # to check the SMT setting to make sure the right logical cores are
-        # marked.  The error we see on those cores is: "ERF error: 1+ cpus are
-        # not available"
+        # NOTE: blocked cores should be in sync with SMT level,
+        #       as well with CPU indexing type ("logical" vs "physical").
+        #       Example of CPU indexing on Summit:
+        #          https://github.com/olcf-tutorials/ERF-CPU-Indexing
         #
-        # This is related to the known issue listed on
-        #     https://www.olcf.ornl.gov/for-users/system-user-guides \
-        #                              /summit/summit-user-guide/
-        #     "jsrun explicit resource file (ERF) allocates incorrect resources"
-        #
-        if rm_info.cores_per_node > 40 and \
-           'JSRUN' in self._cfg['resource_cfg']['launch_methods']:
-
-            for node in rm_info.node_list:
-                for i in range(smt):
-                    node['cores'][21 * smt + i] = DOWN
-
-            rm_info.cores_per_node -= 1
-
+        # The current approach uses "logical" CPU indexing
+        # FIXME: set cpu_indexing as a parameter in resource config
 
         # node uids need to be indexes starting at 1 in order to be usable for
         # jsrun ERF spec files
