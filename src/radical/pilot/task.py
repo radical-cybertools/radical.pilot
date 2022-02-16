@@ -349,7 +349,7 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     @property
-    def exeption(self):
+    def exception(self):
         """
         Returns an exception if such one was raised by a task representing
         a function call or some code, or None otherwise.
