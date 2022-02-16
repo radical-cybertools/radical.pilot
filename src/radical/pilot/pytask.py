@@ -2,7 +2,10 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import pickle
+import codecs
 import functools
+from radical.pilot.serialize import serializer as serialize
 
 TASK = dict 
 
@@ -52,9 +55,14 @@ class PythonTask(object):
         
         @functools.wraps(f)
         def decor(*args, **kwargs):
-            
-            TASK = {'func'  :f,
+            ser_func = serialize.FuncSerializer.serialize_obj(f)
+            TASK = {'func'  :ser_func,
                     'args'  :args,
                     'kwargs':kwargs}
-            return TASK 
+            try:
+
+                SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+                return SER_TASK
+            except Exception as e:
+                raise ValueError(e)
         return decor

@@ -120,10 +120,10 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
-"pyzmq netifaces setproctitle msgpack regex"
+"pyzmq netifaces setproctitle msgpack regex dill"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
-"zmq netifaces setproctitle msgpack regex"
+"zmq netifaces setproctitle msgpack regex dill"
 
 if ! test -z "$RADICAL_DEBUG"
 then
