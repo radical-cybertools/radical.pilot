@@ -19,12 +19,15 @@ class PythonTask(object):
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """
-
-        TASK = {'func'  :func,
+        ser_func = serialize.FuncSerializer.serialize_obj(func)
+        TASK = {'func'  :ser_func,
                 'args'  :args,
                 'kwargs':kwargs}
-
-        return TASK
+        try:
+            SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+            return SER_TASK
+        except Exception as e:
+            raise ValueError(e)
 
     def pythontask(f):
         """
@@ -42,10 +45,15 @@ class PythonTask(object):
 
         @functools.wraps(f)
         def decor(*args, **kwargs): 
-            TASK = {'func'  :f,
+            ser_func = serialize.FuncSerializer.serialize_obj(f)
+            TASK = {'func'  :ser_func,
                     'args'  :args,
                     'kwargs':kwargs}
-            return TASK 
+            try:
+                SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+                return SER_TASK
+            except Exception as e:
+                raise ValueError(e)
         return decor
 
     def mpirun(f):
@@ -60,7 +68,6 @@ class PythonTask(object):
                     'args'  :args,
                     'kwargs':kwargs}
             try:
-
                 SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
                 return SER_TASK
             except Exception as e:
