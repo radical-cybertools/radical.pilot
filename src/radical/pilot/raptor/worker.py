@@ -74,7 +74,6 @@ class Worker(object):
             from .worker_mpi_am  import MPIWorkerAM
             from .worker_mpi_am2 import MPIWorkerAM2
             from .worker_mpi     import MPIWorker
-            from .worker_mpi_2   import MPIWorker2
 
             wclass = rpu.get_type(cname)
 

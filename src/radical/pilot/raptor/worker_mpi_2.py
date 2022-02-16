@@ -820,7 +820,7 @@ class _Worker(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class MPIWorker2(Worker):
+class MPIWorkerAM2(Worker):
     '''
     This worker manages a certain number of cores and gpus.  The master will
     start this worker by placing one rank per managed core (the GPUs are used
