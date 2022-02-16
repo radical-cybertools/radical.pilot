@@ -20,9 +20,6 @@ def func_mpi(msg,comm=None,sleep=0):
     time.sleep(sleep)
 
 
-
-
-
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -102,9 +99,9 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.9.5',
-                                    #'path'   : '/home/aymen/radical.pilot.sandbox/ve_raptor',
-                                    'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
-                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/']})
+                                    #'path'   : '$HOME/radical.pilot.sandbox/ve_raptor',
+                                    'setup'  : ['$HOME/radical.utils/',
+                                                '$HOME/radical.pilot/']})
         # submit some test tasks
         tds = list()
         for i in range(tasks_rp):
