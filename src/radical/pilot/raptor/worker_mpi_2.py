@@ -13,7 +13,7 @@ import radical.utils     as ru
 
 from .worker            import Worker
 from ..task_description import MPI as RP_MPI
-from ..task_description import TASK_FUNCTION, TASK_PY_FUNCTION
+from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EVAL, TASK_EXEC, TASK_PROC, TASK_SHELL
 
 from radical.pilot.serialize import serializer as serialize
@@ -424,8 +424,8 @@ class _Worker(mt.Thread):
                 comm  = None
                 group = None
 
-                self._log.debug('TYPE OF FUNCTION %s'  % type(task['description']['pyfunction']))
-                self._log.debug('BEFOR_SER_FUNCTION %s' % (task['description']['pyfunction']))
+                self._log.debug('TYPE OF FUNCTION %s'  % type(task['description']['function']))
+                self._log.debug('BEFOR_SER_FUNCTION %s' % (task['description']['function']))
 
 
 
@@ -542,7 +542,6 @@ class _Worker(mt.Thread):
         # work on task
         mode = task['description']['mode']
         if   mode == TASK_FUNCTION    : return self._dispatch_function(task, env)
-        elif mode == TASK_PY_FUNCTION : return self._dispatch_pyfunction(task, env)
         elif mode == TASK_EVAL        : return self._dispatch_eval(task, env)
         elif mode == TASK_EXEC        : return self._dispatch_exec(task, env)
         elif mode == TASK_PROC        : return self._dispatch_proc(task, env)
@@ -551,11 +550,11 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_pyfunction(self, task, env):
+    def _dispatch_ser_function(self, task):
 
         uid        = task['uid']
         task_descr = task['description']
-        task_func  = task_descr['pyfunction']
+        task_func  = task_descr['function']
         func_info  = pickle.loads(codecs.decode(task_func.encode(),"base64"))
 
         to_call = serialize.FuncSerializer.deserialize_obj(func_info["func"])
@@ -563,48 +562,13 @@ class _Worker(mt.Thread):
         kwargs  = func_info["kwargs"]
 
         # Inject the communicator in the kwargs
-        kwargs['comm'] = task['description']['args'][0]
+        if task['description'].get('cpu_process_type') == RP_MPI:
+            kwargs['comm'] = task['description']['args'][0]
 
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-        
-        strout = None
-        strerr = None
+        return to_call, args, kwargs
 
-        old_env = os.environ.copy()
 
-        for k, v in env.items():
-            os.environ[k] = v
-        
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            self._prof.prof('app_start', uid=uid)
-            val = to_call(*args, **kwargs)
-            self._prof.prof('app_stop', uid=uid)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_call failed: %s' % task['uid'])
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-            os.environ = old_env
-            
-
-        return out, err, ret, val
-    # --------------------------------------------------------------------------
+    # --------------------------------------------------------------------------    
     #
     def _dispatch_function(self, task, env):
         '''
@@ -619,23 +583,8 @@ class _Worker(mt.Thread):
 
         uid       = task['uid']
         func_name = task['description']['function']
-        assert(func_name)
 
-        # check if `func_name` is a global name
-        names   = dict(list(globals().items()) + list(locals().items()))
-        to_call = names.get(func_name)
-
-        # if not, check if this is a class method of this worker implementation
-        if not to_call:
-            to_call = getattr(self._base, func_name, None)
-
-        if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task['uid']))
-
-
-        args   = task['description'].get('args',   [])
-        kwargs = task['description'].get('kwargs', {})
+        to_call, args, kwargs = self._dispatch_ser_function(task)
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr

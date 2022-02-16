@@ -7,7 +7,6 @@ import radical.utils as ru
 # task modes
 TASK_EXECUTABLE  = 'executable'
 TASK_FUNCTION    = 'function'
-TASK_PY_FUNCTION = 'pyfunction'
 TASK_EVAL        = 'eval'
 TASK_EXEC        = 'exec'
 TASK_PROC        = 'proc'
@@ -26,9 +25,6 @@ ARGUMENTS        = 'arguments'
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
-
-# mode: TASK_PY_FUNCTION
-PY_FUNCTION      = 'pyfunction'
 
 # mode: TASK_EXEC, TASK_EVAL
 CODE             = 'code'
@@ -489,7 +485,6 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : [str]       ,
         CODE            : str         ,
         FUNCTION        : str         ,
-        PY_FUNCTION     : None        ,
         ARGS            : [None]      ,
         KWARGS          : {str: None} ,
         COMMAND         : str         ,
@@ -537,7 +532,6 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
         FUNCTION        : ''          ,
-        PY_FUNCTION     : None        ,
         ARGS            : list()      ,
         KWARGS          : dict()      ,
         COMMAND         : ''          ,
@@ -599,10 +593,6 @@ class TaskDescription(ru.Description):
         elif self.mode == TASK_FUNCTION:
             if not self.get('function'):
                 raise ValueError("TASK_FUNCTION Task needs 'function'")
-
-        elif self.mode == TASK_PY_FUNCTION:
-            if not self.get('pyfunction'):
-                raise ValueError("PY_TASK_FUNCTION Task needs 'function'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
