@@ -1,18 +1,20 @@
-
 import io
 import os
 import sys
 import time
 import shlex
+import pickle
+import codecs
 
 import threading         as mt
 import radical.utils     as ru
 
 from .worker            import Worker
 from ..task_description import MPI as RP_MPI
-from ..task_description import TASK_FUNCTION, TASK_EVAL
-from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL
+from ..task_description import TASK_FUNCTION, TASK_PY_FUNCTION
+from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
+from radical.pilot.serialize import serializer as serialize
 
 # MPI message tags
 TAG_REGISTER_REQUESTS    = 110
@@ -537,12 +539,70 @@ class _Worker(mt.Thread):
         # work on task
         mode = task['description']['mode']
         if   mode == TASK_FUNCTION: return self._dispatch_function(task, env)
+        elif mode == TASK_PY_FUNCTION : return self._dispatch_pyfunction(task, env)
         elif mode == TASK_EVAL    : return self._dispatch_eval(task, env)
         elif mode == TASK_EXEC    : return self._dispatch_exec(task, env)
         elif mode == TASK_PROC    : return self._dispatch_proc(task, env)
         elif mode == TASK_SHELL   : return self._dispatch_shell(task, env)
         else: raise ValueError('cannot handle task mode %s' % mode)
 
+    # --------------------------------------------------------------------------
+    #
+    def _dispatch_pyfunction(self, task, env):
+
+        uid        = task['uid']
+        task_descr = task['description']
+        task_func  = task_descr['pyfunction']
+        func_info  = pickle.loads(codecs.decode(task_func.encode(),"base64"))
+
+        to_call = serialize.FuncSerializer.deserialize_obj(func_info["func"])
+        args    = func_info["args"]
+        kwargs  = func_info["kwargs"]
+
+        # Inject the communicator in the kwargs
+        kwargs['comm'] = task['description']['args'][0]
+
+        bak_stdout = sys.stdout
+        bak_stderr = sys.stderr
+        
+        strout = None
+        strerr = None
+
+        old_env = os.environ.copy()
+
+        for k, v in env.items():
+            os.environ[k] = v
+        
+        try:
+            # redirect stdio to capture them during execution
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
+
+            self._prof.prof('app_start', uid=uid)
+            val = to_call(*args, **kwargs)
+            self._prof.prof('app_stop', uid=uid)
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            exc = None
+            ret = 0
+
+        except Exception as e:
+            self._log.exception('_call failed: %s' % task['uid'])
+            val = None
+            out = strout.getvalue()
+            err = strerr.getvalue() + ('\ncall failed: %s' % e)
+            exc = [e.__class__.__name__, str(e)]
+            ret = 1
+
+        finally:
+            # restore stdio
+            sys.stdout = bak_stdout
+            sys.stderr = bak_stderr
+
+            os.environ = old_env
+            
+
+        return out, err, ret, val, exc
 
     # --------------------------------------------------------------------------
     #
@@ -1069,4 +1129,3 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
-
