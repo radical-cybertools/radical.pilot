@@ -104,7 +104,7 @@ class MyMaster(rp.raptor.Master):
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
                 'kwargs'          : {'msg': 'task.call.c.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,
@@ -214,7 +214,7 @@ class MyMaster(rp.raptor.Master):
         self._log.debug('=== result_cb  %s: %s [%s] [%s]',
                         task['uid'],
                         task['state'],
-                        sorted(task['stdout']),
+                        task['stdout'],
                         task['return_value'])
 
         print('result_cb %s: %s %s %s' % (task['uid'], task['state'],

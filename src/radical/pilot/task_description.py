@@ -28,7 +28,7 @@ ARGS             = 'args'
 KWARGS           = 'kwargs'
 
 # mode: TASK_PY_FUNCTION
-FUNCTION         = 'pyfunction'
+PY_FUNCTION      = 'pyfunction'
 
 # mode: TASK_EXEC, TASK_EVAL
 CODE             = 'code'
@@ -489,6 +489,7 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : [str]       ,
         CODE            : str         ,
         FUNCTION        : str         ,
+        PY_FUNCTION     : None        ,
         ARGS            : [None]      ,
         KWARGS          : {str: None} ,
         COMMAND         : str         ,
@@ -536,6 +537,7 @@ class TaskDescription(ru.Description):
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
         FUNCTION        : ''          ,
+        PY_FUNCTION     : None        ,
         ARGS            : list()      ,
         KWARGS          : dict()      ,
         COMMAND         : ''          ,
