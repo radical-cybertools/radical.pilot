@@ -82,6 +82,8 @@ class Task(object):
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
+        self._return_value     = None
+        self._exception        = None
         self._pilot            = descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
@@ -188,6 +190,8 @@ class Task(object):
             'exit_code':        self.exit_code,
             'stdout':           self.stdout,
             'stderr':           self.stderr,
+            'return_value':     self.return_value,
+            'exception':        self.exception,
             'pilot':            self.pilot,
             'resource_sandbox': self.resource_sandbox,
             'pilot_sandbox':    self.pilot_sandbox,
@@ -322,6 +326,46 @@ class Task(object):
         """
 
         return self._stderr
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def return_value(self):
+        """
+        Returns the return value for tasks which represent function call (or
+        None otherwise).
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
+
+        **Returns:**
+            * Any
+        """
+
+        return self._return_value
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def exeption(self):
+        """
+        Returns an exception if such one was raised by a task representing
+        a function call or some code, or None otherwise.
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
+
+        If the exception type cannot be created, a base exception will be
+        returned with the error message set to `type: msg` where `type` is the
+        original exception type and `msg` the original error message.
+
+        **Returns:**
+            * Exception
+        """
+
+        return self._exception
 
 
     # --------------------------------------------------------------------------
