@@ -1137,6 +1137,8 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    # TODO: `metric` -> `metrics`, for consistency with `unregister_callback()`
+    #
     def register_callback(self, cb, cb_data=None, metric=None, uid=None):
         """
         Registers a new callback function with the TaskManager.  Manager-level
@@ -1180,8 +1182,7 @@ class TaskManager(rpu.Component):
         if not metric:
             metric = rpc.TASK_STATE
 
-        if  metric not in rpc.TMGR_METRICS:
-            raise ValueError ("Metric '%s' not available on the tmgr" % metric)
+        metrics = ru.as_list(metric)
 
         if not uid:
             uid = '*'
@@ -1191,24 +1192,32 @@ class TaskManager(rpu.Component):
 
 
         with self._tcb_lock:
-            cb_id = id(cb)
 
-            if metric not in self._callbacks:
-                self._callbacks[metric] = dict()
+            for metric in metrics:
 
-            if uid not in self._callbacks[metric]:
-                self._callbacks[metric][uid] = dict()
+                if metric not in rpc.TMGR_METRICS:
+                    raise ValueError("invalid tmgr metric '%s'" % metric)
 
-            self._callbacks[metric][uid][cb_id] = {'cb'      : cb,
-                                                   'cb_data' : cb_data}
+                cb_id = id(cb)
+
+                if metric not in self._callbacks:
+                    self._callbacks[metric] = dict()
+
+                if uid not in self._callbacks[metric]:
+                    self._callbacks[metric][uid] = dict()
+
+                self._callbacks[metric][uid][cb_id] = {'cb'     : cb,
+                                                       'cb_data': cb_data}
 
 
     # --------------------------------------------------------------------------
     #
     def unregister_callback(self, cb=None, metrics=None, uid=None):
 
-        if not metrics: metrics = [rpc.TMGR_METRICS]
-        else          : metrics = ru.as_list(metrics)
+        if not metrics:
+            metrics = rpc.TASK_STATE
+
+        metrics = ru.as_list(metrics)
 
         if not uid:
             uid = '*'
@@ -1217,15 +1226,12 @@ class TaskManager(rpu.Component):
             raise ValueError('no such task %s' % uid)
 
         for metric in metrics:
-            if metric not in rpc.TMGR_METRICS :
-                raise ValueError ("invalid tmgr metric '%s'" % metric)
+            if metric not in rpc.TMGR_METRICS:
+                raise ValueError("invalid tmgr metric '%s'" % metric)
 
         with self._tcb_lock:
 
             for metric in metrics:
-
-                if metric not in rpc.TMGR_METRICS :
-                    raise ValueError("cb metric '%s' unknown" % metric)
 
                 if metric not in self._callbacks:
                     raise ValueError("cb metric '%s' invalid" % metric)
@@ -1240,10 +1246,10 @@ class TaskManager(rpu.Component):
 
                 for cb_id in to_delete:
 
-                    if cb_id not in self._callbacks[uid][metric]:
+                    if cb_id not in self._callbacks[metric][uid]:
                         raise ValueError("cb %s not registered" % cb_id)
 
-                    del(self._callbacks[uid][metric][cb_id])
+                    del(self._callbacks[metric][uid][cb_id])
 
 
     # --------------------------------------------------------------------------
