@@ -71,8 +71,6 @@ class Worker(object):
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
             from .worker_default import DefaultWorker
-            from .worker_mpi_am  import MPIWorkerAM
-            from .worker_mpi_am2 import MPIWorkerAM2
             from .worker_mpi     import MPIWorker
 
             wclass = rpu.get_type(cname)
