@@ -9,6 +9,19 @@ import random
 import radical.utils as ru
 import radical.pilot as rp
 
+from radical.pilot import PythonTask
+
+mpitask = PythonTask
+
+@mpitask.mpirun
+def func_mpi(msg,comm=None,sleep=0):
+    import time 
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
+
+
+
+
 
 # ------------------------------------------------------------------------------
 #
@@ -88,11 +101,10 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
-                                    'version': '3.8',
-                                    'path'   : '$HOME/radical.pilot.sandbox/ve_raptor',
-                                    'setup'  : ['$HOME/radical.pilot/',
-                                                'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
-                                                'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',]})
+                                    'version': '3.9.5',
+                                    #'path'   : '/home/aymen/radical.pilot.sandbox/ve_raptor',
+                                    'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/']})
         # submit some test tasks
         tds = list()
         for i in range(tasks_rp):
@@ -115,6 +127,15 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
                 'kwargs'          : {'msg': 'task.call.c.%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.func.c.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'pyfunction'      : func_mpi(msg='task.call.c.%06d' % i, comm=None, sleep=0),
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({

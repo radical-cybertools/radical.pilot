@@ -22,6 +22,15 @@ import radical.pilot as rp
 #
 # The worker itself is an external program which is not covered in this code.
 
+from radical.pilot import PythonTask
+
+mpitask = PythonTask
+
+@mpitask.mpirun
+def func_mpi(msg,comm=None,sleep=0):
+    import time
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
 
 # ------------------------------------------------------------------------------
 #
@@ -39,12 +48,14 @@ class MyMaster(rp.raptor.Master):
         self._cnt = 0
         self._submitted = {rp.TASK_EXECUTABLE : 0,
                            rp.TASK_FUNCTION   : 0,
+                           rp.TASK_PY_FUNCTION: 0,
                            rp.TASK_EVAL       : 0,
                            rp.TASK_EXEC       : 0,
                            rp.TASK_PROC       : 0,
                            rp.TASK_SHELL      : 0}
         self._collected = {rp.TASK_EXECUTABLE : 0,
                            rp.TASK_FUNCTION   : 0,
+                           rp.TASK_PY_FUNCTION: 0,
                            rp.TASK_EVAL       : 0,
                            rp.TASK_EXEC       : 0,
                            rp.TASK_PROC       : 0,
@@ -79,12 +90,21 @@ class MyMaster(rp.raptor.Master):
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.m.%06d' % i,
               # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'pyfunction'      : func_mpi(msg='task.call.c.%06d' % i, comm=None, sleep=0), 
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.func.c.%06d' % i,
+              # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
-                'kwargs'          : {'msg': 'task.call.m.%06d' % i},
-                'scheduler'       : 'master.000000'}))
+                'kwargs'          : {'msg': 'task.call.c.%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,
