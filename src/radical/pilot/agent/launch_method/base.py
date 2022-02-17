@@ -50,7 +50,7 @@ class LaunchMethod(object):
         self._log      = log
         self._prof     = prof
         self._pwd      = os.getcwd()
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
+        self._env_orig = ru.env_eval('env/bs0_active.env')
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
@@ -64,9 +64,8 @@ class LaunchMethod(object):
             # The registry does not yet contain any info for this LM - we need
             # to initialize the LM from scratch.  That happens in the env
             # defined by lm_cfg (derived from the original bs0 env)
-            env_orig = ru.env_eval('env/bs0_orig.env')
             env_sh   = 'env/lm_%s.sh' % self.name.lower()
-            env_lm   = ru.env_prep(environment=env_orig,
+            env_lm   = ru.env_prep(environment=self._env_orig,
                           pre_exec=lm_cfg.get('pre_exec'),
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
                           script_path=env_sh)

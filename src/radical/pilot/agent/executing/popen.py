@@ -618,9 +618,8 @@ class Popen(AgentExecutingComponent):
         for cmd in cmds:
             ret += '  %s \\\n' % cmd
 
-        ret += ') 1> %s\n  2> %s %s' % (task['stdout_file_short'],
-                                        task['stderr_file_short'],
-                                        self._get_check('launch'))
+        ret += ') 1> %s \\\n  2> %s' % (task['stdout_file_short'],
+                                        task['stderr_file_short'])
         return ret
 
 
