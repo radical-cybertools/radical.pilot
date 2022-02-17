@@ -15,10 +15,7 @@ immediately go into `FAILED` state, and that state information is available as
 
 The task also has the `task.stderr` property available for further inspection
 into causes of the failure -- that will only be available though if the task did
-reach the `EXECUTING` state in the first place.  In other cases, the application
-can inspect the `task.as_dict()['execution_details']['log']` array of timed log
-messages, similar to the `state_history` array discussed :ref:`before
-<chapter_user_guide_01>`.
+reach the `EXECUTING` state in the first place.
 
 
 You can download the script :download:`02_failing_tasks.py
