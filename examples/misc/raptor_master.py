@@ -25,12 +25,22 @@ import radical.pilot as rp
 from radical.pilot import PythonTask
 
 mpitask = PythonTask
+pytask  = PythonTask.pythontask
+
 
 @mpitask.mpirun
 def func_mpi(msg,comm=None,sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+
+
+@pytask
+def func_non_mpi(a, b):
+    import math
+    t = math.exp(a * b)
+    print(t)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -88,7 +98,7 @@ class MyMaster(rp.raptor.Master):
                                      'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.m.%06d' % i,
+                'uid'             : 'task.mpi_func.m.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PY_FUNCTION,
                 'cpu_processes'   : 2,
@@ -97,14 +107,22 @@ class MyMaster(rp.raptor.Master):
                 'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.func.c.%06d' % i,
+                'uid'             : 'task.pyfunc.c.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'pyfunction'      : func_non_mpi(2, i),
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.call.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'test_mpi',
                 'kwargs'          : {'msg': 'task.call.c.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,

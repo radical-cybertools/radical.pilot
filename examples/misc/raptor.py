@@ -12,12 +12,21 @@ import radical.pilot as rp
 from radical.pilot import PythonTask
 
 mpitask = PythonTask
+pytask  = PythonTask.pythontask
+
 
 @mpitask.mpirun
 def func_mpi(msg,comm=None,sleep=0):
     import time 
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+
+
+@pytask
+def func_non_mpi(a, b):
+    import math
+    t = math.exp(a * b)
+    print(t)
 
 
 # ------------------------------------------------------------------------------
@@ -127,12 +136,20 @@ if __name__ == '__main__':
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.func.c.%06d' % i,
+                'uid'             : 'task.mpi_pyfunc.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PY_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'pyfunction'      : func_mpi(msg='task.call.c.%06d' % i, comm=None, sleep=0),
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.pyfunc.c.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'pyfunction'      : func_non_mpi(2, i),
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
