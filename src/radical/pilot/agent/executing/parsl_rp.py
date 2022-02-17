@@ -35,8 +35,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     Here is a diagram
 
-    .. code:: python
-    
+    .. code:: python 
     RADICAL Executor
     ------------------------------------------------------------------------------------------------
              Parsl DFK/dflow               |      Task Translator      |     RP-Client/Task-Manager
@@ -57,7 +56,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  walltime: int = None,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
-                 max_task_cores: int = 1,
                  cores_per_task: int = 1,
                  gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
@@ -80,10 +78,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.future_tasks       = {}
 
         self.max_tasks          = max_tasks       # Pilot cores
-        self.max_task_cores     = max_task_cores  # executor cores
         self.cores_per_task     = cores_per_task  # task cores
         self.gpus               = gpus
-        
         # Parsl required
         self.managed            = managed
         self.run_dir            = '.'
@@ -106,22 +102,20 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         if self.enable_redis:
             self.redis = RedisQueue(self.redis_host, port = self.redis_port, 
                                     topics = ['rp task queue', 'rp result queue'])
-
-        
         # Raptor specific
         self.cfg_file = './raptor.cfg'
         cfg         = ru.Config(cfg=ru.read_json(self.cfg_file))
 
         self.master      = cfg.master_descr
         self.worker      = cfg.worker_descr
-        self.cpn         = cfg.cpn # cores per node
-        self.gpn         = cfg.gpn # gpus per node
+        self.cpn         = cfg.cpn  # cores per node
+        self.gpn         = cfg.gpn  # gpus per node
         self.n_masters   = cfg.n_masters  # number of total masters
         self.n_workers   = cfg.n_workers  # number of workers per node
-        self.masters_pn  = cfg.masters_pn # number of masters per node
-        self.nodes_pw    = cfg.nodes_pw   # number of nodes per worker
+        self.masters_pn  = cfg.masters_pn  # number of masters per node
+        self.nodes_pw    = cfg.nodes_pw    # number of nodes per worker
         self.nodes_rp    = cfg.nodes_rp   # number of total nodes
-        self.nodes_agent = cfg.nodes_agent # number of nodes per agent
+        self.nodes_agent = cfg.nodes_agent  # number of nodes per agent
 
     def get_redis_task(self):
         '''
@@ -157,7 +151,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Update the state of Parsl Future tasks
         Based on RP task state
         """
-        parsl_task = self.future_tasks[task.uid]
+        parsl_task = None
+        if not task.uid.startswith('master'):
+            parsl_task = self.future_tasks[task.uid]
+
         STDOUT = task.stdout
         if state == rp.DONE:
             if task.name == 'colmena':
@@ -203,7 +200,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'queue'         : self.partition,
                           'access_schema' : self.login_method,
                           'cores'         : 1 * self.max_tasks,
-                          'max_task_cores': self.max_task_cores,
                           'gpus'          : self.gpus,
                           'redis_link'    : pilot_redis_url}
         pd = rp.PilotDescription(pd_init)
@@ -257,8 +253,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                    'path'   : '$HOME/radical.pilot.sandbox/ve_raptor',
-                                    'setup'  : []})
+                                    # 'path'   : '',
+                                    'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/']})
 
         if self.enable_redis:
             self.redis.connect()
@@ -277,6 +274,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def task_translate(self, func, args, kwargs):
 
+        task = rp.TaskDescription()
+
         try:
             task_type = inspect.getsource(func).split('\n')[0]
         except:
@@ -284,6 +283,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         if task_type:
             code  = None
+            mode  = None
 
             if task_type.startswith('@bash_app'):
                 source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
@@ -294,25 +294,30 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     code = "{0} {1}".format(kwargs['exe'], task_exe)
                 else:
                     code = task_exe
+                task.executable = code
+                mode = rp.TASK_PROC
 
             elif task_type.startswith('@python_app'):
                 # We ignore the resource dict from Parsl
                 new_args = list(args)
                 new_args.pop(0)
+
                 args = tuple(new_args)
-                code  = PythonTask(self.unwrap(func), *args, **kwargs) 
+                code = PythonTask(self.unwrap(func), *args, **kwargs) 
+                task.pyfunction = code
+                mode = rp.TASK_PY_FUNCTION  
 
 
-            tu =  {"source_code": code,
-                   "name"       : func.__name__,
-                   "args"       : [],
-                   "kwargs"     : kwargs,
-                   "mode"       : rp.TASK_PROC,
-                   "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                   "ptype"      : rp.MPI,
-                   "nproc"      : 1 if 'nproc' not in kwargs else kwargs['nproc'],
-                   "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
-                   "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
+            task.name = func.__name__
+            task.args = []
+            task.kwargs = kwargs
+            task.mode   = mode
+            task.pre_exec = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
+            task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
+            task.cpu_processes = 1 if 'nproc' not in kwargs else kwargs['nproc']
+            task.cpu_threads = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
+            task.gpu_processes = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
+            task.gpu_process_type = None
 
         else:
             rp_func = self.unwrap(func)
@@ -326,19 +331,21 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             name = func.__name__
             if sys.getsizeof(args) >= IDEAL_BSON_SIZE:
                 name = 'colmena'
+                args = ()
 
-            tu = {"source_code": PythonTask(rp_func, *args, **kwargs),
-                  "name"       : name,
-                  "args"       : [],
-                  "kwargs"     : kwargs,
-                  "mode"       : rp.TASK_FUNCTION,
-                  "pre_exec"   : None if 'pre_exec' not in kwargs else kwargs['pre_exec'],
-                  "ptype"      : rp.MPI,
-                  "nproc"      : self.cores_per_task,
-                  "nthrd"      : 1 if 'nthrd' not in kwargs else kwargs['nthrd'],
-                  "ngpus"      : 0 if 'ngpus' not in kwargs else kwargs['ngpus']}
+            task.pyfunction = PythonTask(rp_func, *args, **kwargs),
+            task,name       = name
+            task.args       = []
+            task.kwargs     = kwargs
+            task.mode       = rp.TASK_PY_FUNCTION
+            task.pre_exec   = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
+            task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
+            task.cpu_processes    = self.cores_per_task
+            task.cpu_threads      = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
+            task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
+            task.gpu_process_type = None
 
-        return tu
+        return task
 
     def submit(self, func, *args, **kwargs):
         """
@@ -356,32 +363,24 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self._task_counter += 1
         task_id = str(self._task_counter)
         self.future_tasks[task_id] = Future()
-        self.prof.prof(event= 'trans_start', uid=self._uid)
-        tu = self.task_translate(func, args, kwargs)
-        self.prof.prof(event= 'trans_stop', uid=self._uid)        
 
         try:
             self.report.progress_tgt(self._task_counter, label='create')
+ 
+            self.prof.prof(event= 'trans_start', uid=self._uid)
+            task = self.task_translate(func, args, kwargs)
+            self.prof.prof(event= 'trans_stop', uid=self._uid)
 
-            task                  = rp.TaskDescription()
             task.uid              = task_id
-            task.name             = tu['name']
-            task.mode             = tu['mode']
-            task.pre_exec         = tu['pre_exec']
-            task.executable       = tu['source_code']
-            task.arguments        = tu['args']
-            task.cpu_processes    = tu['nproc']
-            task.cpu_threads      = tu['nthrd']
-            task.cpu_process_type = tu['ptype']
-            task.gpu_processes    = tu['ngpus']
             task.scheduler        = 'master.%06d' % (self._task_counter % self.n_masters)
-            task.gpu_process_type = None
 
             self.report.progress()
 
-            if tu['name'] == 'colmena':
-                self.put_redis_task(tu['source_code'])
-                tu['source_code']['args'] = ()
+            if task.name == 'colmena':
+                if task.pyfunction:
+                    self.put_redis_task(task.pyfunction)
+                else:
+                    self.put_redis_task(task.executable)
 
             self.tmgr.submit_tasks(task)
 
