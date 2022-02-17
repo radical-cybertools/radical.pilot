@@ -531,8 +531,7 @@ class TaskDescription(ru.Description):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : 'executable',
- 
+        MODE            : 'executable', 
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,

@@ -110,7 +110,7 @@ class FuncSerializer(object):
             except Exception as e:
                 log.error("Failed to deserialize function from file due to %s:", e)
         else:
-            log.error("Failed to deserialize function: not a valid file or does not exist %s:", e)
+            log.error("Failed to deserialize function: not a valid file or does not exist")
 
         if result is None:
             raise Exception("Deserilization from file failed")

@@ -560,11 +560,16 @@ class _Worker(mt.Thread):
         kwargs  = func_info["kwargs"]
 
         # Inject the communicator in the kwargs
-        kwargs['comm'] = task['description']['args'][0]
+        if task['description'].get('cpu_process_type') == RP_MPI:
+            try:
+                kwargs['comm'] = task['description']['args'][0]
+            except:
+                self._log.exception('comm inject failed: %s' % task['uid'])
+
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
-        
+
         strout = None
         strerr = None
 
@@ -572,7 +577,7 @@ class _Worker(mt.Thread):
 
         for k, v in env.items():
             os.environ[k] = v
-        
+
         try:
             # redirect stdio to capture them during execution
             sys.stdout = strout = io.StringIO()
@@ -600,9 +605,10 @@ class _Worker(mt.Thread):
             sys.stderr = bak_stderr
 
             os.environ = old_env
-            
+
 
         return out, err, ret, val, exc
+
 
     # --------------------------------------------------------------------------
     #
@@ -628,6 +634,7 @@ class _Worker(mt.Thread):
         # if not, check if this is a class method of this worker implementation
         if not to_call:
             to_call = getattr(self._base, func_name, None)
+
 
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))

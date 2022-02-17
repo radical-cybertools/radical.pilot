@@ -9,6 +9,7 @@ from radical.pilot.serialize import serializer as serialize
 
 TASK = dict 
 
+
 class PythonTask(object):
 
     def __new__(cls, func, *args, **kwargs):
@@ -60,7 +61,7 @@ class PythonTask(object):
 
         if not callable(f):
             raise ValueError('Task function not callable')
-        
+
         @functools.wraps(f)
         def decor(*args, **kwargs):
             ser_func = serialize.FuncSerializer.serialize_obj(f)
