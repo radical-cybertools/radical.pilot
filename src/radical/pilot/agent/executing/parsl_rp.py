@@ -255,7 +255,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                     'version': '3.8',
                                     # 'path'   : '',
                                     'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
-                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/']})
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/',
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/colmena/']})
 
         if self.enable_redis:
             self.redis.connect()
@@ -329,12 +330,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             # MongoDB can not handle it, we will pull it from
             # the Redis server (agent side)
             name = func.__name__
+            code = None
+            self.log.debug(name)
             if sys.getsizeof(args) >= IDEAL_BSON_SIZE:
                 name = 'colmena'
-                args = ()
+                code = {'func': rp_func, 'args': args, 'kwargs': kwargs}
 
-            task.pyfunction = PythonTask(rp_func, *args, **kwargs),
-            task,name       = name
+            code = PythonTask(rp_func, *args, **kwargs)
+
+            task.pyfunction = code
+            task.name       = name
             task.args       = []
             task.kwargs     = kwargs
             task.mode       = rp.TASK_PY_FUNCTION
@@ -366,21 +371,23 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         try:
             self.report.progress_tgt(self._task_counter, label='create')
- 
+
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event= 'trans_stop', uid=self._uid)
 
-            task.uid              = task_id
-            task.scheduler        = 'master.%06d' % (self._task_counter % self.n_masters)
+            task.uid       = task_id
+            task.scheduler = 'master.%06d' % (self._task_counter % self.n_masters)
 
             self.report.progress()
 
             if task.name == 'colmena':
                 if task.pyfunction:
                     self.put_redis_task(task.pyfunction)
+                    task.pyfunction = 'redis_func'
                 else:
                     self.put_redis_task(task.executable)
+                    task.executable = 'redis_exec'
 
             self.tmgr.submit_tasks(task)
 
