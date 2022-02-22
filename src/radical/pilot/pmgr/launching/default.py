@@ -986,7 +986,7 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        ru.write_json(agent_cfg, cfg_tmp_file)
+        agent_cfg.write(cfg_tmp_file)
 
         # always stage agent cfg for each pilot, not in the tarball
         # FIXME: purge the tmp file after staging
