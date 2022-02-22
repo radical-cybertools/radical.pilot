@@ -1076,7 +1076,7 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
-        jd.system_architecture   = system_architecture
+        jd.system_architecture   = dict(system_architecture)
 
         # register used resources in DB (enacted on next advance)
         pilot['resources'] = {'cpu': number_cores,
