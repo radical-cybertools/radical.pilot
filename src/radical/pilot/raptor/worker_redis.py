@@ -139,7 +139,8 @@ class Worker(_Worker):
             redis_task = self.redis.get(topic = 'rp task queue')[1]
             if redis_task:
                 if task['description']['pyfunction']:
-                    task['description']['pyfunction'] = eval(redis_task)
+                    des_task = serialize.FuncSerializer.deserialize_obj(eval(redis_task))
+                    task['description']['pyfunction'] = des_task
                 else:
                     task['description']['executable'] = eval(redis_task)
 

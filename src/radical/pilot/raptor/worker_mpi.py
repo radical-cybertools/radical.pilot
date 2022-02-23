@@ -553,24 +553,11 @@ class _Worker(mt.Thread):
         uid        = task['uid']
         task_descr = task['description']
         task_func  = task_descr['pyfunction']
-
-        to_call = None
-        args    = None
-        kwargs  = None
-
-        if type(task_func) is bytes:
-            ser_func      = serialize.FuncSerializer.deserialize_obj(task_func)
-            func_info     = pickle.loads(codecs.decode(ser_func.encode(), "base64"))
-
-            to_call       = serialize.FuncSerializer.deserialize_obj(func_info['func'])
-            args          = func_info['args']
-            kwargs        = func_info['kwargs']
-
-        else:
-            func_info  = pickle.loads(codecs.decode(task_func.encode(),"base64"))
-            to_call = serialize.FuncSerializer.deserialize_obj(func_info['func'])
-            args    = func_info["args"]
-            kwargs  = func_info["kwargs"]
+        
+        func_info  = pickle.loads(codecs.decode(task_func.encode(),"base64"))
+        to_call = serialize.FuncSerializer.deserialize_obj(func_info['func'])
+        args    = func_info["args"]
+        kwargs  = func_info["kwargs"]
 
         # Inject the communicator in the kwargs
         if task['description'].get('cpu_process_type') == RP_MPI:
