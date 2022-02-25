@@ -31,35 +31,35 @@
     "results": {
         "lm": {
             "fork"    : {
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun"   : {
                 "launch_cmd" : "aprun -N 1 -n 1 -d 4",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun"  : {
                 "launch_cmd" : "mpirun  -np 1   -host node1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "ibrun"   : {
                 "launch_cmd" : "ibrun -n 1 -o 0",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "ssh"     : {
                 "launch_cmd" : "ssh node1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "rsh"     : {
                 "launch_cmd" : "rsh node1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000003",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {
                 "launch_cmd" : "mpiexec -host node1 -n 1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             }
         },
         "resource_file": {
