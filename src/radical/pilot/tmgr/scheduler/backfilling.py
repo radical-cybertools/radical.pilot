@@ -133,19 +133,20 @@ class Backfilling(TMGRSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def update_tasks(self, uids):
+    def update_tasks(self, tasks):
 
-      # self._log.debug('update  tasks: %s', [u['uid'] for u in tasks])
+        self._log.debug('update tasks: %s', [u['uid'] for u in tasks])
 
         reschedule = False
 
         with self._pilots_lock, self._wait_lock:
 
-            for uid in uids:
+            for task in tasks:
 
-                task = self._wait_pool.get(uid)
-                if not task:
-                    continue
+                uid = task['uid']
+
+              # if uid not in self._wait_pool:
+              #     continue
 
                 state = task['state']
                 pid   = task.get('pilot', '')
@@ -155,24 +156,24 @@ class Backfilling(TMGRSchedulingComponent):
                 if not pid:
                     # we are not interested in state updates for unscheduled
                     # tasks
-                    self._log.debug('upd task  %s no pilot', uid)
+                    self._log.debug('upd task %s no pilot', uid)
                     continue
 
                 if pid not in self._pilots:
                     # we don't handle the pilot of this task
-                    self._log.debug('upd task  %s not handled', uid)
+                    self._log.debug('upd task %s not handled', uid)
                     continue
 
                 info = self._pilots[pid]['info']
 
                 if uid in info['done']:
                     # we don't need further state udates
-                    self._log.debug('upd task  %s in done', uid)
+                    self._log.debug('upd task %s in done', uid)
                     continue
 
                 if  rps._task_state_value(state) <= \
                     rps._task_state_value(rps.AGENT_EXECUTING):
-                    self._log.debug('upd task  %s too early', uid)
+                    self._log.debug('upd task %s too early', uid)
                     continue
 
                 if uid not in info['tasks']:
@@ -186,7 +187,8 @@ class Backfilling(TMGRSchedulingComponent):
                 info['used'] -= task['description']['cpu_processes'] \
                               * task['description']['cpu_threads']
                 reschedule = True
-                self._log.debug('upd task  %s -  schedule (used: %s)', uid, info['used'])
+                self._log.debug('upd task %s - schedule (used: %s)',
+                                uid, info['used'])
 
                 if info['used'] < 0:
                     self._log.error('bf: pilot %s inconsistent', pid)

@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  test:
+  tests:
     runs-on: ubuntu-latest
     services:
       mongodb:
@@ -26,18 +26,18 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
-        python-version: 3.6.13
+        python-version: 3.6
     - name: Install dependencies
       run: |
         python -m venv testenv
         . testenv/bin/activate
         python -m pip install --upgrade pip setuptools
+        python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+        python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
         python -m pip install --upgrade .
         python -m pip install psutil
-        python -m pip install coverage
-        python -m pip install codecov
-        python -m pip install pytest
-        python -m pip install pytest-timeout
+        python -m pip install coverage codecov
+        python -m pip install pytest pytest-timeout
     - name: Test with pytest
       env:
         # use localhost for the host here because we are running the job on the VM.
@@ -55,7 +55,7 @@ jobs:
       with:
         file: ./coverage.xml
 
-  flake8:
+  linting:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -64,16 +64,18 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
-        python-version: 3.6.13
+        python-version: 3.6
     - name: Install dependencies
       run: |
         python -m venv testenv
         . testenv/bin/activate
         python -m pip install --upgrade pip setuptools
+        python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+        python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
         python -m pip install --upgrade .
-        python -m pip install flake8
-        python -m pip install flake8-per-file-ignores
-    - name: Lint with flake8
+        python -m pip install flake8 flake8-per-file-ignores
+        python -m pip install pytest pylint
+    - name: Lint with flake8 and pylint
       run: |
         . testenv/bin/activate
         LOG=`git log -n 1 | grep Merge`
@@ -82,33 +84,6 @@ jobs:
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
         FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
         test -z "$FILTERED" && echo 'nothing to flake8' || flake8 $FILTERED
-
-  pylint:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 2
-    - name: Set up Python 3.6
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.6.13
-    - name: Install dependencies
-      run: |
-        python -m venv testenv
-        . testenv/bin/activate
-        python -m pip install --upgrade pip setuptools
-        python -m pip install --upgrade .
-        python -m pip install pytest
-        python -m pip install pylint
-    - name: Lint with pylint
-      run: |
-        . testenv/bin/activate
-        LOG=`git log -n 1 | grep Merge`
-        NEW=`echo $LOG | cut -d ' ' -f2`
-        OLD=`echo $LOG | cut -d ' ' -f3`
-        DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
-        FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
         test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
 
   analytics:
@@ -126,7 +101,7 @@ jobs:
     - name: Set up Python 3.6
       uses: actions/setup-python@v2
       with:
-        python-version: 3.6.13
+        python-version: 3.6
     - name: Install dependencies
       run: |
         sudo apt install texlive texlive-fonts-extra texlive-extra-utils dvipng
@@ -134,8 +109,10 @@ jobs:
         python -m venv testenv
         . testenv/bin/activate
         python -m pip install --upgrade pip setuptools
+        python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+        python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
         python -m pip install --upgrade .
-        python -m pip install radical.analytics
+        python -m pip install git+https://github.com/radical-cybertools/radical.analytics.git@devel
     - name: analyze example session
       env:
         MONGODB_HOST: localhost
