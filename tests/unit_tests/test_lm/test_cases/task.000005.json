@@ -39,35 +39,35 @@
     "results": {
         "lm": {
             "fork"    : {
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun"   : {
                 "launch_cmd" : "aprun -N 1 -n 1 -d 1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun"  : {
                 "launch_cmd" : "mpirun  -np 1   -host node1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "ibrun"   : {
                 "launch_cmd" : "ibrun -n 1 -o 0",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "ssh"     : {
                 "launch_cmd" : "ssh node1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000005 --smpiargs=\"-gpu\"",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {
                 "launch_cmd" : "mpiexec -host node1 -n 1",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
              "prte"   : {
                 "launch_cmd" : "prun --dvm-uri \"dvm_uri\" --personality ompi --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             }
         },
         "resource_file": {

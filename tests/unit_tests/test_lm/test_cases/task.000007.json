@@ -41,13 +41,13 @@
         "lm": {
             "ibrun" : {
                 "launch_cmd" : "ibrun -n 2 -o 0",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             },
             "ssh"   : "RuntimeError",
             "rsh"   : "RuntimeError",
             "jsrun" : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000007",
-                "rank_exec"  : "/bin/sleep 10"
+                "rank_exec"  : "/bin/sleep \"10\""
             }
         },
         "resource_file": {
