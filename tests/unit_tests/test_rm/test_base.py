@@ -41,7 +41,7 @@ class RMBaseTestCase(TestCase):
                           'gpus_per_node'  : 2})
 
         c = ru.zmq.RegistryClient(url=reg.addr)
-        c.put('rm.resourcemanager', rm_info)
+        c.put('rm.resourcemanager', rm_info.as_dict())
         c.close()
 
         rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
