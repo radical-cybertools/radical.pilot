@@ -1,4 +1,4 @@
-"""RADICAL-Executor builds on the RADICAL-Pilot/ParSL
+"""RADICAL-Executor builds on the RADICAL-Pilot/Parsl
 """
 import os
 import dill
@@ -253,9 +253,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     # 'path'   : '',
-                                    'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
-                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/',
-                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/colmena/']})
+                                    'setup'  : ['$HOME/radical.utils/',
+                                                '$HOME/radical.pilot/',
+                                                '$HOME/colmena/']})
 
         if self.enable_redis:
             self.redis.connect()
@@ -270,7 +270,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         task_type = ''
 
-        # We ignore the resource dict from Parsl
+        # Ignore the resource dict from Parsl
         new_args = list(args)
         new_args.pop(0)
         args = tuple(new_args)
