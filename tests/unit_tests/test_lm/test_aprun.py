@@ -28,17 +28,13 @@ class TestAPRun(TestCase):
 
         lm_aprun = APRun('', {}, None, None, None)
 
-        lm_info = {'env'        : {'test_env': 'test_value'},
-                   'env_sh'     : 'env/lm_aprun.sh',
-                   'command'    : '/usr/bin/aprun',
-                   'mpi_version': '1.1.1',
-                   'mpi_flavor' : APRun.MPI_FLAVOR_UNKNOWN}
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_aprun.sh',
+                   'command': '/usr/bin/aprun'}
         lm_aprun._init_from_info(lm_info)
-        self.assertEqual(lm_aprun._env,         lm_info['env'])
-        self.assertEqual(lm_aprun._env_sh,      lm_info['env_sh'])
-        self.assertEqual(lm_aprun._command,     lm_info['command'])
-        self.assertEqual(lm_aprun._mpi_version, lm_info['mpi_version'])
-        self.assertEqual(lm_aprun._mpi_flavor,  lm_info['mpi_flavor'])
+        self.assertEqual(lm_aprun._env,     lm_info['env'])
+        self.assertEqual(lm_aprun._env_sh,  lm_info['env_sh'])
+        self.assertEqual(lm_aprun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
@@ -61,11 +57,9 @@ class TestAPRun(TestCase):
     def test_get_launcher_env(self, mocked_init):
 
         lm_aprun = APRun('', {}, None, None, None)
-        lm_info = {'env'        : {'test_env': 'test_value'},
-                   'env_sh'     : 'env/lm_aprun.sh',
-                   'command'    : '/usr/bin/aprun',
-                   'mpi_version': '1.1.1',
-                   'mpi_flavor' : APRun.MPI_FLAVOR_UNKNOWN}
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_aprun.sh',
+                   'command': '/usr/bin/aprun'}
         lm_aprun._init_from_info(lm_info)
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'],
@@ -90,6 +84,18 @@ class TestAPRun(TestCase):
             command = lm_aprun.get_rank_exec(task, None, None)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(APRun, '__init__', return_value=None)
+    def test_get_rank_cmd(self, mocked_init):
+
+        lm_aprun = APRun('', {}, None, None, None)
+
+        command = lm_aprun.get_rank_cmd()
+        self.assertIn('$MPI_RANK',    command)
+        self.assertIn('$PMIX_RANK',   command)
+        self.assertIn('$ALPS_APP_PE', command)
+
 # ------------------------------------------------------------------------------
 
 
@@ -101,6 +107,7 @@ if __name__ == '__main__':
     tc.test_can_launch()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
+    tc.test_get_rank_cmd()
 
 
 # ------------------------------------------------------------------------------

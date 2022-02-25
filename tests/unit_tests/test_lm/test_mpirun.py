@@ -58,7 +58,7 @@ class TestMPIRun(TestCase):
             mocked_which.return_value = '/usr/bin/%s' % _flavor
             lm_info = lm_mpirun._init_from_scratch({}, '')
             self.assertEqual(lm_info[_flavor], mocked_which())
-            with self.assertRaises(AssertionError):
+            with self.assertRaises(ValueError):
                 mocked_which.return_value = ''
                 lm_mpirun._init_from_scratch({}, '')
 

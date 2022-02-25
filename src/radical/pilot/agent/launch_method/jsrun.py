@@ -113,8 +113,9 @@ class JSRUN(LaunchMethod):
 
         """
 
+        # https://github.com/olcf-tutorials/ERF-CPU-Indexing
         # `cpu_index_using: physical` causes the following issue
-        #    "error in ptssup_mkcltsock_afunix()"
+        # "error in ptssup_mkcltsock_afunix()"
         rs_str  = 'cpu_index_using: logical\n'
         rank_id = 0
         for rank in slots['ranks']:

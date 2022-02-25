@@ -48,6 +48,9 @@ class MPIExec(LaunchMethod):
             'omplace': ''
         }
 
+        if not lm_info['command']:
+            raise ValueError('mpiexec not found - cannot start MPI tasks')
+
         if '_mpt' in self.name.lower():
             lm_info['mpt'] = True
 
