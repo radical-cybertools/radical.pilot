@@ -41,7 +41,7 @@ class RMBaseTestCase(TestCase):
                           'gpus_per_node'  : 2})
 
         c = ru.zmq.RegistryClient(url=reg.addr)
-        c.put('rm.resourcemanager', rm_info)
+        c.put('rm.resourcemanager', rm_info.as_dict())
         c.close()
 
         rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
@@ -208,12 +208,30 @@ class RMBaseTestCase(TestCase):
                             'resource_cfg': {'launch_methods': {'SRUN': {}}}})
 
         rm._prepare_launch_methods(None)
-
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
+        self.assertEqual(rm._launch_order, ['SRUN'])
+
+        rm._cfg.resource_cfg.launch_methods = {'order': ['SSH'],
+                                               'SRUN' : {},
+                                               'SSH'  : {}}
+        rm._prepare_launch_methods(None)
+        self.assertEqual(rm._launch_order, ['SSH'])
 
         rm._cfg.resource_cfg.launch_methods = {}
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
+
+        def lm_raise_exception():
+            raise Exception('LM Error')
+
+        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        mocked_lm.create = lm_raise_exception
+        # all LMs will be skipped, thus RuntimeError raised
+        with self.assertRaises(RuntimeError):
+            rm._prepare_launch_methods(None)
+        # check that exception was logged (sign that LM exception was raised)
+        self.assertTrue(rm._log.exception.called)
+
 
 # ------------------------------------------------------------------------------
 
