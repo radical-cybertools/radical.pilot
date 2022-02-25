@@ -986,7 +986,7 @@ class Default(PMGRLaunchingComponent):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        ru.write_json(agent_cfg, cfg_tmp_file)
+        agent_cfg.write(cfg_tmp_file)
 
         # always stage agent cfg for each pilot, not in the tarball
         # FIXME: purge the tmp file after staging
@@ -1076,7 +1076,7 @@ class Default(PMGRLaunchingComponent):
         jd.queue                 = queue
         jd.candidate_hosts       = candidate_hosts
         jd.environment           = dict()
-        jd.system_architecture   = system_architecture
+        jd.system_architecture   = dict(system_architecture)
 
         # register used resources in DB (enacted on next advance)
         pilot['resources'] = {'cpu': number_cores,
