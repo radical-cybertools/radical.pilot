@@ -188,7 +188,7 @@ class TMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def update_tasks(self, uids):
+    def update_tasks(self, tasks):
         '''
         any scheduler that cares about task state changes should implement this
         method to keep track of those
