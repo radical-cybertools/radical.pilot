@@ -4,7 +4,6 @@ __copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
-import shlex
 
 import radical.utils as ru
 
@@ -236,7 +235,7 @@ class LaunchMethod(object):
     def _create_arg_string(self, args):
 
         if args:
-            return ' '.join([shlex.quote(arg) for arg in args])
+            return ' '.join([ru.sh_quote(arg) for arg in args])
         else:
             return ''
 
