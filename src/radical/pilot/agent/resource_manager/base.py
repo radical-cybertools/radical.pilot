@@ -333,7 +333,9 @@ class ResourceManager(object):
     def _prepare_launch_methods(self, rm_info):
 
         launch_methods  = self._cfg.resource_cfg.launch_methods
-        self._launchers = dict()
+
+        self._launchers    = {}
+        self._launch_order = None
 
         for name, lm_cfg in launch_methods.items():
 
@@ -354,6 +356,9 @@ class ResourceManager(object):
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
+
+        if not self._launch_order:
+            self._launch_order = list(self._launchers.keys())
 
 
     # --------------------------------------------------------------------------
