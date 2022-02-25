@@ -1,8 +1,6 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/ParSL
 """
 import os
-import re
-import sys
 import dill
 import shlex
 import parsl
@@ -14,14 +12,15 @@ import radical.utils as ru
 
 from radical.pilot import PythonTask
 
+from functools import partial
 from concurrent.futures import Future
 from typing import Optional, Union
 
+from colmena.models import Result
 from colmena.redis.queue import RedisQueue
+
 from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
-
-IDEAL_BSON_SIZE = 48
 
 
 class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
@@ -267,90 +266,83 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         return True
 
-    def unwrap(self, func):
+    def unwrap(self, func, args):
+
+        task_type = ''
+
+        # We ignore the resource dict from Parsl
+        new_args = list(args)
+        new_args.pop(0)
+        args = tuple(new_args)
+
+        # remove the remote wrapper from parsl
         while hasattr(func, '__wrapped__'):
             func = func.__wrapped__
-        return func
+
+        # ideftify the task type
+        try:
+            if isinstance(func, partial):
+                task_type = inspect.getsource(func.args[0]).split('\n')[0]
+                if 'bash' in task_type:
+                    task_type = 'bash'
+                    func = func.args[0]
+                else:
+                    task_type = 'python'
+            else:
+                task_type = inspect.getsource(func).split('\n')[0]
+                if 'python' in task_type:
+                    task_type = 'python'
+        except Exception as e:
+            self.report.header('failed to obtain task type: %s', e)
+
+        return func, args, task_type
 
 
     def task_translate(self, func, args, kwargs):
 
         task = rp.TaskDescription()
+        func, args, task_type = self.unwrap(func, args) 
 
-        try:
-            task_type = inspect.getsource(func).split('\n')[0]
-        except:
-            task_type = None
+        if 'bash' in task_type:
+            self.report.header('bash app')
+            # These lines of code are from parsl/app/bash.py
+            try:
+                # Execute the func to get the commandline
+                bash_app = func(*args, **kwargs)
+                if not isinstance(bash_app, str):
+                    raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
+            except AttributeError as e:
+                raise Exception("failed to obtain bash app cmd: %s", e)
 
-        if task_type:
-            code  = None
-            mode  = None
+            cmd = shlex.split(bash_app)
+            task.executable = cmd[0]
+            task.arguments  = cmd[1:]
+            task.mode       = rp.TASK_PROC
 
-            if task_type.startswith('@bash_app'):
-                source_code = inspect.getsource(func).split('\n')[2].split('return')[1]
-                temp        = ' '.join(shlex.quote(arg) for arg in (shlex.split(source_code,
-                                                                    comments=True, posix=True)))
-                task_exe    = re.findall(r"'(.*?).format", temp,re.DOTALL)[0]
-                if 'exe' in kwargs:
-                    code = "{0} {1}".format(kwargs['exe'], task_exe)
-                else:
-                    code = task_exe
-                task.executable = code
-                mode = rp.TASK_PROC
+        elif 'python' in task_type or not task_type:
+            self.report.header('python app')
 
-            elif task_type.startswith('@python_app'):
-                # We ignore the resource dict from Parsl
-                new_args = list(args)
-                new_args.pop(0)
+            # Colmena task if the task args is type Result
+            if len(args) > 0 and isinstance(args[0], Result):
+                self.report.header('got colmena args')
+                task.name = 'colmena'
 
-                args = tuple(new_args)
-                code = PythonTask(self.unwrap(func), *args, **kwargs) 
-                task.pyfunction = code
-                mode = rp.TASK_PY_FUNCTION  
-
-
-            task.name = func.__name__
-            task.args = []
-            task.kwargs = kwargs
-            task.mode   = mode
-            task.pre_exec = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
-            task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
-            task.cpu_processes = 1 if 'nproc' not in kwargs else kwargs['nproc']
-            task.cpu_threads = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
-            task.gpu_processes = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
-            task.gpu_process_type = None
-
-        else:
-            rp_func = self.unwrap(func)
-            # We ignore the resource dict from Parsl
-            new_args = list(args)
-            new_args.pop(0)
-            args = tuple(new_args)
-
-            # MongoDB can not handle it, we will pull it from
-            # the Redis server (agent side)
-            name = func.__name__
-            code = None
-            self.log.debug(name)
-            if sys.getsizeof(args) >= IDEAL_BSON_SIZE:
-                name = 'colmena'
-                code = {'func': rp_func, 'args': args, 'kwargs': kwargs}
-
-            code = PythonTask(rp_func, *args, **kwargs)
+            self.report.header(str(args))
+            self.report.header(str(kwargs))
+            code = PythonTask(func, *args, **kwargs)
 
             task.pyfunction = code
-            task.name       = name
-            task.args       = []
-            task.kwargs     = kwargs
             task.mode       = rp.TASK_PY_FUNCTION
-            task.pre_exec   = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
-            task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
-            task.cpu_processes    = self.cores_per_task
-            task.cpu_threads      = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
-            task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
-            task.gpu_process_type = None
+
+        task.pre_exec         = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
+        task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
+        task.cpu_processes    = 1 if 'nproc' not in kwargs else kwargs['nproc']
+        task.cpu_threads      = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
+        task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
+        task.gpu_process_type = None
 
         return task
+
 
     def submit(self, func, *args, **kwargs):
         """
