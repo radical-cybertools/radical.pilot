@@ -974,7 +974,7 @@ class Session(rs.Session):
 
 # ------------------------------------------------------------------------------
 #
-class _CloseOptions(ru.Munch):
+class _CloseOptions(ru.TypedDict):
     '''
     Options and validation for Session.close().
 
