@@ -185,7 +185,7 @@ class DBSession(object):
         pmgr_doc['type'] = 'pmgr'
 
         # FIXME: evaluate retval
-        self._c.insert(ru.demunch(pmgr_doc))
+        self._c.insert(ru.as_dict(pmgr_doc))
 
 
 
@@ -210,7 +210,7 @@ class DBSession(object):
             doc['control'] = 'pmgr'
             doc['states']  = [doc['state']]
             doc['cmds']    = list()
-            bulk.insert(ru.demunch(doc))
+            bulk.insert(ru.as_dict(doc))
 
         try:
             bulk.execute()
@@ -413,7 +413,7 @@ class DBSession(object):
         tmgr_doc['type'] = 'tmgr'
 
         # FIXME: evaluate retval
-        self._c.insert(ru.demunch(tmgr_doc))
+        self._c.insert(ru.as_dict(tmgr_doc))
 
 
     # --------------------------------------------------------------------------
@@ -454,7 +454,7 @@ class DBSession(object):
                 doc['control'] = 'tmgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()
-                bulk.insert(ru.demunch(doc))
+                bulk.insert(ru.as_dict(doc))
 
             try:
                 res = bulk.execute()
