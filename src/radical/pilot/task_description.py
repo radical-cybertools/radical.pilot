@@ -73,7 +73,7 @@ KWARGS                 = 'kwargs'
 
 # ------------------------------------------------------------------------------
 #
-class TaskDescription(ru.Description):
+class TaskDescription(ru.TypedDict):
     """
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
