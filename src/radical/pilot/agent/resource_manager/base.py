@@ -31,7 +31,7 @@ RM_NAME_DEBUG       = 'DEBUG'
 
 # ------------------------------------------------------------------------------
 #
-class RMInfo(ru.Munch):
+class RMInfo(ru.TypedDict):
     '''
     Each resource manager instance must gather provide the information defined
     in this class.  Additional attributes can be attached, but should then only
