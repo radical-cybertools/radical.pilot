@@ -40,7 +40,7 @@ class TestBaseLaunchMethod(TestCase):
         c.put('lm.%s' % lm_name.lower(), lm_info)
         c.close()
 
-        lm = NewLaunchMethod(lm_name, ru.Munch({'reg_addr': reg.addr}), None,
+        lm = NewLaunchMethod(lm_name, ru.TypedDict({'reg_addr': reg.addr}), None,
                              mock.Mock(), mock.Mock())
 
         self.assertEqual(lm._env,     lm_info['env'])
