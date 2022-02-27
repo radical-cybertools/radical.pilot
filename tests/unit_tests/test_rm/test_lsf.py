@@ -38,7 +38,7 @@ class LSFTestCase(TestCase):
 
         rm_lsf = LSF(cfg=None, log=None, prof=None)
         rm_lsf._log = mocked_logger
-        rm_lsf._cfg = ru.Munch({'resource_cfg': {'launch_methods': {}}})
+        rm_lsf._cfg = ru.TypedDict({'resource_cfg': {'launch_methods': {}}})
 
         rm_info = rm_lsf._init_from_scratch(RMInfo({'cores_per_node': None}))
 
