@@ -80,7 +80,7 @@ class TestContinuous(TestCase):
             nodes = test_case['setup']['nodes']
 
             component._rm      = mock.Mock()
-            component._rm.info = ru.Munch(from_dict={
+            component._rm.info = ru.TypedDict(from_dict={
                 'cores_per_node': len(nodes[0]['cores']),
                 'gpus_per_node' : len(nodes[0]['gpus']),
                 'lfs_per_node'  : nodes[0]['lfs'],
