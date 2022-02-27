@@ -30,7 +30,7 @@ class ForkTestCase(TestCase):
                           'cores_per_node' : 16})
 
         rm_fork = Fork(cfg=None, log=None, prof=None)
-        rm_fork._cfg = ru.Munch({'resource_cfg': {'fake_resources': False}})
+        rm_fork._cfg = ru.TypedDict({'resource_cfg': {'fake_resources': False}})
         rm_fork._log = mocked_logger
 
         rm_info = rm_fork._init_from_scratch(rm_info)
