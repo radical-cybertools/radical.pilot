@@ -36,7 +36,7 @@ PREPARE_ENV       = 'prepare_env'
 
 # ------------------------------------------------------------------------------
 #
-class PilotDescription(ru.Description):
+class PilotDescription(ru.TypedDict):
     """
     A PilotDescription object describes the requirements and properties
     of a :class:`radical.pilot.Pilot` and is passed as a parameter to
