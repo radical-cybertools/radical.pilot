@@ -553,13 +553,13 @@ class Task(object):
 
 # ------------------------------------------------------------------------------
 #
-class TaskDict(ru.Munch):
+class TaskDict(ru.TypedDict):
     '''
     rp.Task is an API level object and as that is not a useful internal
     representation of an task on the level of RP components and message
     channels.  Instead, a task is there represented as a dictionary.  To
     facilitate a minimum of documentation and type consistency, this class
-    defines such task dictionaries as Munch objects.
+    defines such task dictionaries as `TypedDict` objects.
     '''
 
     _schema = {

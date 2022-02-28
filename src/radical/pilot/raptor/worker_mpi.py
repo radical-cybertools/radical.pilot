@@ -571,7 +571,7 @@ class _Worker(mt.Thread):
 
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task['uid']))
+            raise ValueError('callable %s not found: %s' % (to_call, task))
 
 
         args   = task['description'].get('args',   [])

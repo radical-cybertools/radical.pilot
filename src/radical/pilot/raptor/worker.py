@@ -64,7 +64,7 @@ class Worker(object):
         wclass = None
 
         # Create the worker class and run it's work loop.
-        if fpath and fpath != 'None':
+        if fpath:
             wclass = rpu.load_class(fpath, cname, Worker)
 
         else:
@@ -108,14 +108,15 @@ class Worker(object):
         return a small shim class to provide that capability
         '''
 
+        self._log.debug('==== addr: %s', self._cfg)
         # ----------------------------------------------------------------------
         class Master(object):
 
-            def __init__(self, addr):
-                self._task_service_ep = ru.zmq.Client(url=addr)
+            def __init__(_self, addr):
+                _self._task_service_ep = ru.zmq.Client(url=addr)
 
-            def run_task(self, task):
-                self._task_service_ep.request('run_task', task)
+            def run_task(_self, td):
+                return _self._task_service_ep.request('run_task', td)
         # ----------------------------------------------------------------------
 
         return Master(self._cfg.ts_addr)

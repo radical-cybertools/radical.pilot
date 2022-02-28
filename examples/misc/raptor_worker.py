@@ -23,7 +23,7 @@ class MyWorker(rp.raptor.MPIWorker):
 
     # --------------------------------------------------------------------------
     #
-    def my_hello(self, count, uid):
+    def my_hello(self, uid, count=0):
         '''
         important work
         '''
@@ -47,21 +47,21 @@ class MyWorker(rp.raptor.MPIWorker):
       #         'arguments'       : ['-c',
       #                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
         td = rp.TaskDescription({
-                'uid'             : 'task.call.w.000000',
+              # 'uid'             : 'task.call.w.000000',
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : 'test_mpi',
+                'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.w.000000'}})
 
         master = self.get_master()
         task   = master.run_task(td)
 
-        print('task %s: [%s] [%s] [%s]' % (task['uid'],    task['state'],
-                                           task['stdout'], task['stderr']))
+        self._log.debug(('=== task %s: [%s] [%s] [%s]' % (task['uid'],
+                         task['state'], task['stdout'], task['stderr'])))
 
-        return out
+        print(task['stdout'])
 
 
 # ------------------------------------------------------------------------------

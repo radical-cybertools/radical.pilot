@@ -92,6 +92,7 @@ if __name__ == '__main__':
                                   # 'path'   : '/home/merzky/j/sbox/ve_raptor',
                                     'setup'  : [
         '/home/merzky/j/ru/',
+        '/home/merzky/j/rs/',
         '/home/merzky/j/rp/',
       # 'radical.pilot',
       # 'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
@@ -135,7 +136,7 @@ if __name__ == '__main__':
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'function'        : 'my_hello',
-                'kwargs'          : {'msg': 'task.call.c.3/%06d' % i},
+                'kwargs'          : {'uid': 'task.call.c.3/%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({

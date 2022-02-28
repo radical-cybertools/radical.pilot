@@ -82,7 +82,7 @@ class MyMaster(rp.raptor.Master):
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : 'test_mpi',
+                'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i},
                 'scheduler'       : 'master.000000'}))
 
@@ -184,20 +184,23 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, task):
+    def result_cb(self, tasks):
 
-        mode = task['description']['mode']
-        self._collected[mode] += 1
+        for task in tasks:
 
-        # NOTE: `state` will be `AGENT_EXECUTING`
-        self._log.debug('=== result_cb  %s: %s [%s] [%s]',
-                        task['uid'],
-                        task['state'],
-                        sorted(task['stdout']),
-                        task['return_value'])
+            mode = task['description']['mode']
+            self._collected[mode] += 1
 
-        print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
-                                          task['stdout'], task['return_value']))
+            # NOTE: `state` will be `AGENT_EXECUTING`
+            self._log.debug('=== result_cb  %s: %s [%s] [%s]',
+                            task['uid'],
+                            task['state'],
+                            sorted(task['stdout']),
+                            task['return_value'])
+
+            print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
+                                              task['stdout'],
+                                              task['return_value']))
 
 
     # --------------------------------------------------------------------------
