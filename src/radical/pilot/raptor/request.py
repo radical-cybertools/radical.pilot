@@ -10,7 +10,7 @@ class Request(object):
 
     # poor man's future
     # TODO : use proper future implementation
-    # FIXME: use ru.Description base class
+    # FIXME: use ru.TypedDict base class
 
 
     # --------------------------------------------------------------------------
