@@ -1054,7 +1054,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test(self, msg, sleep=0):
+    def hello(self, msg, sleep=0):
 
         print('hello: %s' % msg)
         time.sleep(sleep)
@@ -1062,7 +1062,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test_mpi(self, comm, msg, sleep=0):
+    def hello_mpi(self, comm, msg, sleep=0):
 
         print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
         time.sleep(sleep)

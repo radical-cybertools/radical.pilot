@@ -18,8 +18,6 @@ from .. import constants as rpc
 
 from .. import Session, Task, TaskDescription, TASK_EXECUTABLE
 
-from .request import Request
-
 
 def out(msg):
     sys.stdout.write('%s\n' % msg)
@@ -129,7 +127,14 @@ class Master(rpu.Component):
                                'queue': qname,
                                'addr' : str(self._input_queue.addr_put)}})
 
-        # connect to the local agent
+        # also create a ZMQ server endpoint for the workers to
+        # send task execution requests back to the master
+        self._task_service = ru.zmq.Server()
+        self._task_service.register_request('run_task', self._run_task)
+        self._task_service.start()
+        self._task_service_data = dict()   # task.uid : [mt.Event, task]
+
+        # all comm channels are set up - begin to work
         self._log.debug('startup complete')
 
 
@@ -174,20 +179,6 @@ class Master(rpu.Component):
     @property
     def workers(self):
         return self._workers
-
-
-    # --------------------------------------------------------------------------
-    #
-    def request_cb(self, tasks):
-
-        return tasks
-
-
-    # --------------------------------------------------------------------------
-    #
-    def result_cb(self, req):
-
-        pass
 
 
     # --------------------------------------------------------------------------
@@ -282,9 +273,10 @@ class Master(rpu.Component):
             tasks    = list()
             base     = os.environ['RP_TASK_ID']
 
-            cfg          = copy.deepcopy(self._cfg)
-            cfg['descr'] = descr
-            cfg['info']  = self._info
+            cfg            = copy.deepcopy(self._cfg)
+            cfg['descr']   = descr
+            cfg['info']    = self._info
+            cfg['tr_addr'] = self._task_service.addr
 
             for i in range(count):
 
@@ -444,6 +436,43 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _run_task(self, task):
+        '''
+        accept a single task request for execution, execute it and wait for it's
+        completion before returning the call.
+
+        Note: this call is running in a separate thread created by an ZMQ
+              Server instance and will thus not block the master's progress.
+        '''
+
+        # Create a new task ID for the submitted task (we do not allow
+        # user-specified IDs in this case as we can't check uniqueness with the
+        # client tmgr).  Then submit that task and wait for the `result_cb` to
+        # report completion of the task
+
+        assert(not task.get('uid'))
+
+        tid   = '%s.%s' % (self.uid, ru.generate_id('subtask'))
+        event = mt.Event()
+
+        task['uid'] = tid
+
+        self._task_service_data[tid] = [event, task]
+        self.submit_tasks([task])
+
+        # wait for the result cb to pick up the task again
+        event.wait()
+
+        # update task info and remove data
+        task = self._task_service_data[tid][1]
+        del(self._task_service_data[tid])
+
+        # the task is completed and we can return it to the caller
+        return task
+
+
+    # --------------------------------------------------------------------------
+    #
     def submit_tasks(self, tasks):
         '''
         submit a list of tasks to the task queue
@@ -547,24 +576,49 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def request_cb(self, tasks):
+
+        # FIXME: document task format
+        return tasks
+
+
+    # --------------------------------------------------------------------------
+    #
     def _result_cb(self, tasks):
 
-        for task in ru.as_list(tasks):
+        tasks = ru.as_list(tasks)
 
-            self._log.debug('result for %s', task['uid'])
+        try:
+            self.result_cb(tasks)
 
-            try:
-                self.result_cb(task)
+        except:
+            self._log.exception('result callback failed')
 
-            except:
-                self._log.exception('result callback failed')
+        for task in tasks:
+
+            # check if the task was submited via the task_service EP
+            tid = task['uid']
+            if tid in self._task_service_data:
+                # update task info and signal task service thread
+                self._task_service_data[tid][1] = task
+                self._task_service_data[tid][0].set()
 
             ret = int(task.get('exit_code', -1))
+
             if ret == 0: task['target_state'] = rps.DONE
             else       : task['target_state'] = rps.FAILED
 
-            self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                               publish=True, push=True)
+        self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
+                            publish=True, push=True)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def result_cb(self, tasks):
+
+        # FIXME: document task format
+
+        pass
 
 
     # --------------------------------------------------------------------------

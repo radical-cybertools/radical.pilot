@@ -113,13 +113,29 @@ if __name__ == '__main__':
                                      'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.c.%06d' % i,
+                'uid'             : 'task.call.c.1.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'function'        : 'hello',
+                'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.call.c.2.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : 'test_mpi',
-                'kwargs'          : {'msg': 'task.call.c.%06d' % i},
+                'function'        : 'hello_mpi',
+                'kwargs'          : {'msg': 'task.call.c.2/%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.call.c.3.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'function'        : 'my_hello',
+                'kwargs'          : {'msg': 'task.call.c.3/%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({

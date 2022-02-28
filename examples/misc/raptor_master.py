@@ -179,7 +179,6 @@ class MyMaster(rp.raptor.Master):
                                                 '$RP_TASK_ID"'],
                      'scheduler'       : 'master.000000'}))
 
-
         return tasks
 
 

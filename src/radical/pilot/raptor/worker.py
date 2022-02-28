@@ -102,6 +102,27 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
+    def get_master(self):
+        '''
+        The worker can submit tasks back to the master - this method will
+        return a small shim class to provide that capability
+        '''
+
+        # ----------------------------------------------------------------------
+        class Master(object):
+
+            def __init__(self, addr):
+                self._task_service_ep = ru.zmq.Client(url=addr)
+
+            def run_task(self, task):
+                self._task_service_ep.request('run_task', task)
+        # ----------------------------------------------------------------------
+
+        return Master(self._cfg.ts_addr)
+
+
+    # --------------------------------------------------------------------------
+    #
     def start(self):
 
         raise NotImplementedError('`start()` must be implemented by child class')
