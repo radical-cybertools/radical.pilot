@@ -638,7 +638,7 @@ class _Worker(mt.Thread):
 
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task['uid']))
+            raise ValueError('callable %s not found: %s' % (to_call, task))
 
 
         args   = task['description'].get('args',   [])
@@ -1121,7 +1121,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test(self, msg, sleep=0):
+    def hello(self, msg, sleep=0):
 
         print('hello: %s' % msg)
         time.sleep(sleep)
@@ -1129,7 +1129,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test_mpi(self, comm, msg, sleep=0):
+    def hello_mpi(self, comm, msg, sleep=0):
 
         print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
         time.sleep(sleep)
