@@ -49,11 +49,11 @@ class MyWorker(rp.raptor.MPIWorker):
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_EXECUTABLE,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : 'hello_mpi',
-                'kwargs'          : {'msg': 'task.call.w.000000'}})
+                'executable'      : 'radical-pilot-hello.sh',
+                'arguments'       : ['task.call.w.000000']})
 
         master = self.get_master()
         task   = master.run_task(td)
