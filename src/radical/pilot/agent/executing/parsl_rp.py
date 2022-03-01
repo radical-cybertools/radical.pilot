@@ -292,6 +292,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 task_type = inspect.getsource(func).split('\n')[0]
                 if 'python' in task_type:
                     task_type = 'python'
+                else:
+                    task_type = ''
         except Exception as e:
             self.report.header('failed to obtain task type: %s', e)
 
