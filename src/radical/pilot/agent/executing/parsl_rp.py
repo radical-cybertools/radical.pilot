@@ -17,6 +17,7 @@ from concurrent.futures import Future
 from typing import Optional, Union
 
 from colmena.models import Result
+from colmena.models import ExecutableTask
 from colmena.redis.queue import RedisQueue
 
 from parsl.utils import RepresentationMixin
@@ -165,6 +166,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             else:
                 pass
             parsl_task.set_result(STDOUT)
+            self.log.debug(STDOUT)
             print('\t+ %s: %-10s: %10s'
                   % (task.uid, task.state, task.pilot))
 
@@ -253,10 +255,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     # 'path'   : '',
-                                    'setup'  : ['$HOME/radical.utils/',
-                                                '$HOME/radical.pilot/',
-                                                '$HOME/colmena/']})
-
+                                     'setup'  : ['$HOME/radical.utils/',
+                                                 '$HOME/radical.pilot/',
+                                                 '$HOME/colmena/']})
         if self.enable_redis:
             self.redis.connect()
 
@@ -281,6 +282,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # ideftify the task type
         try:
+            if isinstance(func, ExecutableTask):
+                task_type = 'bash'
+                return func.executable, args, task_type
+            
             if isinstance(func, partial):
                 task_type = inspect.getsource(func.args[0]).split('\n')[0]
                 if 'bash' in task_type:
@@ -288,6 +293,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     func = func.args[0]
                 else:
                     task_type = 'python'
+
             else:
                 task_type = inspect.getsource(func).split('\n')[0]
                 if 'python' in task_type:
@@ -302,24 +308,42 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def task_translate(self, func, args, kwargs):
 
+        self.report.header(str(func))
+
         task = rp.TaskDescription()
         func, args, task_type = self.unwrap(func, args) 
 
         if 'bash' in task_type:
             self.report.header('bash app')
-            # These lines of code are from parsl/app/bash.py
-            try:
-                # Execute the func to get the commandline
-                bash_app = func(*args, **kwargs)
-                if not isinstance(bash_app, str):
-                    raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
-            except AttributeError as e:
-                raise Exception("failed to obtain bash app cmd: %s", e)
+            if callable(func):
+                # These lines of code are from parsl/app/bash.py
+                try:
+                    # Execute the func to get the commandline
+                    bash_app = func(*args, **kwargs)
 
-            cmd = shlex.split(bash_app)
-            task.executable = cmd[0]
-            task.arguments  = cmd[1:]
-            task.mode       = rp.TASK_PROC
+                    if not isinstance(bash_app, str):
+                        raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
+                    
+                    cmd = shlex.split(bash_app)
+
+                    task.mode       = rp.TASK_PROC
+                    task.executable = cmd[0]
+                    task.arguments  = cmd[1:]
+
+                except AttributeError as e:
+                    raise Exception("failed to obtain bash app cmd: %s", e)
+
+            if isinstance(func, list):
+
+                task.mode             = rp.TASK_EXECUTABLE 
+                task.executable       = func[3]
+                task.cpu_processes    = eval(func[2])
+                task.cpu_process_type = rp.MPI if 'mpirun' in func else None
+
+                try:
+                    task.arguments    = [func[4]]
+                except:
+                    pass
 
         elif 'python' in task_type or not task_type:
             self.report.header('python app')
@@ -329,6 +353,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 self.report.header('got colmena args')
                 task.name = 'colmena'
 
+            self.report.header(str(func))
+
             self.report.header(str(args))
             self.report.header(str(kwargs))
             code = PythonTask(func, *args, **kwargs)
@@ -336,12 +362,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task.pyfunction = code
             task.mode       = rp.TASK_PY_FUNCTION
 
-        task.pre_exec         = None if 'pre_exec' not in kwargs else kwargs['pre_exec']
-        task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
-        task.cpu_processes    = 1 if 'nproc' not in kwargs else kwargs['nproc']
-        task.cpu_threads      = 1 if 'nthrd' not in kwargs else kwargs['nthrd']
+        task.pre_exec         = [] if 'pre_exec' not in kwargs else kwargs['pre_exec']
+        #task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
+        #task.cpu_processes    = 1 if 'nproc' not in kwargs else kwargs['nproc']
+        task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
         task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
         task.gpu_process_type = None
+
+        self.report.header(str(task))
 
         return task
 
@@ -359,9 +387,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         """
         self.log.debug("Got a task from the parsl.dfk")
 
-        self._task_counter += 1
-        task_id = str(self._task_counter)
-        self.future_tasks[task_id] = Future()
+        #self._task_counter += 1
+        #task_id = str(self._task_counter)
 
         try:
             self.report.progress_tgt(self._task_counter, label='create')
@@ -369,9 +396,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event= 'trans_stop', uid=self._uid)
-
-            task.uid       = task_id
-            task.scheduler = 'master.%06d' % (self._task_counter % self.n_masters)
+            
+            if task.executable:
+                task.scheduler = None
+            else:
+                task.scheduler = 'master.%06d' % (self._task_counter % self.n_masters)
 
             self.report.progress()
 
@@ -383,7 +412,13 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     self.put_redis_task(task.executable)
                     task.executable = 'redis_exec'
 
-            self.tmgr.submit_tasks(task)
+            self.report.header(str(task))
+            rp_task = self.tmgr.submit_tasks(task)
+
+            self.future_tasks[rp_task.uid] = Future()
+            
+            return self.future_tasks[rp_task.uid]
+
 
         except Exception as e:
             # Something unexpected happened in the pilot code above
@@ -394,8 +429,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         except (KeyboardInterrupt, SystemExit):
             ru.print_exception_trace()
             self.report.warn('exit requested\n')
-
-        return self.future_tasks[task_id]
 
 
     def _get_job_ids(self):
