@@ -46,6 +46,7 @@ class MyWorker(rp.raptor.MPIWorker):
       #         'executable'      : '/bin/sh',
       #         'arguments'       : ['-c',
       #                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
+
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',
               # 'timeout'         : 10,
@@ -53,13 +54,10 @@ class MyWorker(rp.raptor.MPIWorker):
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'executable'      : 'radical-pilot-hello.sh',
-                'arguments'       : ['task.call.w.000000']})
+                'arguments'       : ['1', 'task.call.w.000000']})
 
         master = self.get_master()
         task   = master.run_task(td)
-
-        self._log.debug(('=== task %s: [%s] [%s] [%s]' % (task['uid'],
-                         task['state'], task['stdout'], task['stderr'])))
 
         print(task['stdout'])
 
