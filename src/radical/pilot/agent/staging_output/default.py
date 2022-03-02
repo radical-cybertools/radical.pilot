@@ -112,10 +112,49 @@ class Default(AgentStagingOutputComponent):
                 no_staging_tasks.append(task)
 
         if no_staging_tasks:
-            self.advance(no_staging_tasks, publish=True, push=True)
+            self._advance_tasks(no_staging_tasks, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                publish=True, push=True)
 
         for task,actionables in staging_tasks:
             self._handle_task_staging(task, actionables)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _advance_tasks(self, tasks, state, publish, push):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in tasks:
+            buckets[task['origin']].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                         publish=publish, push=push)
+
+        # task state notifications are not bulkable
+        if buckets['raptor']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
+                                            'arg': buckets['agent']})
+
 
 
     # --------------------------------------------------------------------------
@@ -334,8 +373,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging
-        self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
-                           publish=True, push=False)
+        self._advance_tasks(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                  publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------

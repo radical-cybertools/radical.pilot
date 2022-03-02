@@ -150,7 +150,7 @@ class MyMaster(rp.raptor.Master):
 
             time.sleep(1)
 
-        self._log.info('=== exec done!')
+        self._log.info('exec done!')
 
 
     # --------------------------------------------------------------------------
@@ -159,7 +159,7 @@ class MyMaster(rp.raptor.Master):
 
         for task in tasks:
 
-            self._log.debug('=== request_cb %s\n' % (task['uid']))
+            self._log.debug('request_cb %s\n' % (task['uid']))
 
             mode = task['description']['mode']
             uid  = task['description']['uid']
@@ -192,7 +192,7 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.debug('=== result_cb  %s: %s [%s] [%s]',
+            self._log.debug('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
                             sorted(task['stdout']),

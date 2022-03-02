@@ -222,7 +222,22 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        if cmd == 'update':
+        if cmd == 'raptor_state_update':
+
+            tasks = ru.as_list(arg)
+
+            for task in tasks:
+                uid   = task['uid']
+                state = task['state']
+
+                if uid in self._task_service_data:
+                    # update task info and signal task service thread
+                    self._log.debug('unlock 2 %s', uid)
+                    self._task_service_data[uid][1] = task
+                    self._task_service_data[uid][0].set()
+
+
+        elif cmd == 'update':
 
             for thing in ru.as_list(arg):
 
@@ -370,7 +385,7 @@ class Master(rpu.Component):
                 if n >= count:
                     self._log.debug('wait ok')
                     return
-                time.sleep(10)
+                time.sleep(1)
 
         elif uids:
             self._log.debug('wait for workers: %s', uids)
@@ -489,7 +504,7 @@ class Master(rpu.Component):
 
             if isinstance(task, TaskDescription):
                 # convert to task dict
-                task = Task(self, task).as_dict()
+                task = Task(self, task, origin='raptor').as_dict()
 
             assert('description' in task)
 
@@ -603,7 +618,7 @@ class Master(rpu.Component):
 
             if tid in self._task_service_data:
                 # update task info and signal task service thread
-                self._log.debug('===== unlock %s', tid)
+                self._log.debug('unlock 1 %s', tid)
                 self._task_service_data[tid][1] = task
                 self._task_service_data[tid][0].set()
 
