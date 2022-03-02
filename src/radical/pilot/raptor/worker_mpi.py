@@ -179,7 +179,7 @@ class _TaskPuller(mt.Thread):
         a task arrives for which no resources are available, the thread will
         block until such resources do become available.
         '''
-        self._log.debug('=== init task puller 0 wtq_get:%s wrq_put:%s rtq_put:%s',
+        self._log.debug('init task puller 0 wtq_get:%s wrq_put:%s rtq_put:%s',
                         self._worker_task_q_get, self._worker_result_q_put,
                         self._rank_task_q_put)
 
@@ -199,42 +199,39 @@ class _TaskPuller(mt.Thread):
                                             url=self._worker_result_q_put,
                                             log=self._log, prof=self._prof)
 
-            time.sleep(5)
+            time.sleep(1)
             # setup is completed - signal main thread
             self._event.set()
 
             while True:
 
-              # self._log.debug('=== wtq pull now')
                 tasks = None
                 try:
                     tasks = worker_task_q.get_nowait(timeout=1)
                 except:
                     self._log.exception('pull error')
-              # self._log.debug('=== wtq pull result: %s', tasks)
 
                 if not tasks:
                     continue
 
                 tasks = ru.as_list(tasks)
-                self._log.debug('=== wtq tasks: %s', len(tasks))
+                self._log.debug('wtq tasks: %s', len(tasks))
 
                 # TODO: sort tasks by size
                 for task in ru.as_list(tasks):
 
-                    self._log.debug('=== wtq %s 0 - task pulled', task['uid'])
+                    self._log.debug('wtq %s 0 - task pulled', task['uid'])
 
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._log.debug('wtq === %s 1 - task send to %d',
+                            self._log.debug('wtq %s 1 - task send to %d',
                                              task['uid'], rank)
                             rank_task_q.put(task, qname=str(rank))
 
                     except Exception as e:
                         self._log.exception('failed to place task')
                         task['error'] = str(e)
-                        self._log.debug('==== put 1 %s', task['uid'])
                         worker_result_q.put(task)
 
         except:
@@ -285,12 +282,12 @@ class _ResultPusher(mt.Thread):
         cpt = task['description'].get('cpu_process_type')
         if cpt == RP_MPI:
             if len(self._cache[uid]) < ranks:
-                self._log.info('<=== results - recv: %s [%d < %d]', task['uid'],
+                self._log.info('< results - recv: %s [%d < %d]', task['uid'],
                         len(self._cache[uid]), ranks)
 
                 return False
 
-        self._log.info('<=== results - recv: %s [%d = %d]', task['uid'],
+        self._log.info('< results - recv: %s [%d = %d]', task['uid'],
                         len(self._cache[uid]), ranks)
 
         task['stdout']       = [t['stdout']       for t in self._cache[uid]]
@@ -314,7 +311,7 @@ class _ResultPusher(mt.Thread):
         '''
 
         try:
-            self._log.debug('=== init result pusher wrq_put:%s rrq_get:%s',
+            self._log.debug('init result pusher wrq_put:%s rrq_get:%s',
                             self._worker_result_q_put, self._rank_result_q_get)
 
             # collect the results from all MPI ranks before returning
@@ -331,24 +328,23 @@ class _ResultPusher(mt.Thread):
                                             url=self._worker_result_q_put,
                                             log=self._log, prof=self._prof)
 
-            time.sleep(5)
+            time.sleep(1)
             # signal success
             self._event.set()
 
             while True:
 
-                self._log.debug('=== <-  rank_result? recv')
-                tasks = ru.as_list(rank_result_q.get_nowait(timeout=1000))
-                self._log.debug('=== <-  rank_result! recv [%s]', len(tasks))
+                self._log.debug('<-  rank_result? recv')
+                tasks = ru.as_list(rank_result_q.get_nowait(timeout=100))
+                self._log.debug('<-  rank_result! recv [%s]', len(tasks))
 
                 for task in tasks:
 
-                    self._log.debug('=== <-  rank_result! recv [%s]', task['uid'])
+                    self._log.debug('<-  rank_result! recv [%s]', task['uid'])
                     if not self._check_mpi(task):
                         continue
 
                     self._resources.dealloc(task)
-                    self._log.debug('==== put 2 %s : %s', task['uid'], os.getpid())
                     worker_result_q.put(task)
 
         except:
@@ -388,7 +384,7 @@ class _Worker(mt.Thread):
 
 
         try:
-            self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
+            self._log.debug('init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
                             self._rank_task_q_get, self._rank_result_q_put)
 
@@ -413,8 +409,6 @@ class _Worker(mt.Thread):
 
                 assert(len(tasks) == 1)
                 task = tasks[0]
-
-                self._log.debug('==== %s 2 - task recv by %d', task['uid'], self._rank)
 
                 # FIXME: how can that be?
                 if self._rank not in task['ranks']:
@@ -453,11 +447,7 @@ class _Worker(mt.Thread):
                     if comm : comm.Free()
 
                     # send task back to rank 0
-                    self._log.info('===> %s from %d to %d',
-                                   task['uid'], self._rank, 0)
-
                     # FIXME: task_exec_stop
-                    self._log.debug('==== put 0 %s : %s', task['uid'], os.getpid())
                     rank_result_q.put(task)
 
         except:
@@ -970,7 +960,7 @@ class MPIWorker(Worker):
         # all ranks run a worker thread
         # the worker should be started before the managers as the manager
         # contacts the workers with queue endpoint information
-        self._log.info('=== rank %s starts [%s]', self._rank, self._manager)
+        self._log.info('rank %s starts [%s]', self._rank, self._manager)
         worker_ok = mt.Event()
         self._work_thread = _Worker(rank_task_q_get   = self._rank_task_q_get,
                                     rank_result_q_put = self._rank_result_q_put,
@@ -979,9 +969,8 @@ class MPIWorker(Worker):
                                     prof              = self._prof,
                                     base              = self)
         self._work_thread.start()
-
         worker_ok.wait(timeout=60)
-        self._log.info('=== rank %s starts worker [%s]', self._rank, self._manager)
+        self._log.info('rank %s starts worker [%s]', self._rank, self._manager)
 
         if not worker_ok.is_set():
             raise RuntimeError('failed to start worker thread')
@@ -991,16 +980,16 @@ class MPIWorker(Worker):
         # the master, one to push results back to the master
         if self._manager:
 
-            self._log.info('=== rank %s starts managers', self._rank)
+            self._log.info('rank %s starts managers', self._rank)
 
             resources = _Resources(self._log,   self._prof, self._ranks)
-            self._log.info('=== resources: %s', resources)
+            self._log.info('resources: %s', resources)
 
             # rank 0 spawns manager threads
             pull_ok = mt.Event()
             push_ok = mt.Event()
 
-            self._log.debug('=== wrq_put:%s wtq_get:%s',
+            self._log.debug('wrq_put:%s wtq_get:%s',
                             self._worker_result_q_put, self._worker_task_q_get)
 
             self._pull = _TaskPuller(
@@ -1023,12 +1012,8 @@ class MPIWorker(Worker):
             self._pull.start()
             self._push.start()
 
-            self._log.debug('=== start wait')
-
             pull_ok.wait(timeout=60)
-            self._log.debug('=== wait pull ok')
             push_ok.wait(timeout=60)
-            self._log.debug('=== wait push ok')
 
             if not pull_ok.is_set():
                 raise RuntimeError('failed to start pull thread')
@@ -1036,7 +1021,7 @@ class MPIWorker(Worker):
             if not push_ok.is_set():
                 raise RuntimeError('failed to start push thread')
 
-        self._log.info('=== rank %s starts [%s] ok', self._rank, self._manager)
+        self._log.info('rank %s starts [%s] ok', self._rank, self._manager)
 
 
     # --------------------------------------------------------------------------

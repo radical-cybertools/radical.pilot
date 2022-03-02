@@ -109,7 +109,6 @@ class Worker(object):
         return a small shim class to provide that capability
         '''
 
-        self._log.debug('==== addr: %s', self._cfg)
         # ----------------------------------------------------------------------
         class Master(object):
 
