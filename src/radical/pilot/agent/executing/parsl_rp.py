@@ -308,8 +308,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def task_translate(self, func, args, kwargs):
 
-        self.report.header(str(func))
-
         task = rp.TaskDescription()
         func, args, task_type = self.unwrap(func, args) 
 
@@ -337,13 +335,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
                 task.mode             = rp.TASK_EXECUTABLE 
                 task.executable       = func[3]
+                task.arguments        = eval(args[0].args[0])
                 task.cpu_processes    = eval(func[2])
                 task.cpu_process_type = rp.MPI if 'mpirun' in func else None
 
-                try:
-                    task.arguments    = [func[4]]
-                except:
-                    pass
 
         elif 'python' in task_type or not task_type:
             self.report.header('python app')
@@ -353,10 +348,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 self.report.header('got colmena args')
                 task.name = 'colmena'
 
-            self.report.header(str(func))
-
-            self.report.header(str(args))
-            self.report.header(str(kwargs))
             code = PythonTask(func, *args, **kwargs)
 
             task.pyfunction = code
@@ -368,8 +359,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
         task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
         task.gpu_process_type = None
-
-        self.report.header(str(task))
 
         return task
 
