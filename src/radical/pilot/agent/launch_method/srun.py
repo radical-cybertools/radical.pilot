@@ -129,15 +129,24 @@ class Srun(LaunchMethod):
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [rank['node_name'] for rank in slots['ranks']]
+            n_nodes  = len(set(nodelist))
 
             # older slurm versions don't accept nodefiles
+            # 42 node is the upper limit to switch from `--nodelist`
+            # to `--nodefile`
             if self._vmajor > 18:
-                nodefile = '%s/%s.nodes' % (sbox, uid)
-                with ru.ru_open(nodefile, 'w') as fout:
-                    fout.write(','.join(nodelist))
-                    fout.write('\n')
+                if n_nodes > 42:
+                    nodefile = '%s/%s.nodes' % (sbox, uid)
+                    with ru.ru_open(nodefile, 'w') as fout:
+                        fout.write(','.join(nodelist))
+                        fout.write('\n')
+                    nodelist.clear()
 
-            n_nodes = len(set(nodelist))
+            # corener case that we can not address, related ticket:
+            # https://github.com/radical-cybertools/radical.pilot/issues/2488
+            elif self._vmajor <= 18 and n_nodes > 42:
+                raise Exception('srun <= 18 (nodes: %d) do not support nodefile' % (n_nodes)) 
+
 
         # use `--exclusive` to ensure all tasks get individual resources.
         # do not use core binding: it triggers warnings on some installations
@@ -152,12 +161,11 @@ class Srun(LaunchMethod):
         if self._rm_info.get('gpus'):
             mapping += ' --gpus-per-task %d' % n_gpus
 
-        if self._vmajor > 18:
-            if nodefile:
-                mapping += ' --nodefile=%s' % nodefile
-        else:
-            if nodelist:
-                mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
+        if nodefile:
+            mapping += ' --nodefile=%s' % nodefile
+
+        if nodelist:
+            mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
         return cmd.rstrip()
