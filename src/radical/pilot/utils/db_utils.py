@@ -233,10 +233,6 @@ def get_session_events(db, sid, cache=None, cachedir=None):
             else:
                 ret.append (['state', otype, oid, oid, None,       event, odoc])
 
-        for event in doc['state_history']:
-            ret.append (['state',     otype, oid, oid, event['timestamp'],
-                         event['state'], odoc])
-
         if  'callbackhistory' in doc:
             for event in doc['callbackhistory']:
                 ret.append (['callback',  otype, oid, oid, event['timestamp'],
@@ -257,10 +253,6 @@ def get_session_events(db, sid, cache=None, cachedir=None):
                 ret.append (['state', otype, oid, pid, doc[event], event, doc])
             else:
                 ret.append (['state', otype, oid, pid, None,       event, doc])
-
-        for event in doc['state_history']:
-            ret.append (['state',     otype, oid, pid, event['timestamp'],
-                         event['state'], doc])
 
         # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event:
