@@ -140,8 +140,8 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
         slot_infos   = dict()
         slot_started = dict()
 
-        nodes   = pilot_doc['nodes']
-        n_cores = pilot_doc['cores_per_node']
+        nodes   = pilot_doc['resource_details']['rm_info']['node_list']
+        n_cores = pilot_doc['resource_details']['rm_info']['cores_per_node']
 
         if  not nodes:
           # print "no nodes in pilot doc for %s" % pid
