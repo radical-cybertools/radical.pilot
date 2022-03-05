@@ -362,6 +362,12 @@ class Default(PMGRLaunchingComponent):
                 tc.wait()
                 self._log.debug('cancellation done')
 
+            # don't update the resource details for these pilots - they are set
+            # on the agent side
+            for pilot in to_advance:
+                if 'resource_details' in pilot:
+                    del(pilot['resource_details'])
+
             # set canceled state
             self.advance(to_advance, state=rps.CANCELED, push=False, publish=True)
 
