@@ -257,6 +257,9 @@ setup_args = {
                             'flake8',
                             'coverage',
                             'mock==2.0.0.',
+                            'nbsphinx',
+                            'sphinx_copybutton',
+                            'sphinx_rtd_theme'
                            ],
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
