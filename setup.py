@@ -281,10 +281,16 @@ setup_args = {
 #
 setup(**setup_args)
 
-os.system('rm -rf src/%s.egg-info' % name)
-# os.system('rm -rf %s/VERSION'      % path)
-# os.system('rm -rf %s/VERSION.git'  % path)
-# os.system('rm -rf %s/SDIST'        % path)
+
+# ------------------------------------------------------------------------------
+# clean temporary files from source tree
+sdist = open('%s/SDIST' % path).read().strip()
+if sdist:
+    os.system('rm -vf  %s/%s' % (path, sdist))
+
+os.system('rm -vrf src/%s.egg-info' % name)
+os.system('rm -vf  %s/VERSION'      % path)
+os.system('rm -vf  %s/SDIST'        % path)
 
 
 # ------------------------------------------------------------------------------
