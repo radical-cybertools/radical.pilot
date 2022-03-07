@@ -284,11 +284,8 @@ setup(**setup_args)
 
 # ------------------------------------------------------------------------------
 # clean temporary files from source tree
-sdist = open('%s/SDIST' % path).read().strip()
-if sdist:
-    os.system('rm -vf  %s/%s' % (path, sdist))
-
 os.system('rm -vrf src/%s.egg-info' % name)
+os.system('rm -vf  %s/%s'           % (path, sdist_name))
 os.system('rm -vf  %s/VERSION'      % path)
 os.system('rm -vf  %s/SDIST'        % path)
 
