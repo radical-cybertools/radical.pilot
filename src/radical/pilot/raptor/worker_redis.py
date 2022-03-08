@@ -2,13 +2,11 @@ import os
 import threading     as mt
 import radical.utils as ru
 
-from .worker_mpi import MPIWorker, _Worker
-from .worker_mpi import _ResultPusher,_Resources, _TaskPuller
+from .worker_mpi  import MPIWorker, _Worker
+from .worker_mpi  import _ResultPusher,_Resources, _TaskPuller
+from ..serializer import Serializer
 
-from radical.pilot.serialize import serializer as serialize
-
-
-class Worker(_Worker):
+class Worker(_Worker, Serializer):
 
     def __init__(self, rank_task_q_get, rank_result_q_put,
                  event, log, prof, base):
@@ -22,7 +20,7 @@ class Worker(_Worker):
 
         try:
             self._host = '127.0.0.1'  # os.environ['REDIS_HOST']
-            self._port =  59465       # int(os.environ['REDIS_PORT'])
+            self._port = 59465       # int(os.environ['REDIS_PORT'])
         except KeyError:
             pass
 
@@ -117,7 +115,7 @@ class Worker(_Worker):
 
                     if task['name'] == 'colmena' and self._enable_redis:
                         assert(self.redis.is_connected)
-                        task['stdout'] = str(serialize.FuncSerializer.serialize_obj(task['return_value']))
+                        task['stdout'] = str(self.serialize_obj(task['return_value']))
                         self.redis.put(task['stdout'], topic='rp result queue')
                         task['stdout']                     = 'redirected_to_redis'   
                         task['return_value']               = 'redirected_to_redis'
@@ -139,10 +137,11 @@ class Worker(_Worker):
             redis_task = self.redis.get(topic = 'rp task queue')[1]
             if redis_task:
                 if task['description']['pyfunction']:
-                    des_task = serialize.FuncSerializer.deserialize_obj(eval(redis_task))
-                    task['description']['pyfunction'] = des_task
+                    self._log.debug('redis_task====>')
+                    self._log.debug((redis_task))
+                    task['description']['pyfunction'] = redis_task
                 else:
-                    task['description']['executable'] = eval(redis_task)
+                    task['description']['executable'] = redis_task
 
         return super()._dispatch_pyfunction(task, env)
 

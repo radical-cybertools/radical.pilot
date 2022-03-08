@@ -5,10 +5,11 @@ __license__   = "MIT"
 import pickle
 import codecs
 import functools
-from radical.pilot.serialize import serializer as serialize
+
+from .serializer import Serializer
 
 TASK = dict 
-
+_SER = Serializer()
 
 class PythonTask(object):
 
@@ -20,12 +21,12 @@ class PythonTask(object):
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """
-        ser_func = serialize.FuncSerializer.serialize_obj(func)
+        ser_func = _SER.serialize_obj(func)
         TASK = {'func'  :ser_func,
                 'args'  :args,
                 'kwargs':kwargs}
         try:
-            SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+            SER_TASK = _SER.serialize_bson(TASK)
             return SER_TASK
         except Exception as e:
             raise ValueError(e)
@@ -46,12 +47,13 @@ class PythonTask(object):
 
         @functools.wraps(f)
         def decor(*args, **kwargs): 
-            ser_func = serialize.FuncSerializer.serialize_obj(f)
+            ser_func = _SER.serialize_obj(f)
+
             TASK = {'func'  :ser_func,
                     'args'  :args,
                     'kwargs':kwargs}
             try:
-                SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+                SER_TASK = _SER.serialize_bson(TASK)
                 return SER_TASK
             except Exception as e:
                 raise ValueError(e)
@@ -64,12 +66,12 @@ class PythonTask(object):
 
         @functools.wraps(f)
         def decor(*args, **kwargs):
-            ser_func = serialize.FuncSerializer.serialize_obj(f)
+            ser_func = _SER.serialize_obj(f)
             TASK = {'func'  :ser_func,
                     'args'  :args,
                     'kwargs':kwargs}
             try:
-                SER_TASK = codecs.encode(pickle.dumps(TASK), "base64").decode()
+                SER_TASK = _SER.serialize_bson(TASK)
                 return SER_TASK
             except Exception as e:
                 raise ValueError(e)

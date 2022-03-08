@@ -10,11 +10,12 @@ import threading         as mt
 import radical.utils     as ru
 
 from .worker            import Worker
+
+from ..serializer       import Serializer
 from ..task_description import MPI as RP_MPI
 from ..task_description import TASK_FUNCTION, TASK_PY_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
-from radical.pilot.serialize import serializer as serialize
 
 # MPI message tags
 TAG_REGISTER_REQUESTS    = 110
@@ -353,7 +354,7 @@ class _ResultPusher(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class _Worker(mt.Thread):
+class _Worker(mt.Thread, Serializer):
 
     # --------------------------------------------------------------------------
     #
@@ -544,8 +545,9 @@ class _Worker(mt.Thread):
         task_descr = task['description']
         task_func  = task_descr['pyfunction']
         
-        func_info  = pickle.loads(codecs.decode(task_func.encode(),"base64"))
-        to_call = serialize.FuncSerializer.deserialize_obj(func_info['func'])
+        func_info  = self.deserialize_bson(task_func)
+        
+        to_call = self.deserialize_obj(func_info['func'])
         args    = func_info["args"]
         kwargs  = func_info["kwargs"]
 

@@ -31,6 +31,8 @@ from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
 
+from .serializer                import Serializer
+
 from .deprecated                import ComputePilot, ComputePilotDescription
 from .deprecated                import ComputeUnit,  ComputeUnitDescription
 from .deprecated                import UnitManager
@@ -43,7 +45,6 @@ from . import worker
 from . import tmgr
 from . import pmgr
 from . import agent
-from . import serialize
 
 from .agent  import Agent_0
 from .agent  import Agent_n
