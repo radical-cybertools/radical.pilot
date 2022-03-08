@@ -314,11 +314,17 @@
         "lfs_size_per_node"           : 2516582,
         "agent_scheduler"             : "NOOP",
         "agent_spawner"               : "MPIFUNCS",
-        "agent_launch_method"         : "MPIRUN",
-        "task_launch_method"          : "FUNCS",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN", "FUNCS"],
+                                         "FUNCS" : {},
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [
+                                                 "module load gcc",
+                                                 "module load openmpi/3.1.6-gcc8.3.1"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module reset",
-                                         "module load gcc",
-                                         "module load openmpi/3.1.6-gcc8.3.1",
                                          "module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$PROJECT",
