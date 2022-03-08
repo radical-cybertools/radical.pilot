@@ -44,19 +44,32 @@ class Serializer(object):
         if callable(obj):
             try:
                 result = _DUMPOBJ(obj)
-
             except Exception as e:
+                exception = e
                 self._log.error("failed to serialize object: %s", e)
 
             if not result:
                 # see issue: https://github.com/uqfoundation/dill/issues/128
-                result = _DUMPOBJ(obj, byref= True)
+                try:
+                    result = _DUMPOBJ(obj, byref = True)
+                except Exception as e:
+                    exception = e
+                    self._log.error("failed to serialize object (by ref): %s", e)
 
         else:
             try:
-                result = _DUMPOBJ(obj, recurse=True)
+                result = _DUMPOBJ(obj, recurse = True)
             except Exception as e:
+                exception = e
                 self._log.error("failed to serialize object: %s", e)
+
+            if not result:
+                # see issue: https://github.com/uqfoundation/dill/issues/128
+                try:
+                    result = _DUMPOBJ(obj, byref = True)
+                except Exception as e:
+                    exception = e
+                    self._log.error("failed to serialize object (by ref): %s", e)
 
         if result is None:
             raise Exception("object %s is not serializable", exception)
@@ -84,7 +97,7 @@ class Serializer(object):
         else:
             try:
                 with open(self._obj_file_path, 'wb') as f:
-                    _DUMPFILE(obj, f, recurse=True)
+                    _DUMPFILE(obj, f, recurse = True)
                     result = self._obj_file_path
             except Exception as e:
                 exception = e
@@ -117,23 +130,24 @@ class Serializer(object):
             self._log.error("failed to deserialize object: %s", exception)
 
         if result is None:
-            raise Exception("deserilization from file failed: file does not exist")
+            raise Exception("deserilization from file failed: %s", exception)
         return result
 
-    def deserialize_obj(self, bin_obj):
+
+    def deserialize_obj(self, obj):
         """
-        Deserialize object from binary object
+        Deserialize object from str
         """
         result = None
         exception = None
 
         try:
-            result = _LOADOBJ(bin_obj)
+            result = _LOADOBJ(obj)
             self._log.debug(result)
 
         except Exception as e:
             exception = e
-            self._log.error("failed to deserialize function from object due to %s:", e)
+            self._log.error("failed to deserialize from object: %s", e)
 
         if result is None:
             raise Exception("deserilization from object failed: %s", exception)
@@ -142,31 +156,19 @@ class Serializer(object):
 
     def serialize_bson(self, obj):
 
-        result = None
-        exception = None
-
         try:
             result = codecs.encode(pickle.dumps(obj), "base64").decode()
         except Exception as e:
-            self._log.error("failed to serialize object to mongo_obj: %s", e)
-
-        if not result:
-            raise Exception("serilization to mongo_obj failed: %s", exception)
+            raise Exception("serilization to mongo_obj failed: %s", e)
 
         return result
 
 
     def deserialize_bson(self, obj):
 
-        result = None
-        exception = None
-
         try:
             result = pickle.loads(codecs.decode(obj.encode(), "base64"))
         except Exception as e:
-            self._log.error("failed to deserialize mongo_obj: %s", e)
-
-        if not result:
-            raise Exception("deserilization from mongo_obj failed: %s", exception)
+            raise Exception("deserilization from mongo_obj failed: %s", e)
 
         return result
