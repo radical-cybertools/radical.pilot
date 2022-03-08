@@ -3,16 +3,12 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import os
+import dill
 import pickle
 import codecs
 import pathlib
 
 import radical.utils as ru
-
-from dill import dump  as _DUMPFILE
-from dill import load  as _LOADFILE
-from dill import dumps as _DUMPOBJ
-from dill import loads as _LOADOBJ
 
 
 class Serializer(object):
@@ -43,33 +39,33 @@ class Serializer(object):
 
         if callable(obj):
             try:
-                result = _DUMPOBJ(obj)
+                result = dill.dumps(obj)
             except Exception as e:
                 exception = e
-                self._log.error("failed to serialize object: %s", e)
+                self._log.exception("failed to serialize object: %s", e)
 
             if not result:
                 # see issue: https://github.com/uqfoundation/dill/issues/128
                 try:
-                    result = _DUMPOBJ(obj, byref = True)
+                    result = dill.dumps(obj, byref = True)
                 except Exception as e:
                     exception = e
-                    self._log.error("failed to serialize object (by ref): %s", e)
+                    self._log.exception("failed to serialize object (by ref): %s", e)
 
         else:
             try:
-                result = _DUMPOBJ(obj, recurse = True)
+                result = dill.dumps(obj, recurse = True)
             except Exception as e:
                 exception = e
-                self._log.error("failed to serialize object: %s", e)
+                self._log.exception("failed to serialize object: %s", e)
 
             if not result:
                 # see issue: https://github.com/uqfoundation/dill/issues/128
                 try:
-                    result = _DUMPOBJ(obj, byref = True)
+                    result = dill.dumps(obj, byref = True)
                 except Exception as e:
                     exception = e
-                    self._log.error("failed to serialize object (by ref): %s", e)
+                    self._log.exception("failed to serialize object (by ref): %s", e)
 
         if result is None:
             raise Exception("object %s is not serializable", exception)
@@ -87,21 +83,21 @@ class Serializer(object):
         if callable(obj):
             try:
                 with open(self._obj_file_path, 'wb') as f:
-                    _DUMPFILE(obj, f)
+                    dill.dump(obj, f)
                     result = self._obj_file_path
 
             except Exception as e:
                 exception = e
-                self._log.error("failed to serialize object to file: %s", e)
+                self._log.exception("failed to serialize object to file: %s", e)
 
         else:
             try:
                 with open(self._obj_file_path, 'wb') as f:
-                    _DUMPFILE(obj, f, recurse = True)
+                    dill.dump(obj, f, recurse = True)
                     result = self._obj_file_path
             except Exception as e:
                 exception = e
-                self._log.error("failed to serialize object to file: %s", e)
+                self._log.exception("failed to serialize object to file: %s", e)
 
         if result is None:
             raise Exception("object is not serializable: %s", exception)
@@ -115,23 +111,21 @@ class Serializer(object):
         Deserialize object from file
         """
         result = None
-        exception = None
 
-        if os.path.isfile(file_obj):
-            try:
-                with open(file_obj, 'rb') as f:
-                    result = _LOADFILE(f)
-                    self._log.debug(result)
+        if not os.path.isfile(file_obj):
+            self._log.error("%s is not a file", file_obj)
+            return None
 
-            except Exception as e:
-                exception = e
-                self._log.error("failed to deserialize object from file: %s", e)
-        else:
-            self._log.error("failed to deserialize object: %s", exception)
+        try:
+            with open(file_obj, 'rb') as f:
+                result = dill.load(f)
+                self._log.debug(result)
+                if not result:
+                    raise RuntimeError('failed to deserialize')
+                return result
 
-        if result is None:
-            raise Exception("deserilization from file failed: %s", exception)
-        return result
+        except Exception as e:
+            self._log.exception("failed to deserialize object from file: %s", e)
 
 
     def deserialize_obj(self, obj):
@@ -139,36 +133,27 @@ class Serializer(object):
         Deserialize object from str
         """
         result = None
-        exception = None
 
         try:
-            result = _LOADOBJ(obj)
+            result = dill.loads(obj)
             self._log.debug(result)
+            if not result:
+                raise RuntimeError('failed to deserialize')
+            return result
 
         except Exception as e:
-            exception = e
-            self._log.error("failed to deserialize from object: %s", e)
-
-        if result is None:
-            raise Exception("deserilization from object failed: %s", exception)
-        return result
+            self._log.exception("failed to deserialize from object: %s", e)
 
 
     def serialize_bson(self, obj):
 
-        try:
-            result = codecs.encode(pickle.dumps(obj), "base64").decode()
-        except Exception as e:
-            raise Exception("serilization to mongo_obj failed: %s", e)
+        result = codecs.encode(pickle.dumps(obj), "base64").decode()
 
         return result
 
 
     def deserialize_bson(self, obj):
 
-        try:
-            result = pickle.loads(codecs.decode(obj.encode(), "base64"))
-        except Exception as e:
-            raise Exception("deserilization from mongo_obj failed: %s", e)
+        result = pickle.loads(codecs.decode(obj.encode(), "base64"))
 
         return result
