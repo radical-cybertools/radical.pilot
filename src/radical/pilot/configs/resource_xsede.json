@@ -325,10 +325,7 @@
                                              ]
                                          }
                                         },
-        "pre_bootstrap_0"             : ["module reset",
-                                       # "module load slurm",
-                                         "module load anaconda3"
-                                        ],
+        "pre_bootstrap_0"             : ["module load anaconda3"],
         "default_remote_workdir"      : "$PROJECT",
         "valid_roots"                 : ["/home", "/ocean"],
         "rp_version"                  : "local",
