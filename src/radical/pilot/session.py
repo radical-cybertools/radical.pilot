@@ -15,8 +15,9 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from . import constants as rpc
-from . import utils     as rpu
+from .      import constants as rpc
+from .      import utils     as rpu
+from .proxy import Proxy
 
 
 # ------------------------------------------------------------------------------
@@ -55,8 +56,9 @@ class Session(rs.Session):
         **Arguments:**
             * **service_url** (`string`): The Bridge Service URL.
               If none is given, RP uses the environment variable
-              RADICAL_PILOT_SERVICE_URL.  If that is not set, an error will be
-              raised.
+              RADICAL_PILOT_SERVICE_URL.  If that is not set, a temporary
+              service will be started on localhost for the time of the
+              application's execution.
 
             * **cfg** (`str` or `dict`): a named or instantiated configuration
               to be used for the session.
@@ -156,9 +158,22 @@ class Session(rs.Session):
             service_url = os.environ.get('RADICAL_PILOT_SERVICE_URL')
 
         if not service_url:
-            # FIXME MongoDB: in this case, start an embedded service
-            raise RuntimeError("no service url (set RADICAL_PILOT_SERVICE_URL)")
+            if not _primary:
+                raise RuntimeError('no proxy service URL?')
 
+            else:
+                # start a temporary embedded service
+                self._proxy_addr   = None
+                self._proxy_event  = mt.Event()
+
+                self._proxy_thread = mt.Thread(target=self._proxy)
+                self._proxy_thread.daemon = True
+                self._proxy_thread.start()
+
+                self._proxy_event.wait()
+                assert(self._proxy_addr)
+                service_url = self._proxy_addr
+                os.environ['RADICAL_PILOT_SERVICE_URL'] = service_url
 
         self._cfg.service_url = service_url
 
@@ -305,6 +320,30 @@ class Session(rs.Session):
 
             tgt = '%s/%s.json' % (self.path, self.uid)
             ru.write_json(json, tgt)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _proxy(self):
+
+        bridge = Proxy()
+
+        try:
+            bridge.start()
+
+            self._proxy_addr = bridge.addr
+            self._proxy_event.set()
+
+            # run forever until process is interrupted or killed
+            while True:
+                time.sleep(1)
+
+        finally:
+            bridge.stop()
+            bridge.wait()
+
+
+# ------------------------------------------------------------------------------
 
 
     # --------------------------------------------------------------------------

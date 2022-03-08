@@ -67,7 +67,7 @@ if __name__ == '__main__':
 
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1  # 024 * 1024  # number of tasks to run
+        n = 1024 * 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.

@@ -250,7 +250,7 @@ setup_args = {
   # 'setup_requires'     : ['pytest-runner'],
     'install_requires'   : ['radical.utils>=1.12',
                             'radical.saga>=1.12',
-                            'pymongo<4',
+                            'dill',
                             'setproctitle'
                            ],
     'extras_require'     : {'autopilot' : ['github3.py']},

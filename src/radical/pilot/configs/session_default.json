@@ -5,7 +5,6 @@
 {
     "service_url"  : "${RADICAL_PILOT_SERVICE_URL}",
     "session_base" : "${RADICAL_PILOT_SESSION_BASE:$PWD}",
-    "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
 
     "heartbeat"    : {
         "interval" :  1.0,

@@ -753,14 +753,14 @@ class TaskManager(rpu.Component):
                 ret += tasks
                 tasks = list()
 
-        self._rep.progress_done()
-
         # submit remaining bulk (if any)
         if tasks:
             task_docs = [u.as_dict() for u in tasks]
             self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                          publish=True, push=True)
             ret += tasks
+
+        self._rep.progress_done()
 
         if ret_list: return ret
         else       : return ret[0]
