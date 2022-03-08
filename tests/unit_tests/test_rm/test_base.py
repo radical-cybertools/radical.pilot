@@ -41,10 +41,10 @@ class RMBaseTestCase(TestCase):
                           'gpus_per_node'  : 2})
 
         c = ru.zmq.RegistryClient(url=reg.addr)
-        c.put('rm.resourcemanager', rm_info)
+        c.put('rm.resourcemanager', rm_info.as_dict())
         c.close()
 
-        rm = ResourceManager(cfg=ru.Munch({'reg_addr': reg.addr}),
+        rm = ResourceManager(cfg=ru.TypedDict({'reg_addr': reg.addr}),
                              log=mock.Mock(), prof=mock.Mock())
 
         self.assertIsInstance(rm.info, RMInfo)
@@ -62,12 +62,12 @@ class RMBaseTestCase(TestCase):
 
         os.environ['LOCAL'] = '/tmp/local_folder/'
 
-        cfg = ru.Munch({'cores': 16,
-                        'gpus': 2,
-                        'resource_cfg': {'cores_per_node': 16,
-                                         'gpus_per_node': 2,
-                                         'lfs_path_per_node': '${LOCAL}',
-                                         'lfs_size_per_node': 100}})
+        cfg = ru.TypedDict({'cores': 16,
+                            'gpus': 2,
+                            'resource_cfg': {'cores_per_node': 16,
+                                             'gpus_per_node': 2,
+                                             'lfs_path_per_node': '${LOCAL}',
+                                             'lfs_size_per_node': 100}})
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._cfg  = cfg
@@ -116,11 +116,11 @@ class RMBaseTestCase(TestCase):
                                            tc_map['result']):
 
             def _init_from_scratch(foo, rm_info_input):
-                return ru.Munch(foo)
+                return ru.TypedDict(foo)
 
             from functools import partial
 
-            rm._cfg = ru.Munch(rm_cfg)
+            rm._cfg = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
             rm_info_output = rm.init_from_scratch()
@@ -162,7 +162,7 @@ class RMBaseTestCase(TestCase):
 
         os.environ['LOCAL'] = '/tmp/local_folder/'
 
-        cfg = ru.Munch({
+        cfg = ru.TypedDict({
             'cores'        : 16,
             'gpus'         : 2,
             'resource_cfg' : {
@@ -203,17 +203,37 @@ class RMBaseTestCase(TestCase):
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._log = rm._prof = mock.Mock()
-        rm._cfg = ru.Munch({'pid'     : None,
-                            'reg_addr': None,
-                            'resource_cfg': {'launch_methods': {'SRUN': {}}}})
+        rm._cfg = ru.TypedDict({'pid'     : None,
+                                'reg_addr': None,
+                                'resource_cfg': {
+                                    'launch_methods': {'SRUN': {}}
+                                }})
 
         rm._prepare_launch_methods(None)
-
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
+        self.assertEqual(rm._launch_order, ['SRUN'])
+
+        rm._cfg.resource_cfg.launch_methods = {'order': ['SSH'],
+                                               'SRUN' : {},
+                                               'SSH'  : {}}
+        rm._prepare_launch_methods(None)
+        self.assertEqual(rm._launch_order, ['SSH'])
 
         rm._cfg.resource_cfg.launch_methods = {}
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
+
+        def lm_raise_exception():
+            raise Exception('LM Error')
+
+        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        mocked_lm.create = lm_raise_exception
+        # all LMs will be skipped, thus RuntimeError raised
+        with self.assertRaises(RuntimeError):
+            rm._prepare_launch_methods(None)
+        # check that exception was logged (sign that LM exception was raised)
+        self.assertTrue(rm._log.exception.called)
+
 
 # ------------------------------------------------------------------------------
 

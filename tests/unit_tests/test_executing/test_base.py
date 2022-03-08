@@ -59,7 +59,7 @@ class TestBaseExecuting(TestCase):
     def test_initialize(self, mocked_rm, mocked_init):
 
         ec = AgentExecutingComponent(cfg=None, session=None)
-        ec._cfg = ru.Munch(from_dict={
+        ec._cfg = ru.TypedDict(from_dict={
             'sid'             : 'sid.0000',
             'resource_manager': 'FORK',
             'resource_sandbox': '',
