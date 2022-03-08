@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-__author__    = 'RADICAL Team'
-__email__     = 'radical@rutgers.edu'
-__copyright__ = 'Copyright 2013-20, RADICAL Research, Rutgers University'
+__author__    = 'RADICAL-Cybertools Team'
+__email__     = 'info@radical-cybertools.org'
+__copyright__ = 'Copyright 2013-22, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 
@@ -16,13 +16,36 @@ import shutil
 
 import subprocess as sp
 
-
 from setuptools import setup, Command, find_namespace_packages
 
 
 # ------------------------------------------------------------------------------
 name     = 'radical.pilot'
 mod_root = 'src/radical/pilot/'
+
+# ------------------------------------------------------------------------------
+#
+# pip warning:
+# "In-tree builds are now default. pip 22.1 will enforce this behaviour change.
+#  A possible replacement is to remove the --use-feature=in-tree-build flag."
+#
+# With this change we need to make sure to clean out all temporary files from
+# the src tree. Specifically create (and thus need to clean)
+#   - VERSION
+#   - SDIST
+#   - the sdist file itself (a tarball)
+#
+# `pip install` (or any other direct or indirect invocation of `setup.py`) will
+# in fact run `setup.py` multiple times: one on the top level, and internally
+# again with other arguments to build sdist and bwheel packages.  We must *not*
+# clean out temporary files in those internal runs as that would invalidate the
+# install.
+#
+# We thus introduce an env variable `SDIST_LEVEL` which allows us to separate
+# internal calls from the top level invocation - we only clean on the latter
+# (see end of this file).
+sdist_level = int(os.environ.get('SDIST_LEVEL', 0))
+os.environ['SDIST_LEVEL'] = str(sdist_level + 1)
 
 
 # ------------------------------------------------------------------------------
@@ -123,9 +146,9 @@ def get_version(_mod_root):
             # pip install will untar the sdist in a tmp tree.  In that tmp
             # tree, we won't be able to derive git version tags -- so we pack
             # the formerly derived version as ./VERSION
-            shutil.move("VERSION", "VERSION.bak")              # backup
-            shutil.copy("%s/VERSION" % _path, "VERSION")       # version to use
-            os.system  ("python3 setup.py sdist")               # build sdist
+            shutil.move('VERSION', 'VERSION.bak')              # backup
+            shutil.copy('%s/VERSION' % _path, 'VERSION')       # version to use
+            os.system  ('python3 setup.py sdist')              # build sdist
             shutil.copy('dist/%s' % _sdist_name,
                         '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')              # restore version
@@ -140,23 +163,14 @@ def get_version(_mod_root):
 
 
 # ------------------------------------------------------------------------------
-# check python version, should be >= 3.6
-if sys.hexversion < 0x03060000:
-    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
-
-
-# ------------------------------------------------------------------------------
 # get version info -- this will create VERSION and srcroot/VERSION
 version, version_detail, sdist_name, path = get_version(mod_root)
 
 
 # ------------------------------------------------------------------------------
-#
-def read(fname):
-    try:
-        return open(fname, encoding='utf-8').read()
-    except Exception:
-        return ''
+# check python version, should be >= 3.6
+if sys.hexversion < 0x03060000:
+    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -192,7 +206,6 @@ setup_args = {
     'namespace_packages' : ['radical'],
     'version'            : version,
     'description'        : 'The RADICAL pilot job framework',
-  # 'long_description'   : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'             : 'RADICAL Group at Rutgers University',
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
@@ -252,7 +265,6 @@ setup_args = {
                             'pymongo<4',
                             'setproctitle'
                            ],
-    'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
                             'pylint',
                             'flake8',
@@ -281,10 +293,14 @@ setup_args = {
 #
 setup(**setup_args)
 
-os.system('rm -rf src/%s.egg-info' % name)
-# os.system('rm -rf %s/VERSION'      % path)
-# os.system('rm -rf %s/VERSION.git'  % path)
-# os.system('rm -rf %s/SDIST'        % path)
+
+# ------------------------------------------------------------------------------
+# clean temporary files from source tree
+if sdist_level == 0:
+    os.system('rm -vrf src/%s.egg-info' % name)
+    os.system('rm -vf  %s/%s'           % (path, sdist_name))
+    os.system('rm -vf  %s/VERSION'      % path)
+    os.system('rm -vf  %s/SDIST'        % path)
 
 
 # ------------------------------------------------------------------------------
