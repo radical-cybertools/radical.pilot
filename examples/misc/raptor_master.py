@@ -4,11 +4,11 @@
 import os
 import sys
 import time
-import random
 
 import radical.utils as ru
 import radical.pilot as rp
 
+from radical.pilot import PythonTask
 
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
@@ -21,6 +21,24 @@ import radical.pilot as rp
 #   - terminate the worker
 #
 # The worker itself is an external program which is not covered in this code.
+
+pytask = PythonTask.pythontask
+
+
+@pytask
+def func_mpi(msg,comm=None,sleep=0):
+    import time
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
+
+
+@pytask
+def func_non_mpi(a):
+    import math
+    import random
+    b = random.random()
+    t = math.exp(a * b)
+    return t
 
 
 # ------------------------------------------------------------------------------
@@ -37,18 +55,20 @@ class MyMaster(rp.raptor.Master):
     def __init__(self, cfg):
 
         self._cnt = 0
-        self._submitted = {rp.TASK_EXECUTABLE : 0,
-                           rp.TASK_FUNCTION   : 0,
-                           rp.TASK_EVAL       : 0,
-                           rp.TASK_EXEC       : 0,
-                           rp.TASK_PROC       : 0,
-                           rp.TASK_SHELL      : 0}
-        self._collected = {rp.TASK_EXECUTABLE : 0,
-                           rp.TASK_FUNCTION   : 0,
-                           rp.TASK_EVAL       : 0,
-                           rp.TASK_EXEC       : 0,
-                           rp.TASK_PROC       : 0,
-                           rp.TASK_SHELL      : 0}
+        self._submitted = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_PY_FUNCTION : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
+        self._collected = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_PY_FUNCTION : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
@@ -84,6 +104,24 @@ class MyMaster(rp.raptor.Master):
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i},
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi_pyfunc.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'pyfunction'      : func_mpi(msg='task.call.m.%06d' % i, comm=None,
+                                                                         sleep=0),
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.pyfunc.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'pyfunction'      : func_non_mpi(i),
                 'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({

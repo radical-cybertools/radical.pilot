@@ -2,12 +2,29 @@
 
 import os
 import sys
-import json
-import time
-import random
 
 import radical.utils as ru
 import radical.pilot as rp
+
+from radical.pilot import PythonTask
+
+pytask = PythonTask.pythontask
+
+
+@pytask
+def func_mpi(msg,comm=None,sleep=0):
+    import time
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
+
+
+@pytask
+def func_non_mpi(a):
+    import math
+    import random
+    b = random.random()
+    t = math.exp(a * b)
+    return t
 
 
 # ------------------------------------------------------------------------------
@@ -137,6 +154,24 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_FUNCTION,
                 'function'        : 'my_hello',
                 'kwargs'          : {'uid': 'task.call.c.3/%06d' % i},
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi_pyfunc.c.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'pyfunction'      : func_mpi(msg='task.call.c.%06d' % i, comm=None,
+                                                                         sleep=0),
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.pyfunc.c.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PY_FUNCTION,
+                'cpu_processes'   : 2,
+                'pyfunction'      : func_non_mpi(i),
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
