@@ -663,18 +663,18 @@ class Default(PMGRLaunchingComponent):
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
-        number_nodes    = pilot['description']['nodes']
-        number_cores    = pilot['description']['cores']
-        number_gpus     = pilot['description']['gpus']
-        required_memory = pilot['description']['memory']
-        runtime         = pilot['description']['runtime']
-        app_comm        = pilot['description']['app_comm']
-        queue           = pilot['description']['queue']
-        job_name        = pilot['description']['job_name']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        candidate_hosts = pilot['description']['candidate_hosts']
-        services        = pilot['description']['services']
+        requested_nodes  = pilot['description']['nodes']
+        requested_cores  = pilot['description']['cores']
+        requested_gpus   = pilot['description']['gpus']
+        requested_memory = pilot['description']['memory']
+        runtime          = pilot['description']['runtime']
+        app_comm         = pilot['description']['app_comm']
+        queue            = pilot['description']['queue']
+        job_name         = pilot['description']['job_name']
+        project          = pilot['description']['project']
+        cleanup          = pilot['description']['cleanup']
+        candidate_hosts  = pilot['description']['candidate_hosts']
+        services         = pilot['description']['services']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -688,16 +688,18 @@ class Default(PMGRLaunchingComponent):
         resource_manager        = rcfg.get('resource_manager')
         pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        python_interpreter      = rcfg.get('python_interpreter')
-        rp_version              = rcfg.get('rp_version')
-        virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',             default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 1)
+        cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        blocked_cores           = rcfg.get('blocked_cores', [])
+        blocked_gpus            = rcfg.get('blocked_gpus',  [])
         lfs_path_per_node       = rcfg.get('lfs_path_per_node')
         lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
+        python_interpreter      = rcfg.get('python_interpreter')
         python_dist             = rcfg.get('python_dist')
-        virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
+        virtenv_dist            = rcfg.get('virtenv_dist', DEFAULT_VIRTENV_DIST)
+        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
+        virtenv                 = rcfg.get('virtenv',      default_virtenv)
+        rp_version              = rcfg.get('rp_version')
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
@@ -712,6 +714,24 @@ class Default(PMGRLaunchingComponent):
         system_architecture     = rcfg.get('system_architecture', {})
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
         services               += rcfg.get('services', [])
+
+        # env variable has higher priority than config parameter
+        if os.environ.get('RADICAL_SAGA_SMT'):
+            try:
+                system_architecture['smt'] = int(os.environ['RADICAL_SAGA_SMT'])
+            except Exception as e:
+                self._log.debug('SAGA SMT not set: %s' % e)
+
+        smt = system_architecture.get('smt') or 1
+        if cores_per_node:
+            cores_per_node *= smt
+            if blocked_cores:
+                cores_per_node -= len(blocked_cores)
+                assert (cores_per_node > 0)
+
+        if gpus_per_node and blocked_gpus:
+            gpus_per_node -= len(blocked_gpus)
+            assert (gpus_per_node >= 0)
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -888,29 +908,31 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
-        if number_nodes:
-            number_cores = number_nodes * cores_per_node
-            number_gpus  = number_nodes * gpus_per_node
-            self._log.debug('nodes: %s [%s %s]',
-                            number_nodes, cores_per_node, gpus_per_node)
-            self._log.debug('nodes: %s [%s %s]',
-                            number_nodes, number_cores,   number_gpus)
+        if requested_nodes:
+            # `cores_per_node` is not set for heterogeneous clusters,
+            # thus `requested_cores` equals to `requested_nodes`
+            # FIXME: to be reviewed - should `cores_per_node` be set to `1`,
+            #        e.g., for Slurm it will allow to set number of tasks
+            #              per node as: "#SBATCH --ntasks-per-node=1"
+            requested_cores = requested_nodes * (cores_per_node or 1)
+            requested_gpus  = requested_nodes * gpus_per_node
+            self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+                            requested_nodes, cores_per_node, gpus_per_node,
+                            requested_cores, requested_gpus)
 
         else:
+            # if `cores_per_node` and/or `gpus_per_node` are set (not None),
+            # then full nodes will be allocated
 
-            # if cores_per_node is set (!= None), then we need to
-            # allocation full nodes, and thus round up
             if cores_per_node:
-                cores_per_node = int(cores_per_node)
-                number_cores   = int(cores_per_node *
-                                 math.ceil(float(number_cores) / cores_per_node))
+                requested_cores = int(
+                    cores_per_node * math.ceil(requested_cores / cores_per_node)
+                )
 
-            # if gpus_per_node is set (!= None), then we need to
-            # allocation full nodes, and thus round up
             if gpus_per_node:
-                gpus_per_node = int(gpus_per_node)
-                number_gpus   = int(gpus_per_node *
-                                math.ceil(float(number_gpus) / gpus_per_node))
+                requested_gpus = int(
+                    gpus_per_node * math.ceil(requested_gpus / gpus_per_node)
+                )
 
         # set mandatory args
         bootstrap_args  = ""
@@ -959,8 +981,8 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
-        agent_cfg['cores']               = number_cores
-        agent_cfg['gpus']                = number_gpus
+        agent_cfg['cores']               = requested_cores
+        agent_cfg['gpus']                = requested_gpus
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
@@ -1081,9 +1103,9 @@ class Default(PMGRLaunchingComponent):
         jd.project               = project
         jd.output                = "bootstrap_0.out"
         jd.error                 = "bootstrap_0.err"
-        jd.total_cpu_count       = number_cores
-        jd.total_gpu_count       = number_gpus
-        jd.total_physical_memory = required_memory
+        jd.total_cpu_count       = requested_cores
+        jd.total_gpu_count       = requested_gpus
+        jd.total_physical_memory = requested_memory
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
@@ -1093,24 +1115,15 @@ class Default(PMGRLaunchingComponent):
         jd.system_architecture   = dict(system_architecture)
 
         # register used resources in DB (enacted on next advance)
-        pilot['resources'] = {'cpu': number_cores,
-                              'gpu': number_gpus}
+        pilot['resources'] = {'cpu': requested_cores,
+                              'gpu': requested_gpus}
         pilot['$set']      = ['resources']
-
 
         # we set any saga_jd_supplement keys which are not already set above
         for key, val in saga_jd_supplement.items():
             if not jd[key]:
                 self._log.debug('supplement %s: %s', key, val)
                 jd[key] = val
-
-        # set saga job description attribute based on env variable(s)
-        if os.environ.get('RADICAL_SAGA_SMT'):
-            try:
-                jd.system_architecture['smt'] = \
-                    int(os.environ['RADICAL_SAGA_SMT'])
-            except Exception as e:
-                self._log.debug('SAGA SMT not set: %s' % e)
 
         # job description environment variable(s) setup
 
