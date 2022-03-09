@@ -101,17 +101,18 @@ class PilotDescription(ru.TypedDict):
 
     .. data:: nodes
 
-       [type: `int` | default: `0`] [**NOT IN USE**] The number of nodes the
-       pilot should allocate on the target resource. This parameter is optional
-       and could be set instead of `cores` and `gpus` (and `memory`).
+       [type: `int` | default: `1`] The number of nodes the pilot should
+       allocate on the target resource. This parameter could be set instead of
+       `cores` and `gpus` (and `memory`).
 
-       .. note:: Either `cores` or `nodes` must be specified.  If `nodes` are
-                 specified, `gpus` must not be specified.
+       .. note:: Either `cores` or `nodes` **must** be specified.  If `nodes`
+                 are specified, `gpus` must not be specified.
 
     .. data:: cores
 
-       [type: `int` | default: `1`] [**mandatory**] The number of cores the
-       pilot should allocate on the target resource.
+       [type: `int` | default: `1`] The number of cores the pilot should
+       allocate on the target resource. This parameter could be set instead of
+       `nodes`.
 
        .. note:: For local pilots, you can set a number larger than the physical
                  machine limit when setting `RADICAL_PILOT_PROFILE` in your
@@ -122,14 +123,6 @@ class PilotDescription(ru.TypedDict):
 
        [type: `int` | default: `0`] The number of gpus the pilot should
        allocate on the target resource.
-
-    .. data:: nodes
-
-       [Type: `int`] [optional] The number of nodes the pilot should
-       allocate on the target resource.
-
-       NOTE: either `cores` or `nodes` must be specified.  If `nodes` are
-             specified, `gpus` must not be specified.
 
     .. data:: memory
 
