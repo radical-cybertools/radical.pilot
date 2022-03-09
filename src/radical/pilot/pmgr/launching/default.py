@@ -888,19 +888,6 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
-        # use local VE ?
-        if virtenv_mode == 'local':
-            if os.environ.get('VIRTUAL_ENV'):
-                python_dist = 'default'
-                virtenv     = os.environ['VIRTUAL_ENV']
-            elif os.environ.get('CONDA_PREFIX'):
-                python_dist = 'anaconda'
-                virtenv     = os.environ['CONDA_PREFIX']
-            else:
-                # we can't use local
-                self._log.error('virtenv_mode is local, no local env found')
-                raise ValueError('no local env found')
-
         if number_nodes:
             number_cores = number_nodes * cores_per_node
             number_gpus  = number_nodes * gpus_per_node
