@@ -42,7 +42,7 @@ class Serializer(object):
                 result = dill.dumps(obj)
             except Exception as e:
                 exception = e
-                self._log.exception("failed to serialize object: %s", e)
+                self._log.exception("failed to serialize object")
 
             if not result:
                 # see issue: https://github.com/uqfoundation/dill/issues/128
@@ -50,14 +50,14 @@ class Serializer(object):
                     result = dill.dumps(obj, byref = True)
                 except Exception as e:
                     exception = e
-                    self._log.exception("failed to serialize object (by ref): %s", e)
+                    self._log.exception("failed to serialize object (by ref)")
 
         else:
             try:
                 result = dill.dumps(obj, recurse = True)
             except Exception as e:
                 exception = e
-                self._log.exception("failed to serialize object: %s", e)
+                self._log.exception("failed to serialize object")
 
             if not result:
                 # see issue: https://github.com/uqfoundation/dill/issues/128
@@ -65,10 +65,10 @@ class Serializer(object):
                     result = dill.dumps(obj, byref = True)
                 except Exception as e:
                     exception = e
-                    self._log.exception("failed to serialize object (by ref): %s", e)
+                    self._log.exception("failed to serialize object (by ref)")
 
         if result is None:
-            raise Exception("object %s is not serializable", exception)
+            raise Exception("object %s is not serializable") from exception
 
         return  result
 
@@ -88,7 +88,7 @@ class Serializer(object):
 
             except Exception as e:
                 exception = e
-                self._log.exception("failed to serialize object to file: %s", e)
+                self._log.exception("failed to serialize object to file")
 
         else:
             try:
@@ -97,35 +97,35 @@ class Serializer(object):
                     result = self._obj_file_path
             except Exception as e:
                 exception = e
-                self._log.exception("failed to serialize object to file: %s", e)
+                self._log.exception("failed to serialize object to file")
 
         if result is None:
-            raise Exception("object is not serializable: %s", exception)
+            raise Exception("object is not serializable") from exception
 
         return self._obj_file_path
 
 
 
-    def deserialize_file(self, file_obj):
+    def deserialize_file(self, fname):
         """
         Deserialize object from file
         """
         result = None
 
-        if not os.path.isfile(file_obj):
-            self._log.error("%s is not a file", file_obj)
+        if not os.path.isfile(fname):
+            self._log.error("%s is not a file", fname)
             return None
 
         try:
-            with open(file_obj, 'rb') as f:
+            with open(fname, 'rb') as f:
                 result = dill.load(f)
                 self._log.debug(result)
-                if not result:
+                if result is None:
                     raise RuntimeError('failed to deserialize')
                 return result
 
         except Exception as e:
-            self._log.exception("failed to deserialize object from file: %s", e)
+            self._log.exception("failed to deserialize object from file")
 
 
     def deserialize_obj(self, obj):
@@ -142,7 +142,7 @@ class Serializer(object):
             return result
 
         except Exception as e:
-            self._log.exception("failed to deserialize from object: %s", e)
+            self._log.exception("failed to deserialize from object")
 
 
     def serialize_bson(self, obj):

@@ -6,8 +6,7 @@ import functools
 
 from .  import utils     as rpu
 
-TASK = dict 
-_SER = rpu.Serializer()
+SER = rpu.Serializer()
 
 
 class PythonTask(object):
@@ -20,12 +19,12 @@ class PythonTask(object):
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """
-        ser_func = _SER.serialize_obj(func)
+        ser_func = SER.serialize_obj(func)
         TASK = {'func'  :ser_func,
                 'args'  :args,
                 'kwargs':kwargs}
         try:
-            SER_TASK = _SER.serialize_bson(TASK)
+            SER_TASK = SER.serialize_bson(TASK)
             return SER_TASK
         except Exception as e:
             raise ValueError(e)
@@ -46,31 +45,13 @@ class PythonTask(object):
 
         @functools.wraps(f)
         def decor(*args, **kwargs): 
-            ser_func = _SER.serialize_obj(f)
+            ser_func = SER.serialize_obj(f)
 
             TASK = {'func'  :ser_func,
                     'args'  :args,
                     'kwargs':kwargs}
             try:
-                SER_TASK = _SER.serialize_bson(TASK)
-                return SER_TASK
-            except Exception as e:
-                raise ValueError(e)
-        return decor
-
-    def mpirun(f):
-
-        if not callable(f):
-            raise ValueError('Task function not callable')
-
-        @functools.wraps(f)
-        def decor(*args, **kwargs):
-            ser_func = _SER.serialize_obj(f)
-            TASK = {'func'  :ser_func,
-                    'args'  :args,
-                    'kwargs':kwargs}
-            try:
-                SER_TASK = _SER.serialize_bson(TASK)
+                SER_TASK = SER.serialize_bson(TASK)
                 return SER_TASK
             except Exception as e:
                 raise ValueError(e)
