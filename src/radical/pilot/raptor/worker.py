@@ -72,7 +72,6 @@ class Worker(object):
             # `get_type` has a chance to find them
             from .worker_default import DefaultWorker
             from .worker_mpi     import MPIWorker
-            from .worker_redis   import WorkerRedis
 
             wclass = rpu.get_type(cname)
 
