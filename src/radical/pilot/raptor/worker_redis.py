@@ -2,11 +2,12 @@ import os
 import threading     as mt
 import radical.utils as ru
 
+from ..           import utils as rpu
 from .worker_mpi  import MPIWorker, _Worker
 from .worker_mpi  import _ResultPusher,_Resources, _TaskPuller
-from ..serializer import Serializer
 
-class Worker(_Worker, Serializer):
+
+class Worker(_Worker):
 
     def __init__(self, rank_task_q_get, rank_result_q_put,
                  event, log, prof, base):
@@ -14,9 +15,10 @@ class Worker(_Worker, Serializer):
         super().__init__(rank_task_q_get, rank_result_q_put,
                          event, log, prof, base)
 
+        self._ser          = rpu.Serializer()
         self._host         = None
         self._port         = None
-        self._enable_redis = False
+        self._enable_redis = False        
 
         try:
             self._host = '127.0.0.1'  # os.environ['REDIS_HOST']
@@ -115,7 +117,7 @@ class Worker(_Worker, Serializer):
 
                     if task['name'] == 'colmena' and self._enable_redis:
                         assert(self.redis.is_connected)
-                        task['stdout'] = str(self.serialize_obj(task['return_value']))
+                        task['stdout'] = str(self._ser.serialize_obj(task['return_value']))
                         self.redis.put(task['stdout'], topic='rp result queue')
                         task['stdout']                     = 'redirected_to_redis'   
                         task['return_value']               = 'redirected_to_redis'

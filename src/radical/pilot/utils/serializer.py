@@ -6,7 +6,7 @@ import os
 import dill
 import pickle
 import codecs
-import pathlib
+import tempfile
 
 import radical.utils as ru
 
@@ -25,7 +25,7 @@ class Serializer(object):
         """ Instantiate the class
         """
         self._log           = ru.Logger(name='serializer', level='DEBUG')
-        self._obj_dir       = pathlib.Path.home()
+        self._obj_dir       = tempfile.gettempdir()
         self._obj_file_name = 'rp_obj.pkl'
         self._obj_file_path = os.path.join(self._obj_dir, self._obj_file_name)
 

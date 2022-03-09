@@ -2,14 +2,13 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import pickle
-import codecs
 import functools
 
-from .serializer import Serializer
+from .  import utils     as rpu
 
 TASK = dict 
-_SER = Serializer()
+_SER = rpu.Serializer()
+
 
 class PythonTask(object):
 

@@ -3,16 +3,14 @@ import os
 import sys
 import time
 import shlex
-import pickle
-import codecs
 
-import threading         as mt
-import radical.utils     as ru
+import threading           as mt
+import radical.utils       as ru
 
 from .worker            import Worker
 
-from ..serializer       import Serializer
-from ..task_description import MPI as RP_MPI
+from ..                 import utils as rpu
+from ..task_description import MPI   as RP_MPI
 from ..task_description import TASK_FUNCTION, TASK_PY_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
@@ -354,7 +352,7 @@ class _ResultPusher(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class _Worker(mt.Thread, Serializer):
+class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
@@ -370,6 +368,7 @@ class _Worker(mt.Thread, Serializer):
         self._log               = log
         self._prof              = prof
         self._base              = base
+        self._ser               = rpu.Serializer()
 
 
     # --------------------------------------------------------------------------
@@ -544,10 +543,10 @@ class _Worker(mt.Thread, Serializer):
         uid        = task['uid']
         task_descr = task['description']
         task_func  = task_descr['pyfunction']
-        
-        func_info  = self.deserialize_bson(task_func)
-        
-        to_call = self.deserialize_obj(func_info['func'])
+
+        func_info  = self._ser.deserialize_bson(task_func)
+
+        to_call = self._ser.deserialize_obj(func_info['func'])
         args    = func_info["args"]
         kwargs  = func_info["kwargs"]
 

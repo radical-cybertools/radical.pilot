@@ -31,8 +31,6 @@ from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
 
-from .serializer                import Serializer
-
 from .deprecated                import ComputePilot, ComputePilotDescription
 from .deprecated                import ComputeUnit,  ComputeUnitDescription
 from .deprecated                import UnitManager
