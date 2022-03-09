@@ -19,10 +19,9 @@ import codecs
 import tempfile
 
 
-
-obj_dir       = tempfile.gettempdir()
-obj_file_name = 'rp_obj.pkl'
-obj_file_path = os.path.join(obj_dir, obj_file_name)
+_obj_dir       = tempfile.gettempdir()
+_obj_file_name = 'rp_obj.pkl'
+_obj_file_path = os.path.join(_obj_dir, _obj_file_name)
 
 
 def serialize_obj(obj):
@@ -80,9 +79,9 @@ def serialize_file(obj):
 
     if callable(obj):
         try:
-            with open(obj_file_path, 'wb') as f:
+            with open(_obj_file_path, 'wb') as f:
                 dill.dump(obj, f)
-                result = obj_file_path
+                result = _obj_file_path
 
         except Exception as e:
             exception = e
@@ -90,9 +89,9 @@ def serialize_file(obj):
 
     else:
         try:
-            with open(obj_file_path, 'wb') as f:
+            with open(_obj_file_path, 'wb') as f:
                 dill.dump(obj, f, recurse = True)
-                result = obj_file_path
+                result = _obj_file_path
         except Exception as e:
             exception = e
             pass
@@ -100,7 +99,7 @@ def serialize_file(obj):
     if result is None:
         raise Exception("object is not serializable") from exception
 
-    return obj_file_path
+    return _obj_file_path
 
 
 
