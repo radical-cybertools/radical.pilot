@@ -1,4 +1,14 @@
 
+"""
+The serializer should be able to (de)serialize information that we want
+to send over the wire from the client side to the agent side via
+1- ZMQ
+2- MongoDB
+
+we except:
+    1- Callables with and without dependecies.
+    2- Non-callables like classes and other python objects
+"""
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -8,152 +18,138 @@ import pickle
 import codecs
 import tempfile
 
-import radical.utils as ru
 
 
-class Serializer(object):
+obj_dir       = tempfile.gettempdir()
+obj_file_name = 'rp_obj.pkl'
+obj_file_path = os.path.join(obj_dir, obj_file_name)
 
+
+def serialize_obj(obj):
     """
-    The serializer should be able to (de)serialize information that we want
-    to send over the wire from the client side to the agent side via
-    1- ZMQ
-    2- MongoDB
+    serialize object
     """
+    result    = None
+    exception = None
 
-
-    def __init__(self):
-        """ Instantiate the class
-        """
-        self._log           = ru.Logger(name='serializer', level='DEBUG')
-        self._obj_dir       = tempfile.gettempdir()
-        self._obj_file_name = 'rp_obj.pkl'
-        self._obj_file_path = os.path.join(self._obj_dir, self._obj_file_name)
-
-
-    def serialize_obj(self, obj):
-        """
-        serialize object
-        """
-        result = None
-        exception = None
-
-        if callable(obj):
-            try:
-                result = dill.dumps(obj)
-            except Exception as e:
-                exception = e
-                self._log.exception("failed to serialize object")
-
-            if not result:
-                # see issue: https://github.com/uqfoundation/dill/issues/128
-                try:
-                    result = dill.dumps(obj, byref = True)
-                except Exception as e:
-                    exception = e
-                    self._log.exception("failed to serialize object (by ref)")
-
-        else:
-            try:
-                result = dill.dumps(obj, recurse = True)
-            except Exception as e:
-                exception = e
-                self._log.exception("failed to serialize object")
-
-            if not result:
-                # see issue: https://github.com/uqfoundation/dill/issues/128
-                try:
-                    result = dill.dumps(obj, byref = True)
-                except Exception as e:
-                    exception = e
-                    self._log.exception("failed to serialize object (by ref)")
-
-        if result is None:
-            raise Exception("object %s is not serializable") from exception
-
-        return  result
-
-
-    def serialize_file(self, obj):
-        """
-        serialize object to file
-        """
-        result = None
-        exception = None
-
-        if callable(obj):
-            try:
-                with open(self._obj_file_path, 'wb') as f:
-                    dill.dump(obj, f)
-                    result = self._obj_file_path
-
-            except Exception as e:
-                exception = e
-                self._log.exception("failed to serialize object to file")
-
-        else:
-            try:
-                with open(self._obj_file_path, 'wb') as f:
-                    dill.dump(obj, f, recurse = True)
-                    result = self._obj_file_path
-            except Exception as e:
-                exception = e
-                self._log.exception("failed to serialize object to file")
-
-        if result is None:
-            raise Exception("object is not serializable") from exception
-
-        return self._obj_file_path
-
-
-
-    def deserialize_file(self, fname):
-        """
-        Deserialize object from file
-        """
-        result = None
-
-        if not os.path.isfile(fname):
-            self._log.error("%s is not a file", fname)
-            return None
-
+    if callable(obj):
         try:
-            with open(fname, 'rb') as f:
-                result = dill.load(f)
-                self._log.debug(result)
-                if result is None:
-                    raise RuntimeError('failed to deserialize')
-                return result
+            result = dill.dumps(obj)
+        except Exception as e:
+            exception = e
+            pass
+
+        # if we fail, then pikle it by reference
+        if result is None:
+            # see issue: https://github.com/uqfoundation/dill/issues/128
+            try:
+                result = dill.dumps(obj, byref = True)
+            except Exception as e:
+                exception = e
+                pass
+
+    else:
+        try:
+            result = dill.dumps(obj, recurse = True)
+        except Exception as e:
+            exception = e
+            pass
+
+        if not result:
+            # see issue: https://github.com/uqfoundation/dill/issues/128
+            try:
+                result = dill.dumps(obj, byref = True)
+            except Exception as e:
+                exception = e
+                pass
+
+    if result is None:
+        raise Exception("object %s is not serializable") from exception
+
+    return  result
+
+
+def serialize_file(obj):
+    """
+    serialize object to file
+    # FIXME: assign unique path and id for the pickled file
+    #        to avoid overwriting to the same file
+    """
+    result    = None
+    exception = None
+
+    if callable(obj):
+        try:
+            with open(obj_file_path, 'wb') as f:
+                dill.dump(obj, f)
+                result = obj_file_path
 
         except Exception as e:
-            self._log.exception("failed to deserialize object from file")
+            exception = e
+            pass
 
-
-    def deserialize_obj(self, obj):
-        """
-        Deserialize object from str
-        """
-        result = None
-
+    else:
         try:
-            result = dill.loads(obj)
-            self._log.debug(result)
-            if not result:
+            with open(obj_file_path, 'wb') as f:
+                dill.dump(obj, f, recurse = True)
+                result = obj_file_path
+        except Exception as e:
+            exception = e
+            pass
+
+    if result is None:
+        raise Exception("object is not serializable") from exception
+
+    return obj_file_path
+
+
+
+def deserialize_file(fname):
+    """
+    Deserialize object from file
+    """
+    result = None
+
+    # check if we have a valid file
+    if not os.path.isfile(fname):
+        return None
+
+    try:
+        with open(fname, 'rb') as f:
+            result = dill.load(f)
+            if result is None:
                 raise RuntimeError('failed to deserialize')
             return result
 
-        except Exception as e:
-            self._log.exception("failed to deserialize from object")
+    except Exception as e:
+        raise Exception ("failed to deserialize object from file") from e
 
 
-    def serialize_bson(self, obj):
+def deserialize_obj(obj):
+    """
+    Deserialize object from str
+    """
+    result = None
 
-        result = codecs.encode(pickle.dumps(obj), "base64").decode()
-
+    try:
+        result = dill.loads(obj)
+        if not result:
+            raise RuntimeError('failed to deserialize')
         return result
 
+    except Exception as e:
+        raise Exception ("failed to deserialize from object") from e
 
-    def deserialize_bson(self, obj):
 
-        result = pickle.loads(codecs.decode(obj.encode(), "base64"))
+def serialize_bson(obj):
 
-        return result
+    result = codecs.encode(pickle.dumps(obj), "base64").decode()
+
+    return result
+
+
+def deserialize_bson(obj):
+
+    result = pickle.loads(codecs.decode(obj.encode(), "base64"))
+
+    return result
