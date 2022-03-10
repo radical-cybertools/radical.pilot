@@ -157,21 +157,21 @@ if __name__ == '__main__':
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.mpi_pyfunc.c.%06d' % i,
+                'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_PY_FUNCTION,
+                'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'pyfunction'      : func_mpi(msg='task.call.c.%06d' % i, comm=None,
+                'function'        : func_mpi(msg='task.call.c.%06d' % i, comm=None,
                                                                          sleep=0),
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.pyfunc.c.%06d' % i,
+                'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_PY_FUNCTION,
+                'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
-                'pyfunction'      : func_non_mpi(i),
+                'function'        : func_non_mpi(i),
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({

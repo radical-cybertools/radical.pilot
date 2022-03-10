@@ -24,7 +24,7 @@ from .task                      import Task
 from .pytask                    import PythonTask
 from .task_description          import TaskDescription
 from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
-from .task_description          import TASK_EXECUTABLE, TASK_FUNCTION, TASK_PY_FUNCTION
+from .task_description          import TASK_EXECUTABLE, TASK_FUNCTION
 from .task_description          import TASK_EXEC, TASK_EVAL, TASK_PROC, TASK_SHELL
 
 from .pilot_manager             import PilotManager

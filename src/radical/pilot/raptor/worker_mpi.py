@@ -12,7 +12,7 @@ from .worker            import Worker
 
 from ..utils            import deserialize_obj, deserialize_bson
 from ..task_description import MPI   as RP_MPI
-from ..task_description import TASK_FUNCTION, TASK_PY_FUNCTION
+from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
@@ -529,76 +529,11 @@ class _Worker(mt.Thread):
         # work on task
         mode = task['description']['mode']
         if   mode == TASK_FUNCTION: return self._dispatch_function(task, env)
-        elif mode == TASK_PY_FUNCTION : return self._dispatch_pyfunction(task, env)
         elif mode == TASK_EVAL    : return self._dispatch_eval(task, env)
         elif mode == TASK_EXEC    : return self._dispatch_exec(task, env)
         elif mode == TASK_PROC    : return self._dispatch_proc(task, env)
         elif mode == TASK_SHELL   : return self._dispatch_shell(task, env)
         else: raise ValueError('cannot handle task mode %s' % mode)
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_pyfunction(self, task, env):
-
-        uid        = task['uid']
-        task_descr = task['description']
-        task_func  = task_descr['pyfunction']
-
-        func_info  = deserialize_bson(task_func)
-
-        to_call = deserialize_obj(func_info['func'])
-        args    = func_info["args"]
-        kwargs  = func_info["kwargs"]
-
-        # Inject the communicator in the kwargs
-        if task['description'].get('cpu_process_type') == RP_MPI:
-            try:
-                kwargs['comm'] = task['description']['args'][0]
-            except:
-                self._log.exception('comm inject failed: %s' % task['uid'])
-
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        old_env = os.environ.copy()
-
-        for k, v in env.items():
-            os.environ[k] = v
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            self._prof.prof('app_start', uid=uid)
-            val = to_call(*args, **kwargs)
-            self._prof.prof('app_stop', uid=uid)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            exc = None
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_call failed: %s' % task['uid'])
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-            os.environ = old_env
-
-
-        return out, err, ret, val, exc
 
 
     # --------------------------------------------------------------------------
@@ -614,26 +549,43 @@ class _Worker(mt.Thread):
               unnamed argument.
         '''
 
-        uid       = task['uid']
-        func_name = task['description']['function']
-        assert(func_name)
+        uid  = task['uid']
+        func = task['description']['function']
 
-        # check if `func_name` is a global name
-        names   = dict(list(globals().items()) + list(locals().items()))
-        to_call = names.get(func_name)
+        to_call = ''
+        args    = task['description'].get('args',   [])
+        kwargs  = task['description'].get('kwargs', {})
+
+        # check if we have a serialized object
+        try:
+            func_info  = deserialize_bson(func)
+            to_call    = deserialize_obj(func_info['func'])
+            args       = func_info["args"]
+            kwargs     = func_info["kwargs"]
+
+            # Inject the communicator in the kwargs
+            if task['description'].get('cpu_process_type') == RP_MPI:
+                kwargs['comm'] = task['description']['args'][0]
+
+
+        except Exception as e:
+            self._log.error('failed to obtain callable from task function')
+
+        if not to_call:
+            assert(func)
+            # check if `func_name` is a global name
+            names   = dict(list(globals().items()) + list(locals().items()))
+            to_call = names.get(func)
+
 
         # if not, check if this is a class method of this worker implementation
         if not to_call:
-            to_call = getattr(self._base, func_name, None)
+            to_call = getattr(self._base, func, None)
 
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))
+            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
             raise ValueError('callable %s not found: %s' % (to_call, task))
-
-
-        args   = task['description'].get('args',   [])
-        kwargs = task['description'].get('kwargs', {})
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
