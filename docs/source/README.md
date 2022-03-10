@@ -5,9 +5,10 @@ ipython kernel install --name "python3" --user
 ```
 
 # How to pass environment variables
-`.env` file
+
+`.env` file #TODO this is being discussed and is not final
 
 # How to generate documentation of notebooks with sphinx
 sphinx-build -b html -d build/doctrees  docs/source/ build/html
 
-# 
+# How to pus/configure sphinx at readthedocs for notebooks
