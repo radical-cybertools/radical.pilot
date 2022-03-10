@@ -38,7 +38,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 2 --cpus-per-task 2 --nodefile=/tmp/task.000014.nodes",
+                "launch_cmd" : "srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 2 --cpus-per-task 2 --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"15\""
             }
         }
