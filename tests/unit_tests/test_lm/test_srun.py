@@ -5,6 +5,8 @@ import os
 from unittest import mock, TestCase
 
 from .test_common import setUp
+from radical.pilot.agent.launch_method.srun import MIN_NNODES_IN_LIST
+from radical.pilot.agent.launch_method.srun import MIN_VSLURM_IN_LIST
 from radical.pilot.agent.launch_method.srun import Srun
 
 
@@ -113,23 +115,38 @@ class TestSrun(TestCase):
         lm_srun = Srun('', {}, None, None, None)
         lm_srun._rm_info = {}
         lm_srun._command = 'srun'
-        lm_srun._version = '19.05.2'
-        lm_srun._vmajor  = 19
+        lm_srun._vmajor  = MIN_VSLURM_IN_LIST + 1
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
             if result != 'RuntimeError':
-                command = lm_srun.get_launch_cmds(task, '')
 
-                try:
-                    self.assertEqual(command, result['launch_cmd'],
-                                              msg=task['uid'])
-                except AssertionError:
-                    print('Expected assertion error as SLURM >18')
+                command = lm_srun.get_launch_cmds(task, '')
+                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
                 if task.get('slots'):
-                    file_name = '%(task_sandbox_path)s/%(uid)s.nodes' % task
-                    self.assertTrue(os.path.isfile(file_name))
+
+                    # mimic that we have n_nodes more than MIN_NNODES_IN_LIST
+                    if len(task['slots']['ranks']) <= MIN_NNODES_IN_LIST:
+                        rank_base = task['slots']['ranks'][0]
+                        del task['slots']['ranks'][:]
+                        for idx in range(MIN_NNODES_IN_LIST + 1):
+                            task['slots']['ranks'].append(dict(rank_base))
+                            task['slots']['ranks'][-1]['node_name'] = str(idx)
+
+                    if len(task['slots']['ranks']) > MIN_NNODES_IN_LIST:
+                        nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
+
+                        # `nodefile` will be (or is already) created
+                        lm_srun.get_launch_cmds(task, '')
+                        self.assertTrue(os.path.isfile(nodefile))
+                        os.unlink(nodefile)
+
+                        # with min Slurm version `nodefile` will not be created
+                        lm_srun._vmajor = MIN_VSLURM_IN_LIST
+                        lm_srun.get_launch_cmds(task, '')
+                        self.assertFalse(os.path.isfile(nodefile))
+                        lm_srun._vmajor = MIN_VSLURM_IN_LIST + 1
 
                 command = lm_srun.get_rank_exec(task, None, None)
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
