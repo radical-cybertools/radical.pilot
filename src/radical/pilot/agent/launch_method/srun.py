@@ -8,6 +8,9 @@ import radical.utils as ru
 
 from .base import LaunchMethod
 
+MIN_NNODES_IN_LIST = 42
+MIN_VSLURM_IN_LIST = 18
+
 
 # ------------------------------------------------------------------------------
 #
@@ -129,15 +132,17 @@ class Srun(LaunchMethod):
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
             nodelist = [rank['node_name'] for rank in slots['ranks']]
+            n_nodes  = len(set(nodelist))
 
             # older slurm versions don't accept nodefiles
-            if self._vmajor > 18:
-                nodefile = '%s/%s.nodes' % (sbox, uid)
-                with ru.ru_open(nodefile, 'w') as fout:
-                    fout.write(','.join(nodelist))
-                    fout.write('\n')
-
-            n_nodes = len(set(nodelist))
+            # 42 node is the upper limit to switch from `--nodelist`
+            # to `--nodefile`
+            if self._vmajor > MIN_VSLURM_IN_LIST:
+                if n_nodes > MIN_NNODES_IN_LIST:
+                    nodefile = '%s/%s.nodes' % (sbox, uid)
+                    with ru.ru_open(nodefile, 'w') as fout:
+                        fout.write(','.join(nodelist))
+                        fout.write('\n')
 
         # use `--exclusive` to ensure all tasks get individual resources.
         # do not use core binding: it triggers warnings on some installations
@@ -152,12 +157,11 @@ class Srun(LaunchMethod):
         if self._rm_info.get('gpus'):
             mapping += ' --gpus-per-task %d' % n_gpus
 
-        if self._vmajor > 18:
-            if nodefile:
-                mapping += ' --nodefile=%s' % nodefile
-        else:
-            if nodelist:
-                mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
+        if nodefile:
+            mapping += ' --nodefile=%s' % nodefile
+
+        elif nodelist:
+            mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
         return cmd.rstrip()
