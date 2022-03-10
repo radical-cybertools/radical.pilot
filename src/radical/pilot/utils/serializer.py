@@ -132,7 +132,7 @@ def deserialize_obj(obj):
 
     try:
         result = dill.loads(obj)
-        if not result:
+        if result is None:
             raise RuntimeError('failed to deserialize')
         return result
 
