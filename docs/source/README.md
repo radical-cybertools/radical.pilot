@@ -11,4 +11,4 @@ ipython kernel install --name "python3" --user
 # How to generate documentation of notebooks with sphinx
 sphinx-build -b html -d build/doctrees  docs/source/ build/html
 
-# How to pus/configure sphinx at readthedocs for notebooks
+# How to pus/configure sphinx at readthedocs for notebooks #TODO
