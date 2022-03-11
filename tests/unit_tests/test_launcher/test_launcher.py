@@ -143,8 +143,8 @@ class TestLauncher(TestCase):
 
         # test resource config parameter `system_architecture`
 
-        # default value is {}
-        self.assertEqual(ret['jd'].system_architecture, {})
+        # default value is {'smt': 1}
+        self.assertEqual(ret['jd'].system_architecture, {'smt': 1})
 
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
