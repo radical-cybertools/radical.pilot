@@ -715,24 +715,6 @@ class Default(PMGRLaunchingComponent):
         saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
         services               += rcfg.get('services', [])
 
-        # env variable has higher priority than config parameter
-        if os.environ.get('RADICAL_SAGA_SMT'):
-            try:
-                system_architecture['smt'] = int(os.environ['RADICAL_SAGA_SMT'])
-            except Exception as e:
-                self._log.debug('SAGA SMT not set: %s' % e)
-
-        smt = system_architecture.get('smt') or 1
-        if cores_per_node:
-            cores_per_node *= smt
-            if blocked_cores:
-                cores_per_node -= len(blocked_cores)
-                assert (cores_per_node > 0)
-
-        if gpus_per_node and blocked_gpus:
-            gpus_per_node -= len(blocked_gpus)
-            assert (gpus_per_node >= 0)
-
         self._log.debug(pprint.pformat(rcfg))
 
         # make sure that mandatory args are known
@@ -908,31 +890,51 @@ class Default(PMGRLaunchingComponent):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
+        # estimate requested resources
+
+        if os.environ.get('RADICAL_SAGA_SMT'):
+            try:
+                system_architecture['smt'] = int(os.environ['RADICAL_SAGA_SMT'])
+            except Exception as e:
+                self._log.debug('SAGA SMT not set: %s' % e)
+
+        smt = system_architecture.get('smt') or 1
+        if cores_per_node:
+            cores_per_node *= smt
+
+        avail_cores_per_node = cores_per_node
+        avail_gpus_per_node  = gpus_per_node
+
+        if avail_cores_per_node and blocked_cores:
+            avail_cores_per_node -= len(blocked_cores)
+            assert (avail_cores_per_node > 0)
+
+        if avail_gpus_per_node and blocked_gpus:
+            avail_gpus_per_node -= len(blocked_gpus)
+            assert (avail_gpus_per_node >= 0)
+
         if requested_nodes:
-            # `cores_per_node` is not set for heterogeneous clusters,
-            # thus `requested_cores` equals to `requested_nodes`
-            # FIXME: to be reviewed - should `cores_per_node` be set to `1`,
-            #        e.g., for Slurm it will allow to set number of tasks
-            #              per node as: "#SBATCH --ntasks-per-node=1"
-            requested_cores = requested_nodes * (cores_per_node or 1)
-            requested_gpus  = requested_nodes * gpus_per_node
-            self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
-                            requested_nodes, cores_per_node, gpus_per_node,
-                            requested_cores, requested_gpus)
+
+            if not cores_per_node:
+                raise RE('use "cores" in PilotDescription')
+
+            requested_cores = requested_nodes * avail_cores_per_node
+            requested_gpus  = requested_nodes * avail_gpus_per_node
 
         else:
-            # if `cores_per_node` and/or `gpus_per_node` are set (not None),
-            # then full nodes will be allocated
 
-            if cores_per_node:
-                requested_cores = int(
-                    cores_per_node * math.ceil(requested_cores / cores_per_node)
-                )
+            if avail_cores_per_node:
+                requested_nodes = requested_cores / avail_cores_per_node
 
-            if gpus_per_node:
-                requested_gpus = int(
-                    gpus_per_node * math.ceil(requested_gpus / gpus_per_node)
-                )
+            if avail_gpus_per_node:
+                requested_nodes = max(requested_gpus  / avail_gpus_per_node,
+                                      requested_nodes)
+
+            requested_nodes = math.ceil(requested_nodes)
+
+        self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+                        requested_nodes, cores_per_node, gpus_per_node,
+                        requested_cores, requested_gpus)
 
         # set mandatory args
         bootstrap_args  = ""
@@ -981,6 +983,7 @@ class Default(PMGRLaunchingComponent):
 
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
+        agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = requested_cores
         agent_cfg['gpus']                = requested_gpus
         agent_cfg['spawner']             = agent_spawner
@@ -1094,17 +1097,20 @@ class Default(PMGRLaunchingComponent):
         # ----------------------------------------------------------------------
         # Create SAGA Job description and submit the pilot job
 
+        total_cpu_count = (requested_nodes * cores_per_node) or requested_cores
+        total_gpu_count = (requested_nodes * gpus_per_node)  or requested_gpus
+
         jd = rs.job.Description()
 
         jd.name                  = job_name
-        jd.executable            = "/bin/bash"
+        jd.executable            = '/bin/bash'
         jd.arguments             = ['-l ./bootstrap_0.sh %s' % bootstrap_args]
         jd.working_directory     = pilot_sandbox
         jd.project               = project
-        jd.output                = "bootstrap_0.out"
-        jd.error                 = "bootstrap_0.err"
-        jd.total_cpu_count       = requested_cores
-        jd.total_gpu_count       = requested_gpus
+        jd.output                = 'bootstrap_0.out'
+        jd.error                 = 'bootstrap_0.err'
+        jd.total_cpu_count       = total_cpu_count
+        jd.total_gpu_count       = total_gpu_count
         jd.total_physical_memory = requested_memory
         jd.processes_per_host    = cores_per_node
         jd.spmd_variation        = spmd_variation
