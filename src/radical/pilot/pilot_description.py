@@ -101,7 +101,7 @@ class PilotDescription(ru.TypedDict):
 
     .. data:: nodes
 
-       [type: `int` | default: `1`] The number of nodes the pilot should
+       [type: `int` | default: `0`] The number of nodes the pilot should
        allocate on the target resource. This parameter could be set instead of
        `cores` and `gpus` (and `memory`).
 
@@ -110,7 +110,7 @@ class PilotDescription(ru.TypedDict):
 
     .. data:: cores
 
-       [type: `int` | default: `1`] The number of cores the pilot should
+       [type: `int` | default: `0`] The number of cores the pilot should
        allocate on the target resource. This parameter could be set instead of
        `nodes`.
 
