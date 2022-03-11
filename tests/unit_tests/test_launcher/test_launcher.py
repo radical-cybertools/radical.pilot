@@ -96,7 +96,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
-                                         }
+                                         'services'       : []}
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'pilot.0001')
@@ -116,8 +116,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
-                                         'services'       : [],
-                                         }
+                                         'services'       : []}
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'pilot.0000')
@@ -137,8 +136,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
-                                         'services'       : [],
-                                         }
+                                         'services'       : []}
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'bar')
