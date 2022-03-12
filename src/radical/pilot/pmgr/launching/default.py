@@ -17,8 +17,6 @@ import radical.gtod            as rg
 import radical.utils           as ru
 import radical.saga            as rs
 
-rsfs = rs.filesystem
-
 from ...  import states        as rps
 from ...  import constants     as rpc
 
@@ -537,9 +535,7 @@ class Default(PMGRLaunchingComponent):
           # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
-            if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s'
-              #                  % (ft['tgt'], tgt))
+            if tgt_dir.startswith(b'..'):
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
