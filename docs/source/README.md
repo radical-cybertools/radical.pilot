@@ -12,8 +12,13 @@ ipython kernel install --name "python3" --user #install a kernel
 ```
 
 # How to pass environment variables
+`.env` file #TODO this is being discussed and is not final.
 
-`.env` file #TODO this is being discussed and is not final
+So users have to create/edit the .env file which is ideally placed in project root directory.
+See usage of dot-env [here](https://github.com/theskumar/python-dotenv).
+```shell
+dotenv set RADICAL_PILOT_DBURL mongodb://127.0.0.1:27017/rpdb
+```
 
 # How to generate documentation of notebooks with sphinx
 
