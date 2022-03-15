@@ -135,14 +135,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     self.log.error(str(e))
             return STDOUT
 
-    def put_redis_task(self, tu):
+    def put_redis_task(self, task):
         '''
         Push a result object to redis queue
         '''
         if self.enable_redis:
             # make sure we are connected to redis
             assert(self.redis.is_connected)
-            source_code = str(dill.dumps(tu))
+            source_code = str(task)
             self.redis.put(source_code, topic = 'rp task queue')
             self.log.debug('task pushed to redis')
 
@@ -167,8 +167,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 pass
             parsl_task.set_result(STDOUT)
             self.log.debug(STDOUT)
-            print('\t+ %s: %-10s: %10s'
-                  % (task.uid, task.state, task.pilot))
+            print('\t+ %s: %-10s: %s'
+                  % (task.uid, task.state, task.stdout))
 
         if state == rp.CANCELED:
             parsl_task.cancel()
@@ -282,18 +282,39 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # ideftify the task type
         try:
-            if isinstance(func, ExecutableTask):
-                task_type = 'bash'
-                return func.executable, args, task_type
-            
+            # Colmena/bash and python migh be partial wrapped
             if isinstance(func, partial):
-                task_type = inspect.getsource(func.args[0]).split('\n')[0]
-                if 'bash' in task_type:
-                    task_type = 'bash'
-                    func = func.args[0]
-                else:
-                    task_type = 'python'
 
+                # type bash/python colmena task
+                if isinstance(func.args[0], ExecutableTask):
+
+                    # we can only check via name now as dfk not returning 
+                    # app type with base class
+                    if '_preprocess' or '_postprocess' in func.__name__:
+                        task_type = 'python'
+                        return func, args, task_type
+
+                    elif '_execute_execute' in func.__name__:
+                        task_type = 'bash'
+                        return func, args, task_type
+
+                # type python (colmena task or non colmena task) or bash_app
+                else:
+                    # @bash_app from parsl
+                    try:
+                        task_type = inspect.getsource(func.args[0]).split('\n')[0]
+                        if 'bash' in task_type:
+                            task_type = 'bash'
+                            func = func.args[0]
+                        else:
+                            task_type = 'python'
+
+                    except Exception as e:
+                        self.report.header(str(e))
+
+                    return func, args, task_type
+
+            # @python_app from parsl
             else:
                 task_type = inspect.getsource(func).split('\n')[0]
                 if 'python' in task_type:
@@ -309,7 +330,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     def task_translate(self, func, args, kwargs):
 
         task = rp.TaskDescription()
-        func, args, task_type = self.unwrap(func, args) 
+        func, args, task_type = self.unwrap(func, args)
 
         if 'bash' in task_type:
             self.report.header('bash app')
@@ -321,12 +342,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
                     if not isinstance(bash_app, str):
                         raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
-                    
-                    cmd = shlex.split(bash_app)
 
                     task.mode       = rp.TASK_PROC
-                    task.executable = cmd[0]
-                    task.arguments  = cmd[1:]
+                    task.executable = bash_app
+                    task.arguments  = []
 
                 except AttributeError as e:
                     raise Exception("failed to obtain bash app cmd: %s", e)
@@ -376,8 +395,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         """
         self.log.debug("Got a task from the parsl.dfk")
 
-        #self._task_counter += 1
-        #task_id = str(self._task_counter)
 
         try:
             self.report.progress_tgt(self._task_counter, label='create')
@@ -385,8 +402,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event= 'trans_stop', uid=self._uid)
-            
-            if task.executable:
+
+            if task.mode == rp.TASK_EXECUTABLE:
                 task.scheduler = None
             else:
                 task.scheduler = 'master.%06d' % (self._task_counter % self.n_masters)
@@ -405,7 +422,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             rp_task = self.tmgr.submit_tasks(task)
 
             self.future_tasks[rp_task.uid] = Future()
-            
+
             return self.future_tasks[rp_task.uid]
 
 

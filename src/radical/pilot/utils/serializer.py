@@ -70,7 +70,7 @@ class Serializer(object):
         if result is None:
             raise Exception("object %s is not serializable", exception)
 
-        return  result
+        return result
 
 
     def serialize_file(self, obj):
@@ -132,17 +132,18 @@ class Serializer(object):
         """
         Deserialize object from str
         """
-        result = None
+        result = None 
+
 
         try:
             result = dill.loads(obj)
             self._log.debug(result)
-            if not result:
+            if result is None:
                 raise RuntimeError('failed to deserialize')
             return result
 
         except Exception as e:
-            self._log.exception("failed to deserialize from object: %s", e)
+            raise Exception("failed to deserialize from object") from e
 
 
     def serialize_bson(self, obj):
