@@ -9,8 +9,8 @@ we except:
     1- Callables with and without dependecies.
     2- Non-callables like classes and other python objects
 """
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import os
 import dill
@@ -36,7 +36,6 @@ def serialize_obj(obj):
             result = dill.dumps(obj)
         except Exception as e:
             exception = e
-            pass
 
         # if we fail, then pikle it by reference
         if result is None:
@@ -45,22 +44,19 @@ def serialize_obj(obj):
                 result = dill.dumps(obj, byref = True)
             except Exception as e:
                 exception = e
-                pass
 
     else:
         try:
             result = dill.dumps(obj, recurse = True)
         except Exception as e:
             exception = e
-            pass
 
-        if not result:
+        if result is None:
             # see issue: https://github.com/uqfoundation/dill/issues/128
             try:
                 result = dill.dumps(obj, byref = True)
             except Exception as e:
                 exception = e
-                pass
 
     if result is None:
         raise Exception("object %s is not serializable") from exception
@@ -85,7 +81,6 @@ def serialize_file(obj):
 
         except Exception as e:
             exception = e
-            pass
 
     else:
         try:
@@ -94,7 +89,6 @@ def serialize_file(obj):
                 result = _obj_file_path
         except Exception as e:
             exception = e
-            pass
 
     if result is None:
         raise Exception("object is not serializable") from exception
