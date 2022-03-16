@@ -96,7 +96,6 @@ def serialize_file(obj):
     return _obj_file_path
 
 
-
 def deserialize_file(fname):
     """
     Deserialize object from file
@@ -110,12 +109,12 @@ def deserialize_file(fname):
     try:
         with open(fname, 'rb') as f:
             result = dill.load(f)
-            if result is None:
-                raise RuntimeError('failed to deserialize')
-            return result
-
     except Exception as e:
         raise Exception ("failed to deserialize object from file") from e
+
+    if result is None:
+        raise RuntimeError('failed to deserialize')
+    return result
 
 
 def deserialize_obj(obj):
@@ -126,12 +125,12 @@ def deserialize_obj(obj):
 
     try:
         result = dill.loads(obj)
-        if result is None:
-            raise RuntimeError('failed to deserialize')
-        return result
-
     except Exception as e:
         raise Exception ("failed to deserialize from object") from e
+
+    if result is None:
+        raise RuntimeError('failed to deserialize')
+    return result
 
 
 def serialize_bson(obj):
