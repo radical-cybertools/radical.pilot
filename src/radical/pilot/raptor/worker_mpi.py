@@ -10,7 +10,7 @@ import radical.utils       as ru
 
 from .worker            import Worker
 
-from ..utils            import deserialize_obj, deserialize_bson
+from ..pytask           import PythonTask
 from ..task_description import MPI   as RP_MPI
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
@@ -558,17 +558,15 @@ class _Worker(mt.Thread):
 
         # check if we have a serialized object
         try:
-            func_info  = deserialize_bson(func)
-            to_call    = deserialize_obj(func_info['func'])
-            args       = func_info["args"]
-            kwargs     = func_info["kwargs"]
+
+            to_call, args, kwargs = PythonTask.get_func_attr(func)
 
             # Inject the communicator in the kwargs
             if task['description'].get('cpu_process_type') == RP_MPI:
                 kwargs['comm'] = task['description']['args'][0]
 
 
-        except Exception as e:
+        except Exception:
             self._log.error('failed to obtain callable from task function')
 
         if not to_call:

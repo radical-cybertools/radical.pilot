@@ -6,6 +6,7 @@ import inspect
 import functools
 
 from .utils import serialize_obj, serialize_bson
+from .utils import deserialize_obj, deserialize_bson
 
 
 class PythonTask(object):
@@ -29,7 +30,17 @@ class PythonTask(object):
             SER_TASK = serialize_bson(TASK)
             return SER_TASK
         except Exception as e:
-            raise ValueError(e)
+            raise ValueError from e
+
+    @staticmethod
+    def get_func_attr(bson_obj):
+
+        if not isinstance(bson_obj, str):
+            raise ValueError('bson object should be string')
+
+        pytask = deserialize_bson(bson_obj)
+        func   = deserialize_obj(pytask['func'])
+        return func, pytask['args'], pytask['kwargs']
 
     def pythontask(f):
         """
