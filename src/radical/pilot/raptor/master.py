@@ -568,7 +568,6 @@ class Master(rpu.Component):
                             publish=True, push=True)
 
 
-
     # --------------------------------------------------------------------------
     #
     def _request_cb(self, tasks):
