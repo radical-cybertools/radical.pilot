@@ -70,8 +70,8 @@ class Worker(object):
         else:
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
-            from .worker_default import DefaultWorker # pylint: disable=unused-import
-            from .worker_mpi     import MPIWorker     # pylint: disable=unused-import
+            from .worker_default import DefaultWorker  # pylint: disable=unused-import
+            from .worker_mpi     import MPIWorker      # pylint: disable=unused-import
 
             wclass = rpu.get_type(cname)
 
