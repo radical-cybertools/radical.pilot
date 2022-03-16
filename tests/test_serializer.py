@@ -8,20 +8,20 @@ from radical.pilot.utils import serializer
 # ------------------------------------------------------------------------------
 #
 class TestSerializer(TestCase):
-    
+
     # --------------------------------------------------------------------------
     #
     def test_ser_path(self):
 
         def hello_test():
             return 1
-        
+
         obj = hello_test
         ser_obj_file_path = serializer.serialize_file(obj)
         expected_path = '/tmp/rp_obj.pkl'
-        
+
         self.assertEqual(ser_obj_file_path, expected_path)
-    
+
 
     # ------------------------------------------------------------------------------
     #
@@ -29,7 +29,7 @@ class TestSerializer(TestCase):
 
         def hello_test():
             return 1
-        
+
         obj = hello_test
         ser_obj_byte = serializer.serialize_obj(obj)
 
@@ -54,12 +54,12 @@ class TestSerializer(TestCase):
         # we fail if we recive byte
         not_str_ser_obj = bytes(100)
         with self.assertRaises(Exception):
-            dser_obj_bson =serializer.deserialize_bson(not_str_ser_obj)
-        
+            dser_obj_bson = serializer.deserialize_bson(not_str_ser_obj)
+
         # we pass if we have str
         obj = {'func': bytes(100), 'args': (), 'kwargs': {}}
         ser_obj_bson_str  = serializer.serialize_bson(obj)
-        dser_obj_bson_str =serializer.deserialize_bson(ser_obj_bson_str)
+        dser_obj_bson_str = serializer.deserialize_bson(ser_obj_bson_str)
 
         self.assertIsInstance(dser_obj_bson_str, dict)
 
@@ -78,7 +78,7 @@ class TestSerializer(TestCase):
         list_obj = [sys, hello_test]
 
         dict_obj = {'non-callable': sys, 'callable': hello_test}
-    
+
         supported_types = [hello_test, sys, list_obj, dict_obj]
 
         for obj in supported_types:
@@ -88,17 +88,3 @@ class TestSerializer(TestCase):
 
             desr_byte = serializer.deserialize_obj(ser_byte)
             self.assertIsInstance(desr_byte, type(obj))
-
-
-            
-
-
-
-
-
-
-
-
-
-
-
