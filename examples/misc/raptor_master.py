@@ -4,7 +4,6 @@
 import os
 import sys
 import time
-import random
 
 import radical.utils as ru
 import radical.pilot as rp

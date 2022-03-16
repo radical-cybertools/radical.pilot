@@ -70,8 +70,8 @@ class Worker(object):
         else:
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
-            from .worker_default import DefaultWorker
-            from .worker_mpi     import MPIWorker
+            from .worker_default import DefaultWorker # pylint: disable=unused-import
+            from .worker_mpi     import MPIWorker     # pylint: disable=unused-import
 
             wclass = rpu.get_type(cname)
 
@@ -111,11 +111,11 @@ class Worker(object):
         # ----------------------------------------------------------------------
         class Master(object):
 
-            def __init__(_self, addr):
-                _self._task_service_ep = ru.zmq.Client(url=addr)
+            def __init__(self, addr):
+                self._task_service_ep = ru.zmq.Client(url=addr)
 
-            def run_task(_self, td):
-                return _self._task_service_ep.request('run_task', td)
+            def run_task(self, td):
+                return self._task_service_ep.request('run_task', td)
         # ----------------------------------------------------------------------
 
         return Master(self._cfg.ts_addr)

@@ -2,9 +2,6 @@
 
 import os
 import sys
-import json
-import time
-import random
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -91,12 +88,9 @@ if __name__ == '__main__':
                                     'version': '3.8',
                                   # 'path'   : '/home/merzky/j/sbox/ve_raptor',
                                     'setup'  : [
-        '/home/merzky/j/ru/',
-        '/home/merzky/j/rs/',
-        '/home/merzky/j/rp/',
-      # 'radical.pilot',
-      # 'git+https://github.com/radical-cybertools/radical.pilot.git@feature/raptor_workers',
-      # 'git+https://github.com/radical-cybertools/radical.utils.git@feature/faster_zmq',
+                                                '/home/merzky/j/ru/',
+                                                '/home/merzky/j/rs/',
+                                                '/home/merzky/j/rp/',
                                                ]})
 
         # submit some test tasks

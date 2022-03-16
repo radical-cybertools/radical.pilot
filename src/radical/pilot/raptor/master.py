@@ -1,9 +1,7 @@
 
-import copy
-import json
 import os
-from re import L
 import sys
+import copy
 import time
 
 from typing import Dict, Union
@@ -660,7 +658,7 @@ class Master(rpu.Component):
                                               'arg': {'uid': uid}})
 
         # wait for workers to terminate
-        uids = self._workers.keys()
+      # uids = self._workers.keys()
       # FIXME TS
       # while True:
       #     states = [self._workers[uid]['state'] for uid in uids]
