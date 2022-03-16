@@ -230,6 +230,7 @@ class ComponentManager(object):
         scfg = ru.Config(cfg=cfg)
         if 'bridges'    in scfg: del(scfg['bridges'])
         if 'components' in scfg: del(scfg['components'])
+        ru.expand_env(scfg)
 
         for cname, ccfg in cfg.get('components', {}).items():
 
@@ -243,7 +244,7 @@ class ComponentManager(object):
                 ccfg.path        = cfg.path
                 ccfg.heartbeat   = cfg.heartbeat
 
-                ccfg.merge(scfg, policy=ru.PRESERVE, log=self._log)
+                ru.dict_merge(ccfg, scfg, policy=ru.PRESERVE, log=self._log)
 
                 fname = '%s/%s.json' % (cfg.path, ccfg.uid)
                 ccfg.write(fname)

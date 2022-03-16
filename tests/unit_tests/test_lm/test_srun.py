@@ -5,6 +5,8 @@ import os
 from unittest import mock, TestCase
 
 from .test_common import setUp
+from radical.pilot.agent.launch_method.srun import MIN_NNODES_IN_LIST
+from radical.pilot.agent.launch_method.srun import MIN_VSLURM_IN_LIST
 from radical.pilot.agent.launch_method.srun import Srun
 
 
@@ -16,7 +18,7 @@ class TestSrun(TestCase):
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
     @mock.patch('radical.utils.which', return_value='/bin/srun')
-    @mock.patch('radical.utils.sh_callout', return_value=['19.05.2', '', 0])
+    @mock.patch('radical.utils.sh_callout', return_value=['foo\nsrun 19.05.2', '', 0])
     @mock.patch('radical.utils.Logger')
     def test_init_from_scratch(self, mocked_logger, mocked_sh_callout,
                                mocked_which, mocked_init):
@@ -29,10 +31,14 @@ class TestSrun(TestCase):
         env_sh = 'env/lm_%s.sh' % lm_srun.name.lower()
 
         lm_info = lm_srun._init_from_scratch(env, env_sh)
+        lm_srun._init_from_info(lm_info)
         self.assertEqual(lm_info, {'env'    : env,
                                    'env_sh' : env_sh,
-                                   'command': mocked_which()})
-        self.assertEqual(lm_srun._version, mocked_sh_callout()[0])
+                                   'command': mocked_which(),
+                                   'version': '19.05.2',
+                                   'vmajor' : 19})
+        self.assertEqual(lm_srun._version, '19.05.2')
+
 
     # --------------------------------------------------------------------------
     #
@@ -47,6 +53,7 @@ class TestSrun(TestCase):
             # error while getting version of the launch command
             lm_srun._init_from_scratch({}, '')
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
@@ -56,15 +63,20 @@ class TestSrun(TestCase):
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_srun.sh',
-                   'command': '/bin/srun'}
+                   'command': '/bin/srun',
+                   'version': '19.05.2',
+                   'vmajor' : 19}
         lm_srun._init_from_info(lm_info)
         self.assertEqual(lm_srun._env,     lm_info['env'])
         self.assertEqual(lm_srun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_srun._command, lm_info['command'])
+        self.assertEqual(lm_srun._version, lm_info['version'])
+        self.assertEqual(lm_srun._vmajor,  lm_info['vmajor'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
             lm_srun._init_from_info(lm_info)
+
 
     # --------------------------------------------------------------------------
     #
@@ -77,6 +89,7 @@ class TestSrun(TestCase):
         self.assertFalse(lm_srun.can_launch(
             task={'description': {'executable': None}})[0])
 
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
@@ -85,50 +98,59 @@ class TestSrun(TestCase):
         lm_srun = Srun('', {}, None, None, None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_srun.sh',
-                   'command': '/bin/srun'}
+                   'command': '/bin/srun',
+                   'version': '19.05.2',
+                   'vmajor' : 19}
         lm_srun._init_from_info(lm_info)
         lm_env = lm_srun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Srun, '__init__', return_value=None)
-    def test_get_slurm_ver(self, mocked_init):
-
-        lm_srun = Srun('', {}, None, None, None)
-        test_cases = ['slurm 18.0.1', 'slurm 20.02.3', 'slurm 120.2.5']
-        major_version = [18, 20, 120]
-        for i, case in enumerate(test_cases):
-            lm_srun._version = case
-            self.assertEqual(lm_srun.get_slurm_ver(), major_version[i])
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Srun, '__init__', return_value=None)
-    @mock.patch.object(Srun, 'get_slurm_ver', return_value=20)
-    def test_get_launch_rank_cmds(self, mocked_init, mocked_slurm_ver):
+    def test_get_launch_rank_cmds(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
         lm_srun._rm_info = {}
         lm_srun._command = 'srun'
+        lm_srun._vmajor  = MIN_VSLURM_IN_LIST + 1
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
             if result != 'RuntimeError':
-                command = lm_srun.get_launch_cmds(task, '')
 
-                try:
-                    self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
-                except AssertionError:
-                    print('Expected assertion error as SLURM >18')
+                command = lm_srun.get_launch_cmds(task, '')
+                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
                 if task.get('slots'):
-                    file_name = '%(task_sandbox_path)s/%(uid)s.nodes' % task
-                    self.assertTrue(os.path.isfile(file_name))
+
+                    # mimic that we have n_nodes more than MIN_NNODES_IN_LIST
+                    if len(task['slots']['ranks']) <= MIN_NNODES_IN_LIST:
+                        rank_base = task['slots']['ranks'][0]
+                        del task['slots']['ranks'][:]
+                        for idx in range(MIN_NNODES_IN_LIST + 1):
+                            task['slots']['ranks'].append(dict(rank_base))
+                            task['slots']['ranks'][-1]['node_name'] = str(idx)
+
+                    if len(task['slots']['ranks']) > MIN_NNODES_IN_LIST:
+                        nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
+
+                        # `nodefile` will be (or is already) created
+                        lm_srun.get_launch_cmds(task, '')
+                        self.assertTrue(os.path.isfile(nodefile))
+                        os.unlink(nodefile)
+
+                        # with min Slurm version `nodefile` will not be created
+                        lm_srun._vmajor = MIN_VSLURM_IN_LIST
+                        lm_srun.get_launch_cmds(task, '')
+                        self.assertFalse(os.path.isfile(nodefile))
+                        lm_srun._vmajor = MIN_VSLURM_IN_LIST + 1
 
                 command = lm_srun.get_rank_exec(task, None, None)
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
 
 # ------------------------------------------------------------------------------
 
@@ -140,7 +162,6 @@ if __name__ == '__main__':
     tc.test_init_from_scratch_fail()
     tc.test_init_from_info()
     tc.test_can_launch()
-    tc.test_get_slurm_ver()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
 

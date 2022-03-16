@@ -4,7 +4,6 @@ __copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
-import shlex
 
 import radical.utils as ru
 
@@ -50,7 +49,7 @@ class LaunchMethod(object):
         self._log      = log
         self._prof     = prof
         self._pwd      = os.getcwd()
-        self._env_orig = ru.env_eval('env/bs0_orig.env')
+        self._env_orig = ru.env_eval('env/bs0_active.env')
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
@@ -64,9 +63,8 @@ class LaunchMethod(object):
             # The registry does not yet contain any info for this LM - we need
             # to initialize the LM from scratch.  That happens in the env
             # defined by lm_cfg (derived from the original bs0 env)
-            env_orig = ru.env_eval('env/bs0_orig.env')
             env_sh   = 'env/lm_%s.sh' % self.name.lower()
-            env_lm   = ru.env_prep(environment=env_orig,
+            env_lm   = ru.env_prep(environment=self._env_orig,
                           pre_exec=lm_cfg.get('pre_exec'),
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
                           script_path=env_sh)
@@ -192,10 +190,10 @@ class LaunchMethod(object):
         # script.  We thus remove the launcher env from the task env before
         # applying the task env's pre_exec commands
         base = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
-        src  = '%s.sh'                  %  base
+        src  = '%s.env'                 %  base
         tgt  = '%s.%s.sh'               % (base, self.name.lower())
 
-        # the env does not yet exists - create
+        # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
@@ -237,7 +235,7 @@ class LaunchMethod(object):
     def _create_arg_string(self, args):
 
         if args:
-            return ' '.join([shlex.quote(arg) for arg in args])
+            return ' '.join([ru.sh_quote(arg) for arg in args])
         else:
             return ''
 
@@ -248,9 +246,6 @@ class LaunchMethod(object):
         '''
         returns version and flavor of MPI version.
         '''
-
-        if not exe:
-            raise ValueError('no executable found')
 
         version = None
         flavor  = self.MPI_FLAVOR_UNKNOWN
