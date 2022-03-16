@@ -1,5 +1,5 @@
 
-"""
+'''
 The serializer should be able to (de)serialize information that we want
 to send over the wire from the client side to the agent side via
 1- ZMQ
@@ -8,7 +8,7 @@ to send over the wire from the client side to the agent side via
 we except:
     1- Callables with and without dependecies.
     2- Non-callables like classes and other python objects
-"""
+'''
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
@@ -24,10 +24,12 @@ _obj_file_name = 'rp_obj.pkl'
 _obj_file_path = os.path.join(_obj_dir, _obj_file_name)
 
 
+# ------------------------------------------------------------------------------
+#
 def serialize_obj(obj):
-    """
+    '''
     serialize object
-    """
+    '''
     result    = None
     exception = None
 
@@ -64,12 +66,16 @@ def serialize_obj(obj):
     return  result
 
 
+# ------------------------------------------------------------------------------
+#
 def serialize_file(obj):
-    """
+    '''
     serialize object to file
+    '''
+
     # FIXME: assign unique path and id for the pickled file
     #        to avoid overwriting to the same file
-    """
+
     result    = None
     exception = None
 
@@ -96,10 +102,12 @@ def serialize_file(obj):
     return _obj_file_path
 
 
+# ------------------------------------------------------------------------------
+#
 def deserialize_file(fname):
-    """
+    '''
     Deserialize object from file
-    """
+    '''
     result = None
 
     # check if we have a valid file
@@ -117,10 +125,12 @@ def deserialize_file(fname):
     return result
 
 
+# ------------------------------------------------------------------------------
+#
 def deserialize_obj(obj):
-    """
+    '''
     Deserialize object from str
-    """
+    '''
     result = None
 
     try:
@@ -133,6 +143,8 @@ def deserialize_obj(obj):
     return result
 
 
+# ------------------------------------------------------------------------------
+#
 def serialize_bson(obj):
 
     result = codecs.encode(pickle.dumps(obj), "base64").decode()
@@ -140,8 +152,14 @@ def serialize_bson(obj):
     return result
 
 
+# ------------------------------------------------------------------------------
+#
 def deserialize_bson(obj):
 
     result = pickle.loads(codecs.decode(obj.encode(), "base64"))
 
     return result
+
+
+# ------------------------------------------------------------------------------
+
