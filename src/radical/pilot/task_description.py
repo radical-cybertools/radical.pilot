@@ -526,8 +526,7 @@ class TaskDescription(ru.TypedDict):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : 'executable',
-
+        MODE            : 'executable', 
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,

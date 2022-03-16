@@ -5,13 +5,15 @@ import sys
 import time
 import shlex
 
-import threading         as mt
-import radical.utils     as ru
+import threading           as mt
+import radical.utils       as ru
 
 from .worker            import Worker
-from ..task_description import MPI as RP_MPI
-from ..task_description import TASK_FUNCTION, TASK_EVAL
-from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL
+
+from ..pytask           import PythonTask
+from ..task_description import MPI   as RP_MPI
+from ..task_description import TASK_FUNCTION
+from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
 # MPI message tags
@@ -547,25 +549,41 @@ class _Worker(mt.Thread):
               unnamed argument.
         '''
 
-        uid       = task['uid']
-        func_name = task['description']['function']
-        assert(func_name)
+        uid  = task['uid']
+        func = task['description']['function']
 
-        # check if `func_name` is a global name
-        names   = dict(list(globals().items()) + list(locals().items()))
-        to_call = names.get(func_name)
+        to_call = ''
+        args    = task['description'].get('args',   [])
+        kwargs  = task['description'].get('kwargs', {})
+
+        # check if we have a serialized object
+        try:
+
+            to_call, args, kwargs = PythonTask.get_func_attr(func)
+
+            # Inject the communicator in the kwargs
+            if task['description'].get('cpu_process_type') == RP_MPI:
+                kwargs['comm'] = task['description']['args'][0]
+
+
+        except Exception:
+            self._log.error('failed to obtain callable from task function')
+
+        if not to_call:
+            assert(func)
+            # check if `func_name` is a global name
+            names   = dict(list(globals().items()) + list(locals().items()))
+            to_call = names.get(func)
+
 
         # if not, check if this is a class method of this worker implementation
         if not to_call:
-            to_call = getattr(self._base, func_name, None)
+            to_call = getattr(self._base, func, None)
+
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func_name, names, dir(self._base))
+            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
             raise ValueError('callable %s not found: %s' % (to_call, task))
-
-
-        args   = task['description'].get('args',   [])
-        kwargs = task['description'].get('kwargs', {})
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
@@ -1054,4 +1072,3 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
-

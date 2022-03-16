@@ -265,7 +265,8 @@ setup_args = {
                             'radical.saga>=1.12',
                             'pymongo<4',
                             'mpi4py',
-                            'setproctitle'
+                            'setproctitle',
+                            'dill'
                            ],
     'tests_require'      : ['pytest',
                             'pylint',
