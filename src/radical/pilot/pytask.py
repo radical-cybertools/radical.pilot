@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import inspect
 import functools
 
 from .utils import serialize_obj, serialize_bson
@@ -17,6 +18,9 @@ class PythonTask(object):
         wrapped_func   = partial(func_A, func_AB)      
         cud.EXECUTABLE = PythonTask(wrapped_func)
         """
+        if not inspect.isfunction(func):
+            raise ValueError('task function not callable')
+
         ser_func = serialize_obj(func)
         TASK = {'func'  :ser_func,
                 'args'  :args,
@@ -38,7 +42,7 @@ class PythonTask(object):
         cud.EXECUTABLE = func_C(2)
         """
 
-        if not callable(f):
+        if not inspect.isfunction(f):
             raise ValueError('task function not callable')
 
         @functools.wraps(f)
