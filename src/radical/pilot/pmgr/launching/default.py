@@ -698,8 +698,6 @@ class Default(PMGRLaunchingComponent):
         rp_version              = rcfg.get('rp_version')
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
-        shared_filesystem       = rcfg.get('shared_filesystem', True)
-        stage_cacerts           = rcfg.get('stage_cacerts', False)
         task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
         task_pre_rank           = rcfg.get('task_pre_rank')
@@ -872,15 +870,7 @@ class Default(PMGRLaunchingComponent):
             #  u : task work dirs
             #  v : virtualenv
             #  e : everything (== pilot sandbox)
-            if shared_filesystem:
-                cleanup = 'luve'
-            else:
-                # we cannot clean the sandbox from within the agent, as the hop
-                # staging would then fail, and we'd get nothing back.
-                # FIXME: cleanup needs to be done by the pmgr.launcher, or
-                #        someone else, really, after fetching all logs and
-                #        profiles.
-                cleanup = 'luv'
+            cleanup = 'luve'
 
             # we never cleanup virtenvs which are not private
             if virtenv_mode != 'private':
@@ -1075,19 +1065,6 @@ class Default(PMGRLaunchingComponent):
                     'rem': False
                 })
 
-            # Some machines cannot run pip due to outdated CA certs.
-            # For those, we also stage an updated certificate bundle
-            # TODO: use booleans all the way?
-            if stage_cacerts:
-
-                certs = 'cacert.pem.gz'
-                cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
-                self._log.debug("use CAs %s", cpath)
-
-                ret['fts'].append({'src': cpath,
-                                   'tgt': '%s/%s' % (session_sandbox, certs),
-                                   'rem': False})
-
             self._sandboxes[resource] = True
 
         # ----------------------------------------------------------------------
@@ -1133,29 +1110,6 @@ class Default(PMGRLaunchingComponent):
             jd.environment['RADICAL_PROFILE'] = 'TRUE'
 
         jd.environment['RADICAL_BASE'] = resource_sandbox
-
-        # for condor backends and the like which do not have shared FSs, we add
-        # additional staging directives so that the backend system binds the
-        # files from the session and pilot sandboxes to the pilot job.
-        jd.file_transfer = list()
-        if not shared_filesystem:
-
-            jd.file_transfer.extend([
-                'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
-                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
-            ])
-
-            if self._prof.enabled:
-                jd.file_transfer.extend([
-                    'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
-                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)
-                ])
-
-            for sdist in sdist_names:
-                jd.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
-                ])
 
         self._log.debug("Bootstrap command line: %s %s", jd.executable, jd.arguments)
 
