@@ -36,7 +36,7 @@ class TestWorker(TestCase):
 
         rp.raptor.Worker.publish = mock.Mock()
 
-        worker = rp.raptor.Worker(cfg, session=mock.Mock())
+        worker = rp.raptor.DefaultWorker(cfg, session=mock.Mock())
 
         task_1 = {'cores': 1, 'gpus' : 1}
         task_2 = {'cores': 2, 'gpus' : 1}

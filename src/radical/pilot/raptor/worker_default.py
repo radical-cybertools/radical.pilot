@@ -42,8 +42,8 @@ class DefaultWorker(Worker):
         super().__init__(cfg=cfg, session=session, register=register)
 
         # connect to the master queues
-        self._res_put = ru.zmq.Putter('result',  self._info.res_addr_put)
-        self._req_get = ru.zmq.Getter('request', self._info.req_addr_get,
+        self._res_put = ru.zmq.Putter('result',  self._cfg.info.res_addr_put)
+        self._req_get = ru.zmq.Getter('request', self._cfg.info.req_addr_get,
                                                  cb=self.request_cb)
 
         # keep worker ID and rank
