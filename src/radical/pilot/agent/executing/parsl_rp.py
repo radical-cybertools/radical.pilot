@@ -293,10 +293,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     if '_preprocess' or '_postprocess' in func.__name__:
                         task_type = 'python'
                         return func, args, task_type
-
-                    elif '_execute_execute' in func.__name__:
+                    
+                if isinstance(func.args[0], partial):
+                    if '_execute_execute' in func.args[0].func.__name__:
                         task_type = 'bash'
-                        return func, args, task_type
+                        return func.args[0], args, task_type
 
                 # type python (colmena task or non colmena task) or bash_app
                 else:
@@ -333,51 +334,52 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         func, args, task_type = self.unwrap(func, args)
 
         if 'bash' in task_type:
-            self.report.header('bash app')
+            self.log.debug('bash app')
             if callable(func):
                 # These lines of code are from parsl/app/bash.py
                 try:
                     # Execute the func to get the commandline
                     bash_app = func(*args, **kwargs)
-
                     if not isinstance(bash_app, str):
                         raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
 
-                    task.mode       = rp.TASK_PROC
-                    task.executable = bash_app
-                    task.arguments  = []
-
                 except AttributeError as e:
-                    raise Exception("failed to obtain bash app cmd: %s", e)
+                    raise Exception("failed to obtain bash app cmd") from e
 
-            if isinstance(func, list):
+                task.mode = rp.TASK_EXECUTABLE
 
-                task.mode             = rp.TASK_EXECUTABLE 
-                task.executable       = func[3]
-                task.arguments        = eval(args[0].args[0])
-                task.cpu_processes    = eval(func[2])
-                task.cpu_process_type = rp.MPI if 'mpirun' in func else None
-
+                if 'mpirun' in bash_app:
+                    bash_app              = shlex.split(bash_app)
+                    task.executable       = bash_app[3]
+                    task.arguments        = eval(bash_app[4:][0])
+                    task.cpu_processes    = eval(bash_app[2])
+                    task.cpu_process_type = rp.MPI
+                else:
+                    task.executable = bash_app
 
         elif 'python' in task_type or not task_type:
-            self.report.header('python app')
+            self.log.debug('python app')
 
             # Colmena task if the task args is type Result
-            if len(args) > 0 and isinstance(args[0], Result):
-                self.report.header('got colmena args')
-                task.name = 'colmena'
+            if len(args) > 0:
+                for arg in args: 
+                    if isinstance(arg, Result):
+                        self.report.header('got colmena args')
+                        task.name = 'colmena'
 
             code = PythonTask(func, *args, **kwargs)
 
-            task.pyfunction = code
             task.mode       = rp.TASK_PY_FUNCTION
+            task.pyfunction = code
 
-        task.pre_exec         = [] if 'pre_exec' not in kwargs else kwargs['pre_exec']
+        task.stdout            = "" if 'stdout' not in kwargs else kwargs['stdout']
+        task.stderr            = "" if 'stderr' not in kwargs else kwargs['stderr']
+        #task.pre_exec         = [] if 'pre_exec' not in kwargs else kwargs['pre_exec']
         #task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
         #task.cpu_processes    = 1 if 'nproc' not in kwargs else kwargs['nproc']
-        task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
-        task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
-        task.gpu_process_type = None
+        #task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
+        #task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
+        #task.gpu_process_type = None
 
         return task
 
@@ -418,7 +420,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     self.put_redis_task(task.executable)
                     task.executable = 'redis_exec'
 
-            self.report.header(str(task))
+            #self.report.header(str(task))
             rp_task = self.tmgr.submit_tasks(task)
 
             self.future_tasks[rp_task.uid] = Future()
