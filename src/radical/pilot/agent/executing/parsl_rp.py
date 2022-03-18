@@ -338,7 +338,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             if callable(func):
                 # These lines of code are from parsl/app/bash.py
                 try:
-                    # Execute the func to get the commandline
+                    # Execute the func to get the command
                     bash_app = func(*args, **kwargs)
                     if not isinstance(bash_app, str):
                         raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
