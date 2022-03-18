@@ -24,6 +24,8 @@ class TestPytask(TestCase):
             return 2 * z
 
         wrapped_function = partial(AA, AB)
+        print(type(wrapped_function))
+        print(callable(wrapped_function))
         pytask_class_obj = PythonTask(wrapped_function)
 
         self.assertIsInstance(pytask_class_obj, str)

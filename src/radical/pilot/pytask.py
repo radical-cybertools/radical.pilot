@@ -2,7 +2,6 @@
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import inspect
 import functools
 
 from typing import Callable
@@ -27,7 +26,7 @@ class PythonTask(object):
             cud.EXECUTABLE = PythonTask(wrapped_func)
         '''
 
-        if not inspect.isfunction(func):
+        if not callable(func):
             raise ValueError('task function not callable')
 
         task = {'func'  : serialize_obj(func),
@@ -68,7 +67,7 @@ class PythonTask(object):
             cud.EXECUTABLE = func_C(2)
         '''
 
-        if not inspect.isfunction(f):
+        if not callable(f):
             raise ValueError('task function not callable')
 
         # ----------------------------------------------------------------------
