@@ -106,12 +106,7 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                  # 'path'   : '/home/merzky/j/sbox/ve_raptor',
-                                    'setup'  : [
-                                                '/home/merzky/j/ru/',
-                                                '/home/merzky/j/rs/',
-                                                '/home/merzky/j/rp/',
-                                               ]})
+                                    'setup'  : ['radical.pilot']})
 
         # submit some test tasks
         tds = list()

@@ -23,7 +23,7 @@ class TestSerializer(TestCase):
         self.assertEqual(ser_obj_file_path, expected_path)
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def test_ser_obj(self):
 
@@ -36,7 +36,7 @@ class TestSerializer(TestCase):
         self.assertIsInstance(ser_obj_byte, bytes)
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def test_ser_bson(self):
 
@@ -47,14 +47,14 @@ class TestSerializer(TestCase):
         self.assertIsInstance(ser_obj_bson_str, str)
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def test_dser_bson(self):
 
         # we fail if we recive byte
         not_str_ser_obj = bytes(100)
         with self.assertRaises(Exception):
-            dser_obj_bson = serializer.deserialize_bson(not_str_ser_obj)
+            serializer.deserialize_bson(not_str_ser_obj)
 
         # we pass if we have str
         obj = {'func': bytes(100), 'args': (), 'kwargs': {}}
@@ -64,7 +64,7 @@ class TestSerializer(TestCase):
         self.assertIsInstance(dser_obj_bson_str, dict)
 
 
-    # ------------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     #
     def test_dser_obj(self):
 
@@ -88,3 +88,7 @@ class TestSerializer(TestCase):
 
             desr_byte = serializer.deserialize_obj(ser_byte)
             self.assertIsInstance(desr_byte, type(obj))
+
+
+# ------------------------------------------------------------------------------
+
