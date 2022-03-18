@@ -11,13 +11,21 @@ ipython kernel install --name "python3" --user #install a kernel
 # This is to keep the metadata of notebook in sync, and avoid unnecessary diff. 
 ```
 
-# How to pass environment variables
+# Setting up the docs environment
+
+## Install dependencies for building documentation 
+```shell
+pip install -r docs/source/requirements_docs.txt
+```
+## How to pass environment variables
 `.env` file #TODO this is being discussed and is not final.
 
 So users have to create/edit the .env file which is ideally placed in project root directory.
 See usage of dot-env [here](https://github.com/theskumar/python-dotenv).
 ```shell
-dotenv set RADICAL_PILOT_DBURL mongodb://127.0.0.1:27017/rpdb
+dotenv set RADICAL_PILOT_DBURL mongodb://localhost:27017/rpdb
+# This will create a file in {PROJECT_ROOT} and add a variable RADICAL_PILOT_DBURL
+# Replace the mongo URL as necessary. Format -  mongodb://<user_id>:<password>@<ip_address>:<port>/<db_name> 
 ```
 
 # How to generate documentation of notebooks with sphinx
