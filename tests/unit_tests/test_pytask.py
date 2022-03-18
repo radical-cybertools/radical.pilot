@@ -45,14 +45,4 @@ class TestPytask(TestCase):
         self.assertIsInstance(decor_task, str)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def test_non_callable_decor(self):
-
-        # non-callable should no pass here
-        with self.assertRaises(ValueError):
-            @PythonTask.pythontask
-            class test_hello:
-                def __init__(self):
-                    pass
-
+# ------------------------------------------------------------------------------
