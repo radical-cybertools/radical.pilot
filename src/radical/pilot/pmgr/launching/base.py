@@ -64,11 +64,12 @@ class PilotLauncherBase(object):
 
     # --------------------------------------------------------------------------
     #
-    def can_pilots(self, rcfg, pilot):
+    def can_launch(self, rcfg, pilot):
         '''
         check if the give pilot can be launched on the specified target resource
         '''
         raise NotImplementedError('can_launch not implemented')
+
 
     # --------------------------------------------------------------------------
     #
@@ -98,7 +99,6 @@ class PilotLauncherBase(object):
         '''
 
         pass
-
 
 
 # ------------------------------------------------------------------------------
@@ -526,7 +526,6 @@ class PMGRLaunchingComponent(rpu.Component):
             tgt_dir = os.path.dirname(tgt)
 
             if tgt_dir.startswith('..'):
-              # raise ValueError('staging tgt %s outside pilot sbox: %s' % (ft['tgt'], tgt))
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
@@ -865,7 +864,7 @@ class PMGRLaunchingComponent(rpu.Component):
                             math.ceil(float(number_gpus) / gpus_per_node))
 
         # set mandatory args
-        bootstrap_args  = ""
+        bs_args = ""
 
         # add dists to staging files, if needed:
         # don't stage on `rp_version==installed` or `virtenv_mode==local`
@@ -874,40 +873,41 @@ class PMGRLaunchingComponent(rpu.Component):
             sdist_names = list()
             sdist_paths = list()
         else:
-            sdist_names = [rg.sdist_name,
-                           ru.sdist_name,
-                           rs.sdist_name,
-                           self._rp_sdist_name]
+            sdist_names = [str(rg.sdist_name),
+                           str(ru.sdist_name),
+                           str(rs.sdist_name),
+                           str(self._rp_sdist_name)]
             sdist_paths = [rg.sdist_path,
                            ru.sdist_path,
                            rs.sdist_path,
                            self._rp_sdist_path]
-            bootstrap_args += " -d '%s'" % (':'.join(sdist_names))
+            bs_args += " -d '%s'" % (':'.join(sdist_names))
 
-        bootstrap_args += " -p '%s'" % pid
-        bootstrap_args += " -s '%s'" % sid
-        bootstrap_args += " -m '%s'" % virtenv_mode
-        bootstrap_args += " -r '%s'" % rp_version
-        bootstrap_args += " -b '%s'" % python_dist
-        bootstrap_args += " -g '%s'" % virtenv_dist
-        bootstrap_args += " -v '%s'" % virtenv
-        bootstrap_args += " -y '%d'" % runtime
-        bootstrap_args += " -z '%s'" % tar_name
+        bs_args += " -p '%s'" % pid
+        bs_args += " -s '%s'" % sid
+        bs_args += " -m '%s'" % virtenv_mode
+        bs_args += " -r '%s'" % rp_version
+        bs_args += " -b '%s'" % python_dist
+        bs_args += " -g '%s'" % virtenv_dist
+        bs_args += " -v '%s'" % virtenv
+        bs_args += " -y '%d'" % runtime
+        bs_args += " -z '%s'" % tar_name
 
         # set optional args
-        if resource_manager == "CCM": bootstrap_args += " -c"
-        if forward_tunnel_endpoint:   bootstrap_args += " -f '%s'" % forward_tunnel_endpoint
-        if forward_tunnel_endpoint:   bootstrap_args += " -h '%s'" % db_hostport
-        if python_interpreter:        bootstrap_args += " -i '%s'" % python_interpreter
-        if tunnel_bind_device:        bootstrap_args += " -t '%s'" % tunnel_bind_device
-        if cleanup:                   bootstrap_args += " -x '%s'" % cleanup
+        if resource_manager == "CCM": bs_args += " -c"
+        if forward_tunnel_endpoint:   bs_args += " -f '%s'" \
+                                                       % forward_tunnel_endpoint
+        if forward_tunnel_endpoint:   bs_args += " -h '%s'" % db_hostport
+        if python_interpreter:        bs_args += " -i '%s'" % python_interpreter
+        if tunnel_bind_device:        bs_args += " -t '%s'" % tunnel_bind_device
+        if cleanup:                   bs_args += " -x '%s'" % cleanup
 
         for arg in services:
-            bootstrap_args += " -j '%s'" % arg
+            bs_args += " -j '%s'" % arg
         for arg in pre_bootstrap_0:
-            bootstrap_args += " -e '%s'" % arg
+            bs_args += " -e '%s'" % arg
         for arg in pre_bootstrap_1:
-            bootstrap_args += " -w '%s'" % arg
+            bs_args += " -w '%s'" % arg
 
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
@@ -1028,12 +1028,12 @@ class PMGRLaunchingComponent(rpu.Component):
         # ----------------------------------------------------------------------
         # Create SAGA Job description and launch the pilot job
 
-        jd_dict = ru.Munch()
+        jd_dict = ru.TypedDict()
 
         jd_dict.name                  = job_name
         jd_dict.executable            = "/bin/bash"
-        jd_dict.arguments             = shlex.split(
-                                      '-l ./bootstrap_0.sh %s' % bootstrap_args)
+        jd_dict.arguments             = shlex.split('-l ./bootstrap_0.sh %s'
+                                                                      % bs_args)
         jd_dict.working_directory     = pilot_sandbox
         jd_dict.project               = project
         jd_dict.output                = "bootstrap_0.out"
@@ -1061,7 +1061,8 @@ class PMGRLaunchingComponent(rpu.Component):
         if not shared_filesystem:
 
             jd_dict.file_transfer.extend([
-                'site:%s/%s > %s' % (pilot_sandbox,   agent_cfg_name, agent_cfg_name),
+                'site:%s/%s > %s' % (pilot_sandbox, agent_cfg_name,
+                                                    agent_cfg_name),
                 'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
                 'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
             ])

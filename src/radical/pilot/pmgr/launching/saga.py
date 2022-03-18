@@ -5,8 +5,6 @@ __license__   = "MIT"
 
 
 import os
-import time
-import threading     as mt
 
 import radical.utils as ru
 import radical.saga  as rs
@@ -152,7 +150,8 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
         for pid in pids:
 
-            job = self._saga_jobs[pid]
+            job   = self._saga_jobs[pid]
+            pilot = self._pilots[pid]['pilot']
 
             # don't overwrite resource_details from the agent
             if 'resource_details' in pilot:
