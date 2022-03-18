@@ -5,7 +5,7 @@ __license__   = 'MIT'
 import inspect
 import functools
 
-from types import Callable
+from typing import Callable
 
 from .utils import serialize_obj, serialize_bson
 from .utils import deserialize_obj, deserialize_bson
