@@ -24,7 +24,7 @@ Brief description.
 
    overview.rst
    quickstart.ipynb
-   tutorial.rst
+   tutorial.ipynb
    developers.rst
 
 .. Indices and tables
