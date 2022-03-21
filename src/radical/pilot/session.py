@@ -47,40 +47,75 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, service_url=None, uid=None, cfg=None, _primary=True,
+    def __init__(self, proxy_host=None, proxy_url=None, uid=None,
+            cfg=None, _primary=True,
                  **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
 
-        **Arguments:**
-            * **service_url** (`string`): The Bridge Service URL.
-              If none is given, RP uses the environment variable
-              RADICAL_PILOT_SERVICE_URL.  If that is not set, a temporary
-              service will be started on localhost for the time of the
-              application's execution.
+        Any RP Session will require an RP Proxy to facilitate communication
+        between the client machine (i.e., the host where the application created
+        the Session instance) and the target resource (i.e., the host where the
+        pilot agent/s is/are running and where the workload is being executed).
 
-            * **cfg** (`str` or `dict`): a named or instantiated configuration
-              to be used for the session.
+        A `proxy_url` can be specified which then must point to an RP Proxy
+        Service instance which this session can use to establish a communication
+        proxy. Alternatively, a `proxy_host` can be specified - the session will
+        then attempt to start a proxy on that host.  If neither `proxy_url` nor
+        `proxy_host` are specified, the session will check for the environment
+        variables `RADICAL_PILOT_PROXY_URL` and `RADICAL_PILOT_PROXY_HOST` (in
+        that order) and will interpret them as above.  If none of these
+        information is available, the session will instantiate a proxy on the
+        local host.  Note that any proxy instantiated by the session itself will
+        be terminated once the session instance is closed or goes out of scope
+        and is thus garbage collected.  An proxy pointed to by `proxy_url` or by
+        `RADICAL_PILOT_PROXY_URL` will be reusable by other sessions and will
+        not terminate on the session's demise.
+
+        Note: an RP proxy will have to be accessible by both the client and the
+              target hosts to facilitate communication between both parties.
+              That implies access to the respective ports.  Proxies started by
+              the session itself will use the first port larger than 10.000
+              which is found to be free.
+
+        **Arguments:**
+            * **proxy_url** (`string`): proxy service URL - points to an RP
+              proxy service which is used to establish an RP communication proxy
+              for this session.
+
+            * **proxy_host** (`string`): proxy host - alternative to the
+              `proxy_url`, the application can specify a host name on which
+              a temporary proxy is started by the session.  This default to
+              `localhost` (but see remarks above about the interpretation of
+              environment variables).
 
             * **uid** (`string`): Create a session with this UID.  Session UIDs
               MUST be unique - otherwise they will lead to conflicts in the
               underlying database, resulting in undefined behaviours (or worse).
 
+            * **cfg** (`str` or `dict`): a named or instantiated configuration
+              to be used for the session.
+
             * **_primary** (`bool`): only sessions created by the original
-              application process (via `rp.Session()`, will create comm bridges
+              application process (via `rp.Session()`, will create proxies.
               Secondary session instances are instantiated internally in
               processes spawned (directly or indirectly) by the initial session,
               for example in some of it's components.  A secondary session will
               inherit the original session ID, but will not attempt to create
-              a new comm bridge - if such a bridge connection is needed, the
-              component will connect to the one created by the primary session.
+              a new proxy - if a proxy is needed, the component will connect to
+              the one created by the primary session.
 
         If additional key word arguments are provided, they will be used as the
         default arguments to Session.close(). (This can be useful when the
         Session is used as a Python context manager, such that close() is called
         automatically at the end of a ``with`` block.)
         '''
+
+        # TODO: document valid config options (or remove this option)
+        #   * **cfg** (`str` or `dict`): a named or instantiated configuration
+        #     to be used for the session.
+
         self._close_options = _CloseOptions(close_options)
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
@@ -90,7 +125,7 @@ class Session(rs.Session):
             name = cfg
             cfg  = None
 
-        self._service = None
+        self._proxy   = None
         self._closed  = False
         self._primary = _primary
         self._t_start = time.time()
@@ -150,32 +185,44 @@ class Session(rs.Session):
             self._rep.info ('<<new session: ')
             self._rep.plain('[%s]' % self._uid)
 
-        # need a service_url to connect to
-        if not service_url:
-            service_url = self._cfg.service_url
+        # need a proxy_url to connect to - get from arg or config (default cfg
+        # pulls this from env)
+        if not proxy_url:
+            proxy_url = self._cfg.proxy_url
 
-        if not service_url:
-            service_url = os.environ.get('RADICAL_PILOT_SERVICE_URL')
+        if not proxy_url:
 
-        if not service_url:
             if not _primary:
                 raise RuntimeError('no proxy service URL?')
 
+            # start a temporary embedded service on the proxy host (defaults to
+            # localhost on the default cfg)
+            if not proxy_host:
+                proxy_host = self._cfg.proxy_host
+
+            # NOTE: we assume ssh connectivity to the proxy host - but in fact
+            #       do allow proxy_host to be a full saga job service URL
+            if '://' in proxy_host:
+                proxy_host_url = ru.Url(proxy_host)
             else:
-                # start a temporary embedded service
-                self._proxy_addr   = None
-                self._proxy_event  = mt.Event()
+                proxy_host_url = ru.Url()
+                proxy_host_url.set_host(proxy_host)
 
-                self._proxy_thread = mt.Thread(target=self._proxy)
-                self._proxy_thread.daemon = True
-                self._proxy_thread.start()
+            #
 
-                self._proxy_event.wait()
-                assert(self._proxy_addr)
-                service_url = self._proxy_addr
-                os.environ['RADICAL_PILOT_SERVICE_URL'] = service_url
+            self._proxy_addr   = None
+            self._proxy_event  = mt.Event()
 
-        self._cfg.service_url = service_url
+            self._proxy_thread = mt.Thread(target=self._run_proxy)
+            self._proxy_thread.daemon = True
+            self._proxy_thread.start()
+
+            self._proxy_event.wait()
+            assert(self._proxy_addr)
+            proxy_url = self._proxy_addr
+            os.environ['RADICAL_PILOT_SERVICE_URL'] = proxy_url
+
+        self._cfg.proxy_url = proxy_url
 
         if self._primary:
 
@@ -184,9 +231,9 @@ class Session(rs.Session):
         else:
             # a non-primary session will query the same service url to obtain
             # information about the comm channels created by the primary session
-            if not self._cfg.proxy:
-                self._service = ru.zmq.Client(url=self._cfg.service_url)
-                response      = self._service.request('client_lookup',
+            if not self._cfg.proxy_url:
+                self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
+                response      = self._proxy.request('client_lookup',
                                                       {'sid': self._uid})
                 self._cfg.proxy = response
                 self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
@@ -260,10 +307,10 @@ class Session(rs.Session):
         if self._cmgr:
             self._cmgr.close()
 
-        if self._service:
+        if self._proxy:
             try:
                 self._log.debug("session %s closes service", self._uid)
-                self._service.request('client_unregister',
+                self._proxy.request('client_unregister',
                                       {'sid': self._uid})
             except:
                 pass
@@ -324,7 +371,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _proxy(self):
+    def _run_proxy(self):
 
         bridge = Proxy()
 
@@ -354,11 +401,11 @@ class Session(rs.Session):
 
         # a primary session will create proxy comm channels
         self._rep.info ('<<bridge     : ')
-        self._rep.plain('[%s]' % self._cfg.service_url)
+        self._rep.plain('[%s]' % self._cfg.proxy_url)
 
         # create/connect bridge handle on primary sessions
-        self._service = ru.zmq.Client(url=self._cfg.service_url)
-        response      = self._service.request('client_register',
+        self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
+        response      = self._proxy.request('client_register',
                                               {'sid': self._uid})
 
         self._cfg.proxy = response
@@ -431,7 +478,7 @@ class Session(rs.Session):
 
         while True:
 
-            self._service.request('client_heartbeat', {'sid': self._uid})
+            self._proxy.request('client_heartbeat', {'sid': self._uid})
             time.sleep(20)
 
 
@@ -447,7 +494,7 @@ class Session(rs.Session):
           # "created"    : self.created,
           # "connected"  : self.connected,
           # "closed"     : self.closed,
-            "service_url": str(self.service_url),
+            "proxy_url"  : str(self.proxy_url),
             "cfg"        : copy.deepcopy(self._cfg)
         }
         return object_dict
@@ -492,8 +539,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-    def service_url(self):
-        return self._cfg.service_url
+    def proxy_url(self):
+        return self._cfg.proxy_url
 
 
     # --------------------------------------------------------------------------
