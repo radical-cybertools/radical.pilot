@@ -86,7 +86,7 @@
         "cores_per_node"              : 64,
         "gpus_per_node"               : 8,
         "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 0,
+        "lfs_size_per_node"           : 0
       # "system_architecture"         : {"smt": 2,
       #                                  "options": ["nvme"]}
     },
