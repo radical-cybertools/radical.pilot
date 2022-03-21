@@ -363,7 +363,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             if len(args) > 0:
                 for arg in args: 
                     if isinstance(arg, Result):
-                        self.report.header('got colmena args')
+                        self.log.debug('got colmena args')
                         task.name = 'colmena'
 
             code = PythonTask(func, *args, **kwargs)
