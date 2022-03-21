@@ -3,6 +3,16 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.13.0  Release                                                       2022-03-21
+--------------------------------------------------------------------------------
+
+   - fix slurm nodefile/nodelist
+   - clean temporary setup files
+   - fixed test for LM `Srun`
+   - local execution needs to check FORK first
+   - fix Bridges-2 resource config
+
+
 1.12.0  Release                                                       2022-02-28
 --------------------------------------------------------------------------------
 
