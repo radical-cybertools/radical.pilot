@@ -32,11 +32,9 @@ class PythonTask(object):
         task = {'func'  : serialize_obj(func),
                 'args'  : args,
                 'kwargs': kwargs}
-        try:
-            return serialize_bson(task)
 
-        except Exception as e:
-            raise ValueError from e
+        return serialize_bson(task)
+
 
 
     # --------------------------------------------------------------------------
@@ -77,11 +75,8 @@ class PythonTask(object):
             task = {'func'  : serialize_obj(f),
                     'args'  : args,
                     'kwargs': kwargs}
-            try:
-                return serialize_bson(task)
 
-            except Exception as e:
-                raise ValueError ('failed to wrap function') from e
+            return serialize_bson(task)
 
         return decor
         # ----------------------------------------------------------------------
