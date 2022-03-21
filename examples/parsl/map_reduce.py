@@ -41,9 +41,7 @@ items = range(0,4)
 mapped_results = []
 for i in items:
     x = app_double(i, nproc =1)
-    for res in x.result():
-        out = res.strip("\n")
-        mapped_results.append(eval(out))
+    mapped_results.append(eval(x.result()))
 
 # Reduce phase: apply the sum *app* function to the set of results
 total = app_sum(mapped_results, nproc=1)

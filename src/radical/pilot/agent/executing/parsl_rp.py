@@ -151,33 +151,32 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Update the state of Parsl Future tasks
         Based on RP task state
         """
-        parsl_task = None
         if not task.uid.startswith('master'):
             parsl_task = self.future_tasks[task.uid]
 
-        STDOUT = task.stdout
-        if state == rp.DONE:
-            if task.name == 'colmena':
-                self.log.debug('got a colmena result')
-                try:
-                    STDOUT = self.get_redis_task()
-                except Exception as e:
-                    self.log.debug(e)
-            else:
-                pass
-            parsl_task.set_result(STDOUT)
-            self.log.debug(STDOUT)
-            print('\t+ %s: %-10s: %s'
-                  % (task.uid, task.state, task.stdout))
+            STDOUT = task.stdout
+            if state == rp.DONE:
+                if task.name == 'colmena':
+                    self.log.debug('got a colmena result')
+                    try:
+                        STDOUT = self.get_redis_task()
+                    except Exception as e:
+                        self.log.debug(e)
+                else:
+                    pass
+                parsl_task.set_result(STDOUT)
+                self.log.debug(STDOUT)
+                print('\t+ %s: %-10s: %10s: %s'
+                    % (task.uid, task.state, task.pilot, task.stdout))
 
-        if state == rp.CANCELED:
-            parsl_task.cancel()
-            print('\t+ %s: %-10s: %10s: %s'
-                  % (task.uid, task.state, task.pilot, task.stdout))
-        if state == rp.FAILED:
-            parsl_task.set_exception(Exception(str(task.stderr)))
-            print('\t- %s: %-10s: %10s: %s'
-                  % (task.uid, task.state, task.pilot, task.stderr))
+            if state == rp.CANCELED:
+                parsl_task.cancel()
+                print('\t+ %s: %-10s: %10s: %s'
+                    % (task.uid, task.state, task.pilot, task.stdout))
+            if state == rp.FAILED:
+                parsl_task.set_exception(Exception(str(task.stderr)))
+                print('\t- %s: %-10s: %10s: %s'
+                    % (task.uid, task.state, task.pilot, task.stderr))
 
 
     def start(self):
@@ -396,10 +395,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
         self.log.debug("Got a task from the parsl.dfk")
-
+        self._task_counter += 1
+        task_id = str(self._task_counter)
 
         try:
-            self.report.progress_tgt(self._task_counter, label='create')
+            #self.report.progress_tgt(self._task_counter, label='create')
 
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
@@ -420,12 +420,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     self.put_redis_task(task.executable)
                     task.executable = 'redis_exec'
 
-            #self.report.header(str(task))
-            rp_task = self.tmgr.submit_tasks(task)
+            # we assign a task id for rp task
+            task.uid = task_id
 
-            self.future_tasks[rp_task.uid] = Future()
+            # set the future with corresponding id
+            self.future_tasks[task_id] = Future()
 
-            return self.future_tasks[rp_task.uid]
+            # submit the task to rp
+            self.tmgr.submit_tasks(task)
+
+            return self.future_tasks[task_id]
 
 
         except Exception as e:
