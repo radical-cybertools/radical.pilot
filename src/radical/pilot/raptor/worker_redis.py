@@ -20,11 +20,9 @@ class Worker(_Worker):
         self._port         = None
         self._enable_redis = False        
 
-        try:
-            self._host = '127.0.0.1'  # os.environ['REDIS_HOST']
-            self._port = 59465       # int(os.environ['REDIS_PORT'])
-        except KeyError:
-            pass
+        cfg = ru.read_json('raptor.cfg')
+        self._host = cfg['redis']['host'] 
+        self._port = cfg['redis']['port']
 
         if self._host and self._port:
             from colmena.redis.queue import RedisQueue
@@ -116,9 +114,13 @@ class Worker(_Worker):
                     self._log.debug('==== put 0 %s : %s', task['uid'], os.getpid())
 
                     if task['name'] == 'colmena' and self._enable_redis:
+
                         assert(self.redis.is_connected)
+
                         task['stdout'] = str(self._ser.serialize_obj(task['return_value']))
+
                         self.redis.put(task['stdout'], topic='rp result queue')
+
                         task['stdout']                     = 'redirected_to_redis'   
                         task['return_value']               = 'redirected_to_redis'
                         task['description']['pyfunction']  = 'redirected_to_redis'

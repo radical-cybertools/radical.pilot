@@ -1,7 +1,6 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/Parsl
 """
 import os
-import dill
 import shlex
 import parsl
 import inspect
@@ -15,10 +14,6 @@ from radical.pilot import PythonTask
 from functools import partial
 from concurrent.futures import Future
 from typing import Optional, Union
-
-from colmena.models import Result
-from colmena.models import ExecutableTask
-from colmena.redis.queue import RedisQueue
 
 from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
@@ -60,10 +55,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
                  partition : Optional[str] = " ",
-                 project: Optional[str] = " ",
-                 enable_redis = False,
-                 redis_port: int = 59465,
-                 redis_host = None):
+                 project: Optional[str] = " "):
 
         self._uid               = 'rp.parsl_executor'
         # RP required
@@ -85,11 +77,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.run_dir            = '.'
         self.worker_logdir_root = worker_logdir_root
 
-        # Needed by Colmena
-        self.enable_redis       = enable_redis
-        self.redis_port         = redis_port
-        self.redis_host         = redis_host
-
         self.log    = ru.Logger(name='radical.parsl', level='DEBUG')
         self.prof   = ru.Profiler(name = 'radical.parsl', path = self.run_dir)
         self.report = ru.Reporter(name='radical.pilot')
@@ -98,10 +85,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.pmgr    = None
         self.tmgr    = None
 
-        # check if we have redis mode enabled
-        if self.enable_redis:
-            self.redis = RedisQueue(self.redis_host, port = self.redis_port, 
-                                    topics = ['rp task queue', 'rp result queue'])
         # Raptor specific
         self.cfg_file = './raptor.cfg'
         cfg         = ru.Config(cfg=ru.read_json(self.cfg_file))
@@ -117,35 +100,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.nodes_rp    = cfg.nodes_rp   # number of total nodes
         self.nodes_agent = cfg.nodes_agent  # number of nodes per agent
 
-    def get_redis_task(self):
-        '''
-        Pull a result object from redis queue
-        '''
-        if self.enable_redis:
-            # make sure we are connected to redis
-            assert(self.redis.is_connected)
-            message = self.redis.get(topic = 'rp result queue')
-
-            if message:
-                self.log.debug('pulled result from redis')
-                result = eval(message[1])
-                try:
-                    STDOUT = dill.loads(result)
-                except Exception as e:
-                    self.log.error(str(e))
-            return STDOUT
-
-    def put_redis_task(self, task):
-        '''
-        Push a result object to redis queue
-        '''
-        if self.enable_redis:
-            # make sure we are connected to redis
-            assert(self.redis.is_connected)
-            source_code = str(task)
-            self.redis.put(source_code, topic = 'rp task queue')
-            self.log.debug('task pushed to redis')
-
     def task_state_cb(self, task, state):
         """
         Update the state of Parsl Future tasks
@@ -154,18 +108,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         if not task.uid.startswith('master'):
             parsl_task = self.future_tasks[task.uid]
 
-            STDOUT = task.stdout
             if state == rp.DONE:
-                if task.name == 'colmena':
-                    self.log.debug('got a colmena result')
-                    try:
-                        STDOUT = self.get_redis_task()
-                    except Exception as e:
-                        self.log.debug(e)
-                else:
-                    pass
-                parsl_task.set_result(STDOUT)
-                self.log.debug(STDOUT)
+                parsl_task.set_result(task.stdout)
+                self.log.debug(task.stdout)
                 print('\t+ %s: %-10s: %10s: %s'
                     % (task.uid, task.state, task.pilot, task.stdout))
 
@@ -187,9 +132,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.report.header('RADICAL pilot: %s' % rp.version)
         self.session = rp.Session(uid=ru.generate_id('parsl.radical.session',
                                                       mode=ru.ID_PRIVATE))
-        pilot_redis_url = None
-        if self.enable_redis and self.redis_host and self.redis_port:
-            pilot_redis_url = '{}:{}'.format(self.redis_host, self.redis_port)
 
         if self.resource is None : self.log.error("specify remoute or local resource")
 
@@ -200,8 +142,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'queue'         : self.partition,
                           'access_schema' : self.login_method,
                           'cores'         : 1 * self.max_tasks,
-                          'gpus'          : self.gpus,
-                          'redis_link'    : pilot_redis_url}
+                          'gpus'          : self.gpus}
         pd = rp.PilotDescription(pd_init)
 
         pd.cores   = self.n_masters * (self.cpn / self.masters_pn)
@@ -254,11 +195,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     # 'path'   : '',
-                                     'setup'  : ['$HOME/radical.utils/',
-                                                 '$HOME/radical.pilot/',
-                                                 '$HOME/colmena/']})
-        if self.enable_redis:
-            self.redis.connect()
+                                     'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
+                                                  '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/',
+                                                  '/home/aymen/RADICAL/RP-Parsl-Raptor/colmena/']})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
@@ -281,36 +220,19 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # ideftify the task type
         try:
-            # Colmena/bash and python migh be partial wrapped
+            # bash and python migh be partial wrapped
             if isinstance(func, partial):
-
-                # type bash/python colmena task
-                if isinstance(func.args[0], ExecutableTask):
-
-                    # we can only check via name now as dfk not returning 
-                    # app type with base class
-                    if '_preprocess' or '_postprocess' in func.__name__:
-                        task_type = 'python'
-                        return func, args, task_type
-                    
-                if isinstance(func.args[0], partial):
-                    if '_execute_execute' in func.args[0].func.__name__:
+                # @bash_app from parsl
+                try:
+                    task_type = inspect.getsource(func.args[0]).split('\n')[0]
+                    if 'bash' in task_type:
                         task_type = 'bash'
-                        return func.args[0], args, task_type
+                        func = func.args[0]
+                    else:
+                        task_type = 'python'
 
-                # type python (colmena task or non colmena task) or bash_app
-                else:
-                    # @bash_app from parsl
-                    try:
-                        task_type = inspect.getsource(func.args[0]).split('\n')[0]
-                        if 'bash' in task_type:
-                            task_type = 'bash'
-                            func = func.args[0]
-                        else:
-                            task_type = 'python'
-
-                    except Exception as e:
-                        self.report.header(str(e))
+                except Exception as e:
+                    self.report.header(str(e))
 
                     return func, args, task_type
 
@@ -345,7 +267,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 except AttributeError as e:
                     raise Exception("failed to obtain bash app cmd") from e
 
-                task.mode = rp.TASK_EXECUTABLE
+                task.mode      = rp.TASK_EXECUTABLE
+                task.scheduler = None
 
                 if 'mpirun' in bash_app:
                     bash_app              = shlex.split(bash_app)
@@ -358,17 +281,13 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         elif 'python' in task_type or not task_type:
             self.log.debug('python app')
-
-            # Colmena task if the task args is type Result
-            if len(args) > 0:
-                for arg in args: 
-                    if isinstance(arg, Result):
-                        self.log.debug('got colmena args')
-                        task.name = 'colmena'
-
+            self.log.debug(str(func))
+            self.log.debug(str(args))
+            self.log.debug(str(kwargs))
             code = PythonTask(func, *args, **kwargs)
 
             task.mode       = rp.TASK_PY_FUNCTION
+            task.scheduler  = 'master.%06d' % (self._task_counter % self.n_masters)
             task.pyfunction = code
 
         task.stdout            = "" if 'stdout' not in kwargs else kwargs['stdout']
@@ -405,20 +324,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event= 'trans_stop', uid=self._uid)
 
-            if task.mode == rp.TASK_EXECUTABLE:
-                task.scheduler = None
-            else:
-                task.scheduler = 'master.%06d' % (self._task_counter % self.n_masters)
-
             self.report.progress()
-
-            if task.name == 'colmena':
-                if task.pyfunction:
-                    self.put_redis_task(task.pyfunction)
-                    task.pyfunction = 'redis_func'
-                else:
-                    self.put_redis_task(task.executable)
-                    task.executable = 'redis_exec'
 
             # we assign a task id for rp task
             task.uid = task_id
