@@ -899,11 +899,12 @@ class Default(PMGRLaunchingComponent):
             avail_gpus_per_node -= len(blocked_gpus)
             assert (avail_gpus_per_node >= 0)
 
-        if requested_nodes:
+        if requested_nodes or not requested_cores:
 
             if not cores_per_node:
                 raise RE('use "cores" in PilotDescription')
 
+            requested_nodes = requested_nodes or 1
             requested_cores = requested_nodes * avail_cores_per_node
             requested_gpus  = requested_nodes * avail_gpus_per_node
 
