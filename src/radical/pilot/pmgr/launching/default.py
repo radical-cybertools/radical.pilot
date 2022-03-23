@@ -535,7 +535,7 @@ class Default(PMGRLaunchingComponent):
           # src_dir = os.path.dirname(src)
             tgt_dir = os.path.dirname(tgt)
 
-            if tgt_dir.startswith(b'..'):
+            if tgt_dir.startswith('..'):
                 tgt = ft['tgt']
                 tgt_dir = os.path.dirname(tgt)
 
