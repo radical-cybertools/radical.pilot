@@ -1,7 +1,6 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/Parsl
 """
 import os
-import shlex
 import parsl
 import inspect
 import typeguard
@@ -18,25 +17,27 @@ from typing import Optional, Union
 from parsl.utils import RepresentationMixin
 from parsl.executors.status_handling import  NoStatusHandlingExecutor
 
+BASH   = 'bash'
+PYTHON = 'python'
+
 
 class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
-    """Executor designed for cluster-scale
+    """Executor designed for: executing heterogeneous tasks in terms of
+                              type/resource
 
     The RADICALExecutor system has the following components:
 
-      1. "start" resposnible for creating the RADICAL-executor session and pilot.
-      2. "submit" resposnible for translating and submiting ParSL tasks the RADICAL-executor.
-      3. "shut_down"  resposnible for shutting down the RADICAL-executor components.
+      1. "start"    :creating the RADICAL-executor session and pilot.
+      2. "translate":unwrap/identify/ out of parsl task and construct RP task.
+      2. "submit"   :translating and submiting Parsl tasks the RADICAL-executor.
+      3. "shut_down":shutting down the RADICAL-executor components.
 
-    Here is a diagram
-
-    .. code:: python 
     RADICAL Executor
     ------------------------------------------------------------------------------------------------
              Parsl DFK/dflow               |      Task Translator      |     RP-Client/Task-Manager
     ---------------------------------------|---------------------------|----------------------------                                                     
                                            |                           |
-    -> Dep. check ------> Parsl_tasks{} <--+--> Parsl Task/Tasks desc. | tmgr.submit_Tasks(RP_tasks)
+    -> Dep. check ------> Parsl_tasks{} <--+--> Parsl Task/func/arg/kwg| tmgr.submit_Tasks(RP_tasks)
      Data management          +dfk.submit  |             |             |
                                            |             v             |
                                            |     RP Task/Tasks desc. --+->   
@@ -100,11 +101,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.nodes_rp    = cfg.nodes_rp   # number of total nodes
         self.nodes_agent = cfg.nodes_agent  # number of nodes per agent
 
+
     def task_state_cb(self, task, state):
         """
         Update the state of Parsl Future tasks
         Based on RP task state
         """
+        # FIXME: user might specify task uid as
+        # task.uid = 'master...' this migh create
+        # a confusion with the raptpor master
         if not task.uid.startswith('master'):
             parsl_task = self.future_tasks[task.uid]
 
@@ -205,6 +210,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         return True
 
+
     def unwrap(self, func, args):
 
         task_type = ''
@@ -218,18 +224,18 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         while hasattr(func, '__wrapped__'):
             func = func.__wrapped__
 
-        # ideftify the task type
+        # identify the task type
         try:
             # bash and python migh be partial wrapped
             if isinstance(func, partial):
                 # @bash_app from parsl
                 try:
                     task_type = inspect.getsource(func.args[0]).split('\n')[0]
-                    if 'bash' in task_type:
-                        task_type = 'bash'
+                    if BASH in task_type:
+                        task_type = BASH
                         func = func.args[0]
                     else:
-                        task_type = 'python'
+                        task_type = PYTHON
 
                 except Exception as e:
                     self.report.header(str(e))
@@ -239,8 +245,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             # @python_app from parsl
             else:
                 task_type = inspect.getsource(func).split('\n')[0]
-                if 'python' in task_type:
-                    task_type = 'python'
+                if PYTHON in task_type:
+                    task_type = PYTHON
                 else:
                     task_type = ''
         except Exception as e:
@@ -254,8 +260,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         task = rp.TaskDescription()
         func, args, task_type = self.unwrap(func, args)
 
-        if 'bash' in task_type:
-            self.log.debug('bash app')
+        if BASH in task_type:
+            self.log.debug(BASH)
             if callable(func):
                 # These lines of code are from parsl/app/bash.py
                 try:
@@ -263,41 +269,35 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     bash_app = func(*args, **kwargs)
                     if not isinstance(bash_app, str):
                         raise ValueError("Expected a str for bash_app cmd, got: %s", type(bash_app))
-
                 except AttributeError as e:
                     raise Exception("failed to obtain bash app cmd") from e
 
-                task.mode      = rp.TASK_EXECUTABLE
-                task.scheduler = None
+                task.mode       = rp.TASK_EXECUTABLE
+                task.scheduler  = None
+                task.executable = bash_app
 
-                if 'mpirun' in bash_app:
-                    bash_app              = shlex.split(bash_app)
-                    task.executable       = bash_app[3]
-                    task.arguments        = eval(bash_app[4:][0])
-                    task.cpu_processes    = eval(bash_app[2])
-                    task.cpu_process_type = rp.MPI
-                else:
-                    task.executable = bash_app
+                # specifying pre_exec is only for executables
+                task.pre_exec = [] if 'pre_exec' not in kwargs or \
+                                kwargs['pre_exec'] is None else kwargs['pre_exec']
 
-        elif 'python' in task_type or not task_type:
-            self.log.debug('python app')
-            self.log.debug(str(func))
-            self.log.debug(str(args))
-            self.log.debug(str(kwargs))
-            code = PythonTask(func, *args, **kwargs)
-
+        elif PYTHON in task_type or not task_type:
+            self.log.debug(PYTHON)
             task.mode       = rp.TASK_PY_FUNCTION
             task.scheduler  = 'master.%06d' % (self._task_counter % self.n_masters)
-            task.pyfunction = code
+            task.pyfunction = PythonTask(func, *args, **kwargs)
 
-        task.stdout            = "" if 'stdout' not in kwargs else kwargs['stdout']
-        task.stderr            = "" if 'stderr' not in kwargs else kwargs['stderr']
-        #task.pre_exec         = [] if 'pre_exec' not in kwargs else kwargs['pre_exec']
-        #task.cpu_process_type = None if 'ptype' not in kwargs else kwargs['ptype']
-        #task.cpu_processes    = 1 if 'nproc' not in kwargs else kwargs['nproc']
-        #task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
-        #task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
-        #task.gpu_process_type = None
+        # FIXME: switch ptype to `cpu_process_type`
+        #        same for `gpu_processes` and `cpu_threads`
+        task.stdout           = "" if 'stdout' not in kwargs else kwargs['stdout']
+        task.stderr           = "" if 'stderr' not in kwargs else kwargs['stderr']
+        task.cpu_process_type = None if 'ptype' not in kwargs \
+                                else kwargs['ptype']
+        task.gpu_process_type = None if 'gpu_process_type' not in kwargs \
+                                else kwargs['gpu_process_type']
+        task.cpu_processes    = 1 if 'cpu_processes' not in kwargs \
+                                else kwargs['cpu_processes']
+        task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
+        task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
 
         return task
 
@@ -308,17 +308,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         Args:
             - func (callable) : Callable function
-            - *args (list) : List of arbitrary positional arguments.
+            - *args (list)    : List of arbitrary positional arguments.
 
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self.log.debug("Got a task from the parsl.dfk")
+        self.log.debug("task_recv_parsl_dfk")
         self._task_counter += 1
         task_id = str(self._task_counter)
 
         try:
-            #self.report.progress_tgt(self._task_counter, label='create')
 
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
@@ -334,6 +333,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
             # submit the task to rp
             self.tmgr.submit_tasks(task)
+            self.log.debug("task_submit_rp_tmgr")
 
             return self.future_tasks[task_id]
 
