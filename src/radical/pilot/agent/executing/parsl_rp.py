@@ -200,9 +200,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     # 'path'   : '',
-                                     'setup'  : ['$HOME/radical.utils/',
-                                                 '$HOME/radical.pilot/',
-                                                 '$HOME/colmena/']})
+                                    'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/',
+                                                '/home/aymen/RADICAL/RP-Parsl-Raptor/colmena/']})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
@@ -293,8 +293,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         task.cpu_processes    = kwargs.get('cpu_processes', 1)
         task.gpu_processes    = kwargs.get('ngpus', 0)
         task.gpu_process_type = kwargs.get('gpu_process_type', None)
-        task.cpu_threads      = kwargs.get('nthrd', None)
-        task.gpu_threads      = kwargs.get('gpu_threads', None)
+        task.cpu_threads      = kwargs.get('nthrd', 1)
+        task.gpu_threads      = kwargs.get('gpu_threads', 0)
 
         return task
 
