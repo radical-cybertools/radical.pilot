@@ -879,14 +879,13 @@ class Default(PMGRLaunchingComponent):
         # estimate requested resources
 
         smt = os.environ.get('RADICAL_SAGA_SMT')
-        if smt:
+        if smt and system_architecture.get('smt'):
             system_architecture['smt'] = int(smt)
-        elif not system_architecture.get('smt'):
-            system_architecture['smt'] = 1
-        assert (system_architecture['smt'] > 0)
+        smt = system_architecture.get('smt', 1)
+        assert (smt > 0)
 
         if cores_per_node:
-            cores_per_node *= system_architecture['smt']
+            cores_per_node *= smt
 
         avail_cores_per_node = cores_per_node
         avail_gpus_per_node  = gpus_per_node
