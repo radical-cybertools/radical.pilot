@@ -200,9 +200,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     # 'path'   : '',
-                                     'setup'  : ['/home/aymen/RADICAL/RP-Parsl-Raptor/radical.utils/',
-                                                  '/home/aymen/RADICAL/RP-Parsl-Raptor/radical.pilot/',
-                                                  '/home/aymen/RADICAL/RP-Parsl-Raptor/colmena/']})
+                                     'setup'  : ['$HOME/radical.utils/',
+                                                 '$HOME/radical.pilot/',
+                                                 '$HOME/colmena/']})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
