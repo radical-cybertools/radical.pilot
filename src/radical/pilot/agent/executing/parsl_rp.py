@@ -277,8 +277,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 task.executable = bash_app
 
                 # specifying pre_exec is only for executables
-                task.pre_exec = [] if 'pre_exec' not in kwargs or \
-                                kwargs['pre_exec'] is None else kwargs['pre_exec']
+                task.pre_exec = kwargs.get('pre_exec', [])
 
         elif PYTHON in task_type or not task_type:
             self.log.debug(PYTHON)
@@ -288,16 +287,14 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # FIXME: switch ptype to `cpu_process_type`
         #        same for `gpu_processes` and `cpu_threads`
-        task.stdout           = "" if 'stdout' not in kwargs else kwargs['stdout']
-        task.stderr           = "" if 'stderr' not in kwargs else kwargs['stderr']
-        task.cpu_process_type = None if 'ptype' not in kwargs \
-                                else kwargs['ptype']
-        task.gpu_process_type = None if 'gpu_process_type' not in kwargs \
-                                else kwargs['gpu_process_type']
-        task.cpu_processes    = 1 if 'cpu_processes' not in kwargs \
-                                else kwargs['cpu_processes']
-        task.gpu_processes    = 0 if 'ngpus' not in kwargs else kwargs['ngpus']
-        task.cpu_threads      = 0 if 'nthrd' not in kwargs else kwargs['nthrd']
+        task.stdout           = kwargs.get('stdout', '')
+        task.stderr           = kwargs.get('stderr', '')
+        task.cpu_process_type = kwargs.get('ptype', None)
+        task.cpu_processes    = kwargs.get('cpu_processes', 1)
+        task.gpu_processes    = kwargs.get('ngpus', 0)
+        task.gpu_process_type = kwargs.get('gpu_process_type', None)
+        task.cpu_threads      = kwargs.get('nthrd', None)
+        task.gpu_threads      = kwargs.get('gpu_threads', None)
 
         return task
 
