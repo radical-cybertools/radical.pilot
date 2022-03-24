@@ -101,12 +101,11 @@ class PilotDescription(ru.TypedDict):
 
     .. data:: nodes
 
-       [type: `int` | default: `0`] The number of nodes the pilot should
+       [type: `int` | default: `1`] The number of nodes the pilot should
        allocate on the target resource. This parameter could be set instead of
        `cores` and `gpus` (and `memory`).
 
-       .. note:: Either `cores` or `nodes` **must** be specified.  If `nodes`
-                 are specified, `gpus` must not be specified.
+       .. note:: If `nodes` is specified, `gpus` and `cores` must not be specified.
 
     .. data:: cores
 
@@ -115,14 +114,16 @@ class PilotDescription(ru.TypedDict):
        `nodes`.
 
        .. note:: For local pilots, you can set a number larger than the physical
-                 machine limit when setting `RADICAL_PILOT_PROFILE` in your
-                 environment (corresponding resource configuration should have
+                 machine limit (corresponding resource configuration should have
                  the attribute `"fake_resources"`).
+       .. note:: If `cores` is specified, `nodes` must not be specified.
 
     .. data:: gpus
 
        [type: `int` | default: `0`] The number of gpus the pilot should
        allocate on the target resource.
+
+       .. note:: If `gpus` is specified, `nodes` must not be specified.
 
     .. data:: memory
 
@@ -261,14 +262,13 @@ class PilotDescription(ru.TypedDict):
         if not self.get('resource'):
             raise ValueError("Pilot description needs 'resource'")
 
-        if not self.get('cores') and not self.get('nodes'):
-            raise ValueError("Pilot description needs 'cores' or 'nodes'")
+        if self.get('nodes'):
 
-        if self.get('cores') and self.get('nodes'):
-            raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
+            if self.get('cores'):
+                raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
 
-        if self.get('gpus') and self.get('nodes'):
-            raise ValueError("Pilot description needs 'gpus' *or* 'nodes'")
+            if self.get('gpus'):
+                raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
 
 
 # ------------------------------------------------------------------------------
