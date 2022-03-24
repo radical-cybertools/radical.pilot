@@ -54,8 +54,12 @@ if __name__ == '__main__':
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
-                 # 'cores'         : 1,
                    'exit_on_error' : True,
+                   'project'       : config[resource].get('project', None),
+                   'queue'         : config[resource].get('queue', None),
+                   'access_schema' : config[resource].get('schema', None),
+                   'cores'         : config[resource].get('cores', 1),
+                   'gpus'          : config[resource].get('gpus', 0),
                   }
         pdesc = rp.PilotDescription(pd_init)
 
