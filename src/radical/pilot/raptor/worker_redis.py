@@ -16,17 +16,16 @@ class Worker(_Worker):
                          event, log, prof, base)
 
         self._ser          = rpu.Serializer()
-        self._host         = None
-        self._port         = None
         self._enable_redis = False        
 
         cfg = ru.read_json('raptor.cfg')
-        self._host = cfg['redis']['host'] 
-        self._port = cfg['redis']['port']
+        self._host = cfg.get('redis').get('host', '127.0.0.1')
+        self._port = cfg.get('redis').get('port', 6379)
+        self._pass = cfg.get('redis').get('pass', None)
 
         if self._host and self._port:
             from colmena.redis.queue import RedisQueue
-            self.redis  = RedisQueue(self._host, self._port,
+            self.redis  = RedisQueue(self._host, self._port, self._pass,
                                      topics = ['rp task queue', 'rp result queue'])
             self._enable_redis = True
             self.redis.connect()

@@ -16,12 +16,14 @@ class RedisRadicalExecutor(RADICALExecutor):
                        walltime=None, managed=True, max_tasks=float('inf'),
                        cores_per_task=1, gpus=0, worker_logdir_root=".",
                        partition=" ", project=" ", enable_redis=False,
-                       redis_port=59465, redis_host=None):
+                       redis_port=6379, redis_host:str ='127.0.0.1',
+                       redis_pass: str=None):
 
         # Needed by Colmena
         self.enable_redis = enable_redis
         self.redis_port   = redis_port
         self.redis_host   = redis_host
+        self.redis_pass   = redis_pass
 
         super().__init__(label, resource, login_method, walltime, managed, max_tasks,
                          cores_per_task, gpus, worker_logdir_root, partition,
@@ -30,11 +32,14 @@ class RedisRadicalExecutor(RADICALExecutor):
         # check if we have redis mode enabled and connect
         if self.enable_redis:
             self.redis = RedisQueue(self.redis_host, port = self.redis_port, 
-                                    topics = ['rp task queue', 'rp result queue'])
+                                    password = self.redis_pass, topics = \
+                                    ['rp task queue', 'rp result queue'])
             self.redis.connect()
 
         cfg = ru.read_json("raptor.cfg")
-        cfg["redis"] = {"port": self.redis_port, "host": self.redis_host}
+        cfg["redis"] = {"host": self.redis_host, 
+                        "port": self.redis_port,
+                        "pass": self.redis_pass}
         cfg["worker_descr"]["worker_class"] = "WorkerRedis"
 
         ru.write_json(cfg, "raptor.cfg")
