@@ -3,17 +3,20 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
-import time
-import threading     as mt
-
 import logging
 logging.basicConfig(level='DEBUG')
 
-import psij
-
 from .base import PilotLauncherBase
-from ...   import states as rps
+
+
+# psij is an optional dependency right now.  We will report an import error
+# during component construction - as that point the logger is set up
+psij    = None
+psij_ex = None
+try:
+    import psij
+except Exception as e:
+    psij_ex = e
 
 
 # ------------------------------------------------------------------------------
@@ -23,6 +26,9 @@ class PilotLauncherPSIJ(PilotLauncherBase):
     # --------------------------------------------------------------------------
     #
     def __init__(self, log, prof, state_cb):
+
+        if psij_ex:
+            raise ImportError('psi-j-python not available') from psij_ex
 
         PilotLauncherBase.__init__(self, log, prof, state_cb)
 

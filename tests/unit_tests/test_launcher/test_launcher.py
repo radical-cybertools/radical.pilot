@@ -141,11 +141,6 @@ class TestLauncher(TestCase):
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'bar')
 
-        # test resource config parameter `system_architecture`
-
-        # default value is {'smt': 1}
-        self.assertEqual(ret['jd'].system_architecture, {'smt': 1})
-
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
         rcfg = configs.ornl.summit
