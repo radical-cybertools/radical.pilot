@@ -13,6 +13,7 @@ from .base import PilotLauncherBase
 # during component construction - as that point the logger is set up
 psij    = None
 psij_ex = None
+
 try:
     import psij
 except Exception as e:
