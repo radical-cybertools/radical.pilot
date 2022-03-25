@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import math
 
@@ -134,7 +134,7 @@ class Srun(LaunchMethod):
             nodelist = [rank['node_name'] for rank in slots['ranks']]
             n_nodes  = len(set(nodelist))
 
-            # older slurm versions don't accept nodefiles
+            # older slurm versions don't accept option `--nodefile`
             # 42 node is the upper limit to switch from `--nodelist`
             # to `--nodefile`
             if self._vmajor > MIN_VSLURM_IN_LIST:
@@ -144,18 +144,13 @@ class Srun(LaunchMethod):
                         fout.write(','.join(nodelist))
                         fout.write('\n')
 
-        # use `--exclusive` to ensure all tasks get individual resources.
-        # do not use core binding: it triggers warnings on some installations
-        # FIXME: warnings are triggered anyway :-(
-        mapping = '--exclusive --cpu-bind=none ' \
-                + '--nodes %d '        % n_nodes \
+        mapping = '--nodes %d '        % n_nodes \
                 + '--ntasks %d '       % n_tasks \
-                + '--gpus %d '         % (n_gpus * n_tasks) \
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
         if self._rm_info.get('gpus'):
-            mapping += ' --gpus-per-task %d' % n_gpus
+            mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
