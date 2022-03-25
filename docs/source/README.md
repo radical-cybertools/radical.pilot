@@ -28,10 +28,21 @@ dotenv set RADICAL_PILOT_DBURL mongodb://localhost:27017/rpdb
 # Replace the mongo URL as necessary. Format -  mongodb://<user_id>:<password>@<ip_address>:<port>/<db_name> 
 ```
 
-# How to generate documentation of notebooks with sphinx
+## Building the documentation
 
+### 
+```shell
+jupyter nbconvert --to html notebook.ipynb
+jupyter nbconvert --to notebook --execute notebook.ipynb #--inplace
+jupyter nbconvert --to rst notebook.ipynb
+```
+### Generate documentation of notebooks with sphinx
 ```shell
 sphinx-build -b html -d build/doctrees docs/source/ build/html # generates the documentation in build/html dir
 ```
 
+### Sphinx autobuild for continuos build
+```shell
+sphinx_autobuild
+```
 # How to pus/configure sphinx at readthedocs for notebooks #TODO
