@@ -270,16 +270,8 @@ def hist_session (db, session, cachedir) :
         print("          %08.2fs : %10s : %15s : %20s (%s)" % (seconds, e[1], e[2], e[5], e[0]))
 
 
-    if  slothists :
-        for pilot_info in slothists :
-            print("pilot   : %s" % pilot_info['pid'])
-            for slothist in pilot_info['slothist'] :
-                seconds = ru.time_diff (start, slothist['timestamp'])
-                print("          %08.2fs : %s" % (seconds, str(slothist['slotstate'])))
-
-
 # ------------------------------------------------------------------------------
-def get_stats (docs, events, slothist) :
+def get_stats (session) :
 
     n_tasks               = 0
     n_pilots              = 0
@@ -288,34 +280,51 @@ def get_stats (docs, events, slothist) :
 
     pilot_stats['pilots'] = dict()
 
-    for task in docs['task'] :
-        tasks[str(task['_id'])] = task
+    try:
+        # Trying to find module on sys.path
+        import radical.analytics as ra
+        print('radical analytics found')
 
-    for doc in docs['pilot'] :
+        s_session = ra.Session(session, 'radical.pilot')
+        s_pilots  = s_session.filter(etype='pilot', inplace=False)
+        s_tasks   = s_session.filter(etype='task' , inplace=False)
+
+    except ModuleNotFoundError:
+        raise
+    
+    pilot_stats['tasks'] = s_tasks
+    pilot_stats['session_created'] = s_session.timestamps(state='NEW')[0]
+
+    pdd = ra.utils.tabulate_durations(rp.utils.PILOT_DURATIONS_DEBUG)
+    tdd  = ra.utils.tabulate_durations(rp.utils.TASK_DURATIONS_DEBUG)
+
+    for task in s_tasks.get():
+        tasks[task.uid] = task
+
+    for pilot in s_pilots.get() :
 
         n_pilots   += 1
-        pid         = str(doc['_id'])
+        pid         = pilot.uid
         pilot_info  = dict()
 
-        pilot_info['resource']     = doc['description']['resource']
-        pilot_info['cores']        = doc['description']['cores']
+        pilot_info['resource']     = pilot.resources
+        pilot_info['cores']        = pilot.description['cores']
         pilot_info['n_tasks']      = 0
         pilot_info['task_states']  = dict()
         pilot_info['pilot_states'] = list()
 
-        # we assume that states are time-ordered
-        state = doc['statehistory'][0]['state']
-        start = doc['statehistory'][0]['timestamp']
-        for t in doc['statehistory'][1:] :
-            ts = t['timestamp']
-            s  = t['state']
-            pilot_info['pilot_states'].append ({'state'    : state,
-                                                'duration' : ru.time_diff(start, ts)})
-            state = s
-            start = ts
+        for state in pilot.states:
+            try:
+                for s in pdd:
+                    if state == s['Start Timestamp']:
+                        dur = pilot.duration(event=rp.utils.PILOT_DURATIONS_DEBUG[s['Duration Name']])
+                        pilot_info['pilot_states'].append ({'state'   : state,
+                                                            'duration': dur})
+            except ValueError:
+                pass
 
-        for task in doc['task_ids'] :
-            uid                    = str(task)
+        for task in s_tasks.get():
+            uid                    = str(task.uid)
             n_tasks               += 1
             pilot_info['n_tasks'] += 1
 
@@ -323,44 +332,36 @@ def get_stats (docs, events, slothist) :
                 print('unknonwn task %s' % uid)
                 sys.exit ()
 
-            task_doc = tasks[uid]
-            state    = task_doc['statehistory'][0]['state']
-            start    = task_doc['statehistory'][0]['timestamp']
-
-            for t in task_doc['statehistory'][1:] :
-                ts = t['timestamp']
-                s  = t['state']
-
-                if not state in pilot_info['task_states'] :
-                    pilot_info['task_states'][state]        = dict()
-                    pilot_info['task_states'][state]['dur'] = list()
-
-                pilot_info['task_states'][state]['dur'].append (ru.time_diff(start, ts))
-                state = s
-                start = ts
-
-        started  = doc.get('started',  None)
-        finished = doc.get('finished', None)
-        cores    = doc.get('cores',    None)
+            for state in task.states:
+                try:
+                    for s in tdd:            
+                        if s['Start Timestamp'] == state:
+                            pilot_info['task_states'][state] = dict()
+                            pilot_info['task_states'][state]['dur'] = list()
+                            dur = task.duration(event=rp.utils.TASK_DURATIONS_DEBUG[s['Duration Name']])
+                            pilot_info['task_states'][state]['dur'].append(dur)
+                except ValueError:
+                    pass
+        
+        started  = pilot.timestamps(state='NEW')[0]
+        finished = pilot.timestamps(state=['DONE', 'FAILED', 'CANCELED'])[0]
+        cores    = pilot.description['cores']
 
         if not started or not finished or not cores:
             pilot_runtime = 1
         else:
             pilot_runtime = (finished - started) * cores
 
-        pilot_busy = 0.0
-        if pid in slothist:
-            for slot in slothist[pid]['slot_infos'] :
-                for slot_used in slothist[pid]['slot_infos'][slot] :
-                    pilot_busy += slot_used[1] - slot_used[0]
+        pilot_busy = pilot.duration(event=rp.utils.PILOT_DURATIONS_DEBUG['p_agent_runtime'])
 
-        pilot_info['started']     = doc['started']
-        pilot_info['finished']    = doc['finished']
+        pilot_info['started']     = started
+        pilot_info['finished']    = finished
         pilot_info['cpu_burned']  = pilot_runtime
         pilot_info['cpu_used']    = pilot_busy
         pilot_info['utilization'] = pilot_busy * 100 / pilot_runtime
 
         for s in pilot_info['task_states'] :
+            
             import numpy
             array = numpy.array (pilot_info['task_states'][s]['dur'])
             pilot_info['task_states'][s]['num' ] = len        (array)
@@ -379,40 +380,36 @@ def get_stats (docs, events, slothist) :
 # ------------------------------------------------------------------------------
 def stat_session (db, session, cachedir) :
 
-    docs       = rpu.get_session_docs     (db, session, cachedir=cachedir)
-    events     = rpu.get_session_events   (db, session, cachedir=cachedir)
-    slothists  = rpu.get_session_slothist (db, session, cachedir=cachedir)
-
-    stats      = get_stats (docs, events, slothists)
-
-  # session_df, pilot_df, task_df = rpu.get_session_frames (db, session, cachedir)
-  #
-  # print task_df
-  # sys.exit ()
+    docs       = rpu.get_session_docs(db, session, cachedir=cachedir)
+    stats      = get_stats (session)
 
     t_x_start  = None    # first task started executing
     t_y_start  = None    # last  task started executing
     t_x_stop   = None    # last task finished executing
+    
     task_cores = dict()  # sum of core counts from all tasks per pilot
 
-    for task in docs['task'] :
-        if not t_x_start : t_x_start =     task['started']
-        else             : t_x_start = min(task['started'],  t_x_start)
-        if not t_y_start : t_y_start =     task['started']
-        else             : t_y_start = max(task['started'],  t_y_start)
-        if not t_x_stop  : t_x_stop  =     task['finished']
-        else             : t_x_stop  = max(task['finished'], t_x_stop )
+    for task in stats['tasks'].get():
+        started  = sorted(task.timestamps(state="AGENT_EXECUTING"))[0]
+        finished = sorted(task.timestamps(state=["DONE", "FAILED", "CANCELED"]))[0]
 
-        pid = task.get ('pilot', 'None')
-        if not pid in task_cores : task_cores[pid]  = task['description'].get ('cores', 1)
-        else                     : task_cores[pid] += task['description'].get ('cores', 1)
+        if not t_x_start : t_x_start =     started
+        else             : t_x_start = min(started,  t_x_start)
+        if not t_y_start : t_y_start =     started
+        else             : t_y_start = max(started,  t_y_start)
+        if not t_x_stop  : t_x_stop  =     finished
+        else             : t_x_stop  = max(finished, t_x_stop )
 
-    t_0  = docs['session']['created']  # session started (absolute time)
-    t_h  = t_x_start - t_0             # session start 'til first execution
-    t_x  = t_x_stop  - t_x_start       # first start 'til last stop  of task execution
-    t_xy = t_y_start - t_x_start       # first start 'til last start of task execution
+        pid = task.cfg.get('pilot', None)
+        if not pid in task_cores : task_cores[pid]  = task.description.get ('cores', 1)
+        else                     : task_cores[pid] += task.description.get ('cores', 1)
 
-    session_name = docs['session']['name']
+    t_0  = stats['session_created']      # session started (absolute time)
+    t_h  = t_x_start- t_0                # session start 'til first execution
+    t_x  = t_x_stop  - t_x_start         # first start 'til last stop  of task execution
+    t_xy = t_y_start - t_x_start         # first start 'til last start of task execution
+
+    session_name = docs['session']['_id']
 
     print("Session Statistics")
     print("------------------")
@@ -433,18 +430,17 @@ def stat_session (db, session, cachedir) :
         print("      tasks       : %6d" % pilot['n_tasks'])
         print("      tasks*cores : %6s" % task_cores.get (pid, '-'))
 
-        if task_cores.get (pid, 0) <= pilot['cores'] :
-            urate = pilot['n_tasks'] / t_xy
-            print("      task-rate   : %8.1f/sec" % urate)
+        urate = pilot['n_tasks'] / t_xy
+        print("      task-rate   : %7.2f/sec" % urate)
 
-        print("      utilization : %8.1f%%" % pilot['utilization'])
+        print("      utilization : %7.2f%%" % pilot['utilization'])
         print("      pilot states:")
         for ps in pilot['pilot_states'] :
-            print("        state %-18s : %10.1fs" % (ps['state'], ps['duration']))
+            print("        state %-18s : %10.2fs" % (ps['state'], ps['duration']))
         print("      task states :")
         for us  in pilot['task_states'] :
             data = pilot['task_states'][us]
-            print("        state %-18s : %10.1fs  +/- %8.1fs" % (us, data['mean'], data['std']))
+            print("        state %-18s : %10.2fs  +/- %8.2fs" % (us, data['mean'], data['std']))
 
 
 # ------------------------------------------------------------------------------
@@ -497,7 +493,7 @@ def plot_session (db, session, cachedir, term) :
     events    = rpu.get_session_events   (db, session, cachedir=cachedir)
     slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
-    stats     = get_stats (docs, events, slothists)
+    stats     = get_stats (session, events)
 
     session_name = docs['session']['name']
 
