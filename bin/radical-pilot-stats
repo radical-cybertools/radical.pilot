@@ -465,10 +465,10 @@ def prof_session(db, sessions, cachedir, profdir):
 
             print("Processing pilot '%s'" % pilot['_id'])
 
-            sandbox = pilot['sandbox']
+            sandbox = pilot['pilot_sandbox']
             pid = os.path.basename(os.path.dirname(sandbox))
 
-            src = sandbox + 'agent.prof'
+            src = sandbox + 'agent.0.prof'
 
             if profdir.startswith('/'):
                 dst = 'file://localhost/%s/%s.prof' % (profdir, pid)
