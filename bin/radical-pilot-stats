@@ -292,7 +292,8 @@ def get_stats (session) :
     except ModuleNotFoundError:
         raise
     
-    pilot_stats['tasks'] = s_tasks
+    pilot_stats['s_pilot'] = s_pilots
+    pilot_stats['s_tasks'] = s_tasks
     pilot_stats['session_created'] = s_session.timestamps(state='NEW')[0]
 
     pdd = ra.utils.tabulate_durations(rp.utils.PILOT_DURATIONS_DEBUG)
@@ -389,7 +390,7 @@ def stat_session (db, session, cachedir) :
     
     task_cores = dict()  # sum of core counts from all tasks per pilot
 
-    for task in stats['tasks'].get():
+    for task in stats['s_tasks'].get():
         started  = sorted(task.timestamps(state="AGENT_EXECUTING"))[0]
         finished = sorted(task.timestamps(state=["DONE", "FAILED", "CANCELED"]))[0]
 
@@ -493,9 +494,9 @@ def plot_session (db, session, cachedir, term) :
     events    = rpu.get_session_events   (db, session, cachedir=cachedir)
     slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
 
-    stats     = get_stats (session, events)
+    stats     = get_stats (session)
 
-    session_name = docs['session']['name']
+    session_name = docs['session']['_id']
 
 
     if  not events :
@@ -505,8 +506,8 @@ def plot_session (db, session, cachedir, term) :
     if  not slothists :
         print("no slot configuration for session %s" % session)
         print("Please enable benchmarking: export RADICAL_PILOT_PROFILE=")
-
-    start      = events[0][4]
+    
+    start      = stats['session_created']
     pids       = list()
     maxtime    = 0.0
     maxslots   = 0
@@ -519,24 +520,28 @@ def plot_session (db, session, cachedir, term) :
 
     # some data cleanup
     for doc in docs['pilot'] :
-        if  not doc['nodes'] :
-            doc['nodes'] = list()
-        if  not doc['cores_per_node'] :
-            doc['cores_per_node'] = 1
+        if  not doc['resource_details']['rm_info']['node_list'] :
+            doc['resource_details']['rm_info']['node_list'] = list()
+        if  not doc['resource_details']['rm_info']['cores_per_node'] :
+            doc['resource_details']['rm_info']['cores_per_node'] = 1
 
     # the plots look nicer if the largest pilots are plotted first, and smaller
     # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
     # Pilot's of same sizes are ordered as-is.
     pilot_sizes = list()
     for doc in docs['pilot'] :
-        cores = len(doc['nodes']) * int(doc['cores_per_node'])
+        nodes = doc['resource_details']['rm_info']['node_list']
+        cpn   = doc['resource_details']['rm_info']['cores_per_node']
+        cores = len(nodes * int(cpn))
         pilot_sizes.append (cores)
 
 
     pilot_docs = list()
     for pilot_size in sorted (pilot_sizes, reverse=True) :
         for doc in docs['pilot'] :
-            cores = len(doc['nodes']) * int(doc['cores_per_node'])
+            nodes = doc['resource_details']['rm_info']['node_list']
+            cpn   = doc['resource_details']['rm_info']['cores_per_node']
+            cores = len(nodes) * int(cpn)
             if  cores == pilot_size :
                 if  doc not in pilot_docs :
                     pilot_docs.append (doc)
@@ -545,47 +550,35 @@ def plot_session (db, session, cachedir, term) :
 
         pid = str(pilot['_id'])
         pids.append  (pid)
-        hosts.append (ru.Url (pilot['sandbox']).host.split('.')[0])
+        hosts.append (ru.Url (pilot['pilot_sandbox']).host.split('.')[0])
 
-        slotnum  = len(pilot['nodes'] * pilot['cores_per_node'])
+        pn       = pilot['resource_details']['rm_info']['node_list']
+        cpn      = pilot['resource_details']['rm_info']['cores_per_node']
+        slotnum  = len(pn * cpn)
         maxslots = max(slotnum,maxslots)
         slots.append (slotnum)
         ntasks.append (stats['pilots'][pid]['n_tasks'])
 
         with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
-            for event in pilot['statehistory'] :
-                etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
-                seconds = ru.time_diff (start, event['timestamp'])
-                maxtime = max (maxtime, seconds)
-                dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+            for event in stats['s_pilot'].get():
+                for key, id in event.states.items():
+                    etag    = _EVENT_ENCODING['pilot'].get (key, 0)
+                    seconds = ru.time_diff (start, id[0])
+                    maxtime = max (maxtime, seconds)
+                    dat.write (" %10.2f  %-25s\n" % (seconds, etag))
             dat.write ("\n")
             delete_me.append (dat.name)
 
-        with open ("/tmp/rp.%s.pilot.callbacks.%s.dat" % (session, pid), "w") as dat :
-            if  'callbackhistory' in pilot :
-                for event in pilot['callbackhistory'] :
-                    etag    = _EVENT_ENCODING['pilot'].get (event['state'], 0)
-                    seconds = ru.time_diff (start, event['timestamp'])
-                    maxtime = max (maxtime, seconds)
-                    dat.write ("%10.2f  %-25s\n" % (seconds, etag))
-                dat.write ("\n")
-            else :
-                print('no pilot callbacks')
-            delete_me.append (dat.name)
-
-
         with open ("/tmp/rp.%s.task.states.%s.dat" % (session, pid), "w") as dat :
 
-            for task_id in pilot['task_ids'] :
-
-                for task in docs['task'] :
-                    if  task_id == str(task['_id']) :
-                        for event in task['statehistory'] :
-                            etag    = _EVENT_ENCODING['task'].get (event['state'], 0)
-                            seconds = ru.time_diff (start, event['timestamp'])
-                            maxtime = max (maxtime, seconds)
-                            dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-                        dat.write ("\n")
+            for task in stats['s_tasks'].get():
+                for key, id in task.states.items():
+                    etag    = _EVENT_ENCODING['task'].get (key, 0)
+                    seconds = ru.time_diff (start, id[0])
+                    maxtime = max (maxtime, seconds)
+                    dat.write (" %10.2f  %-25s\n" % (seconds, etag))
+                    
+                dat.write ("\n")
             delete_me.append (dat.name)
 
         with open ("/tmp/rp.%s.task.callbacks.%s.dat" % (session, pid), "w") as dat :
@@ -750,7 +743,7 @@ def plot_session (db, session, cachedir, term) :
           # os.remove (filename)
             pass
         except Exception as e :
-            print("Error removing %s: %s" % (filename, str(e)))
+            pass #print("Error removing %s: %s" % (filename, str(e)))
 
     DO_SPLOTS = False
     if  not DO_SPLOTS :
