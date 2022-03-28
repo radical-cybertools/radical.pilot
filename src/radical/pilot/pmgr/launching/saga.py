@@ -59,7 +59,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         with self._saga_lock:
 
             # cancel pilots
-            for pid, job in self._saga_jobs:
+            for _, job in self._saga_jobs:
                 job.cancel()
 
             # close job services

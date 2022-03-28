@@ -94,9 +94,9 @@ class PilotLauncherBase(object):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, uids):
+    def cancel_pilots(self, pids):
         '''
-        uids:   RP UIDs for pilots to cancel
+        pids:   RP UIDs for pilots to cancel
         '''
         raise NotImplementedError('cancel_pilots not implemented')
 
