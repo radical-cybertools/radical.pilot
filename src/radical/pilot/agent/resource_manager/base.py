@@ -209,8 +209,10 @@ class ResourceManager(object):
         rm_info = RMInfo()
 
         # fill well defined default attributes
+        rm_info.requested_nodes  = self._cfg['nodes']
         rm_info.requested_cores  = self._cfg['cores']
         rm_info.requested_gpus   = self._cfg['gpus']
+        assert rm_info.requested_cores
 
         rcfg = self._cfg['resource_cfg']
         rm_info.cores_per_node   = rcfg.get('cores_per_node',    0)
@@ -225,32 +227,21 @@ class ResourceManager(object):
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)
+        alloc_nodes = len(rm_info.node_list)
 
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
 
-        # complete node information (cores_per_node, gpus_per_node, etc)
-        n_nodes = rm_info.requested_cores / rm_info.cores_per_node
-        if rm_info.gpus_per_node:
-            gpu_nodes = rm_info.requested_gpus / rm_info.gpus_per_node
-            n_nodes   = max(n_nodes, gpu_nodes)
-
-        rm_info.requested_nodes = math.ceil(n_nodes)
-
+        # number of nodes could be unknown if `cores_per_node` is not in config,
+        # but is provided by a corresponding RM in `_init_from_scratch`
         if not rm_info.requested_nodes:
-            if rm_info.requested_cores and rm_info.cores_per_node:
-                rm_info.requested_nodes = rm_info.requested_cores \
-                                        / rm_info.cores_per_node
+            n_nodes = rm_info.requested_cores / rm_info.cores_per_node
+            if rm_info.gpus_per_node:
+                n_nodes = max(rm_info.requested_gpus / rm_info.gpus_per_node,
+                              n_nodes)
+            rm_info.requested_nodes = math.ceil(n_nodes)
 
-        if not rm_info.requested_cores:
-            if rm_info.requested_nodes and rm_info.cores_per_node:
-                rm_info.requested_cores = rm_info.requested_nodes \
-                                        * rm_info.cores_per_node
-
-        if not rm_info.requested_gpus:
-            if rm_info.requested_nodes and rm_info.gpus_per_node:
-                rm_info.requested_gpus = rm_info.requested_nodes \
-                                       * rm_info.gpus_per_node
+        assert (alloc_nodes >= rm_info.requested_nodes)
 
         # however, the config can override core and gpu detection,
         # and decide to block some resources
@@ -274,6 +265,9 @@ class ResourceManager(object):
                 for idx in blocked_gpus:
                     assert(len(node['gpus']) > idx)
                     node['gpus'][idx] = rpc.DOWN
+
+        assert (alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores)
+        assert (alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus)
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -314,16 +308,6 @@ class ResourceManager(object):
         # check if we can do any work
         if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
-
-        # we have nodes and node properties - calculate some convenience values
-        # and perform sanity checks
-        total_nodes = len(rm_info.node_list) + agent_nodes + service_nodes
-        cores_avail = total_nodes * rm_info.cores_per_node
-        gpus_avail  = total_nodes * rm_info.gpus_per_node
-
-        assert(total_nodes >= rm_info.requested_nodes)
-        assert(cores_avail >= rm_info.requested_cores)
-        assert(gpus_avail  >= rm_info.requested_gpus)
 
         return rm_info
 
@@ -490,7 +474,7 @@ class ResourceManager(object):
                     else            : nodes[node]  = 1
 
             if cpn:
-                for node in nodes:
+                for node in list(nodes.keys()):
                     nodes[node] = cpn
 
             # convert node dict into tuple list
