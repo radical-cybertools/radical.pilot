@@ -578,18 +578,6 @@ class PilotManager(rpu.Component):
         pilot_docs = list()
         for pd in descriptions :
 
-            if not pd.runtime:
-                raise ValueError('pilot runtime must be defined')
-
-            if pd.runtime <= 0:
-                raise ValueError('pilot runtime must be positive')
-
-            if not pd.cores:
-                raise ValueError('pilot size must be defined')
-
-            if not pd.resource:
-                raise ValueError('pilot target resource must be defined')
-
             pilot = Pilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
