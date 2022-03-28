@@ -10,7 +10,6 @@
             "filesystem_endpoint"     : "file://localhost/"
         },
       # "forward_tunnel_endpoint"     : "`hostname -f`",
-        "gpus_per_node"               : 4,
         "default_queue"               : "pbatch",
         "resource_manager"            : "LSF",
         "agent_scheduler"             : "CONTINUOUS",
@@ -28,6 +27,8 @@
         "virtenv_dist"                : "default",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local",
+        "cores_per_node"              : 40,
+        "gpus_per_node"               : 4,
         "system_architecture"         : {"smt": 4}
     }
 }
