@@ -2,6 +2,7 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+
 import os
 import copy
 import math
@@ -38,18 +39,19 @@ DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-LOCAL_SCHEME   = 'file'
+PILOT_CANCEL_DELAY     = 120  # seconds between cancel signal and job kill
+PILOT_CHECK_INTERVAL   =  60  # seconds between runs of the job state check loop
+PILOT_CHECK_MAX_MISSES =   3  # number of times to find a job missing before
+                              # declaring it dead
 
-PILOT_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
-PILOT_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
-                               # declaring it dead
+LOCAL_SCHEME   = 'file'
 
 
 # ------------------------------------------------------------------------------
 #
 class PilotLauncherBase(object):
 
-    def __init__(self, log, prof, state_cb):
+    def __init__(self, name, log, prof, state_cb):
         '''
         log:      ru.Logger instance to use
         prof:     ru.Profiler instance to use
@@ -57,9 +59,17 @@ class PilotLauncherBase(object):
                   pilot state updates
         '''
 
+        self._name     = name
         self._log      = log
         self._prof     = prof
         self._state_cb = state_cb
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def name(self):
+        return self._name
 
 
     # --------------------------------------------------------------------------
@@ -158,8 +168,11 @@ class PMGRLaunchingComponent(rpu.Component):
         }
 
         for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
-            self._launchers.append(impl[name](self._log, self._prof,
-                self._state_cb))
+            try:
+                self._launchers.append(impl[name](name, self._log, self._prof,
+                    self._state_cb))
+            except:
+                self._log.exception('skip launcher %s' % name)
 
 
     # --------------------------------------------------------------------------
@@ -187,14 +200,15 @@ class PMGRLaunchingComponent(rpu.Component):
             self.unregister_input(rps.PMGR_LAUNCHING_PENDING,
                                   rpc.PMGR_LAUNCHING_QUEUE, self.work)
 
-            # FIXME: always kill all saga jobs for non-final pilots at termination,
-            #        and set the pilot states to CANCELED.  This will conflict with
-            #        disconnect/reconnect semantics.
+            # FIXME: always kill all pilot jobs for non-final pilots at
+            #        termination, and set the pilot states to CANCELED.
             with self._pilots_lock:
                 pids = list(self._pilots.keys())
 
             self._cancel_pilots(pids)
             self._kill_pilots(pids)
+
+            # TODO: close launchers
 
         except:
             self._log.exception('finalization error')
@@ -578,10 +592,7 @@ class PMGRLaunchingComponent(rpu.Component):
             self._prof.prof('staging_in_stop',  uid=pilot['uid'])
             self._prof.prof('submission_start', uid=pilot['uid'])
 
-        # ----------------------------------------------------------------------
-        # handle pilot job submission
-        # look up or create JS for actual pilot submission.  This might result
-        # in the same js url as above, or not.
+        # launcher handles pilot job submission
         launcher = self.find_launcher(rcfg, pilots)
         launcher.launch_pilots(rcfg, pilots)
 
@@ -595,6 +606,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         for launcher in self._launchers:
             if launcher.can_launch(rcfg, pilots):
+                self._log.info('use launcher %s for pilots %s',
+                               launcher.name, [p['uid'] for p in pilots])
                 return launcher
 
         self._log.warn('rcfg: %s', pprint.pformat(rcfg))
@@ -622,17 +635,18 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
-        number_cores    = pilot['description']['cores']
-        number_gpus     = pilot['description']['gpus']
-        required_memory = pilot['description']['memory']
-        runtime         = pilot['description']['runtime']
-        app_comm        = pilot['description']['app_comm']
-        queue           = pilot['description']['queue']
-        job_name        = pilot['description']['job_name']
-        project         = pilot['description']['project']
-        cleanup         = pilot['description']['cleanup']
-        candidate_hosts = pilot['description']['candidate_hosts']
-        services        = pilot['description']['services']
+        requested_nodes  = pilot['description']['nodes']
+        requested_cores  = pilot['description']['cores']
+        requested_gpus   = pilot['description']['gpus']
+        requested_memory = pilot['description']['memory']
+        runtime          = pilot['description']['runtime']
+        app_comm         = pilot['description']['app_comm']
+        queue            = pilot['description']['queue']
+        job_name         = pilot['description']['job_name']
+        project          = pilot['description']['project']
+        cleanup          = pilot['description']['cleanup']
+        candidate_hosts  = pilot['description']['candidate_hosts']
+        services         = pilot['description']['services']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -648,18 +662,19 @@ class PMGRLaunchingComponent(rpu.Component):
         pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
         python_interpreter      = rcfg.get('python_interpreter')
         rp_version              = rcfg.get('rp_version')
-        virtenv_mode            = rcfg.get('virtenv_mode',        DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',             default_virtenv)
+        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
+        virtenv_dist            = rcfg.get('virtenv_dist', DEFAULT_VIRTENV_DIST)
+        virtenv                 = rcfg.get('virtenv',      default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        blocked_cores           = rcfg.get('blocked_cores', [])
+        blocked_gpus            = rcfg.get('blocked_gpus',  [])
         lfs_path_per_node       = rcfg.get('lfs_path_per_node')
         lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
-        virtenv_dist            = rcfg.get('virtenv_dist',        DEFAULT_VIRTENV_DIST)
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
         shared_filesystem       = rcfg.get('shared_filesystem', True)
-        stage_cacerts           = rcfg.get('stage_cacerts', False)
         task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
         task_pre_rank           = rcfg.get('task_pre_rank')
@@ -668,13 +683,8 @@ class PMGRLaunchingComponent(rpu.Component):
         task_post_rank          = rcfg.get('task_post_rank')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
-        saga_jd_supplement      = rcfg.get('saga_jd_supplement', {})
         services               += rcfg.get('services', [])
 
-        if stage_cacerts: certs = 'cacert.pem.gz'
-        else            : certs = None
-
-        self._log.debug(cores_per_node)
         self._log.debug(pprint.pformat(rcfg))
 
         # make sure that mandatory args are known
@@ -820,11 +830,12 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # sanity checks
-        if not python_dist     : raise RuntimeError("missing python distribution")
-        if not virtenv_dist    : raise RuntimeError("missing virtualenv distribution")
-        if not agent_spawner   : raise RuntimeError("missing agent spawner")
-        if not agent_scheduler : raise RuntimeError("missing agent scheduler")
-        if not resource_manager: raise RuntimeError("missing resource manager")
+        RE = RuntimeError
+        if not python_dist     : raise RE("missing python distribution")
+        if not virtenv_dist    : raise RE("missing virtualenv distribution")
+        if not agent_spawner   : raise RE("missing agent spawner")
+        if not agent_scheduler : raise RE("missing agent scheduler")
+        if not resource_manager: raise RE("missing resource manager")
 
         # massage some values
         if not queue:
@@ -849,19 +860,48 @@ class PMGRLaunchingComponent(rpu.Component):
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
-        # if cores_per_node is set (!= None), then we need to
-        # allocation full nodes, and thus round up
-        if cores_per_node:
-            cores_per_node = int(cores_per_node)
-            number_cores   = int(cores_per_node *
-                             math.ceil(float(number_cores) / cores_per_node))
+        # estimate requested resources
 
-        # if gpus_per_node is set (!= None), then we need to
-        # allocation full nodes, and thus round up
-        if gpus_per_node:
-            gpus_per_node = int(gpus_per_node)
-            number_gpus   = int(gpus_per_node *
-                            math.ceil(float(number_gpus) / gpus_per_node))
+        smt = os.environ.get('RADICAL_SAGA_SMT')
+        if smt:
+            system_architecture['smt'] = int(smt)
+
+        if cores_per_node and smt:
+            cores_per_node *= int(smt)
+
+        avail_cores_per_node = cores_per_node
+        avail_gpus_per_node  = gpus_per_node
+
+        if avail_cores_per_node and blocked_cores:
+            avail_cores_per_node -= len(blocked_cores)
+            assert (avail_cores_per_node > 0)
+
+        if avail_gpus_per_node and blocked_gpus:
+            avail_gpus_per_node -= len(blocked_gpus)
+            assert (avail_gpus_per_node >= 0)
+
+        if requested_nodes:
+
+            if not cores_per_node:
+                raise RE('use "cores" in PilotDescription')
+
+            requested_cores = requested_nodes * avail_cores_per_node
+            requested_gpus  = requested_nodes * avail_gpus_per_node
+
+        else:
+
+            if avail_cores_per_node:
+                requested_nodes = requested_cores / avail_cores_per_node
+
+            if avail_gpus_per_node:
+                requested_nodes = max(requested_gpus  / avail_gpus_per_node,
+                                      requested_nodes)
+
+            requested_nodes = math.ceil(requested_nodes)
+
+        self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+                        requested_nodes, cores_per_node, gpus_per_node,
+                        requested_cores, requested_gpus)
 
         # set mandatory args
         bs_args = ""
@@ -911,8 +951,9 @@ class PMGRLaunchingComponent(rpu.Component):
 
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
-        agent_cfg['cores']               = number_cores
-        agent_cfg['gpus']                = number_gpus
+        agent_cfg['nodes']               = requested_nodes
+        agent_cfg['cores']               = requested_cores
+        agent_cfg['gpus']                = requested_gpus
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
@@ -942,8 +983,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
-        pilot['resources'] = {'cpu': number_cores,
-                              'gpu': number_gpus}
+        pilot['resources'] = {'cpu': requested_cores,
+                              'gpu': requested_gpus}
         pilot['$set']      = ['resources']
 
 
@@ -956,7 +997,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # Convert dict to json file
         self._log.debug("Write agent cfg to '%s'.", cfg_tmp_file)
-        ru.write_json(agent_cfg, cfg_tmp_file)
+        agent_cfg.write(cfg_tmp_file)
 
         # always stage agent cfg for each pilot, not in the tarball
         # FIXME: purge the tmp file after staging
@@ -1011,48 +1052,40 @@ class PMGRLaunchingComponent(rpu.Component):
                                      'tgt': '%s/%s' % (session_sandbox, base),
                                      'rem': False})
 
-            # Some machines cannot run pip due to outdated CA certs.
-            # For those, we also stage an updated certificate bundle
-            # TODO: use booleans all the way?
-            if certs:
-
-                cpath = os.path.abspath("%s/agent/%s" % (self._root_dir, certs))
-                self._log.debug("use CAs %s", cpath)
-
-                pilot['fts'].append({'src': cpath,
-                                     'tgt': '%s/%s' % (session_sandbox, certs),
-                                     'rem': False})
-
             self._sandboxes[resource] = True
 
         # ----------------------------------------------------------------------
-        # Create SAGA Job description and launch the pilot job
+        # Create Job description and launch the pilot job
+
+        total_cpu_count = (requested_nodes * cores_per_node) or requested_cores
+        total_gpu_count = (requested_nodes * gpus_per_node)  or requested_gpus
 
         jd_dict = ru.TypedDict()
 
         jd_dict.name                  = job_name
-        jd_dict.executable            = "/bin/bash"
+        jd_dict.executable            = '/bin/bash'
         jd_dict.arguments             = shlex.split('-l ./bootstrap_0.sh %s'
                                                                       % bs_args)
         jd_dict.working_directory     = pilot_sandbox
         jd_dict.project               = project
-        jd_dict.output                = "bootstrap_0.out"
-        jd_dict.error                 = "bootstrap_0.err"
-        jd_dict.total_cpu_count       = number_cores
-        jd_dict.total_gpu_count       = number_gpus
-        jd_dict.total_physical_memory = required_memory
+        jd_dict.output                = 'bootstrap_0.out'
+        jd_dict.error                 = 'bootstrap_0.err'
+        jd_dict.total_cpu_count       = total_cpu_count
+        jd_dict.total_gpu_count       = total_gpu_count
+        jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = cores_per_node
         jd_dict.spmd_variation        = spmd_variation
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
-        jd_dict.environment           = {'RADICAL_BASE' : resource_sandbox}
-        jd_dict.system_architecture   = system_architecture
-        jd_dict.saga_jd_supplement    = saga_jd_supplement
+        jd_dict.environment           = dict()
+        jd_dict.system_architecture   = dict(system_architecture)
 
-        # register used resources in DB (enacted on next advance)
+        # job description environment variable(s) setup
         if self._prof.enabled:
             jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
+
+        jd_dict.environment['RADICAL_BASE'] = resource_sandbox
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
@@ -1078,10 +1111,6 @@ class PMGRLaunchingComponent(rpu.Component):
                     'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
                 ])
 
-            if certs:
-                jd_dict.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, certs, certs)
-                ])
 
         self._log.debug("Bootstrap command line: %s %s", jd_dict.executable,
                 jd_dict.arguments)

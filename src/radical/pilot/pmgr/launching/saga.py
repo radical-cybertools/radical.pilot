@@ -31,9 +31,9 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, log, prof, state_cb):
+    def __init__(self, name, log, prof, state_cb):
 
-        PilotLauncherBase.__init__(self, log, prof, state_cb)
+        PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
         self._saga_jobs = dict()      # pid      : rs.Job
         self._saga_js   = dict()      # resource : rs.JobService

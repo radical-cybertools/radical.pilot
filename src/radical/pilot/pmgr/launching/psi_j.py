@@ -26,17 +26,19 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, log, prof, state_cb):
+    def __init__(self, name, log, prof, state_cb):
 
         if psij_ex:
             raise ImportError('psi-j-python not available') from psij_ex
 
-        PilotLauncherBase.__init__(self, log, prof, state_cb)
+        PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
         self._jobs     = dict()
         self._ex_cache = dict()
 
 
+    # --------------------------------------------------------------------------
+    #
     def _get_schema(self, rcfg):
 
         url     = rcfg['job_manager_endpoint']
