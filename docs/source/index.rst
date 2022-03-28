@@ -26,6 +26,9 @@ Brief description.
    quickstart.ipynb
    tutorial.ipynb
    developers.rst
+   3/3.1-getting-started.ipynb
+   3/3.2-obtaining-task-details.ipynb
+   3/3.3-handle-failing-tasks.ipynb
 
 .. Indices and tables
 .. ------------------
