@@ -474,7 +474,7 @@ class ResourceManager(object):
                     else            : nodes[node]  = 1
 
             if cpn:
-                for node in nodes:
+                for node in list(nodes.keys()):
                     nodes[node] = cpn
 
             # convert node dict into tuple list
