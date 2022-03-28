@@ -44,7 +44,8 @@ class PilotDescription(ru.TypedDict):
     a new pilot.
 
     .. note:: A PilotDescription **MUST** define at least
-              :data:`resource`, :data:`cores` and :data:`runtime`.
+              :data:`resource`, :data:`cores` or :data:`nodes`,
+              and :data:`runtime`.
 
     **Example**::
 
@@ -100,27 +101,29 @@ class PilotDescription(ru.TypedDict):
 
     .. data:: nodes
 
-       [type: `int` | default: `0`] [**NOT IN USE**] The number of nodes the
-       pilot should allocate on the target resource. This parameter is optional
-       and could be set instead of `cores` and `gpus` (and `memory`).
+       [type: `int` | default: `1`] The number of nodes the pilot should
+       allocate on the target resource. This parameter could be set instead of
+       `cores` and `gpus` (and `memory`).
 
-       .. note:: Either `cores` or `nodes` must be specified.  If `nodes` are
-                 specified, `gpus` must not be specified.
+       .. note:: If `nodes` is specified, `gpus` and `cores` must not be specified.
 
     .. data:: cores
 
-       [type: `int` | default: `1`] [**mandatory**] The number of cores the
-       pilot should allocate on the target resource.
+       [type: `int` | default: `0`] The number of cores the pilot should
+       allocate on the target resource. This parameter could be set instead of
+       `nodes`.
 
        .. note:: For local pilots, you can set a number larger than the physical
-                 machine limit when setting `RADICAL_PILOT_PROFILE` in your
-                 environment (corresponding resource configuration should have
+                 machine limit (corresponding resource configuration should have
                  the attribute `"fake_resources"`).
+       .. note:: If `cores` is specified, `nodes` must not be specified.
 
     .. data:: gpus
 
        [type: `int` | default: `0`] The number of gpus the pilot should
        allocate on the target resource.
+
+       .. note:: If `gpus` is specified, `nodes` must not be specified.
 
     .. data:: memory
 
@@ -205,6 +208,7 @@ class PilotDescription(ru.TypedDict):
         SANDBOX         : str        ,
         CORES           : int        ,
         GPUS            : int        ,
+        NODES           : int        ,
         MEMORY          : int        ,
         QUEUE           : str        ,
         JOB_NAME        : str        ,
@@ -226,8 +230,9 @@ class PilotDescription(ru.TypedDict):
         RUNTIME         : 10         ,
         APP_COMM        : []         ,
         SANDBOX         : None       ,
-        CORES           : 1          ,
+        CORES           : 0          ,
         GPUS            : 0          ,
+        NODES           : 0          ,
         MEMORY          : 0          ,
         QUEUE           : None       ,
         JOB_NAME        : None       ,
@@ -256,6 +261,14 @@ class PilotDescription(ru.TypedDict):
 
         if not self.get('resource'):
             raise ValueError("Pilot description needs 'resource'")
+
+        if self.get('nodes'):
+
+            if self.get('cores'):
+                raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
+
+            if self.get('gpus'):
+                raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
 
 
 # ------------------------------------------------------------------------------
