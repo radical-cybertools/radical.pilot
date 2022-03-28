@@ -84,9 +84,10 @@ class TestLauncher(TestCase):
         rcfg     = configs.local.localhost
 
         pilot    = {
-                        'uid'         : 'pilot.0000',
-                        'description' : {'cores'          : 10,
-                                         'gpus'           : 2,
+                        'uid'         : 'pilot.0001',
+                        'description' : {'cores'          : 0,
+                                         'gpus'           : 0,
+                                         'nodes'          : 2,
                                          'queue'          : 'default',
                                          'project'        : 'foo',
                                          'job_name'       : None,
@@ -95,8 +96,27 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
-                                         'services'       : [],
-                                         }
+                                         'services'       : []}
+                   }
+        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        self.assertEqual(ret['jd'].name, 'pilot.0001')
+        self.assertEqual(ret['jd'].environment['RADICAL_BASE'],
+                         str(session._get_resource_sandbox(pilot)))
+
+        pilot    = {
+                        'uid'         : 'pilot.0000',
+                        'description' : {'cores'          : 10,
+                                         'gpus'           : 2,
+                                         'nodes'          : 0,
+                                         'queue'          : 'default',
+                                         'project'        : 'foo',
+                                         'job_name'       : None,
+                                         'runtime'        : 10,
+                                         'app_comm'       : 0,
+                                         'cleanup'        : 0,
+                                         'memory'         : 0,
+                                         'candidate_hosts': None,
+                                         'services'       : []}
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'pilot.0000')
@@ -107,6 +127,7 @@ class TestLauncher(TestCase):
                         'uid'         : 'pilot.0000',
                         'description' : {'cores'          : 10,
                                          'gpus'           : 2,
+                                         'nodes'          : 0,
                                          'queue'          : 'default',
                                          'project'        : 'foo',
                                          'job_name'       : 'bar',
@@ -115,8 +136,7 @@ class TestLauncher(TestCase):
                                          'cleanup'        : 0,
                                          'memory'         : 0,
                                          'candidate_hosts': None,
-                                         'services'       : [],
-                                         }
+                                         'services'       : []}
                    }
         ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(ret['jd'].name, 'bar')
