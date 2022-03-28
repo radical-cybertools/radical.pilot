@@ -46,7 +46,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
       # "virtenv"                     : "/glade/scratch/wuh20/tmp/radical.pilot.sandbox/ve.pilot",
-        "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
     },
@@ -96,7 +95,6 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
       # "virtenv"                     : "/glade/scratch/wuh20/tmp/radical.pilot.sandbox/ve.pilot",
-        "stage_cacerts"               : true,
         "python_dist"                 : "default",
         "virtenv_dist"                : "system"
     }
