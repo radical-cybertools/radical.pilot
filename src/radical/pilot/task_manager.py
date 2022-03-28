@@ -47,6 +47,8 @@ class TaskManager(rpu.Component):
     which determines which :class:`Task` gets executed on which
     :class:`Pilot`.
 
+    :envvar:`RADICAL_TETS_ENV` dsaj
+
     **Example**::
 
         s = rp.Session(database_url=DBURL)

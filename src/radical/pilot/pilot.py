@@ -20,9 +20,11 @@ class Pilot(object):
     """
     A Pilot represent a resource overlay on a local or remote resource.
 
+    .. envvar:: RADICAL_TETS_ENV
+
     .. note:: A Pilot cannot be created directly. The factory method
               :meth:`radical.pilot.PilotManager.submit_pilots` has to be
-              used instead.
+              used cs instead.
 
     **Example**::
 

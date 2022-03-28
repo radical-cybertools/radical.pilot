@@ -66,6 +66,8 @@ class TaskDescription(ru.Description):
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
 
+    .. envvar:: RADICAL_TETS_ENV
+
     .. note:: A TaskDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.
 
