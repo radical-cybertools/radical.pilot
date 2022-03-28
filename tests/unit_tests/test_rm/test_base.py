@@ -62,10 +62,11 @@ class RMBaseTestCase(TestCase):
 
         os.environ['LOCAL'] = '/tmp/local_folder/'
 
-        cfg = ru.TypedDict({'cores': 16,
-                            'gpus': 2,
-                            'resource_cfg': {'cores_per_node': 16,
-                                             'gpus_per_node': 2,
+        cfg = ru.TypedDict({'nodes': 1,
+                            'cores': 16,
+                            'gpus' : 2,
+                            'resource_cfg': {'cores_per_node'   : 16,
+                                             'gpus_per_node'    : 2,
                                              'lfs_path_per_node': '${LOCAL}',
                                              'lfs_size_per_node': 100}})
 
@@ -85,6 +86,7 @@ class RMBaseTestCase(TestCase):
 
         self.assertIsInstance(rm_info_output, RMInfo)
         # check some attributes
+        self.assertEqual(rm_info_output.requested_nodes, cfg.nodes)
         self.assertEqual(rm_info_output.requested_cores, cfg.cores)
         self.assertEqual(rm_info_output.requested_gpus,  cfg.gpus)
         self.assertEqual(rm_info_output.cores_per_node,
@@ -115,17 +117,22 @@ class RMBaseTestCase(TestCase):
                                            tc_map['rm_cfg'],
                                            tc_map['result']):
 
-            def _init_from_scratch(foo, rm_info_input):
-                return ru.TypedDict(foo)
+            def _init_from_scratch(rm_info_tc, rm_info_input):
+                _rm_info = ru.TypedDict(rm_info_tc)
+                _rm_info.update(rm_info_input)
+                return _rm_info
 
             from functools import partial
 
             rm._cfg = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
-            rm_info_output = rm.init_from_scratch()
-
-            self.assertEqual(rm_info_output.node_list, result)
+            if result == 'AssertionError':
+                with self.assertRaises(AssertionError):
+                    rm.init_from_scratch()
+            else:
+                rm_info_output = rm.init_from_scratch()
+                self.assertEqual(rm_info_output.node_list, result)
 
 
     # --------------------------------------------------------------------------
