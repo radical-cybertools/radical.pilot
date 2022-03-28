@@ -184,10 +184,3 @@ Number of concurrent RADICAL-Pilot scripts that can can be executed
 From a RADICAL-Pilot perspective, there is no limit, but as SSH is used to
 access many systems, there is a resource-specific limit of the number of
 concurrent SSH connections one can make.
-
-
-
-List of Env vars
-_________________
-
-:envvar:`RADICAL_TETS_ENV` dsaj sad
