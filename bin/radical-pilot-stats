@@ -3,22 +3,22 @@
 import os
 import sys
 import pprint
-import radical.saga        as rs
 import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DEFAULT_DBURL = 'mongodb://user:password@ec2-184-72-89-141.compute-1.amazonaws.com:27017/radicalpilot/'
-
+_DBURL = ''
 if  'RADICAL_PILOT_DBURL' in os.environ :
-    _DEFAULT_DBURL = os.environ['RADICAL_PILOT_DBURL']
+    _DBURL = os.environ['RADICAL_PILOT_DBURL']
+else:
+    raise Exception('RADICAL_PILOT_DBURL is not set')
 
-_DEFAULT_DBURL = ru.Url (_DEFAULT_DBURL)
-if  not _DEFAULT_DBURL.path or '/' == _DEFAULT_DBURL.path :
-    _DEFAULT_DBURL.path = 'radicalpilot'
+_DBURL = ru.Url (_DBURL)
+if  not _DBURL.path or '/' == _DBURL.path :
+    _DBURL.path = 'radicalpilot'
 
-_DEFAULT_DBURL = str(_DEFAULT_DBURL)
+_DBURL = str(_DBURL)
 
 # for graphing events, we assign numerical pseudo values to each event.
 # Note: make sure that those are translated back into event tags via
@@ -114,7 +114,7 @@ def usage (msg=None, noexit=False) :
 
       examples  : %s -m stat -d mongodb://user:password@localhost/radicalpilot -s 536afe101d41c83696ea0135
                   %s -m list -d mongodb://user:password@localhost/radicalpilot
-                  %s -m prof -s 536afe101d41c83696ea0135,536afe101d41c83696ea0136
+                  %s -m tree -s 536afe101d41c83696ea0135,536afe101d41c83696ea0136
 
       mode(s)   :
 
@@ -123,10 +123,7 @@ def usage (msg=None, noexit=False) :
         tree    : show  a  tree   of session objects
         dump    : show  a  tree   of session objects, with full details
         sort    : show  a  list   of session objects, sorted by type
-        hist    : show timeline   of session history
-        stat    : show statistics of session history
-        prof    : collect agent profiling file of session
-        plot    : save gnuplot representing session history
+        stat    : show statistics of session
 
 
       arguments :
@@ -154,7 +151,7 @@ def usage (msg=None, noexit=False) :
         Multiple modes can be specified as <mode>,<mode>,...
         For mode 'prof', multiple session ids can be specified as <session>,<session>,...
 
-""" % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
+""" % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], _DBURL))
 
     if  msg :
         sys.exit (1)
@@ -240,34 +237,6 @@ def sort_session (db, session, cachedir) :
     print("tasks")
     for doc in docs['task'] :
         print("  %s" %  doc['_id'])
-
-
-# ------------------------------------------------------------------------------
-def hist_session (db, session, cachedir) :
-
-    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
-    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
-
-    if  not events :
-        print("no events found for session %s" % session)
-        sys.exit (-1)
-
-    if  not slothists :
-        print("no slot configuration for session %s" % session)
-        print("Please enable benchmarking: export RADICAL_PILOT_PROFILE=")
-
-
-
-    start = events[0][4]
-
-    # ascii output of time sorted events and slot history
-
-    print("session : %s" % session)
-    print("start   : %s" % str(ru.time_stamp (start)))
-
-    for e in events :
-        seconds = ru.time_diff (start, e[4])
-        print("          %08.2fs : %10s : %15s : %20s (%s)" % (seconds, e[1], e[2], e[5], e[0]))
 
 
 # ------------------------------------------------------------------------------
@@ -405,10 +374,10 @@ def stat_session (db, session, cachedir) :
         if not pid in task_cores : task_cores[pid]  = task.description.get ('cores', 1)
         else                     : task_cores[pid] += task.description.get ('cores', 1)
 
-    t_0  = stats['session_created']      # session started (absolute time)
-    t_h  = t_x_start- t_0                # session start 'til first execution
-    t_x  = t_x_stop  - t_x_start         # first start 'til last stop  of task execution
-    t_xy = t_y_start - t_x_start         # first start 'til last start of task execution
+    t_0  = stats['session_created']       # session started (absolute time)
+    t_h  = t_x_start - t_0                # session start 'til first execution
+    t_x  = t_x_stop  - t_x_start          # first start 'til last stop  of task execution
+    t_xy = t_y_start - t_x_start          # first start 'til last start of task execution
 
     session_name = docs['session']['_id']
 
@@ -442,455 +411,6 @@ def stat_session (db, session, cachedir) :
         for us  in pilot['task_states'] :
             data = pilot['task_states'][us]
             print("        state %-30s : %10.2fs  +/- %8.2fs" % (us, data['mean'], data['std']))
-
-
-# ------------------------------------------------------------------------------
-def prof_session(db, sessions, cachedir, profdir):
-
-    print("")
-    print("Collecting agent profiling data")
-    print("-------------------------------")
-    print("")
-
-    for session in sessions.split(','):
-
-        json_docs = rpu.get_session_docs(db, session, cachedir)
-
-        pilots = json_docs['pilot']
-        num_pilots = len(pilots)
-        print("Session: %s" % session)
-        print("Number of pilots in session: %d" % num_pilots)
-
-        for pilot in pilots:
-
-            print("Processing pilot '%s'" % pilot['_id'])
-
-            sandbox = pilot['pilot_sandbox']
-            pid = os.path.basename(os.path.dirname(sandbox))
-
-            src = sandbox + 'agent.0.prof'
-
-            if profdir.startswith('/'):
-                dst = 'file://localhost/%s/%s.prof' % (profdir, pid)
-            else:
-                dst = 'file://localhost/%s/%s/%s.prof' % (os.getcwd(), profdir,
-                        pid)
-
-            print("Copying '%s' to '%s'." % (src, dst))
-            prof_file = rs.filesystem.File(src)
-            prof_file.copy(dst, flags=rs.filesystem.CREATE_PARENTS)
-            prof_file.close()
-
-        print("")
-
-
-# ------------------------------------------------------------------------------
-def plot_session (db, session, cachedir, term) :
-    """
-    plot results :P
-    """
-
-    docs      = rpu.get_session_docs     (db, session, cachedir=cachedir)
-    events    = rpu.get_session_events   (db, session, cachedir=cachedir)
-    slothists = rpu.get_session_slothist (db, session, cachedir=cachedir)
-
-    stats     = get_stats (session)
-
-    session_name = docs['session']['_id']
-
-
-    if  not events :
-        print("no events found for session %s" % session)
-        sys.exit (-1)
-
-    if  not slothists :
-        print("no slot configuration for session %s" % session)
-        print("Please enable benchmarking: export RADICAL_PILOT_PROFILE=")
-
-    start      = stats['session_created']
-    pids       = list()
-    maxtime    = 0.0
-    maxslots   = 0
-    nodesize   = 0
-    slots      = list()
-    ntasks     = list()
-    hosts      = list()
-    delete_me  = list()
-    maxqueue   = 0
-
-    # some data cleanup
-    for doc in docs['pilot'] :
-        if  not doc['resource_details']['rm_info']['node_list'] :
-            doc['resource_details']['rm_info']['node_list'] = list()
-        if  not doc['resource_details']['rm_info']['cores_per_node'] :
-            doc['resource_details']['rm_info']['cores_per_node'] = 1
-
-    # the plots look nicer if the largest pilots are plotted first, and smaller
-    # ones are overlayed.  Thus we sort the pilot docs by by size (reversed).
-    # Pilot's of same sizes are ordered as-is.
-    pilot_sizes = list()
-    for doc in docs['pilot'] :
-        nodes = doc['resource_details']['rm_info']['node_list']
-        cpn   = doc['resource_details']['rm_info']['cores_per_node']
-        cores = len(nodes * int(cpn))
-        pilot_sizes.append (cores)
-
-
-    pilot_docs = list()
-    for pilot_size in sorted (pilot_sizes, reverse=True) :
-        for doc in docs['pilot'] :
-            nodes = doc['resource_details']['rm_info']['node_list']
-            cpn   = doc['resource_details']['rm_info']['cores_per_node']
-            cores = len(nodes) * int(cpn)
-            if  cores == pilot_size :
-                if  doc not in pilot_docs :
-                    pilot_docs.append (doc)
-
-    for pilot in pilot_docs :
-
-        pid = str(pilot['_id'])
-        pids.append  (pid)
-        hosts.append (ru.Url (pilot['pilot_sandbox']).host.split('.')[0])
-
-        pn       = pilot['resource_details']['rm_info']['node_list']
-        cpn      = pilot['resource_details']['rm_info']['cores_per_node']
-        slotnum  = len(pn * cpn)
-        maxslots = max(slotnum,maxslots)
-        slots.append (slotnum)
-        ntasks.append (stats['pilots'][pid]['n_tasks'])
-
-        with open ("/tmp/rp.%s.pilot.states.%s.dat" % (session, pid), "w") as dat :
-            for event in stats['s_pilot'].get():
-                for key, id in event.states.items():
-                    etag    = _EVENT_ENCODING['pilot'].get (key, 0)
-                    seconds = ru.time_diff (start, id[0])
-                    maxtime = max (maxtime, seconds)
-                    dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-            dat.write ("\n")
-            delete_me.append (dat.name)
-
-        with open ("/tmp/rp.%s.task.states.%s.dat" % (session, pid), "w") as dat :
-
-            for task in stats['s_tasks'].get():
-                for key, id in task.states.items():
-                    etag    = _EVENT_ENCODING['task'].get (key, 0)
-                    seconds = ru.time_diff (start, id[0])
-                    maxtime = max (maxtime, seconds)
-                    dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-
-                dat.write ("\n")
-            delete_me.append (dat.name)
-
-        with open ("/tmp/rp.%s.task.callbacks.%s.dat" % (session, pid), "w") as dat :
-            for task_id in pilot['task_ids'] :
-                for task in docs['task'] :
-                    if  task_id == str(task['_id']) :
-                        if  'callbackhistory' in task :
-                            for event in task['callbackhistory'] :
-                                etag    = _EVENT_ENCODING['task'].get (event['state'], 0)
-                                seconds = ru.time_diff (start, event['timestamp'])
-                                maxtime = max (maxtime, seconds)
-                                dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-                            dat.write ("\n")
-            delete_me.append (dat.name)
-
-
-        with open ("/tmp/rp.%s.pilot.queue.%s.dat" % (session, pid), "w") as dat :
-
-            queue_size = 0
-            queued     = list()
-            dequeued   = list()
-
-            dat.write ("%10.2f  %6d\n" % (0, queue_size))
-
-
-            for event in events :
-                if  event[0] == 'state' and \
-                    event[1] == 'task'  and \
-                    event[3] ==  pid    :
-                    uid = event[2]
-
-                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.NEW] :
-                        if  not uid in queued :
-                            queued.append (uid)
-                            seconds     = ru.time_diff (start, event[4])
-                            queue_size += 1
-                            maxqueue    = max (maxqueue, queue_size)
-                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-
-                    if  _EVENT_ENCODING['task'][event[5]] > _EVENT_ENCODING['task'][rp.AGENT_EXECUTING] :
-                        if  not uid in dequeued :
-                            dequeued.append (uid)
-                            seconds     = ru.time_diff (start, event[4])
-                            queue_size -= 1
-                            dat.write ("%10.2f  %6d\n" % (seconds, queue_size))
-
-
-        with open ("/tmp/rp.%s.pilot.slots.%s.dat" % (session, pid), "w") as dat :
-
-            if pid in slothists:
-                slothist = slothists[pid]
-
-                slot_idx = 0
-                for slot in slothist['slots'] :
-
-                    used = False
-
-                    for entry in slothist['slot_infos'][slot] :
-
-                        busy_start = ru.time_diff (start, entry[0])
-                        busy_stop  = ru.time_diff (start, entry[1])
-
-                        dat.write ("%10.2f  %6d\n" % (busy_start, slot_idx))
-                        dat.write ("%10.2f  %6d\n" % (busy_stop,  slot_idx))
-                        dat.write ("\n")
-
-                    dat.write ("\n")
-                    slot_idx += 1
-
-                # sometimes, pilots get more cores than requested (if nodes are
-                # larger etc) -- then we plot them if they are used.
-                maxslots = max(maxslots, slot_idx)
-
-            delete_me.append (dat.name)
-
-    pilotnum = len(pids)
-
-    timetics = 10
-    for i in range(1,10) :
-        if  maxtime  > 1 * (10 ** i) :
-            timetics = 1 * (10 ** (i - 1))
-        if  maxtime  > 2 * (10 ** i) :
-            timetics = 2 * (10 ** (i - 1))
-        if  maxtime  > 5 * (10 ** i) :
-            timetics = 5 * (10 ** (i - 1))
-
-  # mtimetics = 10
-
-    plotfile = "%s/radical-pilot-stats.plot" % os.path.dirname (__file__)
-    plotname = os.environ.get ('RP_PLOTNAME', None)
-
-    # if maxslots and maxqueue differ by max 25% then we use the same scale.  If
-    # maxslots is larger we also use the same scale.
-    max_scale  = max(maxslots, maxqueue)
-    min_scale  = min(maxslots, maxqueue)
-    mean_scale = (maxslots + maxqueue) / 2
-    scale_25   = 0.25 * mean_scale
-
-    if  maxslots > maxqueue :
-        slotsscale = maxslots + (nodesize / 2)
-        queuescale = maxslots + (nodesize / 2)
-
-    elif (mean_scale + scale_25) > max_scale and \
-        (mean_scale - scale_25) < min_scale :
-        slotsscale = maxslots + (nodesize / 2)
-        queuescale = maxslots + (nodesize / 2)
-
-    else :
-        slotsscale = maxslots + (nodesize / 2)
-        queuescale = maxqueue + (nodesize / 2)
-
-    slotsscale = int(max(slotsscale, maxslots * 1.1))
-    queuescale = int(max(queuescale, maxqueue * 1.1))
-
-    terms = " ".join (term.split (','))
-
-    cmd  = "gnuplot -e  maxtime=%d "        % int(maxtime + 10)
-    cmd +=        " -e  timetics=%d "       % timetics
-  # cmd +=        " -e  mtimetics=%d "      % mtimetics
-    cmd +=        " -e  maxslots=%d "       % maxslots
-    cmd +=        " -e  maxqueue=%d "       % maxqueue
-    cmd +=        " -e  slotsscale=%d "     % slotsscale
-    cmd +=        " -e  queuescale=%d "     % queuescale
-    cmd +=        " -e  'slotnum_list=\""
-    for idx,pid in enumerate(pids) :
-        cmd +=    "%d "     % (slots[idx])
-    cmd +=        "\"'"
-    cmd +=        " -e  'tasknum_list=\""
-    for idx,pid in enumerate(pids) :
-        cmd +=    "%d "     % (ntasks[idx])
-    cmd +=        "\"'"
-    cmd +=        " -e  nodesize=%d "       % nodesize
-    cmd +=        " -e 'session=\"%s\"' "   % session
-    cmd +=        " -e 'sname=\"%s\"' "     % session_name
-    cmd +=        " -e 'terms=\"%s\"' "     % terms
-    cmd +=        " -e 'plottitle=\"RADICAL-Pilot\\n============="
-    if plotname :
-        cmd +=    "\\n[%s]" % plotname
-    cmd +=        "\\nPilot and Task Event Traces\\nSession %s\"' " % session_name
-    cmd +=        " -e  pilot_num=%d "       % len(pids)
-    cmd +=        " -e  'pilot_name_list=\""
-    for idx,pid in enumerate(pids) :
-        cmd +=    "%s " % hosts[idx]
-    cmd +=        "\"'"
-    cmd +=        " -e  'pilot_id_list=\""
-    for idx,pid in enumerate(pids) :
-        cmd +=    "%s "       % (pids[idx])
-    cmd +=        "\"'"
-    cmd +=        "     %s "                        % plotfile
-
-  # print cmd
-    print("\nplotting...")
-    os.system (cmd)
-
-    if  plotname :
-        os.system ("mv %s.png %s.png" % (session, plotname))
-        os.system ("mv %s.pdf %s.pdf" % (session, plotname))
-
-    for filename in delete_me :
-      # print "removing %s" % filename
-        try :
-          # os.remove (filename)
-            pass
-        except Exception as e :
-            pass #print("Error removing %s: %s" % (filename, str(e)))
-
-    DO_SPLOTS = False
-    if  not DO_SPLOTS :
-        return
-
-
-    # --------------------------------------------------------------------------
-    #
-    # also do splots
-    #
-    entity_states = dict ()
-
-    BEGIN  = ">"
-    END    = "<"
-    ONCE   = "!"
-    COLORS = {rp.NEW                           : ' 1',
-              rp.AGENT_SCHEDULING              : ' 2',
-              rp.AGENT_STAGING_INPUT_PENDING   : ' 3',
-              rp.AGENT_STAGING_INPUT           : ' 4',
-              rp.AGENT_EXECUTING_PENDING       : ' 5',
-              rp.AGENT_EXECUTING               : ' 6',
-              rp.AGENT_STAGING_OUTPUT_PENDING  : ' 7',
-              rp.AGENT_STAGING_OUTPUT          : ' 8',
-              rp.DONE                          :  '9',
-              rp.CANCELED                      : '10',
-              rp.FAILED                        : '11'}
-
-    for pilot in docs['pilot'] :
-
-        this_pid = str(pilot['_id'])
-
-        with open ("/tmp/rp.%s.pilot.slots.%s.sdat" % (session, pid), "w") as dat :
-
-            for e in events :
-
-                etype   = e[0]
-                otype   = e[1]
-                uid     = e[2]
-                pid     = e[3]
-                ts      = e[4]
-                state   = e[5]
-                doc     = e[6]
-
-                if  pid != this_pid :
-                    continue
-
-                if  otype == 'task' :
-
-                    if 'slots' in doc :
-                        slots = doc['slots']
-                    else :
-                        pprint.pprint (doc)
-                        slots = '?'
-
-                    color = COLORS[state]
-
-                    for slot in slots :
-
-                        if  not uid in entity_states :
-
-                            if  state not in [rp.AGENT_EXECUTING] :
-                                continue
-
-                            entity_states[uid] = state
-                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
-                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
-
-                        else :
-                            old_state = entity_states[uid]
-                          # print      "%s %s%s %s"   % (ts, END,   slot, COLORS[old_state])
-                            dat.write ("%s %s%s %s\n" % (ts, END,   slot, COLORS[old_state]))
-
-                            entity_states[uid] = state
-                          # print      "%s %s%s %s"   % (ts, BEGIN, slot, COLORS[state])
-                            dat.write ("%s %s%s %s\n" % (ts, BEGIN, slot, COLORS[state]))
-
-
-    for pilot in docs['pilot'] :
-
-        this_pid = str(pilot['_id'])
-
-        with open ("/tmp/rp.%s.pilot.tasks.%s.sdat" % (session, pid), "w") as dat :
-
-            entity_states = dict()
-            idxs          = list()
-
-            # index the tasks by the start of their EXECUTING state
-            for e in events :
-
-                etype = e[0]
-                otype = e[1]
-                uid   = e[2]
-                pid   = e[3]
-                ts    = e[4]
-                state = e[5]
-                doc   = e[6]
-
-                if  pid != this_pid :
-                    continue
-
-                if  otype == 'task' :
-                    if  state in [rp.AGENT_EXECUTING] :
-                        idxs.append (uid)
-
-            for idx_id in idxs :
-
-                for e in events :
-
-                    etype = e[0]
-                    otype = e[1]
-                    uid   = e[2]
-                    pid   = e[3]
-                    ts    = e[4]
-                    state = e[5]
-                    doc   = e[6]
-
-                    if  idx_id != uid :
-                        continue
-
-                    if  pid != this_pid :
-                        continue
-
-                    if  otype == 'task' :
-
-                        if 'slots' in doc :
-                            slots = doc['slots']
-                        else :
-                            slots = '?'
-
-                        for slot in slots :
-
-                            if  not uid in entity_states :
-
-                                entity_states[uid] = state
-
-                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
-                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
-
-                            else :
-
-                                old_state = entity_states[uid]
-                              # print      "%s %s%s %s"   % (ts, END,   uid, COLORS[old_state])
-                                dat.write ("%s %s%s %s\n" % (ts, END,   uid, COLORS[old_state]))
-
-                                entity_states[uid] = state
-                              # print      "%s %s%s %s"   % (ts, BEGIN, uid, COLORS[state])
-                                dat.write ("%s %s%s %s\n" % (ts, BEGIN, uid, COLORS[state]))
 
 
 # ------------------------------------------------------------------------------
@@ -952,7 +472,7 @@ def handle_coll (db, mode, cname, pname) :
                 try :
                     collection.remove (name)
                     print("  removed document %s" % name)
-                except Exception as e:
+                except:
                     pass  # ignore errors
 
         else :
@@ -1037,7 +557,7 @@ if __name__ == '__main__' :
         if  'RADICAL_PILOT_DBURL' in os.environ :
             default_dburl = os.environ['RADICAL_PILOT_DBURL']
         else :
-            default_dburl = _DEFAULT_DBURL
+            default_dburl = _DBURL
 
     if  not options.url :
         options.url = default_dburl
@@ -1078,17 +598,14 @@ if __name__ == '__main__' :
 
     for m in mode.split (',') :
 
-        if  m not in ['list', 'dump', 'tree', 'hist', 'sort', 'stat', 'prof', 'plot', 'help'] :
+        if  m not in ['list', 'dump', 'tree', 'sort', 'stat', 'help'] :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'list' : list_sessions (db, cachedir, filters)
         elif m == 'tree' : tree_session  (db, dbname, session, cachedir)
         elif m == 'dump' : dump_session  (db, dbname, session, cachedir)
         elif m == 'sort' : sort_session  (db, session, cachedir)
-        elif m == 'hist' : hist_session  (db, session, cachedir)
         elif m == 'stat' : stat_session  (db, session, cachedir)
-        elif m == 'prof' : prof_session  (db, session, cachedir, profdir)
-        elif m == 'plot' : plot_session  (db, session, cachedir, term)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 
