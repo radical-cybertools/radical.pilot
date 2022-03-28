@@ -40,14 +40,13 @@ class TMGRTestCase(TestCase):
         component._log = mocked_logger
         component._pilots = {}
 
-        mocked_pilot = ru.Munch({'uid': 'pilot.0000'})
-        component.add_pilots(mocked_pilot)
-        self.assertEqual(component._pilots['pilot.0000'],
-                         ru.Munch({'uid': 'pilot.0000'}))
+        p_desc = {'uid': 'pilot.0000'}
+        component.add_pilots(p_desc)
+        self.assertEqual(component._pilots['pilot.0000'], p_desc)
         # self.assertEqual(global_pilots[0], result)
 
         with self.assertRaises(ValueError):
-            component.add_pilots(mocked_pilot)
+            component.add_pilots(p_desc)
 
     # --------------------------------------------------------------------------
     #
