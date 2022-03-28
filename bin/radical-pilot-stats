@@ -97,7 +97,7 @@ _EVENT_ENCODING = {
 # # PMGR states
 # PMGR_LAUNCHING
 # PMGR_ACTIVE
-# 
+#
 # PENDING_OUTPUT_TRANSFER
 # TRANSFERRING_OUTPUT
 
@@ -291,7 +291,7 @@ def get_stats (session) :
 
     except ModuleNotFoundError:
         raise
-    
+
     pilot_stats['s_pilot'] = s_pilots
     pilot_stats['s_tasks'] = s_tasks
     pilot_stats['session_created'] = s_session.timestamps(state='NEW')[0]
@@ -335,7 +335,7 @@ def get_stats (session) :
 
             for state in task.states:
                 try:
-                    for s in tdd:            
+                    for s in tdd:
                         if s['Start Timestamp'] == state:
                             pilot_info['task_states'][state] = dict()
                             pilot_info['task_states'][state]['dur'] = list()
@@ -343,7 +343,7 @@ def get_stats (session) :
                             pilot_info['task_states'][state]['dur'].append(dur)
                 except ValueError:
                     pass
-        
+
         started  = pilot.timestamps(state='NEW')[0]
         finished = pilot.timestamps(state=['DONE', 'FAILED', 'CANCELED'])[0]
         cores    = pilot.description['cores']
@@ -362,7 +362,7 @@ def get_stats (session) :
         pilot_info['utilization'] = pilot_busy * 100 / pilot_runtime
 
         for s in pilot_info['task_states'] :
-            
+
             import numpy
             array = numpy.array (pilot_info['task_states'][s]['dur'])
             pilot_info['task_states'][s]['num' ] = len        (array)
@@ -387,7 +387,7 @@ def stat_session (db, session, cachedir) :
     t_x_start  = None    # first task started executing
     t_y_start  = None    # last  task started executing
     t_x_stop   = None    # last task finished executing
-    
+
     task_cores = dict()  # sum of core counts from all tasks per pilot
 
     for task in stats['s_tasks'].get():
@@ -437,11 +437,11 @@ def stat_session (db, session, cachedir) :
         print("      utilization : %7.2f%%" % pilot['utilization'])
         print("      pilot states:")
         for ps in pilot['pilot_states'] :
-            print("        state %-18s : %10.2fs" % (ps['state'], ps['duration']))
+            print("        state %-30s : %10.2fs" % (ps['state'], ps['duration']))
         print("      task states :")
         for us  in pilot['task_states'] :
             data = pilot['task_states'][us]
-            print("        state %-18s : %10.2fs  +/- %8.2fs" % (us, data['mean'], data['std']))
+            print("        state %-30s : %10.2fs  +/- %8.2fs" % (us, data['mean'], data['std']))
 
 
 # ------------------------------------------------------------------------------
@@ -506,7 +506,7 @@ def plot_session (db, session, cachedir, term) :
     if  not slothists :
         print("no slot configuration for session %s" % session)
         print("Please enable benchmarking: export RADICAL_PILOT_PROFILE=")
-    
+
     start      = stats['session_created']
     pids       = list()
     maxtime    = 0.0
@@ -577,7 +577,7 @@ def plot_session (db, session, cachedir, term) :
                     seconds = ru.time_diff (start, id[0])
                     maxtime = max (maxtime, seconds)
                     dat.write (" %10.2f  %-25s\n" % (seconds, etag))
-                    
+
                 dat.write ("\n")
             delete_me.append (dat.name)
 
