@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2018-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2018-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -50,8 +50,11 @@ class LSF(ResourceManager):
 
         nodes = filtered
 
-        if not rm_info.cores_per_node:
-            rm_info.cores_per_node = self._get_cores_per_node(nodes)
+        lsf_cores_per_node = self._get_cores_per_node(nodes)
+        if rm_info.cores_per_node:
+            assert (rm_info.cores_per_node == lsf_cores_per_node)
+        else:
+            rm_info.cores_per_node = lsf_cores_per_node
 
         self._log.debug('found %d nodes with %d cores',
                         len(nodes), rm_info.cores_per_node)
