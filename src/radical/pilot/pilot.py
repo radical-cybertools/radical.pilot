@@ -52,15 +52,19 @@ class Pilot(object):
     #
     def __init__(self, pmgr, descr):
 
-        # 'static' members
-        self._descr = descr.as_dict()
-
         # sanity checks on description
-        for check in ['resource', 'cores', 'runtime']:
-            if not self._descr.get(check):
-                raise ValueError("PilotDescription needs '%s'" % check)
+        if not descr.runtime:
+            raise ValueError('pilot runtime must be defined')
+
+        if descr.runtime <= 0:
+            raise ValueError('pilot runtime must be positive')
+
+        if not descr.resource:
+            raise ValueError('pilot target resource must be defined')
+
 
         # initialize state
+        self._descr      = descr.as_dict()
         self._pmgr       = pmgr
         self._session    = self._pmgr.session
         self._prof       = self._session._prof
