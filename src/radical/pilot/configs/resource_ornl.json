@@ -23,7 +23,6 @@
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
-        "stage_cacerts"               : true,
         "cores_per_node"              : 32
     },
 
@@ -50,7 +49,6 @@
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
-        "stage_cacerts"               : true,
         "cores_per_node"              : 28,
         "gpus_per_node"               : 2,
         "system_architecture"         : {"gpu": "k80"}
@@ -122,7 +120,6 @@
         "virtenv_dist"                : "default",
         "virtenv_mode"                : "local",
         "rp_version"                  : "installed",
-        "stage_cacerts"               : true,
         "gpus_per_node"               : 4,
         "cores_per_node"              : 64,
         "lfs_path_per_node"           : "/tmp",
@@ -173,7 +170,7 @@
         "virtenv_dist"                : "default",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local",
-        "stage_cacerts"               : true,
+        "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "blocked_cores"               : [],
         "blocked_gpus"                : [],
@@ -232,7 +229,7 @@
         "valid_roots"                 : ["$MEMBERWORK/"],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
-        "stage_cacerts"               : true,
+        "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
