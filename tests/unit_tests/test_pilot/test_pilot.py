@@ -24,28 +24,38 @@ class TestPilot(TestCase):
         pmgr._session.uid = str(time.time())  # restart uid counter
         sandbox_url = mock.Mock()
         sandbox_url.path = './'
-        pmgr._session._get_jsurl = mock.Mock(return_value=('ssh', sandbox_url))
-        pmgr._session._get_resource_sandbox = mock.Mock(return_value=sandbox_url)
-        pmgr._session._get_session_sandbox = mock.Mock(return_value=sandbox_url)
-        pmgr._session._get_pilot_sandbox = mock.Mock(return_value=sandbox_url)
-        pmgr._session._get_client_sandbox = mock.Mock(return_value=sandbox_url)
 
-        descr = rp.PilotDescription({'resource': 'foo', 'uid': 'foo'})
+        session = pmgr._session
+
+        session._get_resource_sandbox = mock.Mock(return_value = sandbox_url)
+        session._get_session_sandbox  = mock.Mock(return_value = sandbox_url)
+        session._get_pilot_sandbox    = mock.Mock(return_value = sandbox_url)
+        session._get_client_sandbox   = mock.Mock(return_value = sandbox_url)
+        session._get_jsurl            = mock.Mock(return_value = ('ssh',
+                                                                  sandbox_url))
+
+        descr = rp.PilotDescription({'resource': 'foo',
+                                     'uid'     : 'foo',
+                                     'cores'   : 1})
         self.assertEqual(rp.Pilot(pmgr, descr).uid, 'foo')
 
         with self.assertRaises(ValueError):
             rp.Pilot(pmgr, descr)
 
-        descr = rp.PilotDescription({'resource': 'foo'})
+        descr = rp.PilotDescription({'resource': 'foo',
+                                     'cores'   : 1})
         self.assertEqual(rp.Pilot(pmgr, descr).uid, 'pilot.0000')
 
-        descr = rp.PilotDescription({'resource': 'foo', 'uid': 'bar'})
+        descr = rp.PilotDescription({'resource': 'foo',
+                                     'cores'   : 1,
+                                     'uid'     : 'bar'})
         self.assertEqual(rp.Pilot(pmgr, descr).uid, 'bar')
 
         with self.assertRaises(ValueError):
             rp.Pilot(pmgr, descr)
 
-        descr = rp.PilotDescription({'resource': 'foo'})
+        descr = rp.PilotDescription({'resource': 'foo',
+                                     'cores'   : 1})
         self.assertEqual(rp.Pilot(pmgr, descr).uid, 'pilot.0001')
 
 
