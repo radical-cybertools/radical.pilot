@@ -3,6 +3,7 @@
 
 import os
 import sys
+import json
 import time
 import datetime
 
@@ -55,46 +56,19 @@ def get_last_session(db):
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs(db, sid, cache=None, cachedir=None):
+def get_session_docs(db, sid_path, cache=None, cachedir=None):
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in
     # that case we pull it from there instead of the database, which will be
     # much quicker.  Also, we do cache any retrieved docs to that place, for
     # later use.  An optional cachdir parameter changes that default location
     # for lookup and storage.
-    if  not cachedir:
-        cachedir = _CACHE_BASEDIR
 
-    if  not cache:
-        cache = "%s/%s.json" % (cachedir, sid)
-
-    try:
-        if  os.path.isfile (cache):
-          # print 'using cache: %s' % cache
-            return ru.read_json (cache)
-    except Exception as e:
-        # continue w/o cache
-        sys.stderr.write("cannot read session cache at %s (%s)\n" % (cache, e))
-
-
-    # cache not used or not found -- go to db
-    json_data = dict()
-
-    # convert bson to json, i.e. serialize the ObjectIDs into strings.
-    json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
-    json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
-    json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
-    json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
-    json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
-
-    if  len(json_data['session']) == 0:
-        raise ValueError ('no session %s in db' % sid)
-
-  # if  len(json_data['session']) > 1:
-  #     print 'more than one session document -- picking first one'
-
-    # there can only be one session, not a list of one
-    json_data['session'] = json_data['session'][0]
+    import glob
+    path = "%s/rp.session.*.json" % os.path.abspath(sid_path)
+    session_json = glob.glob(path)[0]
+    with open(session_json, 'r') as f:
+        json_data = json.load(f)
 
     # we want to add a list of handled tasks to each pilot doc
     for pilot in json_data['pilot']:
@@ -110,7 +84,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
     # to the cache
     try:
         os.system ('mkdir -p %s' % cachedir)
-        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
+        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid_path))
     except Exception:
         # we can live without cache, no problem...
         pass
@@ -129,7 +103,10 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
     tuple(string, list(tuple(string, int )), list(tuple (string   , datetime )))
     """
 
-    docs = get_session_docs(db, sid, cache, cachedir)
+    #docs = get_session_docs(db, sid, cache, cachedir)
+    session = os.getcwd() + "/" + sid + "/" + sid + ".json"
+    with open(session, 'r') as f:
+        docs = json.load(f)
 
     ret = dict()
 
@@ -154,32 +131,6 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
                 slot_infos  [slot_name] = list()
                 slot_started[slot_name] = sys.maxsize
 
-        for task_doc in docs['task']:
-            if task_doc['pilot'] == pilot_doc['uid']:
-
-                started  = None
-                finished = None
-                for event in sorted (task_doc['state_history'],
-                                     key=lambda x: x['timestamp']):
-                    if started:
-                        finished = event['timestamp']
-                        break
-                    if event['state'] == AGENT_EXECUTING:
-                        started = event['timestamp']
-
-                if not started or not finished:
-                  # print "no start/end for t %s - ignored" % task_doc['uid']
-                    continue
-
-                for slot_id in task_doc['opaque_slots']:
-                    if slot_id not in slot_infos:
-                      # print "slot %s for pilot %s unknown - ignored" \
-                      #     % (slot_id, pid)
-                        continue
-
-                    slot_infos[slot_id].append([started, finished])
-                    slot_started[slot_id] = min(started, slot_started[slot_id])
-
         for slot_id in slot_infos:
             slot_infos[slot_id].sort(key=lambda x: float(x[0]))
 
@@ -189,8 +140,6 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
         slot_names.sort(key=lambda x: slot_started[x])
 
         ret[pid] = dict()
-        ret[pid]['started']    = pilot_doc['started']
-        ret[pid]['finished']   = pilot_doc['finished']
         ret[pid]['slots']      = slot_names
         ret[pid]['slot_infos'] = slot_infos
 
