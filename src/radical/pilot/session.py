@@ -165,7 +165,6 @@ class Session(rs.Session):
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = self._cfg.dburl
-        if not dburl: dburl = self._cfg.default_dburl
         if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
 
         self._cfg.dburl = dburl
