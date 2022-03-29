@@ -3,6 +3,33 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.13.0  Release                                                       2022-03-21
+--------------------------------------------------------------------------------
+
+   - fix slurm nodefile/nodelist
+   - clean temporary setup files
+   - fixed test for LM `Srun`
+   - local execution needs to check FORK first
+   - fix Bridges-2 resource config
+
+
+1.12.0  Release                                                       2022-02-28
+--------------------------------------------------------------------------------
+
+  - fix callback unregistration
+  - fix capturing of task exit code
+  - fix srun version command
+  - fix metric setup / lookup in tmgr
+  - get backfilling scheduler back in sync
+  - re-introduced LM to handle `aprun`
+  - Remove task log and the state_history
+  - ru.Description -> ru.TypedDict
+  - set LM's initial env with activated VE
+  - updated LSF handling cores indexing for LM JSRun
+  - use proper shell quoting
+  - use ru.TypedDict for Munch, fix tests
+
+
 1.11.2  Hotfix Release                                                2022-01-21
 --------------------------------------------------------------------------------
 
