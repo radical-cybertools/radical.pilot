@@ -2,14 +2,11 @@
 # pylint: disable=cell-var-from-loop
 
 import os
-import sys
 import json
 import time
 import datetime
 
 import radical.utils as ru
-
-from ..states import AGENT_EXECUTING
 
 
 _CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
@@ -23,7 +20,6 @@ def bson2json (bson_data):
     # http://stackoverflow.com/questions/16586180/ \
     #                          typeerror-objectid-is-not-json-serializable
 
-    import json
     from   bson.objectid import ObjectId
 
     class MyJSONEncoder (json.JSONEncoder):
@@ -90,60 +86,6 @@ def get_session_docs(db, sid_path, cache=None, cachedir=None):
         pass
 
     return json_data
-
-
-# ------------------------------------------------------------------------------
-#
-def get_session_slothist(db, sid, cache=None, cachedir=None):
-    """
-    For all pilots in the session, get the slot lists and slot histories. and
-    return as list of tuples like:
-
-         [pid   ,     [     [host,   slot]],     [      [slotstate, timestamp]]]
-    tuple(string, list(tuple(string, int )), list(tuple (string   , datetime )))
-    """
-
-    #docs = get_session_docs(db, sid, cache, cachedir)
-    session = os.getcwd() + "/" + sid + "/" + sid + ".json"
-    with open(session, 'r') as f:
-        docs = json.load(f)
-
-    ret = dict()
-
-    for pilot_doc in docs['pilot']:
-
-        pid          = pilot_doc['uid']
-        slot_names   = list()
-        slot_infos   = dict()
-        slot_started = dict()
-
-        nodes   = pilot_doc['resource_details']['rm_info']['node_list']
-        n_cores = pilot_doc['resource_details']['rm_info']['cores_per_node']
-
-        if  not nodes:
-          # print "no nodes in pilot doc for %s" % pid
-            continue
-
-        for node in nodes:
-            for core in range(n_cores):
-                slot_name = "%s:%s" % (node, core)
-                slot_names.append (slot_name)
-                slot_infos  [slot_name] = list()
-                slot_started[slot_name] = sys.maxsize
-
-        for slot_id in slot_infos:
-            slot_infos[slot_id].sort(key=lambda x: float(x[0]))
-
-        # we use the startup time to sort the slot names, as that gives a nicer
-        # representation when plotting.  That sorting should probably move to
-        # the plotting tools though... (FIXME)
-        slot_names.sort(key=lambda x: slot_started[x])
-
-        ret[pid] = dict()
-        ret[pid]['slots']      = slot_names
-        ret[pid]['slot_infos'] = slot_infos
-
-    return ret
 
 
 # ------------------------------------------------------------------------------
