@@ -208,8 +208,6 @@ class Session(rs.Session):
                 proxy_host_url = ru.Url()
                 proxy_host_url.set_host(proxy_host)
 
-            #
-
             self._proxy_addr   = None
             self._proxy_event  = mt.Event()
 
@@ -221,6 +219,7 @@ class Session(rs.Session):
             assert(self._proxy_addr)
             proxy_url = self._proxy_addr
             os.environ['RADICAL_PILOT_SERVICE_URL'] = proxy_url
+
 
         self._cfg.proxy_url = proxy_url
 
