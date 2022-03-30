@@ -166,9 +166,9 @@ class Srun(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        # FIXME: does SRUN set a rank env?
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+        ret  = 'test -z "$SLURM_PROCID" || export RP_RANK=$SLURM_PROCID\n'
+        ret += 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         return ret
 
