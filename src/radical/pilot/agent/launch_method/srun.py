@@ -113,7 +113,7 @@ class Srun(LaunchMethod):
 
         n_tasks        = td['cpu_processes']
         n_task_threads = td.get('cpu_threads', 1)
-        n_gpus         = td.get('gpu_processes', 1)
+        n_gpus         = td.get('gpu_processes', 0)
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -149,7 +149,7 @@ class Srun(LaunchMethod):
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('gpus'):
+        if self._rm_info.get('gpus') and n_gpus:
             mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
 
         if nodefile:
