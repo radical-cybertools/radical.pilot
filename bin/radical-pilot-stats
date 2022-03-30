@@ -162,17 +162,17 @@ def usage (msg=None, noexit=False) :
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (db, dbname, session, cachedir) :
+def dump_session (db, dbname, session) :
 
     print("session : %s" % session)
-    handle_session (db, 'dump', dbname, session, cachedir, None)
+    handle_session (db, 'dump', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (db, dbname, session, cachedir) :
+def tree_session (db, dbname, session) :
 
-    handle_session (db, 'tree', dbname, session, cachedir, None)
+    handle_session (db, 'tree', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
@@ -192,10 +192,10 @@ def list_sessions (db, cachedir, filters) :
 
             for sid in sids :
 
-                docs     = rpu.get_session_docs (db, sid, cachedir=cachedir)
+                docs     = rpu.get_session_docs (sid, cachedir=cachedir)
                 n_pilots = 0
 
-                for doc in docs['pilot'] :
+                for _ in docs['pilot'] :
                     n_pilots   += 1
 
 
@@ -218,9 +218,9 @@ def list_sessions (db, cachedir, filters) :
 
 
 # ------------------------------------------------------------------------------
-def sort_session (db, session, cachedir) :
+def sort_session (session, cachedir) :
 
-    docs = rpu.get_session_docs (db, session, cachedir=cachedir)
+    docs = rpu.get_session_docs (session, cachedir=cachedir)
 
     print("pilot managers :")
     for doc in docs['pmgr'] :
@@ -258,8 +258,8 @@ def get_stats (session) :
         s_pilots  = s_session.filter(etype='pilot', inplace=False)
         s_tasks   = s_session.filter(etype='task' , inplace=False)
 
-    except ModuleNotFoundError:
-        raise
+    except ModuleNotFoundError as e:
+        raise e
 
     pilot_stats['s_pilot'] = s_pilots
     pilot_stats['s_tasks'] = s_tasks
@@ -348,10 +348,10 @@ def get_stats (session) :
 
 
 # ------------------------------------------------------------------------------
-def stat_session (db, session, cachedir) :
+def stat_session (session, cachedir) :
 
-    docs       = rpu.get_session_docs(db, session, cachedir=cachedir)
-    stats      = get_stats (session)
+    docs       = rpu.get_session_docs(session, cachedir=cachedir)
+    stats      = get_stats(session)
 
     t_x_start  = None    # first task started executing
     t_y_start  = None    # last  task started executing
@@ -414,7 +414,7 @@ def stat_session (db, session, cachedir) :
 
 
 # ------------------------------------------------------------------------------
-def handle_session (db, mode, dbname, session, cachedir, pname) :
+def handle_session (db, mode, dbname, session, pname) :
     """
     For the given db, traverse collections
     """
@@ -477,11 +477,11 @@ def handle_coll (db, mode, cname, pname) :
 
         else :
             if (not pname) or (str(name) == str(pname)) :
-                handle_doc (collection, mode, doc)
+                handle_doc (mode, doc)
 
 
 # ------------------------------------------------------------------------------
-def handle_doc (collection, mode, doc) :
+def handle_doc (mode, doc) :
     """
     And, surprise, for a given document, show it according to 'mode'
     """
@@ -518,63 +518,56 @@ def handle_doc (collection, mode, doc) :
 #
 def parse_commandline():
 
-    return options
+    return args
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__' :
 
-    import optparse
-    parser = optparse.OptionParser (add_help_option=False)
+    import argparse
+    parser = argparse.ArgumentParser(description='')
 
-    parser.add_option('-s', '--session',   dest='session')
-    parser.add_option('-d', '--dburl',     dest='url')
-    parser.add_option('-m', '--mode',      dest='mode')
-    parser.add_option('-c', '--cachedir',  dest='cachedir')
-    parser.add_option('-p', '--profdir',   dest='profdir')
-    parser.add_option('-f', '--filter',    dest='filters')
-    parser.add_option('-t', '--terminal',  dest='term')
-    parser.add_option('-h', '--help',      dest='help', action="store_true")
+    parser.add_argument('-s', '--session',   dest='session')
+    parser.add_argument('-d', '--dburl',     dest='url')
+    parser.add_argument('-m', '--mode',      dest='mode')
+    parser.add_argument('-c', '--cachedir',  dest='cachedir')
+    parser.add_argument('-p', '--profdir',   dest='profdir')
+    parser.add_argument('-f', '--filter',    dest='filters')
+    parser.add_argument('-t', '--terminal',  dest='term')
 
-    options, args = parser.parse_args ()
+    args = parser.parse_args()
 
-    if  args :
-        usage ("Too many arguments (%s)" % args)
-
-    if  options.help :
+    if  args.mode in ['help'] :
         usage ()
 
-    if  options.mode in ['help'] :
-        usage ()
-
-    if  not options.mode :
+    if  not args.mode :
         usage ("No mode specified")
 
-    if  options.url :
-        default_dburl = options.url
+    if  args.url :
+        default_dburl = args.url
     else :
         if  'RADICAL_PILOT_DBURL' in os.environ :
             default_dburl = os.environ['RADICAL_PILOT_DBURL']
         else :
             default_dburl = _DBURL
 
-    if  not options.url :
-        options.url = default_dburl
+    if  not args.url :
+        args.url = default_dburl
 
 
-    mode     = options.mode
-    url      = options.url
-    session  = options.session
-    filters  = options.filters
-    term     = options.term
-    cachedir = options.cachedir
-    profdir  = options.profdir
+    mode     = args.mode
+    url      = args.url
+    session  = args.session
+    filters  = args.filters
+    term     = args.term
+    cachedir = args.cachedir
+    profdir  = args.profdir
 
     if  not term :
         term = "pdf,png"
 
-    url = ru.Url (options.url)
+    url = ru.Url (args.url)
     if  not url.path or '/' == url.path :
         url.path = 'radicalpilot'
 
@@ -602,10 +595,10 @@ if __name__ == '__main__' :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'list' : list_sessions (db, cachedir, filters)
-        elif m == 'tree' : tree_session  (db, dbname, session, cachedir)
-        elif m == 'dump' : dump_session  (db, dbname, session, cachedir)
-        elif m == 'sort' : sort_session  (db, session, cachedir)
-        elif m == 'stat' : stat_session  (db, session, cachedir)
+        elif m == 'tree' : tree_session  (db, dbname, session)
+        elif m == 'dump' : dump_session  (db, dbname, session)
+        elif m == 'sort' : sort_session  (session, cachedir)
+        elif m == 'stat' : stat_session  (session, cachedir)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 

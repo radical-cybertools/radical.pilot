@@ -52,7 +52,7 @@ def get_last_session(db):
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs(db, sid_path, cache=None, cachedir=None):
+def get_session_docs(sid, cachedir=None):
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in
     # that case we pull it from there instead of the database, which will be
@@ -61,9 +61,9 @@ def get_session_docs(db, sid_path, cache=None, cachedir=None):
     # for lookup and storage.
 
     import glob
-    path = "%s/rp.session.*.json" % os.path.abspath(sid_path)
+    path = "%s/rp.session.*.json" % os.path.abspath(sid)
     session_json = glob.glob(path)[0]
-    with open(session_json, 'r') as f:
+    with open(session_json, 'r', encoding='utf8') as f:
         json_data = json.load(f)
 
     # we want to add a list of handled tasks to each pilot doc
@@ -80,7 +80,7 @@ def get_session_docs(db, sid_path, cache=None, cachedir=None):
     # to the cache
     try:
         os.system ('mkdir -p %s' % cachedir)
-        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid_path))
+        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
     except Exception:
         # we can live without cache, no problem...
         pass
@@ -89,7 +89,7 @@ def get_session_docs(db, sid_path, cache=None, cachedir=None):
 
 
 # ------------------------------------------------------------------------------
-def get_session_events(db, sid, cache=None, cachedir=None):
+def get_session_events(sid, cachedir=None):
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -99,7 +99,7 @@ def get_session_events(db, sid, cache=None, cachedir=None):
 
     """
 
-    docs = get_session_docs(db, sid, cache, cachedir)
+    docs = get_session_docs(sid, cachedir)
     ret  = list()
 
     if  'session' in docs:
