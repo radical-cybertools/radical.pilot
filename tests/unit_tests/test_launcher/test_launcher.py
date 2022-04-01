@@ -139,7 +139,7 @@ class TestLauncher(TestCase):
         self.assertEqual(pilot['jd_dict'].name, 'bar')
 
         # default value is {}
-        self.assertEqual(pilot['jd'].system_architecture, {})
+        self.assertEqual(pilot['jd_dict'].system_architecture, {})
 
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
