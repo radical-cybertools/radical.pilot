@@ -22,7 +22,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --exclusive --cpu-bind=none --nodes 1 --ntasks 1 --gpus 0 --cpus-per-task 4",
+                "launch_cmd" : "srun --nodes 1 --ntasks 1 --cpus-per-task 4",
                 "rank_exec"  : "/bin/sleep"
             }
         }
