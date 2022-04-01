@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import math
 
@@ -113,7 +113,7 @@ class Srun(LaunchMethod):
 
         n_tasks        = td['cpu_processes']
         n_task_threads = td.get('cpu_threads', 1)
-        n_gpus         = td.get('gpu_processes', 1)
+        n_gpus         = td.get('gpu_processes', 0)
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -134,7 +134,7 @@ class Srun(LaunchMethod):
             nodelist = [rank['node_name'] for rank in slots['ranks']]
             n_nodes  = len(set(nodelist))
 
-            # older slurm versions don't accept nodefiles
+            # older slurm versions don't accept option `--nodefile`
             # 42 node is the upper limit to switch from `--nodelist`
             # to `--nodefile`
             if self._vmajor > MIN_VSLURM_IN_LIST:
@@ -144,18 +144,13 @@ class Srun(LaunchMethod):
                         fout.write(','.join(nodelist))
                         fout.write('\n')
 
-        # use `--exclusive` to ensure all tasks get individual resources.
-        # do not use core binding: it triggers warnings on some installations
-        # FIXME: warnings are triggered anyway :-(
-        mapping = '--exclusive --cpu-bind=none ' \
-                + '--nodes %d '        % n_nodes \
+        mapping = '--nodes %d '        % n_nodes \
                 + '--ntasks %d '       % n_tasks \
-                + '--gpus %d '         % (n_gpus * n_tasks) \
                 + '--cpus-per-task %d' % n_task_threads
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('gpus'):
-            mapping += ' --gpus-per-task %d' % n_gpus
+        if self._rm_info.get('gpus') and n_gpus:
+            mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
@@ -171,9 +166,9 @@ class Srun(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        # FIXME: does SRUN set a rank env?
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+        ret  = 'test -z "$SLURM_PROCID" || export RP_RANK=$SLURM_PROCID\n'
+        ret += 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         return ret
 
