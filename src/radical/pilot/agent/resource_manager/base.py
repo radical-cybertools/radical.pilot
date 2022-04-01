@@ -331,6 +331,7 @@ class ResourceManager(object):
                 self._log.debug('prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
+                lm_cfg['resource']    = self._cfg.resource
                 self._launchers[name] = rpa.LaunchMethod.create(
                     name, lm_cfg, rm_info, self._log, self._prof)
 

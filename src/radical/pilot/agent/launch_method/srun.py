@@ -37,7 +37,8 @@ class Srun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self._command: str = ''
+        self._command : str  = ''
+        self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -144,13 +145,22 @@ class Srun(LaunchMethod):
                         fout.write(','.join(nodelist))
                         fout.write('\n')
 
-        mapping = '--nodes %d '        % n_nodes \
-                + '--ntasks %d '       % n_tasks \
-                + '--cpus-per-task %d' % n_task_threads
+        if self._traverse:
+            mapping = '--ntasks=%d '       % n_tasks \
+                    + '--cpus-per-task=%d' % n_task_threads \
+                    + '--ntasks-per-core=1 --distribution="arbitrary"'
+        else:
+            mapping = '--nodes %d '        % n_nodes \
+                    + '--ntasks %d '       % n_tasks \
+                    + '--cpus-per-task %d' % n_task_threads
+
 
         # check that gpus were requested to be allocated
         if self._rm_info.get('gpus') and n_gpus:
-            mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
+            if self._traverse:
+                mapping += ' --gpus-per-task=%d' % n_gpus
+            else:
+                mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
