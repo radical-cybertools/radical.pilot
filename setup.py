@@ -263,6 +263,7 @@ setup_args = {
   # 'setup_requires'     : ['pytest-runner'],
     'install_requires'   : ['radical.utils>=1.12',
                             'radical.saga>=1.12',
+                            'radical.gtod',
                             'pymongo<4',
                             'mpi4py',
                             'setproctitle',
