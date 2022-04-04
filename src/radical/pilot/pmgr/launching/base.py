@@ -185,9 +185,9 @@ class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, pilot):
+    def _state_cb(self, pilot, rp_state):
 
-        self._log.info('=== pilot state update: %s: %s', pilot['uid'], pilot['state'])
+        self._log.info('=== pilot state update: %s: %s', pilot['uid'], rp_state)
 
 
     # --------------------------------------------------------------------------

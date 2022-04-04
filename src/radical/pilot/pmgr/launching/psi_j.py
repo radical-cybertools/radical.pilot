@@ -79,12 +79,12 @@ class PilotLauncherPSIJ(PilotLauncherBase):
     #
     def _translate_state(self, status):
 
-        if   status == psij.JobState.NEW       : return rps.NEW
-        elif status == psij.JobState.QUEUED    : return rps.PMGR_LAUNCHING
-        elif status == psij.JobState.ACTIVE    : return rps.PMGR_ACTIVE
-        elif status == psij.JobState.COMPLETED : return rps.DONE
-        elif status == psij.JobState.FAILED    : return rps.FAILED
-        elif status == psij.JobState.CANCELED  : return rps.CANCELED
+        if   status.state == psij.JobState.NEW       : return rps.NEW
+        elif status.state == psij.JobState.QUEUED    : return rps.PMGR_LAUNCHING
+        elif status.state == psij.JobState.ACTIVE    : return rps.PMGR_ACTIVE
+        elif status.state == psij.JobState.COMPLETED : return rps.DONE
+        elif status.state == psij.JobState.FAILED    : return rps.FAILED
+        elif status.state == psij.JobState.CANCELED  : return rps.CANCELED
         else:
             raise ValueError('cannot interpret psij state: %s' % repr(status))
 
@@ -94,16 +94,19 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
         self._called = True
 
-        self._log.debug('=== job status update: %s: %s', job, status)
-        with self._lock:
+        try:
+            with self._lock:
 
-            if job.id not in self._pilots:
-                return
+                if job.id not in self._pilots:
+                    return
 
-            rp_state = self._translate_state(status)
-            pilot    = self._pilots[job.id]
+                rp_state = self._translate_state(status)
+                pilot    = self._pilots[job.id]
 
-        self._state_cb(pilot, rp_state)
+            self._state_cb(pilot, rp_state)
+
+        except Exception:
+            self._log.exception('job status callback failed')
 
 
     # --------------------------------------------------------------------------
@@ -134,16 +137,6 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
         assert(psij)
 
-        class my_cb(psij.JobStatusCallback):
-
-            def __init__(self, cb):
-                self._cb = cb
-
-            def job_status_changed(self, job, job_status):
-                self._cb(job, job_status)
-
-
-
         for pilot in pilots:
 
             pid    = pilot['uid']
@@ -169,11 +162,13 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.resources.cpu_cores_per_process = jd['total_cpu_count']
             spec.resources.gpu_cores_per_process = jd['total_gpu_count']
 
-            job  = psij.Job(spec)
-            jex.submit(job)
+            job = psij.Job(spec)
 
             self._jobs[pid]      = job
             self._pilots[job.id] = pilot
+            self._log.debug('=== added %s: %s', job.id, pid)
+
+            jex.submit(job)
 
 
     # --------------------------------------------------------------------------
