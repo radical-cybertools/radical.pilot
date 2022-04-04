@@ -264,6 +264,8 @@ setup_args = {
     'install_requires'   : ['radical.utils>=1.12',
                             'radical.saga>=1.12',
                             'dill',
+                            'radical.gtod',
+                            'pymongo<4',
                             'setproctitle'
                            ],
     'tests_require'      : ['pytest',
