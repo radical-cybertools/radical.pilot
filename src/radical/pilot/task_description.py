@@ -66,7 +66,11 @@ class TaskDescription(ru.TypedDict):
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
 
-    .. envvar:: RADICAL_TETS_ENV
+    .. envvar:: RADICAL_TEST_ENV
+
+    .. envvar:: RADICAL_TEST_ENV2
+
+    .. envvar:: RADICAL_TEST_ENV3 spaces are included in the variable name itself and doesn't act as description
 
     .. note:: A TaskDescription **MUST** define at least an
               `executable` or `kernel` -- all other elements are optional.

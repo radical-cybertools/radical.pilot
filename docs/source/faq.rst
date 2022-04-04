@@ -190,4 +190,4 @@ concurrent SSH connections one can make.
 List of Env vars
 _________________
 
-:envvar:`RADICAL_TETS_ENV` dsaj sad
+:envvar:`RADICAL_TEST_ENV` dsaj sad
