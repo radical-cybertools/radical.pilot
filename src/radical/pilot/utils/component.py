@@ -556,6 +556,7 @@ class Component(object):
 
         assert(cfg.kind in comp), '%s not in %s' % (cfg.kind, list(comp.keys()))
 
+        session._log.debug('create 1 %s: %s', cfg.kind, comp[cfg.kind])
         return comp[cfg.kind].create(cfg, session)
 
 
