@@ -9,6 +9,101 @@ import radical.utils as ru
 from .base import LaunchMethod
 
 
+# ----- TO BE MOVED TO THE LM BASE MODULE vvv-----------------------------------
+#
+class LMOptionsBaseMeta(type):
+
+    # --------------------------------------------------------------------------
+    #
+    def __new__(mcs, name, bases, namespace):
+
+        if name != 'LMOptions':
+
+            base_schema = {}
+            for _cls in bases:
+                _cls_v = getattr(_cls, '_schema', None)
+                if _cls_v is not None:
+                    base_schema.update(_cls_v)
+
+            mapping = namespace.get('_mapping')
+            if not mapping:
+                raise Exception('mapping not provided')
+
+            namespace['_schema'].clear()
+            for k in list(mapping):
+                if k not in base_schema:
+                    del mapping[k]
+                namespace['_schema'][k] = base_schema[k]
+
+        return super().__new__(mcs, name, bases, namespace)
+
+
+# ------------------------------------------------------------------------------
+#
+class LMOptionsMeta(ru.TypedDictMeta, LMOptionsBaseMeta):
+    pass
+
+
+# ------------------------------------------------------------------------------
+#
+class LMOptions(ru.TypedDict, metaclass=LMOptionsMeta):
+
+    _delimiter = ' '      # could be set as '='
+    _mapping   = {}
+    _schema    = {        # provides all possible options
+        'ranks'           : int,
+        'ranks_per_node'  : int,
+        'threads_per_rank': int,
+        'threads_per_core': int,
+        'reserved_cores'  : int
+    }
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None, options=None):
+
+        self.__dict__['_valid_options'] = set(options or list(self._schema))
+
+        super().__init__(from_dict=from_dict)
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+
+        options = []
+        for k, o in self._mapping.items():
+
+            if k not in self._valid_options:
+                continue
+
+            v = getattr(self, k)
+            if v is None or v is False:
+                continue
+            elif v is True:
+                options.append('%s' % o)
+            else:
+                if isinstance(v, (list, tuple)):
+                    v = ','.join(v)
+                options.append('%s%s%s' % (o, self._delimiter, v))
+
+        return ' '.join(options)
+
+# ----- TO BE MOVED TO THE LM BASE MODULE ^^^-----------------------------------
+
+
+# ------------------------------------------------------------------------------
+#
+class APRunOptions(LMOptions):
+
+    _mapping = {
+        'ranks_per_node'  : '-N',
+        'ranks'           : '-n',
+        'threads_per_rank': '-d',
+        'threads_per_core': '–j',
+        'reserved_cores'  : '-r'
+    }
+
+
 # ------------------------------------------------------------------------------
 #
 # aprun: job launcher for Cray systems (alps-run)
@@ -75,10 +170,7 @@ class APRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        td             = task['description']
-
-        n_tasks        = td['cpu_processes']
-        n_task_threads = td.get('cpu_threads', 1)
+        td = task['description']
 
         # aprun options
         # –  Number of MPI ranks per node:                –N <n_ranks_per_node>
@@ -89,12 +181,17 @@ class APRun(LaunchMethod):
         # –  Environment variables:                       -e <env_var>
         # –  Core specialization:                         -r <n_threads>
 
-        rpn = os.environ.get('SAGA_PPN') or n_tasks
-        rpn = min(n_tasks, int(rpn))
+        n_ranks = td['cpu_processes']
+        ranks_per_node = os.environ.get('SAGA_PPN') or n_ranks
+        ranks_per_node = min(n_ranks, int(ranks_per_node))
 
-        cmd_options = '-N %s ' % rpn + \
-                      '-n %s ' % n_tasks + \
-                      '-d %s'  % n_task_threads
+        options = APRunOptions({'ranks_per_node'  : ranks_per_node,
+                                'ranks'           : n_ranks,
+                                'threads_per_rank': td.get('cpu_threads', 1)})
+
+        # get configurable options
+        cfg_options = self._lm_cfg.get('options', {})
+        options.reserved_cores = cfg_options.get('reserved_cores')
 
         # CPU affinity binding
         # - use –d and --cc depth to let ALPS control affinity
@@ -123,7 +220,7 @@ class APRun(LaunchMethod):
         # if td['cpu_threads'] > 1 and 'OMP_NUM_THREADS' not in task_env:
         #     cmd_options += ' -e OMP_NUM_THREADS=%(cpu_threads)s' % td
 
-        cmd = '%s %s %s' % (self._command, cmd_options, exec_path)
+        cmd = '%s %s %s' % (self._command, str(options), exec_path)
         return cmd.rstrip()
 
 
