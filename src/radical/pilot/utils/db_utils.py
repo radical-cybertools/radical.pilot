@@ -52,19 +52,30 @@ def get_last_session(db):
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs(sid, cachedir=None):
+def get_session_docs(sid, db=None, cachedir=None):
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in
     # that case we pull it from there instead of the database, which will be
     # much quicker.  Also, we do cache any retrieved docs to that place, for
     # later use.  An optional cachdir parameter changes that default location
     # for lookup and storage.
+    if db:
+        json_data = dict()
+        # convert bson to json, i.e. serialize the ObjectIDs into strings.
+        json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
+        json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
+        json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
+        json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
+        json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
 
-    import glob
-    path = "%s/rp.session.*.json" % os.path.abspath(sid)
-    session_json = glob.glob(path)[0]
-    with open(session_json, 'r', encoding='utf8') as f:
-        json_data = json.load(f)
+        if  len(json_data['session']) == 0:
+            raise ValueError ('no session %s in db' % sid)
+    else:
+        import glob
+        path = "%s/rp.session.*.json" % os.path.abspath(sid)
+        session_json = glob.glob(path)[0]
+        with open(session_json, 'r', encoding='utf8') as f:
+            json_data = json.load(f)
 
     # we want to add a list of handled tasks to each pilot doc
     for pilot in json_data['pilot']:

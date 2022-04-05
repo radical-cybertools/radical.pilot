@@ -379,7 +379,7 @@ def stat_session (session, cachedir) :
     t_x  = t_x_stop  - t_x_start          # first start 'til last stop  of task execution
     t_xy = t_y_start - t_x_start          # first start 'til last start of task execution
 
-    session_name = docs['session']['_id']
+    session_name = docs['session'][0]['_id']
 
     print("Session Statistics")
     print("------------------")
