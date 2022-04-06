@@ -157,7 +157,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
 
         # load all launcher implementations
-        self._launchers = list()
+        self._launchers = dict()
 
         from .saga  import PilotLauncherSAGA
         from .psi_j import PilotLauncherPSIJ
@@ -169,8 +169,9 @@ class PMGRLaunchingComponent(rpu.Component):
 
         for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
             try:
-                self._launchers.append(impl[name](name, self._log, self._prof,
-                    self._state_cb))
+                ctor = impl[name]
+                self._launchers[name] = ctor(name, self._log, self._prof,
+                                             self._state_cb)
             except:
                 self._log.exception('skip launcher %s' % name)
 
@@ -265,14 +266,26 @@ class PMGRLaunchingComponent(rpu.Component):
             # nothing to do
             return
 
-        # record time of request, so that forceful termination can happen
-        # after a certain delay
-        now = time.time()
         with self._pilots_lock:
             for pid in pids:
-                if pid in self._pilots:
-                    self._log.debug('update cancel req: %s %s', pid, now)
-                    self._pilots[pid]['pilot']['cancel_requested'] = now
+
+                self._log.debug('cancel pilot %s', pid)
+                if pid not in self._pilots:
+                    self._log.warn('cannot cancel unknown pilot %s', pid)
+                    continue
+
+                pilot = self._pilots[pid]
+                lname = pilot['launcher']
+
+                if lname not in self._launchers:
+                    self._log.warn('invalid pilot launcher name: %s', lname)
+                    continue
+
+                launcher = self._launchers[lname]
+                try:
+                    launcher.cancel_pilots([pid])
+                except:
+                    self._log.exception('pilot cancel failed for %s' % pid)
 
 
     # --------------------------------------------------------------------------
@@ -595,26 +608,35 @@ class PMGRLaunchingComponent(rpu.Component):
             self._prof.prof('submission_start', uid=pilot['uid'])
 
         # launcher handles pilot job submission
-        launcher = self.find_launcher(rcfg, pilots)
-        launcher.launch_pilots(rcfg, pilots)
+        self.find_launchers(rcfg, pilots)
 
-        for pilot in pilots:
-            self._prof.prof('submission_stop', uid=pilot['uid'])
+        for lname,launcher in self._launchers.items():
+            bucket = list()
+            for pilot in pilots:
+                if pilot['launcher'] == lname:
+                    bucket.append(pilot)
+
+            if bucket:
+                launcher.launch_pilots(rcfg, bucket)
+                for pilot in bucket:
+                    self._prof.prof('submission_stop', uid=pilot['uid'])
 
 
     # --------------------------------------------------------------------------
     #
-    def find_launcher(self, rcfg, pilots):
+    def find_launchers(self, rcfg, pilots):
 
-        for launcher in self._launchers:
-            if launcher.can_launch(rcfg, pilots):
-                self._log.info('use launcher %s for pilots %s',
-                               launcher.name, [p['uid'] for p in pilots])
-                return launcher
+        for pilot in pilots:
+            for lname,launcher in self._launchers.items():
+                if launcher.can_launch(rcfg, pilots):
+                    pilot['launcher'] = lname
+                    self._log.info('use launcher %s for pilot %s',
+                                   lname, pilot['uid'])
+                    return launcher
 
-        self._log.warn('rcfg: %s', pprint.pformat(rcfg))
-        self._log.warn('pilots: %s', pprint.pformat(pilots))
-        raise RuntimeError('no launcher found for pilots')
+            self._log.warn('rcfg: %s', pprint.pformat(rcfg))
+            self._log.warn('pilots: %s', pprint.pformat(pilots))
+            raise RuntimeError('no launcher found for pilots %s' % pilot['uid'])
 
 
     # --------------------------------------------------------------------------
