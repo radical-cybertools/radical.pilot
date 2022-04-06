@@ -45,8 +45,6 @@ class PilotLauncherPSIJ(PilotLauncherBase):
         self._jex    = dict()     # map launch schema to psi_j job executors
         self._lock   = mt.Lock()  # lock above structures
 
-        self._called = False
-
 
     # --------------------------------------------------------------------------
     #
@@ -88,11 +86,10 @@ class PilotLauncherPSIJ(PilotLauncherBase):
         else:
             raise ValueError('cannot interpret psij state: %s' % repr(status))
 
+
     # --------------------------------------------------------------------------
     #
     def _job_status_cb(self, job, status):
-
-        self._called = True
 
         try:
             with self._lock:

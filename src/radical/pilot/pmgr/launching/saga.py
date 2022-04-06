@@ -5,9 +5,19 @@ __license__   = "MIT"
 
 
 import os
+import functools
 
 import radical.utils as ru
-import radical.saga  as rs
+
+# saga is optional
+rs    = None
+rs_ex = None
+
+try:
+    import radical.saga
+    rs = radical.saga
+except ImportError as ex:
+    rs_ex = ex
 
 from .base import PilotLauncherBase
 from ...   import states as rps
@@ -33,21 +43,59 @@ class PilotLauncherSAGA(PilotLauncherBase):
     #
     def __init__(self, name, log, prof, state_cb):
 
+        if rs_ex:
+            raise rs_ex
+
+        assert(rs)
+
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
         self._saga_jobs = dict()      # pid      : rs.Job
         self._saga_js   = dict()      # resource : rs.JobService
+        self._pilots    = dict()      # saga_id  : pilot job
         self._saga_lock = ru.RLock()  # lock for above
+
 
         # FIXME: get session from launching component
         self._saga_session = rs.Session()
 
         # FIXME: make interval configurable
-        # FIXME: run as daemon watcher thread
-        #
-      # self._watcher = mt.Thread(target=self._pilot_watcher)
-      # self._watcher.daemon = True
-      # self._watcher.start()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _translate_state(self, saga_state):
+
+        if   saga_state == rs.job.NEW       : return rps.NEW
+        elif saga_state == rs.job.PENDING   : return rps.PMGR_LAUNCHING
+        elif saga_state == rs.job.RUNNING   : return rps.PMGR_LAUNCHING
+        elif saga_state == rs.job.SUSPENDED : return rps.PMGR_LAUNCHING
+        elif saga_state == rs.job.DONE      : return rps.DONE
+        elif saga_state == rs.job.FAILED    : return rps.FAILED
+        elif saga_state == rs.job.CANCELED  : return rps.CANCELED
+        else:
+            raise ValueError('cannot interpret psij state: %s' % saga_state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _job_state_cb(self, job, _, saga_state, pid):
+
+        try:
+            with self._saga_lock:
+
+                if job.id not in self._pilots:
+                    return
+
+                rp_state = self._translate_state(saga_state)
+                pilot    = self._pilots[pid]
+
+            self._state_cb(pilot, rp_state)
+
+        except Exception:
+            self._log.exception('job status callback failed')
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -121,8 +169,14 @@ class PilotLauncherSAGA(PilotLauncherBase):
                 except Exception as e:
                     self._log.debug('SAGA SMT not set: %s' % e)
 
-          # self._log.debug('jd: %s', pprint.pformat(jd.as_dict()))
-            jc.add(js.create_job(jd))
+            # remember the pilot
+            pid = pilot['uid']
+            self._pilots[pid] = pilot
+
+            job = js.create_job(jd)
+            cb  = functools.partial(self._job_state_cb, pid=pid)
+            job.add_callback(rs.STATE, cb)
+            jc.add(job)
 
         jc.run()
 
@@ -168,100 +222,6 @@ class PilotLauncherSAGA(PilotLauncherBase):
         tc.cancel()
         tc.wait()
         self._log.debug('cancellation done')
-
-
-  # # --------------------------------------------------------------------------
-  # #
-  # def _pilot_watcher(self):
-  #
-  #     # FIXME: we should actually use SAGA job state notifications!
-  #     # FIXME: check how race conditions are handles: we may detect
-  #     #        a finalized SAGA job and change the pilot state -- but that
-  #     #        pilot may have transitioned into final state via the normal
-  #     #        notification mechanism already.  That probably should be sorted
-  #     #        out by the pilot manager, which will receive notifications for
-  #     #        both transitions.  As long as the final state is the same,
-  #     #        there should be no problem anyway.  If it differs, the
-  #     #        'cleaner' final state should prevail, in this ordering:
-  #     #          cancel
-  #     #          timeout
-  #     #          error
-  #     #          disappeared
-  #     #        This implies that we want to communicate 'final_cause'
-  #
-  #     # we don't want to lock our members all the time.  For that reason we
-  #     # use a copy of the pilots_tocheck list and iterate over that, and only
-  #     # lock other members when they are manipulated.
-  #     tc = rs.job.Container()
-  #     with self._pilots_lock, self._check_lock:
-  #
-  #         for pid in self._checking:
-  #             tc.add(self._pilots[pid]['job'])
-  #
-  #     states = tc.get_states()
-  #
-  #     self._log.debug('bulk states: %s', states)
-  #
-  #     # if none of the states is final, we have nothing to do.
-  #     # We can't rely on the ordering of tasks and states in the task
-  #     # container, so we hope that the task container's bulk state query lead
-  #     # to a caching of state information, and we thus have cache hits when
-  #     # querying the pilots individually
-  #
-  #     final_pilots = list()
-  #     with self._pilots_lock, self._check_lock:
-  #
-  #         for pid in self._checking:
-  #
-  #             state = self._pilots[pid]['job'].state
-  #             self._log.debug('saga job state: %s %s %s', pid,
-  #                              self._pilots[pid]['job'],  state)
-  #
-  #             if state in [rs.job.DONE, rs.job.FAILED, rs.job.CANCELED]:
-  #                 pilot = self._pilots[pid]['pilot']
-  #                 if state == rs.job.DONE    : pilot['state'] = rps.DONE
-  #                 if state == rs.job.FAILED  : pilot['state'] = rps.FAILED
-  #                 if state == rs.job.CANCELED: pilot['state'] = rps.CANCELED
-  #                 final_pilots.append(pilot)
-  #
-  #     if final_pilots:
-  #
-  #         for pilot in final_pilots:
-  #
-  #             with self._check_lock:
-  #                 # stop monitoring this pilot
-  #                 self._checking.remove(pilot['uid'])
-  #
-  #             self._log.debug('final pilot %s %s', pilot['uid'], pilot['state'])
-  #
-  #         self.advance(final_pilots, push=False, publish=True)
-  #
-  #     # all checks are done, final pilots are weeded out.  Now check if any
-  #     # pilot is scheduled for cancellation and is overdue, and kill it
-  #     # forcefully.
-  #     to_cancel  = list()
-  #     with self._pilots_lock:
-  #
-  #         for pid in self._pilots:
-  #
-  #             pilot   = self._pilots[pid]['pilot']
-  #             time_cr = pilot.get('cancel_requested')
-  #
-  #             # check if the pilot is final meanwhile
-  #             if pilot['state'] in rps.FINAL:
-  #                 continue
-  #
-  #             if time_cr and time_cr + PILOT_CANCEL_DELAY < time.time():
-  #                 self._log.debug('pilot needs killing: %s :  %s + %s < %s',
-  #                         pid, time_cr, PILOT_CANCEL_DELAY, time.time())
-  #                 del(pilot['cancel_requested'])
-  #                 self._log.debug(' cancel pilot %s', pid)
-  #                 to_cancel.append(pid)
-  #
-  #     if to_cancel:
-  #         self._kill_pilots(to_cancel)
-  #
-  #     return True
 
 
 # ------------------------------------------------------------------------------
