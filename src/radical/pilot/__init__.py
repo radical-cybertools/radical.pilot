@@ -22,15 +22,10 @@ from .context                   import Context
 from .task_manager              import TaskManager
 from .task                      import Task
 from .task_description          import TaskDescription
-from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
-
-from .deprecated                import ComputePilot, ComputePilotDescription
-from .deprecated                import ComputeUnit,  ComputeUnitDescription
-from .deprecated                import UnitManager
 
 
 # ------------------------------------------------------------------------------
