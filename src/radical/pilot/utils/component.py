@@ -1,4 +1,7 @@
 
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
+
 # pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
 # pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
 # pylint: disable=global-statement   # W0603 global `_components`

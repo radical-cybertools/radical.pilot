@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 
 # configure the psij logger (captured in the launch components stderr)
@@ -170,7 +170,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pids):
+    def _cancel_pilots(self, pids):
 
         for pid in pids:
             if pid not in pids:

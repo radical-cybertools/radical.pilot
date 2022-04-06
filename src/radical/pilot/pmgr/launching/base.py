@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 
 import os
@@ -208,7 +208,6 @@ class PMGRLaunchingComponent(rpu.Component):
             with self._pilots_lock:
                 pids = list(self._pilots.keys())
 
-            self._cancel_pilots(pids)
             self._kill_pilots(pids)
 
             # TODO: close launchers
@@ -353,7 +352,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
                     pilots.append(pilot)
 
-                self._cancel_pilots(pilots)
+                self._cancel_pilots(pids)
 
             # set canceled state
             self.advance(pilots, state=rps.CANCELED, push=False, publish=True)
@@ -677,7 +676,6 @@ class PMGRLaunchingComponent(rpu.Component):
         python_dist             = rcfg.get('python_dist')
         task_tmp                = rcfg.get('task_tmp')
         spmd_variation          = rcfg.get('spmd_variation')
-        shared_filesystem       = rcfg.get('shared_filesystem', True)
         task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
         task_pre_rank           = rcfg.get('task_pre_rank')
@@ -849,25 +847,14 @@ class PMGRLaunchingComponent(rpu.Component):
             #  u : task work dirs
             #  v : virtualenv
             #  e : everything (== pilot sandbox)
-            if shared_filesystem:
-                cleanup = 'luve'
-            else:
-                # we cannot clean the sandbox from within the agent, as the hop
-                # staging would then fail, and we'd get nothing back.
-                # FIXME: cleanup needs to be done by the pmgr.launcher, or
-                #        someone else, really, after fetching all logs and
-                #        profiles.
-                cleanup = 'luv'
+            cleanup = 'luve'
 
             # we never cleanup virtenvs which are not private
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
         # estimate requested resources
-
-        smt = os.environ.get('RADICAL_SAGA_SMT')
-        if smt:
-            system_architecture['smt'] = int(smt)
+        smt = system_architecture.get('smt', 1)
 
         if cores_per_node and smt:
             cores_per_node *= int(smt)
@@ -883,10 +870,12 @@ class PMGRLaunchingComponent(rpu.Component):
             avail_gpus_per_node -= len(blocked_gpus)
             assert (avail_gpus_per_node >= 0)
 
-        if requested_nodes:
+        if not requested_nodes and not requested_cores:
+            requested_nodes = 1
 
-            if not cores_per_node:
-                raise RE('use "cores" in PilotDescription')
+        if requested_nodes:
+            if not avail_cores_per_node:
+                raise RuntimeError('use "cores" in PilotDescription')
 
             requested_cores = requested_nodes * avail_cores_per_node
             requested_gpus  = requested_nodes * avail_gpus_per_node
@@ -1081,6 +1070,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
+        jd_dict.file_transfer         = list()
         jd_dict.environment           = dict()
         jd_dict.system_architecture   = dict(system_architecture)
 
@@ -1093,27 +1083,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
         # files from the session and pilot sandboxes to the pilot job.
-        jd_dict.file_transfer = list()
-        if not shared_filesystem:
-
-            jd_dict.file_transfer.extend([
-                'site:%s/%s > %s' % (pilot_sandbox, agent_cfg_name,
-                                                    agent_cfg_name),
-                'site:%s/%s.log.tgz > %s.log.tgz' % (pilot_sandbox, pid, pid),
-                'site:%s/%s.log.tgz < %s.log.tgz' % (pilot_sandbox, pid, pid)
-            ])
-
-            if self._prof.enabled:
-                jd_dict.file_transfer.extend([
-                    'site:%s/%s.prof.tgz > %s.prof.tgz' % (pilot_sandbox, pid, pid),
-                    'site:%s/%s.prof.tgz < %s.prof.tgz' % (pilot_sandbox, pid, pid)
-                ])
-
-            for sdist in sdist_names:
-                jd_dict.file_transfer.extend([
-                    'site:%s/%s > %s' % (session_sandbox, sdist, sdist)
-                ])
-
 
         self._log.debug("Bootstrap command line: %s %s", jd_dict.executable,
                 jd_dict.arguments)
@@ -1128,21 +1097,16 @@ class PMGRLaunchingComponent(rpu.Component):
         Run some input staging directives.
         '''
 
-        resource_sandbox = self._session._get_resource_sandbox(pilot)
-      # session_sandbox  = self._session._get_session_sandbox (pilot)
-        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
-        client_sandbox   = self._session._get_client_sandbox()
-
         # contexts for staging url expansion
-        rem_ctx = {'pwd'     : pilot_sandbox,
-                   'client'  : client_sandbox,
-                   'pilot'   : pilot_sandbox,
-                   'resource': resource_sandbox}
+        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+                   'client'  : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
-        loc_ctx = {'pwd'     : client_sandbox,
-                   'client'  : client_sandbox,
-                   'pilot'   : pilot_sandbox,
-                   'resource': resource_sandbox}
+        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+                   'client'  : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
         sds = ru.as_list(sds)
 
@@ -1161,21 +1125,16 @@ class PMGRLaunchingComponent(rpu.Component):
         Run some output staging directives.
         '''
 
-        resource_sandbox = self._session._get_resource_sandbox(pilot)
-      # session_sandbox  = self._session._get_session_sandbox (pilot)
-        pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
-        client_sandbox   = self._session._get_client_sandbox()
-
         # contexts for staging url expansion
-        loc_ctx = {'pwd'     : client_sandbox,
-                   'client'  : client_sandbox,
-                   'pilot'   : pilot_sandbox,
-                   'resource': resource_sandbox}
+        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+                   'client'  : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
-        rem_ctx = {'pwd'     : pilot_sandbox,
-                   'client'  : client_sandbox,
-                   'pilot'   : pilot_sandbox,
-                   'resource': resource_sandbox}
+        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+                   'client'  : pilot['client_sandbox'],
+                   'pilot'   : pilot['pilot_sandbox'],
+                   'resource': pilot['resource_sandbox']}
 
         sds = ru.as_list(sds)
 

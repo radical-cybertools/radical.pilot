@@ -1,12 +1,13 @@
 # pylint: disable=protected-access
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 
 import os
 import functools
 
+import threading     as mt
 import radical.utils as ru
 
 # saga is optional
@@ -53,7 +54,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         self._saga_jobs = dict()      # pid      : rs.Job
         self._saga_js   = dict()      # resource : rs.JobService
         self._pilots    = dict()      # saga_id  : pilot job
-        self._saga_lock = ru.RLock()  # lock for above
+        self._saga_lock = mt.RLock()  # lock for above
 
 
         # FIXME: get session from launching component
@@ -160,15 +161,6 @@ class PilotLauncherSAGA(PilotLauncherBase):
                     self._log.debug('supplement %s: %s', key, val)
                     jd[key] = val
 
-            # set saga job description attribute based on env variable(s)
-            # FIXME: is this used?
-            if os.environ.get('RADICAL_SAGA_SMT'):
-                try:
-                    jd.system_architecture['smt'] = \
-                        int(os.environ['RADICAL_SAGA_SMT'])
-                except Exception as e:
-                    self._log.debug('SAGA SMT not set: %s' % e)
-
             # remember the pilot
             pid = pilot['uid']
             self._pilots[pid] = pilot
@@ -198,7 +190,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pids):
+    def _cancel_pilots(self, pids):
 
         tc = rs.job.Container()
 
