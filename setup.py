@@ -265,7 +265,6 @@ setup_args = {
                             'radical.saga>=1.12',
                             'radical.gtod',
                             'pymongo<4',
-                            'mpi4py',
                             'setproctitle',
                             'dill'
                            ],
