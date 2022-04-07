@@ -41,13 +41,6 @@ DEFAULT_VIRTENV_MODE  = 'update'
 DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
-PILOT_CANCEL_DELAY     = 120  # seconds between cancel signal and job kill
-PILOT_CHECK_INTERVAL   =  60  # seconds between runs of the job state check loop
-PILOT_CHECK_MAX_MISSES =   3  # number of times to find a job missing before
-                              # declaring it dead
-
-LOCAL_SCHEME   = 'file'
-
 
 # ------------------------------------------------------------------------------
 #
@@ -125,16 +118,14 @@ class PMGRLaunchingComponent(rpu.Component):
                                    ru.ID_CUSTOM)
 
         rpu.Component.__init__(self, cfg, session)
-        self._pmgr = self._owner
+        self._pmgr      = self._owner
 
-        self._pilots        = dict()      # dict for all known pilots
-        self._pilots_lock   = mt.RLock()  # lock on maipulating the above
-        self._checking      = list()      # pilots to check state on
-        self._check_lock    = mt.RLock()  # lock on maipulating the above
-        self._sandboxes     = dict()      # cache of resource sandbox URLs
+        self._pilots    = dict()      # dict for all known pilots
+        self._lock      = mt.RLock()  # lock on maipulating the above
+        self._sandboxes = dict()      # cache of resource sandbox URLs
 
-        self._mod_dir       = os.path.dirname(os.path.abspath(__file__))
-        self._root_dir      = "%s/../../"   % self._mod_dir
+        self._mod_dir   = os.path.dirname(os.path.abspath(__file__))
+        self._root_dir  = "%s/../../" % self._mod_dir
 
         # register input queue
         self.register_input(rps.PMGR_LAUNCHING_PENDING,
@@ -208,10 +199,10 @@ class PMGRLaunchingComponent(rpu.Component):
 
             # FIXME: always kill all pilot jobs for non-final pilots at
             #        termination, and set the pilot states to CANCELED.
-            with self._pilots_lock:
+            with self._lock:
                 pids = list(self._pilots.keys())
 
-            self._kill_pilots(pids)
+            self._cancel_pilots(pids)
 
             # TODO: close launchers
 
@@ -230,17 +221,10 @@ class PMGRLaunchingComponent(rpu.Component):
 
         if cmd == 'cancel_pilots':
 
-            # on cancel_pilot requests, we forward the DB entries via MongoDB,
-            # by pushing a pilot update.  We also mark the pilot for
-            # cancelation, so that the pilot watcher can cancel the job after
-            # PILOT_CANCEL_DELAY seconds, in case the pilot did not react on the
-            # command in time.
-
             pmgr = arg['pmgr']
             pids = arg['uids']
 
             if pmgr != self._pmgr:
-                # this request is not for us to enact
                 return True
 
             if not isinstance(pids, list):
@@ -256,9 +240,6 @@ class PMGRLaunchingComponent(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _cancel_pilots(self, pids):
-        # FIXME: keep track of what launcher owns what pilots, or try all
-        #        launchers
-
         '''
         Send a cancellation request to the pilots.  This call will not wait for
         the request to get enacted, nor for it to arrive, but just send it.
@@ -268,7 +249,7 @@ class PMGRLaunchingComponent(rpu.Component):
             # nothing to do
             return
 
-        with self._pilots_lock:
+        with self._lock:
             for pid in pids:
 
                 self._log.debug('cancel pilot %s', pid)
@@ -288,94 +269,6 @@ class PMGRLaunchingComponent(rpu.Component):
                     launcher.cancel_pilots([pid])
                 except:
                     self._log.exception('pilot cancel failed for %s' % pid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _kill_pilots(self, pids=None):
-        '''
-        Forcefully kill a set of pilots.  For pilots which have just recently be
-        cancelled, we will wait a certain amount of time to give them a chance
-        to termimate on their own (which allows to flush profiles and logfiles,
-        etc).  After that delay, we'll make sure they get killed.
-        '''
-
-        self._log.debug('killing pilots: %s', pids)
-
-        if not self._pilots:
-            # nothing to do
-            return
-
-        if not pids:
-            pids = self._pilots.keys()
-
-        # find the most recent cancellation request
-        with self._pilots_lock:
-            self._log.debug('killing pilots: %s',
-                              [p['pilot'].get('cancel_requested', 0)
-                               for p in list(self._pilots.values())])
-            last_cancel = max([p['pilot'].get('cancel_requested', 0)
-                               for p in list(self._pilots.values())])
-
-        self._log.debug('killing pilots: last cancel: %s', last_cancel)
-
-        # we wait for up to PILOT_CANCEL_DELAY for a pilt
-        while time.time() < (last_cancel + PILOT_CANCEL_DELAY):
-
-            self._log.debug('killing pilots: check %s < %s + %s',
-                    time.time(), last_cancel, PILOT_CANCEL_DELAY)
-
-            alive_pids = list()
-            for pid in pids:
-
-                if pid not in self._pilots:
-                    self._log.error('unknown: %s', pid)
-                    raise ValueError('unknown pilot %s' % pid)
-
-                pilot = self._pilots[pid]['pilot']
-                if pilot['state'] not in rps.FINAL:
-                    self._log.debug('killing pilots: alive %s', pid)
-                    alive_pids.append(pid)
-                else:
-                    self._log.debug('killing pilots: dead  %s', pid)
-
-            pids = alive_pids
-            if not alive_pids:
-                # nothing to do anymore
-                return
-
-            # avoid busy poll)
-            time.sleep(1)
-
-        # we don't want the watcher checking for these pilot anymore
-        with self._check_lock:
-            for pid in pids:
-                if pid in self._checking:
-                    self._checking.remove(pid)
-
-
-        self._log.debug('killing pilots: kill! %s', pids)
-        try:
-            with self._pilots_lock:
-
-                pilots = list()
-                for pid in pids:
-
-                    pilot = self._pilots['uid']['pilot']
-                    if pilot['state'] in rps.FINAL:
-                        continue
-
-                    pilots.append(pilot)
-
-                self._cancel_pilots(pids)
-
-            # set canceled state
-            self.advance(pilots, state=rps.CANCELED, push=False, publish=True)
-
-        except Exception:
-            self._log.exception('pilot kill failed')
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -621,11 +514,14 @@ class PMGRLaunchingComponent(rpu.Component):
             if not pilot.get('launcher'):
                 raise RuntimeError('no launcher found for %s' % pilot['uid'])
 
-        for lname, bucket in buckets.items():
-            launcher = self._launchers[lname]
-            launcher.launch_pilots(rcfg, bucket)
-            for pilot in bucket:
-                self._prof.prof('submission_stop', uid=pilot['uid'])
+        with self._lock:
+            for lname, bucket in buckets.items():
+                launcher = self._launchers[lname]
+                launcher.launch_pilots(rcfg, bucket)
+                for pilot in bucket:
+                    pid = pilot['uid']
+                    self._pilots[pid] = pilot
+                    self._prof.prof('submission_stop', uid=pid)
 
 
     # --------------------------------------------------------------------------
@@ -664,8 +560,8 @@ class PMGRLaunchingComponent(rpu.Component):
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
-        agent_spawner           = rcfg.get('agent_spawner',       DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config',        DEFAULT_AGENT_CONFIG)
+        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
+        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')

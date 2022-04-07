@@ -25,18 +25,6 @@ from ...   import states as rps
 
 
 # ------------------------------------------------------------------------------
-# local constants
-
-PILOT_CHECK_INTERVAL    =  60  # seconds between runs of the job state check loop
-
-# FIXME: duplication from base class, use `self._cfg`
-
-PILOT_CANCEL_DELAY      = 120  # seconds between cancel signal and job kill
-PILOT_CHECK_MAX_MISSES  =   3  # number of times to find a job missing before
-                               # declaring it dead
-
-
-# ------------------------------------------------------------------------------
 #
 class PilotLauncherSAGA(PilotLauncherBase):
 
@@ -51,16 +39,14 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
-        self._saga_jobs = dict()      # pid      : rs.Job
-        self._saga_js   = dict()      # resource : rs.JobService
-        self._pilots    = dict()      # saga_id  : pilot job
-        self._saga_lock = mt.RLock()  # lock for above
+        self._jobs   = dict()      # pid      : rs.Job
+        self._js     = dict()      # resource : rs.JobService
+        self._pilots = dict()      # saga_id  : pilot job
+        self._lock   = mt.RLock()  # lock for above
 
 
         # FIXME: get session from launching component
-        self._saga_session = rs.Session()
-
-        # FIXME: make interval configurable
+        self._session = rs.Session()
 
 
     # --------------------------------------------------------------------------
@@ -83,7 +69,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
     def _job_state_cb(self, job, _, saga_state, pid):
 
         try:
-            with self._saga_lock:
+            with self._lock:
 
                 if job.id not in self._pilots:
                     return
@@ -105,14 +91,14 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
         # FIXME: terminate thread
 
-        with self._saga_lock:
+        with self._lock:
 
             # cancel pilots
-            for _, job in self._saga_jobs:
+            for _, job in self._jobs:
                 job.cancel()
 
             # close job services
-            for url, js in self._saga_js.items():
+            for url, js in self._js.items():
                 self._log.debug('close js %s', url)
                 js.close()
 
@@ -130,12 +116,12 @@ class PilotLauncherSAGA(PilotLauncherBase):
     def launch_pilots(self, rcfg, pilots):
 
         js_ep  = rcfg['job_manager_endpoint']
-        with self._saga_lock:
-            if js_ep in self._saga_js:
-                js = self._saga_js[js_ep]
+        with self._lock:
+            if js_ep in self._js:
+                js = self._js[js_ep]
             else:
-                js = rs.job.Service(js_ep, session=self._saga_session)
-                self._saga_js[js_ep] = js
+                js = rs.job.Service(js_ep, session=self._session)
+                self._js[js_ep] = js
 
         # now that the scripts are in place and configured,
         # we can launch the agent
@@ -184,20 +170,20 @@ class PilotLauncherSAGA(PilotLauncherBase):
             pid = pilot['uid']
 
             # FIXME: update the right pilot
-            with self._saga_lock:
-                self._saga_jobs[pid] = j
+            with self._lock:
+                self._jobs[pid] = j
 
 
     # --------------------------------------------------------------------------
     #
-    def _cancel_pilots(self, pids):
+    def cancel_pilots(self, pids):
 
         tc = rs.job.Container()
 
         for pid in pids:
 
-            job   = self._saga_jobs[pid]
-            pilot = self._pilots[pid]['pilot']
+            job   = self._jobs[pid]
+            pilot = self._pilots[pid]
 
             # don't overwrite resource_details from the agent
             if 'resource_details' in pilot:

@@ -40,10 +40,10 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
-        self._jobs   = dict()     # map pilot id to psi_j job
-        self._pilots = dict()     # map psi_j id to pilot job
-        self._jex    = dict()     # map launch schema to psi_j job executors
-        self._lock   = mt.Lock()  # lock above structures
+        self._jobs   = dict()      # map pilot id to psi_j job
+        self._pilots = dict()      # map psi_j id to pilot job
+        self._jex    = dict()      # map launch schema to psi_j job executors
+        self._lock   = mt.RLock()  # lock above structures
 
 
     # --------------------------------------------------------------------------
@@ -170,7 +170,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def _cancel_pilots(self, pids):
+    def cancel_pilots(self, pids):
 
         for pid in pids:
             if pid not in pids:
