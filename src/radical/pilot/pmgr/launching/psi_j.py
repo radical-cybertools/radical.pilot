@@ -155,9 +155,9 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.stderr_path = jd['error']
 
             spec.resources   = psij.ResourceSpecV1()
-            spec.resources.process_count         = 1
-            spec.resources.cpu_cores_per_process = jd['total_cpu_count']
-            spec.resources.gpu_cores_per_process = jd['total_gpu_count']
+            spec.resources.process_count         = jd['total_cpu_count']
+            spec.resources.cpu_cores_per_process = 1
+          # spec.resources.gpu_cores_per_process = jd['total_gpu_count']
 
             job = psij.Job(spec)
 

@@ -12,6 +12,8 @@ import pprint
 import shutil
 import tempfile
 
+from collections import defaultdict
+
 import threading          as mt
 
 import radical.gtod       as rg
@@ -388,14 +390,10 @@ class PMGRLaunchingComponent(rpu.Component):
         # We can only use bulk submission for pilots which go to the same
         # target, thus we sort them into buckets and lunch the buckets
         # individually
-        buckets = dict()
+        buckets = defaultdict(lambda: defaultdict(list))
         for pilot in pilots:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
-            if resource not in buckets:
-                buckets[resource] = dict()
-            if schema not in buckets[resource]:
-                buckets[resource][schema] = list()
             buckets[resource][schema].append(pilot)
 
         for resource in buckets:
@@ -603,40 +601,31 @@ class PMGRLaunchingComponent(rpu.Component):
         # FIXME: the untar was moved into the bootstrapper (see `-z`).  That
         #        is actually only correct for the single-pilot case...
 
+        now = time.time()
         for pilot in pilots:
-            self._prof.prof('staging_in_stop',  uid=pilot['uid'])
-            self._prof.prof('submission_start', uid=pilot['uid'])
+            self._prof.prof('staging_in_stop',  uid=pilot['uid'], ts=now)
+            self._prof.prof('submission_start', uid=pilot['uid'], ts=now)
 
-        # launcher handles pilot job submission
-        self.find_launchers(rcfg, pilots)
-
-        for lname,launcher in self._launchers.items():
-            bucket = list()
-            for pilot in pilots:
-                if pilot['launcher'] == lname:
-                    bucket.append(pilot)
-
-            if bucket:
-                launcher.launch_pilots(rcfg, bucket)
-                for pilot in bucket:
-                    self._prof.prof('submission_stop', uid=pilot['uid'])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def find_launchers(self, rcfg, pilots):
-
+        # find launchers to handle pilot job submission.  We sort by launcher so
+        # that each launcher can handle a bulk of pilots at once.
+        buckets = defaultdict(list)
         for pilot in pilots:
             for lname,launcher in self._launchers.items():
                 if launcher.can_launch(rcfg, pilots):
                     pilot['launcher'] = lname
+                    buckets[lname].append(pilot)
                     self._log.info('use launcher %s for pilot %s',
                                    lname, pilot['uid'])
-                    return launcher
+                    break
 
-            self._log.warn('rcfg: %s', pprint.pformat(rcfg))
-            self._log.warn('pilots: %s', pprint.pformat(pilots))
-            raise RuntimeError('no launcher found for pilots %s' % pilot['uid'])
+            if not pilot.get('launcher'):
+                raise RuntimeError('no launcher found for %s' % pilot['uid'])
+
+        for lname, bucket in buckets.items():
+            launcher = self._launchers[lname]
+            launcher.launch_pilots(rcfg, bucket)
+            for pilot in bucket:
+                self._prof.prof('submission_stop', uid=pilot['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -1087,7 +1076,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.total_cpu_count       = total_cpu_count
         jd_dict.total_gpu_count       = total_gpu_count
         jd_dict.total_physical_memory = requested_memory
-        jd_dict.processes_per_host    = cores_per_node
+        jd_dict.processes_per_host    = avail_cores_per_node
         jd_dict.spmd_variation        = spmd_variation
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
