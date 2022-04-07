@@ -6,7 +6,6 @@ import time
 
 import radical.utils     as ru
 
-from .. import utils     as rpu
 from .. import constants as rpc
 
 
@@ -65,7 +64,7 @@ class Worker(object):
 
         # Create the worker class and run it's work loop.
         if fpath:
-            wclass = rpu.load_class(fpath, cname, Worker)
+            wclass = ru.load_class(fpath, cname, Worker)
 
         else:
             # import all known workers into the local name space so that
@@ -73,7 +72,7 @@ class Worker(object):
             from .worker_default import DefaultWorker  # pylint: disable=unused-import
             from .worker_mpi     import MPIWorker      # pylint: disable=unused-import
 
-            wclass = rpu.get_type(cname)
+            wclass = ru.get_type(cname)
 
         if not wclass:
             raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))
