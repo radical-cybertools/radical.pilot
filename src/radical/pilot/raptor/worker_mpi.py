@@ -370,6 +370,25 @@ class _Worker(mt.Thread):
         self._prof              = prof
         self._base              = base
 
+        self._modes = dict()
+
+        self.register_mode(TASK_FUNCTION, self._dispatch_function)
+        self.register_mode(TASK_EVAL,     self._dispatch_eval)
+        self.register_mode(TASK_EXEC,     self._dispatch_exec)
+        self.register_mode(TASK_PROC,     self._dispatch_proc)
+        self.register_mode(TASK_SHELL,    self._dispatch_shell)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_mode(self, name, dispatcher):
+
+        if name in self._modes:
+            raise ValueError('mode %s already registered' % name)
+
+        self._modes[name] = dispatcher
+
+
 
     # --------------------------------------------------------------------------
     #
@@ -527,13 +546,13 @@ class _Worker(mt.Thread):
     def _dispatch_non_mpi(self, task, env):
 
         # work on task
-        mode = task['description']['mode']
-        if   mode == TASK_FUNCTION: return self._dispatch_function(task, env)
-        elif mode == TASK_EVAL    : return self._dispatch_eval(task, env)
-        elif mode == TASK_EXEC    : return self._dispatch_exec(task, env)
-        elif mode == TASK_PROC    : return self._dispatch_proc(task, env)
-        elif mode == TASK_SHELL   : return self._dispatch_shell(task, env)
-        else: raise ValueError('cannot handle task mode %s' % mode)
+        mode       = task['description']['mode']
+        dispatcher = self._modes.get(mode)
+
+        if not dispatcher:
+            raise ValueError('no execution mode defined for %s' % mode)
+
+        return dispatcher(task, env)
 
 
     # --------------------------------------------------------------------------

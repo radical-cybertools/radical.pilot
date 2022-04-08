@@ -794,21 +794,15 @@ class Agent_0(rpu.Worker):
         etype = env_spec['type']
         evers = env_spec['version']
         path  = env_spec.get('path')
-        setup = env_spec.get('setup')    or []
+        emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
         out   = None
-
-        if os.path.isdir(path):
-            # the target env exists - just use as is
-            if setup:
-                self._log.warning('ignore setup for exising env at %s', path)
-
 
         pre_exec = '-P ". env/bs0_pre_0.sh" '
         for cmd in pre:
             pre_exec += '-P "%s" ' % cmd
 
-        if setup: mods = '-m "%s"' % ','.join(setup)
+        if emods: mods = '-m "%s"' % ','.join(emods)
         else    : mods = ''
 
         assert(etype == 'virtualenv')
