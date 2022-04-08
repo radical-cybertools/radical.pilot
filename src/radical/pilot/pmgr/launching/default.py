@@ -1085,7 +1085,7 @@ class Default(PMGRLaunchingComponent):
         jd.total_cpu_count       = total_cpu_count
         jd.total_gpu_count       = total_gpu_count
         jd.total_physical_memory = requested_memory
-        jd.processes_per_host    = cores_per_node
+        jd.processes_per_host    = avail_cores_per_node
         jd.spmd_variation        = spmd_variation
         jd.wall_time_limit       = runtime
         jd.queue                 = queue
