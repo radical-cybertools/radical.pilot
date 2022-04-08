@@ -96,12 +96,16 @@ class LMOptions(ru.TypedDict, metaclass=LMOptionsMeta):
 class APRunOptions(LMOptions):
 
     _mapping = {
-        'ranks_per_node'  : '-N',
-        'ranks'           : '-n',
-        'threads_per_rank': '-d',
-        'threads_per_core': '–j',
-        'reserved_cores'  : '-r'
+        'ranks_per_node'  : '-N',  # number of MPI ranks per node
+        'ranks'           : '-n',  # total number of MPI ranks
+        'threads_per_rank': '-d',  # number of hyperthreads per MPI rank (depth)
+        'threads_per_core': '–j',  # number of hyperthreads per core
+        'reserved_cores'  : '-r'   # core specialization
     }
+
+# options to be considered:
+# --cc depth    - MPI rank and thread placement
+# -e <env_var>  - environment variables
 
 
 # ------------------------------------------------------------------------------
@@ -170,18 +174,9 @@ class APRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        td = task['description']
-
-        # aprun options
-        # –  Number of MPI ranks per node:                –N <n_ranks_per_node>
-        # –  Total number of MPI ranks:                   –n <n_ranks_total>
-        # –  Number of hyperthreads per MPI rank (depth): –d <n_rank_threads>
-        # –  Number of hyperthreads per core:             –j <n_hwthreads>
-        # –  MPI rank and thread placement:               --cc depth
-        # –  Environment variables:                       -e <env_var>
-        # –  Core specialization:                         -r <n_threads>
-
+        td      = task['description']
         n_ranks = td['cpu_processes']
+
         ranks_per_node = os.environ.get('SAGA_PPN') or n_ranks
         ranks_per_node = min(n_ranks, int(ranks_per_node))
 
