@@ -4,7 +4,6 @@ from unittest import TestCase
 
 import radical.utils       as ru
 import radical.pilot       as rp
-import radical.pilot.utils as rpu
 
 from radical.pilot import states as s
 
