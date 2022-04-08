@@ -176,7 +176,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pids):
+    def kill_pilots(self, pids):
 
         tc = rs.job.Container()
 

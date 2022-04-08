@@ -170,7 +170,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pids):
+    def kill_pilots(self, pids):
 
         for pid in pids:
             if pid not in pids:

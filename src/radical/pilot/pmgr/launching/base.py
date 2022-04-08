@@ -89,11 +89,11 @@ class PilotLauncherBase(object):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_pilots(self, pids):
+    def kill_pilots(self, pids):
         '''
         pids:   RP UIDs for pilots to cancel
         '''
-        raise NotImplementedError('cancel_pilots not implemented')
+        raise NotImplementedError('kill_pilots not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -202,7 +202,7 @@ class PMGRLaunchingComponent(rpu.Component):
             with self._lock:
                 pids = list(self._pilots.keys())
 
-            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
 
             # TODO: close launchers
 
@@ -219,7 +219,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         self._log.debug('launcher got %s', msg)
 
-        if cmd == 'cancel_pilots':
+        if cmd == 'kill_pilots':
 
             pmgr = arg['pmgr']
             pids = arg['uids']
@@ -232,14 +232,14 @@ class PMGRLaunchingComponent(rpu.Component):
 
             self._log.info('received pilot_cancel command (%s)', pids)
 
-            self._cancel_pilots(pids)
+            self._kill_pilots(pids)
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _cancel_pilots(self, pids):
+    def _kill_pilots(self, pids):
         '''
         Send a cancellation request to the pilots.  This call will not wait for
         the request to get enacted, nor for it to arrive, but just send it.
@@ -266,7 +266,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
                 launcher = self._launchers[lname]
                 try:
-                    launcher.cancel_pilots([pid])
+                    launcher.kill_pilots([pid])
                 except:
                     self._log.exception('pilot cancel failed for %s' % pid)
 
