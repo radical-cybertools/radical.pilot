@@ -475,10 +475,8 @@ class _Worker(mt.Thread):
 
                     # FIXME: task_exec_start
                     try:
-                        import pprint
                         out, err, ret, val, exc = self._dispatch(task)
                         self._log.debug('dispatch result: %s: %s', task['uid'], out)
-                        self._log.debug('dispatch result: %s', pprint.pformat(task))
 
                         task['error']        = None
                         task['stdout']       = out
@@ -488,9 +486,6 @@ class _Worker(mt.Thread):
                         task['exception']    = exc
 
                     except Exception as e:
-                        import pprint
-                        self._log.exception('work failed: \n%s',
-                                            pprint.pformat(task))
                         task['error']        = repr(e)
                         task['stdout']       = ''
                         task['stderr']       = str(e)
