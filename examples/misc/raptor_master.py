@@ -228,6 +228,7 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
+            self._log.debug('=== out: %s', task['stdout'])
             self._log.debug('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],

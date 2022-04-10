@@ -68,6 +68,25 @@ class _Resources(object):
         # resources are initially all free
         self._res_evt.set()
 
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+
+        out = ':'
+        for r in self._resources['cores']:
+            if r == FREE: out += '-'
+            else        : out += '#'
+        out += ':'
+      # for r in self._resources['gpus']:
+      #     if r == FREE: out += '-'
+      #     else        : out += '#'
+      # out += ':'
+        return out
+
+
+    # --------------------------------------------------------------------------
+    #
     @property
     def log(self): return self._log
 
@@ -81,6 +100,12 @@ class _Resources(object):
     # --------------------------------------------------------------------------
     #
     def alloc(self, task):
+        '''
+        This call will search for free cores and gpus to run the task.  More
+        precisely, the core will wait for a sufficient number of ranks to become
+        available whose resources are suitable to run the task.  The call will
+        block until those ranks are found.
+        '''
 
         # FIXME: handle threads
         # FIXME: handle GPUs
@@ -97,6 +122,7 @@ class _Resources(object):
                     % (cores, self._ranks))
 
         self._log.debug_5('alloc %s: %s', task['uid'], cores)
+        self._log.info('  alloc    %30s: %s', uid, self)
 
         while True:
 
@@ -118,6 +144,7 @@ class _Resources(object):
 
                             if len(ranks) == cores:
                                 self._prof.prof('schedule_ok', uid=uid)
+                                self._log.info('  alloc ok %30s: %s', uid, self)
                                 return ranks
             else:
                 self._res_evt.wait(timeout=0.1)
@@ -133,6 +160,7 @@ class _Resources(object):
         uid   = task['uid']
         ranks = task['ranks']
         self._prof.prof('unschedule_start', uid=uid)
+        self._log.info('dealloc    %30s: %s', uid, self)
 
         with self._res_lock:
 
@@ -143,6 +171,7 @@ class _Resources(object):
             self._res_evt.set()
 
             self._prof.prof('unschedule_stop', uid=uid)
+            self._log.info('dealloc ok %30s: %s', uid, self)
             return True
 
 
@@ -334,13 +363,14 @@ class _ResultPusher(mt.Thread):
 
             while True:
 
-                self._log.debug('<-  rank_result? recv')
+                # FIXME: use poller of callback
+              # self._log.debug('<-  rank_result? recv')
                 tasks = ru.as_list(rank_result_q.get_nowait(timeout=100))
-                self._log.debug('<-  rank_result! recv [%s]', len(tasks))
+              # self._log.debug('<-  rank_result! recv [%s]', len(tasks))
 
                 for task in tasks:
 
-                    self._log.debug('<-  rank_result! recv [%s]', task['uid'])
+                  # self._log.debug('<-  rank_result! recv [%s]', task['uid'])
                     if not self._check_mpi(task):
                         continue
 
@@ -387,7 +417,6 @@ class _Worker(mt.Thread):
             raise ValueError('mode %s already registered' % name)
 
         self._modes[name] = dispatcher
-
 
 
     # --------------------------------------------------------------------------
@@ -594,11 +623,9 @@ class _Worker(mt.Thread):
             names   = dict(list(globals().items()) + list(locals().items()))
             to_call = names.get(func)
 
-
         # if not, check if this is a class method of this worker implementation
         if not to_call:
             to_call = getattr(self._base, func, None)
-
 
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
@@ -642,6 +669,8 @@ class _Worker(mt.Thread):
             sys.stderr = bak_stderr
 
             os.environ = old_env
+
+        self._log.debug('=== %s: got %s', uid, out)
 
         return out, err, ret, val, exc
 

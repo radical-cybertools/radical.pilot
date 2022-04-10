@@ -24,6 +24,7 @@ def func_non_mpi(a):
     import random
     b = random.random()
     t = math.exp(a * b)
+    print('func_non_mpi')
     return t
 
 
@@ -106,7 +107,10 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
-                                    'setup'  : ['radical.pilot']})
+                                    'path'   : '/tmp/ve_raptor/',
+                                    'setup'  : ['/home/merzky/j/rp/',
+                                                '/home/merzky/j/ru/',
+                                                'mpi4py']})
 
         # submit some test tasks
         tds = list()
@@ -137,7 +141,7 @@ if __name__ == '__main__':
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
-                'kwargs'          : {'msg': 'task.call.c.2/%06d' % i},
+                'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
@@ -145,7 +149,7 @@ if __name__ == '__main__':
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'function'        : 'my_hello',
-                'kwargs'          : {'uid': 'task.call.c.3/%06d' % i},
+                'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
