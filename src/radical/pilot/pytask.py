@@ -22,8 +22,8 @@ class PythonTask(object):
 
         Example:
             import PythonTask
-            wrapped_func   = partial(func_A, func_AB)
-            cud.EXECUTABLE = PythonTask(wrapped_func)
+            wrapped_func = partial(func_A, func_AB)
+            td.function  = pythonTask(wrapped_func)
         '''
 
         if not callable(func):
@@ -48,7 +48,7 @@ class PythonTask(object):
         pytask = deserialize_bson(bson_obj)
         func   = deserialize_obj(pytask['func'])
 
-        return func, pytask['args'], pytask['kwargs']
+        return func, list(pytask['args']), pytask['kwargs']
 
 
     # --------------------------------------------------------------------------

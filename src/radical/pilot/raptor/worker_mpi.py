@@ -11,7 +11,7 @@ import radical.utils       as ru
 from .worker            import Worker
 
 from ..pytask           import PythonTask
-from ..task_description import MPI   as RP_MPI
+from ..constants        import MPI   as RP_MPI
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
@@ -170,9 +170,12 @@ class _Resources(object):
             # signal available resources
             self._res_evt.set()
 
-            self._prof.prof('unschedule_stop', uid=uid)
-            self._log.info('dealloc ok %30s: %s', uid, self)
-            return True
+        self._prof.prof('unschedule_stop', uid=uid)
+        self._log.info('dealloc ok %30s: %s', uid, self)
+
+        # remove temporary information from task
+        del(task['rank'])
+        del(task['ranks'])
 
 
 # ------------------------------------------------------------------------------
@@ -254,8 +257,9 @@ class _TaskPuller(mt.Thread):
                     try:
                         task['ranks'] = self._resources.alloc(task)
                         for rank in task['ranks']:
-                            self._log.debug('wtq %s 1 - task send to %d',
-                                             task['uid'], rank)
+                            task['rank'] = rank
+                            self._log.debug('wtq %s 1 - task send to %d %s',
+                                             task['uid'], rank, task['ranks'])
                             rank_task_q.put(task, qname=str(rank))
 
                     except Exception as e:
@@ -292,14 +296,13 @@ class _ResultPusher(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _check_mpi(self, task):
+    def _check_ranks(self, task):
         '''
-        collect results of MPI ranks
+        collect results of task ranks
 
         Returns `True` once all ranks are collected - the task then contains the
         collected results
         '''
-
         uid   = task['uid']
         ranks = task['description'].get('cpu_processes', 1)
 
@@ -308,13 +311,12 @@ class _ResultPusher(mt.Thread):
 
         self._cache[uid].append(task)
 
-        cpt = task['description'].get('cpu_process_type')
-        if cpt == RP_MPI:
-            if len(self._cache[uid]) < ranks:
-                self._log.info('< results - recv: %s [%d < %d]', task['uid'],
-                        len(self._cache[uid]), ranks)
+        # do we have all ranks?
+        if len(self._cache[uid]) < ranks:
+            self._log.info('< results - recv: %s [%d < %d]', task['uid'],
+                    len(self._cache[uid]), ranks)
 
-                return False
+            return False
 
         self._log.info('< results - recv: %s [%d = %d]', task['uid'],
                         len(self._cache[uid]), ranks)
@@ -364,18 +366,18 @@ class _ResultPusher(mt.Thread):
             while True:
 
                 # FIXME: use poller of callback
-              # self._log.debug('<-  rank_result? recv')
                 tasks = ru.as_list(rank_result_q.get_nowait(timeout=100))
-              # self._log.debug('<-  rank_result! recv [%s]', len(tasks))
 
                 for task in tasks:
 
-                  # self._log.debug('<-  rank_result! recv [%s]', task['uid'])
-                    if not self._check_mpi(task):
-                        continue
+                    self._log.debug('rrq %s %s [%s]', task['uid'],
+                            task['rank'], task['ranks'])
 
-                    self._resources.dealloc(task)
-                    worker_result_q.put(task)
+                    # did all ranks complete?
+                    if self._check_ranks(task):
+                        self._resources.dealloc(task)
+                        worker_result_q.put(task)
+
 
         except:
             self._log.exception('result pusher thread failed')
@@ -450,53 +452,57 @@ class _Worker(mt.Thread):
             # get tasks, do them, push results back
             while True:
 
+                # FIXME: use poller of callback
+                # FIXME: avoid interrupts
                 tasks = rank_task_q.get_nowait(qname=str(self._rank), timeout=100)
 
                 if not tasks:
                     continue
 
-                assert(len(tasks) == 1)
+                # FIXME: this worker should be scheduled for one task at
+                #        a time - so why do we get more than one sometimes?
+                if len(tasks) != 1:
+                    self._log.error('more than one task for rank %s: %s',
+                            self._rank, [t['uid'] for t in tasks])
+
+              # for task in tasks:
                 task = tasks[0]
+                if True:
 
-                # FIXME: how can that be?
-                if self._rank not in task['ranks']:
-                    raise RuntimeError('internal error: inconsistent rank info')
+                    # this should never happen
+                    if self._rank not in task['ranks']:
+                        raise RuntimeError('internal error: inconsistent rank info')
 
-                comm  = None
-                group = None
+                    # FIXME: task_exec_start
+                    try:
+                        import pprint
+                        out, err, ret, val, exc = self._dispatch(task)
+                        self._log.debug('dispatch result: %s: %s', task['uid'], out)
+                        self._log.debug('dispatch result: %s', pprint.pformat(task))
 
-                # FIXME: task_exec_start
-                try:
-                    out, err, ret, val, exc = self._dispatch(task)
-                    self._log.debug('dispatch result: %s: %s', task['uid'], out)
+                        task['error']        = None
+                        task['stdout']       = out
+                        task['stderr']       = err
+                        task['exit_code']    = ret
+                        task['return_value'] = val
+                        task['exception']    = exc
 
-                    task['error']        = None
-                    task['stdout']       = out
-                    task['stderr']       = err
-                    task['exit_code']    = ret
-                    task['return_value'] = val
-                    task['exception']    = exc
+                    except Exception as e:
+                        import pprint
+                        self._log.exception('work failed: \n%s',
+                                            pprint.pformat(task))
+                        task['error']        = repr(e)
+                        task['stdout']       = ''
+                        task['stderr']       = str(e)
+                        task['exit_code']    = -1
+                        task['return_value'] = None
+                        task['exception']    = [e.__class__.__name__, str(e)]
+                        self._log.exception('recv err  %s  to  0' % (task['uid']))
 
-                except Exception as e:
-                    import pprint
-                    self._log.exception('work failed: \n%s',
-                                        pprint.pformat(task))
-                    task['error']        = repr(e)
-                    task['stdout']       = ''
-                    task['stderr']       = str(e)
-                    task['exit_code']    = -1
-                    task['return_value'] = None
-                    task['exception']    = [e.__class__.__name__, str(e)]
-                    self._log.exception('recv err  %s  to  0' % (task['uid']))
-
-                finally:
-                    # sub-communicator must always be destroyed
-                    if group: group.Free()
-                    if comm : comm.Free()
-
-                    # send task back to rank 0
-                    # FIXME: task_exec_stop
-                    rank_result_q.put(task)
+                    finally:
+                        # send task back to rank 0
+                        # FIXME: task_exec_stop
+                        rank_result_q.put(task)
 
         except:
             self._log.exception('work thread failed [%s]', self._rank)
@@ -506,7 +512,8 @@ class _Worker(mt.Thread):
     #
     def _dispatch(self, task):
 
-        env = {'RP_TASK_ID'         : task['uid'],
+        task['description']['environment'].update(
+              {'RP_TASK_ID'         : task['uid'],
                'RP_TASK_NAME'       : task.get('name'),
                'RP_TASK_SANDBOX'    : os.environ['RP_TASK_SANDBOX'],  # FIXME?
                'RP_PILOT_ID'        : os.environ['RP_PILOT_ID'],
@@ -517,16 +524,19 @@ class _Worker(mt.Thread):
                'RP_PILOT_SANDBOX'   : os.environ['RP_PILOT_SANDBOX'],
                'RP_GTOD'            : os.environ['RP_GTOD'],
                'RP_PROF'            : os.environ['RP_PROF'],
-               'RP_PROF_TGT'        : os.environ['RP_PROF_TGT']}
+               'RP_PROF_TGT'        : os.environ['RP_PROF_TGT'],
+               'RP_RANKS'           : 1,  # dispatch_mpi will oveerwrite this
+               'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
+               })
 
 
         uid = task['uid']
         self._prof.prof('rp_exec_start', uid=uid)
         try:
             if task['description'].get('cpu_process_type') == RP_MPI:
-                return self._dispatch_mpi(task, env)
+                return self._dispatch_mpi(task)
             else:
-                return self._dispatch_non_mpi(task, env)
+                return self._dispatch_non_mpi(task)
 
         finally:
             self._prof.prof('rp_exec_stop', uid=uid)
@@ -535,44 +545,49 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_mpi(self, task, env):
-
-      # # we can only handle task modes where the new communicator can be passed
-      # # as additional argument to a function call
-      # if task['description']['mode'] not in [FUNCTION]:
-      #     raise RuntimeError('only FUNCTION tasks can use mpi')
+    def _dispatch_mpi(self, task):
 
         # NOTE: we cannot pass the new MPI communicator to shell, proc, exec or
         #       eval tasks.  Nevertheless, we *can* run the requested number of
-        #       ranks.
+        #       ranks.  So we only create and pass a communicator if explicitly
+        #       requested by `cpu_process_type`.
 
-        # create new communicator with all workers assigned to this task
-        group = self._group.Incl(task['ranks'])
-        comm  = self._world.Create_group(group)
-        if not comm:
-            out = None
-            err = 'MPI setup failed'
-            ret = 1
-            val = None
-            exc = None
-            return out, err, ret, val, exc
+        comm  = None
+        group = None
 
-        env['RP_RANK']  = str(comm.rank)
-        env['RP_RANKS'] = str(comm.size)
+        if task['description']['cpu_process_type'] == RP_MPI:
 
-        task['description']['args'].insert(0, comm)
+            # create new communicator with all workers assigned to this task
+            group = self._group.Incl(task['ranks'])
+            comm  = self._world.Create_group(group)
+            if not comm:
+                out = None
+                err = 'MPI setup failed'
+                ret = 1
+                val = None
+                exc = None
+                return out, err, ret, val, exc
+
+            task['description']['environment']['RP_RANK']   = str(comm.rank)
+            task['description']['environment']['RP_RANKS']  = str(comm.size)
+
+            task['mpi_comm'] = comm
 
         try:
-            return self._dispatch_non_mpi(task, env)
+            return self._dispatch_non_mpi(task)
 
         finally:
-            # remove comm from args again
-            task['description']['args'].pop(0)
+            if 'mpi_comm' in task:
+                del(task['mpi_comm'])
+
+            # sub-communicator must always be destroyed
+            if group: group.Free()
+            if comm : comm.Free()
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_non_mpi(self, task, env):
+    def _dispatch_non_mpi(self, task):
 
         # work on task
         mode       = task['description']['mode']
@@ -581,12 +596,12 @@ class _Worker(mt.Thread):
         if not dispatcher:
             raise ValueError('no execution mode defined for %s' % mode)
 
-        return dispatcher(task, env)
+        return dispatcher(task)
 
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_function(self, task, env):
+    def _dispatch_function(self, task):
         '''
         We expect three attributes: 'function', containing the name of the
         member method or free function to call, `args`, an optional list of
@@ -601,21 +616,23 @@ class _Worker(mt.Thread):
         func = task['description']['function']
 
         to_call = ''
+        names   = ''
         args    = task['description'].get('args',   [])
         kwargs  = task['description'].get('kwargs', {})
+        py_func = False
+
+        self._log.debug('=== orig args: %s : %s', args, kwargs)
 
         # check if we have a serialized object
+        self._log.debug('func serialized: %d: %s', len(func), func)
         try:
-
+            # FIXME: can we have a better test than try/except?  This hides
+            #        potential errors...
+            # FIXME: ensure we did not get args and kwargs from above
             to_call, args, kwargs = PythonTask.get_func_attr(func)
-
-            # Inject the communicator in the kwargs
-            if task['description'].get('cpu_process_type') == RP_MPI:
-                kwargs['comm'] = task['description']['args'][0]
-
-
-        except Exception:
-            self._log.error('failed to obtain callable from task function')
+            py_func = True
+        except:
+            pass
 
         if not to_call:
             assert(func)
@@ -631,15 +648,36 @@ class _Worker(mt.Thread):
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
             raise ValueError('callable %s not found: %s' % (to_call, task))
 
+        comm = task.get('mpi_comm')
+        if comm:
+            # we have an MPI communicator we need to inject into the function's
+            # arguments.
+            if py_func:
+                # For a `py_func` we add the communicator as `comm` kwarg if
+                # that is set to None, and otherwise as first `arg` if that is
+                # None.  If neither is true we'll error out.
+                # NOTE that we don't change the number of arguments either way.
+                if 'comm' in kwargs and kwargs['comm'] is None:
+                    kwargs['comm'] = comm
+                elif args and args[0] is None:
+                    args[0] = comm
+                else:
+                    raise RuntimeError('can inject communicator for %s: %s: %s',
+                                       task['uid'], args, kwargs)
+            else:
+                args.insert(0, comm)
+
+        # make sure we capture stdout / stderr
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
 
         strout = None
         strerr = None
 
+        # set the task environment
         old_env = os.environ.copy()
 
-        for k, v in env.items():
+        for k, v in task['description'].get('environment', {}).items():
             os.environ[k] = v
 
         try:
@@ -648,6 +686,7 @@ class _Worker(mt.Thread):
             sys.stderr = strerr = io.StringIO()
 
             self._prof.prof('app_start', uid=uid)
+            self._log.debug('=== to call %s: %s : %s', to_call, args, kwargs)
             val = to_call(*args, **kwargs)
             self._prof.prof('app_stop', uid=uid)
             out = strout.getvalue()
@@ -668,6 +707,16 @@ class _Worker(mt.Thread):
             sys.stdout = bak_stdout
             sys.stderr = bak_stderr
 
+            # remove communicator from args again
+            if comm:
+                if py_func:
+                    if 'comm' in kwargs:
+                        del(kwargs['comm'])
+                    elif args:
+                        args[0] = None
+                else:
+                    args.pop(0)
+
             os.environ = old_env
 
         self._log.debug('=== %s: got %s', uid, out)
@@ -677,7 +726,7 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_eval(self, task, env):
+    def _dispatch_eval(self, task):
         '''
         We expect a single attribute: 'code', containing the Python
         code to be eval'ed
@@ -695,7 +744,7 @@ class _Worker(mt.Thread):
 
         old_env = os.environ.copy()
 
-        for k, v in env.items():
+        for k, v in task['description'].get('environment', {}).items():
             os.environ[k] = v
 
         try:
@@ -733,7 +782,7 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_exec(self, task, env):
+    def _dispatch_exec(self, task):
         '''
         We expect a single attribute: 'code', containing the Python code to be
         exec'ed.  The optional attribute `pre_exec` can be used for any import
@@ -748,7 +797,7 @@ class _Worker(mt.Thread):
 
         old_env = os.environ.copy()
 
-        for k, v in env.items():
+        for k, v in task['description'].get('environment', {}).items():
             os.environ[k] = v
 
         try:
@@ -800,12 +849,11 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_proc(self, task, env):
+    def _dispatch_proc(self, task):
         '''
         We expect two attributes: 'executable', containing the executabele to
         run, and `arguments` containing a list of arguments (strings) to pass as
-        command line arguments.  The `environment` attribute can be used to pass
-        additional env variables. We use `sp.Popen` to run the fork/exec, and to
+        command line arguments.  We use `sp.Popen` to run the fork/exec, and to
         collect stdout, stderr and return code
         '''
 
@@ -816,9 +864,6 @@ class _Worker(mt.Thread):
             exe  = task['description']['executable']
             args = task['description'].get('arguments', list())
             tenv = task['description'].get('environment', dict())
-
-            for k, v in env.items():
-                tenv[k] = v
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
@@ -843,20 +888,16 @@ class _Worker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_shell(self, task, env):
+    def _dispatch_shell(self, task):
         '''
         We expect a single attribute: 'command', containing the command
         line to be called as string.
         '''
 
-      # old_env = os.environ.copy()
-      #
-      # for k, v in env.items():
-      #     os.environ[k] = v
-
         try:
             uid = task['uid']
             cmd = task['description']['command']
+            env = task['description']['environment']
           # self._log.debug('shell: --%s--', cmd)
             self._prof.prof('app_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)

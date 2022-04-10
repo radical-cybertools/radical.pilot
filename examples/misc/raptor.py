@@ -12,7 +12,7 @@ pytask = PythonTask.pythontask
 
 
 @pytask
-def func_mpi(msg, comm=None, sleep=0):
+def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
@@ -106,7 +106,7 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
-                                    'version': '3.8',
+                                    'version': '3',
                                     'path'   : '/tmp/ve_raptor/',
                                     'setup'  : ['/home/merzky/j/rp/',
                                                 '/home/merzky/j/ru/',
@@ -130,6 +130,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.call.c.1.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
@@ -152,22 +153,23 @@ if __name__ == '__main__':
                 'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
+            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=0)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : func_mpi(msg='task.call.c.%06d' % i, comm=None,
-                                                                         sleep=0),
+                'function'        : bson,
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
+            bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
-                'function'        : func_non_mpi(i),
+                'function'        : bson,
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
