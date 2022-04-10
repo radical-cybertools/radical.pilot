@@ -1,5 +1,7 @@
 #!/bin/sh
 
+ORIG=$(pwd -P)
+
 ru_env=$(which radical-utils-env.sh)
 if test -z '$ru_env'
 then
@@ -40,6 +42,9 @@ done
 
 test -z "$VERSION" && VERSION='3.8'
 test -z "$PREFIX"  && echo "no prefix" && exit
+
+# sanitize name (remove trailing slashes etc)
+PREFIX="$(dirname $PREFIX)/$(basename $PREFIX)"
 
 unset PYTHONPATH
 echo "[$0 $*]"
@@ -121,14 +126,15 @@ esac
 
 if test -d "$PREFIX"
 then
-    echo "env at $PREFIX exists"
-    cd $PREFIX
+    printf "\nenv at $PREFIX exists\n"
+    cd "$PREFIX"
     PREFIX=`pwd -P`
+    cd "$ORIG"
     . "$PREFIX"/bin/activate
 
 else
 
-    echo "create  rct ve [$PREFIX]"
+    printf "\ncreate  rct ve [$PREFIX]\n"
     PYTHON=python3
 
     if test -z "$VERSION"
@@ -140,6 +146,8 @@ else
     mkdir -p "$PREFIX"
     cd $PREFIX
     PREFIX=`pwd -P`
+    cd "$ORIG"
+    rmdir $PREFIX 2>/dev/null
 
 
     # use conda if available
@@ -203,6 +211,7 @@ env_dump -t "$PREFIX.env"
 echo
 echo "---------------------------------------------------------------------"
 echo
+echo "PWD       : $(pwd)"
 echo "ENV       : $PREFIX.env"
 echo "SCRIPT    : $SCRIPT"
 echo "PREFIX    : $PREFIX"
