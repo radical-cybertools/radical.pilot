@@ -12,7 +12,7 @@ pytask = PythonTask.pythontask
 
 
 @pytask
-def func_mpi(msg,comm=None,sleep=0):
+def func_mpi(msg, comm=None, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)

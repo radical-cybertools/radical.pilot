@@ -104,23 +104,26 @@ class MyMaster(rp.raptor.Master):
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i},
                 'scheduler'       : 'master.000000'}))
 
+            bson = func_mpi(msg='task.call.m.%06d' % i, comm=None, sleep=0)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.m.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : func_mpi(msg='task.call.m.%06d' % i, comm=None,
-                                                                         sleep=0),
+                'function'        : bson,
                 'scheduler'       : 'master.000000'}))
+            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
+            bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.m.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
-                'function'        : func_non_mpi(i),
+                'function'        : bson,
                 'scheduler'       : 'master.000000'}))
+            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,
