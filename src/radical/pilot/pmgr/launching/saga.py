@@ -3,12 +3,9 @@
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-
-import os
 import functools
 
-import threading     as mt
-import radical.utils as ru
+import threading as mt
 
 # saga is optional
 rs    = None
