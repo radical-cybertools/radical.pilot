@@ -496,15 +496,10 @@ class DefaultWorker(Worker):
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
                   #     self._log.debug('req_alloc_wait %s', task['uid'])
+                  # #   FIXME: `clear` should be locked
+                  # self._res_evt.clear()
 
                     time.sleep(0.01)
-
-                    # break on termination
-                    if self._term.is_set():
-                        return False
-
-                    self._res_evt.clear()
-
 
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 

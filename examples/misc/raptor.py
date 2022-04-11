@@ -11,13 +11,18 @@ from radical.pilot import PythonTask
 pytask = PythonTask.pythontask
 
 
+# ------------------------------------------------------------------------------
+#
 @pytask
 def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+  # raise RuntimeError('oops 3')
 
 
+# ------------------------------------------------------------------------------
+#
 @pytask
 def func_non_mpi(a):
     import math
@@ -27,6 +32,14 @@ def func_non_mpi(a):
     print('func_non_mpi')
     return t
 
+
+# ------------------------------------------------------------------------------
+#
+def task_state_cb(task, state):
+    print('task %s: %s' % (task['uid'], state))
+    if state == rp.FAILED:
+        print('task %s failed' % task['uid'])
+        sys.exit()
 
 # ------------------------------------------------------------------------------
 #
@@ -217,6 +230,7 @@ if __name__ == '__main__':
         tasks = tmgr.submit_tasks(tds)
 
         tmgr.add_pilots(pilot)
+        tmgr.register_callback(task_state_cb)
         tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
         for task in tasks:

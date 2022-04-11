@@ -10,6 +10,7 @@ import radical.pilot as rp
 
 from radical.pilot import PythonTask
 
+
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
 # It will:
@@ -26,10 +27,12 @@ pytask = PythonTask.pythontask
 
 
 @pytask
-def func_mpi(comm, msg,sleep=0):
+def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+  # raise RuntimeError('oops 2')
+
 
 
 @pytask
@@ -224,6 +227,8 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
+
+        raise RuntimeError('oops')
 
         for task in tasks:
 
