@@ -496,14 +496,10 @@ class DefaultWorker(Worker):
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
                   #     self._log.debug('req_alloc_wait %s', task['uid'])
+                  # self._res_evt.clear()
 
                     time.sleep(0.01)
 
-                    # break on termination
-                    if self._term.is_set():
-                        return False
-
-                    self._res_evt.clear()
 
 
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
@@ -649,7 +645,7 @@ class DefaultWorker(Worker):
     def _result_watcher(self):
 
         try:
-            while not self._term.is_set():
+            while True:
 
                 try:
                     res = self._result_queue.get(timeout=0.1)
@@ -662,13 +658,6 @@ class DefaultWorker(Worker):
         except:
             self._log.exception('queue error')
             raise
-
-        finally:
-            # FIXME: we should unregister for all ranks on error maybe?
-            if self._cfg['rank'] == 0:
-                self.publish(rpc.CONTROL_PUBSUB,
-                             {'cmd': 'worker_unregister',
-                              'arg': {'uid' : self._cfg['uid']}})
 
 
     # --------------------------------------------------------------------------

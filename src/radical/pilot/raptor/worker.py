@@ -53,6 +53,10 @@ class Worker(object):
                                                     'arg': {'uid' : self._uid,
                                                             'info': {}}})
 
+          # # FIXME: we never unregister on termination
+          # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
+          #                                         'arg': {'uid' : self._uid}})
+
 
     # --------------------------------------------------------------------------
     #
