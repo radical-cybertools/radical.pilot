@@ -16,10 +16,11 @@ class TestWorker(TestCase):
 
     def test_alloc(self):
 
-        cfg = {'uid': 'worker.0000',
-               'cores': 8,
-               'gpus' : 2,
-               'sid'  : str(time.time())}
+        cfg = ru.Config(cfg={'uid'         : 'worker.0000',
+                             'sid'         : str(time.time()),
+                             'info'        : {},
+                             'worker_descr': {'cores_per_rank': 8,
+                                              'gpus_per_rank' : 2}})
 
         rp.utils.Component.register_subscriber = mock.Mock()
         rp.utils.Component.register_publisher  = mock.Mock()
@@ -77,7 +78,7 @@ class TestWorker(TestCase):
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
 
-        os.unlink('touch /tmp/control_pubsub.cfg')
+        os.unlink('/tmp/control_pubsub.cfg')
 
 
 # ------------------------------------------------------------------------------
