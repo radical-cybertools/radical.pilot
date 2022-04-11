@@ -13,15 +13,19 @@ ipython kernel install --name "python3" --user #install a kernel
 
 # Setting up the docs environment
 
-## Install dependencies for building documentation 
+## Install dependencies for building documentation
+
 ```shell
 pip install -r docs/source/requirements_docs.txt
 ```
+
 ## How to pass environment variables
+
 `.env` file #TODO this is being discussed and is not final.
 
-So users have to create/edit the .env file which is ideally placed in project root directory.
-See usage of dot-env [here](https://github.com/theskumar/python-dotenv).
+So users have to create/edit the .env file which is ideally placed in project root directory. See usage of
+dot-env [here](https://github.com/theskumar/python-dotenv).
+
 ```shell
 dotenv set RADICAL_PILOT_DBURL mongodb://localhost:27017/rpdb
 # This will create a file in {PROJECT_ROOT} and add a variable RADICAL_PILOT_DBURL
@@ -30,19 +34,30 @@ dotenv set RADICAL_PILOT_DBURL mongodb://localhost:27017/rpdb
 
 ## Building the documentation
 
-### 
+###  
+
 ```shell
 jupyter nbconvert --to html notebook.ipynb
 jupyter nbconvert --to notebook --execute notebook.ipynb #--inplace
 jupyter nbconvert --to rst notebook.ipynb
 ```
+
 ### Generate documentation of notebooks with sphinx
+
 ```shell
 sphinx-build -b html -d build/doctrees docs/source/ build/html # generates the documentation in build/html dir
 ```
 
 ### Sphinx autobuild for continuos build
+
 ```shell
 sphinx_autobuild
 ```
+
+## Running Jupyter Notebook for development
+The jupyter notebook should be run from your {PROJECT_HOME}
+```shell
+jupyter notebook
+```
+
 # How to pus/configure sphinx at readthedocs for notebooks #TODO
