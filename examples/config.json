@@ -110,6 +110,14 @@
         "cores"    : 56
     },
 
+    "tacc.frontera_interactive":{
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 56,
+        "gpus"     : 0
+    },
+
     "tacc.frontera" : {
         "project"  : "MCB20006",
         "queue"    : "development",
