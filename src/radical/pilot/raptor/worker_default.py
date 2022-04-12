@@ -10,8 +10,6 @@ import multiprocessing   as mp
 
 import radical.utils     as ru
 
-from .. import constants as rpc
-
 from .worker import Worker
 
 
