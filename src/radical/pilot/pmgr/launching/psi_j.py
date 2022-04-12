@@ -117,7 +117,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
         if schema not in self._jex:
 
-            self._log.debug('=== create executor for %s', schema)
+            self._log.debug('create executor for %s', schema)
             try:
                 self._jex[schema] = psij.JobExecutor.get_instance(schema)
                 self._jex[schema].set_job_status_callback(self._job_status_cb)
@@ -144,26 +144,37 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
             assert(jex)
 
-            jd   = pilot['jd_dict']
-            spec = psij.JobSpec()
+            jd = pilot['jd_dict']
+            if jd.project:
+                proj, res = jd.project.split(':', 1)
+            else:
+                proj, res = None, None
 
-            spec.executable  = jd['executable']
-            spec.arguments   = jd['arguments']
-            spec.environment = jd['environment']
-            spec.directory   = jd['working_directory']
-            spec.stdout_path = jd['output']
-            spec.stderr_path = jd['error']
+            attr = psij.JobAttributes()
+            attr.duration       = jd.runtime
+            attr.queue_name     = jd.queue
+            attr.project_name   = proj
+            attr.reservation_id = res
+
+            spec = psij.JobSpec()
+            spec.attributes  = attr
+            spec.executable  = jd.executable
+            spec.arguments   = jd.arguments
+            spec.environment = jd.environment
+            spec.directory   = jd.working_directory
+            spec.stdout_path = jd.output
+            spec.stderr_path = jd.error
 
             spec.resources   = psij.ResourceSpecV1()
-            spec.resources.process_count         = jd['total_cpu_count']
+            spec.resources.process_count         = jd.total_cpu_count
             spec.resources.cpu_cores_per_process = 1
-          # spec.resources.gpu_cores_per_process = jd['total_gpu_count']
+          # spec.resources.gpu_cores_per_process = jd.total_gpu_count
 
             job = psij.Job(spec)
 
             self._jobs[pid]      = job
             self._pilots[job.id] = pilot
-            self._log.debug('=== added %s: %s', job.id, pid)
+            self._log.debug('added %s: %s', job.id, pid)
 
             jex.submit(job)
 

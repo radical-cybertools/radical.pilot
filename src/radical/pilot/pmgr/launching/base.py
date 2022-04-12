@@ -954,7 +954,7 @@ class PMGRLaunchingComponent(rpu.Component):
             self._sandboxes[resource] = True
 
         # ----------------------------------------------------------------------
-        # Create Job description and launch the pilot job
+        # Create Job description
 
         total_cpu_count = (requested_nodes * cores_per_node) or requested_cores
         total_gpu_count = (requested_nodes * gpus_per_node)  or requested_gpus
@@ -963,8 +963,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         jd_dict.name                  = job_name
         jd_dict.executable            = '/bin/bash'
-        jd_dict.arguments             = shlex.split('-l ./bootstrap_0.sh %s'
-                                                                      % bs_args)
+        jd_dict.arguments             = ['-l', './bootstrap_0.sh'] \
+                                      + shlex.split(bs_args)
         jd_dict.working_directory     = pilot_sandbox
         jd_dict.project               = project
         jd_dict.output                = 'bootstrap_0.out'
