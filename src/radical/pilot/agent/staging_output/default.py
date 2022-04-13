@@ -112,7 +112,8 @@ class Default(AgentStagingOutputComponent):
                 no_staging_tasks.append(task)
 
         if no_staging_tasks:
-            self.advance(no_staging_tasks, publish=True, push=True)
+            self._advance_tasks(no_staging_tasks, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                publish=True, push=True)
 
         for task,actionables in staging_tasks:
             self._handle_task_staging(task, actionables)
@@ -120,10 +121,57 @@ class Default(AgentStagingOutputComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _advance_tasks(self, tasks, state, publish, push):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in tasks:
+            buckets[task['origin']].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                         publish=publish, push=push)
+
+        # task state notifications are not bulkable
+        if buckets['raptor']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
+                                            'arg': buckets['agent']})
+
+
+
+    # --------------------------------------------------------------------------
+    #
     def _handle_task_stdio(self, task):
 
-        sbox = task['task_sandbox_path']
+        if task.get('stdio'):
+            # no need to fetch stdio, the LM or launcher did that
+            # FIXME: do we need to pull profile events?
+            return
+
+        sbox = task.get('task_sandbox_path')
         uid  = task['uid']
+
+        # no sbox, no io
+        if not sbox:
+            return
 
         self._prof.prof('staging_stdout_start', uid=uid)
       # self._log.debug('out: %s', task.get('stdout_file'))
@@ -173,12 +221,15 @@ class Default(AgentStagingOutputComponent):
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
-                        if line:
-                            ts, event, comp, tid, _uid, state, msg = \
-                                                                 line.split(',')
-                            self._prof.prof(ts=float(ts), event=event,
-                                            comp=comp, tid=tid, uid=_uid,
-                                            state=state, msg=msg)
+                        if not line:
+                            continue
+                        if line[0] == '#':
+                            continue
+                        ts, event, comp, tid, _uid, state, msg = \
+                                                             line.split(',')
+                        self._prof.prof(ts=float(ts), event=event,
+                                        comp=comp, tid=tid, uid=_uid,
+                                        state=state, msg=msg)
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 
@@ -322,8 +373,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging
-        self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
-                           publish=True, push=False)
+        self._advance_tasks(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                  publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------
