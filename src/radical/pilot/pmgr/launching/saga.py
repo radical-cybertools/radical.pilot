@@ -17,6 +17,8 @@ try:
 except ImportError as ex:
     rs_ex = ex
 
+import radical.utils as ru
+
 from .base import PilotLauncherBase
 from ...   import states as rps
 
@@ -127,6 +129,10 @@ class PilotLauncherSAGA(PilotLauncherBase):
         for pilot in pilots:
 
             jd_dict = pilot['jd_dict']
+
+            # we need to quote arguments for RS to handle
+            jd_dict['arguments'] = [ru.sh_quote(arg)
+                                       for arg in jd_dict['arguments']]
 
             saga_jd_supplement = dict()
             if 'saga_jd_supplement' in jd_dict:
