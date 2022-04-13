@@ -28,14 +28,14 @@ class Worker(object):
         if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : self._cfg = ru.Config(cfg=cfg)
 
-        self._uid    = os.environ['RP_TASK_ID']
-        self._log    = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
-                                 level='DEBUG', targets=['.'], path=os.getcwd())
-        self._prof   = ru.Profiler(name=self._uid, ns='radical.pilot.worker')
+        self._uid  = os.environ['RP_TASK_ID']
+        self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
+                               level='DEBUG', targets=['.'], path=os.getcwd())
+        self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker')
 
         if register:
 
-            ppath  = os.environ['RP_PILOT_SANDBOX']
+            ppath    = os.environ['RP_PILOT_SANDBOX']
             ctrl_cfg = ru.read_json('%s/%s.cfg' % (ppath, rpc.CONTROL_PUBSUB))
 
             self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
