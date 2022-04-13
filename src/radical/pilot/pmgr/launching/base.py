@@ -803,7 +803,7 @@ class PMGRLaunchingComponent(rpu.Component):
                         requested_cores, requested_gpus)
 
         # set mandatory args
-        bs_args = ""
+        bs_args = ['-l', './bootstrap_0.sh']
 
         # add dists to staging files, if needed:
         # don't stage on `rp_version==installed` or `virtenv_mode==local`
@@ -820,33 +820,29 @@ class PMGRLaunchingComponent(rpu.Component):
                            ru.sdist_path,
                            rs.sdist_path,
                            self._rp_sdist_path]
-            bs_args += " -d '%s'" % (':'.join(sdist_names))
+            bs_args.extend(['-d', ':'.join(sdist_names)])
 
-        bs_args += " -p '%s'" % pid
-        bs_args += " -s '%s'" % sid
-        bs_args += " -m '%s'" % virtenv_mode
-        bs_args += " -r '%s'" % rp_version
-        bs_args += " -b '%s'" % python_dist
-        bs_args += " -g '%s'" % virtenv_dist
-        bs_args += " -v '%s'" % virtenv
-        bs_args += " -y '%d'" % runtime
-        bs_args += " -z '%s'" % tar_name
+        bs_args.extend(['-p', pid])
+        bs_args.extend(['-s', sid])
+        bs_args.extend(['-m', virtenv_mode])
+        bs_args.extend(['-r', rp_version])
+        bs_args.extend(['-b', python_dist])
+        bs_args.extend(['-g', virtenv_dist])
+        bs_args.extend(['-v', virtenv])
+        bs_args.extend(['-y', str(runtime)])
+        bs_args.extend(['-z', tar_name])
 
         # set optional args
-        if resource_manager == "CCM": bs_args += " -c"
-        if forward_tunnel_endpoint:   bs_args += " -f '%s'" \
-                                                       % forward_tunnel_endpoint
-        if forward_tunnel_endpoint:   bs_args += " -h '%s'" % db_hostport
-        if python_interpreter:        bs_args += " -i '%s'" % python_interpreter
-        if tunnel_bind_device:        bs_args += " -t '%s'" % tunnel_bind_device
-        if cleanup:                   bs_args += " -x '%s'" % cleanup
+        if resource_manager == "CCM": bs_args.extend(['-c'])
+        if forward_tunnel_endpoint:   bs_args.extend(['-f', forward_tunnel_endpoint])
+        if forward_tunnel_endpoint:   bs_args.extend(['-h', db_hostport])
+        if python_interpreter:        bs_args.extend(['-i', python_interpreter])
+        if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
+        if cleanup:                   bs_args.extend(['-x', cleanup])
 
-        for arg in services:
-            bs_args += " -j '%s'" % arg
-        for arg in pre_bootstrap_0:
-            bs_args += " -e '%s'" % arg
-        for arg in pre_bootstrap_1:
-            bs_args += " -w '%s'" % arg
+        for arg in services       :   bs_args.extend(['-j', arg])
+        for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
+        for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
@@ -963,8 +959,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         jd_dict.name                  = job_name
         jd_dict.executable            = '/bin/bash'
-        jd_dict.arguments             = ['-l', './bootstrap_0.sh'] \
-                                      + shlex.split(bs_args)
+        jd_dict.arguments             = bs_args
         jd_dict.working_directory     = pilot_sandbox
         jd_dict.project               = project
         jd_dict.output                = 'bootstrap_0.out'
