@@ -34,11 +34,11 @@
                                          "bulk_size" : 1},
 
         "funcs_req_queue"            : { "kind"      : "queue",
-                                         "log_level" : "debug",
+                                         "log_level" : "error",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 0},
         "funcs_res_queue"            : { "kind"      : "queue",
-                                         "log_level" : "debug",
+                                         "log_level" : "error",
                                          "stall_hwm" : 1,
                                          "bulk_size" : 0},
 

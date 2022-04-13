@@ -300,7 +300,7 @@ class Backfilling(TMGRSchedulingComponent):
                 cores   = task['description']['cpu_processes'] \
                         * task['description']['cpu_threads']
                 success = False
-                for pid in pids:
+                for pid in list(pids):
 
                     info = self._pilots[pid]['info']
 
