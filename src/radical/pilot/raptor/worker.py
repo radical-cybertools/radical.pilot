@@ -1,18 +1,20 @@
 
-
 import os
 import sys
 import time
 
 import radical.utils     as ru
 
-from .. import utils     as rpu
 from .. import constants as rpc
 
 
 # ------------------------------------------------------------------------------
 #
 class Worker(object):
+    '''
+    Implement the Raptor protocol for dispatching multiple Tasks on persistent
+    resources.
+    '''
 
     # --------------------------------------------------------------------------
     #
@@ -26,14 +28,14 @@ class Worker(object):
         if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : self._cfg = ru.Config(cfg=cfg)
 
-        self._uid    = os.environ['RP_TASK_ID']
-        self._log    = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
-                                 level='DEBUG', targets=['.'], path=os.getcwd())
-        self._prof   = ru.Profiler(name=self._uid, ns='radical.pilot.worker')
+        self._uid  = os.environ['RP_TASK_ID']
+        self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
+                               level='DEBUG', targets=['.'], path=os.getcwd())
+        self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker')
 
         if register:
 
-            ppath  = os.environ['RP_PILOT_SANDBOX']
+            ppath    = os.environ['RP_PILOT_SANDBOX']
             ctrl_cfg = ru.read_json('%s/%s.cfg' % (ppath, rpc.CONTROL_PUBSUB))
 
             self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
@@ -54,6 +56,10 @@ class Worker(object):
                                                     'arg': {'uid' : self._uid,
                                                             'info': {}}})
 
+          # # FIXME: we never unregister on termination
+          # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
+          #                                         'arg': {'uid' : self._uid}})
+
 
     # --------------------------------------------------------------------------
     #
@@ -65,15 +71,16 @@ class Worker(object):
 
         # Create the worker class and run it's work loop.
         if fpath:
-            wclass = rpu.load_class(fpath, cname, Worker)
+            wclass = ru.load_class(fpath, cname, Worker)
 
         else:
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
-            from .worker_default import DefaultWorker  # pylint: disable=unused-import
-            from .worker_mpi     import MPIWorker      # pylint: disable=unused-import
 
-            wclass = rpu.get_type(cname)
+            from .worker_default import DefaultWorker  # pylint: disable=W0611 # noqa
+            from .worker_mpi     import MPIWorker      # pylint: disable=W0611 # noqa
+
+            wclass = ru.get_type(cname)
 
         if not wclass:
             raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))

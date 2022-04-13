@@ -2,7 +2,9 @@
 
 
 import msgpack
-from mpi4py import MPI
+
+# pylint: disable=import-error
+from mpi4py import MPI                                                    # noqa
 
 
 IDLE = False
@@ -96,7 +98,7 @@ class MPIExecutor(object):
         if comm.rank == 0:
             # collect data from all other ranks
             result = [data, 0]
-            for rank in range(comm.size - 1):
+            for _ in range(comm.size - 1):
                 result.append(comm.recv())
             return result
         else:
@@ -114,7 +116,7 @@ class MPIExecutor(object):
         if comm.rank == 0:
             # collect data from all other ranks
             result = [data, 0]
-            for rank in range(comm.size - 1):
+            for _ in range(comm.size - 1):
                 result.append(str(comm.recv()))
             return result
         else:

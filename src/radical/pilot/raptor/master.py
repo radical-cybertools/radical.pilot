@@ -28,7 +28,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, backend='zmq'):
+    def __init__(self, cfg=None):
 
         self._uid      = os.environ['RP_TASK_ID']
         self._name     = os.environ['RP_TASK_NAME']
@@ -302,8 +302,8 @@ class Master(rpu.Component):
                 td = dict()
                 td['named_env']        = descr.get('named_env')
                 td['cpu_processes']    = descr['cpu_processes']
-                td['cpu_process_type'] = 'MPI'
-                td['cpu_thread_type']  = 'POSIX'
+                td['cpu_process_type'] = rpc.MPI
+                td['cpu_thread_type']  = rpc.POSIX
                 td['cpu_threads']      = descr.get('cpu_threads', 1)
                 td['gpu_processes']    = descr.get('gpu_processes', 0)
                 td['environment']      = descr.get('environment', {})
@@ -339,7 +339,8 @@ class Master(rpu.Component):
                 task['pilot']             = os.environ['RP_PILOT_ID']
                 task['resources']         = {'cpu': td['cpu_processes'] *
                                                     td.get('cpu_threads', 1),
-                                             'gpu': td['gpu_processes']}
+                                             'gpu': td['gpu_processes'] *
+                                                    td.get('cpu_processes', 1)}
                 tasks.append(task)
 
                 # NOTE: the order of insert / state update relies on that order
@@ -409,12 +410,12 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):
+    def stop(self):
 
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self, timeout=timeout)
+        rpu.Component.stop(self)
 
         self.terminate()
 
@@ -555,7 +556,8 @@ class Master(rpu.Component):
             task['pilot']             = os.environ['RP_PILOT_ID']
             task['resources']         = {'cpu': td.get('cpu_processes', 1) *
                                                 td.get('cpu_threads',   1),
-                                         'gpu': td.get('gpu_processes', 0)}
+                                         'gpu': td['gpu_processes'] *
+                                                td.get('cpu_processes', 1)}
 
             # NOTE: the order of insert / state update relies on that order
             #       being maintained through the component's message push,

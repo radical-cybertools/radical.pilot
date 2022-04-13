@@ -23,8 +23,6 @@ _uids = list()
 def _check_uid(uid):
     # ensure that uid is not yet known
 
-    global _uids
-
     if uid in _uids:
         return False
     else:
