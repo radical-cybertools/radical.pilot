@@ -75,14 +75,6 @@ SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
 METADATA         = 'metadata'
 
-# process / thread types (for both, CPU and GPU processes/threads)
-POSIX            = 'POSIX'   # native threads / application threads
-MPI              = 'MPI'
-OpenMP           = 'OpenMP'
-CUDA             = 'CUDA'
-FUNC             = 'FUNC'
-# FIXME: move task/process/thread types to `radical.pilot.constants`
-
 
 # ------------------------------------------------------------------------------
 #

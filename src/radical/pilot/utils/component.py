@@ -1,4 +1,7 @@
 
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
+
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
@@ -554,6 +557,7 @@ class Component(object):
 
         assert(cfg.kind in comp), '%s not in %s' % (cfg.kind, list(comp.keys()))
 
+        session._log.debug('create 1 %s: %s', cfg.kind, comp[cfg.kind])
         return comp[cfg.kind].create(cfg, session)
 
 
