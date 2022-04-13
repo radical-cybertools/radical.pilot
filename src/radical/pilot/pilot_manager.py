@@ -818,7 +818,7 @@ class PilotManager(rpu.Component):
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
 
         # inform pmgr.launcher - it will force-kill the pilot after some delay
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 
