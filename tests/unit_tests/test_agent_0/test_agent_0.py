@@ -57,13 +57,15 @@ class TestComponent(TestCase):
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0000',
                                                     'err': "KeyError('arg')",
-                                                    'ret': None}
+                                                    'out': None,
+                                                    'ret': 1}
                                            }),
                                            ('control_pubsub',
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0000',
                                                     'err': "KeyError('arg',)",
-                                                    'ret': None}
+                                                    'out': None,
+                                                    'ret': 1}
                                            })])
 
         msg = {'cmd': 'rpc_req',
@@ -76,7 +78,8 @@ class TestComponent(TestCase):
                                              {'cmd': 'rpc_res',
                                               'arg': {'uid': 'rpc.0000',
                                                       'err': None,
-                                                      'ret': 'hello World'}
+                                                      'out': 'hello World',
+                                                      'ret': 0}
                                              }))
 
         msg = {'cmd': 'rpc_req',
@@ -91,7 +94,8 @@ class TestComponent(TestCase):
                                              {'cmd': 'rpc_res',
                                               'arg': {'uid': 'rpc.0000',
                                                       'err': None,
-                                                      'ret': ('radical', 'spec')}
+                                                      'out': ('radical', 'spec'),
+                                                      'ret': 0}
                                              }))
 
 # ------------------------------------------------------------------------------
