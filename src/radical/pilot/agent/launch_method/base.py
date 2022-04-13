@@ -1,3 +1,4 @@
+
 # pylint: disable=protected-access
 
 __copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
@@ -197,7 +198,9 @@ class LaunchMethod(object):
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
-            ru.env_prep(ru.env_read(src), script_path=tgt)
+            ru.env_prep(environment=ru.env_read(src),
+                        unset=list(os.environ.keys()),
+                        script_path=tgt)
 
         return tgt
 

@@ -11,15 +11,29 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as td
-
 from .staging_directives import expand_description
+from .task_description   import TaskDescription
+
+
+_uids = list()
+
+
+# ------------------------------------------------------------------------------
+#
+def _check_uid(uid):
+    # ensure that uid is not yet known
+
+    if uid in _uids:
+        return False
+    else:
+        _uids.append(uid)
+        return True
 
 
 # ------------------------------------------------------------------------------
 #
 class Task(object):
-    """
+    '''
     A Task represent a 'task' that is executed on a Pilot.
     Tasks allow to control and query the state of this task.
 
@@ -34,8 +48,7 @@ class Task(object):
                       ud.executable = "/bin/date"
 
                       task = tmgr.submit_tasks(ud)
-    """
-
+    '''
     # --------------------------------------------------------------------------
     # In terms of implementation, a Task is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
@@ -50,19 +63,15 @@ class Task(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, tmgr, descr):
-
-        # NOTE GPU: we allow `mpi` for backward compatibility - but need to
-        #      convert the bool into a decent value for `cpu_process_type`
-        if  descr[td.CPU_PROCESS_TYPE] in [True, 'True']:
-            descr[td.CPU_PROCESS_TYPE] = td.MPI
+    def __init__(self, tmgr, descr, origin):
 
         # ensure that the description is viable
         descr.verify()
 
         # 'static' members
-        self._descr = descr.as_dict()
-        self._tmgr  = tmgr
+        self._tmgr   = tmgr
+        self._descr  = descr.as_dict()
+        self._origin = origin
 
         # initialize state
         self._session          = self._tmgr.session
@@ -72,6 +81,8 @@ class Task(object):
         self._exit_code        = None
         self._stdout           = None
         self._stderr           = None
+        self._return_value     = None
+        self._exception        = None
         self._pilot            = descr.get('pilot')
         self._resource_sandbox = None
         self._pilot_sandbox    = None
@@ -81,7 +92,7 @@ class Task(object):
 
         # ensure uid is unique
         if self._uid:
-            if not self._tmgr.check_uid(self._uid):
+            if not _check_uid(self._uid):
                 raise ValueError('uid %s is not unique' % self._uid)
         else:
             self._uid = ru.generate_id('task.%(item_counter)06d', ru.ID_CUSTOM,
@@ -127,10 +138,10 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def _update(self, task_dict):
-        """
+        '''
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
-        """
+        '''
 
         assert(task_dict['uid'] == self.uid), 'update called on wrong instance'
 
@@ -165,9 +176,9 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """
+        '''
         Returns a Python dictionary representation of the object.
-        """
+        '''
 
         ret = {
             'type':             'task',
@@ -175,9 +186,12 @@ class Task(object):
             'uid':              self.uid,
             'name':             self.name,
             'state':            self.state,
+            'origin':           self.origin,
             'exit_code':        self.exit_code,
             'stdout':           self.stdout,
             'stderr':           self.stderr,
+            'return_value':     self.return_value,
+            'exception':        self.exception,
             'pilot':            self.pilot,
             'resource_sandbox': self.resource_sandbox,
             'pilot_sandbox':    self.pilot_sandbox,
@@ -193,12 +207,12 @@ class Task(object):
     #
     @property
     def session(self):
-        """
+        '''
         Returns the task's session.
 
         **Returns:**
             * A :class:`Session`.
-        """
+        '''
 
         return self._session
 
@@ -207,12 +221,12 @@ class Task(object):
     #
     @property
     def tmgr(self):
-        """
+        '''
         Returns the task's manager.
 
         **Returns:**
             * A :class:`TaskManager`.
-        """
+        '''
 
         return self._tmgr
 
@@ -221,14 +235,14 @@ class Task(object):
     #
     @property
     def uid(self):
-        """
+        '''
         Returns the task's unique identifier.
 
         The uid identifies the task within a :class:`TaskManager`.
 
         **Returns:**
             * A unique identifier (string).
-        """
+        '''
         return self._uid
 
 
@@ -236,25 +250,39 @@ class Task(object):
     #
     @property
     def name(self):
-        """
+        '''
         Returns the task's application specified name.
 
         **Returns:**
             * A name (string).
-        """
+        '''
         return self._descr.get('name')
 
 
     # --------------------------------------------------------------------------
     #
     @property
+    def origin(self):
+        '''
+        indicates where the task was created
+
+        **Returns:**
+            * string
+        '''
+
+        return self._origin
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def state(self):
-        """
+        '''
         Returns the current state of the task.
 
         **Returns:**
             * state (string enum)
-        """
+        '''
 
         return self._state
 
@@ -263,13 +291,13 @@ class Task(object):
     #
     @property
     def exit_code(self):
-        """
+        '''
         Returns the exit code of the task, if that is already known, or
         'None' otherwise.
 
         **Returns:**
             * exit code (int)
-        """
+        '''
 
         return self._exit_code
 
@@ -278,7 +306,7 @@ class Task(object):
     #
     @property
     def stdout(self):
-        """
+        '''
         Returns a snapshot of the executable's STDOUT stream.
 
         If this property is queried before the task has reached
@@ -289,7 +317,7 @@ class Task(object):
 
         **Returns:**
             * stdout (string)
-        """
+        '''
 
         return self._stdout
 
@@ -298,7 +326,7 @@ class Task(object):
     #
     @property
     def stderr(self):
-        """
+        '''
         Returns a snapshot of the executable's STDERR stream.
 
         If this property is queried before the task has reached
@@ -309,7 +337,7 @@ class Task(object):
 
         **Returns:**
             * stderr (string)
-        """
+        '''
 
         return self._stderr
 
@@ -317,14 +345,54 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     @property
+    def return_value(self):
+        '''
+        Returns the return value for tasks which represent function call (or
+        None otherwise).
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
+
+        **Returns:**
+            * Any
+        '''
+
+        return self._return_value
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def exception(self):
+        '''
+        Returns an exception if such one was raised by a task representing
+        a function call or some code, or None otherwise.
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
+
+        If the exception type cannot be created, a base exception will be
+        returned with the error message set to `type: msg` where `type` is the
+        original exception type and `msg` the original error message.
+
+        **Returns:**
+            * Exception
+        '''
+
+        return self._exception
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def pilot(self):
-        """
+        '''
         Returns the pilot ID of this task, if that is already known, or
         'None' otherwise.
 
         **Returns:**
             * A pilot ID (string)
-        """
+        '''
 
         return self._pilot
 
@@ -343,13 +411,13 @@ class Task(object):
 
     @property
     def task_sandbox(self):
-        """
+        '''
         Returns the full sandbox URL of this task, if that is already
         known, or 'None' otherwise.
 
         **Returns:**
             * A URL (radical.utils.Url).
-        """
+        '''
 
         # NOTE: The task has a sandbox property, containing the full sandbox
         #       path, which is used by the tmgr to stage data back and forth.
@@ -382,12 +450,12 @@ class Task(object):
     #
     @property
     def description(self):
-        """
+        '''
         Returns the description the task was started with, as a dictionary.
 
         **Returns:**
             * description (dict)
-        """
+        '''
 
         return copy.deepcopy(self._descr)
 
@@ -396,9 +464,9 @@ class Task(object):
     #
     @property
     def metadata(self):
-        """
+        '''
         Returns the metadata field of the task's description
-        """
+        '''
 
         return copy.deepcopy(self._descr.get('metadata'))
 
@@ -432,7 +500,7 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def wait(self, state=None, timeout=None):
-        """
+        '''
         Returns when the task reaches a specific state or
         when an optional timeout is reached.
 
@@ -452,7 +520,7 @@ class Task(object):
             * **timeout** [`float`]
               Optional timeout in seconds before the call returns regardless
               whether the task has reached the desired state or not.  The
-              default value **None** never times out.  """
+              default value **None** never times out.  '''
 
         if not state:
             states = rps.FINAL
@@ -490,11 +558,48 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def cancel(self):
-        """
+        '''
         Cancel the task.
-        """
+        '''
 
         self._tmgr.cancel_tasks(self.uid)
 
 
 # ------------------------------------------------------------------------------
+#
+class TaskDict(ru.TypedDict):
+    '''
+    rp.Task is an API level object and as that is not a useful internal
+    representation of an task on the level of RP components and message
+    channels.  Instead, a task is there represented as a dictionary.  To
+    facilitate a minimum of documentation and type consistency, this class
+    defines such task dictionaries as `TypedDict` objects.
+    '''
+
+    _schema = {
+            # where the task got created
+            # CLIENT | AGENT
+            'origin'      : str,
+
+            # original task description used to create the task
+            'description' : TaskDescription,
+
+          # # what scope should be notified for task state changes
+          # # CLIENT, AGENT, RAPTOR - can be empty
+          # 'notification': [str],
+
+          # # what exact resources were used to execute the task
+          # # [[node_uid:core_id:gpu_id, ...]]
+          # 'resources'   : [None],
+    }
+
+    _defaults = {
+            'origin'      : None,
+            'description' : None,
+          # 'notification': [],
+          # 'resources'   : [],
+    }
+
+
+# ------------------------------------------------------------------------------
+
