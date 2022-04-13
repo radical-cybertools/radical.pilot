@@ -70,13 +70,11 @@ class Worker(object):
             wclass = ru.load_class(fpath, cname, Worker)
 
         else:
-            # pylint: disable=W0611
-
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
 
-            from .worker_default import DefaultWorker                     # noqa
-            from .worker_mpi     import MPIWorker                         # noqa
+            from .worker_default import DefaultWorker  # pylint: disable=W0611 # noqa
+            from .worker_mpi     import MPIWorker      # pylint: disable=W0611 # noqa
 
             wclass = ru.get_type(cname)
 

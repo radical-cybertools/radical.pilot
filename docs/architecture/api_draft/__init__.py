@@ -1,4 +1,4 @@
-
+# pylint: disable=import-error
 
 from constants                     import *
 from exceptions                    import *
@@ -31,7 +31,8 @@ from task_manager                  import TaskManager
 
 
 import os
-import subprocess as sp
+import subprocess    as sp
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -41,7 +42,7 @@ version = "unknown"
 try :
     cwd     = os.path.dirname (os.path.abspath (__file__))
     fn      = os.path.join    (cwd, '../VERSION')
-    version = open (fn).read ().strip ()
+    version = ru.ru_open(fn).read ().strip ()
 
     p   = sp.Popen (['git', 'describe', '--tags', '--always'],
                     stdout=sp.PIPE)

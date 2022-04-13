@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# pyxlint: disable=redefined-outer-name, reimported
 
 import os
 import sys
@@ -28,15 +27,17 @@ pytask = PythonTask.pythontask
 
 @pytask
 def func_mpi(msg,comm=None,sleep=0):
-    import time                                                           # noqa
+    # pylint: disable=reimported
+    import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
 
 
 @pytask
 def func_non_mpi(a):
-    import math                                                           # noqa
-    import random                                                         # noqa
+    # pylint: disable=reimported
+    import math
+    import random
     b = random.random()
     t = math.exp(a * b)
     return t

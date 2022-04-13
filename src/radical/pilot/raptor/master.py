@@ -410,12 +410,12 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):
+    def stop(self):
 
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self, timeout=timeout)
+        rpu.Component.stop(self)
 
         self.terminate()
 
