@@ -16,10 +16,11 @@ class TestWorker(TestCase):
 
     def test_alloc(self):
 
-        cfg = {'uid': 'worker.0000',
-               'cores': 8,
-               'gpus' : 2,
-               'sid'  : str(time.time())}
+        cfg = ru.Config(cfg={'uid'         : 'worker.0000',
+                             'sid'         : str(time.time()),
+                             'info'        : {},
+                             'worker_descr': {'cores_per_rank': 8,
+                                              'gpus_per_rank' : 2}})
 
         rp.utils.Component.register_subscriber = mock.Mock()
         rp.utils.Component.register_publisher  = mock.Mock()
@@ -27,11 +28,16 @@ class TestWorker(TestCase):
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
 
-        os.environ['RP_TASK_ID'] = 'task.000000'
+        os.environ['RP_TASK_ID']       = 'task.000000'
+        os.environ['RP_PILOT_SANDBOX'] = '/tmp'
+
+        with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
+            fout.write('{"sub": "tcp://localhost:10000", '
+                       ' "pub": "tcp://localhost:10001"}\n')
 
         rp.raptor.Worker.publish = mock.Mock()
 
-        worker = rp.raptor.Worker(cfg, session=mock.Mock())
+        worker = rp.raptor.DefaultWorker(cfg, session=mock.Mock())
 
         task_1 = {'cores': 1, 'gpus' : 1}
         task_2 = {'cores': 2, 'gpus' : 1}
@@ -71,6 +77,8 @@ class TestWorker(TestCase):
         worker._dealloc_task(task_3)
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
+
+        os.unlink('/tmp/control_pubsub.cfg')
 
 
 # ------------------------------------------------------------------------------

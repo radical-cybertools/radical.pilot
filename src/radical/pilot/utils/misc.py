@@ -10,7 +10,7 @@ MAX_IO_LOGLENGTH = 1024
 
 # ------------------------------------------------------------------------------
 #
-def tail(txt, maxlen=MAX_IO_LOGLENGTH):
+def tail(txt: str, maxlen: int = MAX_IO_LOGLENGTH) -> str:
 
     # shorten the given string to the last <n> characters, and prepend
     # a notification.  This is used to keep logging information in mongodb
@@ -27,7 +27,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
 # ------------------------------------------------------------------------------
 #
-def get_rusage():
+def get_rusage() -> str:
 
     import resource
 
@@ -43,9 +43,9 @@ def get_rusage():
          % (rtime, utime, stime, rss)
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def create_tar(tgt, dnames):
+def create_tar(tgt: str, dnames: str) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''
@@ -79,5 +79,5 @@ def create_tar(tgt, dnames):
     fout.close()
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
