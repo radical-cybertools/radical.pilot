@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable=redefined-outer-name, reimported
+# pyxlint: disable=redefined-outer-name, reimported
 
 import os
 import sys

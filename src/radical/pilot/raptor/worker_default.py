@@ -1,5 +1,4 @@
 
-# pylint: disable=exec-used
 
 import io
 import os
@@ -241,7 +240,7 @@ class DefaultWorker(Worker):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            exec(src, {}, loc)                                            # noqa
+            exec(src, {}, loc)                # pylint: disable=exec-used # noqa
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()

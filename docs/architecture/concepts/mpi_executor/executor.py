@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-# pylint: disable=import-error
-
 
 import msgpack
+
+# pylint: disable=import-error
 from mpi4py import MPI                                                    # noqa
 
 

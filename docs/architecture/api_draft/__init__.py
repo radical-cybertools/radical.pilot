@@ -49,7 +49,6 @@ try :
                     stdout=sp.PIPE)
     out = p.communicate()[0]
 
-    # ignore pylint error on p.returncode -- false positive
     if  out and not p.returncode :
         version += '-' + out.strip()
 

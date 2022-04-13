@@ -1,6 +1,4 @@
-
-# pylint: disable=import-error,exec-used
-
+# pylint: disable=import-error
 
 import io
 import os
@@ -727,7 +725,7 @@ class _Worker(mt.Thread):
             # assign a local variable to capture the code's return value.
             loc = dict()
             self._prof.prof('app_start', uid=uid)
-            exec(src, {}, loc)                                            # noqa
+            exec(src, {}, loc)                # pylint: disable=exec-used # noqa
             self._prof.prof('app_stop', uid=uid)
             val = loc['result']
             out = strout.getvalue()

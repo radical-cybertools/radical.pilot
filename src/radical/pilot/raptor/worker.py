@@ -1,4 +1,3 @@
-# pylint: disable=unused-import
 
 import os
 import sys
@@ -71,8 +70,11 @@ class Worker(object):
             wclass = ru.load_class(fpath, cname, Worker)
 
         else:
+            # pylint: disable=W0611
+
             # import all known workers into the local name space so that
             # `get_type` has a chance to find them
+
             from .worker_default import DefaultWorker                     # noqa
             from .worker_mpi     import MPIWorker                         # noqa
 
