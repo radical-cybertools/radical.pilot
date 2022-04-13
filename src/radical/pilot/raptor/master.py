@@ -28,7 +28,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, backend='zmq'):
+    def __init__(self, cfg=None):
 
         self._uid      = os.environ['RP_TASK_ID']
         self._name     = os.environ['RP_TASK_NAME']
@@ -413,12 +413,12 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):
+    def stop(self):
 
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self, timeout=timeout)
+        rpu.Component.stop(self)
 
         self.terminate()
 

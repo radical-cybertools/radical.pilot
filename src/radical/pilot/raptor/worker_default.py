@@ -1,4 +1,5 @@
 
+
 import io
 import os
 import sys
@@ -9,8 +10,6 @@ import threading         as mt
 import multiprocessing   as mp
 
 import radical.utils     as ru
-
-from .. import constants as rpc
 
 from .worker import Worker
 
@@ -54,6 +53,7 @@ class DefaultWorker(Worker):
         self._n_gpus  = self._cfg.worker_descr.gpus_per_rank
 
         self._res_evt = mp.Event()          # set on free resources
+        self._my_term = mt.Event()          # for start/stop/join
 
         self._mlock   = ru.Lock(self._uid)  # lock `_modes`
         self._modes   = dict()              # call modes (call, exec, eval, ...)
@@ -118,6 +118,30 @@ class DefaultWorker(Worker):
         for k,v in os.environ.items():
             if k.startswith('RP_'):
                 self._task_env[k] = v
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._my_term.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self):
+
+        # FIXME
+        while True:
+            if self._my_term.wait(1):
+                break
 
 
     # --------------------------------------------------------------------------
@@ -216,7 +240,7 @@ class DefaultWorker(Worker):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            exec(src, {}, loc)
+            exec(src, {}, loc)                # pylint: disable=exec-used # noqa
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -515,7 +539,7 @@ class DefaultWorker(Worker):
               # ret = self._pool.apply_async(func=self._dispatch, args=[task],
               #                              callback=self._result_cb,
               #                              error_callback=self._error_cb)
-                proc = mp.Process(target=self._dispatch, args=[task, env])
+                proc = mp.Process(target=self._dispatch, args=(task, env))
               # proc.daemon = True
 
                 with self._plock:
@@ -607,7 +631,7 @@ class DefaultWorker(Worker):
 
             with res_lock:
                 if dispatcher.is_alive():
-                    dispatcher.kill()
+                    dispatcher.terminate()
                     dispatcher.join()
                     out = None
                     err = 'timeout (>%s)' % tout
@@ -644,7 +668,7 @@ class DefaultWorker(Worker):
     def _result_watcher(self):
 
         try:
-            while not self._term.is_set():
+            while True:
 
                 try:
                     res = self._result_queue.get(timeout=0.1)
@@ -657,13 +681,6 @@ class DefaultWorker(Worker):
         except:
             self._log.exception('queue error')
             raise
-
-        finally:
-            # FIXME: we should unregister for all ranks on error maybe?
-            if self._cfg['rank'] == 0:
-                self.publish(rpc.CONTROL_PUBSUB,
-                             {'cmd': 'worker_unregister',
-                              'arg': {'uid' : self._cfg['uid']}})
 
 
     # --------------------------------------------------------------------------

@@ -1,6 +1,4 @@
 
-# pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
-# pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
@@ -676,7 +674,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):                                         # noqa
+    def stop(self):
         '''
         We need to terminate and join all threads, close all communication
         channels, etc.  But we trust on the correct invocation of the finalizers
@@ -695,7 +693,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker=None):
+    def register_input(self, states, qname, worker=None):
         '''
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -724,7 +722,7 @@ class Component(object):
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        self._inputs[name] = {'queue'  : self.get_input_ep(input),
+        self._inputs[name] = {'queue'  : self.get_input_ep(qname),
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -746,7 +744,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_input(self, states, input, worker):
+    def unregister_input(self, states, qname, worker):
         '''
         This methods is the inverse to the 'register_input()' method.
         '''
@@ -760,12 +758,12 @@ class Component(object):
                              '_'.join([str(s) for s in states]))
 
         if name not in self._inputs:
-            self._log.warn('input %s not registered', name)
+            self._log.warn('input %s not registered [%s]', name, qname)
             return
 
         self._inputs[name]['queue'].stop()
         del(self._inputs[name])
-        self._log.debug('unregistered input %s', name)
+        self._log.debug('unregistered input %s [%s]', name, qname)
 
         for state in states:
 
@@ -780,7 +778,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_output(self, states, output):
+    def register_output(self, states, qname):
         '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
@@ -801,49 +799,49 @@ class Component(object):
 
         for state in states:
 
-            self._log.debug('%s register output %s:%s', self.uid, state, output)
+            self._log.debug('%s register output %s:%s', self.uid, state, qname)
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
                 self._log.warn("%s replaces output for %s : %s -> %s"
-                        % (self.uid, state, self._outputs[state], output))
+                        % (self.uid, state, self._outputs[state], qname))
 
-            if not output:
+            if not qname:
                 # this indicates a final state
                 self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
                 # non-final state, ie. we want a queue to push to:
-                self._outputs[state] = self.get_output_ep(output)
+                self._outputs[state] = self.get_output_ep(qname)
 
 
     # --------------------------------------------------------------------------
     #
-    def get_input_ep(self, input):
+    def get_input_ep(self, qname):
         '''
         return an input endpoint
         '''
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, input)
+        fname = '%s/%s.cfg' % (self._cfg.path, qname)
         cfg   = ru.read_json(fname)
 
-        return ru.zmq.Getter(input, url=cfg['get'])
+        return ru.zmq.Getter(qname, url=cfg['get'])
 
 
     # --------------------------------------------------------------------------
     #
-    def get_output_ep(self, output):
+    def get_output_ep(self, qname):
         '''
         return an output endpoint
         '''
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, output)
+        fname = '%s/%s.cfg' % (self._cfg.path, qname)
         cfg   = ru.read_json(fname)
 
-        return ru.zmq.Putter(output, url=cfg['put'])
+        return ru.zmq.Putter(qname, url=cfg['put'])
 
 
     # --------------------------------------------------------------------------
@@ -1070,13 +1068,13 @@ class Component(object):
 
         for name in self._inputs:
 
-            input  = self._inputs[name]['queue']
+            qname  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(500)  # in microseconds
+            things = qname.get_nowait(500)  # in microseconds
             things = ru.as_list(things)
 
             if not things:

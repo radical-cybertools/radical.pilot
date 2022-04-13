@@ -166,7 +166,6 @@ else
         "$CONDA" install -y virtualenv 2>&1 | progress || exit 1
     fi
 
-
     # TODO: find out why this hangs in GH ci
     # VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
     VIRTENV_CMD="$PYTHON -m venv"

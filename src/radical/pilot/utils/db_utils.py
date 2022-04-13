@@ -1,6 +1,4 @@
 
-# pylint: disable=cell-var-from-loop
-
 import os
 import sys
 import time
@@ -186,7 +184,8 @@ def get_session_slothist(db, sid, cache=None, cachedir=None):
         # we use the startup time to sort the slot names, as that gives a nicer
         # representation when plotting.  That sorting should probably move to
         # the plotting tools though... (FIXME)
-        slot_names.sort(key=lambda x: slot_started[x])
+
+        slot_names.sort(key=lambda x: slot_started[x])   # pylint: disable=W0640
 
         ret[pid] = dict()
         ret[pid]['started']    = pilot_doc['started']
