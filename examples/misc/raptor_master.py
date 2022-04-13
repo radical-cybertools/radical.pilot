@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-# pylint: disable=redefined-outer-name
 
 import os
 import sys
+import time
 
 import radical.utils as ru
 import radical.pilot as rp
+
+from radical.pilot import PythonTask
+
 
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
@@ -18,6 +21,26 @@ import radical.pilot as rp
 #   - terminate the worker
 #
 # The worker itself is an external program which is not covered in this code.
+
+pytask = PythonTask.pythontask
+
+
+@pytask
+def func_mpi(msg,comm=None,sleep=0):
+    # pylint: disable=reimported
+    import time
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
+
+
+@pytask
+def func_non_mpi(a):
+    # pylint: disable=reimported
+    import math
+    import random
+    b = random.random()
+    t = math.exp(a * b)
+    return t
 
 
 # ------------------------------------------------------------------------------
@@ -34,6 +57,18 @@ class MyMaster(rp.raptor.Master):
     def __init__(self, cfg):
 
         self._cnt = 0
+        self._submitted = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
+        self._collected = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
@@ -42,111 +77,179 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self):
+    def submit(self):
 
         self._prof.prof('create_start')
 
-        world_size = self._cfg.n_masters
-        rank       = self._cfg.rank
+        # create additional tasks to be distributed to the workers.
 
-        # create an initial list of work items to be distributed to the workers.
-        # Work items MUST be serializable dictionaries.
-        idx   = rank
-        total = int(eval(self._cfg.workload.total))                       # noqa
-        while idx < total:
+        tds = list()
+        for i in range(1):
 
-            uid  = 'request.eval.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'eval',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {
-                        'code': 'print("hello world")'
-                    }}
-            self.request(item)
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exe.m.%06d' % i,
+                'mode'            : rp.TASK_EXECUTABLE,
+                'scheduler'       : None,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c',
+                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.call.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'function'        : 'hello_mpi',
+                'kwargs'          : {'msg': 'task.call.m.%06d' % i},
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi_ser_func.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'function'        : func_mpi(msg='task.call.m.%06d' % i, comm=None,
+                                                                         sleep=0),
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.ser_func.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'function'        : func_non_mpi(i),
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.eval.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EVAL,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.exec.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_EXEC,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'code'            :
+                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.proc.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_PROC,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                           '$RP_TASK_ID"'],
+                'scheduler'       : 'master.000000'}))
+
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.shell.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_SHELL,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'scheduler'       : 'master.000000'}))
 
 
-            uid  = 'request.exec.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'exec',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {
-                        'pre_exec': 'import time',
-                        'code'    : 'print("hello stdout"); return "hello world"'
-                    }}
-            self.request(item)
-
-
-            uid  = 'request.call.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'call',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'method': 'hello',
-                              'kwargs': {'count': idx,
-                                         'uid'  : uid}
-                   }}
-            self.request(item)
-
-
-            uid  = 'request.proc.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'proc',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'exe' : '/bin/echo',
-                              'args': ['hello', 'world']
-                   }}
-            self.request(item)
-
-
-            uid  = 'request.shell.%06d' % idx
-            item = {'uid'  :   uid,
-                    'mode' :  'shell',
-                    'cores':  1,
-                  # 'gpus' :  1,
-                    'data' : {'env' : {'WORLD': 'world'},
-                              'cmd' : '/bin/echo "hello $WORLD"'
-                   }}
-            self.request(item)
-
-            idx += world_size
+        self.submit_tasks(tds)
 
         self._prof.prof('create_stop')
 
+        # wait for outstanding tasks to complete
+        while True:
 
-    # --------------------------------------------------------------------------
-    #
-    def request_cb(self, requests):
+            completed = sum(self._collected.values())
+            submitted = sum(self._submitted.values())
 
-        for req in requests:
+            if submitted:
+                # request_cb has been called, so we can wait for completion
 
-            self._log.debug('=== request_cb %s\n' % (req['uid']))
+                self._log.info('exec done?: %d >= %d ', completed, submitted)
 
-            # for each `shell` mode request, submit one more `proc` mode request
-            if req['mode'] == 'call':
+                if completed >= submitted:
+                  # self.stop()
+                    break
 
-                uid  = 'request.extra.%06d' % self._cnt
-                item = {'uid'  :   uid,
-                        'mode' :  'proc',
-                        'cores':  1,
-                        'data' : {'exe' : '/bin/echo',
-                                  'args': ['hello', 'world']
-                       }}
-                self.request(item)
-                self._cnt += 1
+            time.sleep(1)
 
-        # return the original request for execution
-        return requests
+        self._log.info('exec done!')
 
 
     # --------------------------------------------------------------------------
     #
-    def result_cb(self, req):
+    def request_cb(self, tasks):
 
-        self._log.debug('=== result_cb  %s: %s [%s]\n'
-                       % (req.uid, req.state, req.result))
+        for task in tasks:
+
+            self._log.debug('request_cb %s\n' % (task['uid']))
+
+            mode = task['description']['mode']
+            uid  = task['description']['uid']
+
+            self._submitted[mode] += 1
+
+            # for each `function` mode task, submit one more `proc` mode request
+            if mode == rp.TASK_FUNCTION:
+                self.submit_tasks(rp.TaskDescription(
+                    {'uid'             : uid.replace('call', 'extra'),
+                   # 'timeout'         : 10,
+                     'mode'            : rp.TASK_PROC,
+                     'cpu_processes'   : 2,
+                     'cpu_process_type': rp.MPI,
+                     'executable'      : '/bin/sh',
+                     'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                                '$RP_TASK_ID"'],
+                     'scheduler'       : 'master.000000'}))
+
+        return tasks
+
+
+    # --------------------------------------------------------------------------
+    #
+    def result_cb(self, tasks):
+
+        for task in tasks:
+
+            mode = task['description']['mode']
+            self._collected[mode] += 1
+
+            # NOTE: `state` will be `AGENT_EXECUTING`
+            self._log.debug('result_cb  %s: %s [%s] [%s]',
+                            task['uid'],
+                            task['state'],
+                            sorted(task['stdout']),
+                            task['return_value'])
+
+            print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
+                                              task['stdout'],
+                                              task['return_value']))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def state_cb(self, tasks):
+
+        for task in tasks:
+            uid = task['uid']
+
+            if uid.startswith(self._uid + '.task.m.'):
+                self._collected[rp.TASK_EXECUTABLE] += 1
 
 
 # ------------------------------------------------------------------------------
@@ -162,6 +265,7 @@ if __name__ == '__main__':
     cfg.rank     = int(sys.argv[2])
 
     n_workers  = cfg.n_workers
+    nodes_pw   = cfg.nodes_pw
     cpn        = cfg.cpn
     gpn        = cfg.gpn
     descr      = cfg.worker_descr
@@ -180,7 +284,11 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    master.submit(descr=descr, count=n_workers, cores=cpn, gpus=gpn)
+    descr['cpu_processes'] = nodes_pw * cpn
+    descr['gpu_processes'] = nodes_pw * gpn
+  # descr['cpu_processes'] = 28
+  # descr['gpu_processes'] = 0
+    master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
@@ -188,7 +296,7 @@ if __name__ == '__main__':
   # master.wait(count=nworkers)
 
     master.start()
-    master.submit_tasks()
+    master.submit()
     master.join()
     master.stop()
 

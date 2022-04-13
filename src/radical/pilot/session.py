@@ -1,4 +1,3 @@
-# pylint: disable=protected-access,unused-argument
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -637,7 +636,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None, fetch_client=False):
+    def fetch_profiles(self, tgt=None):
 
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
@@ -645,7 +644,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_logfiles(self, tgt=None, fetch_client=False):
+    def fetch_logfiles(self, tgt=None):
 
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
@@ -653,7 +652,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_json(self, tgt=None, fetch_client=False):
+    def fetch_json(self, tgt=None):
 
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
                               session=self)
