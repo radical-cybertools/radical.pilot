@@ -11,7 +11,7 @@ from unittest import mock
 import radical.utils as ru
 import radical.pilot as rp
 
-from   radical.pilot.pmgr.launching.default import Default
+from   radical.pilot.pmgr.launching.base import PMGRLaunchingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -54,12 +54,12 @@ class TestLauncher(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Default, '__init__', return_value=None)
+    @mock.patch.object(PMGRLaunchingComponent, '__init__', return_value=None)
     def test_configure(self, mocked_init):
 
         session, configs = self.setUp()
 
-        component = Default(cfg=None, session=None)
+        component = PMGRLaunchingComponent(cfg=None, session=None)
         component._uid        = 'pmgr.launching.0000'
         component._cfg        = mock.Mock()
         component._log        = ru.Logger('dummy')
@@ -68,13 +68,10 @@ class TestLauncher(TestCase):
 
         component._pmgr       = 'pmgr.0'
         component._prof       = ru.Config(cfg = {'enabled': False})
-        component._cache_lock = ru.Lock()
-        component._cache      = dict()
         component._sandboxes  = dict()
 
         component._mod_dir    = os.path.dirname(os.path.abspath(__file__))
         component._root_dir   = "%s/../../src/radical/pilot/" % component._mod_dir
-        component._conf_dir   = "%s/configs/" % component._root_dir
 
         component._rp_version    = rp.version
         component._rp_sdist_name = rp.sdist_name
@@ -98,9 +95,9 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          'services'       : []}
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
-        self.assertEqual(ret['jd'].name, 'pilot.0001')
-        self.assertEqual(ret['jd'].environment['RADICAL_BASE'],
+        component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        self.assertEqual(pilot['jd_dict'].name, 'pilot.0001')
+        self.assertEqual(pilot['jd_dict'].environment['RADICAL_BASE'],
                          str(session._get_resource_sandbox(pilot)))
 
         pilot    = {
@@ -118,9 +115,9 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          'services'       : []}
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
-        self.assertEqual(ret['jd'].name, 'pilot.0000')
-        self.assertEqual(ret['jd'].environment['RADICAL_BASE'],
+        component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        self.assertEqual(pilot['jd_dict'].name, 'pilot.0000')
+        self.assertEqual(pilot['jd_dict'].environment['RADICAL_BASE'],
                          str(session._get_resource_sandbox(pilot)))
 
         pilot    = {
@@ -138,19 +135,17 @@ class TestLauncher(TestCase):
                                          'candidate_hosts': None,
                                          'services'       : []}
                    }
-        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
-        self.assertEqual(ret['jd'].name, 'bar')
-
-        # test resource config parameter `system_architecture`
+        component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        self.assertEqual(pilot['jd_dict'].name, 'bar')
 
         # default value is {}
-        self.assertEqual(ret['jd'].system_architecture, {})
+        self.assertEqual(pilot['jd_dict'].system_architecture, {})
 
         # value for "ornl.summit" is 4
         resource = 'ornl.summit'
         rcfg = configs.ornl.summit
-        ret = component._prepare_pilot(resource, rcfg, pilot, {}, '')
-        self.assertEqual(ret['jd'].system_architecture['smt'], 4)
+        component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        self.assertEqual(pilot['jd_dict'].system_architecture['smt'], 4)
 
 
 # ------------------------------------------------------------------------------

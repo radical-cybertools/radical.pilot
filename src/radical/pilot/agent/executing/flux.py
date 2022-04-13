@@ -1,4 +1,3 @@
-# pylint: disable=import-error
 
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -144,6 +143,7 @@ class Flux(AgentExecutingComponent) :
             flux_handle.event_subscribe('job-state')
 
             # FIXME: how tot subscribe for task return code information?
+            # pylint: disable=import-error
           # def _flux_cb(self, *args, **kwargs):
           #     print('--------------- flux cb %s' % [args, kwargs])
           #

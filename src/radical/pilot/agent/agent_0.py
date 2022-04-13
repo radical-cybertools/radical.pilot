@@ -496,8 +496,9 @@ class Agent_0(rpu.Worker):
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
                     tmp += '%s || exit 1\n' % cmd
+
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
-                tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
+                tmp += '%s\nexit $?\n\n' % cmds
 
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
@@ -677,27 +678,31 @@ class Agent_0(rpu.Worker):
             # we don't handle that request
             return True
 
-        ret     = None
         rpc_res = {'uid': arg['uid']}
         try:
             if req == 'hello'   :
-                ret = 'hello %s' % ' '.join(arg['arg'])
+                out = 'hello %s' % ' '.join(arg['arg'])
 
             elif req == 'prepare_env':
                 env_name = arg['arg']['env_name']
                 env_spec = arg['arg']['env_spec']
-                ret      = self._prepare_env(env_name, env_spec)
+                out      = self._prepare_env(env_name, env_spec)
+
+            else:
+                # unknown command
+                return True
+
+            # request succeeded - respond with return value
+            rpc_res['err'] = None
+            rpc_res['out'] = out
+            rpc_res['ret'] = 0
 
         except Exception as e:
             # request failed for some reason - indicate error
             rpc_res['err'] = repr(e)
-            rpc_res['ret'] = None
+            rpc_res['out'] = None
+            rpc_res['ret'] = 1
             self._log.exception('control cmd failed')
-
-        else:
-            # request succeeded - respond with return value
-            rpc_res['err'] = None
-            rpc_res['ret'] = ret
 
         # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
@@ -784,10 +789,14 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
+        self._log.debug('env_spec: %s', env_spec)
+
         etype = env_spec['type']
         evers = env_spec['version']
+        path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
+        out   = None
 
         pre_exec = '-P ". env/bs0_pre_0.sh" '
         for cmd in pre:
@@ -799,22 +808,35 @@ class Agent_0(rpu.Worker):
         assert(etype == 'virtualenv')
         assert(evers)
 
-        rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s/env/rp_named_env.%s -v %s %s %s ' \
-                 '| tee -a env.log 2>&1' \
-               % (rp_cse, self._pwd, env_name, evers, mods, pre_exec)
+        # only create a new VE if path is not set or if it does not exist
+        ve_local_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+        if path: ve_path = path
+        else   : ve_path = ve_local_path
 
-        self._log.debug('env cmd: %s', ve_cmd)
-        out, err, ret = ru.sh_callout(ve_cmd, shell=True)
-        self._log.debug('    out: %s', out)
-        self._log.debug('    err: %s', err)
+        if not os.path.isdir(ve_path):
+            # ve does not exist - create
+            rp_cse = ru.which('radical-pilot-create-static-ve')
+            ve_cmd = '/bin/bash %s -d -p %s -v %s %s %s | tee -a env.log 2>&1' \
+                   % (rp_cse, ve_path, evers, mods, pre_exec)
 
-        if ret:
-            raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
+            self._log.debug('env cmd: %s', ve_cmd)
+            out, err, ret = ru.sh_callout(ve_cmd, shell=True)
+            self._log.debug('    out: %s', out)
+            self._log.debug('    err: %s', err)
+
+            if ret:
+                raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
+
+        # if the ve lives outside of the pilot sandbox, link it
+        if path:
+            os.symlink(path,          ve_local_path)
+            os.symlink(path + '.env', ve_local_path + '.env')
+
+        self._log.debug('ve_path: %s', ve_path)
 
         # prepare the env to be loaded in task exec scripts
-        ve_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
-        with ru.ru_open('%s.sh' % ve_path, 'w') as fout:
+        sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
+        with ru.ru_open(sh_path, 'w') as fout:
             fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler
