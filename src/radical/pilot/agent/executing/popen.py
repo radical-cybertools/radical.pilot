@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument
+
 
 __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -27,16 +27,22 @@ from .base import AgentExecutingComponent
 _pids = list()
 
 
-def _kill():
+# pylint: disable=unused-argument
+def _kill(*args, **kwargs):
+
     for pid in _pids:
+
+        # skip test mocks
         if not isinstance(pid, int):
-            # skip test mocks
             continue
+
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 
 
 atexit.register(_kill)
+signal.signal(signal.SIGTERM, _kill)
+signal.signal(signal.SIGINT,  _kill)
 # ------------------------------------------------------------------------------
 
 
@@ -277,7 +283,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# pre-launch commands\n'
             tmp += self._get_prof('launch_pre', tid)
-            tmp += self._get_pre_launch(task, launcher)
+            tmp += self._get_pre_launch(task)
 
             tmp += self._separator
             tmp += '# launch commands\n'
@@ -289,7 +295,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# post-launch commands\n'
             tmp += self._get_prof('launch_post', tid)
-            tmp += self._get_post_launch(task, launcher)
+            tmp += self._get_post_launch(task)
 
             tmp += self._separator
             tmp += self._get_prof('launch_stop', tid)
@@ -337,7 +343,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in pre_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_pre_rank(rank_id, cmds)
+                    tmp += self._get_pre_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -369,7 +375,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_post_rank(rank_id, cmds)
+                    tmp += self._get_post_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -387,17 +393,6 @@ class Popen(AgentExecutingComponent):
 
             fout.write(tmp)
 
-
-      # # ensure that the named env exists
-      # env = td.get('named_env')
-      # if env:
-      #     if not os.path.isdir('%s/%s' % (self._pwd, env)):
-      #         raise ValueError('invalid named env %s for task %s'
-      #                         % (env, task['uid']))
-      #     pre = ru.as_list(td.get('pre_exec'))
-      #     pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-      #     pre.insert(0, '. %s/deactivate'      % (self._pwd))
-      #     td['pre_exec'] = pre
 
         # make sure scripts are executable
         st_l = os.stat('%s/%s' % (sbox, launch_script))
@@ -579,6 +574,7 @@ class Popen(AgentExecutingComponent):
     #
     # launcher
     #
+# pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
@@ -599,7 +595,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_pre_launch(self, task, launcher):
+    def _get_pre_launch(self, task):
 
         ret  = ''
         cmds = task['description']['pre_launch']
@@ -625,7 +621,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_launch(self, task, launcher):
+    def _get_post_launch(self, task):
 
         ret  = ''
         cmds = task['description']['post_launch']
@@ -741,7 +737,7 @@ class Popen(AgentExecutingComponent):
     #
     # rank
     #
-    def _get_pre_rank(self, rank_id, cmds=None):
+    def _get_pre_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []
@@ -803,7 +799,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_rank(self, rank_id, cmds=None):
+    def _get_post_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []
