@@ -1,14 +1,17 @@
 #!/bin/sh
 # test the correct startup of mixed OpenMP / MPI / CPU / GPU tasks
 
+test -z "$RP_PROF" && RP_PROF=true
+
 $RP_PROF "app_start"
 
 # basic information
-ARG=$1
+SLEEP=$1
+WORLD=$2
 PID=$$
 NODE=$(hostname)
 
-test -z "$ARG" && ARG=0
+test -z "$SLEEP" && SLEEP=0
 
 # get MPI rank
 MPI_RANK=""
@@ -48,12 +51,18 @@ test -z "$GPU_INFO" && GPU_INFO="$CUDA_VISIBLE_DEVICES"
 test -z "$GPU_INFO" && GPU_INFO="$GPU_DEVICE_ORDINAL"
 GPU_INFO=$(echo " $GPU_INFO " | tr ',' ' ')
 
-LSPCI=$(which lspci 2> /dev/null)
-test -z "$LSPCI" && LSPCI='/sbin/lspci'
-test -f "$LSPCI" || LSPCI='/usr/sbin/lspci'
-test -f "$LSPCI" || LSPCI='true'
-GPU_NBITS=$($LSPCI | grep -e " VGA " -e ' GV100GL ' | wc -l)
+USERID=$(id -u)
+LSPCI_CACHE="/tmp/lspci.$USERID"
+if ! test -f "$LSPCI_CACHE"
+then
+    LSPCI=$(which lspci 2> /dev/null)
+    test -z "$LSPCI" && LSPCI='/sbin/lspci'
+    test -f "$LSPCI" || LSPCI='/usr/sbin/lspci'
+    test -f "$LSPCI" || LSPCI='true'
+    $LSPCI | grep -e ' VGA ' -e ' GV100GL ' -e 'ATI' | wc -l > "$LSPCI_CACHE"
+fi
 
+GPU_NBITS=$(cat "$LSPCI_CACHE")
 GPU_BITS=''
 n=0
 while test "$n" -lt "$GPU_NBITS"
@@ -74,16 +83,32 @@ done
 PREFIX="$MPI_RANK"
 test -z "$PREFIX" && PREFIX='0'
 
-printf "$PREFIX : PID     : $PID\n"
-printf "$PREFIX : NODE    : $NODE\n"
-printf "$PREFIX : CPUS    : $CPU_BITS\n"
-printf "$PREFIX : GPUS    : $GPU_BITS\n"
-printf "$PREFIX : RANK    : $MPI_RANK\n"
-printf "$PREFIX : THREADS : $THREAD_NUM\n"
-printf "$PREFIX : SLEEP   : $ARG\n"
+if test -z "$WORLD"
+then
+    printf "$PREFIX : PID     : $PID\n"
+    printf "$PREFIX : NODE    : $NODE\n"
+    printf "$PREFIX : CPUS    : $CPU_BITS\n"
+    printf "$PREFIX : GPUS    : $GPU_BITS\n"
+    printf "$PREFIX : RANK    : $MPI_RANK\n"
+    printf "$PREFIX : THREADS : $THREAD_NUM\n"
+    printf "$PREFIX : SLEEP   : $SLEEP\n"
 
-# if so requested, sleep for a bit
-sleep $ARG
+else
+    echo "hello $WORLD"
+fi
+
+# check if `stress-ng` is installed
+export PATH="$PATH:$RADICAL_RESOURCE_SBOX/install/bin"
+STRESS=$(which stress-ng 2> /dev/null)
+
+# if so requested, sleep/stress for a bit
+if test -z "$STRESS"
+then
+    sleep $SLEEP
+else
+    $STRESS -c 1 -t ${SLEEP}s 2> /dev/null
+fi
+
 
 $RP_PROF "app_stop"
 
