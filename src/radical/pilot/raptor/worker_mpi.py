@@ -1,5 +1,5 @@
 
-# pylint: disable=import-error
+# pylint: disable=import-error,exec-used
 
 
 import io

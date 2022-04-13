@@ -1,4 +1,6 @@
 
+# pylint: disable=exec-used
+
 import io
 import os
 import sys
