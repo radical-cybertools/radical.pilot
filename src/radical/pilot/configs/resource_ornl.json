@@ -94,9 +94,8 @@
         "notes"                       : "",
         "schemas"                     : ["local"],
         "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "slurm://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+            "job_manager_endpoint"    : "slurm://spock.olcf.ornl.gov/",
+            "filesystem_endpoint"     : "file://spock.olcf.ornl.gov/"
         },
         "default_queue"               : "batch",
         "resource_manager"            : "SLURM",
