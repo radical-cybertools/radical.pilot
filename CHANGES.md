@@ -3,6 +3,24 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.14.0  Release                                                       2022-04-13
+--------------------------------------------------------------------------------
+
+  - support for MPI function tasks
+  - support different RAPTOR workers
+  - simplify / unify task and function descriptions
+  - refactor resource aquisition
+  - pilot submission via PSIJ or SAGA
+  - added resource config for Crusher@OLCF/ORNL
+  - support for execution of serialized function
+  - pilot size can now be specified in number of nodes
+  - support for PARSL integration
+  - improved SMT handling
+  - fixed resource configuration for `jsrun`
+  - fix argument escapes
+  - raptor consistently reports exceptions now
+  
+
 1.13.0  Release                                                       2022-03-21
 --------------------------------------------------------------------------------
 
