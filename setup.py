@@ -246,6 +246,7 @@ setup_args = {
                             'bin/radical-pilot-fetch-json',
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-profiles',
+                            'bin/radical-pilot-hello.sh',
                             'bin/radical-pilot-inspect',
                             'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',

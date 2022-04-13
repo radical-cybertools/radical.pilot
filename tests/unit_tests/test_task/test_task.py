@@ -27,26 +27,26 @@ class TestTask(TestCase):
         descr = rp.TaskDescription({})
         with self.assertRaises(ValueError):
             # no either `executable` or `kernel`
-            rp.Task(tmgr, descr)
+            rp.Task(tmgr, descr, 'test')
 
-        descr = rp.TaskDescription({'uid'       : 'foo',
+        descr = rp.TaskDescription({'uid'       : 'foo.1',
                                     'name'      : 'bar',
                                     'executable': './exec'})
-        task = rp.Task(tmgr, descr)
-        self.assertEqual(task.uid,  'foo')
+        task = rp.Task(tmgr, descr, 'test')
+        self.assertEqual(task.uid,  'foo.1')
         self.assertEqual(task.name, 'bar')
         self.assertEqual(task.state, rp.NEW)
         self.assertIsInstance(task.as_dict(), dict)
 
         with self.assertRaises(ValueError):
             # uid is not unique
-            rp.Task(tmgr, descr)
+            rp.Task(tmgr, descr, 'test')
 
         descr = rp.TaskDescription({'executable': './exec'})
-        self.assertEqual(rp.Task(tmgr, descr).uid, 'task.000000')
+        self.assertEqual(rp.Task(tmgr, descr, 'test').uid, 'task.000000')
 
         descr = rp.TaskDescription({'executable': './exec'})
-        self.assertEqual(rp.Task(tmgr, descr).uid, 'task.000001')
+        self.assertEqual(rp.Task(tmgr, descr, 'test').uid, 'task.000001')
 
     # --------------------------------------------------------------------------
     #
@@ -64,26 +64,26 @@ class TestTask(TestCase):
         descr = rp.ComputeUnitDescription({})
         with self.assertRaises(ValueError):
             # no either `executable` or `kernel`
-            rp.ComputeUnit(umgr, descr)
+            rp.ComputeUnit(umgr, descr, 'test')
 
-        descr = rp.ComputeUnitDescription({'uid'       : 'foo',
+        descr = rp.ComputeUnitDescription({'uid'       : 'foo.2',
                                            'name'      : 'bar',
                                            'executable': './exec'})
-        task = rp.ComputeUnit(umgr, descr)
-        self.assertEqual(task.uid,  'foo')
+        task = rp.ComputeUnit(umgr, descr, 'test')
+        self.assertEqual(task.uid,  'foo.2')
         self.assertEqual(task.name, 'bar')
         self.assertEqual(task.state, rp.NEW)
         self.assertIsInstance(task.as_dict(), dict)
 
         with self.assertRaises(ValueError):
             # uid is not unique
-            rp.ComputeUnit(umgr, descr)
+            rp.ComputeUnit(umgr, descr, 'test')
 
         descr = rp.ComputeUnitDescription({'executable': './exec'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'task.000000')
+        self.assertEqual(rp.ComputeUnit(umgr, descr, 'test').uid, 'task.000000')
 
         descr = rp.ComputeUnitDescription({'executable': './exec'})
-        self.assertEqual(rp.ComputeUnit(umgr, descr).uid, 'task.000001')
+        self.assertEqual(rp.ComputeUnit(umgr, descr, 'test').uid, 'task.000001')
 
 
 # ------------------------------------------------------------------------------
