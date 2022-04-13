@@ -53,6 +53,7 @@ class PythonTask(object):
 
     # --------------------------------------------------------------------------
     #
+    @staticmethod
     def pythontask(f: Callable):
         '''
         We handle all other functions here.

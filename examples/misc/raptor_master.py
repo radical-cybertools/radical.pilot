@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name, reimported
 
 import os
 import sys
@@ -9,6 +9,7 @@ import radical.utils as ru
 import radical.pilot as rp
 
 from radical.pilot import PythonTask
+
 
 # This script has to run as a task within an pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework.
@@ -27,15 +28,15 @@ pytask = PythonTask.pythontask
 
 @pytask
 def func_mpi(msg,comm=None,sleep=0):
-    import time
+    import time                                                           # noqa
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
 
 
 @pytask
 def func_non_mpi(a):
-    import math
-    import random
+    import math                                                           # noqa
+    import random                                                         # noqa
     b = random.random()
     t = math.exp(a * b)
     return t

@@ -54,6 +54,7 @@ class DefaultWorker(Worker):
         self._n_gpus  = self._cfg.worker_descr.gpus_per_rank
 
         self._res_evt = mp.Event()          # set on free resources
+        self._my_term = mt.Event()          # for start/stop/join
 
         self._mlock   = ru.Lock(self._uid)  # lock `_modes`
         self._modes   = dict()              # call modes (call, exec, eval, ...)
@@ -118,6 +119,30 @@ class DefaultWorker(Worker):
         for k,v in os.environ.items():
             if k.startswith('RP_'):
                 self._task_env[k] = v
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._my_term.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def join(self):
+
+        # FIXME
+        while True:
+            if self._my_term.wait(1):
+                break
 
 
     # --------------------------------------------------------------------------
@@ -216,7 +241,7 @@ class DefaultWorker(Worker):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            exec(src, {}, loc)
+            exec(src, {}, loc)                                            # noqa
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -608,7 +633,7 @@ class DefaultWorker(Worker):
 
             with res_lock:
                 if dispatcher.is_alive():
-                    dispatcher.kill()
+                    dispatcher.terminate()
                     dispatcher.join()
                     out = None
                     err = 'timeout (>%s)' % tout

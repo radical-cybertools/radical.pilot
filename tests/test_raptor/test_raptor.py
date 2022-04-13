@@ -31,7 +31,7 @@ class TestWorker(TestCase):
         os.environ['RP_TASK_ID']       = 'task.000000'
         os.environ['RP_PILOT_SANDBOX'] = '/tmp'
 
-        with open('/tmp/control_pubsub.cfg', 'w') as fout:
+        with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
             fout.write('{"sub": "tcp://localhost:10000", '
                        ' "pub": "tcp://localhost:10001"}\n')
 

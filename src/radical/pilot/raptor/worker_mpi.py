@@ -1,4 +1,7 @@
 
+# pylint: disable=import-error
+
+
 import io
 import os
 import sys
@@ -724,7 +727,7 @@ class _Worker(mt.Thread):
             # assign a local variable to capture the code's return value.
             loc = dict()
             self._prof.prof('app_start', uid=uid)
-            exec(src, {}, loc)
+            exec(src, {}, loc)                                            # noqa
             self._prof.prof('app_stop', uid=uid)
             val = loc['result']
             out = strout.getvalue()
@@ -856,7 +859,7 @@ class MPIWorker(Worker):
 
         self._my_term = mt.Event()
 
-        from mpi4py import MPI
+        from mpi4py import MPI                                            # noqa
 
         self._world = MPI.COMM_WORLD
         self._group = self._world.Get_group()

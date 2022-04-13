@@ -28,7 +28,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, backend='zmq'):
+    def __init__(self, cfg=None):
 
         self._uid      = os.environ['RP_TASK_ID']
         self._name     = os.environ['RP_TASK_NAME']
