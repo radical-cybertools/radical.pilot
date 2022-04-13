@@ -105,7 +105,6 @@ class TaskManager(rpu.Component):
 
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
-        self._uids        = list()   # known task UIDs
         self._tasks       = dict()
         self._tasks_lock  = mt.RLock()
         self._callbacks   = dict()
@@ -844,10 +843,7 @@ class TaskManager(rpu.Component):
         tasks = list()
         for ud in descriptions:
 
-            if not ud.executable:
-                raise ValueError('task executable must be defined')
-
-            task = Task(tmgr=self, descr=ud)
+            task = Task(tmgr=self, descr=ud, origin='client')
             tasks.append(task)
 
             # keep tasks around
@@ -1250,18 +1246,6 @@ class TaskManager(rpu.Component):
                         raise ValueError("cb %s not registered" % cb_id)
 
                     del(self._callbacks[metric][uid][cb_id])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def check_uid(self, uid):
-
-        # ensure that uid is not yet known
-        if uid in self._uids:
-            return False
-        else:
-            self._uids.append(uid)
-            return True
 
 
 # ------------------------------------------------------------------------------

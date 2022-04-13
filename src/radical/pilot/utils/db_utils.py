@@ -1,6 +1,4 @@
 
-# pylint: disable=cell-var-from-loop
-
 import os
 import json
 import time
