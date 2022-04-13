@@ -736,7 +736,7 @@ class TaskManager(rpu.Component):
         ret   = list()
         for td in descriptions:
 
-            task = Task(tmgr=self, descr=td)
+            task = Task(tmgr=self, descr=td, origin='client')
             tasks.append(task)
 
             # keep tasks around

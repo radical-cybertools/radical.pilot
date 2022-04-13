@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=redefined-outer-name
+# pyxlint: disable=redefined-outer-name
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
 

@@ -1,3 +1,4 @@
+
 # pylint: disable=protected-access
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
@@ -807,8 +808,7 @@ class PilotManager(rpu.Component):
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
         # send the cancelation request to the pilots
-        # the pmgr.launcher will also force-kill the pilot after some delay
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 

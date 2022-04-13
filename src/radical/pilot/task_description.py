@@ -7,6 +7,7 @@ import radical.utils as ru
 # task modes
 TASK_EXECUTABLE  = 'executable'
 TASK_FUNCTION    = 'function'
+TASK_METHOD      = 'method'
 TASK_EVAL        = 'eval'
 TASK_EXEC        = 'exec'
 TASK_PROC        = 'proc'
@@ -20,6 +21,11 @@ MODE             = 'mode'
 # mode: TASK_EXECUTABLE
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
+
+# mode: TASK_METHOD  # FIXME
+METHOD           = 'method'
+ARGS             = 'args'
+KWARGS           = 'kwargs'
 
 # mode: TASK_FUNCTION
 FUNCTION         = 'function'
@@ -69,14 +75,6 @@ SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
 METADATA         = 'metadata'
 
-# process / thread types (for both, CPU and GPU processes/threads)
-POSIX            = 'POSIX'   # native threads / application threads
-MPI              = 'MPI'
-OpenMP           = 'OpenMP'
-CUDA             = 'CUDA'
-FUNC             = 'FUNC'
-# FIXME: move task/process/thread types to `radical.pilot.constants`
-
 
 # ------------------------------------------------------------------------------
 #
@@ -113,6 +111,12 @@ class TaskDescription(ru.TypedDict):
 
          - TASK_FUNCTION: the task references a python function to be called.
            required attributes: `function`
+           related  attributes: `args`
+           related  attributes: `kwargs`
+
+         - TASK_METHOD: the task references a raptor worker method to be
+           called.
+           required attributes: `method`
            related  attributes: `args`
            related  attributes: `kwargs`
 
@@ -527,7 +531,6 @@ class TaskDescription(ru.TypedDict):
         UID             : ''          ,
         NAME            : ''          ,
         MODE            : 'executable',
-
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,

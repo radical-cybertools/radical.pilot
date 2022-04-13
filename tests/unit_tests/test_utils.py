@@ -4,7 +4,6 @@ from unittest import TestCase
 
 import radical.utils       as ru
 import radical.pilot       as rp
-import radical.pilot.utils as rpu
 
 from radical.pilot import states as s
 
@@ -87,15 +86,6 @@ class TestUtils(TestCase):
                                    ru.STATE: 'arbitrary'}]})
 
 
-    # --------------------------------------------------------------------------
-    #
-    def test_load_class(self):
-
-        f = rpu.load_class(fpath=__file__, cname='Foo',
-                           ctype=rp.PilotDescription)
-        assert(isinstance(f(), rp.PilotDescription))
-
-
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
@@ -103,8 +93,6 @@ if __name__ == '__main__':
     tc = TestUtils()
     tc.test_convert_sdurations()
     tc.test_expand_sduration()
-    tc.test_load_class()
-
 
 # ------------------------------------------------------------------------------
 

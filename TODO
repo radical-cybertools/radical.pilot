@@ -267,3 +267,10 @@ others
   - create_named_env needs to issue a client error on failures
 >>>>>>> devel
 
+
+  TexaScale-5:
+------------
+
+  - prepare_env at resource scope
+  - resize raptor dependent on task execution balance?
+  - multi-agent setup

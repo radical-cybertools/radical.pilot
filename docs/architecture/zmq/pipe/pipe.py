@@ -1,4 +1,7 @@
 
+# pylint: disable=no-member
+
+
 import zmq
 import msgpack
 
