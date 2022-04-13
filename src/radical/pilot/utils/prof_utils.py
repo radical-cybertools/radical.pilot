@@ -961,8 +961,22 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
             log.debug('    %10.2f  %-20s  %-15s  %-15s  %-15s  %-15s  %s',
                            ts[0],  ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])
 
-        p_min = pt(event=PILOT_DURATIONS['consume']['idle'][0]) [0]
-        p_max = pt(event=PILOT_DURATIONS['consume']['idle'][1])[-1]
+        p_min = None
+        p_max = None
+
+        try   : p_min = pilot.timestamps(event={1: 'bootstrap_0_start'})[0]
+        except: pass
+
+        try   : p_max = pilot.timestamps(event={1: 'bootstrap_0_stop'})[0]
+        except: pass
+
+        # fallback for missing bootstrap events
+        if p_min is None: p_min = pilot.timestamps(state='PMGR_ACTIVE')
+        if p_max is None: p_max = pilot.events[-1][ru.TIME]
+
+        assert(p_min is not None)
+        assert(p_max is not None)
+
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
         pid  = pilot.uid
