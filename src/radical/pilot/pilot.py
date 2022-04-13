@@ -605,10 +605,18 @@ class Pilot(object):
              'version': '3.8',
              'setup'  : ['numpy']}
 
+            {'type'   : 'conda',
+             'version': '3.8',
+             'path'   : '/path/to/ve',
+             'setup'  : ['numpy']}
+
 
         where the `type` specifies the environment type, `version` specifies the
         env version to deploy, and `setup` specifies how the environment is to
-        be prepared.
+        be prepared.  If `path` is specified the env will be created at that
+        path.  If a VE exists at that path, it will be used as is (an update is
+        not performed but might get implemented later if a use case calls for
+        it).
 
         At this point, the implementation only accepts `virtualenv` type
         requests, where `version` specifies the Python version to use, and

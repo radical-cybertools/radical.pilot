@@ -199,7 +199,7 @@ class ResourceManager(object):
         be interpreted by the specific agent scheduler instance.
         '''
 
-        raise NotImplementedError('_update_node_info is not implemented')
+        raise NotImplementedError('_init_from_scratch is not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -209,19 +209,19 @@ class ResourceManager(object):
         rm_info = RMInfo()
 
         # fill well defined default attributes
-        rm_info.requested_nodes  = self._cfg['nodes']
-        rm_info.requested_cores  = self._cfg['cores']
-        rm_info.requested_gpus   = self._cfg['gpus']
-        assert rm_info.requested_cores
+        rm_info.requested_nodes  = self._cfg.nodes
+        rm_info.requested_cores  = self._cfg.cores
+        rm_info.requested_gpus   = self._cfg.gpus
+        rm_info.cores_per_node   = self._cfg.cores_per_node
+        rm_info.gpus_per_node    = self._cfg.gpus_per_node
+        rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
+        rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
-        rcfg = self._cfg['resource_cfg']
-        rm_info.cores_per_node   = rcfg.get('cores_per_node',    0)
-        rm_info.gpus_per_node    = rcfg.get('gpus_per_node',     0)
-        rm_info.mem_per_node     = rcfg.get('mem_per_node',      0)
-        rm_info.lfs_per_node     = rcfg.get('lfs_size_per_node', 0)
-        rm_info.lfs_path         = ru.expand_env(rcfg.get('lfs_path_per_node'))
+        rcfg = self._cfg.resource_cfg
+        rm_info.mem_per_node     = rcfg.mem_per_node or 0
+        rm_info.threads_per_core = rcfg.get('system_architecture', {}).\
+                                        get('smt', 1)
 
-        rm_info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
 
