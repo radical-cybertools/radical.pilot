@@ -20,28 +20,16 @@ class Context (rs.Context):
 
     # --------------------------------------------------------------------------
     #
-    def __init__ (self, ctype, thedict=None) :
+    def __init__ (self, ctype, from_dict=None) :
 
         # init the saga.Context
         self._apitype  = 'radical.saga.Context'
-        super (Context, self).__init__ (ctype, )
+        super (Context, self).__init__(ctype)
 
         # set given defaults
-        if  thedict :
-            for key in thedict :
-                self.set_attribute (key, thedict[key])
-
-
-    # --------------------------------------------------------------------------
-    #
-    @classmethod
-    def from_dict(cls, seed):
-        """
-        Creates a new object instance from a string.
-        c._from_dict(x.as_dict) == x
-        """
-
-        return cls(seed)
+        if from_dict:
+            for key in from_dict:
+                self.set_attribute (key, from_dict[key])
 
 
 # ------------------------------------------------------------------------------
