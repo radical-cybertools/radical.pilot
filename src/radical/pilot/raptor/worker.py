@@ -11,7 +11,11 @@ from .. import constants as rpc
 # ------------------------------------------------------------------------------
 #
 class Worker(object):
-"""Implement the Raptor protocol for dispatching multiple Tasks on persistent resources."""
+    '''
+    Implement the Raptor protocol for dispatching multiple Tasks on persistent
+    resources.
+    '''
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg=None, register=True, session=None):
