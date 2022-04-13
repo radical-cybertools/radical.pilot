@@ -21,16 +21,14 @@ from .context                   import Context
 
 from .task_manager              import TaskManager
 from .task                      import Task
+from .pytask                    import PythonTask
 from .task_description          import TaskDescription
-from .task_description          import POSIX, MPI, OpenMP, CUDA, FUNC
+from .task_description          import TASK_EXECUTABLE, TASK_FUNCTION
+from .task_description          import TASK_EXEC, TASK_EVAL, TASK_PROC, TASK_SHELL
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
-
-from .deprecated                import ComputePilot, ComputePilotDescription
-from .deprecated                import ComputeUnit,  ComputeUnitDescription
-from .deprecated                import UnitManager
 
 
 # ------------------------------------------------------------------------------

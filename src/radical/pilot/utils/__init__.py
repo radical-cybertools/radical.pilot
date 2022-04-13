@@ -36,7 +36,7 @@ from .prof_utils   import *
 from .misc         import *
 from .session      import *
 from .component    import *
-
+from .serializer   import *
 
 # ------------------------------------------------------------------------------
 
