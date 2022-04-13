@@ -977,8 +977,6 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         assert(p_min is not None)
         assert(p_max is not None)
 
-        p_min = pt(event=PILOT_DURATIONS['consume']['idle'][0]) [0]
-        p_max = pt(event=PILOT_DURATIONS['consume']['idle'][1])[-1]
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
         pid  = pilot.uid
