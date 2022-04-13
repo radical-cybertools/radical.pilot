@@ -12,7 +12,7 @@ import radical.utils       as ru
 from .worker            import Worker
 
 from ..pytask           import PythonTask
-from ..task_description import MPI   as RP_MPI
+from ..constants        import MPI as RP_MPI
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
