@@ -62,13 +62,14 @@ class RMBaseTestCase(TestCase):
 
         os.environ['LOCAL'] = '/tmp/local_folder/'
 
-        cfg = ru.TypedDict({'nodes': 1,
-                            'cores': 16,
-                            'gpus' : 2,
-                            'resource_cfg': {'cores_per_node'   : 16,
-                                             'gpus_per_node'    : 2,
-                                             'lfs_path_per_node': '${LOCAL}',
-                                             'lfs_size_per_node': 100}})
+        cfg = ru.Config(cfg={'nodes'            : 1,
+                             'cores'            : 16,
+                             'gpus'             : 2,
+                             'cores_per_node'   : 16,
+                             'gpus_per_node'    : 2,
+                             'lfs_path_per_node': '${LOCAL}',
+                             'lfs_size_per_node': 100,
+                             'resource_cfg'     : {}})
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
         rm._cfg  = cfg
@@ -89,13 +90,11 @@ class RMBaseTestCase(TestCase):
         self.assertEqual(rm_info_output.requested_nodes, cfg.nodes)
         self.assertEqual(rm_info_output.requested_cores, cfg.cores)
         self.assertEqual(rm_info_output.requested_gpus,  cfg.gpus)
-        self.assertEqual(rm_info_output.cores_per_node,
-                         cfg.resource_cfg.cores_per_node)
-        self.assertEqual(rm_info_output.gpus_per_node,
-                         cfg.resource_cfg.gpus_per_node)
+        self.assertEqual(rm_info_output.cores_per_node,  cfg.cores_per_node)
+        self.assertEqual(rm_info_output.gpus_per_node,   cfg.gpus_per_node)
         # lfs size and lfs path
-        self.assertEqual(rm_info_output.lfs_per_node, 100)
-        self.assertEqual(rm_info_output.lfs_path, '/tmp/local_folder/')
+        self.assertEqual(rm_info_output.lfs_per_node,    100)
+        self.assertEqual(rm_info_output.lfs_path,        '/tmp/local_folder/')
 
         rm._cfg.update({'agents': {'agent.0000': {'target': 'node'}}})
         with self.assertRaises(RuntimeError):
