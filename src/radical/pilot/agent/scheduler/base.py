@@ -3,11 +3,12 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
-import logging
-import queue
 import time
-import threading          as mt
+import queue
+import pprint
+import logging
 
+import threading          as mt
 import multiprocessing    as mp
 
 import radical.utils      as ru
@@ -314,7 +315,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _control_cb(self, topic, msg):
         '''
-        We listen on the control channel for raptor queue registration commands
+        listen on the control channel for raptor queue registration commands
         '''
 
         cmd = msg['cmd']
@@ -326,24 +327,33 @@ class AgentSchedulingComponent(rpu.Component):
             self._named_envs.append(env_name)
 
 
-        if cmd == 'register_raptor_queue':
+        elif cmd == 'register_raptor_queue':
 
             name  = arg['name']
             queue = arg['queue']
             addr  = arg['addr']
 
             self._log.debug('register raptor queue: %s', name)
-
             with self._raptor_lock:
 
                 self._raptor_queues[name] = ru.zmq.Putter(queue, addr)
 
+                # send tasks which were collected for this queue
                 if name in self._raptor_tasks:
 
                     tasks = self._raptor_tasks[name]
                     del(self._raptor_tasks[name])
 
-                    self._log.debug('relay %d tasks to raptor %d', len(tasks), name)
+                    self._log.debug('relay %d tasks to raptor %s', len(tasks), name)
+                    self._raptor_queues[name].put(tasks)
+
+                # also send any tasks which were collected for *any* queue
+                if '*' in self._raptor_tasks:
+
+                    tasks = self._raptor_tasks['*']
+                    del(self._raptor_tasks['*'])
+
+                    self._log.debug('* relay %d tasks to raptor %s', len(tasks), name)
                     self._raptor_queues[name].put(tasks)
 
 
@@ -611,7 +621,7 @@ class AgentSchedulingComponent(rpu.Component):
         resources = True  # fresh start, all is free
         while not self._proc_term.is_set():
 
-            self._log.debug_3('=== schedule tasks 0: %s, w: %d', resources,
+            self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
                     len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
@@ -621,14 +631,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-                self._log.debug_3('=== schedule tasks w: %s %s', r_wait, a)
+                self._log.debug_3('schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-            self._log.debug_3('=== schedule tasks i: %s %s', r_inc, a)
+            self._log.debug_3('schedule tasks i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -643,12 +653,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-            self._log.debug_3('=== schedule tasks c: %s %s', r, a)
+            self._log.debug_3('schedule tasks c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-            self._log.debug_3('=== schedule tasks x: %s %s', resources, active)
+            self._log.debug_3('schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -689,12 +699,12 @@ class AgentSchedulingComponent(rpu.Component):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-      # self._log.debug('=== before bisec: %d', len(to_test))
+      # self._log.debug_9('before bisec: %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
-      # self._log.debug('=== after  bisec: %d : %d : %d', len(scheduled),
+      # self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
@@ -771,11 +781,24 @@ class AgentSchedulingComponent(rpu.Component):
                 for name in to_raptor:
 
                     if name in self._raptor_queues:
+                        # forward to specified raptor queue
                         self._log.debug('fwd %s: %d', name,
                                         len(to_raptor[name]))
                         self._raptor_queues[name].put(to_raptor[name])
 
+                    elif self._raptor_queues and name == '*':
+                        # round robin to available raptor queues
+                        names   = list(self._raptor_queues.keys())
+                        n_names = len(names)
+                        for idx in range(len(to_raptor[name])):
+                            task  = to_raptor[name][idx]
+                            qname = names[idx % n_names]
+                            self._log.debug('* put task %s to rq %s',
+                                    task['uid'], qname)
+                            self._raptor_queues[qname].put(task)
+
                     else:
+                        # keep around until a raptor queue registers
                         self._log.debug('cache %s: %d', name,
                                         len(to_raptor[name]))
 
@@ -971,6 +994,8 @@ class AgentSchedulingComponent(rpu.Component):
             # if schedule fails while no other task is scheduled, then the
             # `schedule_task` will never be able to succeed - fail that task
             if self._active_cnt == 0:
+                self._log.error('task cannot be scheduled ever: %s',
+                        pprint.pformat(task['description']))
                 raise RuntimeError('insufficient resources')
 
             return False

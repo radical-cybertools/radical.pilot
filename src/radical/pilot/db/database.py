@@ -305,10 +305,9 @@ class DBSession(object):
                     # response was empty
                     continue
 
-                import pprint
-                self._log.debug('rpc result: %s', pprint.pformat(rpc_res))
+                self._log.debug('rpc result: %s', rpc_res['ret'])
 
-                if rpc_res['err']:
+                if rpc_res['ret']:
                     # NOTE: we could raise a pickled exception - but how useful
                     #       would a pilot exception stack be on the client side?
                     raise RuntimeError('rpc failed: %s' % rpc_res['err'])
