@@ -1,4 +1,7 @@
+dill
+ipython
+ipykernel
 nbsphinx
+python-dotenv[cli]
 sphinx_copybutton
 sphinx_rtd_theme
-python-dotenv[cli]
