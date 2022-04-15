@@ -1086,7 +1086,7 @@ class Component(object):
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = queue.get_nowait(qname=qname, timeout=200)   # microseconds
+            things = queue.get_nowait(qname=name, timeout=200)   # microseconds
           # self._log.debug('work_cb %s: %s %s %d', name, queue.channel,
           #                                         qname, len(things))
             things = ru.as_list(things)
