@@ -14,10 +14,9 @@ class RedisRadicalExecutor(RADICALExecutor):
 
     def __init__(self, label="RedisRadicalExecutor", resource=None, login_method=None,
                        walltime=None, managed=True, max_tasks=float('inf'),
-                       cores_per_task=1, gpus=0, worker_logdir_root=".",
-                       partition=" ", project=" ", enable_redis=False,
-                       redis_port=6379, redis_host:str ='127.0.0.1',
-                       redis_pass: str=None):
+                       gpus=0, worker_logdir_root=".", partition=" ",
+                       project=" ", enable_redis=False, redis_port=6379,
+                       redis_host:str ='127.0.0.1', redis_pass: str=None):
 
         # Needed by Colmena
         self.enable_redis = enable_redis
@@ -26,8 +25,7 @@ class RedisRadicalExecutor(RADICALExecutor):
         self.redis_pass   = redis_pass
 
         super().__init__(label, resource, login_method, walltime, managed, max_tasks,
-                         cores_per_task, gpus, worker_logdir_root, partition,
-                         project)
+                         gpus, worker_logdir_root, partition, project)
 
         # check if we have redis mode enabled and connect
         if self.enable_redis:
@@ -134,8 +132,8 @@ class RedisRadicalExecutor(RADICALExecutor):
                     self.log.debug('recv_colmena_task')
                     task.name = COLMENA
 
-        if task.pyfunction:
-            self.put_redis_task(task.pyfunction)
-            task.pyfunction = 'redis_func'
+        if task.function:
+            self.put_redis_task(task.function)
+            task.function = 'redis_func'
 
         return task

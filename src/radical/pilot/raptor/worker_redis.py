@@ -122,7 +122,7 @@ class Worker(_Worker):
 
                         task['stdout']                     = 'redirected_to_redis'   
                         task['return_value']               = 'redirected_to_redis'
-                        task['description']['pyfunction']  = 'redirected_to_redis'
+                        task['description']['function']    = 'redirected_to_redis'
 
                     rank_result_q.put(task)
 
@@ -131,7 +131,7 @@ class Worker(_Worker):
 
 
 
-    def _dispatch_pyfunction(self, task, env):
+    def _dispatch_function(self, task, env):
 
         if task['name'] == 'colmena' and self._enable_redis:
             # make sure we are conneced
@@ -139,14 +139,14 @@ class Worker(_Worker):
             # pull from redis queue if we have a colmena task
             redis_task = self.redis.get(topic = 'rp task queue')[1]
             if redis_task:
-                if task['description']['pyfunction']:
+                if task['description']['function']:
                     self._log.debug('redis_task====>')
                     self._log.debug((redis_task))
-                    task['description']['pyfunction'] = redis_task
+                    task['description']['function'] = redis_task
                 else:
                     task['description']['executable'] = redis_task
 
-        return super()._dispatch_pyfunction(task, env)
+        return super()._dispatch_function(task, env)
 
 
 
