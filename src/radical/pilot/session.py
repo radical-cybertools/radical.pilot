@@ -219,22 +219,20 @@ class Session(rs.Session):
             proxy_url = self._proxy_addr
             os.environ['RADICAL_PILOT_SERVICE_URL'] = proxy_url
 
-
         self._cfg.proxy_url = proxy_url
 
-        if self._primary:
 
-            self._connect_proxy()
+        if self._primary:
+            self._start_primary()
 
         else:
             # a non-primary session will query the same service url to obtain
             # information about the comm channels created by the primary session
-            if not self._cfg.proxy_url:
-                self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
-                response      = self._proxy.request('client_lookup',
-                                                      {'sid': self._uid})
-                self._cfg.proxy = response
-                self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
+            self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
+            response      = self._proxy.request('client_lookup',
+                                                  {'sid': self._uid})
+            self._cfg.proxy = response
+            self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
 
 
         # for mostly debug purposes, dump the used session config
@@ -388,12 +386,9 @@ class Session(rs.Session):
             bridge.wait()
 
 
-# ------------------------------------------------------------------------------
-
-
     # --------------------------------------------------------------------------
     #
-    def _connect_proxy(self):
+    def _start_primary(self):
 
         assert(self._primary)
 
@@ -407,7 +402,7 @@ class Session(rs.Session):
                                               {'sid': self._uid})
 
         self._cfg.proxy = response
-        self._log.debug('=== %s: %s', self._primary, self._cfg.proxy)
+        self._log.debug('=== %s', self._cfg.proxy)
 
         # now that the proxy bridges have been created on the service host,
         # write config files for them so that all components can use them

@@ -221,7 +221,9 @@ class ComponentManager(object):
         and start them
         '''
 
-        self._prof.prof('start_components_start', uid=self._uid)
+        self._prof.prof('start_components_start: %s', uid=self._uid)
+        import pprint
+        self._log.debug('=== cmgr: %s', pprint.pformat(self._cfg.as_dict()))
 
         timeout = self._cfg.heartbeat.timeout
 
@@ -247,11 +249,12 @@ class ComponentManager(object):
                 ccfg.sid         = cfg.sid
                 ccfg.base        = cfg.base
                 ccfg.path        = cfg.path
+                ccfg.proxy_url   = cfg.proxy_url
                 ccfg.heartbeat   = cfg.heartbeat
 
                 ru.dict_merge(ccfg, scfg, policy=ru.PRESERVE, log=self._log)
 
-                fname = '%s/%s.json' % (cfg.path, ccfg.uid)
+                fname = '%s/%s.cfg' % (cfg.path, ccfg.uid)
                 ccfg.write(fname)
 
                 self._log.info('create  component %s [%s]', cname, ccfg.uid)
