@@ -10,9 +10,10 @@ _Resources    = rp.raptor.worker_mpi._Resources
 _TaskPuller   = rp.raptor.worker_mpi._TaskPuller
 _ResultPusher = rp.raptor.worker_mpi._ResultPusher
 
+# before you start, put sim.py in $HOME
 import sys
-cwd = os.getcwd()
-sys.path.append(cwd)
+home = os.getenv("HOME")
+sys.path.append(home)
 
 class Worker(rp.raptor.worker_mpi._Worker):
 
