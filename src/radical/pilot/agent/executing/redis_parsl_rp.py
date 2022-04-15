@@ -38,6 +38,8 @@ class RedisRadicalExecutor(RADICALExecutor):
         cfg["redis"] = {"host": self.redis_host, 
                         "port": self.redis_port,
                         "pass": self.redis_pass}
+        # custom redis worker for colmena
+        cfg["worker_descr"]["worker_file"]  = "./raptor_worker.py"
         cfg["worker_descr"]["worker_class"] = "WorkerRedis"
 
         ru.write_json(cfg, "raptor.cfg")
@@ -67,8 +69,7 @@ class RedisRadicalExecutor(RADICALExecutor):
         if self.enable_redis:
             # make sure we are connected to redis
             assert(self.redis.is_connected)
-            message = str(task)
-            self.redis.put(message, topic = 'rp task queue')
+            self.redis.put(task, topic = 'rp task queue')
             self.log.debug('send_task_to_redis')
 
 

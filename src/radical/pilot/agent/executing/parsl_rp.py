@@ -182,6 +182,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
                                     'setup'  : ['mpi4py',
+                                                'git+https://github.com/exalearn/colmena.git@rct',
                                                 'radical.pilot',]})
 
         self.tmgr.add_pilots(pilot)

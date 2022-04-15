@@ -2,12 +2,19 @@ import os
 import threading     as mt
 import radical.utils as ru
 
-from ..           import utils as rpu
-from .worker_mpi  import MPIWorker, _Worker
-from .worker_mpi  import _ResultPusher,_Resources, _TaskPuller
+import radical.pilot as rp
+import radical.pilot.utils as rpu
 
 
-class Worker(_Worker):
+_Resources    = rp.raptor.worker_mpi._Resources
+_TaskPuller   = rp.raptor.worker_mpi._TaskPuller
+_ResultPusher = rp.raptor.worker_mpi._ResultPusher
+
+import sys
+cwd = os.getcwd()
+sys.path.append(cwd)
+
+class Worker(rp.raptor.worker_mpi._Worker):
 
     def __init__(self, rank_task_q_get, rank_result_q_put,
                  event, log, prof, base):
@@ -15,7 +22,6 @@ class Worker(_Worker):
         super().__init__(rank_task_q_get, rank_result_q_put,
                          event, log, prof, base)
 
-        self._ser          = rpu.Serializer()
         self._enable_redis = False        
 
         cfg = ru.read_json('raptor.cfg')
@@ -116,7 +122,7 @@ class Worker(_Worker):
 
                         assert(self.redis.is_connected)
 
-                        task['stdout'] = str(self._ser.serialize_obj(task['return_value']))
+                        task['stdout'] = str(rpu.serialize_obj(task['return_value']))
 
                         self.redis.put(task['stdout'], topic='rp result queue')
 
@@ -142,7 +148,7 @@ class Worker(_Worker):
                 if task['description']['function']:
                     self._log.debug('redis_task====>')
                     self._log.debug((redis_task))
-                    task['description']['function'] = redis_task
+                    task['description']['function']   = redis_task
                 else:
                     task['description']['executable'] = redis_task
 
@@ -150,7 +156,7 @@ class Worker(_Worker):
 
 
 
-class WorkerRedis(MPIWorker):
+class WorkerRedis(rp.raptor.MPIWorker):
 
     def __init__(self, cfg):
         super().__init__(cfg)

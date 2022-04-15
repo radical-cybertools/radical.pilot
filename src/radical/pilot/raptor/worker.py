@@ -79,7 +79,6 @@ class Worker(object):
 
             from .worker_default import DefaultWorker  # pylint: disable=W0611 # noqa
             from .worker_mpi     import MPIWorker      # pylint: disable=W0611 # noqa
-            from .worker_redis   import WorkerRedis    # pylint: disable=W0611 # noqa
 
             wclass = ru.get_type(cname)
 
