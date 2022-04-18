@@ -207,7 +207,7 @@
                                                  "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
                                                # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
                                                # "module load   prrte/master"
-                                                 "module load   prrte/2.0.2
+                                                 "module load   prrte/2.0.2"
                                              ],
                                              "dvm_count": 1
                                          }
