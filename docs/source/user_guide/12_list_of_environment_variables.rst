@@ -1,9 +1,3 @@
-Referring Env variable in your code for hyperlink (Usage Example)
-------------------------------------------------------------------
-
-Your documentation text while using/referring env like
-this ``:envvar:`RADICAL_TEST_ENV``` and continuing.
-
 List of Env vars
 __________________
 
@@ -147,3 +141,10 @@ __________________
       - Description
     * - .. envvar:: RP_ENABLE_OLD_DEFINES
       - enable backward compatibility for old state defines
+
+
+Referring Env variable in your code for hyperlink (Usage Example)
+------------------------------------------------------------------
+
+Your documentation text while using/referring env like
+this ``:envvar:`RADICAL_TEST_ENV``` and continuing.
