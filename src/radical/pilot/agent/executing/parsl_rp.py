@@ -1,6 +1,7 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/Parsl
 """
 import os
+import sys
 import parsl
 import inspect
 import typeguard
@@ -178,12 +179,13 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
+        
+        python_v = sys.version.split(' ')[0]
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'virtualenv',
-                                    'version': '3.8',
-                                    'setup'  : ['mpi4py',
-                                                'git+https://github.com/exalearn/colmena.git@rct',
-                                                'radical.pilot',]})
+                          env_spec={'type'   : cfg.pilot_env.get('type','virtualenv'),
+                                    'version': cfg.pilot_env.get('version', python_v),
+                                    'path'   : cfg.pilot_env.get('path', ''),
+                                    'setup'  : cfg.pilot_env.get('setup', [])})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
