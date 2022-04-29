@@ -87,7 +87,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # Raptor specific
         self.cfg_file = './raptor.cfg'
-        cfg         = ru.Config(cfg=ru.read_json(self.cfg_file))
+        cfg           = ru.Config(cfg=ru.read_json(self.cfg_file))
 
         self.master      = cfg.master_descr
         self.worker      = cfg.worker_descr
@@ -95,6 +95,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.gpn         = cfg.gpn  # gpus per node
         self.n_masters   = cfg.n_masters  # number of total masters
         self.masters_pn  = cfg.masters_pn  # number of masters per node
+
+        self.pilot_env   = cfg.pilot_env
 
 
     def task_state_cb(self, task, state):
@@ -182,10 +184,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         
         python_v = sys.version.split(' ')[0]
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : cfg.pilot_env.get('type','virtualenv'),
-                                    'version': cfg.pilot_env.get('version', python_v),
-                                    'path'   : cfg.pilot_env.get('path', ''),
-                                    'setup'  : cfg.pilot_env.get('setup', [])})
+                          env_spec={'type'   : self.pilot_env.get('type','virtualenv'),
+                                    'version': self.pilot_env.get('version', python_v),
+                                    'path'   : self.pilot_env.get('path', ''),
+                                    'setup'  : self.pilot_env.get('setup', [])})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
