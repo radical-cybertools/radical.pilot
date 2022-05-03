@@ -160,8 +160,7 @@ class PRTE(LaunchMethod):
             cmd = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
 
             # additional (debug) arguments to prte
-            verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-            if verbose:
+            if self._verbose:
                 cmd += ' '.join(['--prtemca plm_base_verbose 5'])
 
             cmd = cmd.strip()
@@ -252,8 +251,7 @@ class PRTE(LaunchMethod):
             #        DVM to stabilize: `time.sleep(10.)`
 
         lm_details = {'dvm_list'    : dvm_list,
-                      'version_info': prte_info,
-                      'cvd_id_mode' : 'physical'}
+                      'version_info': prte_info}
 
         return lm_details
 
