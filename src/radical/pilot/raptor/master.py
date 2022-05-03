@@ -311,6 +311,7 @@ class Master(rpu.Component):
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
                 # NOTE: shell escaping is a bit tricky here - careful on change!
+                td['pre_exec']   = descr.get('pre_exec', [])
                 td['executable'] = 'python3'
                 td['arguments']  = [
                         '-c',
