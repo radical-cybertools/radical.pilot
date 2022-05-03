@@ -805,7 +805,7 @@ class Agent_0(rpu.Worker):
         if emods: mods = '-m "%s"' % ','.join(emods)
         else    : mods = ''
 
-        assert(etype == 'virtualenv')
+      # assert(etype == 'virtualenv')
         assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
@@ -816,8 +816,8 @@ class Agent_0(rpu.Worker):
 
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s -v %s %s %s | tee -a env.log 2>&1' \
-               % (rp_cse, ve_path, evers, mods, pre_exec)
+        ve_cmd = '/bin/bash %s -d -p %s -t %s -v %s %s %s > env.log 2>&1' \
+               % (rp_cse, ve_path, etype, evers, mods, pre_exec)
 
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)

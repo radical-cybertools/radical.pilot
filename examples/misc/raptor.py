@@ -118,11 +118,12 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'virtualenv',
-                                    'version': '3',
-                                    'path'   : '/tmp/ve_raptor/',
-                                    'setup'  : ['/home/merzky/j/rp/',
-                                                '/home/merzky/j/ru/',
+                          env_spec={'type'   : 'anaconda',
+                                    'version': '3.8',
+                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_conda/',
+                                    'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
+                                    'setup'  : ['$HOME/j/rp/',
+                                                '$HOME/j/ru/',
                                                 'mpi4py']})
 
         # submit some test tasks
