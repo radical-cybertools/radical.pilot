@@ -115,6 +115,7 @@ class RedisRadicalExecutor(RADICALExecutor):
                     # app type with base class
                     if '_preprocess' or '_postprocess' in func.__name__:
                         self.log.debug('COL_TASK_PYTHON')
+                        self.log.debug(str(func.__name__))
                         task_type = PYTHON
                         return func, args, task_type
 

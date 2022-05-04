@@ -30,12 +30,6 @@ class Worker(rp.raptor.worker_mpi._Worker):
         self._port = cfg.get('redis').get('port', 6379)
         self._pass = cfg.get('redis').get('pass', None)
 
-        if self._host and self._port:
-            from colmena.redis.queue import RedisQueue
-            self.redis  = RedisQueue(self._host, self._port, self._pass,
-                                     topics = ['rp task queue', 'rp result queue'])
-            self._enable_redis = True
-            self.redis.connect()
 
     def run(self):
 
@@ -46,8 +40,17 @@ class Worker(rp.raptor.worker_mpi._Worker):
         self._rank  = self._world.rank
         self._ranks = self._world.size
 
-
         try:
+            # initialize redis only once
+            if self._rank == 0:
+                self._log.debug('=== init redis [%s] [%d]', self._host, self._port)
+                if self._host and self._port:
+                    from colmena.redis.queue import RedisQueue
+                    self.redis  = RedisQueue(self._host, self._port, self._pass,
+                                            topics = ['rp task queue', 'rp result queue'])
+                    self._enable_redis = True
+                    self.redis.connect()
+    
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
                             self._rank_task_q_get, self._rank_result_q_put)
@@ -122,7 +125,8 @@ class Worker(rp.raptor.worker_mpi._Worker):
                     if task['name'] == 'colmena' and self._enable_redis:
 
                         assert(self.redis.is_connected)
-
+                        self._log.debug('redis_result====>')
+                        self._log.debug(str(task['return_value']))
                         task['stdout'] = str(rpu.serialize_obj(task['return_value']))
 
                         self.redis.put(task['stdout'], topic='rp result queue')
