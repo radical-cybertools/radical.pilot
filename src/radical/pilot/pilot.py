@@ -609,7 +609,8 @@ class Pilot(object):
              'version': '3.8',
              'path'   : '/path/to/ve',
              'setup'  : ['numpy']}
-
+        
+        pre_exec: command to be executed when creating the env
 
         where the `type` specifies the environment type, `version` specifies the
         env version to deploy, and `setup` specifies how the environment is to
