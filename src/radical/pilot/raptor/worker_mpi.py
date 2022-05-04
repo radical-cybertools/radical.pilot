@@ -567,8 +567,8 @@ class _Worker(mt.Thread):
                 kwargs['comm'] = task['description']['args'][0]
 
 
-        except Exception as e:
-            self._log.error('failed to obtain callable from task function %s', e)
+        except Exception:
+            self._log.error('failed to obtain callable from task function')
 
         if not to_call:
             assert(func)

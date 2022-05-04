@@ -21,9 +21,7 @@ class Worker(rp.raptor.worker_mpi._Worker):
                  event, log, prof, base):
 
         super().__init__(rank_task_q_get, rank_result_q_put,
-                         event, log, prof, base)
-
-        self._enable_redis = False        
+                         event, log, prof, base)    
 
         cfg = ru.read_json('raptor.cfg')
         self._host = cfg.get('redis').get('host', '127.0.0.1')
@@ -48,7 +46,6 @@ class Worker(rp.raptor.worker_mpi._Worker):
                     from colmena.redis.queue import RedisQueue
                     self.redis  = RedisQueue(self._host, self._port, self._pass,
                                             topics = ['rp task queue', 'rp result queue'])
-                    self._enable_redis = True
                     self.redis.connect()
     
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
@@ -122,10 +119,9 @@ class Worker(rp.raptor.worker_mpi._Worker):
                     # FIXME: task_exec_stop
                     self._log.debug('==== put 0 %s : %s', task['uid'], os.getpid())
 
-                    if task['name'] == 'colmena' and self._enable_redis:
-
+                    if task['name'] == 'colmena':
                         assert(self.redis.is_connected)
-                        self._log.debug('redis_result====>')
+                        self._log.debug('redis_result_task_%s====>', task['uid'])
                         self._log.debug(str(task['return_value']))
                         task['stdout'] = str(rpu.serialize_obj(task['return_value']))
 
@@ -144,7 +140,7 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
     def _dispatch_function(self, task, env):
 
-        if task['name'] == 'colmena' and self._enable_redis:
+        if task['name'] == 'colmena':
             # make sure we are conneced
             assert(self.redis.is_connected)
             # pull from redis queue if we have a colmena task
@@ -154,8 +150,6 @@ class Worker(rp.raptor.worker_mpi._Worker):
                     self._log.debug('redis_task====>')
                     self._log.debug((redis_task))
                     task['description']['function']   = redis_task
-                else:
-                    task['description']['executable'] = redis_task
 
         return super()._dispatch_function(task, env)
 
