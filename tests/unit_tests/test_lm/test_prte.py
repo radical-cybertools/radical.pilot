@@ -1,9 +1,19 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import glob
+import os
+
+import radical.utils as ru
+
 from unittest import mock, TestCase
 
+from radical.pilot.agent.resource_manager.base import RMInfo
+
+from radical.pilot.agent.launch_method.prte    import DVM_HOSTS_FILE_TPL
+from radical.pilot.agent.launch_method.prte    import DVM_URI_FILE_TPL
+from radical.pilot.agent.launch_method.prte    import PRTE
+
 from .test_common import setUp
-from radical.pilot.agent.launch_method.prte import PRTE
 
 
 # ------------------------------------------------------------------------------
@@ -12,12 +22,48 @@ class TestPRTE(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(PRTE, '__init__', return_value=None)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls._work_dir = os.getcwd()
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # cleanup - remove prrte-files with hosts and dvm-uri
+        prrte_files = glob.glob('%s/prrte.*' % cls._work_dir)
+        for _file in prrte_files:
+            try   : os.unlink(_file)
+            except: pass
+
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(PRTE, '_terminate', return_value=None)
-    @mock.patch.object(PRTE, '_configure', return_value={})
-    @mock.patch('radical.utils.which', return_value='/usr/bin/prun')
+    @mock.patch('radical.pilot.agent.launch_method.prte.LaunchMethod')
+    def test_init(self, mocked_lm_base, mocked_terminate):
+
+        if 'RADICAL_PILOT_PRUN_VERBOSE' in os.environ:
+            del os.environ['RADICAL_PILOT_PRUN_VERBOSE']
+
+        lm_prte = PRTE('', {}, None, None, None)
+        self.assertFalse(lm_prte._verbose)
+
+        os.environ['RADICAL_PILOT_PRUN_VERBOSE'] = 'TRUE'
+        lm_prte = PRTE('', {}, None, None, None)
+        self.assertTrue(lm_prte._verbose)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(PRTE, '__init__',   return_value=None)
+    @mock.patch.object(PRTE, '_terminate', return_value=None)
+    @mock.patch.object(PRTE, '_configure', return_value={'dvm_list'    : {},
+                                                         'version_info': {}})
+    @mock.patch('radical.utils.which',     return_value='/usr/bin/prun')
     def test_init_from_scratch(self, mocked_which, mocked_configure,
-                               mocked_term, mocked_init):
+                                     mocked_terminate, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
 
@@ -27,20 +73,19 @@ class TestPRTE(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(PRTE, '__init__', return_value=None)
+    @mock.patch.object(PRTE, '__init__',   return_value=None)
     @mock.patch.object(PRTE, '_terminate', return_value=None)
-    def test_init_from_info(self, mocked_term, mocked_init):
+    def test_init_from_info(self, mocked_terminate, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_prte.sh',
                    'command': '/usr/bin/prun',
-                   'details': {'dvm_list': {'id000': {'dvm_uri': 'uri000',
-                                                      'nodes': ['0', '1']}},
-                               'version_info': {'name': 'PRTE',
-                                                'version': '1.1.1'},
-                               'cvd_id_mode': 'physical'}}
+                   'details': {'dvm_list': {'0': {'dvm_uri': 'uri000',
+                                                  'nodes'  : ['0', '1']}},
+                               'version_info': {'name'   : 'PRTE',
+                                                'version': '1.1.1'}}}
 
         lm_prte._init_from_info(lm_info)
         self.assertEqual(lm_prte._env,     lm_info['env'])
@@ -52,11 +97,115 @@ class TestPRTE(TestCase):
         with self.assertRaises(AssertionError):
             lm_prte._init_from_info(lm_info)
 
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(PRTE, '__init__',    return_value=None)
+    @mock.patch.object(PRTE, '_terminate',  return_value=None)
+    @mock.patch('radical.utils.which',      return_value='any_cmd')
+    @mock.patch('radical.utils.sh_callout', return_value=('''
+                    PRTE: 2.0v2.0.0rc2-12-g68bd9f2
+      PRTE repo revision: v2.0.0rc2-12-g68bd9f2
+''', None, None))
+    @mock.patch('subprocess.Popen')
+    @mock.patch('threading.Thread.start')
+    @mock.patch('threading.Event')
+    def test_configure(self, mocked_mt_event, mocked_mt_thread, mocked_mp_popen,
+                             mocked_sh_callout, mocked_which,
+                             mocked_terminate, mocked_init):
+
+        lm_prte = PRTE('', {}, None, None, None)
+        lm_prte._log = lm_prte._prof = mock.Mock()
+        lm_prte._verbose = True
+        lm_prte._rm_info = RMInfo({
+            'cores_per_node': 42,
+            'node_list'     : [{'node_name': 'name_0', 'node_id': '0'},
+                               {'node_name': 'name_1', 'node_id': '1'},
+                               {'node_name': 'name_2', 'node_id': '2'},
+                               {'node_name': 'name_3', 'node_id': '3'}]
+        })
+        lm_prte._lm_cfg = {'pid'      : 11111,
+                           'dvm_count': 2}
+
+        # assume that these files were created by `prte` command
+        for _dvm_id in range(lm_prte._lm_cfg['dvm_count']):
+            dvm_file_info = {'base_path': self._work_dir, 'dvm_id': _dvm_id}
+            with ru.ru_open(DVM_URI_FILE_TPL % dvm_file_info, 'w') as fout:
+                fout.write('prte-batch0-2387273@0.0;tcp4://1.1.1.1:12345\n')
+
+        prte_cmd = ''
+
+        def mp_popen_side_effect(*args, **kwargs):
+            nonlocal prte_cmd
+            prte_cmd = ' '.join(args[0])
+
+        mocked_mp_popen.side_effect = mp_popen_side_effect
+        mocked_mt_event.wait        = mock.Mock(return_value=True)
+
+        lm_details = lm_prte._configure()
+
+        prte_info = mocked_sh_callout()[0]
+        self.assertIn(lm_details['version_info']['version'],        prte_info)
+        self.assertIn(lm_details['version_info']['version_detail'], prte_info)
+
+        self.assertEqual(len(lm_details['dvm_list']),
+                         lm_prte._lm_cfg['dvm_count'])
+
+        prte_cmd_opts = '--pmixmca ptl_base_max_msg_size 1073741824 ' \
+                        '--prtemca routed_radix 2 ' \
+                        '--prtemca plm_rsh_num_concurrent 2 ' \
+                        '--prtemca plm_base_verbose 5'
+        self.assertTrue(prte_cmd.endswith(prte_cmd_opts))
+
+        # check that corresponding files with nodes/hosts were created
+        for _dvm_id in range(lm_prte._lm_cfg['dvm_count']):
+            self.assertTrue(os.path.isfile(DVM_HOSTS_FILE_TPL % {
+                'base_path': self._work_dir, 'dvm_id': _dvm_id}))
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(PRTE, '__init__',   return_value=None)
+    @mock.patch.object(PRTE, '_terminate', return_value=None)
+    def test_finalize(self, mocked_terminate, mocked_init):
+
+        lm_prte = PRTE('', {}, None, None, None)
+
+        self.assertFalse(mocked_terminate.called)
+        lm_prte.finalize()
+        self.assertTrue(mocked_terminate.called)
+
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(PRTE, '__init__', return_value=None)
     @mock.patch.object(PRTE, '_terminate', return_value=None)
-    def test_can_launch(self, mocked_term, mocked_init):
+    def test_get_partitions(self, mocked_terminate, mocked_init):
+
+        lm_prte = PRTE('', {}, None, None, None)
+
+        dvm_list = {'0': {'dvm_uri': 'uri000',
+                          'nodes'  : ['0', '1']},
+                    '1': {'dvm_uri': 'uri001',
+                          'nodes'  : ['2', '3']}}
+
+        lm_info = {'env'    : {'test_env': 'test_value'},
+                   'env_sh' : 'env/lm_prte.sh',
+                   'command': '/usr/bin/prun',
+                   'details': {'dvm_list'    : dvm_list,
+                               'version_info': {'name'   : 'PRTE',
+                                                'version': '1.1.1'}}}
+        lm_prte._init_from_info(lm_info)
+        self.assertEqual(lm_prte.get_partitions(),
+                         {'0': ['0', '1'],
+                          '1': ['2', '3']})
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(PRTE, '__init__',   return_value=None)
+    @mock.patch.object(PRTE, '_terminate', return_value=None)
+    def test_can_launch(self, mocked_terminate, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
         self.assertTrue(lm_prte.can_launch(
@@ -125,11 +274,15 @@ class TestPRTE(TestCase):
 if __name__ == '__main__':
 
     tc = TestPRTE()
+    tc.test_init()
     tc.test_init_from_scratch()
     tc.test_init_from_info()
     tc.test_can_launch()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
+    tc.test_configure()
+    tc.test_finalize()
+    tc.test_get_partitions()
 
 
 # ------------------------------------------------------------------------------
