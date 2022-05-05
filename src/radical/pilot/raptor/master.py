@@ -149,6 +149,9 @@ class Master(rpu.Component):
 
         pwd = os.getcwd()
 
+        if cfg is None:
+            cfg = dict()
+
         if cfg and 'path' in cfg:
             del(cfg['path'])
 
