@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "[$0 $*]"
+
 ru_env=$(which radical-utils-env.sh)
 if test -z '$ru_env'
 then
@@ -12,12 +14,12 @@ fi
 set -e  # exit on all errors
 
 SCRIPT="$0"
-PREFIX=         # full path or virtenv name
-VERSION=        # python version (e.g., 2.7, 3.6, etc.)
-                # NOTE: for virtualenv corresponding version should be installed
-MODULES=        # alternative list of pre-installed modules/packages
-DEFAULTS=       # install default modules
-ENV_SETUP=''    # command(s) to set up starting environment
+PREFIX=       # full path or virtenv name
+VERSION=      # python version (e.g., 2.7, 3.6, etc.)
+              # NOTE: for virtualenv corresponding version should be installed
+MODULES=      # alternative list of pre-installed modules/packages
+DEFAULTS=     # install default modules
+ETYPE='venv'  # type of environment: 'virtualenv'/'venv' or 'anaconda'/'conda'
 
 pre_exec(){
     echo "pre exec: $*"
@@ -25,13 +27,13 @@ pre_exec(){
     echo "pre exec done"
 }
 
-while getopts "e:p:P:v:m:d" OPTION; do
+while getopts "e:p:P:v:m:t:d" OPTION; do
     case $OPTION in
-        e)  ENV_SETUP="$OPTARG" ;;
         p)  PREFIX="$OPTARG"    ;;
         P)  pre_exec "$OPTARG"  ;;
         v)  VERSION="$OPTARG"   ;;
         m)  MODULES="$OPTARG"   ;;
+        t)  ETYPE="$OPTARG"     ;;
         d)  DEFAULTS=True       ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
@@ -41,8 +43,13 @@ done
 test -z "$VERSION" && VERSION='3.8'
 test -z "$PREFIX"  && echo "no prefix" && exit
 
+test "$ETYPE" == 'anaconda'   && ETYPE='conda'
+test "$ETYPE" == 'virtualenv' && ETYPE='venv'
+
+# sanitize name (remove trailing slashes etc)
+PREFIX="$(dirname $PREFIX)/$(basename $PREFIX)"
+
 unset PYTHONPATH
-echo "[$0 $*]"
 
 # move from comma separated to space separated module list
 MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
@@ -55,11 +62,6 @@ then
     MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
 fi
 
-if ! test -z "$ENV_SETUP"
-then
-    echo "runing env setup: $ENV_SETUP"
-    $ENV_SETUP
-fi
 
 # ------------------------------------------------------------------------------
 #
@@ -76,17 +78,20 @@ help(){
 
     cat <<EOT
 
-    usage: $0 [-d] -p <path> [-v <version>] [-m <modules>] [-e env_setup]
+    $0
 
-    This script creates a virtualenv at the given target path.  That
-    virtualenv should be suitable to be used as static VE for a radical.pilot
-    target resource, and can be specified in a resource configuration for RP.
+    This script creates a virtual environment (conda or venv) at the given
+    target path.  That environment should be suitable to be used as static env
+    for a radical.pilot target resource, and can be specified in a resource
+    configuration for RP.
 
-    version  :  python version to use
-    modules  :  comma separated list of modules to install
-    env_setup:  command string to execute for environment setup
-
-    -d: install default RCT dependencies into the target virtualenv
+    Options:
+      -p <prefix>    - path to use for environment
+      -P <pre_exec>  - command to be run before creation
+      -v <version>   - python version to be used
+      -m <modules>   - comma separated list of modules to install
+      -t <type>      - environment type to create (venv, conda)
+      -d             - install default RCT dependencies into the new environment
 
 EOT
     exit $ret
@@ -95,21 +100,8 @@ EOT
 
 # ------------------------------------------------------------------------------
 #
-progress(){
-  while read X
-  do
-  # echo $X
-    echo -n .
-  done
-  echo
-}
-
-
-# ------------------------------------------------------------------------------
-#
 test    "$PREFIX" = "-h" && help
 test -z "$PREFIX"        && help "missing target"
-test -e "$PREFIX"        && help "target '$PREFIX' exists"
 
 # Ensure we install in an absolute path -- pip seems to like that better...
 case $PREFIX in
@@ -120,8 +112,6 @@ case $PREFIX in
         ;;
 esac
 
-
-echo "create  rct ve [$PREFIX]"
 PYTHON=python3
 
 if test -z "$VERSION"
@@ -129,66 +119,96 @@ then
     VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
 fi
 
-# create the ve, install bare necessities
-mkdir -p "$PREFIX"
-cd $PREFIX
-PREFIX=`pwd -P`
-
-
-# use conda if available
-if ! test -z "$CONDA_DEFAULT_ENV"
+# check env type
+if test "$ETYPE" = 'conda'
 then
-    # conda developers did not think this through... :-(
-    CONDA="$(which conda 2>/dev/null | head -n 1)"
-    test -z "$CONDA" && CONDA="$_CONDA_EXE"
-    test -z "$CONDA" && CONDA="$CONDA_EXE"
-    if test -z "$CONDA"
+    which conda || help "conda not found"
+    conda activate base
+
+    if test -d "$PREFIX"
     then
-        echo "conda is not functional"
-        exit 1
+        printf "env at $PREFIX exists\n"
+        conda activate "$PREFIX"
+
+    else
+
+        printf "create  $ETYPE ve [$PREFIX]\n"
+        conda create -y -p "$PREFIX" "python=$VERSION"
+        conda activate "$PREFIX"
+
+        echo -n "update  setuptools pip wheel"
+        conda install setuptools pip wheel || exit 1
+
+        for mod in $MODULES
+        do
+            # use `pip install` instead of `conda install` if `mod` is a path
+            case "$mod" in
+                /*|*/*)
+                    echo -n "install $mod with pip"
+                    pip install "$mod" || exit 1
+                    ;;
+                *)
+                    echo -n "install $mod with conda"
+                    conda install "$mod" \
+                    || pip install "$mod" || exit 1
+                    ;;
+            esac
+        done
+
+        if ! test -z "$MODULES"
+        then
+            echo -n "install pymongo<4 "
+            conda install 'pymongo<4'
+        fi
     fi
-    echo -n "install conda virtualenv "
-    "$CONDA" install -y virtualenv 2>&1 | progress || exit 1
-fi
 
-
-# TODO: find out why this hangs in GH ci
-# VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
-VIRTENV_CMD="$PYTHON -m venv"
-
-if test -z "$VIRTENV_CMD"
+elif test "$ETYPE" = 'venv'
 then
-    VIRTENV_VER=20.0.27
-    VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
-    VIRTENV_TGZ_URL="https://github.com/pypa/virtualenv/archive/$VIRTENV_TGZ"
+    if test -d "$PREFIX"
+    then
+        printf "\nenv at $PREFIX exists\n"
+        . "$PREFIX"/bin/activate
+    else
 
-    echo -n "install private virtualenv "
-    curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
-    tar zxf "$VIRTENV_TGZ"
-    VIRTENV_CMD="$PYTHON $VIRTENV_VER/virtualenv.py"
+        # TODO: find out why this hangs in GH ci
+        # VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
+        VIRTENV_CMD="$PYTHON -m venv"
+
+        if test -z "$VIRTENV_CMD"
+        then
+            echo -n "install private virtualenv "
+            VIRTENV_VER=20.0.27
+            VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+            VIRTENV_TGZ_URL="https://github.com/pypa/virtualenv/archive/$VIRTENV_TGZ"
+
+            curl -k -L -O "$VIRTENV_TGZ_URL"
+            tar zxf "$VIRTENV_TGZ"
+            VIRTENV_CMD="$PYTHON $VIRTENV_VER/virtualenv.py"
+        fi
+
+        echo -n "create  virtualenv "
+        $VIRTENV_CMD "$PREFIX"
+
+        . "$PREFIX"/bin/activate
+
+        echo -n "update  setuptools pip wheel"
+        pip install --no-cache-dir --upgrade setuptools pip wheel || exit 1
+
+        for mod in $MODULES
+        do
+            echo -n "install $mod with pip"
+            pip install --no-cache-dir "$mod" || exit 1
+        done
+
+        if ! test -z "$MODULES"
+        then
+            echo -n "install pymongo<4 "
+            pip install --no-cache-dir 'pymongo<4'
+        fi
+    fi
 fi
 
-echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD "$PREFIX" | progress
 
-. "$PREFIX"/bin/activate
-
-env | sort > env.clean5
-
-echo -n "update  setuptools pip wheel "
-pip install --no-cache-dir --upgrade setuptools pip wheel| progress || exit 1
-
-for mod in $MODULES
-do
-    echo -n "install $mod "
-    stdbuf -oL pip install --no-cache-dir "$mod" || exit 1
-done
-
-if ! test -z "$MODULES"
-then
-    echo -n "install pymongo<4 "
-    pip install --no-cache-dir 'pymongo<4'
-fi
 
 env_dump -t "$PREFIX.env"
 
@@ -196,6 +216,7 @@ env_dump -t "$PREFIX.env"
 echo
 echo "---------------------------------------------------------------------"
 echo
+echo "PWD       : $(pwd)"
 echo "ENV       : $PREFIX.env"
 echo "SCRIPT    : $SCRIPT"
 echo "PREFIX    : $PREFIX"
