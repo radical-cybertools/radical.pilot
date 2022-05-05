@@ -41,6 +41,7 @@ def task_state_cb(task, state):
         print('task %s failed' % task['uid'])
         sys.exit()
 
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':

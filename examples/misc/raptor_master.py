@@ -205,7 +205,7 @@ class MyMaster(rp.raptor.Master):
             self._log.debug('request_cb %s\n' % (task['uid']))
 
             mode = task['description']['mode']
-            uid  = task['description']['uid']
+            #uid  = task['description']['uid']
 
             self._submitted[mode] += 1
 
