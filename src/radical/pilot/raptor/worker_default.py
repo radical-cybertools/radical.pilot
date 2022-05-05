@@ -520,11 +520,10 @@ class DefaultWorker(Worker):
                     #       after all.
                   # while not self._res_evt.wait(timeout=1.0):
                   #     self._log.debug('req_alloc_wait %s', task['uid'])
+                  # #   FIXME: `clear` should be locked
                   # self._res_evt.clear()
 
                     time.sleep(0.01)
-
-
 
                 self._prof.prof('req_start', uid=task['uid'], msg=self._uid)
 
@@ -540,7 +539,7 @@ class DefaultWorker(Worker):
               # ret = self._pool.apply_async(func=self._dispatch, args=[task],
               #                              callback=self._result_cb,
               #                              error_callback=self._error_cb)
-                proc = mp.Process(target=self._dispatch, args=[task, env])
+                proc = mp.Process(target=self._dispatch, args=(task, env))
               # proc.daemon = True
 
                 with self._plock:
