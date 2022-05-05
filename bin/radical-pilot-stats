@@ -8,23 +8,11 @@ import radical.pilot       as rp
 import radical.pilot.utils as rpu
 
 
-_DBURL = ''
-if  'RADICAL_PILOT_DBURL' in os.environ :
-    _DBURL = os.environ['RADICAL_PILOT_DBURL']
-else:
-    raise Exception('RADICAL_PILOT_DBURL is not set')
-
-_DBURL = ru.Url (_DBURL)
-if  not _DBURL.path or '/' == _DBURL.path :
-    _DBURL.path = 'radicalpilot'
-
-_DBURL = str(_DBURL)
-
 # for graphing events, we assign numerical pseudo values to each event.
 # Note: make sure that those are translated back into event tags via
 # 'set [xy]tics'
 #
-#   set xtics ("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
+#   set xtics("lbl1" 1, "lbl2" 2, "lbl3" 3, "lbl4" 4)
 #
 _EVENT_ENCODING = {
         'session': {
@@ -104,9 +92,9 @@ _EVENT_ENCODING = {
 
 # ------------------------------------------------------------------------------
 #
-def usage (msg=None, noexit=False) :
+def usage(msg=None, noexit=False):
 
-    if  msg :
+    if msg:
         print("\n      Error: %s" % msg)
 
     print("""
@@ -116,7 +104,7 @@ def usage (msg=None, noexit=False) :
                   %s -m list -d mongodb://user:password@localhost/radicalpilot
                   %s -m tree -s 536afe101d41c83696ea0135,536afe101d41c83696ea0136
 
-      mode(s)   :
+      mode(s):
 
         help    : show this message
         list    : show  a  list   of sessions in the database
@@ -126,7 +114,7 @@ def usage (msg=None, noexit=False) :
         stat    : show statistics of session
 
 
-      arguments :
+      arguments:
 
         -d      : database URL
         -s      : session id(s)
@@ -136,7 +124,7 @@ def usage (msg=None, noexit=False) :
         -t      : terminal type for plotting (pdf and/or png, default is both)
 
 
-      filters   :
+      filters:
 
         The following filters are supported at the moment:
 
@@ -144,7 +132,7 @@ def usage (msg=None, noexit=False) :
         'pilots > n' : only list sessions with more  than 'n' pilots
         'pilots < n' : only list sessions with fewer than 'n' pilots
 
-      Notes     :
+      Notes:
 
         The default mode is 'list'.
         The default MongoDB is '%s'
@@ -153,94 +141,90 @@ def usage (msg=None, noexit=False) :
 
 """ % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], _DBURL))
 
-    if  msg :
-        sys.exit (1)
+    if msg:
+        sys.exit(1)
 
-    if  not noexit :
-        sys.exit (0)
+    if not noexit:
+        sys.exit(0)
 
 
 # ------------------------------------------------------------------------------
 #
-def dump_session (db, dbname, session) :
+def dump_session(db, dbname, session):
 
     print("session : %s" % session)
-    handle_session (db, 'dump', dbname, session, None)
+    handle_session(db, 'dump', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def tree_session (db, dbname, session) :
+def tree_session(db, dbname, session):
 
-    handle_session (db, 'tree', dbname, session, None)
+    handle_session(db, 'tree', dbname, session, None)
 
 
 # ------------------------------------------------------------------------------
 #
-def list_sessions (db, cachedir, filters) :
+def list_sessions(db, cachedir, filters):
 
-    sids = rpu.get_session_ids (db)
+    sids = rpu.get_session_ids(db)
 
-    if  filters :
+    if filters:
 
-        if  filters.startswith ('pilots') :
+        if filters.startswith('pilots'):
 
-            filters = filters.replace (' ', '')
+            filters = filters.replace(' ', '')
             op      =     filters[6 ]
             n       = int(filters[7:])
             f_sids  = list()
 
-            for sid in sids :
+            for sid in sids:
 
-                docs     = rpu.get_session_docs (sid, cachedir=cachedir)
-                n_pilots = 0
+                docs     = rpu.get_session_docs(sid, cachedir=cachedir)
+                n_pilots = len(docs['pilot'])
 
-                for _ in docs['pilot'] :
-                    n_pilots   += 1
-
-
-                if  op == '>' and n_pilots >  n : f_sids.append (sid)
-                if  op == '=' and n_pilots == n : f_sids.append (sid)
-                if  op == '<' and n_pilots <  n : f_sids.append (sid)
+                if op == '>' and n_pilots >  n : f_sids.append(sid)
+                if op == '=' and n_pilots == n : f_sids.append(sid)
+                if op == '<' and n_pilots <  n : f_sids.append(sid)
 
                 print("%s: %3s (%s)" % (sid, n_pilots, len(f_sids)))
 
             sids = f_sids
 
 
-    if  not sids :
+    if not sids:
         print('no matching sessions recorded in database at %s' % url)
 
-    else :
+    else:
         print("Session IDs:")
-        for sid in sids :
+        for sid in sids:
             print("  %s" % sid)
 
 
 # ------------------------------------------------------------------------------
-def sort_session (session, cachedir) :
+def sort_session(session, cachedir):
 
-    docs = rpu.get_session_docs (session, cachedir=cachedir)
+    docs = rpu.get_session_docs(session, cachedir=cachedir)
 
     print("pilot managers :")
-    for doc in docs['pmgr'] :
+    for doc in docs['pmgr']:
         print("  %s" %  doc['_id'])
 
     print("pilots :")
-    for doc in docs['pilot'] :
+    for doc in docs['pilot']:
         print("  %s" %  doc['_id'])
 
     print("task manager")
-    for doc in docs['tmgr'] :
+    for doc in docs['tmgr']:
         print("  %s" %  doc['_id'])
 
     print("tasks")
-    for doc in docs['task'] :
+    for doc in docs['task']:
         print("  %s" %  doc['_id'])
 
 
 # ------------------------------------------------------------------------------
-def get_stats (session) :
+def get_stats(session):
 
     n_tasks               = 0
     n_pilots              = 0
@@ -249,17 +233,12 @@ def get_stats (session) :
 
     pilot_stats['pilots'] = dict()
 
-    try:
-        # Trying to find module on sys.path
-        import radical.analytics as ra
-        print('radical analytics found')
+    # Trying to find module on sys.path
+    import radical.analytics as ra
 
-        s_session = ra.Session(session, 'radical.pilot')
-        s_pilots  = s_session.filter(etype='pilot', inplace=False)
-        s_tasks   = s_session.filter(etype='task' , inplace=False)
-
-    except ModuleNotFoundError as e:
-        raise e
+    s_session = ra.Session(session, 'radical.pilot')
+    s_pilots  = s_session.filter(etype='pilot', inplace=False)
+    s_tasks   = s_session.filter(etype='task' , inplace=False)
 
     pilot_stats['s_pilot'] = s_pilots
     pilot_stats['s_tasks'] = s_tasks
@@ -271,7 +250,7 @@ def get_stats (session) :
     for task in s_tasks.get():
         tasks[task.uid] = task
 
-    for pilot in s_pilots.get() :
+    for pilot in s_pilots.get():
 
         n_pilots   += 1
         pid         = pilot.uid
@@ -288,8 +267,8 @@ def get_stats (session) :
                 for s in pdd:
                     if state == s['Start Timestamp']:
                         dur = pilot.duration(event=rp.utils.PILOT_DURATIONS_DEBUG[s['Duration Name']])
-                        pilot_info['pilot_states'].append ({'state'   : state,
-                                                            'duration': dur})
+                        pilot_info['pilot_states'].append({'state'   : state,
+                                                           'duration': dur})
             except ValueError:
                 pass
 
@@ -298,9 +277,9 @@ def get_stats (session) :
             n_tasks               += 1
             pilot_info['n_tasks'] += 1
 
-            if  not uid in tasks :
+            if uid not in tasks:
                 print('unknonwn task %s' % uid)
-                sys.exit ()
+                sys.exit()
 
             for state in task.states:
                 try:
@@ -330,13 +309,13 @@ def get_stats (session) :
         pilot_info['cpu_used']    = pilot_busy
         pilot_info['utilization'] = pilot_busy * 100 / pilot_runtime
 
-        for s in pilot_info['task_states'] :
+        for s in pilot_info['task_states']:
 
             import numpy
-            array = numpy.array (pilot_info['task_states'][s]['dur'])
-            pilot_info['task_states'][s]['num' ] = len        (array)
-            pilot_info['task_states'][s]['mean'] = numpy.mean (array)
-            pilot_info['task_states'][s]['std' ] = numpy.std  (array)
+            array = numpy.array(pilot_info['task_states'][s]['dur'])
+            pilot_info['task_states'][s]['num' ] = len       (array)
+            pilot_info['task_states'][s]['mean'] = numpy.mean(array)
+            pilot_info['task_states'][s]['std' ] = numpy.std (array)
             pilot_info['task_states'][s]['dur' ] = list()
 
 
@@ -348,7 +327,7 @@ def get_stats (session) :
 
 
 # ------------------------------------------------------------------------------
-def stat_session (session, cachedir) :
+def stat_session(session, cachedir):
 
     docs       = rpu.get_session_docs(session, cachedir=cachedir)
     stats      = get_stats(session)
@@ -371,8 +350,8 @@ def stat_session (session, cachedir) :
         else             : t_x_stop  = max(finished, t_x_stop )
 
         pid = task.cfg.get('pilot', None)
-        if not pid in task_cores : task_cores[pid]  = task.description.get ('cores', 1)
-        else                     : task_cores[pid] += task.description.get ('cores', 1)
+        if not pid in task_cores : task_cores[pid]  = task.description.get('cores', 1)
+        else                     : task_cores[pid] += task.description.get('cores', 1)
 
     t_0  = stats['session_created']       # session started (absolute time)
     t_h  = t_x_start - t_0                # session start 'til first execution
@@ -391,30 +370,30 @@ def stat_session (session, cachedir) :
     print("  t_x    : %12.1fs" % t_x)
     print("  t_xy   : %12.1fs" % t_xy)
 
-    for pid in stats['pilots'] :
+    for pid in stats['pilots']:
 
         pilot = stats['pilots'][pid]
 
         print("  pilot [%s] [%s]"       % (pid, pilot['resource']))
         print("      cores       : %6d" % pilot['cores'])
         print("      tasks       : %6d" % pilot['n_tasks'])
-        print("      tasks*cores : %6s" % task_cores.get (pid, '-'))
+        print("      tasks*cores : %6s" % task_cores.get(pid, '-'))
 
         urate = pilot['n_tasks'] / t_xy
         print("      task-rate   : %7.2f/sec" % urate)
 
         print("      utilization : %7.2f%%" % pilot['utilization'])
         print("      pilot states:")
-        for ps in pilot['pilot_states'] :
+        for ps in pilot['pilot_states']:
             print("        state %-30s : %10.2fs" % (ps['state'], ps['duration']))
         print("      task states :")
-        for us  in pilot['task_states'] :
+        for us  in pilot['task_states']:
             data = pilot['task_states'][us]
             print("        state %-30s : %10.2fs  +/- %8.2fs" % (us, data['mean'], data['std']))
 
 
 # ------------------------------------------------------------------------------
-def handle_session (db, mode, dbname, session, pname) :
+def handle_session(db, mode, dbname, session, pname):
     """
     For the given db, traverse collections
     """
@@ -424,88 +403,88 @@ def handle_session (db, mode, dbname, session, pname) :
     print(" +-- db   %s" % dbname)
 
     cnames = list()
-    cnames.append ("%s"    % session)
-    cnames.append ("%s.pm" % session)
-    cnames.append ("%s.p"  % session)
-    cnames.append ("%s.um" % session)
-    cnames.append ("%s.t"  % session)
+    cnames.append("%s"    % session)
+    cnames.append("%s.pm" % session)
+    cnames.append("%s.p"  % session)
+    cnames.append("%s.um" % session)
+    cnames.append("%s.t"  % session)
 
-    for name in cnames :
+    for name in cnames:
 
-        if  mode == 'list' and not cname :
+        if mode == 'list' and not cname:
             print(" | +-- coll %s" % name)
 
-        elif  mode == 'remove' and not pname :
-            try :
-                db.drop_collection (name)
+        elif mode == 'remove' and not pname:
+            try:
+                db.drop_collection(name)
                 print("  removed collection %s" % name)
-            except :
+            except:
                 pass  # ignore errors
 
-        else :
-            handle_coll (db, mode, name, pname)
+        else:
+            handle_coll(db, mode, name, pname)
 
 
 # ------------------------------------------------------------------------------
-def handle_coll (db, mode, cname, pname) :
+def handle_coll(db, mode, cname, pname):
     """
     For a given collection, traverse all documents
     """
 
-    if 'indexes' in cname :
+    if 'indexes' in cname:
         return
 
     collection = db[cname]
     print(" | +-- coll %s" % cname)
 
-    docs = collection.find ()
+    docs = collection.find()
 
-    for doc in docs :
+    for doc in docs:
 
         name = doc['_id']
 
-        if  mode == 'list' and not pname :
+        if mode == 'list' and not pname:
             print(" | | +-- doc  %s" % name)
 
-        elif  mode == 'remove' :
-            if (not pname) or (str(name) == str(pname)) :
-                try :
-                    collection.remove (name)
+        elif mode == 'remove':
+            if (not pname) or (str(name) == str(pname)):
+                try:
+                    collection.remove(name)
                     print("  removed document %s" % name)
                 except:
                     pass  # ignore errors
 
-        else :
-            if (not pname) or (str(name) == str(pname)) :
-                handle_doc (mode, doc)
+        else:
+            if (not pname) or (str(name) == str(pname)):
+                handle_doc(mode, doc)
 
 
 # ------------------------------------------------------------------------------
-def handle_doc (mode, doc) :
+def handle_doc(mode, doc):
     """
     And, surprise, for a given document, show it according to 'mode'
     """
 
     name = doc['_id']
 
-    if  mode == 'list' :
+    if mode == 'list':
 
-        for key in doc :
+        for key in doc:
             print(" | | | +-- %s" % (key))
 
-    elif  mode == 'tree' :
+    elif mode == 'tree':
         print(" | | +-- doc  %s" % (name))
-        for key in doc :
+        for key in doc:
             print(" | | | +-- %s" % (key))
 
-    elif  mode == 'dump' :
+    elif mode == 'dump':
         print(" | | +-- doc  %s" % (name))
-        for key in doc :
-            txt_in  = pprint.pformat (doc[key])
+        for key in doc:
+            txt_in  = pprint.pformat(doc[key])
             txt_out = ""
             lnum    = 1
-            for line in txt_in.split ('\n') :
-                if  lnum != 1 :
+            for line in txt_in.split('\n'):
+                if lnum != 1:
                     txt_out += ' | | | |                '
                 txt_out += line
                 txt_out += '\n'
@@ -523,7 +502,7 @@ def parse_commandline():
 
 # ------------------------------------------------------------------------------
 #
-if __name__ == '__main__' :
+if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser(description='')
@@ -538,21 +517,13 @@ if __name__ == '__main__' :
 
     args = parser.parse_args()
 
-    if  args.mode in ['help'] :
-        usage ()
+    if args.mode in ['help']:
+        usage()
 
-    if  not args.mode :
-        usage ("No mode specified")
+    if not args.mode:
+        usage("No mode specified")
 
-    if  args.url :
-        default_dburl = args.url
-    else :
-        if  'RADICAL_PILOT_DBURL' in os.environ :
-            default_dburl = os.environ['RADICAL_PILOT_DBURL']
-        else :
-            default_dburl = _DBURL
-
-    if  not args.url :
+    if not args.url:
         args.url = default_dburl
 
 
@@ -564,43 +535,45 @@ if __name__ == '__main__' :
     cachedir = args.cachedir
     profdir  = args.profdir
 
-    if  not term :
+    if not url:
+        url = os.environ.get('RADICAL_PILOT_DBURL')
+
+    if not url:
+        raise Exception('RADICAL_PILOT_DBURL is not set')
+
+    if not term:
         term = "pdf,png"
 
-    url = ru.Url (args.url)
-    if  not url.path or '/' == url.path :
-        url.path = 'radicalpilot'
+    if not cachedir:
+        cachedir = os.getcwd()
 
-    if  not cachedir :
-        cachedir = os.getcwd ()
-
-    if  not os.path.isdir (cachedir) :
-        usage ("%s is no valid cachedir" % cachedir)
+    if not os.path.isdir(cachedir):
+        usage("%s is no valid cachedir" % cachedir)
 
     print("modes   : %s" % mode)
     print("db url  : %s" % url)
     print("cachedir: %s" % cachedir)
-    mongo, db, dbname, cname, pname = ru.mongodb_connect (str(url), default_dburl)
+    mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url), default_dburl)
 
-    if not session and mode != 'list' :
+    if not session and mode != 'list':
         usage("mode %s needs a session id specified" % mode)
     elif session and mode == 'list':
         usage("invalid session parameter '%s' on mode 'list'" % session)
     else:
         print("session : %s" % session)
 
-    for m in mode.split (',') :
+    for m in mode.split(','):
 
-        if  m not in ['list', 'dump', 'tree', 'sort', 'stat', 'help'] :
-            usage ("Unsupported mode '%s'" % m)
+        if m not in ['list', 'dump', 'tree', 'sort', 'stat', 'help']:
+            usage("Unsupported mode '%s'" % m)
 
-        if   m == 'list' : list_sessions (db, cachedir, filters)
-        elif m == 'tree' : tree_session  (db, dbname, session)
-        elif m == 'dump' : dump_session  (db, dbname, session)
-        elif m == 'sort' : sort_session  (session, cachedir)
-        elif m == 'stat' : stat_session  (session, cachedir)
-        elif m == 'help' : usage (noexit=True)
-        else             : usage ("unknown mode '%s'" % mode)
+        if   m == 'list' : list_sessions(db, cachedir, filters)
+        elif m == 'tree' : tree_session (db, dbname, session)
+        elif m == 'dump' : dump_session (db, dbname, session)
+        elif m == 'sort' : sort_session (session, cachedir)
+        elif m == 'stat' : stat_session (session, cachedir)
+        elif m == 'help' : usage(noexit=True)
+        else             : usage("unknown mode '%s'" % mode)
 
     # ------------------------------------------------------------------------------------
     mongo.close()

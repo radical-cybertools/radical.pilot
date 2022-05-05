@@ -108,7 +108,7 @@ def get_session_events(sid, cachedir=None):
 
     """
 
-    docs = get_session_docs(sid, cachedir)
+    docs = get_session_docs(sid, cachedir=cachedir)
     ret  = list()
 
     if  'session' in docs:
