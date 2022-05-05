@@ -31,7 +31,6 @@ def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
-  # raise RuntimeError('oops 2')
 
 
 
@@ -228,8 +227,6 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
-
-        raise RuntimeError('oops')
 
         for task in tasks:
 

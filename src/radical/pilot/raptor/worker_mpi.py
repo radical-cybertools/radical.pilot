@@ -466,9 +466,7 @@ class _Worker(mt.Thread):
                     self._log.error('more than one task for rank %s: %s',
                             self._rank, [t['uid'] for t in tasks])
 
-              # for task in tasks:
-                task = tasks[0]
-                if True:
+                for task in tasks:
 
                     # this should never happen
                     if self._rank not in task['ranks']:
