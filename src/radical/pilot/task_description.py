@@ -160,7 +160,7 @@ class TaskDescription(ru.TypedDict):
        contain valid python code which is executed when the task mode is
        `TASK_EXEC` or `TASK_EVAL`.
 
-    ..data: function
+    .. data:: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
@@ -415,7 +415,7 @@ class TaskDescription(ru.TypedDict):
       Flags:
 
         * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-        the fly
+          the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
 
@@ -624,4 +624,3 @@ class TaskDescription(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
-
