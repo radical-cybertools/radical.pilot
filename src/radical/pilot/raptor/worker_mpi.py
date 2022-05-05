@@ -519,8 +519,8 @@ class _Worker(mt.Thread):
                'RP_GTOD'            : os.environ['RP_GTOD'],
                'RP_PROF'            : os.environ['RP_PROF'],
                'RP_PROF_TGT'        : os.environ['RP_PROF_TGT'],
-               'RP_RANKS'           : 1,  # dispatch_mpi will oveerwrite this
-               'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
+               'RP_RANKS'           : str(1),  # dispatch_mpi will oveerwrite this
+               'RP_RANK'            : str(0),  # dispatch_mpi will oveerwrite this
                })
 
 
