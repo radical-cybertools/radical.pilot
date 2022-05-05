@@ -95,7 +95,7 @@ language = 'en'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = []
+exclude_patterns = ['3/3.6-staging-task-input-data.ipynb', '3/3.7-staging-task-output-data.ipynb','3/3.9-setup-task-environment.ipynb']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -470,3 +470,4 @@ html_sourcelink_suffix = ''
 # Output prompt for code cells. %s is replaced by the execution count. To get a
 # prompt similar to the Classic Notebook, use
 # nbsphinx_output_prompt = 'Out[%s]:'
+

@@ -18,8 +18,7 @@ class IBRun(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self._command  : str  = ''
-        self._node_list: list = self._rm_info.node_list or []
+        self._command: str  = ''
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -94,9 +93,9 @@ class IBRun(LaunchMethod):
         offsets      = list()
         node_id      = 0
 
-        for node in self._node_list:
+        for node in self._rm_info.node_list:
             for rank in slots['ranks']:
-                if rank['node_id'] == node[0]:
+                if rank['node_id'] == node['node_id']:
                     for core_map in rank['core_map']:
                         assert core_map, 'core_map is not set'
                         # core_map contains core ids for each thread,
@@ -116,9 +115,9 @@ class IBRun(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        # FIXME: does IBRUN set a rank env?
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+        ret  = 'test -z "$SLURM_PROCID" || export RP_RANK=$SLURM_PROCID\n'
+        ret += 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         return ret
 
