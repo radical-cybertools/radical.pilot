@@ -66,7 +66,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
              "prte"   : {
-                "launch_cmd" : "prun --dvm-uri \"dvm_uri\" --personality ompi --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose",
+                "launch_cmd" : "prun --dvm-uri \"dvm_uri\" --np 1 --map-by node:HWTCPUS:PE=1:OVERSUBSCRIBE --bind-to hwthread:overload-allowed --host node1:1 --pmixmca ptl_base_max_msg_size 1073741824 --verbose",
                 "rank_exec"  : "/bin/sleep \"10\""
             }
         },
