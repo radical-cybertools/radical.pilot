@@ -39,14 +39,13 @@ class Worker(rp.raptor.worker_mpi._Worker):
         self._ranks = self._world.size
 
         try:
-            # initialize redis only once
-            if self._rank == 0:
-                self._log.debug('=== init redis [%s] [%d]', self._host, self._port)
-                if self._host and self._port:
-                    from colmena.redis.queue import RedisQueue
-                    self.redis  = RedisQueue(self._host, self._port, self._pass,
-                                            topics = ['rp task queue', 'rp result queue'])
-                    self.redis.connect()
+
+            self._log.debug('=== init redis [%s] [%d]', self._host, self._port)
+            if self._host and self._port:
+                from colmena.redis.queue import RedisQueue
+                self.redis  = RedisQueue(self._host, self._port, self._pass,
+                                        topics = ['rp task queue', 'rp result queue'])
+                self.redis.connect()
     
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
@@ -73,6 +72,15 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
                 assert(len(tasks) == 1)
                 task = tasks[0]
+                if task['name'] == 'colmena':
+                    # make sure we are conneced
+                    assert(self.redis.is_connected)
+                    # pull from redis queue if we have a colmena task
+                    redis_task = self.redis.get(topic = 'rp task queue')[1]
+                    if redis_task:
+                        self._log.debug('redis_task====>')
+                        self._log.debug((redis_task))
+                        task['description']['function'] = redis_task
 
                 self._log.debug('==== %s 2 - task recv by %d', task['uid'], self._rank)
 
@@ -135,23 +143,6 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
         except:
             self._log.exception('work thread failed [%s]', self._rank)
-
-
-
-    def _dispatch_function(self, task, env):
-
-        if task['name'] == 'colmena':
-            # make sure we are conneced
-            assert(self.redis.is_connected)
-            # pull from redis queue if we have a colmena task
-            redis_task = self.redis.get(topic = 'rp task queue')[1]
-            if redis_task:
-                if task['description']['function']:
-                    self._log.debug('redis_task====>')
-                    self._log.debug((redis_task))
-                    task['description']['function']   = redis_task
-
-        return super()._dispatch_function(task, env)
 
 
 
