@@ -80,7 +80,7 @@ class PRTE(LaunchMethod):
         # FIXME: another option is to introduce `nodes_per_dvm` in LM config
         #        dvm_count = math.ceil(len(rm_info.node_list) / nodes_per_dvm)
         dvm_count     = self._lm_cfg.get('dvm_count') or 1
-        nodes_per_dvm = math.ceil(len(self._rm_info['node_list']) / dvm_count)
+        nodes_per_dvm = math.ceil(len(self._rm_info.node_list) / dvm_count)
 
         # additional info to form prrte related files (uri-/hosts-file)
         dvm_file_info = {'base_path': os.getcwd()}
@@ -135,13 +135,14 @@ class PRTE(LaunchMethod):
             #        large tasks
             prte += ' --pmixmca ptl_base_max_msg_size %d'  % PTL_MAX_MSG_SIZE
             prte += ' --prtemca routed_radix %d'           % dvm_size
-            # 2 tweaks on Summit, which should not be needed in the long run:
-            # - ensure 1 ssh per dvm
-            prte += ' --prtemca plm_rsh_num_concurrent %d' % dvm_size
-            # - avoid 64 node limit (ssh connection limit)
-            prte += ' --prtemca plm_rsh_no_tree_spawn 1'
 
-            # to select a set of hardware threads that should be used for
+            # ensure 1 ssh per dvm (all daemons are directly connected to prte)
+            prte += ' --prtemca plm_rsh_num_concurrent %d' % dvm_size
+
+            # ssh connection limit (avoid 64 node limit)
+            #   --prtemca plm_rsh_no_tree_spawn 1'
+
+            # select a set of hardware threads that should be used for
             # processing the following option should set hwthread IDs:
             #   --prtemca hwloc_default_cpu_list "0-83,88-171"
 
@@ -159,8 +160,7 @@ class PRTE(LaunchMethod):
             cmd = '%s %s %s ' % (stdbuf_cmd, stdbuf_arg, prte)
 
             # additional (debug) arguments to prte
-            verbose = bool(os.environ.get('RADICAL_PILOT_PRUN_VERBOSE'))
-            if verbose:
+            if self._verbose:
                 cmd += ' '.join(['--prtemca plm_base_verbose 5'])
 
             cmd = cmd.strip()
@@ -213,15 +213,14 @@ class PRTE(LaunchMethod):
         # go through every dvm instance
         for _dvm_id in range(dvm_count):
 
-            node_list = self._rm_info['node_list'][_dvm_id      * nodes_per_dvm:
-                                                  (_dvm_id + 1) * nodes_per_dvm]
+            node_list = self._rm_info.node_list[_dvm_id      * nodes_per_dvm:
+                                               (_dvm_id + 1) * nodes_per_dvm]
             dvm_file_info.update({'dvm_id': _dvm_id})
             # write hosts file
             with ru.ru_open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
-                num_slots = self._rm_info['cores_per_node'] * \
-                            self._rm_info['threads_per_core']
                 for node in node_list:
-                    fout.write('%s slots=%d\n' % (node['node_name'], num_slots))
+                    fout.write('%s slots=%d\n' % (node['node_name'],
+                                                  self._rm_info.cores_per_node))
 
             _dvm_size  = len(node_list)
             _dvm_ready = mt.Event()
@@ -252,8 +251,7 @@ class PRTE(LaunchMethod):
             #        DVM to stabilize: `time.sleep(10.)`
 
         lm_details = {'dvm_list'    : dvm_list,
-                      'version_info': prte_info,
-                      'cvd_id_mode' : 'physical'}
+                      'version_info': prte_info}
 
         return lm_details
 
@@ -354,7 +352,6 @@ class PRTE(LaunchMethod):
 
         n_procs   = td['cpu_processes']
         n_threads = td['cpu_threads']
-        n_gpus    = td['gpu_processes']
 
         if not self._details.get('dvm_list'):
             raise RuntimeError('details with dvm_list not set (%s)' % self.name)
@@ -364,14 +361,7 @@ class PRTE(LaunchMethod):
         dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]
         dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
-        flags = ''
-        if n_gpus:
-            # input data is edited here to keep PRUN setup within LM
-            td['environment'] \
-                ['PMIX_MCA_pmdl_ompi_include_envars'] = 'OMPI_*,CUDA_*'
-            flags += '--personality ompi '
-
-        flags += '--np %d '                                   % n_procs
+        flags  = '--np %d '                                   % n_procs
         flags += '--map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE ' % n_threads
         flags += '--bind-to hwthread:overload-allowed'
 
