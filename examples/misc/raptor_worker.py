@@ -36,16 +36,16 @@ class MyWorker(rp.raptor.MPIWorker):
         self._log.debug(out)
 
         self._prof.prof('app_stop', uid=uid)
-      # self._prof.flush()
+        self._prof.flush()
 
-      # td = rp.TaskDescription({
-      #         'mode'            : rp.TASK_EXECUTABLE,
-      #         'scheduler'       : None,
-      #         'cpu_processes'   : 2,
-      #         'cpu_process_type': rp.MPI,
-      #         'executable'      : '/bin/sh',
-      #         'arguments'       : ['-c',
-      #                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
+        td = rp.TaskDescription({
+                'mode'            : rp.TASK_EXECUTABLE,
+                'scheduler'       : None,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c',
+                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
 
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',
