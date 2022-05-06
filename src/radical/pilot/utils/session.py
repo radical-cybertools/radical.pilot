@@ -83,7 +83,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
-    json_docs = get_session_docs(db, sid)
+    json_docs = get_session_docs(sid, db)
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
@@ -256,7 +256,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
     _, db, _, _, _ = ru.mongodb_connect (dburl)
 
-    json_docs = get_session_docs(db, sid)
+    json_docs = get_session_docs(sid, db)
 
     pilots = json_docs['pilot']
     num_pilots = len(pilots)
@@ -410,7 +410,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
         mongo, db, _, _, _ = ru.mongodb_connect(dburl)
 
-        json_docs = get_session_docs(db, sid)
+        json_docs = get_session_docs(sid, db)
         ru.write_json(json_docs, dst)
 
         log.info("session written to %s", dst)
