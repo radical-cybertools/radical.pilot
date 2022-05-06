@@ -85,7 +85,7 @@ def get_sessions(db, dbname, age, session):
     created  = list()
     for sid in sids:
 
-        docs = rpu.get_session_docs(db, sid)
+        docs = rpu.get_session_docs(sid, db)
         if  not docs or \
             not 'session' in docs or \
             not 'created' in docs['session']:
@@ -137,7 +137,7 @@ def list_sessions(db, dbname, age, session):
 
     for sid in sids:
 
-        docs = rpu.get_session_docs(db, sid)
+        docs = rpu.get_session_docs(sid, db)
         if  not docs or \
             not 'session' in docs or \
             not 'created' in docs['session']:
