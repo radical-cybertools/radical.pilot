@@ -78,7 +78,7 @@ def find_sid_by_pid (dbclient, dbname, pid) :
             continue
 
         try :
-            docs = rpu.get_session_docs (dbclient[dbname], sid)
+            docs = rpu.get_session_docs(sid, dbclient[dbname])
         except :
             sys.stdout.write ('?')
             sys.stdout.flush (   )
@@ -115,7 +115,7 @@ def find_sid_by_uid (dbclient, dbname, uid) :
             continue
 
         try :
-            docs = rpu.get_session_docs (dbclient[dbname], sid)
+            docs = rpu.get_session_docs(sid, dbclient[dbname])
         except :
             sys.stdout.write ('?')
             sys.stdout.flush (   )
