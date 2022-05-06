@@ -155,7 +155,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                ru.ID_CUSTOM,
                                                ns=self.session.uid)
             td.arguments      = [self.cfg_file, i]
-            td.cpu_threads    = int(self.cpn / self.masters_pn)
+            td.cpu_threads    = 1
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -184,10 +184,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         
         python_v = sys.version.split(' ')[0]
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : self.pilot_env.get('type','virtualenv'),
-                                    'version': self.pilot_env.get('version', python_v),
-                                    'path'   : self.pilot_env.get('path', ''),
-                                    'setup'  : self.pilot_env.get('setup', [])})
+                          env_spec={'type'    : self.pilot_env.get('type','virtualenv'),
+                                    'version' : self.pilot_env.get('version', python_v),
+                                    'path'    : self.pilot_env.get('path', ''),
+                                    'pre_exec': self.pilot_env.get('pre_exec', []),
+                                    'setup'   : self.pilot_env.get('setup', [])})
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
