@@ -1,12 +1,11 @@
 
 import os
 import sys
+import json
 import time
 import datetime
 
 import radical.utils as ru
-
-from ..states import AGENT_EXECUTING
 
 
 _CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
@@ -20,8 +19,7 @@ def bson2json (bson_data):
     # http://stackoverflow.com/questions/16586180/ \
     #                          typeerror-objectid-is-not-json-serializable
 
-    import json
-    from   bson.objectid import ObjectId
+    from bson.objectid import ObjectId
 
     class MyJSONEncoder (json.JSONEncoder):
         def default (self, o):
@@ -53,17 +51,17 @@ def get_last_session(db):
 
 
 # ------------------------------------------------------------------------------
-def get_session_docs(db, sid, cache=None, cachedir=None):
+def get_session_docs(sid, db=None, cachedir=None):
 
     # session docs may have been cached in /tmp/rp_cache_<uid>/<sid>.json -- in
     # that case we pull it from there instead of the database, which will be
     # much quicker.  Also, we do cache any retrieved docs to that place, for
     # later use.  An optional cachdir parameter changes that default location
     # for lookup and storage.
-    if  not cachedir:
+    if not cachedir:
         cachedir = _CACHE_BASEDIR
 
-    if  not cache:
+    if not cache:
         cache = "%s/%s.json" % (cachedir, sid)
 
     try:
@@ -119,87 +117,7 @@ def get_session_docs(db, sid, cache=None, cachedir=None):
 
 
 # ------------------------------------------------------------------------------
-#
-def get_session_slothist(db, sid, cache=None, cachedir=None):
-    """
-    For all pilots in the session, get the slot lists and slot histories. and
-    return as list of tuples like:
-
-         [pid   ,     [     [host,   slot]],     [      [slotstate, timestamp]]]
-    tuple(string, list(tuple(string, int )), list(tuple (string   , datetime )))
-    """
-
-    docs = get_session_docs(db, sid, cache, cachedir)
-
-    ret = dict()
-
-    for pilot_doc in docs['pilot']:
-
-        pid          = pilot_doc['uid']
-        slot_names   = list()
-        slot_infos   = dict()
-        slot_started = dict()
-
-        nodes   = pilot_doc['nodes']
-        n_cores = pilot_doc['cores_per_node']
-
-        if  not nodes:
-          # print "no nodes in pilot doc for %s" % pid
-            continue
-
-        for node in nodes:
-            for core in range(n_cores):
-                slot_name = "%s:%s" % (node, core)
-                slot_names.append (slot_name)
-                slot_infos  [slot_name] = list()
-                slot_started[slot_name] = sys.maxsize
-
-        for task_doc in docs['task']:
-            if task_doc['pilot'] == pilot_doc['uid']:
-
-                started  = None
-                finished = None
-                for event in sorted (task_doc['state_history'],
-                                     key=lambda x: x['timestamp']):
-                    if started:
-                        finished = event['timestamp']
-                        break
-                    if event['state'] == AGENT_EXECUTING:
-                        started = event['timestamp']
-
-                if not started or not finished:
-                  # print "no start/end for t %s - ignored" % task_doc['uid']
-                    continue
-
-                for slot_id in task_doc['opaque_slots']:
-                    if slot_id not in slot_infos:
-                      # print "slot %s for pilot %s unknown - ignored" \
-                      #     % (slot_id, pid)
-                        continue
-
-                    slot_infos[slot_id].append([started, finished])
-                    slot_started[slot_id] = min(started, slot_started[slot_id])
-
-        for slot_id in slot_infos:
-            slot_infos[slot_id].sort(key=lambda x: float(x[0]))
-
-        # we use the startup time to sort the slot names, as that gives a nicer
-        # representation when plotting.  That sorting should probably move to
-        # the plotting tools though... (FIXME)
-
-        slot_names.sort(key=lambda x: slot_started[x])   # pylint: disable=W0640
-
-        ret[pid] = dict()
-        ret[pid]['started']    = pilot_doc['started']
-        ret[pid]['finished']   = pilot_doc['finished']
-        ret[pid]['slots']      = slot_names
-        ret[pid]['slot_infos'] = slot_infos
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-def get_session_events(db, sid, cache=None, cachedir=None):
+def get_session_events(sid, cachedir=None):
     """
     For all entities in the session, create simple event tuples, and return
     them as a list
@@ -209,7 +127,7 @@ def get_session_events(db, sid, cache=None, cachedir=None):
 
     """
 
-    docs = get_session_docs(db, sid, cache, cachedir)
+    docs = get_session_docs(sid, cachedir=cachedir)
     ret  = list()
 
     if  'session' in docs:
@@ -234,10 +152,6 @@ def get_session_events(db, sid, cache=None, cachedir=None):
             else:
                 ret.append (['state', otype, oid, oid, None,       event, odoc])
 
-        for event in doc['state_history']:
-            ret.append (['state',     otype, oid, oid, event['timestamp'],
-                         event['state'], odoc])
-
         if  'callbackhistory' in doc:
             for event in doc['callbackhistory']:
                 ret.append (['callback',  otype, oid, oid, event['timestamp'],
@@ -258,10 +172,6 @@ def get_session_events(db, sid, cache=None, cachedir=None):
                 ret.append (['state', otype, oid, pid, doc[event], event, doc])
             else:
                 ret.append (['state', otype, oid, pid, None,       event, doc])
-
-        for event in doc['state_history']:
-            ret.append (['state',     otype, oid, pid, event['timestamp'],
-                         event['state'], doc])
 
         # TODO: this probably needs to be "doc"
         if  'callbackhistory' in event:
