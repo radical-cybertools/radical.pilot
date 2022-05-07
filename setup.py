@@ -192,9 +192,10 @@ base = 'share/%s' % name
 df = [('%s/examples'              % base, glob.glob('examples/[01]*.py')),
       ('%s/examples'              % base, glob.glob('examples/hello*')),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
-      ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
-      ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
-      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
+      ('%s/examples/docs'         % base, glob.glob('examples/docs/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.cfg')),
+      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*.py')),
 ]
 
 
