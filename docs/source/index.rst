@@ -22,13 +22,16 @@ Brief description.
    :numbered:
    :maxdepth: 2
 
-   overview.rst
-   quickstart.ipynb
-   tutorial.ipynb
-   developers.rst
    3/3.1-getting-started.ipynb
    3/3.2-obtaining-task-details.ipynb
    3/3.3-handle-failing-tasks.ipynb
+   3/3.4-use-multiple-pilots.ipynb
+   3/3.5-selecting-a-task-scheduler.ipynb
+   3/3.6-staging-task-input-data.ipynb
+   3/3.7-staging-task-output-data.ipynb
+   3/3.8-sharing-task-input-data.ipynb
+   3/3.9-setup-task-environment.ipynb
+   3/3.11-using-pre-and-post-exec-commands.ipynb
 
 .. Indices and tables
 .. ------------------
