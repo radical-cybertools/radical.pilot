@@ -95,7 +95,7 @@ language = 'python'
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This patterns also effect to html_static_path and html_extra_path
-exclude_patterns = ['3/3.6-staging-task-input-data.ipynb', '3/3.7-staging-task-output-data.ipynb','3/3.9-setup-task-environment.ipynb']
+exclude_patterns = []
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
