@@ -45,10 +45,15 @@ class PythonTask(object):
         if not isinstance(bson_obj, str):
             raise ValueError('bson object should be string')
 
-        pytask = deserialize_bson(bson_obj)
-        func   = deserialize_obj(pytask['func'])
+        try:
+            pytask = deserialize_bson(bson_obj)
+            func   = deserialize_obj(pytask['func'])
+            args   = list(pytask['args'])
+            kwargs = pytask['kwargs']
+        except Exception as e:
+            raise ValueError('bson_obj is not a PythonTask') from e
 
-        return func, list(pytask['args']), pytask['kwargs']
+        return func, args, kwargs
 
 
     # --------------------------------------------------------------------------
@@ -84,4 +89,3 @@ class PythonTask(object):
 
 
 # ------------------------------------------------------------------------------
-

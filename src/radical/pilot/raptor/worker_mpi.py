@@ -491,15 +491,15 @@ class _Worker(mt.Thread):
                         task['exit_code']    = -1
                         task['return_value'] = None
                         task['exception']    = [e.__class__.__name__, str(e)]
-                        self._log.exception('recv err  %s  to  0' % (task['uid']))
+                        self._log.exception('recv err  %s  to  0' % (task['uid']), exc_info=e)
 
                     finally:
                         # send task back to rank 0
                         # FIXME: task_exec_stop
                         rank_result_q.put(task)
 
-        except:
-            self._log.exception('work thread failed [%s]', self._rank)
+        except Exception as e:
+            self._log.exception('work thread failed [%s]', self._rank, exc_info=e)
 
 
     # --------------------------------------------------------------------------
@@ -620,13 +620,21 @@ class _Worker(mt.Thread):
         # check if we have a serialized object
         self._log.debug('func serialized: %d: %s', len(func), func)
         try:
-            # FIXME: can we have a better test than try/except?  This hides
-            #        potential errors...
-            # FIXME: ensure we did not get args and kwargs from above
-            to_call, args, kwargs = PythonTask.get_func_attr(func)
+            to_call, _args, _kwargs = PythonTask.get_func_attr(func)
+            assert callable(to_call)
             py_func = True
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            self._log.debug(f'{uid} function is not a PythonTask: ', exc_info=e)
+        except Exception as e:
+            raise RuntimeError(
+                f'Unhandled exception getting serialized function for {uid}.') from e
+        else:
+            if args or kwargs:
+                raise ValueError(
+                    f'{uid} "args" and "kwargs" must be empty for PythonTask function')
+            else:
+                args = _args
+                kwargs = _kwargs
 
         if not to_call:
             assert(func)
@@ -640,7 +648,7 @@ class _Worker(mt.Thread):
 
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task))
+            raise ValueError('%s callable %s not found: %s' % (uid, to_call, task))
 
         comm = task.get('mpi_comm')
         if comm:
@@ -693,7 +701,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = [e.__class__.__qualname__, str(e)]
             ret = 1
 
         finally:

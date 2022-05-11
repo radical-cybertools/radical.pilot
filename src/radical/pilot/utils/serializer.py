@@ -129,17 +129,25 @@ def deserialize_file(fname):
 #
 def deserialize_obj(obj):
     '''
-    Deserialize object from str
+    Deserialize object from str.
+
+    Raises
+    ------
+    TypeError
+        if object cannot be deserialized.
+    ValueError
+        if no result is found.
+
     '''
     result = None
 
     try:
         result = dill.loads(obj)
     except Exception as e:
-        raise Exception ("failed to deserialize from object") from e
+        raise TypeError("failed to deserialize from object") from e
 
     if result is None:
-        raise RuntimeError('failed to deserialize')
+        raise ValueError('failed to deserialize')
     return result
 
 
@@ -162,4 +170,3 @@ def deserialize_bson(obj):
 
 
 # ------------------------------------------------------------------------------
-
