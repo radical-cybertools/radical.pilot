@@ -67,6 +67,13 @@
         "cores"    : 64
     },
 
+    "xsede.expanse": {
+        "project"  : null,
+        "queue"    : "compute",
+        "schema"   : "ssh",
+        "cores"    : 128
+    },
+
     "xsede.supermic_ssh" : {
         "project"  : "TG-MCB090174",
         "queue"    : "workq",

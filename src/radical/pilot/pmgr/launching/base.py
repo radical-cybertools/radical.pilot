@@ -229,7 +229,7 @@ class PMGRLaunchingComponent(rpu.Component):
             if not isinstance(pids, list):
                 pids = [pids]
 
-            self._log.info('received pilot_cancel command (%s)', pids)
+            self._log.info('received "kill_pilots" command (%s)', pids)
 
             self._kill_pilots(pids)
 

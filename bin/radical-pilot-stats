@@ -3,6 +3,7 @@
 import os
 import sys
 import pprint
+
 import radical.utils       as ru
 import radical.pilot       as rp
 import radical.pilot.utils as rpu
@@ -135,11 +136,10 @@ def usage(msg=None, noexit=False):
       Notes:
 
         The default mode is 'list'.
-        The default MongoDB is '%s'
         Multiple modes can be specified as <mode>,<mode>,...
         For mode 'prof', multiple session ids can be specified as <session>,<session>,...
 
-""" % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0], _DBURL))
+""" % (sys.argv[0], sys.argv[0], sys.argv[0], sys.argv[0]))
 
     if msg:
         sys.exit(1)
@@ -523,10 +523,6 @@ if __name__ == '__main__':
     if not args.mode:
         usage("No mode specified")
 
-    if not args.url:
-        args.url = default_dburl
-
-
     mode     = args.mode
     url      = args.url
     session  = args.session
@@ -553,7 +549,7 @@ if __name__ == '__main__':
     print("modes   : %s" % mode)
     print("db url  : %s" % url)
     print("cachedir: %s" % cachedir)
-    mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url), default_dburl)
+    mongo, db, dbname, cname, pname = ru.mongodb_connect(str(url))
 
     if not session and mode != 'list':
         usage("mode %s needs a session id specified" % mode)
