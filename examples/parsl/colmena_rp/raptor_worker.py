@@ -1,4 +1,7 @@
 import os
+import sys
+import time
+import redis
 import threading     as mt
 import radical.utils as ru
 
@@ -11,7 +14,6 @@ _TaskPuller   = rp.raptor.worker_mpi._TaskPuller
 _ResultPusher = rp.raptor.worker_mpi._ResultPusher
 
 # before you start, put sim.py in $HOME
-import sys
 home = os.getenv("HOME")
 sys.path.append(home)
 
@@ -42,10 +44,8 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
             self._log.debug('=== init redis [%s] [%d]', self._host, self._port)
             if self._host and self._port:
-                from colmena.redis.queue import RedisQueue
-                self.redis  = RedisQueue(self._host, self._port, self._pass,
-                                        topics = ['rp task queue', 'rp result queue'])
-                self.redis.connect()
+                self.redis  = redis.Redis(host=self._host, port=self._port,
+                                                       password=self._pass)
     
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
@@ -74,13 +74,14 @@ class Worker(rp.raptor.worker_mpi._Worker):
                 task = tasks[0]
                 if task['name'] == 'colmena':
                     # make sure we are conneced
-                    assert(self.redis.is_connected)
+                    assert(self.redis.ping())
                     # pull from redis queue if we have a colmena task
-                    redis_task = self.redis.get(topic = 'rp task queue')[1]
+                    key = 'task:{0}'.format(task['uid'])
+                    redis_task = eval(self.redis.get(key))
                     if redis_task:
                         self._log.debug('redis_task====>')
                         self._log.debug((redis_task))
-                        task['description']['function'] = redis_task
+                        task['description']['function'] = redis_task['function']
 
                 self._log.debug('==== %s 2 - task recv by %d', task['uid'], self._rank)
 
@@ -128,16 +129,17 @@ class Worker(rp.raptor.worker_mpi._Worker):
                     self._log.debug('==== put 0 %s : %s', task['uid'], os.getpid())
 
                     if task['name'] == 'colmena':
-                        assert(self.redis.is_connected)
+                        assert(self.redis.ping())
                         self._log.debug('redis_result_task_%s====>', task['uid'])
                         self._log.debug(str(task['return_value']))
-                        task['stdout'] = str(rpu.serialize_obj(task['return_value']))
 
-                        self.redis.put(task['stdout'], topic='rp result queue')
+                        key = 'result:{0}'.format(str(task['uid']))
+                        ret = rpu.serialize_obj(task['return_value'])
 
-                        task['stdout']                     = 'redirected_to_redis'   
-                        task['return_value']               = 'redirected_to_redis'
-                        task['description']['function']    = 'redirected_to_redis'
+                        task['stdout']                  = 'redis'
+                        task['return_value']            = str(ret)
+                        task['description']['function'] = 'redis'
+                        self.redis.set(key, str(task))
 
                     rank_result_q.put(task)
 

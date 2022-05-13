@@ -1,12 +1,13 @@
-import dill
+import time
+import redis
 import radical.utils as ru
 import radical.pilot as rp
+import radical.pilot.utils as rpu
 
 from functools import partial
 from .parsl_rp import BASH, PYTHON, RADICALExecutor
 from colmena.models import Result
 from colmena.models import ExecutableTask
-from colmena.redis.queue import RedisQueue
 
 COLMENA = 'colmena'
 
@@ -29,13 +30,11 @@ class RedisRadicalExecutor(RADICALExecutor):
 
         # check if we have redis mode enabled and connect
         if self.enable_redis:
-            self.redis = RedisQueue(self.redis_host, port = self.redis_port, 
-                                    password = self.redis_pass, topics = \
-                                    ['rp task queue', 'rp result queue'])
-            self.redis.connect()
+            self.redis = redis.Redis(host=self.redis_host, port = self.redis_port, 
+                                                       password = self.redis_pass)
 
         cfg = ru.read_json("raptor.cfg")
-        cfg["redis"] = {"host": self.redis_host, 
+        cfg["redis"] = {"host": self.redis_host,
                         "port": self.redis_port,
                         "pass": self.redis_pass}
         # custom redis worker for colmena
@@ -44,32 +43,35 @@ class RedisRadicalExecutor(RADICALExecutor):
 
         ru.write_json(cfg, "raptor.cfg")
 
-    def get_redis_task(self):
+    def get_redis_task(self, task_id):
         '''
         Pull a result object from redis queue
         '''
         if self.enable_redis:
             # make sure we are connected to redis
-            assert(self.redis.is_connected)
-            message = self.redis.get(topic = 'rp result queue')
+            assert(self.redis.ping())
+            key = 'result:{0}'.format(str(task_id))
+            msg = self.redis.get(key)
+            if msg:
+                task = eval(msg.decode())
+                retv = rpu.deserialize_obj(eval(task['return_value']))
+                if task['uid'] == task_id:
+                    self.log.debug('key found and matched')
+                    self.redis.delete(key)
+                else:
+                    raise('inconsistent rp task and redis result')
+            return retv
 
-            if message:
-                self.log.debug('get_task_from_redis')
-                result = eval(message[1])
-                try:
-                    stdout = dill.loads(result)
-                except Exception as e:
-                    self.log.error(str(e))
-            return stdout
 
     def put_redis_task(self, task):
         '''
         Push a result object to redis queue
         '''
+        key = 'task:{0}'.format(str(task.uid))
         if self.enable_redis:
             # make sure we are connected to redis
-            assert(self.redis.is_connected)
-            self.redis.put(task, topic = 'rp task queue')
+            assert(self.redis.ping())
+            self.redis.set(key, str(task))
             self.log.debug('send_task_to_redis')
 
 
@@ -81,12 +83,13 @@ class RedisRadicalExecutor(RADICALExecutor):
         if not task.uid.startswith('master'):
             parsl_task = self.future_tasks[task.uid]
             if state == rp.DONE and task.name == COLMENA:
-                self.log.debug('recv_colmena_result')
                 try:
-                    stdout = self.get_redis_task()
+                    stdout = self.get_redis_task(task.uid)
                     parsl_task.set_result(stdout)
+                    self.log.debug('recv_colmena_result')
                 except Exception as e:
-                    self.log.debug(e)
+                    self.log.error(e)
+                    raise e
             else:
                 return super().task_state_cb(task, state)
 
@@ -128,6 +131,7 @@ class RedisRadicalExecutor(RADICALExecutor):
     def task_translate(self, func, args, kwargs):
         # Colmena task if the task args is type Result
         task = super().task_translate(func, args, kwargs)
+        task.uid = str(self._task_counter)
         if len(args) > 0:
             for arg in args: 
                 if isinstance(arg, Result):
@@ -135,7 +139,7 @@ class RedisRadicalExecutor(RADICALExecutor):
                     task.name = COLMENA
 
         if task.function:
-            self.put_redis_task(task.function)
+            self.put_redis_task(task)
             task.function = 'redis_func'
 
         return task
