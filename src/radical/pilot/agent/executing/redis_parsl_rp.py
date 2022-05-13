@@ -141,8 +141,7 @@ class RedisRadicalExecutor(RADICALExecutor):
         """Shutdown the executor, including all RADICAL-Pilot
            components and redis instances
         """
-        self.report.progress_done()
-        self.session.close(download=True)
-        self.report.header("attempting RADICALExecutor shutdown")
-
+        super().shutdown(hub=True, targets='all', block=False)
+        self.redis.flushall()
         return True
+
