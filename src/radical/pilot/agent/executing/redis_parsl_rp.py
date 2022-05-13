@@ -16,11 +16,10 @@ class RedisRadicalExecutor(RADICALExecutor):
     def __init__(self, label="RedisRadicalExecutor", resource=None, login_method=None,
                        walltime=None, managed=True, max_tasks=float('inf'),
                        gpus=0, worker_logdir_root=".", partition=" ",
-                       project=" ", enable_redis=False, redis_port=6379,
-                       redis_host:str ='127.0.0.1', redis_pass: str=None):
+                       project=" ", redis_port=6379, redis_host:str ='127.0.0.1',
+                       redis_pass: str=None):
 
         # Needed by Colmena
-        self.enable_redis = enable_redis
         self.redis_port   = redis_port
         self.redis_host   = redis_host
         self.redis_pass   = redis_pass
@@ -28,10 +27,9 @@ class RedisRadicalExecutor(RADICALExecutor):
         super().__init__(label, resource, login_method, walltime, managed, max_tasks,
                          gpus, worker_logdir_root, partition, project)
 
-        # check if we have redis mode enabled and connect
-        if self.enable_redis:
-            self.redis = redis.Redis(host=self.redis_host, port = self.redis_port, 
-                                                       password = self.redis_pass)
+        self.redis = redis.Redis(host=self.redis_host, port = self.redis_port, 
+                                                   password = self.redis_pass)
+        assert(self.redis.ping())
 
         cfg = ru.read_json("raptor.cfg")
         cfg["redis"] = {"host": self.redis_host,
@@ -47,20 +45,17 @@ class RedisRadicalExecutor(RADICALExecutor):
         '''
         Pull a result object from redis queue
         '''
-        if self.enable_redis:
-            # make sure we are connected to redis
-            assert(self.redis.ping())
-            key = 'result:{0}'.format(str(task_id))
+        key = 'result:{0}'.format(str(task_id))
+        if self.redis.exists(key):
             msg = self.redis.get(key)
-            if msg:
-                task = eval(msg.decode())
+            task = eval(msg.decode())
+            if task['uid'] == task_id:
+                self.log.debug('key found and matched')
                 retv = rpu.deserialize_obj(eval(task['return_value']))
-                if task['uid'] == task_id:
-                    self.log.debug('key found and matched')
-                    self.redis.delete(key)
-                else:
-                    raise('inconsistent rp task and redis result')
-            return retv
+                self.redis.delete(key)
+                return retv
+            else:
+                raise('inconsistent rp task and redis task')
 
 
     def put_redis_task(self, task):
@@ -68,11 +63,8 @@ class RedisRadicalExecutor(RADICALExecutor):
         Push a result object to redis queue
         '''
         key = 'task:{0}'.format(str(task.uid))
-        if self.enable_redis:
-            # make sure we are connected to redis
-            assert(self.redis.ping())
-            self.redis.set(key, str(task))
-            self.log.debug('send_task_to_redis')
+        self.redis.set(key, str(task))
+        self.log.debug('send_task_to_redis')
 
 
     def task_state_cb(self, task, state):
@@ -143,3 +135,14 @@ class RedisRadicalExecutor(RADICALExecutor):
             task.function = 'redis_func'
 
         return task
+
+
+    def shutdown(self, hub=True, targets='all', block=False):
+        """Shutdown the executor, including all RADICAL-Pilot
+           components and redis instances
+        """
+        self.report.progress_done()
+        self.session.close(download=True)
+        self.report.header("attempting RADICALExecutor shutdown")
+
+        return True

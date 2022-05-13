@@ -46,6 +46,7 @@ class Worker(rp.raptor.worker_mpi._Worker):
             if self._host and self._port:
                 self.redis  = redis.Redis(host=self._host, port=self._port,
                                                        password=self._pass)
+                assert(self.redis.ping())
     
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
@@ -72,16 +73,11 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
                 assert(len(tasks) == 1)
                 task = tasks[0]
-                if task['name'] == 'colmena':
-                    # make sure we are conneced
-                    assert(self.redis.ping())
-                    # pull from redis queue if we have a colmena task
-                    key = 'task:{0}'.format(task['uid'])
+                key = 'task:{0}'.format(task['uid'])
+                if self.redis.exists(key):
                     redis_task = eval(self.redis.get(key))
-                    if redis_task:
-                        self._log.debug('redis_task====>')
-                        self._log.debug((redis_task))
-                        task['description']['function'] = redis_task['function']
+                    self._log.debug('redis_task====>')
+                    task['description']['function'] = redis_task['function']
 
                 self._log.debug('==== %s 2 - task recv by %d', task['uid'], self._rank)
 
@@ -127,19 +123,15 @@ class Worker(rp.raptor.worker_mpi._Worker):
 
                     # FIXME: task_exec_stop
                     self._log.debug('==== put 0 %s : %s', task['uid'], os.getpid())
+                    self._log.debug('redis_result_task_%s====>', task['uid'])
 
-                    if task['name'] == 'colmena':
-                        assert(self.redis.ping())
-                        self._log.debug('redis_result_task_%s====>', task['uid'])
-                        self._log.debug(str(task['return_value']))
+                    key = 'result:{0}'.format(str(task['uid']))
+                    ret = rpu.serialize_obj(task['return_value'])
 
-                        key = 'result:{0}'.format(str(task['uid']))
-                        ret = rpu.serialize_obj(task['return_value'])
-
-                        task['stdout']                  = 'redis'
-                        task['return_value']            = str(ret)
-                        task['description']['function'] = 'redis'
-                        self.redis.set(key, str(task))
+                    task['stdout']                  = 'redis'
+                    task['return_value']            = str(ret)
+                    task['description']['function'] = 'redis'
+                    self.redis.set(key, str(task))
 
                     rank_result_q.put(task)
 
