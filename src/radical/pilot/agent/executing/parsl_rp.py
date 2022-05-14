@@ -300,9 +300,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         try:
 
-            self.prof.prof(event= 'trans_start', uid=self._uid)
+            self.prof.prof(event='trans_start', uid=task_id)
             task = self.task_translate(func, args, kwargs)
-            self.prof.prof(event= 'trans_stop', uid=self._uid)
+            self.prof.prof(event='trans_stop', uid=task_id)
 
             self.report.progress()
 
