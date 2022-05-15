@@ -112,6 +112,11 @@ class Agent_0(rpu.Worker):
         self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
 
+        # also open a service endpoint so that a ZMQ client can submit tasks to
+        # this agent
+        self._service = None
+        self._start_service_ep()
+
 
     # --------------------------------------------------------------------------
     #
@@ -843,6 +848,22 @@ class Agent_0(rpu.Worker):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'register_named_env',
                                           'arg': {'env_name': env_name}})
         return out
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_service_ep(self):
+
+        self._service = ru.zmq.Server(uid='%s.server' % self._uid)
+
+        self._service.register_request('submit_tasks', self._ep_submit_tasks)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ep_submit_tasks(self, request):
+
+
 
 
 # ------------------------------------------------------------------------------
