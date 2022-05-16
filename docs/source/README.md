@@ -60,4 +60,12 @@ The jupyter notebook should be run from your {PROJECT_HOME}
 jupyter notebook
 ```
 
-# How to pus/configure sphinx at readthedocs for notebooks #TODO
+# Details on readthedocs for documentation build with notebooks
+- The build can be configured at [Readthedocs](https://readthedocs.org/dashboard/)
+- The Admin section contains all the settings for the building e.g. env variables
+- The Builds tab shows all the past/currently building builds.
+- The important files to learn about are - 
+  - index.rst - This will be the homepage of the webpage. toctree is contained here. 
+  - conf.py - Configuration file that `sphinx` reads  
+  - requirements_docs.txt - Dependencies for building the documentation on readthedocs
+  - [.readthedocs](https://docs.readthedocs.io/en/stable/config-file/v2.html) Configuration file for readthedocs environment
