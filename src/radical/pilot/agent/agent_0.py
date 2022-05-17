@@ -863,6 +863,15 @@ class Agent_0(rpu.Worker):
     #
     def _ep_submit_tasks(self, request):
 
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ep_get_task_updates(self, request):
+
+        pass
+
 
 
 
