@@ -72,7 +72,10 @@ def _pilot_state_progress(pid, current, target):
 
     if current in FINAL and target != current:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (pid, current, target))
+            # we ignore any additional final state transitions - they are a sign
+            # of crossed messages
+            pass
+          # raise ValueError('state %s: %s -> %s invalid' % (pid, current, target))
 
     cur = _pilot_state_values[current]
     tgt = _pilot_state_values[target]
@@ -210,7 +213,10 @@ def _task_state_progress(uid, current, target):
 
     if current in FINAL:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (uid, current, target))
+            # we ignore any additional final state transitions - they are a sign
+            # of crossed messages
+            pass
+          # raise ValueError('state %s: %s -> %s invalid' % (uid, current, target))
 
     cur = _task_state_values[current]
     tgt = _task_state_values[target]
