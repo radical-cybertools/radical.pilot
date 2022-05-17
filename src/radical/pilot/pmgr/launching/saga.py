@@ -70,7 +70,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         try:
             with self._lock:
 
-                if job.id not in self._pilots:
+                if pid not in self._pilots:
                     return
 
                 rp_state = self._translate_state(saga_state)
@@ -93,7 +93,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         with self._lock:
 
             # cancel pilots
-            for _, job in self._jobs:
+            for job in self._jobs.values():
                 job.cancel()
 
             # close job services
