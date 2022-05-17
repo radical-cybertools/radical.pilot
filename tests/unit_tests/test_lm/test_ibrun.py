@@ -113,6 +113,18 @@ class TestIBRun(TestCase):
                 command = lm_ibrun.get_rank_exec(task, None, None)
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(IBRun, '__init__', return_value=None)
+    def test_get_rank_cmd(self, mocked_init):
+
+        lm_ibrun = IBRun('', {}, None, None, None)
+
+        command = lm_ibrun.get_rank_cmd()
+        self.assertIn('$SLURM_PROCID', command)
+        self.assertIn('$MPI_RANK',     command)
+        self.assertIn('$PMIX_RANK',    command)
+
 # ------------------------------------------------------------------------------
 
 
@@ -124,6 +136,7 @@ if __name__ == '__main__':
     tc.test_can_launch()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
+    tc.test_get_rank_cmd()
 
 # ------------------------------------------------------------------------------
 # pylint: enable=protected-access, unused-argument, no-value-for-parameter
