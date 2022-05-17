@@ -374,6 +374,8 @@ class DDMD(object):
                 break
 
             # kill a sim_task
+            # FIXME: I think this is wrong: *this* aggregate task just finished
+            #        anyway and thus there should be space to start a new sim
             sim_uid = random.choice(list(self._tasks[self.TASK_MD_SIM].keys()))
             self._cancel_tasks(sim_uid)
             break
