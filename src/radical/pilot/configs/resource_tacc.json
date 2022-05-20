@@ -2,13 +2,8 @@
 {
     "frontera_interactive": {
         "description"                 : "Petascale computing system at the Texas Advanced Computing Center (TACC)",
-        "notes"                       : "Specify this resource in the pilot description and run RP within a compute node(s)",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
+        "notes"                       : "Specify this resource in the pilot description and run RP from and within a compute node(s)",
+        "schemas"                     : ["local"],
         "local"                       :
         {
             "job_manager_endpoint"    : "fork://localhost/",
@@ -21,13 +16,29 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SRUN"],
-                                         "SRUN" : {
+                                         "order": ["IBRUN","MPIRUN","SRUN"],
+                                         "IBRUN": {
                                              "pre_exec_cached": []
+                                         },
+                                         "MPIRUN": {
+                                             "pre_exec_cached": [                                                 
+                                                 "module load TACC",
+                                                 "module unload intel",
+                                                 "module unload impi",
+                                                 "module load   intel",
+                                                 "module load   impi"
+                                                ]
+                                         },
+                                         "SRUN" : {
+                                             "pre_exec_cached": [
+                                                "module load TACC",
+                                                "module unload intel",
+                                                "module unload impi",
+                                                "module load   intel"
+                                             ]
                                          }
                                         },
-        "pre_bootstrap_1"             :["export RP_APP_TUNNEL_ADDR=144.76.72.175:27017",
-                                        "echo  $RP_APP_TUNNEL_ADDR"],
+        "pre_bootstrap_1"             :[],
         "pre_bootstrap_0"             :[],
         "default_remote_workdir"      : "$SCRATCH",
         "valid_roots"                 : ["$SCRATCH", "$WORK"],
