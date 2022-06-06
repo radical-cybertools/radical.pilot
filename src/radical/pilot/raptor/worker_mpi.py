@@ -672,7 +672,7 @@ class _Worker(mt.Thread):
         old_env = os.environ.copy()
 
         for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = v
+            os.environ[k] = str(v)
 
         try:
             # redirect stdio to capture them during execution
@@ -739,7 +739,7 @@ class _Worker(mt.Thread):
         old_env = os.environ.copy()
 
         for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = v
+            os.environ[k] = str(v)
 
         try:
             # redirect stdio to capture them during execution
@@ -792,7 +792,7 @@ class _Worker(mt.Thread):
         old_env = os.environ.copy()
 
         for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = v
+            os.environ[k] = str(v)
 
         try:
             # redirect stdio to capture them during execution
