@@ -24,33 +24,30 @@ __________________
     * - .. envvar:: RADICAL_PILOT_STRICT_CANCEL
       - Cancel the tasks immediately. #TODO Didn't understood
       - {NOT_SET}
-    * - .. envvar:: RADICAL_SAGA_PTY_SSH_TIMEOUT
-      - Sets the connection timeout (in seconds, default: 10) for the SAGA PTY layer. On connection timeouts should be set to 60 or more
-      - `10.0`
     * - .. envvar:: RADICAL_DEFAULT_LOG_TGT
-      - dsa
-      - defd
+      - The log target. #TODO Need more clarification
+      - .
     * - .. envvar:: RADICAL_DEFAULT_LOG_DIR
-      - Log dir
+      - The Log dir
       - $PWD
     * - .. envvar:: RADICAL_DEFAULT_LOG_LVL
-      - ERROR
+      - #TODO Description
       - ERROR
     * - .. envvar:: RADICAL_DEFAULT_REPORT
-      - TRUE
+      - #TODO Description
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_REPORT_TGT
-      - stderr
+      - #TODO Description
       - stderr
     * - .. envvar:: RADICAL_DEFAULT_REPORT_DIR
       - Directory of Reporter module
       - $PWD
     * - .. envvar:: RADICAL_DEFAULT_PROFILE
-      - True
+      - #TODO Description
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_PROFILE_DIR
+      - #TODO Description
       - $PWD
-      - PWD
 
 .. raw:: html
 
@@ -65,13 +62,17 @@ __________________
       - Description
       - Default value
     * - <NS>_LOG_LVL
-      - Used for log level
-      - `#TODO`
+      - Used for log level. #TODO Description
+      - Refer `RADICAL_DEFAULT_*` #TODO Confirm these
     * - <NS>_LOG_TGT
       - Used for the log targets
-      - #TODO
+      - Refer `RADICAL_DEFAULT_*` #TODO Confirm these
 
 .. note:: The name space is used to derive env variable names for log levels and targets. If no ns is given, the ns is derived from the name. Eg. the name `radical.pilot` becomes `RADICAL_PILOT`.
+
+.. raw:: html
+
+   <hr>
 
 .. list-table:: Reporter-related Env vars. `ru.Reporter` instances are very similar to `ru.Logger` instances: same schema is used for names and name spaces.
     :widths: 35 100 20
@@ -126,8 +127,41 @@ __________________
       - Sets SMT settings on some resources. Usually covered via resource config options
       - 1
     * - .. envvar:: RP_PROF_DEBUG
-      - enable additional debug messages on profile extraction
+      - enable additional debug messagRP_PROF_DEBUGes on profile extraction
       - {NOT_SET}
+
+.. raw:: html
+
+   <hr>
+
+.. list-table:: SAGA related vars
+    :widths: 35 100 20
+    :header-rows: 1
+
+    * - Environment Variable Name
+      - Description
+      - Default Value
+    * - .. envvar:: RADICAL_SAGA_PTY_SSH_PROMPT
+      - Prompt Pattern. Use this regex to detect shell prompts
+      - [\\$#%>\\]]\\s*$
+    * - .. envvar:: RADICAL_SAGA_PTY_SSH_COPYMODE
+      - Use the specified protocol for pty level file transfer
+      - options: 'sftp', 'scp', 'rsync+ssh', 'rsync'
+    * - .. envvar:: RADICAL_SAGA_PTY_SSH_SHAREMODE
+      - Use the specified mode as flag for the ssh ControlMaster
+      - options: 'auto', 'no' (This should be set to "no" on CentOS)
+    * - .. envvar:: RADICAL_SAGA_PTY_SSH_TIMEOUT
+      - Sets the connection timeout (in seconds, default: 10) for the SAGA PTY layer. On connection timeouts should be set to 60 or more
+      - `10.0`
+    * - .. envvar:: RADICAL_SAGA_PTY_CONN_POOL_SIZE
+      - Maximum number of connections kept in a connection pool
+      - 10
+    * - .. envvar:: RADICAL_SAGA_PTY_CONN_POOL_TTL
+      - Minimum time a connection is kept alive in a connection pool
+      - 600
+    * - .. envvar:: RADICAL_SAGA_PTY_CONN_POOL_WAIT
+      - maximum number of seconds to wait for any connection in the connection pool to become available before raising a timeout error
+      - 600
 
 .. raw:: html
 
