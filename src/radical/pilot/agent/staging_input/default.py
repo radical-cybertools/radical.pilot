@@ -60,7 +60,7 @@ class Default(AgentStagingInputComponent):
         no_staging_tasks = list()
         staging_tasks    = list()
 
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             # check if we have any staging directives to be enacted in this
             # component
@@ -79,7 +79,7 @@ class Default(AgentStagingInputComponent):
             self.advance(no_staging_tasks, rps.AGENT_SCHEDULING_PENDING,
                          publish=True, push=True)
 
-        for task,actionables in staging_tasks:
+        for task, actionables in staging_tasks:
             self._handle_task(task, actionables)
 
 
