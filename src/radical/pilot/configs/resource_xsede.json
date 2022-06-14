@@ -1,5 +1,48 @@
 
 {
+    "expanse": {
+        "description"                 : "(https://www.sdsc.edu/support/user_guides/expanse.html).",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
+        "schemas"                     : ["local", "ssh"],
+      # "mandatory_args"              : [],
+        "local"                      :
+        {
+            "job_manager_endpoint"    : "slurm://expanse.sdsc.xsede.org",
+            "filesystem_endpoint"     : "file://expanse.sdsc.xsede.org"
+        },
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://expanse.sdsc.xsede.org",
+            "filesystem_endpoint"     : "sftp://expanse.sdsc.xsede.org"
+        },
+        "default_queue"               : "compute",
+        "resource_manager"            : "SLURM",
+        "lfs_path_per_node"           : "${LOCAL}",
+        "lfs_size_per_node"           : 1000000,
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 0,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN"],
+                                         "MPIRUN": {"pre_exec_cached": ["module load intel",
+                                                                        "module load openmpi"]}
+                                        },
+        "pre_bootstrap_0"             : ["module purge",
+                                         "module load cpu",
+                                         "module load slurm",
+                                         "module load gcc",
+                                         "module load openmpi"
+                                        ],
+        "default_remote_workdir"      : "/expanse/lustre/scratch/$USER/temp_project",
+        "valid_roots"                 : ["/expanse/lustre/scratch/$USER/temp_project"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "system_architecture"         : {"gpu": "v100"}
+    },
+
     "stampede2_ssh": {
         "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
