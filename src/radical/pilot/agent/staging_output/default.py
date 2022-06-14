@@ -59,9 +59,6 @@ class Default(AgentStagingOutputComponent):
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any tasks which don't need any input staging, and
@@ -71,7 +68,7 @@ class Default(AgentStagingOutputComponent):
         no_staging_tasks = list()
         staging_tasks    = list()
 
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             uid = task['uid']
 
@@ -111,7 +108,7 @@ class Default(AgentStagingOutputComponent):
             self._advance_tasks(no_staging_tasks, rps.TMGR_STAGING_OUTPUT_PENDING,
                                 publish=True, push=True)
 
-        for task,actionables in staging_tasks:
+        for task, actionables in staging_tasks:
             self._handle_task_staging(task, actionables)
 
 
@@ -135,7 +132,7 @@ class Default(AgentStagingOutputComponent):
                    'raptor': list(),
                    'agent' : list()}
 
-        for task in tasks:
+        for task in ru.as_list(tasks):
             buckets[task['origin']].append(task)
 
         if buckets['client']:
