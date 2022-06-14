@@ -131,8 +131,8 @@ class Srun(LaunchMethod):
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
-            nodelist = [rank['node_name'] for rank in slots['ranks']]
-            n_nodes  = len(set(nodelist))
+            nodelist = set([str(rank['node_name']) for rank in slots['ranks']])
+            n_nodes  = len(nodelist)
 
             # older slurm versions don't accept option `--nodefile`
             # 42 node is the upper limit to switch from `--nodelist`
@@ -156,7 +156,7 @@ class Srun(LaunchMethod):
             mapping += ' --nodefile=%s' % nodefile
 
         elif nodelist:
-            mapping += ' --nodelist=%s' % ','.join(str(n) for n in nodelist)
+            mapping += ' --nodelist=%s' % ','.join(nodelist)
 
         cmd = '%s %s %s' % (self._command, mapping, exec_path)
         return cmd.rstrip()
