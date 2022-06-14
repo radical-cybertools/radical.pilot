@@ -1,6 +1,10 @@
 """RADICAL-Executor builds on the RADICAL-Pilot/Parsl
 """
 import os
+<<<<<<< HEAD
+=======
+import sys
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 import parsl
 import inspect
 import typeguard
@@ -52,7 +56,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                  walltime: int = None,
                  managed: bool = True,
                  max_tasks: Union[int, float] = float('inf'),
+<<<<<<< HEAD
                  cores_per_task: int = 1,
+=======
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
                  gpus: Optional[int]  = 0,
                  worker_logdir_root: Optional[str] = ".",
                  partition : Optional[str] = " ",
@@ -71,7 +78,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.future_tasks       = {}
 
         self.max_tasks          = max_tasks       # Pilot cores
+<<<<<<< HEAD
         self.cores_per_task     = cores_per_task  # task cores
+=======
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
         self.gpus               = gpus
         # Parsl required
         self.managed            = managed
@@ -88,18 +98,28 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # Raptor specific
         self.cfg_file = './raptor.cfg'
+<<<<<<< HEAD
         cfg         = ru.Config(cfg=ru.read_json(self.cfg_file))
+=======
+        cfg           = ru.Config(cfg=ru.read_json(self.cfg_file))
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
         self.master      = cfg.master_descr
         self.worker      = cfg.worker_descr
         self.cpn         = cfg.cpn  # cores per node
         self.gpn         = cfg.gpn  # gpus per node
         self.n_masters   = cfg.n_masters  # number of total masters
+<<<<<<< HEAD
         self.n_workers   = cfg.n_workers  # number of workers per node
         self.masters_pn  = cfg.masters_pn  # number of masters per node
         self.nodes_pw    = cfg.nodes_pw    # number of nodes per worker
         self.nodes_rp    = cfg.nodes_rp   # number of total nodes
         self.nodes_agent = cfg.nodes_agent  # number of nodes per agent
+=======
+        self.masters_pn  = cfg.masters_pn  # number of masters per node
+
+        self.pilot_env   = cfg.pilot_env
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
 
     def task_state_cb(self, task, state):
@@ -150,6 +170,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                           'gpus'          : self.gpus}
         pd = rp.PilotDescription(pd_init)
 
+<<<<<<< HEAD
         pd.cores   = self.n_masters * (self.cpn / self.masters_pn)
         pd.gpus    = 0
 
@@ -162,6 +183,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pd.cores  += self.nodes_rp * self.cpn
         pd.gpus   += self.nodes_rp * self.gpn
 
+=======
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
         tds = list()
 
         for i in range(self.n_masters):
@@ -170,7 +193,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                ru.ID_CUSTOM,
                                                ns=self.session.uid)
             td.arguments      = [self.cfg_file, i]
+<<<<<<< HEAD
             td.cpu_threads    = int(self.cpn / self.masters_pn)
+=======
+            td.cpu_threads    = 1
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -196,6 +223,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
+<<<<<<< HEAD
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'virtualenv',
                                     'version': '3.8',
@@ -203,6 +231,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                      'setup'  : ['$HOME/radical.utils/',
                                                   '$HOME/radical.pilot/',
                                                   '$HOME/colmena/']})
+=======
+        
+        python_v = sys.version.split(' ')[0]
+        pilot.prepare_env(env_name='ve_raptor',
+                          env_spec={'type'    : self.pilot_env.get('type','virtualenv'),
+                                    'version' : self.pilot_env.get('version', python_v),
+                                    'path'    : self.pilot_env.get('path', ''),
+                                    'pre_exec': self.pilot_env.get('pre_exec', []),
+                                    'setup'   : self.pilot_env.get('setup', [])})
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
@@ -281,9 +319,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         elif PYTHON in task_type or not task_type:
             self.log.debug(PYTHON)
+<<<<<<< HEAD
             task.mode       = rp.TASK_PY_FUNCTION
             task.scheduler  = 'master.%06d' % (self._task_counter % self.n_masters)
             task.pyfunction = PythonTask(func, *args, **kwargs)
+=======
+            task.mode       = rp.TASK_FUNCTION
+            task.scheduler  = 'master.%06d' % (self._task_counter % self.n_masters)
+            task.function   = PythonTask(func, *args, **kwargs)
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
         task.stdout           = kwargs.get('stdout', '')
         task.stderr           = kwargs.get('stderr', '')
@@ -314,9 +358,15 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         try:
 
+<<<<<<< HEAD
             self.prof.prof(event= 'trans_start', uid=self._uid)
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event= 'trans_stop', uid=self._uid)
+=======
+            self.prof.prof(event='trans_start', uid=task_id)
+            task = self.task_translate(func, args, kwargs)
+            self.prof.prof(event='trans_stop', uid=task_id)
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
             self.report.progress()
 
@@ -352,7 +402,11 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         """Shutdown the executor, including all RADICAL-Pilot components."""
         self.report.progress_done()
         self.session.close(download=True)
+<<<<<<< HEAD
         self.report.header("Attempting RADICALExecutor shutdown")
+=======
+        self.report.header("attempting RADICALExecutor shutdown")
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
         return True
 

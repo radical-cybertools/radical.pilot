@@ -28,7 +28,11 @@ parsl.load(config)
 def wait_sleep_double(x, foo_1, foo_2, nproc):
      import time
      time.sleep(2)   # Sleep for 2 seconds
+<<<<<<< HEAD
      return x*2
+=======
+     return x * 2
+>>>>>>> d3203b568a8cd974f6094498114c056356f8bc5f
 
 # Launch two apps, which will execute in parallel, since they do not have to
 # wait on any futures
