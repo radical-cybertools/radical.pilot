@@ -315,9 +315,8 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _control_cb(self, topic, msg):
         '''
-        We listen on the control channel for raptor queue registration commands
+        listen on the control channel for raptor queue registration commands
         '''
-
 
         cmd = msg['cmd']
         arg = msg['arg']

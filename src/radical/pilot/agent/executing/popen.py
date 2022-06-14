@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument
+
 
 __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -27,6 +27,7 @@ from .base import AgentExecutingComponent
 _pids = list()
 
 
+# pylint: disable=unused-argument
 def _kill(*args, **kwargs):
 
     for pid in _pids:
@@ -282,7 +283,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# pre-launch commands\n'
             tmp += self._get_prof('launch_pre', tid)
-            tmp += self._get_pre_launch(task, launcher)
+            tmp += self._get_pre_launch(task)
 
             tmp += self._separator
             tmp += '# launch commands\n'
@@ -294,7 +295,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# post-launch commands\n'
             tmp += self._get_prof('launch_post', tid)
-            tmp += self._get_post_launch(task, launcher)
+            tmp += self._get_post_launch(task)
 
             tmp += self._separator
             tmp += self._get_prof('launch_stop', tid)
@@ -342,7 +343,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in pre_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_pre_rank(rank_id, cmds)
+                    tmp += self._get_pre_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -374,7 +375,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_post_rank(rank_id, cmds)
+                    tmp += self._get_post_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -573,6 +574,7 @@ class Popen(AgentExecutingComponent):
     #
     # launcher
     #
+# pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
@@ -593,7 +595,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_pre_launch(self, task, launcher):
+    def _get_pre_launch(self, task):
 
         ret  = ''
         cmds = task['description']['pre_launch']
@@ -619,7 +621,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_launch(self, task, launcher):
+    def _get_post_launch(self, task):
 
         ret  = ''
         cmds = task['description']['post_launch']
@@ -735,7 +737,7 @@ class Popen(AgentExecutingComponent):
     #
     # rank
     #
-    def _get_pre_rank(self, rank_id, cmds=None):
+    def _get_pre_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []
@@ -797,7 +799,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_rank(self, rank_id, cmds=None):
+    def _get_post_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []

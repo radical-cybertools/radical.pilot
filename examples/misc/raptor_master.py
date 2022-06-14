@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# pylint: disable=redefined-outer-name
 
 import os
 import sys
 import time
-import random
 
 import radical.utils as ru
 import radical.pilot as rp
+
+from radical.pilot import PythonTask
 
 
 # This script has to run as a task within an pilot allocation, and is
@@ -21,6 +21,27 @@ import radical.pilot as rp
 #   - terminate the worker
 #
 # The worker itself is an external program which is not covered in this code.
+
+pytask = PythonTask.pythontask
+
+
+@pytask
+def func_mpi(comm, msg, sleep=0):
+    # pylint: disable=reimported
+    import time
+    print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
+    time.sleep(sleep)
+
+
+
+@pytask
+def func_non_mpi(a):
+    # pylint: disable=reimported
+    import math
+    import random
+    b = random.random()
+    t = math.exp(a * b)
+    return t
 
 
 # ------------------------------------------------------------------------------
@@ -37,18 +58,18 @@ class MyMaster(rp.raptor.Master):
     def __init__(self, cfg):
 
         self._cnt = 0
-        self._submitted = {rp.TASK_EXECUTABLE : 0,
-                           rp.TASK_FUNCTION   : 0,
-                           rp.TASK_EVAL       : 0,
-                           rp.TASK_EXEC       : 0,
-                           rp.TASK_PROC       : 0,
-                           rp.TASK_SHELL      : 0}
-        self._collected = {rp.TASK_EXECUTABLE : 0,
-                           rp.TASK_FUNCTION   : 0,
-                           rp.TASK_EVAL       : 0,
-                           rp.TASK_EXEC       : 0,
-                           rp.TASK_PROC       : 0,
-                           rp.TASK_SHELL      : 0}
+        self._submitted = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
+        self._collected = {rp.TASK_EXECUTABLE  : 0,
+                           rp.TASK_FUNCTION    : 0,
+                           rp.TASK_EVAL        : 0,
+                           rp.TASK_EXEC        : 0,
+                           rp.TASK_PROC        : 0,
+                           rp.TASK_SHELL       : 0}
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
@@ -85,6 +106,27 @@ class MyMaster(rp.raptor.Master):
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i},
                 'scheduler'       : 'master.000000'}))
+
+            bson = func_mpi(None, msg='task.call.m.%06d' % i, sleep=0)
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.mpi_ser_func.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'cpu_process_type': rp.MPI,
+                'function'        : bson,
+                'scheduler'       : 'master.000000'}))
+            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
+
+            bson = func_non_mpi(i)
+            tds.append(rp.TaskDescription({
+                'uid'             : 'task.ser_func.m.%06d' % i,
+              # 'timeout'         : 10,
+                'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
+                'function'        : bson,
+                'scheduler'       : 'master.000000'}))
+            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,
@@ -162,22 +204,22 @@ class MyMaster(rp.raptor.Master):
             self._log.debug('request_cb %s\n' % (task['uid']))
 
             mode = task['description']['mode']
-            uid  = task['description']['uid']
+            # uid  = task['description']['uid']
 
             self._submitted[mode] += 1
 
-            # for each `function` mode task, submit one more `proc` mode request
-            if mode == rp.TASK_FUNCTION:
-                self.submit_tasks(rp.TaskDescription(
-                    {'uid'             : uid.replace('call', 'extra'),
-                   # 'timeout'         : 10,
-                     'mode'            : rp.TASK_PROC,
-                     'cpu_processes'   : 2,
-                     'cpu_process_type': rp.MPI,
-                     'executable'      : '/bin/sh',
-                     'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-                                                '$RP_TASK_ID"'],
-                     'scheduler'       : 'master.000000'}))
+          # # for each `function` mode task, submit one more `proc` mode request
+          # if mode == rp.TASK_FUNCTION:
+          #     self.submit_tasks(rp.TaskDescription(
+          #         {'uid'             : uid.replace('call', 'extra'),
+          #        # 'timeout'         : 10,
+          #          'mode'            : rp.TASK_PROC,
+          #          'cpu_processes'   : 2,
+          #          'cpu_process_type': rp.MPI,
+          #          'executable'      : '/bin/sh',
+          #          'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+          #                                     '$RP_TASK_ID"'],
+          #          'scheduler'       : 'master.000000'}))
 
         return tasks
 
@@ -192,6 +234,7 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
+            self._log.debug('=== out: %s', task['stdout'])
             self._log.debug('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],

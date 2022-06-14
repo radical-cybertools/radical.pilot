@@ -94,9 +94,8 @@
         "notes"                       : "",
         "schemas"                     : ["local"],
         "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "slurm://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+            "job_manager_endpoint"    : "slurm://spock.olcf.ornl.gov/",
+            "filesystem_endpoint"     : "file://spock.olcf.ornl.gov/"
         },
         "default_queue"               : "batch",
         "resource_manager"            : "SLURM",
@@ -208,7 +207,7 @@
                                                  "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
                                                # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
                                                # "module load   prrte/master"
-                                                 "module load   prrte/2.0.0"
+                                                 "module load   prrte/2.0.2"
                                              ],
                                              "dvm_count": 1
                                          }
@@ -218,14 +217,14 @@
             "module load   gcc/9.1.0",
             "module load   python/3.7-anaconda3",
             "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-            "module load   prrte/2.0.0"
+            "module load   prrte/2.0.2"
         ],
         "pre_bootstrap_1"             : [
             "module unload xl xalt spectrum-mpi",
             "module load   gcc/9.1.0",
             "module load   python/3.7-anaconda3",
             "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-            "module load   prrte/2.0.0",
+            "module load   prrte/2.0.2",
             "ulimit -u 65536"
         ],
         "valid_roots"                 : ["$MEMBERWORK/"],

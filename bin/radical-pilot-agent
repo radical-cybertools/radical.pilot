@@ -48,9 +48,6 @@ def bootstrap_3(aid):
         # start a non-primary session (the agents will own their cmgrs)
         session = rp.Session(cfg=cfg, _primary=False)
 
-        with open('tmp', 'a') as fout:
-            fout.write('===== starting agent %s\n' % aid)
-
         if aid == 'agent.0': agent = rp.Agent_0(cfg, session)
         else               : agent = rp.Agent_n(cfg, session)
 

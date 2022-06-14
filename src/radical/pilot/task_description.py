@@ -7,7 +7,7 @@ import radical.utils as ru
 # task modes
 TASK_EXECUTABLE  = 'executable'
 TASK_FUNCTION    = 'function'
-TASK_PY_FUNCTION = 'pyfunction'
+TASK_METHOD      = 'method'
 TASK_EVAL        = 'eval'
 TASK_EXEC        = 'exec'
 TASK_PROC        = 'proc'
@@ -22,13 +22,15 @@ MODE             = 'mode'
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
 
+# mode: TASK_METHOD  # FIXME
+METHOD           = 'method'
+ARGS             = 'args'
+KWARGS           = 'kwargs'
+
 # mode: TASK_FUNCTION
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
-
-# mode: TASK_PY_FUNCTION
-PY_FUNCTION      = 'pyfunction'
 
 # mode: TASK_EXEC, TASK_EVAL
 CODE             = 'code'
@@ -73,14 +75,6 @@ SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
 METADATA         = 'metadata'
 
-# process / thread types (for both, CPU and GPU processes/threads)
-POSIX            = 'POSIX'   # native threads / application threads
-MPI              = 'MPI'
-OpenMP           = 'OpenMP'
-CUDA             = 'CUDA'
-FUNC             = 'FUNC'
-# FIXME: move task/process/thread types to `radical.pilot.constants`
-
 
 # ------------------------------------------------------------------------------
 #
@@ -117,6 +111,12 @@ class TaskDescription(ru.TypedDict):
 
          - TASK_FUNCTION: the task references a python function to be called.
            required attributes: `function`
+           related  attributes: `args`
+           related  attributes: `kwargs`
+
+         - TASK_METHOD: the task references a raptor worker method to be
+           called.
+           required attributes: `method`
            related  attributes: `args`
            related  attributes: `kwargs`
 
@@ -160,7 +160,7 @@ class TaskDescription(ru.TypedDict):
        contain valid python code which is executed when the task mode is
        `TASK_EXEC` or `TASK_EVAL`.
 
-    ..data: function
+    .. data:: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
@@ -415,7 +415,7 @@ class TaskDescription(ru.TypedDict):
       Flags:
 
         * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-        the fly
+          the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
 
@@ -489,7 +489,6 @@ class TaskDescription(ru.TypedDict):
         ARGUMENTS       : [str]       ,
         CODE            : str         ,
         FUNCTION        : str         ,
-        PY_FUNCTION     : None        ,
         ARGS            : [None]      ,
         KWARGS          : {str: None} ,
         COMMAND         : str         ,
@@ -531,12 +530,11 @@ class TaskDescription(ru.TypedDict):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : 'executable', 
+        MODE            : 'executable',
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
         FUNCTION        : ''          ,
-        PY_FUNCTION     : None        ,
         ARGS            : list()      ,
         KWARGS          : dict()      ,
         COMMAND         : ''          ,
@@ -599,10 +597,6 @@ class TaskDescription(ru.TypedDict):
             if not self.get('function'):
                 raise ValueError("TASK_FUNCTION Task needs 'function'")
 
-        elif self.mode == TASK_PY_FUNCTION:
-            if not self.get('pyfunction'):
-                raise ValueError("PY_TASK_FUNCTION Task needs 'function'")
-
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
                 raise ValueError("TASK_PROC Task needs 'executable'")
@@ -630,4 +624,3 @@ class TaskDescription(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
-

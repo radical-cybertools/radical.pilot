@@ -59,7 +59,7 @@ then
     test -z "$LSPCI" && LSPCI='/sbin/lspci'
     test -f "$LSPCI" || LSPCI='/usr/sbin/lspci'
     test -f "$LSPCI" || LSPCI='true'
-    $LSPCI | grep -e " VGA " -e ' GV100GL ' | wc -l > "$LSPCI_CACHE"
+    $LSPCI | grep -e ' VGA ' -e ' GV100GL ' -e 'ATI' | wc -l > "$LSPCI_CACHE"
 fi
 
 GPU_NBITS=$(cat "$LSPCI_CACHE")
