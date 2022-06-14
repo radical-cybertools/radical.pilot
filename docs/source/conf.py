@@ -25,8 +25,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'RADICAL-Pilot'
-copyright = '2021, RADICAL Devel Team'
-author = 'RADICAL Devel Team'
+copyright = '2022, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
+author = 'RADICAL-Cybertools Team'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
