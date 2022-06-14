@@ -1804,7 +1804,7 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
+if test "$PYTHON_DIST" = "anaconda" && ! test -z "\$(which conda)"
 then
     eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
