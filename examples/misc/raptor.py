@@ -11,20 +11,35 @@ from radical.pilot import PythonTask
 pytask = PythonTask.pythontask
 
 
+# ------------------------------------------------------------------------------
+#
 @pytask
-def func_mpi(msg,comm=None,sleep=0):
+def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+  # raise RuntimeError('oops 3')
 
 
+# ------------------------------------------------------------------------------
+#
 @pytask
 def func_non_mpi(a):
     import math
     import random
     b = random.random()
     t = math.exp(a * b)
+    print('func_non_mpi')
     return t
+
+
+# ------------------------------------------------------------------------------
+#
+def task_state_cb(task, state):
+    print('task %s: %s' % (task['uid'], state))
+    if state == rp.FAILED:
+        print('task %s failed' % task['uid'])
+        sys.exit()
 
 
 # ------------------------------------------------------------------------------
@@ -104,9 +119,13 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'virtualenv',
+                          env_spec={'type'   : 'anaconda',
                                     'version': '3.8',
-                                    'setup'  : ['radical.pilot']})
+                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_conda/',
+                                    'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
+                                    'setup'  : ['$HOME/j/rp/',
+                                                '$HOME/j/ru/',
+                                                'mpi4py']})
 
         # submit some test tasks
         tds = list()
@@ -126,6 +145,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.call.c.1.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
+                'cpu_processes'   : 2,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
@@ -137,7 +157,7 @@ if __name__ == '__main__':
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
-                'kwargs'          : {'msg': 'task.call.c.2/%06d' % i},
+                'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
@@ -145,25 +165,26 @@ if __name__ == '__main__':
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'function'        : 'my_hello',
-                'kwargs'          : {'uid': 'task.call.c.3/%06d' % i},
+                'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
+            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=0)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'function'        : func_mpi(msg='task.call.c.%06d' % i, comm=None,
-                                                                         sleep=0),
+                'function'        : bson,
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
+            bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
-                'function'        : func_non_mpi(i),
+                'function'        : bson,
                 'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
@@ -211,6 +232,7 @@ if __name__ == '__main__':
         tasks = tmgr.submit_tasks(tds)
 
         tmgr.add_pilots(pilot)
+        tmgr.register_callback(task_state_cb)
         tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
         for task in tasks:
