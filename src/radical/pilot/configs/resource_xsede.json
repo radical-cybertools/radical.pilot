@@ -4,8 +4,7 @@
         "description"                 : "(https://www.sdsc.edu/support/user_guides/expanse.html).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["local", "ssh"],
-      # "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://expanse.sdsc.xsede.org",
             "filesystem_endpoint"     : "file://expanse.sdsc.xsede.org"
@@ -15,31 +14,32 @@
             "job_manager_endpoint"    : "slurm+ssh://expanse.sdsc.xsede.org",
             "filesystem_endpoint"     : "sftp://expanse.sdsc.xsede.org"
         },
+
+        "default_remote_workdir"      :  "/expanse/lustre/scratch/$USER/temp_project",
+        "valid_roots"                 : ["/expanse/lustre/"],
         "default_queue"               : "compute",
+
         "resource_manager"            : "SLURM",
-        "lfs_path_per_node"           : "${LOCAL}",
-        "lfs_size_per_node"           : 1000000,
-        "cores_per_node"              : 128,
-        "gpus_per_node"               : 0,
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "pre_bootstrap_0"             : ["module load anaconda3"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "anaconda",
+
         "launch_methods"              : {
-                                         "order" : ["MPIRUN"],
+                                         "order" : ["SRUN", "MPIRUN"],
+					 "SRUN"  : {}, 
                                          "MPIRUN": {"pre_exec_cached": ["module load intel",
                                                                         "module load openmpi"]}
                                         },
-        "pre_bootstrap_0"             : ["module purge",
-                                         "module load cpu",
-                                         "module load slurm",
-                                         "module load gcc",
-                                         "module load openmpi"
-                                        ],
-        "default_remote_workdir"      : "/expanse/lustre/scratch/$USER/temp_project",
-        "valid_roots"                 : ["/expanse/lustre/scratch/$USER/temp_project"],
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default",
+
+
+        "lfs_path_per_node"           : "${LOCAL}",
+        "lfs_size_per_node"           : 1000000,
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 4,
         "system_architecture"         : {"gpu": "v100"}
     },
 
@@ -377,61 +377,6 @@
         "task_pre_exec"               : [],
         "gpus_per_node"               : 8,
         "system_architecture"         : {"gpu": "v100"}
-    },
-
-    "expanse": {
-        "description"                 : "(https://www.sdsc.edu/support/user_guides/expanse.html).",
-        "schemas": [
-            "local",
-            "ssh"
-        ],
-        "ssh": {
-            "filesystem_endpoint": "sftp://expanse.sdsc.xsede.org",
-            "job_manager_endpoint": "slurm+ssh://expanse.sdsc.xsede.org"
-        },
-        "local": {
-            "filesystem_endpoint": "file://expanse.sdsc.xsede.org/",
-            "job_manager_endpoint": "slurm://expanse.sdsc.xsede.org/"
-        },
-        "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "cores_per_node"              : 128,
-        "gpus_per_node"               : 0,
-        "lfs_path_per_node": null,
-        "lfs_size_per_node": 1000000,
-        "default_queue"               : "compute",
-        "default_remote_workdir"      : "/expanse/lustre/scratch/$USER/temp_project",
-        "launch_methods"              : {
-            "SRUN": {
-                "pre_exec_cached": [
-                  # "module load slurm",
-                  # "module load intel",
-                  # "module load openmpi"
-                ]
-            },
-            "order": [
-                "SRUN"
-            ]
-        },
-        "notes": "Always set the ``project`` attribute in the PilotDescription.",
-        "pre_bootstrap_0": [
-          # "module purge",
-          # "module load cpu",
-          # "module load slurm",
-          # "module load gcc",
-          # "module load openmpi",
-            "module load anaconda3"
-        ],
-        "python_dist": "anaconda",
-        "resource_manager": "SLURM",
-        "system_architecture": {
-            "gpu": "v100"
-        },
-        "valid_roots": [
-            "/expanse/lustre/scratch/$USER/temp_project"
-        ],
-        "virtenv_mode": "create"
     }
 }
 

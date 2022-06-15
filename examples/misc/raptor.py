@@ -122,9 +122,8 @@ if __name__ == '__main__':
                           env_spec={'type'   : 'anaconda',
                                     'version': '3.8',
                                     'path'   : '$RP_RESOURCE_SANDBOX/ve_conda/',
-                                    'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
-                                    'setup'  : ['$HOME/j/rp/',
-                                                '$HOME/j/ru/',
+                                  # 'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
+                                    'setup'  : ['$HOME/radical/rp/',
                                                 'mpi4py']})
 
         # submit some test tasks
