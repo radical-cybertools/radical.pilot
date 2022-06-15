@@ -32,12 +32,14 @@
                                          "order" : ["SRUN", "MPIRUN"],
 					 "SRUN"  : {}, 
                                          "MPIRUN": {"pre_exec_cached": ["module load intel",
+                                                                        "module load gcc",
                                                                         "module load openmpi"]}
                                         },
 
 
         "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 1000000,
+        "mem_per_node"                : 256000,
         "cores_per_node"              : 128,
         "gpus_per_node"               : 4,
         "system_architecture"         : {"gpu": "v100"}
