@@ -27,6 +27,7 @@
         "launch_methods"              : {
                                          "order" : ["MPIRUN"],
                                          "MPIRUN": {"pre_exec_cached": ["module load intel",
+                                                                        "module load gcc",
                                                                         "module load openmpi"]}
                                         },
         "pre_bootstrap_0"             : ["module purge",
