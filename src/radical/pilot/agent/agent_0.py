@@ -809,7 +809,9 @@ class Agent_0(rpu.Worker):
         assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
-        path          = path.rstrip('/')
+        if path:
+            path = path.rstrip('/')
+
         ve_local_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
         if path: ve_path = path
         else   : ve_path = ve_local_path
