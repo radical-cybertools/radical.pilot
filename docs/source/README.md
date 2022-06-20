@@ -69,3 +69,9 @@ jupyter notebook
   - conf.py - Configuration file that `sphinx` reads  
   - requirements_docs.txt - Dependencies for building the documentation on readthedocs
   - [.readthedocs](https://docs.readthedocs.io/en/stable/config-file/v2.html) Configuration file for readthedocs environment
+- Settings for readthedocs build - 
+  - Name and Repository URL, Description and Project Homepage
+  - Branch - This is the branch on which the notebooks are present
+  - Requirements File - Relative Path to requirements which shall be used to build
+  - Documentation Type - Select `Sphinx Html`
+  - Environment Variable - `RADICAL_PILOT_DBURL` value should in rtd and not committed in any file as it's sensitive.
