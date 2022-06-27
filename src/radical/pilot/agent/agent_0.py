@@ -791,8 +791,8 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('env_spec: %s', env_spec)
 
-        etype = env_spec['type']
-        evers = env_spec['version']
+        etype = env_spec.get('type', 'venv')
+        evers = env_spec.get('version', '')
         path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
@@ -806,7 +806,7 @@ class Agent_0(rpu.Worker):
         else    : mods = ''
 
       # assert(etype == 'virtualenv')
-        assert(evers)
+      # assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
         path          = path.rstrip('/')
