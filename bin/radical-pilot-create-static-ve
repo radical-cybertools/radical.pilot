@@ -123,6 +123,7 @@ fi
 if test "$ETYPE" = 'conda'
 then
     which conda || help "conda not found"
+    eval "$(conda shell.bash hook)"
     conda activate base
 
     if test -d "$PREFIX"

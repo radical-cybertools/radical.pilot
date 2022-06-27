@@ -68,7 +68,7 @@
     },
 
     "xsede.expanse": {
-        "project"  : null,
+        "project"  : "UNC100",
         "queue"    : "compute",
         "schema"   : "local",
         "cores"    : 128
