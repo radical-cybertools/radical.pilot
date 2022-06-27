@@ -422,9 +422,6 @@ class PMGRLaunchingComponent(rpu.Component):
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
                 # checking if input staging file exists
-
-                assert os.path.exists(fname) == False
-                # or raise a RuntimeException
                 if not os.path.exists(fname):
                     raise RuntimeError('input_staging file does not exists: %s for pilot %s' % fname, pid)
 
