@@ -69,7 +69,7 @@ if __name__ == '__main__':
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters * (cpn / masters_pn)
+        pd.cores   = n_masters * (cpn / masters_pn) + 256
         pd.gpus    = 0
 
         pd.cores  += n_masters * n_workers * cpn * nodes_pw
@@ -93,7 +93,7 @@ if __name__ == '__main__':
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
             td.arguments      = [cfg_file, i]
-            td.cpu_threads    = int(cpn / masters_pn)
+            td.cpu_threads    = 1
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -119,11 +119,11 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'anaconda',
+                          env_spec={'type'   : 'venv',
                                     'version': '3.8',
-                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_conda/',
+                                    'path'   : '/home/amerzky/radical/radical.pilot/sbox/ve_raptor/',
                                   # 'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
-                                    'setup'  : ['$HOME/radical/rp/',
+                                    'setup'  : ['$HOME/radical/radical.pilot/',
                                                 'mpi4py']})
 
         # submit some test tasks
@@ -138,7 +138,7 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                                     "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.1.%06d' % i,

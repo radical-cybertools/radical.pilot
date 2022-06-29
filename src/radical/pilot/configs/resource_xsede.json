@@ -23,26 +23,24 @@
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "pre_bootstrap_0"             : ["module load anaconda3"],
+        "pre_bootstrap_0"             : ["module load slurm"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
-        "python_dist"                 : "anaconda",
+        "python_dist"                 : "default",
 
         "launch_methods"              : {
-                                         "order" : ["SRUN", "MPIRUN"],
-					 "SRUN"  : {},
-                                         "MPIRUN": {"pre_exec_cached": ["module load intel",
+                                         "order" : ["MPIRUN"],
+                                         "MPIRUN": {"pre_exec_cached": ["module load slurm",
                                                                         "module load gcc",
                                                                         "module load openmpi"]}
                                         },
 
-
         "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 1000000,
         "mem_per_node"                : 256000,
-        "cores_per_node"              : 128,
-        "gpus_per_node"               : 4,
-        "system_architecture"         : {"gpu": "v100"}
+        "cores_per_node"              : 128
+      # "gpus_per_node"               : 0,
+      # "system_architecture"         : {"gpu": "v100"}
     },
 
     "stampede2_ssh": {

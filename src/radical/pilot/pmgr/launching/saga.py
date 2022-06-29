@@ -115,6 +115,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
     def launch_pilots(self, rcfg, pilots):
 
         js_ep  = rcfg['job_manager_endpoint']
+        self._log.debug('=== js_ep: %s', js_ep)
         with self._lock:
             if js_ep in self._js:
                 js = self._js[js_ep]

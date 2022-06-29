@@ -820,6 +820,7 @@ class Agent_0(rpu.Worker):
                % (rp_cse, ve_path, etype, evers, mods, pre_exec)
 
         self._log.debug('env cmd: %s', ve_cmd)
+        os.environ['RP_RESOURCE_SANDBOX'] = '../../'  # FIXME
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
         self._log.debug('    out: %s', out)
         self._log.debug('    err: %s', err)
