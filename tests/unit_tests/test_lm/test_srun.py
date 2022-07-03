@@ -113,9 +113,10 @@ class TestSrun(TestCase):
     def test_get_launch_rank_cmds(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
-        lm_srun._rm_info = {}
-        lm_srun._command = 'srun'
-        lm_srun._vmajor  = MIN_VSLURM_IN_LIST + 1
+        lm_srun._rm_info  = {}
+        lm_srun._command  = 'srun'
+        lm_srun._vmajor   = MIN_VSLURM_IN_LIST + 1
+        lm_srun._traverse = False
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
