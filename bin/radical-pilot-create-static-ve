@@ -40,7 +40,6 @@ while getopts "e:p:P:v:m:t:d" OPTION; do
     esac
 done
 
-test -z "$VERSION" && VERSION='3.8'
 test -z "$PREFIX"  && echo "no prefix" && exit
 
 test "$ETYPE" == 'anaconda'   && ETYPE='conda'
@@ -114,14 +113,19 @@ esac
 
 PYTHON=python3
 
-if test -z "$VERSION"
-then
-    VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
-fi
-
 # check env type
 if test "$ETYPE" = 'conda'
 then
+
+    if test -z "$VERSION"
+    then
+        VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+    fi
+    if test -z "$VERSION"
+    then
+        VERSION='3.8'
+    fi
+
     which conda || help "conda not found"
     conda activate base
 
@@ -164,6 +168,15 @@ then
 
 elif test "$ETYPE" = 'venv'
 then
+    if ! test -z "$VERSION"
+    then
+        PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+        if ! "$VERSION" = "$PY_VERSION"
+        then
+            echo "requested version $VERSION not supported for venv ($PY_VERSION)"
+            exit 1
+        fi
+
     if test -d "$PREFIX"
     then
         printf "\nenv at $PREFIX exists\n"
@@ -190,6 +203,9 @@ then
         $VIRTENV_CMD "$PREFIX"
 
         . "$PREFIX"/bin/activate
+
+        # ensure we have pip
+        python3 -m ensurepip
 
         echo -n "update  setuptools pip wheel"
         pip install --no-cache-dir --upgrade setuptools pip wheel || exit 1
