@@ -18,9 +18,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order" : ["FORK", "SSH", "SRUN", "MPIRUN"],
-                                         "FORK"  : {},
-                                         "SSH"   : {},
+                                         "order" : ["SRUN", "MPIRUN"],
                                          "SRUN"  : {},
                                          "MPIRUN": {}
                                         },
@@ -58,8 +56,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order" : ["FORK", "MPIRUN"],
-                                         "FORK"  : {},
+                                         "order" : ["MPIRUN"],
                                          "MPIRUN": {}
                                         },
         "pre_bootstrap_0"             : ["module load anaconda3"
@@ -100,8 +97,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["FORK", "SRUN"],
-                                         "FORK" : {},
+                                         "order": ["SRUN"],
                                          "SRUN" : {
                                              "pre_exec_cached": [
                                                  "module load intel/18.0/64/18.0.3.222",
@@ -150,8 +146,7 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["FORK", "SRUN"],
-                                         "FORK" : {},
+                                         "order": ["SRUN"],
                                          "SRUN" : {
                                              "pre_exec_cached": [
                                                  "module load intel/18.0/64/18.0.3.222",
@@ -177,3 +172,4 @@
         "forward_tunnel_endpoint"     : "tigergpu.princeton.edu"
     }
 }
+
