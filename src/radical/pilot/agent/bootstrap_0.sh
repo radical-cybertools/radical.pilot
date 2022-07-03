@@ -1096,7 +1096,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation '$dep'" \
+                "$PIP --no-cache-dir install '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
