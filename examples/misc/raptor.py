@@ -93,7 +93,7 @@ if __name__ == '__main__':
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
             td.arguments      = [cfg_file, i]
-            td.cpu_threads    = int(cpn / master_pn)
+            td.cpu_threads    = int(cpn / masters_pn)
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
