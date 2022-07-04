@@ -48,7 +48,6 @@ test "$ETYPE" == 'virtualenv' && ETYPE='venv'
 # sanitize name (remove trailing slashes etc)
 PREFIX="$(dirname $PREFIX)/$(basename $PREFIX)"
 
-unset PYTHONPATH
 
 # move from comma separated to space separated module list
 MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
@@ -127,6 +126,7 @@ then
     fi
 
     which conda || help "conda not found"
+    eval "$(conda shell.bash hook)"
     conda activate base
 
     if test -d "$PREFIX"

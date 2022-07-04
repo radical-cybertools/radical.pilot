@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
@@ -21,6 +23,7 @@ class TestMPIRun(TestCase):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun.name = 'mpirun'
+        lm_mpirun._log = mock.Mock()
 
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_mpirun.name.lower()
@@ -47,6 +50,7 @@ class TestMPIRun(TestCase):
                                          mocked_mpi_info, mocked_init):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun._log = mock.Mock()
 
         for _flag in ['mpt', 'rsh']:
             lm_mpirun.name = 'mpirun_%s' % _flag
