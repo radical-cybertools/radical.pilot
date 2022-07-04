@@ -42,8 +42,8 @@ done
 
 test -z "$PREFIX"  && echo "no prefix" && exit
 
-test "$ETYPE" == 'anaconda'   && ETYPE='conda'
-test "$ETYPE" == 'virtualenv' && ETYPE='venv'
+test "$ETYPE" = 'anaconda'   && ETYPE='conda'
+test "$ETYPE" = 'virtualenv' && ETYPE='venv'
 
 # sanitize name (remove trailing slashes etc)
 PREFIX="$(dirname $PREFIX)/$(basename $PREFIX)"
@@ -176,6 +176,7 @@ then
             echo "requested version $VERSION not supported for venv ($PY_VERSION)"
             exit 1
         fi
+    fi
 
     if test -d "$PREFIX"
     then
