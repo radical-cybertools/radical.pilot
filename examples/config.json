@@ -133,10 +133,9 @@
 
     "xsede.bridges2" : {
         "project"  : null,
-        "queue"    : "GPU",
+        "queue"    : "RM",
         "schema"   : "local",
-        "gpus"     : 8,
-        "cores"    : 32
+        "cores"    : 128
     },
 
     "xsede.wrangler" : {

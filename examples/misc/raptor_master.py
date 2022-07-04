@@ -289,10 +289,8 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    descr['cpu_processes'] = 2
-  # descr['gpu_processes'] = nodes_pw * gpn
-  # descr['cpu_processes'] = 28
-  # descr['gpu_processes'] = 0
+    descr['cpu_processes'] = nodes_pw * cpn
+    descr['gpu_processes'] = nodes_pw * gpn
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up

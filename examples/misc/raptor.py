@@ -69,7 +69,7 @@ if __name__ == '__main__':
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters * (cpn / masters_pn) + 256
+        pd.cores   = n_masters * (cpn / masters_pn)
         pd.gpus    = 0
 
         pd.cores  += n_masters * n_workers * cpn * nodes_pw
@@ -93,7 +93,7 @@ if __name__ == '__main__':
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
             td.arguments      = [cfg_file, i]
-            td.cpu_threads    = 1
+            td.cpu_threads    = int(cpn / master_pn)
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -121,9 +121,9 @@ if __name__ == '__main__':
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'venv',
                                     'version': '3.8',
-                                    'path'   : '/home/amerzky/radical/radical.pilot/sbox/ve_raptor/',
-                                  # 'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
-                                    'setup'  : ['$HOME/radical/radical.pilot/',
+                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_raptor/',
+                                    'setup'  : ['$HOME/j/rp/',
+                                                '$HOME/j/ru/',
                                                 'mpi4py']})
 
         # submit some test tasks
