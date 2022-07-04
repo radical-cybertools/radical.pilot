@@ -291,8 +291,6 @@ if __name__ == '__main__':
     print('workers: %d' % n_workers)
     descr['cpu_processes'] = nodes_pw * cpn
     descr['gpu_processes'] = nodes_pw * gpn
-  # descr['cpu_processes'] = 28
-  # descr['gpu_processes'] = 0
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
