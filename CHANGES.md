@@ -3,7 +3,13 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
-1.15.0  Release                                                       2022-04-07
+1.15.1  Hotfix Release                                                2022-07-04
+--------------------------------------------------------------------------------
+
+  - fix syntactic error in env prep script
+
+
+1.15.0  Release                                                       2022-07-04
 --------------------------------------------------------------------------------
 
   - added tests for PRTE LM
