@@ -75,9 +75,9 @@
     },
 
     "xsede.expanse": {
-        "project"  : null,
+        "project"  : "UNC100",
         "queue"    : "compute",
-        "schema"   : "ssh",
+        "schema"   : "local",
         "cores"    : 128
     },
 
@@ -141,7 +141,7 @@
     "xsede.bridges2" : {
         "project"  : null,
         "queue"    : "RM",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 128
     },
 

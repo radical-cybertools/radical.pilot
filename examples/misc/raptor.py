@@ -119,10 +119,9 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'anaconda',
+                          env_spec={'type'   : 'venv',
                                     'version': '3.8',
-                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_conda/',
-                                    'pre_exec': ['. $HOME/.miniconda3/etc/profile.d/conda.sh'],
+                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_raptor/',
                                     'setup'  : ['$HOME/j/rp/',
                                                 '$HOME/j/ru/',
                                                 'mpi4py']})
@@ -139,7 +138,7 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                                     "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.1.%06d' % i,
