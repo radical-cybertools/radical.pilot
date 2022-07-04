@@ -821,6 +821,9 @@ class Agent_0(rpu.Worker):
         ve_cmd = '/bin/bash %s -d -p %s -t %s -v %s %s %s > env.log 2>&1' \
                % (rp_cse, ve_path, etype, evers, mods, pre_exec)
 
+        # FIXME: we should export all sandboxes etc. to the prep_env.
+        os.environ['RP_RESOURCE_SANDBOX'] = '../../'
+
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
         self._log.debug('    out: %s', out)
