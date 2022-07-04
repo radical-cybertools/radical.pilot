@@ -71,14 +71,13 @@ class LaunchMethod(object):
                           script_path=env_sh)
 
             # run init_from_scratch in a process under that derived env
-            # FIXME
-          # envp = ru.EnvProcess(env=env_lm)
-          # with envp:
-          #     data = self._init_from_scratch(env_lm, env_sh)
-          #     envp.put(data)
-          # lm_info = envp.get()
-
-            lm_info = self._init_from_scratch(env_lm, env_sh)
+            # FIXME: move this into init_from_scratch
+            self._envp = ru.EnvProcess(env=env_lm)
+            with self._envp:
+                if self._envp:
+                    data = self._init_from_scratch(env_lm, env_sh)
+                    self._envp.put(data)
+            lm_info = self._envp.get()
 
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
@@ -263,6 +262,7 @@ class LaunchMethod(object):
 
         if not ret:
             for line in out.splitlines():
+                line = line.strip()
                 if 'intel(r) mpi library for linux' in line.lower():
                     # Intel MPI is hydra based
                     version = line.split(',')[1].strip()
@@ -285,7 +285,7 @@ class LaunchMethod(object):
                     break
 
                 if 'version:' in line.lower():
-                    version = line.split(':', 1)[1].strip()
+                    version = line.split[-1]
                     flavor  = self.MPI_FLAVOR_OMPI
                     break
 
