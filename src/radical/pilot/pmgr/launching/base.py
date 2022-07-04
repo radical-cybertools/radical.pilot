@@ -967,6 +967,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.project               = project
         jd_dict.output                = 'bootstrap_0.out'
         jd_dict.error                 = 'bootstrap_0.err'
+        jd_dict.node_count            = requested_nodes
         jd_dict.total_cpu_count       = total_cpu_count
         jd_dict.total_gpu_count       = total_gpu_count
         jd_dict.total_physical_memory = requested_memory
