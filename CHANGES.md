@@ -3,6 +3,32 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.15.0  Release                                                       2022-04-07
+--------------------------------------------------------------------------------
+
+  - added tests for PRTE LM
+  - added tests for `rank_cmd` (IBRun and SRun LMs)
+  - adding TMGR stats
+  - adding xsede.expanse to the resource config
+  - always interprete prep_env version request
+  - anaconda support for prepare_env
+  - Checking input staging exists before tar-ing Fixes #2483
+  - ensure pip in venv mode
+  - fixed `_rm_info` in IBRun LM
+  - fixed status callback for SAGA Launcher
+  - fixed type in `ornl.summit_prte` config
+  - fix Ibrun set rank env
+  - fix raptor env vals
+  - use os.path to check if file exists Fixes #2483
+  - remove node names duplication in SRun LM command
+  - hide node-count from saga job description
+  - 'state_history' is no longer supported
+  - support existing VEs for `prepare_env`
+  - updated installation of dependencies in bootstrapper
+  - updated PRTE LM setup and config (including new release of PRRTE on Summit)
+  - updating PMGR/AGENT stats - see #2401
+
+
 1.14.0  Release                                                       2022-04-13
 --------------------------------------------------------------------------------
 
