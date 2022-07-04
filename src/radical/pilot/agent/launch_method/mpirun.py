@@ -81,9 +81,13 @@ class MPIRun(LaunchMethod):
             lm_info['omplace'] = ru.which('omplace')
             lm_info['mpt']     = True
 
-        mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
-        lm_info['mpi_version']  = mpi_version
-        lm_info['mpi_flavor']   = mpi_flavor
+        try:
+            mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
+            lm_info['mpi_version']  = mpi_version
+            lm_info['mpi_flavor']   = mpi_flavor
+            self._log.debug('got mpi version: %s (%s)', mpi_version, mpi_flavor)
+        except:
+            self._log.exception('failed to inspect MPI version and flavor')
 
         return lm_info
 

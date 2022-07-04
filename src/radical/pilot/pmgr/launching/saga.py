@@ -115,6 +115,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
     def launch_pilots(self, rcfg, pilots):
 
         js_ep  = rcfg['job_manager_endpoint']
+        self._log.debug('js_ep: %s', js_ep)
         with self._lock:
             if js_ep in self._js:
                 js = self._js[js_ep]
@@ -139,6 +140,9 @@ class PilotLauncherSAGA(PilotLauncherBase):
                 saga_jd_supplement = jd_dict['saga_jd_supplement']
                 del(jd_dict['saga_jd_supplement'])
 
+            # saga will take care of node_count itself
+            if 'node_count' in jd_dict:
+                del(jd_dict['node_count'])
 
             jd = rs.job.Description()
             for k, v in jd_dict.items():
