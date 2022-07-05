@@ -1,4 +1,5 @@
 import dill
+import redis
 import radical.utils as ru
 import radical.pilot as rp
 
