@@ -2,6 +2,7 @@ import dill
 import redis
 import radical.utils as ru
 import radical.pilot as rp
+import radical.pilot.utils as rpu
 
 from functools import partial
 from .parsl_rp import BASH, PYTHON, RADICALExecutor
