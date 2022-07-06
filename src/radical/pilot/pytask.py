@@ -41,17 +41,31 @@ class PythonTask(object):
     #
     @staticmethod
     def get_func_attr(bson_obj):
+        '''
+        Deserialize function call from BSON string.
+
+        :param bson_obj: serialized PythonTask
+        :return: callable, args, and kwargs
+
+        Raises
+        ------
+        ValueError
+            argument is not a `str`
+        TypeError
+            serialized object does not appear to be a PythonTask
+        Exception
+            error raised when attempting to deserialize *bson_obj*
+        '''
 
         if not isinstance(bson_obj, str):
             raise ValueError('bson object should be string')
 
-        try:
-            pytask = deserialize_bson(bson_obj)
-            func   = deserialize_obj(pytask['func'])
-            args   = list(pytask['args'])
-            kwargs = pytask['kwargs']
-        except Exception as e:
-            raise ValueError('bson_obj is not a PythonTask') from e
+        pytask = deserialize_bson(bson_obj)
+        if any(key not in pytask for key in ('args', 'kwargs', 'func')):
+            raise TypeError('Encoded object does not have the expected schema.')
+        args = list(pytask['args'])
+        kwargs = pytask['kwargs']
+        func = deserialize_obj(pytask['func'])
 
         return func, args, kwargs
 

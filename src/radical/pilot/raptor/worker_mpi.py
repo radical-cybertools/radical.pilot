@@ -602,6 +602,17 @@ class _Worker(mt.Thread):
         unnamed parameters, and `kwargs`, and optional dictionary of named
         parameters.
 
+        *function* is resolved first against `locals()`, then `globals()`, then
+        attributes of the implementation class (member functions of *base*, as
+        provided to `_Worker()`). Finally, an attempt is made to deserialize a
+        PythonTask from *function*. The first non-null resolution of *function*
+        is used as the callable.
+
+        Raises
+        ------
+        ValueError
+            if *function* cannot be resolved.
+
         NOTE: MPI function tasks will get a private communicator passed as first
               unnamed argument.
         '''
@@ -609,46 +620,39 @@ class _Worker(mt.Thread):
         uid  = task['uid']
         func = task['description']['function']
 
-        to_call = ''
-        names   = ''
         args    = task['description'].get('args',   [])
         kwargs  = task['description'].get('kwargs', {})
         py_func = False
 
         self._log.debug('=== orig args: %s : %s', args, kwargs)
 
-        # check if we have a serialized object
-        self._log.debug('func serialized: %d: %s', len(func), func)
-        try:
-            to_call, _args, _kwargs = PythonTask.get_func_attr(func)
-            assert callable(to_call)
-            py_func = True
-        except (ValueError, TypeError) as e:
-            self._log.debug(f'{uid} function is not a PythonTask: ', exc_info=e)
-        except Exception as e:
-            raise RuntimeError(
-                f'Unhandled exception getting serialized function for {uid}.') from e
-        else:
-            if args or kwargs:
-                raise ValueError(
-                    f'{uid} "args" and "kwargs" must be empty for PythonTask function')
-            else:
-                args = _args
-                kwargs = _kwargs
-
-        if not to_call:
-            assert(func)
-            # check if `func_name` is a global name
-            names   = dict(list(globals().items()) + list(locals().items()))
-            to_call = names.get(func)
+        # check if `func_name` is a global name
+        names   = dict(list(globals().items()) + list(locals().items()))
+        to_call = names.get(func)
 
         # if not, check if this is a class method of this worker implementation
         if not to_call:
             to_call = getattr(self._base, func, None)
 
         if not to_call:
+            # check if we have a serialized object
+            self._log.debug('func serialized: %d: %s', len(func), func)
+            try:
+                to_call, _args, _kwargs = PythonTask.get_func_attr(func)
+            except Exception as e:
+                self._log.debug(f'{uid} function is not a PythonTask: ', exc_info=e)
+            else:
+                py_func = True
+                if args or kwargs:
+                    raise ValueError(
+                        f'{uid} "args" and "kwargs" must be empty for PythonTask function')
+                else:
+                    args = _args
+                    kwargs = _kwargs
+
+        if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
-            raise ValueError('%s callable %s not found: %s' % (uid, to_call, task))
+            raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
         if comm:
