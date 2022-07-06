@@ -705,6 +705,8 @@ def get_session_description(sid, src=None, dburl=None):
 
     for task in sorted(json['task'], key=lambda k: k['uid']):
         uid  = task['uid']
+        if uid.startswith('master'):
+            continue
         pid  = task['pilot']
         tmgr = task['tmgr']
         tree[pid ]['children'].append(uid)
