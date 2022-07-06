@@ -491,15 +491,15 @@ class _Worker(mt.Thread):
                         task['exit_code']    = -1
                         task['return_value'] = None
                         task['exception']    = [e.__class__.__name__, str(e)]
-                        self._log.exception('recv err  %s  to  0' % (task['uid']), exc_info=e)
+                        self._log.exception('recv err  %s  to  0' % (task['uid']))
 
                     finally:
                         # send task back to rank 0
                         # FIXME: task_exec_stop
                         rank_result_q.put(task)
 
-        except Exception as e:
-            self._log.exception('work thread failed [%s]', self._rank, exc_info=e)
+        except:
+            self._log.exception('work thread failed [%s]', self._rank)
 
 
     # --------------------------------------------------------------------------
