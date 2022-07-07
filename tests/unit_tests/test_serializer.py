@@ -1,5 +1,7 @@
 # pylint: disable=unused-argument, no-value-for-parameter
 
+import tempfile
+
 from unittest import TestCase
 
 from radical.pilot.utils import serializer
@@ -18,7 +20,8 @@ class TestSerializer(TestCase):
 
         obj = hello_test
         ser_obj_file_path = serializer.serialize_file(obj)
-        expected_path = '/tmp/rp_obj.pkl'
+        tmp = tempfile.gettempdir()
+        expected_path = '%s/rp_obj.pkl' % tmp
 
         self.assertEqual(ser_obj_file_path, expected_path)
 
