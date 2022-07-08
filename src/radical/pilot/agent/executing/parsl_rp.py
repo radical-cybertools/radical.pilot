@@ -154,7 +154,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                                                ru.ID_CUSTOM,
                                                ns=self.session.uid)
             td.arguments      = [self.cfg_file, i]
-            td.cpu_threads    = 1
+            td.cpu_threads    = int(self.cpn / self.masters_pn)
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -267,7 +267,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         elif PYTHON in task_type or not task_type:
             self.log.debug(PYTHON)
             task.mode       = rp.TASK_FUNCTION
-            task.scheduler  = 'master.%06d' % (self._task_counter % self.n_masters)
+            task_id         = int(self._task_counter.split('task.')[1])
+            task.scheduler  = 'master.%06d' % (task_id % self.n_masters)
             task.function   = PythonTask(func, *args, **kwargs)
 
         task.stdout           = kwargs.get('stdout', '')
@@ -294,8 +295,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
         self.log.debug("task_recv_parsl_dfk")
-        self._task_counter += 1
-        task_id = str(self._task_counter)
+        self._task_counter = ru.generate_id('task.%(item_counter)06d',
+                                    ru.ID_CUSTOM, ns=self.session.uid)
+        task_id = self._task_counter
 
         try:
 
