@@ -440,8 +440,7 @@ class Agent_0(rpu.Worker):
 
         for idx, sa in enumerate(self._cfg['agents']):
 
-            agent  = self._cfg['agents'][sa]
-            target = agent['target']
+            target = self._cfg['agents'][sa]['target']
 
             if target not in ['local', 'node']:
 
@@ -451,8 +450,6 @@ class Agent_0(rpu.Worker):
 
                 # start agent locally
                 cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
-            
-            env = agent.get('environment', {})
 
 
             else:  # target == 'node':
@@ -480,7 +477,7 @@ class Agent_0(rpu.Worker):
                                           'gpu_processes' : 0,
                                           'gpu_threads'   : 0,
                                           'executable'    : '/bin/sh',
-                                          'environment'   : env,
+                                          'environment'   : {},
                                           'arguments'     : [bs_name, sa]},
                     'slots': {'ranks'  : [{'node_name'    : node['node_name'],
                                            'node_id'      : node['node_id'],
