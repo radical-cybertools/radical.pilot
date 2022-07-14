@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2014-2016, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2014-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
@@ -13,6 +13,7 @@ import radical.utils       as ru
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
+from ..   import TaskDescription
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
@@ -28,9 +29,9 @@ class Agent_0(rpu.Worker):
 
     This class inherits the rpu.Worker, so that it can use its communication
     bridges and callback mechanisms.  Specifically, it will pull the DB for
-    new tasks to be exexuted and forwards them to the agent's component
+    new tasks to be executed and forwards them to the agent's component
     network (see `work()`).  It will also watch the DB for any commands to be
-    forwarded (pilot termination, task cancelation, etc), and will take care
+    forwarded (pilot termination, task cancellation, etc.), and will take care
     of heartbeat messages to be sent to the client module.  To do all this, it
     initializes a DB connection in `initialize()`.
     '''
@@ -354,15 +355,16 @@ class Agent_0(rpu.Worker):
         threads = self._rm.info.cores_per_node * \
                   self._rm.info.threads_per_core
 
-        service_task = {
-            'uid'              : 'rp.services',
+        service_task_uid = 'rp.services'
+        service_task     = {
+            'uid'              : service_task_uid,
             'task_sandbox_path': self._pwd,
-            'description'      : {'cpu_processes' : 1,
-                                  'cpu_threads'   : threads,
-                                  'gpu_processes' : 0,
-                                  'gpu_threads'   : 0,
-                                  'executable'    : '/bin/sh',
-                                  'arguments'     : [bs_name, 'services']},
+            'description'      : TaskDescription({
+                                   'uid'          : service_task_uid,
+                                   'cpu_processes': 1,
+                                   'cpu_threads'  : threads,
+                                   'executable'   : '/bin/sh',
+                                   'arguments'    : [bs_name, 'services']}),
             'slots': {'ranks'  : [{'node_name'    : nodes[0]['node_name'],
                                    'node_id'      : nodes[0]['node_id'],
                                    'core_map'     : [[0]],
@@ -472,13 +474,12 @@ class Agent_0(rpu.Worker):
                 agent_task = {
                     'uid'              : sa,
                     'task_sandbox_path': self._pwd,
-                    'description'      : {'cpu_processes' : 1,
-                                          'cpu_threads'   : threads,
-                                          'gpu_processes' : 0,
-                                          'gpu_threads'   : 0,
-                                          'executable'    : '/bin/sh',
-                                          'environment'   : {},
-                                          'arguments'     : [bs_name, sa]},
+                    'description'      : TaskDescription({
+                                           'uid'          : sa,
+                                           'cpu_processes': 1,
+                                           'cpu_threads'  : threads,
+                                           'executable'   : '/bin/sh',
+                                           'arguments'    : [bs_name, sa]}),
                     'slots': {'ranks'  : [{'node_name'    : node['node_name'],
                                            'node_id'      : node['node_id'],
                                            'core_map'     : [[0]],
