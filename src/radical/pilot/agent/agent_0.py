@@ -377,7 +377,10 @@ class Agent_0(rpu.Worker):
         if not launcher:
             raise RuntimeError('no launch method found for sub agent')
 
+        # FIXME: set RP environment (as in Popen Executor)
+
         tmp  = '#!/bin/sh\n\n'
+        tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
             tmp += '%s || exit 1\n' % cmd
@@ -493,8 +496,10 @@ class Agent_0(rpu.Worker):
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
 
+                # FIXME: set RP environment (as in Popen Executor)
 
                 tmp  = '#!/bin/sh\n\n'
+                tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
                     tmp += '%s || exit 1\n' % cmd
