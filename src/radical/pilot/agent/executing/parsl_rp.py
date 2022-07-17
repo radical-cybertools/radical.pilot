@@ -294,10 +294,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self.log.debug("task_recv_parsl_dfk")
         self._task_counter = ru.generate_id('task.%(item_counter)06d',
                                     ru.ID_CUSTOM, ns=self.session.uid)
         task_id = self._task_counter
+        self.log.debug("got %s from parsl-DFK", task_id)
 
         try:
 
@@ -315,7 +315,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
             # submit the task to rp
             self.tmgr.submit_tasks(task)
-            self.log.debug("task_submit_rp_tmgr")
+            self.log.debug("put %s to rp-TMGR", task_id)
 
             return self.future_tasks[task_id]
 

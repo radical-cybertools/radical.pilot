@@ -50,9 +50,8 @@ class RedisRadicalExecutor(RADICALExecutor):
             msg = self.redis.get(key)
             task = eval(msg.decode())
             if task['uid'] == task_id:
-                self.log.debug('key found and matched')
+                self.log.debug('got redis-task %s', task['uid'])
                 retv = rpu.deserialize_obj(eval(task['return_value']))
-                self.redis.delete(key)
                 return retv
             else:
                 raise('inconsistent rp task and redis task')
@@ -64,7 +63,7 @@ class RedisRadicalExecutor(RADICALExecutor):
         '''
         key = 'task:{0}'.format(str(task.uid))
         self.redis.set(key, str(task))
-        self.log.debug('send_task_to_redis')
+        self.log.debug('put redis-task %s', task.uid)
 
 
     def task_state_cb(self, task, state):
@@ -78,7 +77,7 @@ class RedisRadicalExecutor(RADICALExecutor):
                 try:
                     stdout = self.get_redis_task(task.uid)
                     parsl_task.set_result(stdout)
-                    self.log.debug('recv_colmena_result')
+                    self.log.debug('got colmena-result of %s', task.uid)
                 except Exception as e:
                     self.log.error(e)
                     raise e
@@ -102,20 +101,20 @@ class RedisRadicalExecutor(RADICALExecutor):
             func = func.__wrapped__
             # Colmena/bash and python migh be partial wrapped
             if isinstance(func, partial):
-                self.log.debug('COL_TASK_PARTIAL')
+                self.log.debug('colmena PartialTask')
                 # type bash/python colmena task
                 if isinstance(func.args[0], ExecutableTask):
-                    self.log.debug('COL_TASK_EXECUTABLETASK')
+                    self.log.debug('colmena ExecutableTask')
                     # we can only check via name now as dfk not returning
                     # app type with base class
                     if '_preprocess' or '_postprocess' in func.__name__:
-                        self.log.debug('COL_TASK_PYTHON: %s', func.__name__)
+                        self.log.debug('colmena PythonTask: %s', func.__name__)
                         task_type = PYTHON
                         return func, args, task_type
 
                 if isinstance(func.args[0], partial):
                     if '_execute_execute' in func.args[0].func.__name__:
-                        self.log.debug('COL_TASK_BASH')
+                        self.log.debug('colmena BashTask')
                         task_type = BASH
                         return func.args[0], args, task_type
 
@@ -130,7 +129,7 @@ class RedisRadicalExecutor(RADICALExecutor):
         if len(args) > 0:
             for arg in args:
                 if isinstance(arg, Result):
-                    self.log.debug('recv_colmena_task')
+                    self.log.debug('got colmena-task %s', task.uid)
                     task.name = COLMENA
 
         if task.function:
