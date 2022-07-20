@@ -516,12 +516,15 @@ class ResourceManager(object):
         as required for rm_info.
         '''
 
+        # keep nodes to be indexed (node_id) starting at 1
+        # (required for jsrun ERF spec files and expanded to all other RMs)
         node_list = [{'node_name': node[0],
-                      'node_id'  : node[0],
+                      'node_id'  : str(idx + 1),
                       'cores'    : [rpc.FREE] * node[1],
                       'gpus'     : [rpc.FREE] * rm_info.gpus_per_node,
                       'lfs'      : rm_info.lfs_per_node,
-                      'mem'      : rm_info.mem_per_node} for node in nodes]
+                      'mem'      : rm_info.mem_per_node}
+                     for idx, node in enumerate(nodes)]
 
         return node_list
 
