@@ -1,6 +1,8 @@
 # pylint: disable=unused-argument, no-value-for-parameter
 
-from unittest import TestCase
+import os
+
+from unittest import mock, TestCase
 
 from radical.pilot.utils import serializer
 
@@ -13,14 +15,43 @@ class TestSerializer(TestCase):
     #
     def test_ser_path(self):
 
+        from radical.pilot.utils.serializer import _obj_file_path
+
         def hello_test():
             return 1
 
-        obj = hello_test
-        ser_obj_file_path = serializer.serialize_file(obj)
-        expected_path = '/tmp/rp_obj.pkl'
+        self.assertFalse(os.path.isfile(_obj_file_path))
 
-        self.assertEqual(ser_obj_file_path, expected_path)
+        ser_obj_file_path = serializer.serialize_file(hello_test)
+
+        self.assertTrue(os.path.isfile(_obj_file_path))
+        self.assertEqual(ser_obj_file_path, _obj_file_path)
+        os.unlink(_obj_file_path)
+
+        # non func object
+
+        hello_test = 'hello_str'
+
+        self.assertFalse(os.path.isfile(_obj_file_path))
+
+        ser_obj_file_path = serializer.serialize_file(hello_test)
+
+        self.assertTrue(os.path.isfile(_obj_file_path))
+        self.assertEqual(ser_obj_file_path, _obj_file_path)
+        os.unlink(_obj_file_path)
+
+        # raise exception
+
+        import dill
+
+        def mock_dump(*args, **kwargs):
+            raise Exception
+
+        with mock.patch.object(dill, 'dump', mock_dump):
+            with self.assertRaises(Exception) as exc:
+                serializer.serialize_file('test')
+            self.assertIn('object is not serializable', str(exc.exception))
+            os.unlink(_obj_file_path)
 
 
     # --------------------------------------------------------------------------
