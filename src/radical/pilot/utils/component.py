@@ -60,7 +60,9 @@ class ComponentManager(object):
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
-        self._uid  = ru.generate_id('cmgr', ns=self._sid)
+
+        self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
+                                    ru.ID_CUSTOM, ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
@@ -237,7 +239,8 @@ class ComponentManager(object):
 
             for _ in range(ccfg.get('count', 1)):
 
-                ccfg.uid         = ru.generate_id(cname, ns=self._sid)
+                ccfg.uid         = ru.generate_id(cname + '.%(item_counter)04d',
+                                                  ru.ID_CUSTOM, ns=self._sid)
                 ccfg.cmgr        = self.uid
                 ccfg.kind        = cname
                 ccfg.sid         = cfg.sid
