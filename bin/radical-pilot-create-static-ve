@@ -171,7 +171,7 @@ then
     if ! test -z "$VERSION"
     then
         PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
-        if ! "$VERSION" = "$PY_VERSION"
+        if ! test "$VERSION" = "$PY_VERSION"
         then
             echo "requested version $VERSION not supported for venv ($PY_VERSION)"
             exit 1
