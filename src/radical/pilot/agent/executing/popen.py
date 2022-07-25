@@ -119,6 +119,7 @@ class Popen(AgentExecutingComponent):
         for task in tasks:
 
             try:
+                self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
             except Exception:
@@ -139,6 +140,9 @@ class Popen(AgentExecutingComponent):
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
+
+            finally:
+                self._prof.prof('task_stop', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -407,9 +411,9 @@ class Popen(AgentExecutingComponent):
             fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         # make sure the sandbox exists
-        self._prof.prof('exec_mkdir', uid=tid)
+        self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
-        self._prof.prof('exec_mkdir_done', uid=tid)
+        self._prof.prof('task_mkdir_done', uid=tid)
 
         # launch and exec script are done, get ready for execution.
         cmdline = '/bin/sh %s' % launch_script
@@ -418,7 +422,7 @@ class Popen(AgentExecutingComponent):
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
-        self._prof.prof('exec_start', uid=tid)
+        self._prof.prof('task_run_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,
                                         executable = None,
                                         stdin      = None,
@@ -430,7 +434,7 @@ class Popen(AgentExecutingComponent):
         # decoupling from parent process group is disabled,
         # in case of enabling it, one of the following options should be added:
         #    `preexec_fn=os.setsid` OR `start_new_session=True`
-        self._prof.prof('exec_ok', uid=tid)
+        self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
@@ -501,7 +505,7 @@ class Popen(AgentExecutingComponent):
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
-                    self._prof.prof('exec_cancel_start', uid=tid)
+                    self._prof.prof('task_run_cancel_start', uid=tid)
 
                     # We got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
@@ -518,7 +522,7 @@ class Popen(AgentExecutingComponent):
                     with self._cancel_lock:
                         self._tasks_to_cancel.remove(tid)
 
-                    self._prof.prof('exec_cancel_stop', uid=tid)
+                    self._prof.prof('task_run_cancel_stop', uid=tid)
 
                     del(task['proc'])  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
@@ -530,7 +534,7 @@ class Popen(AgentExecutingComponent):
 
             else:
 
-                self._prof.prof('exec_stop', uid=tid)
+                self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
                 task['proc'].wait()
