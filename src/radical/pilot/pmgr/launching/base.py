@@ -280,7 +280,7 @@ class PMGRLaunchingComponent(rpu.Component):
         self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
 
         # We can only use bulk submission for pilots which go to the same
-        # target, thus we sort them into buckets and lunch the buckets
+        # target, thus we sort them into buckets and launch the buckets
         # individually
         buckets = defaultdict(lambda: defaultdict(list))
         for pilot in pilots:
@@ -421,6 +421,10 @@ class PMGRLaunchingComponent(rpu.Component):
 
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
+                # checking if input staging file exists
+                if not os.path.exists(fname):
+                    raise RuntimeError('input_staging file does not exists: %s for pilot %s' % fname, pid)
+
                 ft_list.append({'src': fname,
                                 'tgt': '%s/%s' % (pid, base),
                                 'rem': False})
@@ -963,6 +967,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.project               = project
         jd_dict.output                = 'bootstrap_0.out'
         jd_dict.error                 = 'bootstrap_0.err'
+        jd_dict.node_count            = requested_nodes
         jd_dict.total_cpu_count       = total_cpu_count
         jd_dict.total_gpu_count       = total_gpu_count
         jd_dict.total_physical_memory = requested_memory

@@ -791,8 +791,8 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('env_spec: %s', env_spec)
 
-        etype = env_spec['type']
-        evers = env_spec['version']
+        etype = env_spec.get('type', 'venv')
+        evers = env_spec.get('version', '')
         path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
@@ -806,10 +806,12 @@ class Agent_0(rpu.Worker):
         else    : mods = ''
 
       # assert(etype == 'virtualenv')
-        assert(evers)
+      # assert(evers)
 
         # only create a new VE if path is not set or if it does not exist
-        path          = path.rstrip('/')
+        if path:
+            path = path.rstrip('/')
+
         ve_local_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
         if path: ve_path = path
         else   : ve_path = ve_local_path
@@ -818,6 +820,9 @@ class Agent_0(rpu.Worker):
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/bash %s -d -p %s -t %s -v %s %s %s > env.log 2>&1' \
                % (rp_cse, ve_path, etype, evers, mods, pre_exec)
+
+        # FIXME: we should export all sandboxes etc. to the prep_env.
+        os.environ['RP_RESOURCE_SANDBOX'] = '../../'
 
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)

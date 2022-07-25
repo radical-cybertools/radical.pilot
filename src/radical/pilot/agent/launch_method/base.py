@@ -71,14 +71,13 @@ class LaunchMethod(object):
                           script_path=env_sh)
 
             # run init_from_scratch in a process under that derived env
-            # FIXME
-          # envp = ru.EnvProcess(env=env_lm)
-          # with envp:
-          #     data = self._init_from_scratch(env_lm, env_sh)
-          #     envp.put(data)
-          # lm_info = envp.get()
-
-            lm_info = self._init_from_scratch(env_lm, env_sh)
+            # FIXME: move this into init_from_scratch
+            self._envp = ru.EnvProcess(env=env_lm)
+            with self._envp:
+                if self._envp:
+                    data = self._init_from_scratch(env_lm, env_sh)
+                    self._envp.put(data)
+            lm_info = self._envp.get()
 
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
@@ -250,8 +249,7 @@ class LaunchMethod(object):
         returns version and flavor of MPI version.
         '''
 
-        version = None
-        flavor  = self.MPI_FLAVOR_UNKNOWN
+        version, flavor = None, None
 
         out, _, ret = ru.sh_callout('%s -V' % exe)
 
@@ -263,37 +261,41 @@ class LaunchMethod(object):
 
         if not ret:
             for line in out.splitlines():
+
                 if 'intel(r) mpi library for linux' in line.lower():
                     # Intel MPI is hydra based
                     version = line.split(',')[1].strip()
-                    flavor  = self.MPI_FLAVOR_HYDRA
-                    break
+                    flavor = self.MPI_FLAVOR_HYDRA
 
-                if 'hydra build details:' in line.lower():
+                elif 'hydra build details:' in line.lower():
                     version = line.split(':', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_HYDRA
-                    break
 
-                if 'mvapich2' in line.lower():
-                    version = line
+                elif 'mvapich2' in line.lower():
+                    version = line.strip()
                     flavor  = self.MPI_FLAVOR_HYDRA
-                    break
 
-                if '(open mpi)' in line.lower():
+                elif '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
+
+                elif 'version' in line.lower():
+                    version = line.lower().split('version')[1].\
+                              replace(':', '').strip()
+                    if not flavor:
+                        flavor = self.MPI_FLAVOR_OMPI
+
+                if version:
                     break
 
-                if 'version:' in line.lower():
-                    version = line.split(':', 1)[1].strip()
-                    flavor  = self.MPI_FLAVOR_OMPI
-                    break
+        else:
+            raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
+
+        if not flavor:
+            flavor = self.MPI_FLAVOR_UNKNOWN
 
         self._log.debug('mpi details [%s]: %s', exe, out)
         self._log.debug('mpi version: %s [%s]', version, flavor)
-
-        if not flavor:
-            raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
 
         return version, flavor
 
