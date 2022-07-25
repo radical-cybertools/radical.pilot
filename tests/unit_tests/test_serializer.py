@@ -48,8 +48,9 @@ class TestSerializer(TestCase):
             raise Exception
 
         with mock.patch.object(dill, 'dump', mock_dump):
-            with self.assertRaises(Exception):
+            with self.assertRaises(Exception) as exc:
                 serializer.serialize_file('test')
+            self.assertIn('object is not serializable', str(exc.exception))
             os.unlink(_obj_file_path)
 
 
