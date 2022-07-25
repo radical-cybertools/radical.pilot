@@ -177,34 +177,42 @@ indication on event ordering *within each individual component*.
 
 ### AgentExecutingComponent: (Component)
 
-    exec_mkdir          : creation of sandbox requested              (uid: task)
-    exec_mkdir_done     : creation of sandbox completed              (uid: task)
-    exec_start          : pass to exec layer (orte, ssh, mpi...)     (uid: task)
-    exec_ok             : exec layer accepted task                   (uid: task)
-    exec_fail           : exec layer refused task                    (uid: task, [RUNTIME], optional)
-    t_start             : task shell script: starts                  (uid: task)
-    t_cd_done           : task shell script: changed workdir         (uid: task)
-    t_pre_start         : task shell script: pre-exec starts         (uid: task, [CU_PRE])
-    t_pre_stop          : task shell script: pre_exec stopped        (uid: task, [CU_PRE])
-    t_exec_start        : task shell script: launch method starts    (uid: task)
+    task_start          : task handling process starts               (uid: task)
+    task_mkdir          : creation of sandbox requested              (uid: task)
+    task_mkdir_done     : creation of sandbox completed              (uid: task)
+    task_run_start      : pass to executing layer (ssh, mpi...)      (uid: task)
+    task_run_ok         : executing layer accepted task              (uid: task)
+    launch_start        : task launch script: starts                 (uid: task)
+    launch_pre          : task launch script: pre-submission         (uid: task)
+    launch_submit       : task launch script: launch method starts   (uid: task)
+    exec_start          : task exec script: starts [per rank]        (uid: task)
+    exec_pre            : task exec script: pre-exec starts          (uid: task)
+    rank_pre            : task exec script: pre-rank starts          (uid: task)
+    rank_start          : task exec script: executable started       (uid: task)
     app_start           : application executable started             (uid: task, [APP])
     app_*               : application specific events                (uid: task, [APP], optional)
     app_stop            : application executable stops               (uid: task, [APP])
-    t_exec_stop         : tasku shell script: launch method returned (uid: task)
-    t_post_start        : task shell script: post-exec starts        (uid: task, [CU_POST])
-    t_post_stop         : task shell script: post_exec stopped       (uid: task, [CU_POST])
-    t_stop              : task shell script: stops                   (uid: task)
-    exec_stop           : exec layer passed back control             (uid: task)
+    rank_stop           : task exec script: executable stopped       (uid: task)
+    rank_post           : task exec script: post-rank starts         (uid: task)
+    exec_post           : task exec script: post-exec starts         (uid: task)
+    exec_stop           : task exec script: stopped                  (uid: task)
+    launch_collect      : task launch script: launch method returned (uid: task)
+    launch_post         : task launch script: post-submission        (uid: task)
+    launch_stop         : task launch script: completes              (uid: task)
+    task_run_stop       : exec layer passed back control             (uid: task)
+    task_stop           : task handling process finished             (uid: task)
 
-    exec_cancel_start   : try to cancel task via exec layer (kill)   (uid: task, [API])
-    exec_cancel_stop    : did cancel    task via exec layer (kill)   (uid: task, [API])
+    task_run_cancel_start: try to cancel task via exec layer (kill)  (uid: task, [API])
+    task_run_cancel_stop : did cancel    task via exec layer (kill)  (uid: task, [API])
 
     partial orders
-    * per task          : exec_start, (exec_ok | exec_fail), t_start, 
-                          t_cd_done, t_pre_start, t_pre_stop, t_exec_start,
-                          app_start, app_*, app_stop, t_exec_stop,
-                          cu_post_start, cu_post_stop, t_stop, exec_stop
-    * per task          : exec_cancel_start, exec_cancel_stop
+    * per task          : task_start, task_run_start, task_run_ok,
+                          launch_start, launch_pre, launch_submit, exec_start, 
+                          exec_pre, rank_pre, rank_start, app_start, app_*, 
+                          app_stop, rank_stop, rank_post, exec_post, exec_stop,
+                          launch_collect, launch_post, launch_stop,
+                          task_run_stop, task_stop
+    * per task          : task_run_cancel_start, task_run_cancel_stop
 
 
 ### AgentStagingOutputComponent (Component)
