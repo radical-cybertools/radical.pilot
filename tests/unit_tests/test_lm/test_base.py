@@ -64,6 +64,10 @@ class TestBaseLaunchMethod(TestCase):
             # no executable found
             lm._get_mpi_info(exe='')
 
+        with self.assertRaises(RuntimeError):
+            mocked_sh_callout.return_value = ['', '', 1]
+            lm._get_mpi_info('mpirun')
+
         mocked_sh_callout.return_value = ['19.05.2', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
         self.assertIsNone(version)  # correct version is not set
@@ -86,7 +90,7 @@ class TestBaseLaunchMethod(TestCase):
             'Version 2019 Update 5 Build 20190806\n\n'
             'Copyright 2003-2019, Intel Corporation.', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
-        self.assertEqual(version, '')
+        self.assertEqual(version, '2019 update 5 build 20190806')
         self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_HYDRA)
 
         mocked_sh_callout.return_value = [
@@ -96,8 +100,13 @@ class TestBaseLaunchMethod(TestCase):
             '/var/tmp/Intel-mvapich2/OFEDRPMS/BUILD/mvapich2\n\n'
             '2.3b-10/src/openpa/src', '', 0]
         version, flavor = lm._get_mpi_info('mpirun')
-        self.assertEqual(version, '')
+        self.assertEqual(version, '3.2')
         self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_HYDRA)
+
+        mocked_sh_callout.return_value = ['Version: 1.1', '', 0]
+        version, flavor = lm._get_mpi_info('mpirun')
+        self.assertEqual(version, '1.1')
+        self.assertEqual(flavor, LaunchMethod.MPI_FLAVOR_OMPI)
 
 # ------------------------------------------------------------------------------
 
