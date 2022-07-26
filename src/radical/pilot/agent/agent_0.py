@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2014-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
@@ -364,7 +364,8 @@ class Agent_0(rpu.Worker):
                                    'cpu_processes': 1,
                                    'cpu_threads'  : threads,
                                    'executable'   : '/bin/sh',
-                                   'arguments'    : [bs_name, 'services']}),
+                                   'arguments'    : [bs_name, 'services']
+                                 }).as_dict(),
             'slots': {'ranks'  : [{'node_name'    : nodes[0]['node_name'],
                                    'node_id'      : nodes[0]['node_id'],
                                    'core_map'     : [[0]],
@@ -399,15 +400,15 @@ class Agent_0(rpu.Worker):
 
 
         # make sure scripts are executable
-        st = os.stat(ls_name)
-        st = os.stat(ex_name)
-        os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
-        os.chmod(ex_name, st.st_mode | stat.S_IEXEC)
+        st_l = os.stat(ls_name)
+        st_e = os.stat(ex_name)
+        os.chmod(ls_name, st_l.st_mode | stat.S_IEXEC)
+        os.chmod(ex_name, st_e.st_mode | stat.S_IEXEC)
 
         # spawn the sub-agent
         cmdline = './%s' % ls_name
 
-        self._log.info ('create services: %s' % cmdline)
+        self._log.info('create services: %s' % cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
         self._log.debug('services started done')
@@ -482,7 +483,8 @@ class Agent_0(rpu.Worker):
                                            'cpu_processes': 1,
                                            'cpu_threads'  : threads,
                                            'executable'   : '/bin/sh',
-                                           'arguments'    : [bs_name, sa]}),
+                                           'arguments'    : [bs_name, sa]
+                                         }).as_dict(),
                     'slots': {'ranks'  : [{'node_name'    : node['node_name'],
                                            'node_id'      : node['node_id'],
                                            'core_map'     : [[0]],
@@ -519,10 +521,10 @@ class Agent_0(rpu.Worker):
                     fout.write(tmp)
 
                 # make sure scripts are executable
-                st = os.stat(launch_script)
-                st = os.stat(exec_script)
-                os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
-                os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
+                st_l = os.stat(launch_script)
+                st_e = os.stat(exec_script)
+                os.chmod(launch_script, st_l.st_mode | stat.S_IEXEC)
+                os.chmod(exec_script,   st_e.st_mode | stat.S_IEXEC)
 
                 # spawn the sub-agent
                 cmdline = launch_script
