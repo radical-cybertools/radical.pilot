@@ -109,13 +109,17 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         if not task.uid.startswith('master'):
             parsl_task = self.future_tasks[task.uid]
 
+
             if state == rp.DONE:
-                # FIXME: for function tasks we should use the return value, for
-                #        bash tasks stdout is correct.
-                parsl_task.set_result(task.stdout)
-                self.log.debug(task.stdout)
-                self.log.debug('+ %s: %-10s: %10s: %s', task.uid, task.state,
-                               task.pilot, task.stdout)
+                if task.description['mode'] in [rp.TASK_EXECUTABLE, rp.TASK_EXEC]:
+                    parsl_task.set_result(task.stdout)
+                    self.log.debug('+ %s: %-10s: %10s: %s', task.uid, task.state,
+                                   task.pilot, task.stdout)
+
+                else:
+                    parsl_task.set_result(task.return_value)
+                    self.log.debug('+ %s: %-10s: %10s: %s', task.uid, task.state,
+                                   task.pilot, task.stdout)
 
             elif state == rp.CANCELED:
                 parsl_task.cancel()

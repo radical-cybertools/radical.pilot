@@ -1,48 +1,51 @@
 #!/usr/bin/env python3
 
-import os
 import parsl
-import radical.pilot as rp
-from parsl import File
+
 from parsl.config import Config
-from parsl.app.app import python_app, bash_app
+from parsl.app.app import python_app
 from radical.pilot.agent.executing.parsl_rp import RADICALExecutor as RADICALExecutor
 
 parsl.set_stream_logger()
 
 config = Config(
+         strategy=None,
+         usage_tracking=True,
          executors=[RADICALExecutor(
-                        label = 'RADICALExecutor',
-                        resource = 'local.localhost',
+                        label        = 'RADICALExecutor',
+                        resource     = 'local.localhost',
                         login_method = 'local',
-                        project = '',
-                        partition = '',
-                        walltime = 30,
-                        managed = True,
-                        max_tasks = 1)
-                        ],
-strategy= None,
-usage_tracking=True)
+                        project      = '',
+                        partition    = '',
+                        walltime     = 30,
+                        managed      = True,
+                        max_tasks    = 1)
+                   ])
 
 parsl.load(config)
 
+
 @python_app
-def wait_sleep_double(x, foo_1, foo_2, nproc):
-     import time
-     time.sleep(2)   # Sleep for 2 seconds
-     return x * 2
+def sleep_mult(delay, x, y, nproc):
+    import time
+    time.sleep(delay)   # Sleep for 2 seconds
+    return x * y
+
 
 # Launch two apps, which will execute in parallel, since they do not have to
 # wait on any futures
-doubled_x = wait_sleep_double(10, None, None, nproc=1)
-doubled_y = wait_sleep_double(10, None, None, nproc=1)
+res_1 = sleep_mult(1, 2, 4, nproc=1)
+res_2 = sleep_mult(1, 4, 8, nproc=1)
+
+print(res_1.result())
+print(res_2.result())
 
 # The third app depends on the first two:
-#    doubled_x   doubled_y     (2 s)
-#           \     /
-#           doublex_z          (2 s)
-doubled_z = wait_sleep_double(10, doubled_x, doubled_y, nproc=1)
+#    res_1   res_2     (2 s)
+#        \  /
+#       res_3          (2 s)
+res_3 = sleep_mult(1, res_1.result(), res_2.result(), nproc=1)
 
-# doubled_z will be done in ~4s
-print(doubled_z.result())
+# res_3 will be done in ~4s
+print(res_3.result())
 

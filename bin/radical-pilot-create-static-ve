@@ -110,7 +110,12 @@ case $PREFIX in
         ;;
 esac
 
-PYTHON=python3
+if test -z "$VERSION"
+then
+    PYTHON=python3
+else
+    PYTHON=python$VERSION
+fi
 
 # check env type
 if test "$ETYPE" = 'conda'

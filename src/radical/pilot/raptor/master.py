@@ -606,32 +606,80 @@ class Master(rpu.Component):
     #
     def _result_cb(self, tasks):
 
-        tasks = ru.as_list(tasks)
-
         try:
+            tasks = ru.as_list(tasks)
+
             self.result_cb(tasks)
 
+            for task in tasks:
+
+                # check if the task was submited via the task_service EP
+                tid = task['uid']
+
+                # canonicalize task results: for MPI tasks, make sure that stdout,
+                # stderr, return_value, exit_code and exception are lists (one per
+                # rank); for non-MPI-tasks make sure they are scalars.
+
+                # FIXME: this might be time costly and shgould be measured.  If
+                # it is, either ensure that the worker's dispatch functions and
+                # error checks do the right thing that we don't need this
+                # conversion, or move the conversion to the worker so that the
+                # master does not become a bottleneck when collecting from many
+                # workers.
+                #
+                # FIXME: on second thought this *must* be done in the dispatcher
+                # as we cannot distnguish between a function returning a list
+                # and an MPI dispatcher returning a list of return values per
+                # rank.
+
+                task['stdout']       = ru.as_list(task['stdout']       or [''])
+                task['stderr']       = ru.as_list(task['stderr']       or [''])
+                task['return_value'] = ru.as_list(task['return_value'] or [None])
+                task['exit_code']    = ru.as_list(task['exit_code']    or [0])
+                task['exception']    = ru.as_list(task['exception']    or [None])
+
+                if task['description'].get('cpu_process_type') == rpc.MPI:
+
+                    ranks = task['description']['cpu_processes']
+
+                    while len(task['stdout']) < ranks:
+                        task['stdout'].append('')
+
+                    while len(task['stderr']) < ranks:
+                        task['stderr'].append('')
+
+                    while len(task['return_value']) < ranks:
+                        task['return_value'].append(None)
+
+                    while len(task['exit_code']) < ranks:
+                        task['exit_code'].append(0)
+
+                    while len(task['exception']) < ranks:
+                        task['exit_code'].append(None)
+
+                else:
+                    task['stdout']       = task['stdout'][0]
+                    task['stderr']       = task['stderr'][0]
+                    task['return_value'] = task['return_value'][0]
+                    task['exit_code']    = task['exit_code'][0]
+                    task['exception']    = task['exception'][0]
+
+                if tid in self._task_service_data:
+                    # update task info and signal task service thread
+                    self._log.debug('unlock 1 %s', tid)
+                    self._task_service_data[tid][1] = task
+                    self._task_service_data[tid][0].set()
+
+                ret = int(task.get('exit_code', -1))
+
+                if ret == 0: task['target_state'] = rps.DONE
+                else       : task['target_state'] = rps.FAILED
+
+            self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                publish=True, push=True)
         except:
             self._log.exception('result callback failed')
 
-        for task in tasks:
-
-            # check if the task was submited via the task_service EP
-            tid = task['uid']
-
-            if tid in self._task_service_data:
-                # update task info and signal task service thread
-                self._log.debug('unlock 1 %s', tid)
-                self._task_service_data[tid][1] = task
-                self._task_service_data[tid][0].set()
-
-            ret = int(task.get('exit_code', -1))
-
-            if ret == 0: task['target_state'] = rps.DONE
-            else       : task['target_state'] = rps.FAILED
-
-        self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
-                            publish=True, push=True)
 
 
     # --------------------------------------------------------------------------

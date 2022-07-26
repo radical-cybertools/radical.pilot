@@ -1046,7 +1046,7 @@ virtenv_create()
         fi
 
         run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD -p python3 $virtenv"
+                "$VIRTENV_CMD -p $PYTHON $virtenv"
 
         if test $? -ne 0
         then

@@ -164,7 +164,7 @@ class Task(object):
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
                     'resource_sandbox', 'pilot_sandbox', 'task_sandbox',
-                    'client_sandbox']:
+                    'return_value', 'exception', 'client_sandbox']:
 
             val = task_dict.get(key, None)
             if val is not None:
