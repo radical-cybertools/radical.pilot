@@ -1,12 +1,15 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = "Copyright 2020, http://radical.rutgers.edu"
-__license__   = "MIT"
+import glob
+import os
+import tempfile
 
-from unittest import TestCase
-from unittest import mock
+from unittest import mock, TestCase
 
-from radical.pilot.agent import Agent_0
+from radical.pilot                        import TaskDescription
+from radical.pilot.agent.resource_manager import RMInfo
+
+from radical.pilot.agent                  import Agent_0
 
 
 # ------------------------------------------------------------------------------
@@ -37,7 +40,6 @@ class TestComponent(TestCase):
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'bye'}
               }
-
         self.assertTrue(agent_cmp._check_control(None, msg))
         self.assertEqual(global_control, [])
 
@@ -60,7 +62,7 @@ class TestComponent(TestCase):
                                                     'out': None,
                                                     'ret': 1}
                                            }),
-                                           ('control_pubsub',
+                                          ('control_pubsub',
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0000',
                                                     'err': "KeyError('arg',)",
@@ -94,9 +96,71 @@ class TestComponent(TestCase):
                                              {'cmd': 'rpc_res',
                                               'arg': {'uid': 'rpc.0000',
                                                       'err': None,
-                                                      'out': ('radical', 'spec'),
+                                                      'out': ('radical',
+                                                              'spec'),
                                                       'ret': 0}
                                              }))
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Agent_0, '__init__', return_value=None)
+    @mock.patch('radical.utils.env_prep')
+    @mock.patch('radical.utils.sh_callout_bg')
+    def test_start_sub_agents(self, mocked_run_sh_callout, mocked_ru_env_prep,
+                              mocked_init):
+
+        agent_0 = Agent_0(None, None)
+        agent_0._pwd = tempfile.gettempdir()
+        agent_0._log = mock.Mock()
+        agent_0._cfg = {
+            'agents': {
+                'agent_1': {'target'    : 'node',
+                            'components': {'agent_executing': {'count': 1}}}
+            }
+        }
+
+        agent_0._rm = mock.Mock()
+
+        # number of available agent nodes less than number of agents in config
+        agent_0._rm.info = RMInfo({'agent_node_list': []})
+        with self.assertRaises(AssertionError):
+            agent_0._start_sub_agents()
+
+        agent_0._rm.info = RMInfo({
+            'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000'}],
+            'cores_per_node'  : 10,
+            'threads_per_core': 1})
+
+        # no launcher for agent task(s)
+        agent_0._rm.find_launcher.return_value = None
+        with self.assertRaises(RuntimeError):
+            agent_0._start_sub_agents()
+
+        def check_agent_task(agent_task, *args, **kwargs):
+            agent_td = TaskDescription(agent_task['description'])
+            # ensure that task description is correct
+            agent_td.verify()
+            return ''
+
+        launcher = mock.Mock()
+        launcher.get_launcher_env.return_value = []
+        launcher.get_launch_cmds = check_agent_task
+        agent_0._rm.find_launcher.return_value = launcher
+
+        agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
+        self.assertEqual(len(agent_files), 0)
+
+        agent_0._start_sub_agents()
+
+        agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
+        self.assertEqual(len(agent_files), 2)
+        for agent_file in agent_files:
+            os.unlink(agent_file)
+
+        # incorrect config setup for agent ('target' is in ['local', 'node'])
+        agent_0._cfg['agents']['agent_1']['target'] = 'incorrect_target'
+        with self.assertRaises(ValueError):
+            agent_0._start_sub_agents()
 
 # ------------------------------------------------------------------------------
 
@@ -105,3 +169,7 @@ if __name__ == '__main__':
 
     tc = TestComponent()
     tc.test_check_control()
+    tc.test_start_sub_agents()
+
+
+# ------------------------------------------------------------------------------
