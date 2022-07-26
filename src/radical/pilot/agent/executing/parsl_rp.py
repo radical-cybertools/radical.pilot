@@ -79,7 +79,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         self.log    = ru.Logger(name='radical.parsl', level='DEBUG')
         self.prof   = ru.Profiler(name = 'radical.parsl', path = self.run_dir)
-        self.report = ru.Reporter(name='radical.pilot')
 
         self.session = None
         self.pmgr    = None
@@ -111,27 +110,30 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             parsl_task = self.future_tasks[task.uid]
 
             if state == rp.DONE:
+                # FIXME: for function tasks we should use the return value, for
+                #        bash tasks stdout is correct.
                 parsl_task.set_result(task.stdout)
                 self.log.debug(task.stdout)
-                print('\t+ %s: %-10s: %10s: %s'
-                    % (task.uid, task.state, task.pilot, task.stdout))
+                self.log.debug('+ %s: %-10s: %10s: %s', task.uid, task.state,
+                               task.pilot, task.stdout)
 
-            if state == rp.CANCELED:
+            elif state == rp.CANCELED:
                 parsl_task.cancel()
-                print('\t+ %s: %-10s: %10s: %s'
-                    % (task.uid, task.state, task.pilot, task.stdout))
-            if state == rp.FAILED:
+                self.log.debug('+ %s: %-10s: %10s: %s', task.uid, task.state,
+                               task.pilot, task.stdout)
+
+            elif state == rp.FAILED:
                 parsl_task.set_exception(Exception(str(task.stderr)))
-                print('\t- %s: %-10s: %10s: %s'
-                    % (task.uid, task.state, task.pilot, task.stderr))
+                self.log.debug('- %s: %-10s: %10s: %s', task.uid, task.state,
+                               task.pilot, task.stderr)
 
 
     def start(self):
         """Create the Pilot process and pass it.
         """
-        self.report.header("starting RADICALExecutor")
-        self.report.header('Parsl: %s' % parsl.__version__)
-        self.report.header('RADICAL pilot: %s' % rp.version)
+        self.log.info("starting RADICALExecutor")
+        self.log.info('Parsl: %s', parsl.__version__)
+        self.log.info('RADICAL pilot: %s', rp.version)
         self.session = rp.Session(uid=ru.generate_id('parsl.radical.session',
                                                       mode=ru.ID_PRIVATE))
 
@@ -175,7 +177,10 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # submit pilot(s)
         pilot = self.pmgr.submit_pilots(pd)
-        task  = self.tmgr.submit_tasks(tds)
+        tasks = self.tmgr.submit_tasks(tds)
+
+        # FIXME: master tasks are never checked for, should add a task state
+        #        callback to do so.
 
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
@@ -191,7 +196,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         self.tmgr.add_pilots(pilot)
         self.tmgr.register_callback(self.task_state_cb)
-        self.report.header('PMGR Is Active submitting tasks now')
+        self.log.info('PMGR Is Active submitting tasks now')
 
         return True
 
@@ -222,8 +227,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     else:
                         task_type = PYTHON
 
-                except Exception as e:
-                    self.report.header(str(e))
+                except Exception:
+                    self.log.exception('unwrap failed')
 
                     return func, args, task_type
 
@@ -234,8 +239,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                     task_type = PYTHON
                 else:
                     task_type = ''
-        except Exception as e:
-            self.report.header('failed to obtain task type: %s', e)
+        except Exception:
+            self.log.exception('failed to obtain task type')
 
         return func, args, task_type
 
@@ -305,8 +310,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             task = self.task_translate(func, args, kwargs)
             self.prof.prof(event='trans_stop', uid=task_id)
 
-            self.report.progress()
-
             # we assign a task id for rp task
             task.uid = task_id
 
@@ -315,20 +318,19 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
             # submit the task to rp
             self.tmgr.submit_tasks(task)
-            self.log.debug("put %s to rp-TMGR", task_id)
+
+            self.log.debug("put %s to rp-TMGR\n")
 
             return self.future_tasks[task_id]
 
 
         except Exception as e:
             # Something unexpected happened in the pilot code above
-            self.report.error('caught Exception: %s\n' % e)
-            ru.print_exception_trace()
+            self.log.exception('RP task submission failed')
             raise
 
         except (KeyboardInterrupt, SystemExit):
-            ru.print_exception_trace()
-            self.report.warn('exit requested\n')
+            self.log.exception('RP task submission interrupted')
 
 
     def _get_job_ids(self):
@@ -337,9 +339,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def shutdown(self, hub=True, targets='all', block=False):
         """Shutdown the executor, including all RADICAL-Pilot components."""
-        self.report.progress_done()
+        self.log.info("RADICALExecutor shutdown")
         self.session.close(download=True)
-        self.report.header("attempting RADICALExecutor shutdown")
 
         return True
 

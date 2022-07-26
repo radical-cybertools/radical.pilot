@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import parsl
 import radical.pilot as rp
@@ -32,6 +34,7 @@ def app_double(x, cpu_processes=1):
 @python_app
 def app_sum(inputs, cpu_processes=1):
     x = sum(inputs)
+    print(x)
     return x
 
 

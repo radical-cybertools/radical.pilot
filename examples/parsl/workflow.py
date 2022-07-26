@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import parsl
 import radical.pilot as rp
