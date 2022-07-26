@@ -2,68 +2,11 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import pickle
-import codecs
 
 import radical.utils as ru
 
-<<<<<<< HEAD
-from radical.pilot.serialize import serializer as serialize
-
-
-# ------------------------------------------------------------------------------
-# Attribute description keys
-#
-UID                    = 'uid'
-NAME                   = 'name'
-EXECUTABLE             = 'executable'
-ARGUMENTS              = 'arguments'
-ENVIRONMENT            = 'environment'
-NAMED_ENV              = 'named_env'
-SANDBOX                = 'sandbox'
-
-CPU_PROCESSES          = 'cpu_processes'
-CPU_PROCESS_TYPE       = 'cpu_process_type'
-CPU_THREADS            = 'cpu_threads'
-CPU_THREAD_TYPE        = 'cpu_thread_type'
-
-GPU_PROCESSES          = 'gpu_processes'
-GPU_PROCESS_TYPE       = 'gpu_process_type'
-GPU_THREADS            = 'gpu_threads'
-GPU_THREAD_TYPE        = 'gpu_thread_type'
-
-LFS_PER_PROCESS        = 'lfs_per_process'
-MEM_PER_PROCESS        = 'mem_per_process'
-
-INPUT_STAGING          = 'input_staging'
-OUTPUT_STAGING         = 'output_staging'
-STAGE_ON_ERROR         = 'stage_on_error'
-PRE_LAUNCH             = 'pre_launch'
-PRE_EXEC               = 'pre_exec'
-PRE_RANK               = 'pre_rank'
-POST_LAUNCH            = 'post_launch'
-POST_EXEC              = 'post_exec'
-POST_RANK              = 'post_rank'
-KERNEL                 = 'kernel'
-CLEANUP                = 'cleanup'
-PILOT                  = 'pilot'
-STDOUT                 = 'stdout'
-STDERR                 = 'stderr'
-RESTARTABLE            = 'restartable'
-SCHEDULER              = 'scheduler'
-TAGS                   = 'tags'
-METADATA               = 'metadata'
-
-# process / thread types (for both, CPU and GPU processes/threads)
-POSIX                  = 'POSIX'   # native threads / application threads
-MPI                    = 'MPI'
-OpenMP                 = 'OpenMP'
-CUDA                   = 'CUDA'
-FUNC                   = 'FUNC'
-MPI_FUNC               = 'MPI_FUNC'
 
 # FIXME: move process/thread types to `radical.pilot.constants`
-=======
 # task modes
 TASK_EXECUTABLE  = 'executable'
 TASK_FUNCTION    = 'function'
@@ -72,6 +15,10 @@ TASK_EVAL        = 'eval'
 TASK_EXEC        = 'exec'
 TASK_PROC        = 'proc'
 TASK_SHELL       = 'shell'
+
+TASK_FUNC        = 'FUNC'
+TASK_MPI_FUNC    = 'MPI_FUNC'
+
 
 # task description attributes
 UID              = 'uid'
@@ -87,7 +34,7 @@ METHOD           = 'method'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
 
-# mode: TASK_FUNCTION
+# mode: TASK_FUNCTION, TASK_FUNC, TASK_MPI_FUNC
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
@@ -134,7 +81,6 @@ RESTARTABLE      = 'restartable'
 SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
 METADATA         = 'metadata'
->>>>>>> devel
 
 
 # ------------------------------------------------------------------------------
@@ -544,7 +490,6 @@ class TaskDescription(ru.TypedDict):
     _schema = {
         UID             : str         ,
         NAME            : str         ,
-        KERNEL          : str         ,
         SANDBOX         : str         ,
         MODE            : str         ,
 
