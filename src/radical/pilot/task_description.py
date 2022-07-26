@@ -486,15 +486,9 @@ class TaskDescription(ru.TypedDict):
     _schema = {
         UID             : str         ,
         NAME            : str         ,
-<<<<<<< HEAD
-        EXECUTABLE      : None        ,
-        KERNEL          : str         ,
-        SANDBOX         : str         ,
-=======
         MODE            : str         ,
 
         EXECUTABLE      : str         ,
->>>>>>> devel
         ARGUMENTS       : [str]       ,
         CODE            : str         ,
         FUNCTION        : str         ,
@@ -594,23 +588,6 @@ class TaskDescription(ru.TypedDict):
     #
     def _verify(self):
 
-<<<<<<< HEAD
-        if isinstance(self.get('executable'), dict):
-
-            exe = self.get('executable')
-            from radical.pilot.serialize import serializer as serialize
-            ser_exe = serialize.FuncSerializer.serialize_file(exe['func'])
-
-            cu_exe_dict   = {'_cud_code'  :ser_exe,
-                             '_cud_args'  :exe['args'],
-                             '_cud_kwargs':exe['kwargs']}
-            func_obj = codecs.encode(pickle.dumps(cu_exe_dict), "base64").decode()
-            self['executable'] = func_obj
-
-        if not self.get('executable') and \
-           not self.get('kernel')     :
-            raise ValueError("Task description needs 'executable' or 'kernel'")
-=======
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
@@ -647,7 +624,6 @@ class TaskDescription(ru.TypedDict):
       #
       #     if self.get('gpu_processes', 0) > 0:
       #         raise ValueError("TASK_SHELL and TASK_PROC Tasks canont use GPUs")
->>>>>>> devel
 
 
 # ------------------------------------------------------------------------------
