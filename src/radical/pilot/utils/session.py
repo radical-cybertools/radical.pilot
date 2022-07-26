@@ -75,18 +75,10 @@ def fetch_profiles (sid, src=None, tgt=None, access=None,
             if not os.path.isfile(client_profile):
                 raise RuntimeError('profile %s does not exist' % client_profile)
 
-<<<<<<< HEAD
     # FIXME: MongoDB
     json_docs  = ...
     return
     pilots     = json_docs['pilot']
-=======
-    _, db, _, _, _ = ru.mongodb_connect (dburl)
-
-    json_docs = get_session_docs(sid, db)
-
-    pilots = json_docs['pilot']
->>>>>>> devel
     num_pilots = len(pilots)
 
     log.debug("Session: %s", sid)
