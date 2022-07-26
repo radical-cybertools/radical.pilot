@@ -2,9 +2,13 @@
 """
 import os
 import sys
+import time
 import parsl
+import queue
 import inspect
 import typeguard
+
+import threading as mt
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -202,6 +206,18 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.tmgr.register_callback(self.task_state_cb)
         self.log.info('PMGR Is Active submitting tasks now')
 
+        # create a bulking thread to run the actual task submittion to RP in
+        # bulks
+        self._max_bulk_size = 1024
+        self._max_bulk_time =    3        # seconds
+        self._min_bulk_time =    0.1      # seconds
+
+        self._bulk_queue    = queue.Queue()
+        self._bulk_thread   = mt.Thread(target=self._bulk_collector)
+
+        self._bulk_thread.daemon = True
+        self._bulk_thread.start()
+
         return True
 
 
@@ -255,7 +271,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         func, args, task_type = self.unwrap(func, args)
 
         if BASH in task_type:
-            self.log.debug(BASH)
+          # self.log.debug(BASH)
             if callable(func):
                 # These lines of code are from parsl/app/bash.py
                 try:
@@ -268,15 +284,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
                 task.mode       = rp.TASK_EXECUTABLE
                 task.scheduler  = None
-                task.executable = bash_app
+                task.executable = '/bin/bash'
+                task.arguments  = ['-c', bash_app]
 
                 # specifying pre_exec is only for executables
                 task.pre_exec = kwargs.get('pre_exec', [])
 
         elif PYTHON in task_type or not task_type:
-            self.log.debug(PYTHON)
+          # self.log.debug(PYTHON)
             task.mode       = rp.TASK_FUNCTION
-            task_id         = int(self._task_counter.split('task.')[1])
+            task_id         = self._task_counter
             task.scheduler  = 'master.%06d' % (task_id % self.n_masters)
             task.function   = PythonTask(func, *args, **kwargs)
 
@@ -292,6 +309,36 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         return task
 
 
+    def _bulk_collector(self):
+
+        bulk = list()
+
+        while True:
+
+            now = time.time()  # time of last submission
+
+            # collect tasks for min bulk time
+            # NOTE: total collect time could actually be twice that long
+            while time.time() - now < self._max_bulk_time:
+
+                try:
+                    task = self._bulk_queue.get(block=False, timeout=self._min_bulk_time)
+                except queue.Empty:
+                    task = None
+
+                if task:
+                    bulk.append(task)
+
+                if len(bulk) >= self._max_bulk_size:
+                    break
+
+            if bulk:
+                self.log.debug('submit bulk: %d', len(bulk))
+                self.tmgr.submit_tasks(bulk)
+                bulk = list()
+
+
+
     def submit(self, func, *args, **kwargs):
         """
         Submits task/tasks to RADICAL task_manager.
@@ -303,38 +350,30 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self._task_counter = ru.generate_id('task.%(item_counter)06d',
-                                    ru.ID_CUSTOM, ns=self.session.uid)
-        task_id = self._task_counter
+        self._task_counter += 1
+        task_id = 'task.%d' % self._task_counter
         self.log.debug("got %s from parsl-DFK", task_id)
 
-        try:
+      # # ---------------
+      # self.future_tasks[task_id] = Future()
+      # self.future_tasks[task_id].set_result(3)
+      # return self.future_tasks[task_id]
+      # # ---------------
 
-            self.prof.prof(event='trans_start', uid=task_id)
-            task = self.task_translate(func, args, kwargs)
-            self.prof.prof(event='trans_stop', uid=task_id)
+        self.prof.prof(event='trans_start', uid=task_id)
+        task = self.task_translate(func, args, kwargs)
+        self.prof.prof(event='trans_stop', uid=task_id)
 
-            # we assign a task id for rp task
-            task.uid = task_id
+        # we assign a task id for rp task
+        task.uid = task_id
 
-            # set the future with corresponding id
-            self.future_tasks[task_id] = Future()
+        # set the future with corresponding id
+        self.future_tasks[task_id] = Future()
 
-            # submit the task to rp
-            self.tmgr.submit_tasks(task)
+        # push task to rp submit thread
+        self._bulk_queue.put(task)
 
-            self.log.debug("put %s to rp-TMGR\n")
-
-            return self.future_tasks[task_id]
-
-
-        except Exception as e:
-            # Something unexpected happened in the pilot code above
-            self.log.exception('RP task submission failed')
-            raise
-
-        except (KeyboardInterrupt, SystemExit):
-            self.log.exception('RP task submission interrupted')
+        return self.future_tasks[task_id]
 
 
     def _get_job_ids(self):

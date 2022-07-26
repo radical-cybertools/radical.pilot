@@ -11,14 +11,14 @@ from radical.pilot.agent.executing.parsl_rp import RADICALExecutor as RADICALExe
 parsl.set_stream_logger()
 config = Config(
          executors=[RADICALExecutor(
-                        label = 'RADICALExecutor',
-                        resource = 'local.localhost',
+                        label        = 'RADICALExecutor',
+                        resource     = 'local.localhost',
                         login_method = 'local',
-                        project = '',
-                        partition = '',
-                        walltime = 30,
-                        managed = True,
-                        max_tasks = 12)
+                        project      = '',
+                        partition    = '',
+                        walltime     = 30,
+                        managed      = True,
+                        max_tasks    = 1024)
                         ],
 strategy= None,
 usage_tracking=True)
@@ -34,18 +34,19 @@ def app_double(x, cpu_processes=1):
 @python_app
 def app_sum(inputs, cpu_processes=1):
     x = sum(inputs)
-    print(x)
     return x
 
 
 # Map phase: apply the double *app* function to each item in list
-mapped_results = []
-for i in range(4):
+mapped_tasks = []
+for i in range(1024):
     x = app_double(i, cpu_processes=1)
-    mapped_results.append(eval(x.result()))
+    mapped_tasks.append(x)
+
+print(x)
 
 # Reduce phase: apply the sum *app* function to the set of results
-total = app_sum(mapped_results, cpu_processes=1)
+total = app_sum([int(x.result()) for x in mapped_tasks], cpu_processes=1)
 
 print(total.result())
 

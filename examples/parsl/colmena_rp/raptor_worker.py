@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import time
@@ -23,7 +25,7 @@ class Worker(rp.raptor.worker_mpi._Worker):
                  event, log, prof, base):
 
         super().__init__(rank_task_q_get, rank_result_q_put,
-                         event, log, prof, base)    
+                         event, log, prof, base)
 
         cfg = ru.read_json('raptor.cfg')
         self._host = cfg.get('redis').get('host', '127.0.0.1')
@@ -47,7 +49,7 @@ class Worker(rp.raptor.worker_mpi._Worker):
                 self.redis  = redis.Redis(host=self._host, port=self._port,
                                                        password=self._pass)
                 assert(self.redis.ping())
-    
+
             self._log.debug('=== init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
                             self._rank_task_q_get, self._rank_result_q_put)
