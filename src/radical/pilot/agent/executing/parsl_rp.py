@@ -111,8 +111,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         # task.uid = 'master...' this migh create
         # a confusion with the raptpor master
         if not task.uid.startswith('master'):
-            parsl_task = self.future_tasks[task.uid]
 
+            parsl_task = self.future_tasks[task.uid]
 
             if state == rp.DONE:
                 if task.description['mode'] in [rp.TASK_EXECUTABLE, rp.TASK_EXEC]:
@@ -318,7 +318,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             now = time.time()  # time of last submission
 
             # collect tasks for min bulk time
-            # NOTE: total collect time could actually be twice that long
+            # NOTE: total collect time could actually be max_time + min_time
             while time.time() - now < self._max_bulk_time:
 
                 try:
@@ -354,17 +354,18 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         task_id = 'task.%d' % self._task_counter
         self.log.debug("got %s from parsl-DFK", task_id)
 
-      # # ---------------
+      # # ----------------------------------------------------------------------
+      # # test code: this is the fastest possible executor implementation
       # self.future_tasks[task_id] = Future()
       # self.future_tasks[task_id].set_result(3)
       # return self.future_tasks[task_id]
-      # # ---------------
+      # # ----------------------------------------------------------------------
 
         self.prof.prof(event='trans_start', uid=task_id)
         task = self.task_translate(func, args, kwargs)
         self.prof.prof(event='trans_stop', uid=task_id)
 
-        # we assign a task id for rp task
+        # assign task id for rp task
         task.uid = task_id
 
         # set the future with corresponding id
