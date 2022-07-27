@@ -323,7 +323,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             # submit the task to rp
             self.tmgr.submit_tasks(task)
 
-            self.log.debug("put %s to rp-TMGR\n")
+            self.log.debug("put %s to rp-TMGR", task_id)
 
             return self.future_tasks[task_id]
 
