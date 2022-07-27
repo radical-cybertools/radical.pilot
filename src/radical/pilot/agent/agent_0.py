@@ -834,6 +834,9 @@ class Agent_0(rpu.Worker):
 
         # if the ve lives outside of the pilot sandbox, link it
         if path:
+            # expand any env variables in path
+            path, _, _ = ru.sh_callout('echo -n "%s"' % path, shell=True)
+            path = os.path.abspath(path)
             os.symlink(path,          ve_local_path)
             os.symlink(path + '.env', ve_local_path + '.env')
 

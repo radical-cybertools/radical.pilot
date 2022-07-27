@@ -107,6 +107,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Update the state of Parsl Future tasks
         Based on RP task state
         """
+
         # FIXME: user might specify task uid as
         # task.uid = 'master...' this migh create
         # a confusion with the raptpor master
@@ -322,7 +323,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             while time.time() - now < self._max_bulk_time:
 
                 try:
-                    task = self._bulk_queue.get(block=False, timeout=self._min_bulk_time)
+                    task = self._bulk_queue.get(block=True, timeout=self._min_bulk_time)
                 except queue.Empty:
                     task = None
 
@@ -351,8 +352,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
         self._task_counter += 1
-        task_id = 'task.%d' % self._task_counter
-        self.log.debug("got %s from parsl-DFK", task_id)
+        # FIXME: use uid generator
+        task_id = 'task.parsl.%06d' % self._task_counter
 
       # # ----------------------------------------------------------------------
       # # test code: this is the fastest possible executor implementation
@@ -360,6 +361,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
       # self.future_tasks[task_id].set_result(3)
       # return self.future_tasks[task_id]
       # # ----------------------------------------------------------------------
+
+        self.log.debug("got %s from parsl-DFK", task_id)
 
         self.prof.prof(event='trans_start', uid=task_id)
         task = self.task_translate(func, args, kwargs)
@@ -397,3 +400,4 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
     def scale_out(self, blocks: int):
         raise NotImplementedError
+
