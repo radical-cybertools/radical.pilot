@@ -631,11 +631,14 @@ def get_session_description(sid, src=None, dburl=None):
     for task in sorted(json['task'], key=lambda k: k['uid']):
         uid  = task['uid']
         if uid.startswith('master'):
-            continue
+            pass
+        else:
+            tmgr = task['tmgr']
+            tree[tmgr]['children'].append(uid)
+
         pid  = task['pilot']
-        tmgr = task['tmgr']
-        tree[pid ]['children'].append(uid)
-        tree[tmgr]['children'].append(uid)
+        tree[pid]['children'].append(uid)
+
         if 'resources' not in task:
             td = task['description']
             task['resources'] = {'cpu': td['cpu_processes'] * td['cpu_threads'],
