@@ -52,6 +52,11 @@
                                          "stall_hwm" : 0,
                                          "bulk_size" : 0},
 
+        "raptor_scheduling_queue"    : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 1},
+
         "funcs_req_queue"            : { "kind"      : "queue",
                                          "log_level" : "error",
                                          "stall_hwm" : 0,
@@ -85,7 +90,7 @@
     },
 
     "agents": {
-        "agent.1": {
+        "agent_1": {
             "target": "node",
             "components": {
                 "agent_executing" : {"count" : 1}
