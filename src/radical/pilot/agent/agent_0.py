@@ -352,26 +352,23 @@ class Agent_0(rpu.Worker):
         ls_name = "%s/services_launch.sh" % self._pwd
         ex_name = "%s/services_exec.sh"   % self._pwd
 
-        threads = self._rm.info.cores_per_node * \
-                  self._rm.info.threads_per_core
-
         service_task_uid = 'rp.services'
         service_task     = {
             'uid'              : service_task_uid,
             'task_sandbox_path': self._pwd,
             'description'      : TaskDescription({
-                                   'uid'          : service_task_uid,
-                                   'cpu_processes': 1,
-                                   'cpu_threads'  : threads,
-                                   'executable'   : '/bin/sh',
-                                   'arguments'    : [bs_name, 'services']
-                                 }).as_dict(),
-            'slots': {'ranks'  : [{'node_name'    : nodes[0]['node_name'],
-                                   'node_id'      : nodes[0]['node_id'],
-                                   'core_map'     : [[0]],
-                                   'gpu_map'      : [],
-                                   'lfs'          : 0,
-                                   'mem'          : 0}]}
+                'uid'          : service_task_uid,
+                'cpu_processes': 1,
+                'cpu_threads'  : self._rm.info.cores_per_node,
+                'executable'   : '/bin/sh',
+                'arguments'    : [bs_name, 'services']
+            }).as_dict(),
+            'slots': {'ranks'  : [{'node_name': nodes[0]['node_name'],
+                                   'node_id'  : nodes[0]['node_id'],
+                                   'core_map' : [[0]],
+                                   'gpu_map'  : [],
+                                   'lfs'      : 0,
+                                   'mem'      : 0}]}
         }
 
         launcher = self._rm.find_launcher(service_task)
@@ -441,9 +438,6 @@ class Agent_0(rpu.Worker):
         # popen.
         #
 
-        threads = self._rm.info.cores_per_node * \
-                  self._rm.info.threads_per_core
-
         for idx, sa in enumerate(self._cfg['agents']):
 
             target = self._cfg['agents'][sa]['target']
@@ -479,18 +473,18 @@ class Agent_0(rpu.Worker):
                     'uid'              : sa,
                     'task_sandbox_path': self._pwd,
                     'description'      : TaskDescription({
-                                           'uid'          : sa,
-                                           'cpu_processes': 1,
-                                           'cpu_threads'  : threads,
-                                           'executable'   : '/bin/sh',
-                                           'arguments'    : [bs_name, sa]
-                                         }).as_dict(),
-                    'slots': {'ranks'  : [{'node_name'    : node['node_name'],
-                                           'node_id'      : node['node_id'],
-                                           'core_map'     : [[0]],
-                                           'gpu_map'      : [],
-                                           'lfs'          : 0,
-                                           'mem'          : 0}]}
+                        'uid'          : sa,
+                        'cpu_processes': 1,
+                        'cpu_threads'  : self._rm.info.cores_per_node,
+                        'executable'   : '/bin/sh',
+                        'arguments'    : [bs_name, sa]
+                    }).as_dict(),
+                    'slots': {'ranks'  : [{'node_name': node['node_name'],
+                                           'node_id'  : node['node_id'],
+                                           'core_map' : [[0]],
+                                           'gpu_map'  : [],
+                                           'lfs'      : 0,
+                                           'mem'      : 0}]}
                 }
 
                 # find a launcher to use
