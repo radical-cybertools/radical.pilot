@@ -314,7 +314,7 @@ class Agent_0(rpu.Worker):
         # write deep-copies of the config for each sub-agent (sans from agent.0)
         for sa in self._cfg.get('agents', {}):
 
-            assert(sa != 'agent.0'), 'expect subagent, not agent.0'
+            assert (sa != 'agent.0'), 'expect subagent, not agent.0'
 
             # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
@@ -346,7 +346,7 @@ class Agent_0(rpu.Worker):
 
         # launch the `./services` script on the service node reserved by the RM.
         nodes = self._rm.info.service_node_list
-        assert(nodes)
+        assert nodes
 
         bs_name = "%s/bootstrap_2.sh"     % self._pwd
         ls_name = "%s/services_launch.sh" % self._pwd
