@@ -723,8 +723,9 @@ class AgentSchedulingComponent(rpu.Component):
             td = task['description']
             task['$set']      = ['resources']
             task['resources'] = {'cpu': td['cpu_processes'] *
-                                        td.get('cpu_threads', 1),
-                                 'gpu': td['gpu_processes']}
+                                        td['cpu_threads'],
+                                 'gpu': td['gpu_processes'] *
+                                        td['cpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -840,8 +841,9 @@ class AgentSchedulingComponent(rpu.Component):
                     td = task['description']
                     task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td.get('cpu_threads', 1),
-                                         'gpu': td['gpu_processes']}
+                                                td['cpu_threads'],
+                                         'gpu': td['gpu_processes'] *
+                                                td['cpu_processes']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -984,7 +986,6 @@ class AgentSchedulingComponent(rpu.Component):
       # td  = task['description']
 
       # self._prof.prof('schedule_try', uid=uid)
-
         slots = self.schedule_task(task)
         if not slots:
 
