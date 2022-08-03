@@ -13,7 +13,6 @@ from unittest import mock, TestCase
 import radical.utils           as ru
 import radical.pilot.constants as rpc
 
-from radical.pilot                            import TaskDescription
 from radical.pilot.agent.resource_manager     import RMInfo
 
 from radical.pilot.agent.scheduler.continuous import Continuous
@@ -78,7 +77,6 @@ class TestContinuous(TestCase):
         for test_case in self._test_cases:
 
             task  = copy.deepcopy(test_case['task'])
-            td    = TaskDescription(task['description']).as_dict()
             nodes = copy.deepcopy(test_case['setup']['nodes'])
 
             component.nodes    = nodes
@@ -102,6 +100,7 @@ class TestContinuous(TestCase):
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
+                    td = t['description']
                     self.assertEqual(
                         t['resources'], {'cpu': td['cpu_processes'] *
                                                 td['cpu_threads'],
