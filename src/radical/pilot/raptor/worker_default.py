@@ -693,7 +693,7 @@ class DefaultWorker(Worker):
 
             with self._plock:
                 pid  = task['pid']
-                del(self._pool[pid])
+                del self._pool[pid]
 
             # free resources again for the task
             self._dealloc_task(task)
