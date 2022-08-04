@@ -133,7 +133,14 @@ class MPIRun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+        lm_env_cmds = ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+        # Cheyenne is the only machine that requires mpirun_mpt.
+        # We then have to set MPI_SHEPHERD=true
+        if self._mpt:
+            lm_env_cmds.append('export MPI_SHEPHERD=true')
+
+        return lm_env_cmds
 
 
     # --------------------------------------------------------------------------
@@ -149,13 +156,6 @@ class MPIRun(LaunchMethod):
         if '_dplace' in self.name and task_threads > 1:
             # dplace pinning would disallow threads to map to other cores
             raise ValueError('dplace can not place threads [%d]' % task_threads)
-
-        # Cheyenne is the only machine that requires mpirun_mpt.  We then
-        # have to set MPI_SHEPHERD=true
-        if self._mpt:
-            if not task['description'].get('environment'):
-                task['description']['environment'] = dict()
-            task['description']['environment']['MPI_SHEPHERD'] = 'true'
 
         # Extract all the hosts from the slots
         host_list = list()
@@ -217,6 +217,9 @@ class MPIRun(LaunchMethod):
 
         ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
         ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        if self._mpt:
+            ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
 
         return ret
 
