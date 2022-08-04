@@ -441,8 +441,8 @@ class DefaultWorker(Worker):
                         if len(alloc_gpus) == gpus:
                             break
 
-            task['resources'] = {'cores': alloc_cores,
-                                 'gpus' : alloc_gpus}
+            task['slots'] = {'cores': alloc_cores,
+                             'gpus' : alloc_gpus}
             return True
 
 
@@ -455,7 +455,7 @@ class DefaultWorker(Worker):
 
         with self._mlock:
 
-            resources = task['resources']
+            resources = task['slots']
 
             for n in resources['cores']:
                 assert(self._resources['cores'][n])
@@ -595,9 +595,9 @@ class DefaultWorker(Worker):
 
             # make CUDA happy
             # FIXME: assume physical device numbering for now
-            if task['resources']['gpus']:
+            if task['slots']['gpus']:
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
-                             ','.join(str(i) for i in task['resources']['gpus'])
+                             ','.join(str(i) for i in task['slots']['gpus'])
 
             out, err, ret, val = self._modes[mode](task.get('data'))
             res = [task, str(out), str(err), int(ret), val]
