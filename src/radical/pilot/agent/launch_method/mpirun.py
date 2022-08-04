@@ -170,7 +170,7 @@ class MPIRun(LaunchMethod):
                 # FIXME: inform this proc about the GPU to be used
 
             if '_dplace' in self.name and save_list:
-                assert(save_list == core_list), 'inhomog. core sets (dplace)'
+                assert (save_list == core_list), 'inhomog. core sets (dplace)'
             else:
                 save_list = core_list
 
