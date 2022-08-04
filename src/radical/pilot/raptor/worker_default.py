@@ -159,7 +159,7 @@ class DefaultWorker(Worker):
     #
     def register_mode(self, name, executor):
 
-        assert(name not in self._modes)
+        assert name not in self._modes
 
         self._modes[name] = executor
 
@@ -415,9 +415,9 @@ class DefaultWorker(Worker):
             cores = task.get('cores', 1)
             gpus  = task.get('gpus' , 0)
 
-            assert(cores >= 1)
-            assert(cores <= self._n_cores)
-            assert(gpus  <= self._n_gpus)
+            assert cores >= 1
+            assert cores <= self._n_cores
+            assert gpus  <= self._n_gpus
 
             if cores > self._resources['cores'].count(0): return False
             if gpus  > self._resources['gpus' ].count(0): return False
@@ -441,8 +441,8 @@ class DefaultWorker(Worker):
                         if len(alloc_gpus) == gpus:
                             break
 
-            task['resources'] = {'cores': alloc_cores,
-                                 'gpus' : alloc_gpus}
+            task['slots'] = {'cores': alloc_cores,
+                             'gpus' : alloc_gpus}
             return True
 
 
@@ -455,14 +455,14 @@ class DefaultWorker(Worker):
 
         with self._mlock:
 
-            resources = task['resources']
+            resources = task['slots']
 
             for n in resources['cores']:
-                assert(self._resources['cores'][n])
+                assert self._resources['cores'][n]
                 self._resources['cores'][n] = 0
 
             for n in resources['gpus']:
-                assert(self._resources['gpus'][n])
+                assert self._resources['gpus'][n]
                 self._resources['gpus'][n] = 0
 
             # signal available resources
@@ -595,9 +595,9 @@ class DefaultWorker(Worker):
 
             # make CUDA happy
             # FIXME: assume physical device numbering for now
-            if task['resources']['gpus']:
+            if task['slots']['gpus']:
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
-                             ','.join(str(i) for i in task['resources']['gpus'])
+                             ','.join(str(i) for i in task['slots']['gpus'])
 
             out, err, ret, val = self._modes[mode](task.get('data'))
             res = [task, str(out), str(err), int(ret), val]
@@ -611,7 +611,7 @@ class DefaultWorker(Worker):
         try:
           # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
             mode = task['mode']
-            assert(mode in self._modes), 'no such call mode %s' % mode
+            assert mode in self._modes, 'no such call mode %s' % mode
 
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
@@ -693,7 +693,7 @@ class DefaultWorker(Worker):
 
             with self._plock:
                 pid  = task['pid']
-                del(self._pool[pid])
+                del self._pool[pid]
 
             # free resources again for the task
             self._dealloc_task(task)
