@@ -129,7 +129,7 @@ class TestComponent(TestCase):
         agent_0._rm.info = RMInfo({
             'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000'}],
             'cores_per_node'  : 10,
-            'threads_per_core': 1})
+            'threads_per_core': 2})
 
         # no launcher for agent task(s)
         agent_0._rm.find_launcher.return_value = None
@@ -140,6 +140,9 @@ class TestComponent(TestCase):
             agent_td = TaskDescription(agent_task['description'])
             # ensure that task description is correct
             agent_td.verify()
+            # check "cpu_threads" attribute
+            self.assertEqual(agent_td.cpu_threads,
+                             agent_0._rm.info.cores_per_node)
             return ''
 
         launcher = mock.Mock()
