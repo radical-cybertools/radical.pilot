@@ -22,7 +22,7 @@ __________________
       - Enable bulk callbacks for performance boost. This changes the callback signature.
       - FALSE
     * - .. envvar:: RADICAL_PILOT_STRICT_CANCEL
-      - Cancel the tasks immediately. #TODO Didn't understood
+      - Limit task cancelation, not to force state "CANCELLED" on a Task Manager side. Note that corresponding command for pilot(s) to cancel tasks is published anyway
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEFAULT_LOG_TGT
       - The log target. #TODO Need more clarification
@@ -62,11 +62,11 @@ __________________
       - Description
       - Default value
     * - <NS>_LOG_LVL
-      - Used for log level. #TODO Description
-      - Refer `RADICAL_DEFAULT_*` #TODO Confirm these
+      - Logging level ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] to control the debug output for a corresponding namespace NS, where NS can be applied as for a specific package (e.g., "RADICAL_PILOT_LOG_LVL" or "RADICAL_UTILS_LOG_LVL") or for a whole stack (e.g., "RADICAL_LOG_LVL").
+      - Refer `RADICAL_DEFAULT_*`
     * - <NS>_LOG_TGT
       - Used for the log targets
-      - Refer `RADICAL_DEFAULT_*` #TODO Confirm these
+      - Refer `RADICAL_DEFAULT_*`
 
 .. note:: The name space is used to derive env variable names for log levels and targets. If no ns is given, the ns is derived from the name. Eg. the name `radical.pilot` becomes `RADICAL_PILOT`.
 
@@ -85,7 +85,7 @@ __________________
       - Boolean to turn on and off Reporter
       - TRUE
     * - <NS>_LOG_TGT
-      - Where to report to
+      - Where to report to. List of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] to write the debug output for a corresponding namespace NS.
       - #TODO
 
 .. raw:: html
@@ -112,8 +112,8 @@ __________________
       - related to :envvar:`RADICAL_DEBUG`, enables a persistent debug helper class in the code and installs some signal handlers for extra debug output.
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEBUG_VERBOSE
-      - related to :envvar:`RADICAL_DEBUG`, enables verbose messages for debugging.
-      - #TODO
+      - related to :envvar:`RADICAL_DEBUG`, enables verbose messages for debugging. Controls "debug" module to collect stack traces. Verbose flag sets the level of details for output messages.
+      - {NOT_SET}
     * - *_PROFILE
       - `Profiler` is similar to `Logger` and `Reporter`
       - {NOT_SET}
@@ -121,7 +121,7 @@ __________________
       - Increase verbosity of prun output
       - FALSE
     * - .. envvar:: UMS_OMPIX_PRRTE_DIR
-      - #TODO Not understood
+      - Installation directory for PMIx/PRRTE used in RP LM PRTE (optional, to be obsolete).
       - #TODO
     * - .. envvar:: RADICAL_SAGA_SMT
       - Sets SMT settings on some resources. Usually covered via resource config options
