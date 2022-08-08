@@ -7,7 +7,7 @@ import copy
 import time
 
 import radical.utils as ru
-
+import radical.saga  as rs
 from . import states    as rps
 from . import constants as rpc
 
@@ -654,14 +654,22 @@ class Pilot(object):
 
         for sd in sds:
             sd['prof_id'] = self.uid
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
 
-        # ask the pmgr to send the staging reuests to the stager
+            # case when target url is absolute path
+            if sd['target'].startswith('pilot:///'):
+                resource = self.description.get('resource')
+                schema = self.description.get('access_schema')
+                rcfg = self.session.get_resource_config(resource, schema)
+                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+                # avoid any manipulation to rem_ctx
+                _rem_ctx_for_abs_path = copy.deepcopy(self._rem_ctx)
+                _rem_ctx_for_abs_path['pilot'] = fs_url
+                sd['target'] = str(complete_url(sd['target'], _rem_ctx_for_abs_path, self._log))
+            else:
+                sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
+        # ask the pmgr to send the staging requests to the stager
         self._pmgr._pilot_staging_input(sds)
-
 
     # --------------------------------------------------------------------------
     #
