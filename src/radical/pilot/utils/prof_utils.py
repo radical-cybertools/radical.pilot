@@ -5,8 +5,9 @@ import glob
 
 import radical.utils as ru
 
-from ..       import states as s
-from .session import fetch_json
+from ..                 import states as s
+from ..task_description import *
+from .session           import fetch_json
 
 _debug      = os.environ.get('RP_PROF_DEBUG')
 _node_index = dict()
@@ -496,8 +497,9 @@ def get_session_profile(sid, src=None):
 
     if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob("%s/*.prof"   % src)
-        profiles += glob.glob("%s/*/*.prof" % src)
+        profiles  = glob.glob("%s/*.prof"     % src)
+        profiles += glob.glob("%s/*/*.prof"   % src)
+        profiles += glob.glob("%s/*/*/*.prof" % src)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
@@ -641,8 +643,23 @@ def get_session_description(sid, src=None, dburl=None):
             td = task['description']
             task['resources'] = {'cpu': td['cpu_processes'] * td['cpu_threads'],
                                  'gpu': td['gpu_processes']}
+
+        # we determine the entity type by the task mode
+        mode = task['description']['mode']
+        if mode in [RAPTOR_MASTER, RAPTOR_WORKER]:
+            etype = mode
+        elif mode in [TASK_EXECUTABLE]:
+            etype = 'task'
+        else:
+            etype = 'raptor.task'
+
+        if _debug:
+            print('%-30s [%-30s] -> %-30s  %s'
+                 % (uid, mode, etype,
+                    [RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE]))
+
         tree[uid] = {'uid'         : uid,
-                     'etype'       : 'task',
+                     'etype'       : etype,
                      'cfg'         : task,
                      'resources'   : task['resources'],
                      'description' : task['description'],

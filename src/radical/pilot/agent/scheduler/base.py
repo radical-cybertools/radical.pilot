@@ -19,6 +19,9 @@ from ... import constants as rpc
 
 from ..resource_manager import ResourceManager
 
+# disable slot status prints by default
+_debug = False
+
 
 # ------------------------------------------------------------------------------
 #
@@ -450,10 +453,13 @@ class AgentSchedulingComponent(rpu.Component):
     #
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
-    def slot_status(self, msg=None):
+    def slot_status(self, msg=None, uid=None):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
+
+        if not _debug:
+            return
 
         if not self._log.isEnabledFor(logging.DEBUG):
             return
@@ -472,7 +478,10 @@ class AgentSchedulingComponent(rpu.Component):
                 ret += glyphs[gpu]
             ret += '|'
 
-        self._log.debug("status: %-30s: %s", msg, ret)
+        if not uid:
+            uid = ''
+
+        self._log.debug("status: %-30s [%25s]: %s", msg, uid, ret)
 
         return ret
 
@@ -812,7 +821,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no resource change, no activity
             return None, False
 
-      # self.slot_status("before schedule incoming [%d]" % len(to_schedule))
+        self.slot_status("before schedule incoming [%d]" % len(to_schedule))
 
         # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
@@ -875,7 +884,7 @@ class AgentSchedulingComponent(rpu.Component):
         # tuple_size map
         self._ts_valid = False
 
-      # self.slot_status("after  schedule incoming")
+        self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -963,7 +972,9 @@ class AgentSchedulingComponent(rpu.Component):
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
+            self.slot_status("slot status before unschedule %s", task['uid'])
             self.unschedule_task(task)
+            self.slot_status("slot status after  unschedule %s", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
         # we placed some previously waiting tasks, and need to remove those from
@@ -1008,6 +1019,8 @@ class AgentSchedulingComponent(rpu.Component):
         # it enacted by the executor
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
+
+        self.slot_status('after scheduled task', task['uid'])
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)

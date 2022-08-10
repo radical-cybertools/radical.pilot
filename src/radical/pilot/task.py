@@ -185,6 +185,7 @@ class Task(object):
             'tmgr':             self.tmgr.uid,
             'uid':              self.uid,
             'name':             self.name,
+            'mode':             self.mode,
             'state':            self.state,
             'origin':           self.origin,
             'exit_code':        self.exit_code,
@@ -257,6 +258,19 @@ class Task(object):
             * A name (string).
         '''
         return self._descr.get('name')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def mode(self):
+        '''
+        Returns the task mode
+
+        **Returns:**
+            * A mode (string).
+        '''
+        return self._descr['mode']
 
 
     # --------------------------------------------------------------------------

@@ -169,7 +169,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             # If we dont have a tarball (for whichever reason), fetch individual
             # profiles
-            profiles = sandbox.list('*.prof')
+            profiles  = sandbox.list('*.prof')
+            profiles += sandbox.list('*/*.prof')
             for prof in profiles:
 
                 ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))

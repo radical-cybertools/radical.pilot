@@ -801,6 +801,11 @@ class PMGRLaunchingComponent(rpu.Component):
 
             requested_nodes = math.ceil(requested_nodes)
 
+        # now that we know the number of nodes to request, calculate back the
+        # actual number of requested cores and gpus
+        requested_cores = requested_nodes * cores_per_node
+        requested_gpus  = requested_nodes * gpus_per_node
+
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
                         requested_cores, requested_gpus)

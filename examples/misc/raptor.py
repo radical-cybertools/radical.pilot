@@ -10,11 +10,12 @@ from radical.pilot import PythonTask
 
 pytask = PythonTask.pythontask
 
+SLEEP = 5
 
 # ------------------------------------------------------------------------------
 #
 @pytask
-def func_mpi(comm, msg, sleep=0):
+def func_mpi(comm, msg, sleep=SLEEP):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
@@ -27,18 +28,21 @@ def func_mpi(comm, msg, sleep=0):
 def func_non_mpi(a):
     import math
     import random
+    import time
+    SLEEP = 3
     b = random.random()
     t = math.exp(a * b)
     print('func_non_mpi')
+    time.sleep(SLEEP)
     return t
 
 
 # ------------------------------------------------------------------------------
 #
 def task_state_cb(task, state):
-    print('task %s: %s' % (task['uid'], state))
+    print('task %s: %s' % (task.uid, state))
     if state == rp.FAILED:
-        print('task %s failed' % task['uid'])
+        print('task %s failed' % task.uid)
         sys.exit()
 
 
@@ -89,6 +93,7 @@ if __name__ == '__main__':
 
         for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
+            td.mode           = rp.RAPTOR_MASTER
             td.uid            = ru.generate_id('master.%(item_counter)06d',
                                                ru.ID_CUSTOM,
                                                ns=session.uid)
@@ -120,11 +125,12 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'venv',
-                                    'version': '3.8',
-                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_raptor/',
-                                    'setup'  : ['$HOME/j/rp/',
-                                                '$HOME/j/ru/',
-                                                'mpi4py']})
+                                    'version': '3.6',
+                                    'path'   :  '/home/merzky/j/rp.3/ve3/',
+                                  # 'setup'  : ['/home/merzky/j/rp.3/',
+                                  #             '/home/merzky/j/ru/',
+                                  #             'mpi4py']
+                                   })
 
         # submit some test tasks
         tds = list()
@@ -138,36 +144,20 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]}))
+                                     'sleep %d;' % SLEEP * 3 +
+                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.c.1.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
-                'function'        : 'hello',
-                'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
-
-            tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.c.2.%06d' % i,
+                'uid'             : 'task.call.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
-                'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'kwargs'          : {'msg': 'task.call.c.%06d' % i},
+                'scheduler'       : 'master.000000'}))
 
-            tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.c.3.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
-                'function'        : 'my_hello',
-                'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
-
-            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=0)
+            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=SLEEP)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
@@ -193,9 +183,10 @@ if __name__ == '__main__':
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'code'            :
-                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                    'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
+                    'time.sleep(%d)))' % SLEEP,
+                'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exec.c.%06d' % i,
@@ -204,9 +195,10 @@ if __name__ == '__main__':
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'code'            :
+                    'import time\ntime.sleep(%d)\n' % SLEEP +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.proc.c.%06d' % i,
@@ -215,9 +207,11 @@ if __name__ == '__main__':
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
-                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                'arguments'       : ['-c',
+                                     'sleep %d; ' % SLEEP +
+                                     'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.shell.c.%06d' % i,
@@ -225,8 +219,9 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_SHELL,
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
-                'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'command'         : 'sleep %d; ' % SLEEP +
+                                    'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'scheduler'       : 'master.000000'}))
 
         tasks = tmgr.submit_tasks(tds)
 
