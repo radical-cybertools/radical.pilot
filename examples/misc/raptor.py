@@ -155,7 +155,7 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.%06d' % i},
-                'scheduler'       : 'master.000000'}))
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=SLEEP)
             tds.append(rp.TaskDescription({
@@ -186,7 +186,7 @@ if __name__ == '__main__':
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
                     'time.sleep(%d)))' % SLEEP,
-                'scheduler'       : 'master.000000'}))
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exec.c.%06d' % i,
@@ -198,7 +198,7 @@ if __name__ == '__main__':
                     'import time\ntime.sleep(%d)\n' % SLEEP +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.000000'}))
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.proc.c.%06d' % i,
@@ -211,7 +211,7 @@ if __name__ == '__main__':
                                      'sleep %d; ' % SLEEP +
                                      'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
-                'scheduler'       : 'master.000000'}))
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.shell.c.%06d' % i,
@@ -221,7 +221,7 @@ if __name__ == '__main__':
                 'cpu_process_type': rp.MPI,
                 'command'         : 'sleep %d; ' % SLEEP +
                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler'       : 'master.000000'}))
+                'scheduler'       : 'master.%06d' % (i % n_masters)}))
 
         tasks = tmgr.submit_tasks(tds)
 

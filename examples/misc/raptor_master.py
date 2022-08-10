@@ -88,7 +88,7 @@ class MyMaster(rp.raptor.Master):
         # create additional tasks to be distributed to the workers.
 
         tds = list()
-        for i in range(1):
+        for i in range(16):
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.m.%06d' % i,
@@ -312,6 +312,7 @@ if __name__ == '__main__':
 
     master.start()
     master.submit()
+  # time.sleep(120)
     master.join()
     master.stop()
 
