@@ -185,7 +185,6 @@ class Task(object):
             'tmgr':             self.tmgr.uid,
             'uid':              self.uid,
             'name':             self.name,
-            'mode':             self.mode,
             'state':            self.state,
             'origin':           self.origin,
             'exit_code':        self.exit_code,

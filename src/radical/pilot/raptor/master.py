@@ -150,22 +150,19 @@ class Master(rpu.Component):
 
         # FIXME: use registry for comm EP info exchange, not cfg files
 
-        pwd = os.getcwd()
-
         if cfg is None:
             cfg = dict()
 
         if cfg and 'path' in cfg:
             del(cfg['path'])
 
-        ru.dict_merge(cfg, ru.read_json('%s/../control_pubsub.json' % pwd))
+        ru.dict_merge(cfg, ru.read_json('%s/control_pubsub.json' % self._psbox))
 
         del(cfg['channel'])
         del(cfg['cmgr'])
 
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
-        cfg['base']    = pwd
         cfg['sid']     = self._sid
         cfg['base']    = self._sbox
         cfg['path']    = self._sbox
