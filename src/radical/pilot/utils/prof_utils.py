@@ -645,18 +645,19 @@ def get_session_description(sid, src=None, dburl=None):
                                  'gpu': td['gpu_processes']}
 
         # we determine the entity type by the task mode
-        mode = task['description']['mode']
-        if mode in [RAPTOR_MASTER, RAPTOR_WORKER]:
-            etype = mode
-        elif mode in [TASK_EXECUTABLE]:
-            etype = 'task'
-        else:
-            etype = 'raptor.task'
+        etype = task.get('etype')
+        mode  = task['description'].get('mode')
+        if not etype:
+            mode = task['description']['mode']
+            if mode in [RAPTOR_MASTER, RAPTOR_WORKER]:
+                etype = mode
+            elif mode in [TASK_EXECUTABLE]:
+                etype = 'task'
+            else:
+                etype = 'raptor.task'
 
         if _debug:
-            print('%-30s [%-30s] -> %-30s  %s'
-                 % (uid, mode, etype,
-                    [RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE]))
+            print('%-30s [%-30s] -> %-30s' % (uid, mode, etype))
 
         tree[uid] = {'uid'         : uid,
                      'etype'       : etype,
