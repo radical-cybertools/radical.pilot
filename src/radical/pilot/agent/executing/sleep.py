@@ -109,7 +109,7 @@ class Sleep(AgentExecutingComponent) :
         self._prof.prof('task_run_ok',    uid=uid)
         self._prof.prof('launch_start',   uid=uid)
         self._prof.prof('exec_start',     uid=uid)
-        self._prof.prof('app_start',      uid=uid)
+        self._prof.prof('rank_start',      uid=uid)
 
 
     # --------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class Sleep(AgentExecutingComponent) :
             for task in to_finish:
                 uid = task['uid']
                 task['target_state'] = 'DONE'
-                self._prof.prof('app_stop',         uid=uid)
+                self._prof.prof('rank_stop',        uid=uid)
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('launch_stop',      uid=uid)
                 self._prof.prof('task_run_stop',    uid=uid)
