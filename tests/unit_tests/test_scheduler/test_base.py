@@ -8,7 +8,8 @@ import radical.utils as ru
 
 from unittest import mock, TestCase
 
-from radical.pilot.agent.scheduler.base import AgentSchedulingComponent
+import radical.pilot.agent.scheduler.base as rpa_sb
+AgentSchedulingComponent = rpa_sb.AgentSchedulingComponent
 
 base = os.path.abspath(os.path.dirname(__file__))
 
@@ -96,6 +97,7 @@ class TestBaseScheduling(TestCase):
     @mock.patch('radical.utils.Logger')
     def test_slot_status(self, mocked_logger, mocked_init):
 
+        rpa_sb._debug = True
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._log = mocked_logger
 
@@ -106,6 +108,8 @@ class TestBaseScheduling(TestCase):
         # if log is NOT enabled for `logging.DEBUG`
         sched._log.isEnabledFor.return_value = False
         self.assertIsNone(sched.slot_status())
+        rpa_sb._debug = False
+
 
     # --------------------------------------------------------------------------
     #
