@@ -104,6 +104,7 @@ class Pilot(object):
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
+        self._pilot_fs         = ru.Url()
 
         pilot = self.as_dict()
 
@@ -113,13 +114,17 @@ class Pilot(object):
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
+        self._pilot_fs         = self._session._get_pilot_fs   (pilot)
 
         # contexts for staging url expansion
         # NOTE: no task sandboxes defined!
         self._rem_ctx = {'pwd'     : self._pilot_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox}
+                         'resource': self._resource_sandbox
+                         'pilot_fs': self._pilot_fs,
+                         }
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,
                          'client'  : self._client_sandbox,
@@ -655,19 +660,8 @@ class Pilot(object):
         for sd in sds:
             sd['prof_id'] = self.uid
             sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
+            sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
 
-            # case when target url is absolute path
-            if sd['target'].startswith('pilot:///'):
-                resource = self.description.get('resource')
-                schema = self.description.get('access_schema')
-                rcfg = self.session.get_resource_config(resource, schema)
-                fs_url = rs.Url(rcfg['filesystem_endpoint'])
-                # avoid any manipulation to rem_ctx
-                _rem_ctx_for_abs_path = copy.deepcopy(self._rem_ctx)
-                _rem_ctx_for_abs_path['pilot'] = fs_url
-                sd['target'] = str(complete_url(sd['target'], _rem_ctx_for_abs_path, self._log))
-            else:
-                sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
         # ask the pmgr to send the staging requests to the stager
         self._pmgr._pilot_staging_input(sds)
 
