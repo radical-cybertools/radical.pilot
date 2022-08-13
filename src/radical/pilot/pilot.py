@@ -7,7 +7,6 @@ import copy
 import time
 
 import radical.utils as ru
-import radical.saga  as rs
 from . import states    as rps
 from . import constants as rpc
 
