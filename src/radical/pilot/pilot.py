@@ -114,7 +114,6 @@ class Pilot(object):
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
-        self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._pilot_fs         = self._session._get_pilot_fs   (pilot)
 
         # contexts for staging url expansion
