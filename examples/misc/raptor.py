@@ -87,7 +87,6 @@ if __name__ == '__main__':
 
         pd.runtime = cfg.runtime
 
-        pd.redis_link = ''
 
         tds = list()
 
