@@ -79,25 +79,22 @@ def serialize_file(obj):
     result    = None
     exception = None
 
-    if callable(obj):
-        try:
-            with open(_obj_file_path, 'wb') as f:
-                dill.dump(obj, f)
-                result = _obj_file_path
+    kwargs = {}
+    if not callable(obj):
+        kwargs['recurse'] = True
 
-        except Exception as e:
-            exception = e
+    try:
+        with open(_obj_file_path, 'wb') as f:
+            dill.dump(obj, f, **kwargs)
+
+    except Exception as e:
+        exception = e
 
     else:
-        try:
-            with open(_obj_file_path, 'wb') as f:
-                dill.dump(obj, f, recurse = True)
-                result = _obj_file_path
-        except Exception as e:
-            exception = e
+        result = _obj_file_path
 
     if result is None:
-        raise Exception("object is not serializable") from exception
+        raise Exception('object is not serializable') from exception
 
     return _obj_file_path
 
