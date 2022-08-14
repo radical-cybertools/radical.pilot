@@ -34,7 +34,7 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "mpiexec_mpt" : {
-                "launch_cmd" : "export MPI_SHEPHERD=true\nmpiexec_mpt node1 -n 1 omplace",
+                "launch_cmd" : "mpiexec_mpt node1 -n 1 omplace",
                 "rank_exec"  : "/bin/sleep"
             }
         }
