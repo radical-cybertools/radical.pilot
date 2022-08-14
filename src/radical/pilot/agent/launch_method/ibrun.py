@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 
 import radical.utils as ru
@@ -73,41 +73,48 @@ class IBRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        slots   = task['slots']
-        td      = task['description']
-        n_tasks = td['cpu_processes']
+        slots = task['slots']
+        assert slots.get('ranks'), 'task.slots.ranks is not set or empty'
 
-        # Usage of env variable TACC_TASKS_PER_NODE is purely for MPI tasks,
+        td                 = task['description']
+        n_ranks            = td['cpu_processes']
+        n_threads_per_rank = td['cpu_threads']
+
+        # Usage of env variable IBRUN_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)
-        n_node_tasks = int(td['environment'].get('TACC_TASKS_PER_NODE') or
-                           self._rm_info.get('cores_per_node', 1))
-
-        assert slots['ranks'], 'task.slots.ranks is not set'
-
-        # TACC_TASKS_PER_NODE is used to set the actual number of running tasks,
-        # if not set, then ibrun script will use the default slurm setting for
-        # the number of tasks per node to build the hostlist (for TACC machines)
+        tasks_per_node = self._lm_cfg.get('options', {}).get('tasks_per_node')
+        if not tasks_per_node:
+            tasks_per_node = self._rm_info['cores_per_node'] // \
+                             (n_ranks * n_threads_per_rank) or 1
+        # IBRUN_TASKS_PER_NODE is used to set the actual number of running
+        # tasks, if not set, then `ibrun` script will use the default Slurm
+        # setting for the number of tasks per node to build the hostlist
+        # (for TACC machines)
         #
         # NOTE: in case of performance issue: reconsider this parameter
-        ibrun_offset = 0
-        offsets      = list()
-        node_id      = 0
+        launch_env = 'IBRUN_TASKS_PER_NODE=%d' % tasks_per_node
+
+        rank_node_ids = set([n['node_id'] for n in slots['ranks']])
+        tasks_offset  = 0
+        ibrun_offset  = 0
 
         for node in self._rm_info.node_list:
-            for rank in slots['ranks']:
-                if rank['node_id'] == node['node_id']:
-                    for core_map in rank['core_map']:
-                        assert core_map, 'core_map is not set'
-                        # core_map contains core ids for each thread,
-                        # but threads are ignored for offsets
-                        offsets.append(node_id + (core_map[0] // len(core_map)))
-            node_id += n_node_tasks
 
-        if offsets:
-            ibrun_offset = min(offsets)
+            if node['node_id'] not in rank_node_ids:
+                tasks_offset += tasks_per_node
+                continue
 
-        cmd = '%s -n %s -o %d %s' % (self._command, n_tasks, ibrun_offset,
-                                     exec_path)
+            # core_map contains core ids for each thread,
+            # but threads are ignored for offset
+            core_id_min = min([rank['core_map'][0][0]
+                               for rank in slots['ranks']
+                               if rank['node_id'] == node['node_id']])
+            # offset into processor (cpus) hostlist
+            ibrun_offset = tasks_offset + (core_id_min // n_threads_per_rank)
+            break
+
+        cmd = '%s %s -n %s -o %d %s' % (launch_env, self._command, n_ranks,
+                                        ibrun_offset, exec_path)
         return cmd.rstrip()
 
 

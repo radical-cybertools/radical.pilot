@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import radical.utils as ru
 
@@ -124,7 +124,14 @@ class MPIExec(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+        lm_env_cmds = ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+        # Cheyenne is the only machine that requires mpiexec_mpt.
+        # We then have to set MPI_SHEPHERD=true
+        if self._mpt:
+            lm_env_cmds.append('export MPI_SHEPHERD=true')
+
+        return lm_env_cmds
 
 
     # --------------------------------------------------------------------------
@@ -197,14 +204,9 @@ class MPIExec(LaunchMethod):
             host_string = '-hostfile %s' % hostfile
 
         cmd = cmd_stub % host_string
+
         self._log.debug('mpiexec cmd: %s', cmd)
-
-        assert(len(cmd) <= arg_max)
-
-        # Cheyenne is the only machine that requires mpiexec_mpt.
-        # We then have to set MPI_SHEPHERD=true
-        if self._mpt:
-            cmd = 'export MPI_SHEPHERD=true\n%s' % cmd
+        assert (len(cmd) <= arg_max)
 
         return cmd.strip()
 
@@ -217,6 +219,9 @@ class MPIExec(LaunchMethod):
 
         ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
         ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        if self._mpt:
+            ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
 
         return ret
 
