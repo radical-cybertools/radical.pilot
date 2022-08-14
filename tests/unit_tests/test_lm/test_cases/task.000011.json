@@ -7,7 +7,7 @@
             "arguments"     : null,
             "cpu_processes" : 4,
             "cpu_threads"   : 4,
-            "environment"   : {"TACC_TASKS_PER_NODE": "4"}
+            "environment"   : {}
         },
         "task_sandbox_path" : "/tmp"
     },
@@ -15,11 +15,17 @@
     "setup": {
         "lm": {
             "slots": {
-                "ranks": [{"node_name" : "node2",
-                           "node_id"   : "node2",
-                           "core_map"  : [[0]],
-                           "gpu_map"   : [],
-                           "lfs"       : 0}]
+                "cores_per_node": 16,
+                "gpus_per_node" : 1,
+                "lfs_per_node"  : 0,
+                "ranks"         : [{"node_name" : "node2",
+                                    "node_id"   : "node2",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "lfs"       : 0}]
+            },
+            "lm_cfg": {
+                "options": {"tasks_per_node": 4}
             }
         }
     },
@@ -27,7 +33,7 @@
     "results": {
         "lm": {
             "ibrun" : {
-                "launch_cmd" : "ibrun -n 4 -o 4",
+                "launch_cmd" : "IBRUN_TASKS_PER_NODE=4 ibrun -n 4 -o 4",
                 "rank_exec"  : "/bin/sleep"
             }
         }

@@ -71,47 +71,46 @@ class TestIBRun(TestCase):
     @mock.patch.object(IBRun, '__init__',   return_value=None)
     def test_get_launch_rank_cmds(self, mocked_init):
 
-        cores_per_node = 16
-        gpus_per_node  = 1
-
         lm_ibrun = IBRun('', {}, None, None, None)
         lm_ibrun._command = 'ibrun'
-        lm_ibrun._rm_info = RMInfo({
-            'cores_per_node': cores_per_node,
-            'gpus_per_node' : gpus_per_node,
-            'node_list': [
-                {'node_name': 'node1',
-                 'node_id'  : 'node1',
-                 'cores'    : [rpc.FREE] * cores_per_node,
-                 'gpus'     : [rpc.FREE] * gpus_per_node,
-                 'lfs'      : 0,
-                 'mem'      : 0},
-                {'node_name': 'node2',
-                 'node_id'  : 'node2',
-                 'cores'    : [rpc.FREE] * cores_per_node,
-                 'gpus'     : [rpc.FREE] * gpus_per_node,
-                 'lfs'      : 0,
-                 'mem'      : 0}
-            ]
-        })
 
         test_cases = setUp('lm', 'ibrun')
         for task, result in test_cases:
 
-            if result == 'RuntimeError':
-                with self.assertRaises(RuntimeError):
-                    lm_ibrun.get_launch_cmds(task, '')
-
-            elif result == 'AssertionError':
+            if result == 'AssertionError':
                 with self.assertRaises(AssertionError):
                     lm_ibrun.get_launch_cmds(task, '')
+                continue
 
-            else:
-                command = lm_ibrun.get_launch_cmds(task, '')
-                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+            cores_per_node = task['slots'].get('cores_per_node', 1)
+            gpus_per_node  = task['slots'].get('gpus_per_node',  0)
 
-                command = lm_ibrun.get_rank_exec(task, None, None)
-                self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+            lm_ibrun._rm_info = RMInfo({
+                'cores_per_node': cores_per_node,
+                'gpus_per_node' : gpus_per_node,
+                'node_list'     : [
+                    {'node_name': 'node1',
+                     'node_id'  : 'node1',
+                     'cores'    : [rpc.FREE] * cores_per_node,
+                     'gpus'     : [rpc.FREE] * gpus_per_node,
+                     'lfs'      : 0,
+                     'mem'      : 0},
+                    {'node_name': 'node2',
+                     'node_id'  : 'node2',
+                     'cores'    : [rpc.FREE] * cores_per_node,
+                     'gpus'     : [rpc.FREE] * gpus_per_node,
+                     'lfs'      : 0,
+                     'mem'      : 0}
+                ]
+            })
+
+            lm_ibrun._lm_cfg = task.get('lm_cfg', {})
+
+            command = lm_ibrun.get_launch_cmds(task, '')
+            self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+
+            command = lm_ibrun.get_rank_exec(task, None, None)
+            self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
     # --------------------------------------------------------------------------
     #
