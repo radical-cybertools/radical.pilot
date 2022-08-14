@@ -43,7 +43,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "ibrun" : {
-                "launch_cmd" : "ibrun -n 2 -o 0",
+                "launch_cmd" : "IBRUN_TASKS_PER_NODE=4 ibrun -n 2 -o 0",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "ssh"   : {

@@ -1,6 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import radical.utils as ru
 
@@ -133,7 +133,14 @@ class MPIRun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+        lm_env_cmds = ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+        # Cheyenne is the only machine that requires mpirun_mpt.
+        # We then have to set MPI_SHEPHERD=true
+        if self._mpt:
+            lm_env_cmds.append('export MPI_SHEPHERD=true')
+
+        return lm_env_cmds
 
 
     # --------------------------------------------------------------------------
@@ -150,13 +157,6 @@ class MPIRun(LaunchMethod):
             # dplace pinning would disallow threads to map to other cores
             raise ValueError('dplace can not place threads [%d]' % task_threads)
 
-        # Cheyenne is the only machine that requires mpirun_mpt.  We then
-        # have to set MPI_SHEPHERD=true
-        if self._mpt:
-            if not task['description'].get('environment'):
-                task['description']['environment'] = dict()
-            task['description']['environment']['MPI_SHEPHERD'] = 'true'
-
         # Extract all the hosts from the slots
         host_list = list()
         core_list = list()
@@ -170,7 +170,7 @@ class MPIRun(LaunchMethod):
                 # FIXME: inform this proc about the GPU to be used
 
             if '_dplace' in self.name and save_list:
-                assert(save_list == core_list), 'inhomog. core sets (dplace)'
+                assert (save_list == core_list), 'inhomog. core sets (dplace)'
             else:
                 save_list = core_list
 
@@ -217,6 +217,9 @@ class MPIRun(LaunchMethod):
 
         ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
         ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        if self._mpt:
+            ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
 
         return ret
 
