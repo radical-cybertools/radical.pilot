@@ -860,22 +860,59 @@ class Agent_0(rpu.Worker):
     def _start_service_ep(self):
 
         self._service = ru.zmq.Server(uid='%s.server' % self._uid)
-
         self._service.register_request('submit_tasks', self._ep_submit_tasks)
+        self._service.start()
+
+        self._log.info('=== service_url: %s', self._service.addr)
+
 
 
     # --------------------------------------------------------------------------
     #
     def _ep_submit_tasks(self, request):
 
-        pass
+        import pprint
+        self._log.debug('submit request: %s', pprint.pformat(request))
+
+        tasks = request['tasks']
+
+        for task in tasks:
+
+            td = task['description']
+
+            sbox = '%s/%s' % (os.environ['RP_PILOT_SANDBOX'], td['uid'])
+
+          # task['uid']               = td.get('uid')
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['task_sandbox_path'] = sbox
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
+            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
+            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
+            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
+                                                td.get('cpu_threads',   1),
+                                         'gpu': td['gpu_processes'] *
+                                                td.get('cpu_processes', 1)}
+
+            # NOTE: the order of insert / state update relies on that order
+            #       being maintained through the component's message push,
+            #       the update worker's message receive up to the insertion
+            #       order into the update worker's DB bulk op.
+            self._log.debug('insert %s', td['uid'])
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
+
+        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+                            publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
     #
     def _ep_get_task_updates(self, request):
 
-        pass
+        import pprint
+        self._log.debug('update request: %s', pprint.pformat(request))
+
 
 
 
