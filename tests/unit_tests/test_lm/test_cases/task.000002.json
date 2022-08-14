@@ -25,8 +25,7 @@
 
     "results": {
         "lm": {
-            "ibrun" : "AssertionError",
-            "prte"  : "RuntimeError"
+            "prte": "RuntimeError"
         }
     }
 }
