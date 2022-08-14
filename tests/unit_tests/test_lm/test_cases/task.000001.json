@@ -24,8 +24,7 @@
 
     "results": {
         "lm": {
-            "ibrun" : "AssertionError",
-            "jsrun" : "AssertionError"
+            "jsrun": "AssertionError"
         }
     }
 }

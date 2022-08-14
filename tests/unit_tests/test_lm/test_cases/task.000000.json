@@ -46,7 +46,7 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "ibrun"   : {
-                "launch_cmd" : "ibrun -n 1 -o 0",
+                "launch_cmd" : "IBRUN_TASKS_PER_NODE=16 ibrun -n 1 -o 0",
                 "rank_exec"  : "/bin/sleep"
             },
             "ccmrun"  : {
