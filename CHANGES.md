@@ -3,6 +3,29 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.16.0 Release                                                        2022-08-15
+--------------------------------------------------------------------------------
+
+  - add check for exception message
+  - add test for `Agent_0`
+  - fix `cpu_threads` for special tasks (service, sub-agent)
+  - fix `task['resources']` value
+  - fix uid generation for components (use shared file for counters)
+  - fix master task tmgr
+  - fix raptor tests
+  - fix rp serializer unittest
+  - fix sub_agent keyerror
+  - keep agent's config with sub-agents in sync with default one
+  - remove confusion of task attribute names (slots vs. resources)
+  - set default values for agent and service tasks descriptions
+  - set env variable (`RP_PILOT_SANDBOX`) for agent and service tasks launchers
+  - update exec profile events
+  - update headers for mpirun- and mpiexec-modules
+  - update LM env setup for `MPIRun` and `MPIExec` special case (MPT=true)
+  - update LM IBRun
+  - update mpi-info extraction
+
+
 1.15.1  Hotfix Release                                                2022-07-04
 --------------------------------------------------------------------------------
 
