@@ -99,7 +99,7 @@ class Pilot(object):
         # query for those sandboxes.
         self._pilot_jsurl      = ru.Url()
         self._pilot_jshop      = ru.Url()
-        self._endpoint_fs = ru.Url()
+        self._endpoint_fs      = ru.Url()
         self._resource_sandbox = ru.Url()
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
@@ -109,7 +109,7 @@ class Pilot(object):
 
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
-        self._endpoint_fs      = self._session._get_endpoint_fs(pilot)
+        self._endpoint_fs      = self._session._get_endpoint_fs     (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
@@ -122,8 +122,7 @@ class Pilot(object):
                          'pilot'   : self._pilot_sandbox,
                          'resource': self._resource_sandbox,
                          'session' : self._session_sandbox,
-                         'endpoint': self._endpoint_fs,
-                         }
+                         'endpoint': self._endpoint_fs}
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,
                          'client'  : self._client_sandbox,
