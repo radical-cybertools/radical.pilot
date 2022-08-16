@@ -605,17 +605,20 @@ class PMGRLaunchingComponent(rpu.Component):
                                  % (ma, resource))
 
         # get pilot and global sandbox
+        endpoint_fs      = self._session._get_endpoint_fs     (pilot)
         resource_sandbox = self._session._get_resource_sandbox(pilot)
         session_sandbox  = self._session._get_session_sandbox (pilot)
         pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         client_sandbox   = self._session._get_client_sandbox  ()
 
+        pilot['endpoint_fs']      = str(endpoint_fs)      % expand
         pilot['resource_sandbox'] = str(resource_sandbox) % expand
         pilot['session_sandbox']  = str(session_sandbox)  % expand
         pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
         pilot['client_sandbox']   = str(client_sandbox)
 
         # from here on we need only paths
+        endpoint_fs      = endpoint_fs     .path % expand
         resource_sandbox = resource_sandbox.path % expand
         session_sandbox  = session_sandbox .path % expand
         pilot_sandbox    = pilot_sandbox   .path % expand

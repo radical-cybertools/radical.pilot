@@ -141,17 +141,21 @@ def complete_url(path, context, log=None):
     certain locations, namely relative to
 
         * `client://`  : the client's working directory
-        * `resource://`: the RP    sandbox on the target resource
-        * `pilot://`   : the pilot sandbox on the target resource
-        * `task://`    : the task  sandbox on the target resource
+        * `endpoint://`: the root file system on the target resource
+        * `resource://`: the sandbox base dir on the target resource
+        * `session://` : the session sandbox  on the target resource
+        * `pilot://`   : the pilot   sandbox  on the target resource
+        * `task://`    : the task    sandbox  on the target resource
+
+    All location are interpreted as directories, never as files.
 
     For the above schemas, we interpret `schema://` the same as `schema:///`,
     ie. we treat this as a namespace, not as location qualified by a hostname.
 
     The `context` parameter is expected to be a dict which provides a set of
-    URLs to be used to expand the path.
+    URLs to be used to expand the path for those schemas
 
-    Other URL schemas are left alone, any other strings are interpreted as
+    Other URL schemas are left alone, any non-URL strings are interpreted as
     path in the context of `pwd`.
 
     The method returns an instance of ru.Url.  Note that URL parsing is not
@@ -175,35 +179,29 @@ def complete_url(path, context, log=None):
         else:
             purl.schema = 'pwd'
 
+    log.debug('  -> %s', purl)
     schema = purl.schema
 
-    if schema == 'client':
-        # 'client' is 'pwd' in client context.
-        # FIXME: We don't check context though.
-        schema = 'pwd'
+    if schema not in list(context.keys()):
 
-    if schema in list(context.keys()):
+        log.debug('             = %s (%s)', purl, list(context.keys()))
+        return purl
 
-        # we interpret any hostname as part of the path element
-        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
-        elif purl.host              : ppath =    '%s' %            (purl.host)
-        elif purl.path              : ppath =    '%s' %            (purl.path)
-        else                        : ppath =     '.'
+    else:
 
-        if schema not in context:
-            raise ValueError('cannot expand schema (%s) for staging' % schema)
+        # we expect hostname elements to be absent for schemas we expand
+        if purl.host:
+            raise ValueError('URLs cannot specify `host` for expanded schemas')
 
-        log.debug('   expand with %s', context[schema])
         ret = ru.Url(context[schema])
 
-        ret.path += '/%s' % ppath
-        purl      = ret
+        ret.path += '/%s' % purl.path
 
-    # if not schema is set, assume file:// on localhost
-    if not purl.schema:
-        purl.schema = 'file'
+        log.debug('   expand url  %s', purl)
+        log.debug('   expand with %s', context[schema])
+        log.debug('             > %s', ret)
+        return ret
 
-    return purl
 
 
 # ------------------------------------------------------------------------------
