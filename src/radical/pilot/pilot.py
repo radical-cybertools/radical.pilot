@@ -103,7 +103,7 @@ class Pilot(object):
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
-        self._pilot_fs         = ru.Url()
+        self._endpoint         = ru.Url()
 
         pilot = self.as_dict()
 
@@ -113,15 +113,15 @@ class Pilot(object):
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
-        self._pilot_fs         = self._session._get_pilot_fs   (pilot)
+        self._endpoint         = self._session._get_pilot_fs_endpoint(pilot)
 
         # contexts for staging url expansion
         # NOTE: no task sandboxes defined!
         self._rem_ctx = {'pwd'     : self._pilot_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox
-                         'pilot_fs': self._pilot_fs,
+                         'resource': self._resource_sandbox,
+                         'endpoint': self._endpoint,
                          }
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,

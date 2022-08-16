@@ -850,11 +850,9 @@ class Session(rs.Session):
         return pilot_sandbox
 
 
-    def _get_pilot_fs(self, pilot):
-        resource = pilot.description.get('resource')
-        schema = pilot.description.get('access_schema')
-        rcfg = self.get_resource_config(resource, schema)
-        fs_url = rs.Url(rcfg['filesystem_endpoint'])
+    def _get_pilot_fs_endpoint(self, pilot):
+        fs_url = ru.Url(self._get_resource_sandbox(pilot))
+        fs_url.path = '/'
         return fs_url
 
     # --------------------------------------------------------------------------
