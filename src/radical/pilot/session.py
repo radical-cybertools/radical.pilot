@@ -850,6 +850,11 @@ class Session(rs.Session):
         return pilot_sandbox
 
 
+    def _get_pilot_fs_endpoint(self, pilot):
+        fs_url = ru.Url(self._get_resource_sandbox(pilot))
+        fs_url.path = '/'
+        return fs_url
+
     # --------------------------------------------------------------------------
     #
     def _get_task_sandbox(self, task, pilot):
