@@ -1,9 +1,8 @@
 
 import os
 import time
-import copy
 
-from typing import Dict, Any, Union
+from typing import Union
 
 import radical.utils as ru
 
