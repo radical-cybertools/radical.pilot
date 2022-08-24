@@ -175,8 +175,8 @@ class _Resources(object):
         self._log.info('dealloc ok %30s: %s', uid, self)
 
         # remove temporary information from task
-        del(task['rank'])
-        del(task['ranks'])
+        del task['rank']
+        del task['ranks']
 
 
 # ------------------------------------------------------------------------------
@@ -572,7 +572,7 @@ class _Worker(mt.Thread):
 
         finally:
             if 'mpi_comm' in task:
-                del(task['mpi_comm'])
+                del task['mpi_comm']
 
             # sub-communicator must always be destroyed
             if group: group.Free()
@@ -629,7 +629,7 @@ class _Worker(mt.Thread):
             pass
 
         if not to_call:
-            assert(func)
+            assert func
             # check if `func_name` is a global name
             names   = dict(list(globals().items()) + list(locals().items()))
             to_call = names.get(func)
@@ -705,7 +705,7 @@ class _Worker(mt.Thread):
             if comm:
                 if py_func:
                     if 'comm' in kwargs:
-                        del(kwargs['comm'])
+                        del kwargs['comm']
                     elif args:
                         args[0] = None
                 else:
@@ -728,7 +728,7 @@ class _Worker(mt.Thread):
 
         uid  = task['uid']
         code = task['description']['code']
-        assert(code)
+        assert code
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr

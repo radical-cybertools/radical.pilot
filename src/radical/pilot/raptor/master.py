@@ -154,12 +154,12 @@ class Master(rpu.Component):
             cfg = dict()
 
         if cfg and 'path' in cfg:
-            del(cfg['path'])
+            del cfg['path']
 
         ru.dict_merge(cfg, ru.read_json('%s/control_pubsub.json' % self._psbox))
 
-        del(cfg['channel'])
-        del(cfg['cmgr'])
+        del cfg['channel']
+        del cfg['cmgr']
 
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
@@ -483,7 +483,7 @@ class Master(rpu.Component):
 
         # update td info and remove data
         task = self._task_service_data[tid][1]
-        del(self._task_service_data[tid])
+        del self._task_service_data[tid]
 
         # the task is completed and we can return it to the caller
         return task
@@ -507,7 +507,7 @@ class Master(rpu.Component):
                 # convert to task dict
                 task = Task(self, task, origin='raptor').as_dict()
 
-            assert('description' in task)
+            assert 'description' in task
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
             if mode == TASK_EXECUTABLE:
