@@ -56,7 +56,7 @@ if __name__ == '__main__':
         bag_size  = 3
         task_size = [5, 1, 4]
 
-        assert(len(task_size) == bag_size)
+        assert len(task_size) == bag_size
 
         tds = list()
         for b in range(n_bags):
