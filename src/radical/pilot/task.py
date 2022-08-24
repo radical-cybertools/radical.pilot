@@ -137,7 +137,7 @@ class Task(object):
 
     # --------------------------------------------------------------------------
     #
-    def _update(self, task_dict):
+    def _update(self, task_dict, reconnect=False):
         '''
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
@@ -149,13 +149,15 @@ class Task(object):
         current = self.state
         target  = task_dict['state']
 
-        if target not in [rps.FAILED, rps.CANCELED]:
-            s_tgt = rps._task_state_value(target)
-            s_cur = rps._task_state_value(current)
-            if s_tgt - s_cur != 1:
-                self._log.error('%s: invalid state transition %s -> %s',
-                                self.uid, current, target)
-                raise RuntimeError('invalid state transition')
+        if not reconnect:
+            if target not in [rps.FAILED, rps.CANCELED]:
+                s_tgt = rps._task_state_value(target)
+                s_cur = rps._task_state_value(current)
+                if s_tgt - s_cur != 1:
+                    self._log.error('%s: invalid state transition %s -> %s',
+                                    self.uid, current, target)
+                    raise RuntimeError('invalid state transition %s: %s -> %s'
+                            % (self.uid, current, target))
 
         self._state = target
 

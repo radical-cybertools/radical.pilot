@@ -102,8 +102,14 @@ class TaskManager(rpu.Component):
             * A new `TaskManager` object [:class:`radical.pilot.TaskManager`].
         """
 
-        self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
+        # initialize the base class (with no intent to fork)
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('tmgr.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=session.uid)
 
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
@@ -140,15 +146,6 @@ class TaskManager(rpu.Component):
             # overwrite the scheduler from the config file
             cfg.scheduler = scheduler
 
-        # initialize the base class (with no intent to fork)
-        if uid:
-            self._reconnect = True
-            self._uid       = uid
-        else:
-            self._reconnect = False
-            self._uid       = ru.generate_id('umgr.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=session.uid)
-
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
 
@@ -160,6 +157,7 @@ class TaskManager(rpu.Component):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
+        # let session know we exist
         if self._reconnect:
             self._session._reconnect_tmgr(self)
             self._reconnect_tasks()
@@ -192,9 +190,6 @@ class TaskManager(rpu.Component):
 
         # also listen to the state pubsub for task state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_tmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -895,7 +890,7 @@ class TaskManager(rpu.Component):
     def _reconnect_tasks(self):
         '''
         When reconnecting, we need to dig information about all tasks from the
-        DB for which this umgr is responsible.
+        DB for which this tmgr is responsible.
         '''
 
         from .task             import Task
@@ -904,10 +899,14 @@ class TaskManager(rpu.Component):
         task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
 
         with self._tasks_lock:
-            for td in task_docs:
 
-                descr = TaskDescription(td['description'])
-                task  = Task(tmgr=self, descr=descr)
+            for doc in task_docs:
+
+                descr = TaskDescription(doc['description'])
+                descr.uid = doc['uid']
+
+                task = Task(tmgr=self, descr=descr, origin='client')
+                task._update(doc, reconnect=True)
 
                 self._tasks[task.uid] = task
 

@@ -448,26 +448,26 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_umgrs(self, umgr_ids=None):
+    def get_tmgrs(self, tmgr_ids=None):
         '''
-        Get unit manager docs
+        Get task manager docs
         '''
 
         if self.closed:
             raise Exception('No active session.')
 
 
-        if not umgr_ids:
-            cursor = self._c.find({'type' : 'umgr'})
+        if not tmgr_ids:
+            cursor = self._c.find({'type' : 'tmgr'})
 
         else:
-            if not isinstance(umgr_ids, list):
-                umgr_ids = [umgr_ids]
+            if not isinstance(tmgr_ids, list):
+                tmgr_ids = [tmgr_ids]
 
-            cursor = self._c.find({'type' : 'umgr',
-                                   'uid'  : {'$in': umgr_ids}})
+            cursor = self._c.find({'type' : 'tmgr',
+                                   'uid'  : {'$in': tmgr_ids}})
 
-        # make sure we return every umgr doc only once
+        # make sure we return every tmgr doc only once
         # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
         ret  = {doc['uid'] : doc for doc in cursor}
         docs = ret.values()

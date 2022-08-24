@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -58,57 +58,57 @@ if __name__ == '__main__':
                    'access_schema' : config[resource]['schema'],
                    'cores'         : config[resource]['cores']
                   }
-        pdesc = rp.ComputePilotDescription(pd_init)
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit units')
+        report.header('submit tasks')
 
-        # Register the ComputePilot in a UnitManager object.
-        umgr = rp.UnitManager(session=session)
-        umgr.add_pilots(pilot)
+        # Register the Pilot in a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilot)
 
-        # Create a workload of ComputeUnits.
-        # Each compute unit runs '/bin/date'.
+        # Create a workload of Tasks.
+        # Each compute task runs '/bin/date'.
 
-        n = 32  # number of units to run
-        report.info('create %d unit description(s)\n\t' % n)
+        n = 32  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
-        cuds = list()
+        tds = list()
         for i in range(0, n):
 
             # create a new CU description, and fill it.
             # Here we don't use dict initialization.
-            cud = rp.ComputeUnitDescription()
-            cud.executable       = '/bin/sleep'
-            cud.arguments        = ['60']
-            cud.gpu_processes    = 0
-            cud.cpu_processes    = 2
-            cud.cpu_threads      = 2
-          # cud.cpu_process_type = rp.MPI
-          # cud.cpu_thread_type  = rp.OpenMP
-            cuds.append(cud)
+            td = rp.TaskDescription()
+            td.executable       = '/bin/sleep'
+            td.arguments        = ['60']
+            td.gpu_processes    = 0
+            td.cpu_processes    = 2
+            td.cpu_threads      = 2
+          # td.cpu_process_type = rp.MPI
+          # td.cpu_thread_type  = rp.OpenMP
+            tds.append(td)
             report.progress()
         report.ok('>>ok\n')
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        units = umgr.submit_units(cuds)
+        # assigning Tasks to the Pilots.
+        tasks = tmgr.submit_tasks(tds)
 
         # die - this is where the restart attempt will continue
         # but before, we store some UIDs
         with open('%s/restart.dat' % pwd, 'w') as fout:
             fout.write('session_id %s\n' % session.uid)
-            fout.write('umgr_ids   %s\n' % umgr.uid)
+            fout.write('tmgr_ids   %s\n' % tmgr.uid)
             fout.write('pmgrs_ids  %s\n' % pmgr.uid)
             fout.write('pilot_ids  %s\n' % pilot.uid)
-            fout.write('unit_ids   %s\n' % ':'.join(u.uid for u in units))
+            fout.write('task_ids   %s\n' % ':'.join(u.uid for u in tasks))
 
         pilot.wait(state=rp.PMGR_ACTIVE)
-        print 'killme %s' % os.getpid()
-        os.kill(os.getpid())
+        print('killme %s' % os.getpid())
+        sys.exit(0)
 
 
     except Exception as e:
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         ru.print_exception_trace()
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other

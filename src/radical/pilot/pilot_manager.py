@@ -73,7 +73,6 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, uid=None):
     def __init__(self, session, uid=None, cfg='default'):
         '''
         Creates a new PilotManager and attaches is to the session.
@@ -90,10 +89,16 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`rp.PilotManager`].
         '''
 
-        assert(session.primary), 'pmgr needs primary session'
+        assert session.primary, 'pmgr needs primary session'
 
-        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
+        # initialize the base class (with no intent to fork)
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=session.uid)
 
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
@@ -106,16 +111,6 @@ class PilotManager(rpu.Component):
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
-
-        # initialize the base class (with no intent to fork)
-        if uid:
-            self._reconnect = True
-            self._uid       = uid
-        else:
-            self._reconnect = False
-            self._uid       = ru.generate_id('pmgr')
-            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=session.uid)
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amed it at the same time.  This might
@@ -215,6 +210,7 @@ class PilotManager(rpu.Component):
 
         **Arguments:**
             * **terminate** [`bool`]: cancel non-final pilots if True (default)
+              NOTE: pilots cannot be reconnected to after termination
         """
 
         if self._closed:
@@ -228,11 +224,11 @@ class PilotManager(rpu.Component):
             for m in rpc.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
-      # # If terminate is set, we cancel all pilots.
-      # if terminate:
-      #     self.cancel_pilots(_timeout=20)
-      #     # if this cancel op fails and the pilots are s till alive after
-      #     # timeout, the pmgr.launcher termination will kill them
+        # If terminate is set, we cancel all pilots.
+        if terminate:
+            self.cancel_pilots(_timeout=20)
+            # if this cancel op fails and the pilots are s till alive after
+            # timeout, the pmgr.launcher termination will kill them
 
         self._terminate.set()
         self._cmgr.close()
@@ -652,18 +648,18 @@ class PilotManager(rpu.Component):
         DB for which this pmgr is responsible.
         '''
 
-        from .compute_pilot             import ComputePilot
-        from .compute_pilot_description import ComputePilotDescription
+        from .pilot             import Pilot
+        from .pilot_description import PilotDescription
 
-        self.is_valid()
+      # self.is_valid()
 
         pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         with self._pilots_lock:
             for ud in pilot_docs:
 
-                descr = ComputePilotDescription(ud['description'])
-                pilot = ComputePilot(pmgr=self, descr=descr)
+                descr = PilotDescription(ud['description'])
+                pilot = Pilot(pmgr=self, descr=descr)
 
                 self._pilots[pilot.uid] = pilot
 

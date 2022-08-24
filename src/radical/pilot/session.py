@@ -557,7 +557,7 @@ class Session(rs.Session):
     #
     def _reconnect_tmgr(self, tmgr):
 
-        if not self._dbs.get_tmgrs(umgr_ids=tmgr.uid):
+        if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
             raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
 
         self._tmgrs[tmgr.uid] = tmgr

@@ -337,7 +337,6 @@ class ResourceManager(object):
 
             except:
                 self._log.exception('skip LM %s' % name)
-                print('skip', name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')

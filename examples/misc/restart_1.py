@@ -23,16 +23,16 @@ if __name__ == '__main__':
     # but before, we store some UIDs
     with open('%s/restart.dat' % pwd, 'r') as fin:
         session_id = fin.readline().split()[1].strip()
-        umgr_id    = fin.readline().split()[1].strip()
+        tmgr_id    = fin.readline().split()[1].strip()
         pmgr_id    = fin.readline().split()[1].strip()
         pilot_id   = fin.readline().split()[1].strip()
-        unit_ids   = fin.readline().split()[1].strip().split(':')
+        task_ids   = fin.readline().split()[1].strip().split(':')
 
-  # print 'session_id : %s\n' % session_id
-  # print 'umgr_id    : %s\n' % umgr_id   
-  # print 'pmgr_id    : %s\n' % pmgr_id   
-  # print 'pilot_id   : %s\n' % pilot_id  
-  # print 'unit_ids   : %s\n' % unit_ids  
+    print('session_id : %s' % session_id)
+    print('tmgr_id    : %s' % tmgr_id)
+    print('pmgr_id    : %s' % pmgr_id)
+    print('pilot_id   : %s' % pilot_id)
+    print('task_ids   : %s' % task_ids)
 
     # we use a reporter class for nicer output
     report = ru.Reporter(name='radical.pilot')
@@ -44,24 +44,24 @@ if __name__ == '__main__':
     else                   : resource = 'local.localhost'
 
     try:
-        # Create a new session, and reconnect umgr and pmgr
+        # Create a new session, and reconnect tmgr and pmgr
         session = rp.Session(uid=session_id)
-        umgr    = rp.UnitManager(session=session,  uid=umgr_id)
+        tmgr    = rp.TaskManager(session=session,  uid=tmgr_id)
         pmgr    = rp.PilotManager(session=session, uid=pmgr_id)
 
         # re-add pilots to the uymgr
-        umgr.add_pilots(pmgr.get_pilots())
+        tmgr.add_pilots(pmgr.get_pilots())
 
-        print pmgr.list_pilots()
-        print umgr.list_units()
+        print(pmgr.list_pilots())
+        print(tmgr.list_tasks())
 
-        for unit in umgr.get_units():
-            print unit.uid, unit.state 
+        for task in tmgr.get_tasks():
+            print(task.uid, task.state)
 
 
-        # Wait for all compute units to reach a final state (DONE, CANCELED or FAILED).
+        # Wait for all compute tasks to reach a final state (DONE, CANCELED or FAILED).
         report.header('gather results')
-        umgr.wait_units()
+        tmgr.wait_tasks()
 
 
     except Exception as e:
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         ru.print_exception_trace()
         raise
 
-    except (KeyboardInterrupt, SystemExit) as e:
+    except (KeyboardInterrupt, SystemExit):
         # the callback called sys.exit(), and we can here catch the
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
