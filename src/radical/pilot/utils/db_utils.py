@@ -7,8 +7,7 @@ import datetime
 
 import radical.utils as ru
 
-
-_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
+_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid()
 
 
 # ------------------------------------------------------------------------------
@@ -58,39 +57,36 @@ def get_session_docs(sid, db=None, cachedir=None):
     # much quicker.  Also, we do cache any retrieved docs to that place, for
     # later use.  An optional cachdir parameter changes that default location
     # for lookup and storage.
+
     if not cachedir:
         cachedir = _CACHE_BASEDIR
 
-    if not cache:
-        cache = "%s/%s.json" % (cachedir, sid)
-
+    cache = os.path.join(cachedir, '%s.json' % sid)
     try:
-        if  os.path.isfile (cache):
-          # print 'using cache: %s' % cache
-            return ru.read_json(cache, filter_comments=False)
+        if os.path.isfile(cache):
+            return ru.read_json(cache)
     except Exception as e:
         # continue w/o cache
-        sys.stderr.write("cannot read session cache at %s (%s)\n" % (cache, e))
+        sys.stderr.write('cannot read session cache from %s: %s\n' % (cache, e))
 
+    if db:
+        json_data = dict()
+        # convert bson to json, i.e. serialize the ObjectIDs into strings.
+        json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
+        json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
+        json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
+        json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
+        json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
 
-    # cache not used or not found -- go to db
-    json_data = dict()
-
-    # convert bson to json, i.e. serialize the ObjectIDs into strings.
-    json_data['session'] = bson2json(list(db[sid].find({'type': 'session'})))
-    json_data['pmgr'   ] = bson2json(list(db[sid].find({'type': 'pmgr'   })))
-    json_data['pilot'  ] = bson2json(list(db[sid].find({'type': 'pilot'  })))
-    json_data['tmgr'   ] = bson2json(list(db[sid].find({'type': 'tmgr'   })))
-    json_data['task'   ] = bson2json(list(db[sid].find({'type': 'task'   })))
-
-    if  len(json_data['session']) == 0:
-        raise ValueError ('no session %s in db' % sid)
-
-  # if  len(json_data['session']) > 1:
-  #     print 'more than one session document -- picking first one'
-
-    # there can only be one session, not a list of one
-    json_data['session'] = json_data['session'][0]
+        if  len(json_data['session']) == 0:
+            raise ValueError ('no session %s in db' % sid)
+    else:
+        import glob
+        jsons = glob.glob('%s/r[ep].session.*.json' % os.path.abspath(sid))
+        assert jsons, 'session docs missed, check <sid>/<sid>.json'
+        session_json = jsons[0]
+        with ru.ru_open(session_json, 'r') as f:
+            json_data = json.load(f)
 
     # we want to add a list of handled tasks to each pilot doc
     for pilot in json_data['pilot']:
@@ -105,11 +101,9 @@ def get_session_docs(sid, db=None, cachedir=None):
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
     try:
-        os.system ('mkdir -p %s' % cachedir)
-        with open("%s/%s.json" % (cachedir, sid)) as fout:
-            fout.write(ru.as_bytes(json_data))
-
-    except Exception:
+        os.system('mkdir -p %s' % cachedir)
+        ru.write_json(json_data, cache)
+    except:
         # we can live without cache, no problem...
         pass
 
