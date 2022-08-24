@@ -1,8 +1,7 @@
+# pylint: disable=unused-argument
 
-
-__copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
-
 
 import os
 import stat
@@ -327,31 +326,23 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += self._get_prof('exec_start', tid)
 
+            tmp += self._separator
             tmp += '# task environment\n'
             tmp += self._get_task_env(task, launcher)
+
+            tmp += self._separator
+            tmp += '# RP environment per rank\n'
+            tmp += 'case "$RP_RANK" in\n'
+            for rank_id, rank in enumerate(ranks):
+                tmp += '    %d)\n' % rank_id
+                tmp += self._get_rank_env(rank)
+                tmp += '        ;;\n'
+            tmp += 'esac\n'
 
             tmp += self._separator
             tmp += '# pre-exec commands\n'
             tmp += self._get_prof('exec_pre', tid)
             tmp += self._get_pre_exec(task)
-
-            # pre_rank list is applied to rank 0, dict to the ranks listed
-            pre_rank = td['pre_rank']
-            if isinstance(pre_rank, list): pre_rank = {'0': pre_rank}
-
-            if pre_rank:
-                tmp += self._separator
-                tmp += self._get_prof('rank_pre', tid)
-                tmp += '# pre-rank commands\n'
-                tmp += 'case "$RP_RANK" in\n'
-                for rank_id, cmds in pre_rank.items():
-                    rank_id = int(rank_id)
-                    tmp += '    %d)\n' % rank_id
-                    tmp += self._get_pre_rank(cmds)
-                    tmp += '        ;;\n'
-                tmp += 'esac\n\n'
-
-                tmp += self._get_rank_sync('pre_rank', n_ranks)
 
             tmp += self._separator
             tmp += '# execute ranks\n'
@@ -365,27 +356,9 @@ class Popen(AgentExecutingComponent):
             tmp += 'RP_RET=$?\n'
             tmp += self._get_prof('rank_stop', tid)
 
-            # post_rank list is applied to rank 0, dict to the ranks listed
-            post_rank = td['post_rank']
-            if isinstance(post_rank, list): post_rank = {'0': post_rank}
-
-            if post_rank:
-                tmp += self._separator
-                tmp += self._get_prof('rank_post', tid)
-                tmp += self._get_rank_sync('post_rank', n_ranks)
-
-                tmp += '\n# post-rank commands\n'
-                tmp += 'case "$RP_RANK" in\n'
-                for rank_id, cmds in post_rank.items():
-                    rank_id = int(rank_id)
-                    tmp += '    %d)\n' % rank_id
-                    tmp += self._get_post_rank(cmds)
-                    tmp += '        ;;\n'
-                tmp += 'esac\n\n'
-
             tmp += self._separator
-            tmp += self._get_prof('exec_post', tid)
             tmp += '# post exec commands\n'
+            tmp += self._get_prof('exec_post', tid)
             tmp += self._get_post_exec(task)
 
             tmp += self._separator
@@ -569,6 +542,7 @@ class Popen(AgentExecutingComponent):
 
 
     # --------------------------------------------------------------------------
+    #
     def _get_check(self, event):
 
         return '\\\n        || (echo "%s failed"; false) || exit 1\n' % event
@@ -576,12 +550,43 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    # launcher
-    #
-# pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rp_env(self, task):
+
+        tid  = task['uid']
+        name = task.get('name') or tid
+        sbox = os.path.realpath(task['task_sandbox_path'])
+
+        if sbox.startswith(self._pwd):
+            sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
+
+        ret  = ''
+        ret += 'export RP_TASK_ID="%s"\n'          % tid
+        ret += 'export RP_TASK_NAME="%s"\n'        % name
+        ret += 'export RP_PILOT_ID="%s"\n'         % self._pid
+        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
+        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
+        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
+        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
+        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
+        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        # FIXME AM
+      # ret += 'export RP_LFS="%s"\n'              % self.lfs
+        ret += 'export RP_GTOD="%s"\n'             % self.gtod
+        ret += 'export RP_PROF="%s"\n'             % self.prof
+
+        if self._prof.enabled:
+            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
+        else:
+            ret += 'unset  RP_PROF_TGT'
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -636,41 +641,7 @@ class Popen(AgentExecutingComponent):
 
 
     # --------------------------------------------------------------------------
-    # exec
     #
-    def _get_rp_env(self, task):
-
-        tid  = task['uid']
-        name = task.get('name') or tid
-        sbox = os.path.realpath(task['task_sandbox_path'])
-
-        if sbox.startswith(self._pwd):
-            sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
-
-        ret  = ''
-        ret += 'export RP_TASK_ID="%s"\n'          % tid
-        ret += 'export RP_TASK_NAME="%s"\n'        % name
-        ret += 'export RP_PILOT_ID="%s"\n'         % self._pid
-        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
-        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
-        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
-        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
-        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
-        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
-        # FIXME AM
-      # ret += 'export RP_LFS="%s"\n'              % self.lfs
-        ret += 'export RP_GTOD="%s"\n'             % self.gtod
-        ret += 'export RP_PROF="%s"\n'             % self.prof
-
-        if self._prof.enabled:
-            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
-        else:
-            ret += 'unset  RP_PROF_TGT'
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
     # exec
     #
     def _get_task_env(self, task, launcher):
@@ -686,21 +657,8 @@ class Popen(AgentExecutingComponent):
         # also add any env vars requested in the task description
         if td['environment']:
             ret += '\n# task env settings\n'
-            for key,val in td['environment'].items():
+            for key, val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_pre_exec(self, task):
-
-        ret  = ''
-
-        cmds = task['description']['pre_exec']
-        for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('pre_exec'))
 
         return ret
 
@@ -727,12 +685,78 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _get_rank_env(self, rank):
+
+        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        #        with exactly one entry, corresponding to the rank process to be
+        #        started.
+
+        ret  = ''
+
+        # FIXME: need to distinguish between logical and physical IDs
+        gmap = rank['gpu_map']
+        if gmap:
+            # equivalent to the 'physical' value for original `cvd_id_mode`
+            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
+            ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
+
+        cmap = rank['core_map'][0]
+        ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_pre_exec(self, task):
+
+        ret = ''
+        pre_exec = task['description']['pre_exec']
+        if not pre_exec:
+            return ret
+
+        if isinstance(pre_exec, list):
+            for cmd in pre_exec:
+                ret += '%s %s' % (cmd, self._get_check('pre_exec'))
+
+        elif isinstance(pre_exec, dict):
+            ret += 'case "$RP_RANK" in\n'
+            for rank_id, cmds in pre_exec.items():
+                ret += '    %d)\n' % int(rank_id)
+                for cmd in cmds:
+                    # FIXME: exit on error, but don't stall other ranks on sync
+                    ret += '        %s\n' % cmd
+                ret += '        ;;\n'
+            ret += 'esac\n\n'
+
+            ret += self._get_rank_sync('pre_exec', len(pre_exec))
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
     def _get_post_exec(self, task):
 
         ret  = ''
-        cmds = task['description']['post_exec']
-        for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('post_exec'))
+        post_exec = task['description']['post_exec']
+        if not post_exec:
+            return ret
+
+        if isinstance(post_exec, list):
+            for cmd in post_exec:
+                ret += '%s %s' % (cmd, self._get_check('post_exec'))
+
+        elif isinstance(post_exec, dict):
+            ret += 'case "$RP_RANK" in\n'
+            for rank_id, cmds in post_exec.items():
+                ret += '    %d)\n' % int(rank_id)
+                for cmd in cmds:
+                    ret += '        %s %s' % (cmd, self._get_check('post_exec'))
+                ret += '        ;;\n'
+            ret += 'esac\n\n'
+
+            ret += self._get_rank_sync('post_exec', len(post_exec))
 
         return ret
 
@@ -740,19 +764,6 @@ class Popen(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     # rank
-    #
-    def _get_pre_rank(self, cmds=None):
-
-        ret = ''
-        cmds = cmds or []
-        for cmd in cmds:
-            # FIXME: exit on error, but don't stall other ranks on sync
-            ret += '        %s\n' % cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
     #
     def _get_rank_sync(self, sig, ranks):
 
@@ -775,40 +786,12 @@ class Popen(AgentExecutingComponent):
     #
     def _get_rank_exec(self, task, rank_id, rank, launcher):
 
-        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
-        #        with exactly one entry, corresponding to the rank process to be
-        #        started.
-
-        ret  = ''
-        gmap = rank['gpu_map']
-
-        # FIXME: need to distinguish between logical and physical IDs
-        if gmap:
-            # equivalent to the 'physical' value for original `cvd_id_mode`
-            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
-            ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
-
-        cmap = rank['core_map'][0]
-        ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
-
         # FIXME: core pinning goes here
 
-
+        ret = ''
         cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
         for cmd in cmds:
             ret += '        %s\n' % cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_post_rank(self, cmds=None):
-
-        ret = ''
-        cmds = cmds or []
-        for cmd in cmds:
-            ret += '        %s %s' % (cmd, self._get_check('post_rank'))
 
         return ret
 
