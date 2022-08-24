@@ -925,7 +925,7 @@ class PilotManager(rpu.Component):
                     if cb_id not in self._callbacks[metric]:
                         raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del(self._callbacks[metric][cb_id])
+                    del self._callbacks[metric][cb_id]
 
 
     # --------------------------------------------------------------------------
