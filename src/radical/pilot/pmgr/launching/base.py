@@ -379,7 +379,7 @@ class PMGRLaunchingComponent(rpu.Component):
         #
         schema = pd.get('access_schema')
         for pilot in pilots[1:]:
-            assert(schema == pilot['description'].get('access_schema')), \
+            assert schema == pilot['description'].get('access_schema'), \
                     'inconsistent scheme on launch / staging'
 
         # get and expand sandboxes (this bulk uses the same schema toward the
@@ -916,7 +916,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # always stage RU env helper
         env_helper = ru.which('radical-utils-env.sh')
-        assert(env_helper)
+        assert env_helper
         self._log.debug('env %s -> %s', env_helper, pilot_sandbox)
         pilot['sds'].append({'source': env_helper,
                              'target': '%s/%s' % (pilot['pilot_sandbox'],
