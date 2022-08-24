@@ -30,7 +30,7 @@ class Hombre(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        self.nodes = None
+        self.nodes = list()
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
@@ -131,8 +131,8 @@ class Hombre(AgentSchedulingComponent):
         # ----------------------------------------------------------------------
         def next_slot(slot=None):
             if slot:
-                del(slot['ncblocks'])
-                del(slot['ngblocks'])
+                del slot['ncblocks']
+                del slot['ngblocks']
                 self.free.append(slot)
             return {'ranks'         : list(),
                     'cores_per_node': self.cpn,
