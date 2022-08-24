@@ -16,7 +16,7 @@ from radical.pilot.serialize import serializer as serialize
 # FIXME: the func executor may need a small bootstrapper
 # FIXME: the func executor need to recieve "term" signal from
 #        `funcs.py` to trigger the termination of the workers here
-# FIXME: find a way to provide this executor with port and host if 
+# FIXME: find a way to provide this executor with port and host if
 #        called from the RP-PARSL Executor
 pwd  = sys.argv[1]
 
@@ -71,7 +71,7 @@ class Executor(object):
 
         self._enable_redis = False
         if self._host and self._port:
-            self.redis  = RedisQueue(self._host, self._port, 
+            self.redis  = RedisQueue(self._host, self._port,
                                     topics = ['rp task queue', 'rp result queue'])
             self._enable_redis = True
 
@@ -95,9 +95,9 @@ class Executor(object):
         self._log.debug('res put addr: %s', addr_res)
         self._log.debug('ctrl    addr: %s', addr_ctrl)
 
-        assert(addr_req)
-        assert(addr_res)
-        assert(addr_ctrl)
+        assert addr_req
+        assert addr_res
+        assert addr_ctrl
 
         # connect to
         #
@@ -140,7 +140,8 @@ class Executor(object):
         self._workers = list()
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
-            proc = mp.Process(target=self._work, args=[self._uid, wid])
+            proc = mp.Process(target=self._work, args=(self._uid, wid))
+            proc.daemon = True
             proc.start()
             self._workers.append(proc)
 
@@ -158,8 +159,7 @@ class Executor(object):
         try:
             while True:
 
-                msgs = self._zmq_ctrl.get_nowait(100)
-                time.sleep(1)
+                msgs = self._zmq_ctrl.get_nowait(1000)
 
                 if not msgs:
                     continue
@@ -313,7 +313,7 @@ class Executor(object):
             # put the task in the regular queue or Redis queue
             self._prof.prof('task_put', comp=wid, uid=tid)
             task['wid'] = wid
-            
+
             if task['name'] == 'colmena' and self._enable_redis:
                 # make sure we are conneced
                 assert(self.redis.is_connected)
@@ -322,7 +322,7 @@ class Executor(object):
 
                 task['stdout'] = 'redirected_to_redis'
                 task['description']['executable'] = None
-                
+
                 self._log.debug('task_redis_put')
             self._mpq_result.put(task)
 
