@@ -82,8 +82,9 @@ def get_session_docs(sid, db=None, cachedir=None):
             raise ValueError ('no session %s in db' % sid)
     else:
         import glob
-        path = '%s/rp.session.*.json' % os.path.abspath(sid)
-        session_json = glob.glob(path)[0]
+        jsons = glob.glob('%s/r[ep].session.*.json' % os.path.abspath(sid))
+        assert jsons, 'session docs missed, check <sid>/<sid>.json'
+        session_json = jsons[0]
         with ru.ru_open(session_json, 'r') as f:
             json_data = json.load(f)
 
