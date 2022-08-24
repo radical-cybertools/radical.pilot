@@ -698,7 +698,7 @@ def get_duration(thing, dur):
     if not len(t0) or not len(t1):
         return [None, None]
 
-    return(t0[0], t1[-1])
+    return (t0[0], t1[-1])
 
 
 # ------------------------------------------------------------------------------
