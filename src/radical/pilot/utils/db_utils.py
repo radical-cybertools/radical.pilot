@@ -1,13 +1,13 @@
 
-import os
-import json
-import time
 import datetime
+import json
+import os
+import sys
+import time
 
 import radical.utils as ru
 
-
-_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid ()
+_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid()
 
 
 # ------------------------------------------------------------------------------
@@ -57,6 +57,18 @@ def get_session_docs(sid, db=None, cachedir=None):
     # much quicker.  Also, we do cache any retrieved docs to that place, for
     # later use.  An optional cachdir parameter changes that default location
     # for lookup and storage.
+
+    if not cachedir:
+        cachedir = _CACHE_BASEDIR
+
+    cache = os.path.join(cachedir, '%s.json' % sid)
+    try:
+        if os.path.isfile(cache):
+            return ru.read_json(cache)
+    except Exception as e:
+        # continue w/o cache
+        sys.stderr.write('cannot read session cache from %s: %s\n' % (cache, e))
+
     if db:
         json_data = dict()
         # convert bson to json, i.e. serialize the ObjectIDs into strings.
@@ -70,9 +82,10 @@ def get_session_docs(sid, db=None, cachedir=None):
             raise ValueError ('no session %s in db' % sid)
     else:
         import glob
-        path = "%s/rp.session.*.json" % os.path.abspath(sid)
-        session_json = glob.glob(path)[0]
-        with open(session_json, 'r', encoding='utf8') as f:
+        jsons = glob.glob('%s/r[ep].session.*.json' % os.path.abspath(sid))
+        assert jsons, 'session docs missed, check <sid>/<sid>.json'
+        session_json = jsons[0]
+        with ru.ru_open(session_json, 'r') as f:
             json_data = json.load(f)
 
     # we want to add a list of handled tasks to each pilot doc
@@ -88,9 +101,9 @@ def get_session_docs(sid, db=None, cachedir=None):
     # if we got here, we did not find a cached version -- thus add this dataset
     # to the cache
     try:
-        os.system ('mkdir -p %s' % cachedir)
-        ru.write_json (json_data, "%s/%s.json" % (cachedir, sid))
-    except Exception:
+        os.system('mkdir -p %s' % cachedir)
+        ru.write_json(json_data, cache)
+    except:
         # we can live without cache, no problem...
         pass
 
