@@ -115,7 +115,7 @@ class Session(rs.Session):
 
         else:
             for k in ['sid', 'base', 'path']:
-                assert(k in self._cfg), 'non-primary session misses %s' % k
+                assert k in self._cfg, 'non-primary session misses %s' % k
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -385,7 +385,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert(self._primary)
+        assert self._primary
         return self._cmgr
 
 

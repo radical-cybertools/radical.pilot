@@ -102,7 +102,7 @@ class ContinuousOrdered(Continuous):
                 return
 
             # this uniit wants to be ordered - keep it in our registry
-            assert(uid not in self._tasks), 'duplicated task %s' % uid
+            assert uid not in self._tasks, 'duplicated task %s' % uid
             self._tasks[uid] = task
 
             ns    = order_tag['ns']
@@ -120,7 +120,7 @@ class ContinuousOrdered(Continuous):
                 self._ns[ns][order]['size'] = size
 
             # ensure that order information are consistent
-            assert(size == self._ns[ns][order]['size']), \
+            assert size == self._ns[ns][order]['size'], \
                    'inconsistent order size'
 
             # add task to order

@@ -273,7 +273,7 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER], \
                               'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
@@ -303,10 +303,10 @@ class Default(AgentStagingOutputComponent):
                 tgt = os.path.join(tgt, os.path.basename(src))
 
             # Currently, we use the same schema for files and folders.
-            assert(src.schema == 'file'), 'staging src must be file://'
+            assert src.schema == 'file', 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert(tgt.schema == 'file'), 'staging tgt expected as file://'
+                assert tgt.schema == 'file', 'staging tgt expected as file://'
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)

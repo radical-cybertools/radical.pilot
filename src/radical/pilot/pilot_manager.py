@@ -87,7 +87,7 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`rp.PilotManager`].
         '''
 
-        assert(session.primary), 'pmgr needs primary session'
+        assert session.primary, 'pmgr needs primary session'
 
         self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
                                            ru.ID_CUSTOM, ns=session.uid)
@@ -890,7 +890,7 @@ class PilotManager(rpu.Component):
                     if cb_id not in self._callbacks[metric]:
                         raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del(self._callbacks[metric][cb_id])
+                    del self._callbacks[metric][cb_id]
 
 
     # --------------------------------------------------------------------------
