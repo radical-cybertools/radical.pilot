@@ -552,6 +552,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
+        assert self._primary
         return self._cmgr
 
 

@@ -527,7 +527,7 @@ class Popen(AgentExecutingComponent):
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del(task['proc'])  # proc is not json serializable
+                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     to_cancel.append(task)
 
@@ -549,7 +549,7 @@ class Popen(AgentExecutingComponent):
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._tasks_to_watch.remove(task)
-                del(task['proc'])  # proc is not json serializable
+                del task['proc']  # proc is not json serializable
                 to_advance.append(task)
                 self._prof.prof('unschedule_start', uid=tid)
 

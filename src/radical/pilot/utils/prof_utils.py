@@ -571,7 +571,7 @@ def get_session_description(sid, src=None):
         fix_uids(json)
     fix_json(json)
 
-    assert(sid == json['session'][0]['uid']), 'sid inconsistent'
+    assert sid == json['session'][0]['uid'], 'sid inconsistent'
 
     ret             = dict()
     ret['entities'] = dict()
@@ -644,7 +644,7 @@ def get_session_description(sid, src=None):
                      'children'    : list()
                     }
         # remove duplicate
-        del(tree[uid]['cfg']['description'])
+        del tree[uid]['cfg']['description']
 
     ret['tree'] = tree
 
@@ -692,7 +692,7 @@ def get_duration(thing, dur):
     if not len(t0) or not len(t1):
         return [None, None]
 
-    return(t0[0], t1[-1])
+    return (t0[0], t1[-1])
 
 
 # ------------------------------------------------------------------------------
@@ -896,8 +896,8 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         if p_min is None: p_min = pilot.timestamps(state='PMGR_ACTIVE')
         if p_max is None: p_max = pilot.events[-1][ru.TIME]
 
-        assert(p_min is not None)
-        assert(p_max is not None)
+        assert p_min is not None
+        assert p_max is not None
 
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
@@ -965,7 +965,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
             if t_min is None:
 
-                assert(t_max is None)
+                assert t_max is None
                 bucket_none.append(idx)
 
             else:
@@ -1111,7 +1111,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     pilot = session.get(uid=pid)
 
     if isinstance(pilot, list):
-        assert(len(pilot) == 1)
+        assert len(pilot) == 1
         pilot = pilot[0]
 
     # FIXME: it is inefficient to query those values again and again
@@ -1244,7 +1244,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
             task_transitions.append([spec[0], None, metric])
         else:
             # if we know the transition, just register the stop event
-            assert(m[2] is None)
+            assert m[2] is None
             m[2] = metric
 
         # the inverse of the above where we check stop events, register, and
@@ -1257,7 +1257,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
         if not m:
             task_transitions.append([spec[1], metric, None])
         else:
-            assert(m[1] is None)
+            assert m[1] is None
             m[1] = metric
 
     # task transitions which, after the above search, miss start or stop events
@@ -1286,7 +1286,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
         if not m:
             pilot_transitions.append([spec[0], None, metric])
         else:
-            assert(m[2] is None)
+            assert m[2] is None
             m[2] = metric
 
         m = None
@@ -1297,7 +1297,7 @@ def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
         if not m:
             pilot_transitions.append([spec[1], metric, None])
         else:
-            assert(m[1] is None)
+            assert m[1] is None
             m[1] = metric
 
     for t in pilot_transitions:
