@@ -198,7 +198,7 @@ class Pilot(object):
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
 
-        assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
+        assert pilot_dict['uid'] == self.uid, 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order and
         #       without gaps.
@@ -514,7 +514,7 @@ class Pilot(object):
                     if cb_name not in self._callbacks[metric]:
                         raise ValueError("unknown callback '%s'" % cb_name)
 
-                    del(self._callbacks[metric][cb_name])
+                    del self._callbacks[metric][cb_name]
 
 
     # --------------------------------------------------------------------------
