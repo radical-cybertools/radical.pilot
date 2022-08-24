@@ -20,7 +20,7 @@ if __name__ == '__main__':
 
     # die - this is where the restart attempt will continue
     # but before, we store some UIDs
-    with open('%s/restart.dat' % pwd, 'r') as fin:
+    with ru.ru_open('%s/restart.dat' % pwd, 'r') as fin:
         session_id = fin.readline().split()[1].strip()
         tmgr_id    = fin.readline().split()[1].strip()
         pmgr_id    = fin.readline().split()[1].strip()
