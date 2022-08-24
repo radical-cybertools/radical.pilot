@@ -196,7 +196,7 @@ class FUNCS(AgentExecutingComponent) :
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
-            assert(task['description']['cpu_process_type'] == 'FUNC')
+            assert task['description']['cpu_process_type'] == 'FUNC'
             self._req_queue.put(task)
 
 
