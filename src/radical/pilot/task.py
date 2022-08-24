@@ -143,7 +143,7 @@ class Task(object):
         invoked by whatever component receiving that updated information.
         '''
 
-        assert(task_dict['uid'] == self.uid), 'update called on wrong instance'
+        assert task_dict['uid'] == self.uid, 'update called on wrong instance'
 
         # this method relies on state updates to arrive in order
         current = self.state

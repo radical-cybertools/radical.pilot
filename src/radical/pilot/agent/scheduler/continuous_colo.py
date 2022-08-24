@@ -84,7 +84,7 @@ class ContinuousColo(Continuous):
                 return
 
             # this uniit wants to be ordered - keep it in our registry
-            assert(uid not in self._tasks), 'duplicated task %s' % uid
+            assert uid not in self._tasks, 'duplicated task %s' % uid
             self._tasks[uid] = task
 
             bag   = colo_tag['bag']
@@ -98,7 +98,7 @@ class ContinuousColo(Continuous):
                 self._bags[bag]['size'] = size
 
             else:
-                assert(size == self._bags[bag]['size']), \
+                assert size == self._bags[bag]['size'], \
                        'inconsistent bag size'
 
             # add task to order
@@ -177,7 +177,7 @@ class ContinuousColo(Continuous):
             # delete all bags which have been pushed out
             for bag in to_delete:
 
-                del(self._bags[bag])
+                del self._bags[bag]
 
 
         # advance all scheduled tasks and push them out
