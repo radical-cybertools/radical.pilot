@@ -60,7 +60,7 @@ class Flux(AgentExecutingComponent) :
                                           cfg=self._cfg, log=self._log,
                                           prof=self._prof)
 
-      # assert(self._rm.from_info)
+      # assert self._rm.from_info
 
 
         # thread termination signal
@@ -96,8 +96,8 @@ class Flux(AgentExecutingComponent) :
                self._listener_setup.is_set():
                 break
 
-        assert(self._watcher_setup.is_set())
-        assert(self._listener_setup.is_set())
+        assert self._watcher_setup.is_set()
+        assert self._listener_setup.is_set()
 
 
     # --------------------------------------------------------------------------
@@ -137,6 +137,7 @@ class Flux(AgentExecutingComponent) :
         lm_cfg['reg_addr']  = self._cfg.reg_addr
         lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
                                                   self._log, self._prof)
+        flux_handle = None
         try:
 
             flux_handle = lm.fh.get_handle()
@@ -254,8 +255,8 @@ class Flux(AgentExecutingComponent) :
                                 if self.handle_events(task, events[flux_id]):
                                     # task completed - purge data
                                     # NOTE: this assumes events are ordered
-                                    if flux_id in events: del(events[flux_id])
-                                    if flux_id in tasks : del(tasks[flux_id])
+                                    if flux_id in events: del events[flux_id]
+                                    if flux_id in tasks : del tasks[flux_id]
 
                         except Exception:
 
@@ -287,8 +288,8 @@ class Flux(AgentExecutingComponent) :
                             if self.handle_events(tasks[flux_id], [event]):
                                 # task completed - purge data
                                 # NOTE: this assumes events are ordered
-                                if flux_id in events: del(events[flux_id])
-                                if flux_id in tasks : del(tasks[flux_id])
+                                if flux_id in events: del events[flux_id]
+                                if flux_id in tasks : del tasks[flux_id]
 
                         else:
                             # unknown task, store events for later
