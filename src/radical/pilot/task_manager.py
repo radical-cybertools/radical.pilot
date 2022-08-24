@@ -769,7 +769,7 @@ class TaskManager(rpu.Component):
             for pid in pilot_ids:
                 if pid not in self._pilots:
                     raise ValueError('pilot %s not removed' % pid)
-                del(self._pilots[pid])
+                del self._pilots[pid]
 
         # publish to the command channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
@@ -1245,7 +1245,7 @@ class TaskManager(rpu.Component):
                     if cb_id not in self._callbacks[metric][uid]:
                         raise ValueError("cb %s not registered" % cb_id)
 
-                    del(self._callbacks[metric][uid][cb_id])
+                    del self._callbacks[metric][uid][cb_id]
 
 
 # ------------------------------------------------------------------------------
