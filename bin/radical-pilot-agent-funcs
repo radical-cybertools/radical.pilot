@@ -78,8 +78,8 @@ class Executor(object):
         self._log.debug('req get addr: %s', addr_req)
         self._log.debug('res put addr: %s', addr_res)
 
-        assert(addr_req)
-        assert(addr_res)
+        assert addr_req
+        assert addr_res
 
         # connect to
         #
@@ -117,7 +117,7 @@ class Executor(object):
         self._workers = list()
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
-            proc = mp.Process(target=self._work, args=[self._uid, wid])
+            proc = mp.Process(target=self._work, args=(self._uid, wid))
             proc.daemon = True
             proc.start()
             self._workers.append(proc)
@@ -136,7 +136,7 @@ class Executor(object):
         while True:
 
           # msgs = self._zmq_ctl.get_nowait(100)
-            msgs = None
+            msgs = list()
             time.sleep(1)
 
             if not msgs:
