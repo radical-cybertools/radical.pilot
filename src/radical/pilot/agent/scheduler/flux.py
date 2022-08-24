@@ -49,7 +49,7 @@ class Flux(AgentSchedulingComponent):
     def schedule_task(self, task):
 
         # this abstract method is not used in this implementation
-        assert(False)
+        assert False
 
 
     # --------------------------------------------------------------------------
@@ -57,7 +57,7 @@ class Flux(AgentSchedulingComponent):
     def unschedule_task(self, task):
 
         # this abstract method is not used in this implementation
-        assert(False)
+        assert False
 
 
     # --------------------------------------------------------------------------
