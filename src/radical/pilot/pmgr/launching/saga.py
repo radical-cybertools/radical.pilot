@@ -34,7 +34,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         if rs_ex:
             raise rs_ex
 
-        assert(rs)
+        assert rs
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
@@ -138,11 +138,11 @@ class PilotLauncherSAGA(PilotLauncherBase):
             saga_jd_supplement = dict()
             if 'saga_jd_supplement' in jd_dict:
                 saga_jd_supplement = jd_dict['saga_jd_supplement']
-                del(jd_dict['saga_jd_supplement'])
+                del jd_dict['saga_jd_supplement']
 
             # saga will take care of node_count itself
             if 'node_count' in jd_dict:
-                del(jd_dict['node_count'])
+                del jd_dict['node_count']
 
             jd = rs.job.Description()
             for k, v in jd_dict.items():
@@ -194,7 +194,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
             # don't overwrite resource_details from the agent
             if 'resource_details' in pilot:
-                del(pilot['resource_details'])
+                del pilot['resource_details']
 
             if pilot['state'] in rps.FINAL:
                 continue
