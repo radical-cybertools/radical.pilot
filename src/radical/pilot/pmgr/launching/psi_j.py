@@ -36,7 +36,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
         if psij_ex:
             raise psij_ex
 
-        assert(psij)
+        assert psij
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
@@ -132,17 +132,17 @@ class PilotLauncherPSIJ(PilotLauncherBase):
     #
     def launch_pilots(self, rcfg, pilots):
 
-        assert(psij)
+        assert psij
 
         for pilot in pilots:
 
             pid    = pilot['uid']
             schema = self._get_schema(rcfg)
-            assert(schema)
+            assert schema
 
             jex = self._jex.get(schema)
 
-            assert(jex)
+            assert jex
 
             jd = pilot['jd_dict']
 

@@ -15,7 +15,7 @@ import radical.utils   as ru
 import queue
 
 # FIXME: the func executor may need a small bootstrapper
-# FIXME: the func executor need to recieve "term" signal from 
+# FIXME: the func executor need to recieve "term" signal from
 #        `funcs.py` to trigger the termination of the workers here
 
 pwd = sys.argv[1]
@@ -83,9 +83,9 @@ class Executor(object):
         self._log.debug('res put addr: %s', addr_res)
         self._log.debug('ctrl    addr: %s', addr_ctrl)
 
-        assert(addr_req)
-        assert(addr_res)
-        assert(addr_ctrl)
+        assert addr_req
+        assert addr_res
+        assert addr_ctrl
 
         # connect to
         #
@@ -123,7 +123,8 @@ class Executor(object):
         self._workers = list()
         for i in range(self._nw):
             wid  = '%s.%03d' % (self._uid, i)
-            proc = mp.Process(target=self._work, args=[self._uid, wid])
+            proc = mp.Process(target=self._work, args=(self._uid, wid))
+            proc.daemon = True
             proc.start()
             self._workers.append(proc)
 
@@ -141,8 +142,7 @@ class Executor(object):
         try:
             while True:
 
-                msgs = self._zmq_ctrl.get_nowait(100)
-                time.sleep(1)
+                msgs = self._zmq_ctrl.get_nowait(1000)
 
                 if not msgs:
                     continue
@@ -291,7 +291,7 @@ class Executor(object):
                     except Exception as e:
                         self._log.error("Function execution failed due to: %s", e)
                         task['stderr'] = e
-                        task['state']  = 'FAILED' 
+                        task['state']  = 'FAILED'
                         raise
                 else:
                     task['stdout'] = eval(cmd)
@@ -308,7 +308,7 @@ class Executor(object):
             task['wid'] = wid
             self._mpq_result.put(task)
 
-            
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
