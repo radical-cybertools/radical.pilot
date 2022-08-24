@@ -3,13 +3,9 @@
 import os
 import sys
 import glob
-import pprint
-import datetime
 import logging
-import pymongo
 import radical.utils       as ru
 import radical.pilot       as rp
-import radical.pilot.utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -17,10 +13,11 @@ import radical.pilot.utils as rpu
 def run_record(rec):
 
     session = None
+    rep = ru.Reporter('radical')
 
     try:
 
-        rep = ru.Reporter(title='Session Replay: %s' % rec)
+        rep.title('Session Replay: %s' % rec)
 
         rep.header('create session')
         s_dict  = ru.read_json_str("%s/session.json" % rec)
@@ -77,7 +74,7 @@ def run_record(rec):
             rep.ok('tasks all done   [batch %d]' % batch)
 
             for u in tasks:
-                rep.info("%s (@ %s) state %s, exit %s" \
+                rep.info("%s (@ %s) state %s, exit %s"
                     % (u.uid, u.execution_locations, u.state, u.exit_code))
 
             batch += 1
@@ -93,7 +90,6 @@ def run_record(rec):
             rep.info('closing session %s' % session.uid)
             session.close()
             rep.ok('session closed')
-
 
 
 # ------------------------------------------------------------------------------
@@ -148,7 +144,7 @@ if __name__ == '__main__' :
 
     # don't record a recorded session
     if 'RADICAL_PILOT_RECORD_SESSION' in os.environ:
-        del(os.environ['RADICAL_PILOT_RECORD_SESSION'])
+        del os.environ['RADICAL_PILOT_RECORD_SESSION']
 
     run_record(rec)
 
