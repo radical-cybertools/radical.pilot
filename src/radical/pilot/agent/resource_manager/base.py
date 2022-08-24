@@ -78,18 +78,18 @@ class RMInfo(ru.TypedDict):
     #
     def _verify(self):
 
-        assert(self['requested_nodes'  ])
-        assert(self['requested_cores'  ])
-        assert(self['requested_gpus'   ] is not None)
+        assert self['requested_nodes'  ]
+        assert self['requested_cores'  ]
+        assert self['requested_gpus'   ] is not None
 
-      # assert(self['partitions'       ] is not None)
-        assert(self['node_list'])
-        assert(self['agent_node_list'  ] is not None)
-        assert(self['service_node_list'] is not None)
+      # assert self['partitions'       ] is not None
+        assert self['node_list']
+        assert self['agent_node_list'  ] is not None
+        assert self['service_node_list'] is not None
 
-        assert(self['cores_per_node'   ])
-        assert(self['gpus_per_node'    ] is not None)
-        assert(self['threads_per_core' ] is not None)
+        assert self['cores_per_node'   ]
+        assert self['gpus_per_node'    ] is not None
+        assert self['threads_per_core' ] is not None
 
 
 # ------------------------------------------------------------------------------
@@ -259,11 +259,11 @@ class ResourceManager(object):
             for node in rm_info.node_list:
 
                 for idx in blocked_cores:
-                    assert(len(node['cores']) > idx)
+                    assert len(node['cores']) > idx
                     node['cores'][idx] = rpc.DOWN
 
                 for idx in blocked_gpus:
-                    assert(len(node['gpus']) > idx)
+                    assert len(node['gpus']) > idx
                     node['gpus'][idx] = rpc.DOWN
 
         assert (alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores)
@@ -291,7 +291,7 @@ class ResourceManager(object):
                 for _ in range(agent_nodes):
                     rm_info.agent_node_list.append(rm_info.node_list.pop())
 
-            assert(agent_nodes == len(rm_info.agent_node_list))
+            assert agent_nodes == len(rm_info.agent_node_list)
 
         if service_nodes:
 
@@ -299,7 +299,7 @@ class ResourceManager(object):
                 for _ in range(service_nodes):
                     rm_info.service_node_list.append(rm_info.node_list.pop())
 
-            assert(service_nodes == len(rm_info.service_node_list))
+            assert service_nodes == len(rm_info.service_node_list)
 
         self._log.info('compute nodes: %s' % len(rm_info.node_list))
         self._log.info('agent   nodes: %s' % len(rm_info.agent_node_list))
@@ -470,7 +470,7 @@ class ResourceManager(object):
             with ru.ru_open(fname, 'r') as fin:
                 for line in fin.readlines():
                     node = line.strip()
-                    assert(' ' not in node)
+                    assert ' ' not in node
                     if node in nodes: nodes[node] += 1
                     else            : nodes[node]  = 1
 

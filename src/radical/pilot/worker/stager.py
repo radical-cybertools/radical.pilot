@@ -108,7 +108,7 @@ class Stager(rpu.Worker):
             tgt     = sd['target']
             prof_id = sd.get('prof_id')   # staging on behalf of this entity
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER])
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]
 
             self._prof.prof('staging_start', uid=prof_id, msg=uid)
 
