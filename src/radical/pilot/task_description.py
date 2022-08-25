@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
@@ -62,10 +62,8 @@ OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
 PRE_LAUNCH       = 'pre_launch'
 PRE_EXEC         = 'pre_exec'
-PRE_RANK         = 'pre_rank'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
-POST_RANK        = 'post_rank'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 STDOUT           = 'stdout'
@@ -142,7 +140,6 @@ class TaskDescription(ru.TypedDict):
         specific functionality (pipes, I/O redirection) which cannot easily be
         mapped to other task attributes.
 
-
     .. data:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
@@ -187,8 +184,8 @@ class TaskDescription(ru.TypedDict):
 
     .. data:: cpu_processes
 
-       [type: `int` | default: `1`] The number of application processes to start
-       on CPU cores.
+       [type: `int` | default: `1`] The number of application processes to
+       start on CPU cores.
 
     .. data:: cpu_threads
 
@@ -280,14 +277,39 @@ class TaskDescription(ru.TypedDict):
        attempted either way. This may though lead to additional errors if the
        tasks did not manage to produce the expected output files to stage.
 
+    .. data:: pre_launch
+
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       before launching (i.e., before LaunchMethod is submitted), potentially
+       on a batch node which is different from the node the task is placed on.
+
+       Note that the set of shell commands given here are expected to load
+       environments, check for work directories and data, etc. They are not
+       expected to consume any significant amount of CPU time or other
+       resources! Deviating from that rule will likely result in reduced
+       overall throughput.
+
+    .. data:: post_launch
+
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       after launching (i.e., after LaunchMethod is executed).
+
+       Precautions are the same as for `pre_launch` actions.
+
     .. data:: pre_exec
 
-       [type: `list` | default: `[]`] Actions (shell commands) to perform before
-       this task starts. Note that the set of shell commands given here are
-       expected to load environments, check for work directories and data, etc.
-       They are not expected to consume any significant amount of CPU time or
-       other resources! Deviating from that rule will likely result in reduced
-       overall throughput.
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       before the task starts (LaunchMethod is submitted, but no actual task
+       running yet). Each item could be either a string (`str`), which
+       represents an action applied to all ranks, or a dictionary (`dict`),
+       which represents a list of actions applied to specified ranks (key is a
+       rankID and value is a list of actions to be performed for this rank).
+
+       The actions/commands are executed on the respective nodes where the
+       ranks are placed, and the actual rank startup will be delayed until
+       all `pre_exec` commands have completed.
+
+       Precautions are the same as for `pre_launch` actions.
 
        No assumption should be made as to where these commands are executed
        (although RP attempts to perform them in the task's execution
@@ -300,33 +322,12 @@ class TaskDescription(ru.TypedDict):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-    .. data:: pre_launch
-
-       [type: `list` | default: `[]`] Like `pre_exec`, but runs befor launching,
-       potentially on a batch node which is different from the node the task is
-       placed on.
-
-    .. data:: pre_rank
-
-       [type: `dict` | default: `{}`] A dictionary which maps a set of
-       `pre_exec` like commands to each rank.  The commands are executed on the
-       respective nodes where the ranks are places, and the actual rank startup
-       will be delayed until all `pre_rank` commands have completed.
-
     .. data:: post_exec
 
-       [type: `list` | default: `[]`] Actions (shell commands) to perform after
-       this task finishes. The same remarks as on `pre_exec` apply, inclusive
-       the point on error handling, which again will cause the task to fail,
-       even if the actual execution was successful.
-
-    .. data:: post_launch
-
-       ...
-
-    .. data:: post_rank
-
-       ...
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       after the task finishes. The same remarks as on `pre_exec` apply,
+       inclusive the point on error handling, which again will cause the task
+       to fail, even if the actual execution was successful.
 
     .. data:: restartable
 
@@ -336,8 +337,8 @@ class TaskDescription(ru.TypedDict):
 
     .. data:: scheduler
 
-       Request the task to be handled by a specific agent scheduler
-
+       [type: `str` | default: `""`] Request the task to be handled by a
+       specific agent scheduler.
 
     .. data:: tags
 
@@ -382,7 +383,7 @@ class TaskDescription(ru.TypedDict):
 
       `source` and `target` locations can be given as strings or `ru.Url`
       instances.  Strings containing `://` are converted into URLs immediately.
-      Otherwise they are considered absolute or relative paths and are then
+      Otherwise, they are considered absolute or relative paths and are then
       interpreted in the context of the client's working directory.
 
       Special URL schemas:
@@ -453,20 +454,9 @@ class TaskDescription(ru.TypedDict):
 
         Use `pre_exec` directives for task environment setup such as `module
         load`, `virtualenv activate`, `export` whose effects are expected to be
-        applied to all task ranks.  Avoid file staging operations at this point
-        (files would be redundantly staged multiple times - once per rank).
-
-      - `pre_rank` directives are executed only for the specified rank.  Note
-        that environment settings specified in `pre_rank` will thus only apply
-        to that specific rank, not to other ranks.  All other ranks stall until
-        the last `pre_rank` directive has been completed -- only then is the
-        actual workload task being executed on all ranks.
-
-        Use `pre_rank` directives on rank 0 to prepare task input data: the
-        operations are performed once per task, and all ranks will stall until
-        the directives are completed, i.e., until input data are available.
-        Avoid using `pre_rank` directives for environment settings - `pre_exec`
-        will generally perform better in this case.
+        applied either to all task ranks or to specified ranks.  Avoid file
+        staging operations at this point (files would be redundantly staged
+        multiple times - once per rank).
 
     (*) The performance impact of repeated concurrent access to the system's
     shared file system can be significant and can pose a major bottleneck for
@@ -497,11 +487,9 @@ class TaskDescription(ru.TypedDict):
         ENVIRONMENT     : {str: str}  ,
         NAMED_ENV       : str         ,
         PRE_LAUNCH      : [str]       ,
-        PRE_EXEC        : [str]       ,
-        PRE_RANK        : {int: None} ,
+        PRE_EXEC        : [None]      ,
         POST_LAUNCH     : [str]       ,
-        POST_EXEC       : [str]       ,
-        POST_RANK       : {int: None} ,
+        POST_EXEC       : [None]      ,
         STDOUT          : str         ,
         STDERR          : str         ,
         INPUT_STAGING   : [None]      ,
@@ -544,10 +532,8 @@ class TaskDescription(ru.TypedDict):
         NAMED_ENV       : ''          ,
         PRE_LAUNCH      : list()      ,
         PRE_EXEC        : list()      ,
-        PRE_RANK        : dict()      ,
         POST_LAUNCH     : list()      ,
         POST_EXEC       : list()      ,
-        POST_RANK       : dict()      ,
         STDOUT          : ''          ,
         STDERR          : ''          ,
         INPUT_STAGING   : list()      ,

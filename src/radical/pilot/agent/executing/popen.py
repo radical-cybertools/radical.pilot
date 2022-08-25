@@ -705,6 +705,23 @@ class Popen(AgentExecutingComponent):
 
         return ret
 
+    # --------------------------------------------------------------------------
+    #
+    def _get_exec_ranks(self, ranks, sig):
+
+        ret = 'case "$RP_RANK" in\n'
+        for rank_id, cmds in ranks.items():
+            ret += '    %d)\n' % int(rank_id)
+            for cmd in cmds:
+                # FIXME: exit on error, but don't stall other ranks on sync
+                ret += \
+                    '        %s' % cmd + \
+                    '\n' if sig == 'pre_exec' else ' %s' % self._get_check(sig)
+            ret += '        ;;\n'
+        ret += 'esac\n'
+
+        ret += self._get_rank_sync(sig, len(ranks))
+        return ret
 
     # --------------------------------------------------------------------------
     #
@@ -712,24 +729,13 @@ class Popen(AgentExecutingComponent):
 
         ret = ''
         pre_exec = task['description']['pre_exec']
-        if not pre_exec:
-            return ret
 
-        if isinstance(pre_exec, list):
+        if pre_exec:
             for cmd in pre_exec:
-                ret += '%s %s' % (cmd, self._get_check('pre_exec'))
-
-        elif isinstance(pre_exec, dict):
-            ret += 'case "$RP_RANK" in\n'
-            for rank_id, cmds in pre_exec.items():
-                ret += '    %d)\n' % int(rank_id)
-                for cmd in cmds:
-                    # FIXME: exit on error, but don't stall other ranks on sync
-                    ret += '        %s\n' % cmd
-                ret += '        ;;\n'
-            ret += 'esac\n\n'
-
-            ret += self._get_rank_sync('pre_exec', len(pre_exec))
+                if isinstance(cmd, str):
+                    ret += '%s %s' % (cmd, self._get_check('pre_exec'))
+                elif isinstance(cmd, dict):
+                    ret += self._get_exec_ranks(cmd, 'pre_exec')
 
         return ret
 
@@ -740,23 +746,13 @@ class Popen(AgentExecutingComponent):
 
         ret  = ''
         post_exec = task['description']['post_exec']
-        if not post_exec:
-            return ret
 
-        if isinstance(post_exec, list):
+        if post_exec:
             for cmd in post_exec:
-                ret += '%s %s' % (cmd, self._get_check('post_exec'))
-
-        elif isinstance(post_exec, dict):
-            ret += 'case "$RP_RANK" in\n'
-            for rank_id, cmds in post_exec.items():
-                ret += '    %d)\n' % int(rank_id)
-                for cmd in cmds:
-                    ret += '        %s %s' % (cmd, self._get_check('post_exec'))
-                ret += '        ;;\n'
-            ret += 'esac\n\n'
-
-            ret += self._get_rank_sync('post_exec', len(post_exec))
+                if isinstance(cmd, str):
+                    ret += '%s %s' % (cmd, self._get_check('post_exec'))
+                elif isinstance(cmd, dict):
+                    ret += self._get_exec_ranks(cmd, 'post_exec')
 
         return ret
 
