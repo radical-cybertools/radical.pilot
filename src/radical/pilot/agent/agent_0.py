@@ -63,7 +63,7 @@ class Agent_0(rpu.Worker):
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
         # run an inline registry service to share runtime config with other
-        # agents and components
+        # agent components
         reg_uid = 'radical.pilot.reg.%s' % self._uid
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()

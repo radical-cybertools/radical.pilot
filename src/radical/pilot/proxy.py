@@ -33,11 +33,11 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #
 # The protocol on the `bridge_request` channel is as follows:
 #
-# client_register
-# ---------------
+# register
+# --------
 #
 #    request:
-#       'cmd': 'client_register'
+#       'cmd': 'register'
 #       'arg': 'sid': <sid>
 #
 #    reply:
@@ -47,24 +47,24 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #
 #    notes:
 #      - the request will fail if the session ID is known from another
-#        `client_register` call
+#        `register` call
 #        'err': 'sid already connected'
 #      - this request should otherwise always succeed
 #      - the created pubsub channels will be terminated if the control channel
 #        has not seen a client heartbeat for <10 * heartbeat_interval> seconds
-#        - see semantics of the 'client_unregister' request for details.
-#      - the same termination semantics holds for the 'client_unregister'
+#        - see semantics of the 'unregister' request for details.
+#      - the same termination semantics holds for the 'unregister'
 #        request.
 #      - any task queues which exist for that session at the time of
 #        termination will also be closed, disregarding any data held in those
 #        queues.
 #
 #
-# client_lookup
-# ---------------
+# lookup
+# ------
 #
 #    request:
-#       'cmd': 'client_lookup'
+#       'cmd': 'lookup'
 #       'arg': 'sid': <sid>
 #
 #    reply:
@@ -75,16 +75,16 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #    notes:
 #      - the request will fail if the session ID is not registered (anymore)
 #      - this request should otherwise always succeed
-#      - the call returns the same information as `client_register`, but does
+#      - the call returns the same information as `register`, but does
 #        not alter the state of the client's bridge in any other way.
 #      - the request does not count as a heartbeat
 #
 #
-# client_unregister
-# -----------------
+# unregister
+# ----------
 #
 #    request:
-#       'cmd': 'client_unregister'
+#       'cmd': 'unregister'
 #       'arg': 'sid': <sid>
 #
 #    reply:
@@ -98,11 +98,11 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 #     messages still held in the bridges.
 #
 #
-# client_heartbeat
-# ----------------
+# heartbeat
+# ---------
 #
 #    request:
-#      'cmd': 'client_heartbeat'
+#      'cmd': 'heartbeat'
 #      'arg': 'sid': <sid>
 #
 #    reply:
@@ -140,11 +140,11 @@ class Proxy(ru.zmq.Server):
         self._monitor_thread.daemon = True
         self._monitor_thread.start()
 
-        self.register_request('client_register',   self._client_register)
-        self.register_request('client_lookup',     self._client_lookup)
-        self.register_request('client_unregister', self._client_unregister)
-        self.register_request('client_heartbeat',  self._client_heartbeat)
-        self.register_request('service_stop',      self._service_stop)
+        self.register_request('register',     self._register)
+        self.register_request('lookup',       self._lookup)
+        self.register_request('unregister',   self._unregister)
+        self.register_request('heartbeat',    self._heartbeat)
+        self.register_request('service_stop', self._service_stop)
 
 
     # --------------------------------------------------------------------------
@@ -201,7 +201,7 @@ class Proxy(ru.zmq.Server):
 
     # --------------------------------------------------------------------------
     #
-    def _client_register(self, arg):
+    def _register(self, arg):
 
         sid = arg['sid']
 
@@ -289,7 +289,7 @@ class Proxy(ru.zmq.Server):
 
     # --------------------------------------------------------------------------
     #
-    def _client_lookup(self, arg):
+    def _lookup(self, arg):
 
         sid = arg['sid']
 
@@ -302,7 +302,7 @@ class Proxy(ru.zmq.Server):
 
     # --------------------------------------------------------------------------
     #
-    def _client_unregister(self, arg):
+    def _unregister(self, arg):
 
         sid = arg['sid']
 
@@ -319,7 +319,7 @@ class Proxy(ru.zmq.Server):
 
     # --------------------------------------------------------------------------
     #
-    def _client_heartbeat(self, arg):
+    def _heartbeat(self, arg):
 
         sid = arg['sid']
         now = time.time()
