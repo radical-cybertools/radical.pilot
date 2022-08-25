@@ -142,21 +142,23 @@ class Srun(LaunchMethod):
                 if n_nodes > MIN_NNODES_IN_LIST:
                     nodefile = '%s/%s.nodes' % (sbox, uid)
                     with ru.ru_open(nodefile, 'w') as fout:
-                        fout.write(','.join(nodelist))
-                        fout.write('\n')
+                        fout.write(','.join(nodelist) + '\n')
 
         if self._traverse:
-            mapping = '--ntasks=%d '       % n_tasks \
-                    + '--cpus-per-task=%d' % n_task_threads \
+            mapping = '--ntasks=%d '        % n_tasks \
+                    + '--cpus-per-task=%d ' % n_task_threads \
                     + '--ntasks-per-core=1 --distribution="arbitrary"'
         else:
             mapping = '--nodes %d '        % n_nodes \
                     + '--ntasks %d '       % n_tasks \
                     + '--cpus-per-task %d' % n_task_threads
 
+        if self._rm_info['threads_per_core'] > 1:
+            mapping += ' --threads-per-core %d' % \
+                       self._rm_info['threads_per_core']
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('gpus') and n_gpus:
+        if self._rm_info.get('requested_gpus') and n_gpus:
             if self._traverse:
                 mapping += ' --gpus-per-task=%d' % n_gpus
             else:
