@@ -63,7 +63,9 @@ class ComponentManager(object):
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
-        self._uid  = ru.generate_id('cmgr', ns=self._sid)
+
+        self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
+                                    ru.ID_CUSTOM, ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
@@ -235,15 +237,16 @@ class ComponentManager(object):
         # and then remove the `bridges` and `components` sections
         #
         scfg = ru.Config(cfg=cfg)
-        if 'bridges'    in scfg: del(scfg['bridges'])
-        if 'components' in scfg: del(scfg['components'])
+        if 'bridges'    in scfg: del scfg['bridges']
+        if 'components' in scfg: del scfg['components']
         ru.expand_env(scfg)
 
         for cname, ccfg in cfg.get('components', {}).items():
 
             for _ in range(ccfg.get('count', 1)):
 
-                ccfg.uid         = ru.generate_id(cname, ns=self._sid)
+                ccfg.uid         = ru.generate_id(cname + '.%(item_counter)04d',
+                                                  ru.ID_CUSTOM, ns=self._sid)
                 ccfg.cmgr        = self.uid
                 ccfg.kind        = cname
                 ccfg.sid         = cfg.sid
@@ -430,7 +433,7 @@ class Component(object):
         self._session = session
 
         # we always need an UID
-        assert(self._uid), 'Component needs a uid (%s)' % type(self)
+        assert self._uid, 'Component needs a uid (%s)' % type(self)
 
         # state we carry over the fork
         self._debug      = cfg.get('debug')
@@ -498,7 +501,7 @@ class Component(object):
 
             time.sleep(0.01)
 
-        assert(self._thread.is_alive())
+        assert self._thread.is_alive()
 
 
     # --------------------------------------------------------------------------
@@ -558,7 +561,7 @@ class Component(object):
 
                }
 
-        assert(cfg.kind in comp), '%s not in %s' % (cfg.kind, list(comp.keys()))
+        assert cfg.kind in comp, '%s not in %s' % (cfg.kind, list(comp.keys()))
 
         session._log.debug('create 1 %s: %s', cfg.kind, comp[cfg.kind])
         return comp[cfg.kind].create(cfg, session)
@@ -774,7 +777,7 @@ class Component(object):
             return
 
         self._inputs[name]['queue'].stop()
-        del(self._inputs[name])
+        del self._inputs[name]
         self._log.debug('unregistered input %s [%s]', name, qname)
 
         for state in states:
@@ -785,7 +788,7 @@ class Component(object):
                 self._log.warn('%s input %s unknown', worker.__name__, state)
                 continue
 
-            del(self._workers[state])
+            del self._workers[state]
 
 
     # --------------------------------------------------------------------------
@@ -876,7 +879,7 @@ class Component(object):
               # raise ValueError('state %s has no output registered' % state)
                 continue
 
-            del(self._outputs[state])
+            del self._outputs[state]
             self._log.debug('unregistered output for %s', state)
 
 
@@ -1001,7 +1004,7 @@ class Component(object):
                 return
 
             self._threads[name].stop()  # implies join
-            del(self._threads[name])
+            del self._threads[name]
 
         self._log.debug("TERM : %s unregistered idler %s", self.uid, name)
 
@@ -1014,7 +1017,7 @@ class Component(object):
         of notifications on the given pubsub channel.
         '''
 
-        assert(pubsub not in self._publishers)
+        assert pubsub not in self._publishers
 
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
@@ -1115,8 +1118,8 @@ class Component(object):
 
             for state,things in buckets.items():
 
-                assert(state in states),        'cannot handle state %s' % state
-                assert(state in self._workers), 'no worker for state %s' % state
+                assert state in states,        'cannot handle state %s' % state
+                assert state in self._workers, 'no worker for state %s' % state
 
                 try:
 
@@ -1232,9 +1235,9 @@ class Component(object):
             # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
                 if '$all' in thing:
-                    del(thing['$all'])
+                    del thing['$all']
                     if '$set' in thing:
-                        del(thing['$set'])
+                        del thing['$set']
                     to_publish.append(thing)
 
                 elif thing['state'] in rps.FINAL:
@@ -1247,7 +1250,7 @@ class Component(object):
                     if '$set' in thing:
                         for key in thing['$set']:
                             tmp[key] = thing[key]
-                        del(thing['$set'])
+                        del thing['$set']
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
@@ -1260,7 +1263,7 @@ class Component(object):
         # never carry $all and across component boundaries!
         for thing in things:
             if '$all' in thing:
-                del(thing['$all'])
+                del thing['$all']
 
         # should we push things downstream, to the next component
         if push:

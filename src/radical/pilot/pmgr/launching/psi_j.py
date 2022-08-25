@@ -36,7 +36,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
         if psij_ex:
             raise psij_ex
 
-        assert(psij)
+        assert psij
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
@@ -132,29 +132,34 @@ class PilotLauncherPSIJ(PilotLauncherBase):
     #
     def launch_pilots(self, rcfg, pilots):
 
-        assert(psij)
+        assert psij
 
         for pilot in pilots:
 
             pid    = pilot['uid']
             schema = self._get_schema(rcfg)
-            assert(schema)
+            assert schema
 
             jex = self._jex.get(schema)
 
-            assert(jex)
+            assert jex
 
             jd = pilot['jd_dict']
+
+            proj, res = None, None
             if jd.project:
-                proj, res = jd.project.split(':', 1)
-            else:
-                proj, res = None, None
+                if ':' in jd.project:
+                    proj, res = jd.project.split(':', 1)
+                else:
+                    proj = jd.project
 
             attr = psij.JobAttributes()
-            attr.duration       = jd.runtime
+            attr.duration       = jd.wall_time_limit
             attr.queue_name     = jd.queue
             attr.project_name   = proj
             attr.reservation_id = res
+
+            self._log.debug('=== rt: %s', jd.runtime)
 
             spec = psij.JobSpec()
             spec.attributes  = attr
@@ -166,8 +171,9 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.stderr_path = jd.error
 
             spec.resources   = psij.ResourceSpecV1()
+            spec.resources.node_count            = jd.node_count
             spec.resources.process_count         = jd.total_cpu_count
-            spec.resources.cpu_cores_per_process = 1
+          # spec.resources.cpu_cores_per_process = 1
           # spec.resources.gpu_cores_per_process = jd.total_gpu_count
 
             job = psij.Job(spec)

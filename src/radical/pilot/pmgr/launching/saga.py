@@ -34,7 +34,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         if rs_ex:
             raise rs_ex
 
-        assert(rs)
+        assert rs
 
         PilotLauncherBase.__init__(self, name, log, prof, state_cb)
 
@@ -70,7 +70,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         try:
             with self._lock:
 
-                if job.id not in self._pilots:
+                if pid not in self._pilots:
                     return
 
                 rp_state = self._translate_state(saga_state)
@@ -93,7 +93,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
         with self._lock:
 
             # cancel pilots
-            for _, job in self._jobs:
+            for job in self._jobs.values():
                 job.cancel()
 
             # close job services
@@ -115,6 +115,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
     def launch_pilots(self, rcfg, pilots):
 
         js_ep  = rcfg['job_manager_endpoint']
+        self._log.debug('js_ep: %s', js_ep)
         with self._lock:
             if js_ep in self._js:
                 js = self._js[js_ep]
@@ -137,8 +138,11 @@ class PilotLauncherSAGA(PilotLauncherBase):
             saga_jd_supplement = dict()
             if 'saga_jd_supplement' in jd_dict:
                 saga_jd_supplement = jd_dict['saga_jd_supplement']
-                del(jd_dict['saga_jd_supplement'])
+                del jd_dict['saga_jd_supplement']
 
+            # saga will take care of node_count itself
+            if 'node_count' in jd_dict:
+                del jd_dict['node_count']
 
             jd = rs.job.Description()
             for k, v in jd_dict.items():
@@ -190,7 +194,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
 
             # don't overwrite resource_details from the agent
             if 'resource_details' in pilot:
-                del(pilot['resource_details'])
+                del pilot['resource_details']
 
             if pilot['state'] in rps.FINAL:
                 continue

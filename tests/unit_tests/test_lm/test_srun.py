@@ -113,9 +113,10 @@ class TestSrun(TestCase):
     def test_get_launch_rank_cmds(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
-        lm_srun._rm_info = {}
-        lm_srun._command = 'srun'
-        lm_srun._vmajor  = MIN_VSLURM_IN_LIST + 1
+        lm_srun._rm_info  = {}
+        lm_srun._command  = 'srun'
+        lm_srun._vmajor   = MIN_VSLURM_IN_LIST + 1
+        lm_srun._traverse = False
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
@@ -158,6 +159,19 @@ class TestSrun(TestCase):
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Srun, '__init__', return_value=None)
+    def test_get_rank_cmd(self, mocked_init):
+
+        lm_srun = Srun('', {}, None, None, None)
+
+        command = lm_srun.get_rank_cmd()
+        self.assertIn('$SLURM_PROCID', command)
+        self.assertIn('$MPI_RANK',     command)
+        self.assertIn('$PMIX_RANK',    command)
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -170,6 +184,7 @@ if __name__ == '__main__':
     tc.test_can_launch()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
+    tc.test_get_rank_cmd()
 
 
 # ------------------------------------------------------------------------------

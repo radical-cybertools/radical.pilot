@@ -60,7 +60,7 @@ class Default(AgentStagingInputComponent):
         no_staging_tasks = list()
         staging_tasks    = list()
 
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             # check if we have any staging directives to be enacted in this
             # component
@@ -79,7 +79,7 @@ class Default(AgentStagingInputComponent):
             self.advance(no_staging_tasks, rps.AGENT_SCHEDULING_PENDING,
                          publish=True, push=True)
 
-        for task,actionables in staging_tasks:
+        for task, actionables in staging_tasks:
             self._handle_task(task, actionables)
 
 
@@ -133,8 +133,8 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE,
-                              rpc.TRANSFER, rpc.TARBALL])
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE,
+                              rpc.TRANSFER, rpc.TARBALL]
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the tmgr staging components
@@ -167,10 +167,10 @@ class Default(AgentStagingInputComponent):
             tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
-            assert(tgt.schema == 'file'), 'staging tgt must be file://'
+            assert tgt.schema == 'file', 'staging tgt must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert(src.schema == 'file'), 'staging src expected as file://'
+                assert src.schema == 'file', 'staging src expected as file://'
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)

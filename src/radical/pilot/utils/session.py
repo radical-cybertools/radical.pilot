@@ -252,7 +252,6 @@ def fetch_logfiles (sid, src=None, tgt=None, access=None,
     log.info("Session: %s", sid)
     log.info("Number of pilots in session: %d", num_pilots)
 
-
     for pilot in pilots:
 
         try:

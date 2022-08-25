@@ -602,6 +602,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
+        assert self._primary
         return self._cmgr
 
 
@@ -1020,6 +1021,11 @@ class Session(rs.Session):
 
         return pilot_sandbox
 
+
+    def _get_pilot_fs_endpoint(self, pilot):
+        fs_url = ru.Url(self._get_resource_sandbox(pilot))
+        fs_url.path = '/'
+        return fs_url
 
     # --------------------------------------------------------------------------
     #

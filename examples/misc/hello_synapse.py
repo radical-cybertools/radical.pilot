@@ -93,7 +93,7 @@ if __name__ == '__main__':
 
         t = tmgr.submit_tasks(td)
         tmgr.wait_tasks(t.uid)
-        assert(t.state == rp.DONE)
+        assert t.state == rp.DONE
 
 
         report.header('submit synapse workload tasks')

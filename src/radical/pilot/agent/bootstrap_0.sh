@@ -519,7 +519,7 @@ rehash()
 verify_install()
 {
     echo -n "verify python viability: $PYTHON ..."
-    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (3,5))'
+    if ! $PYTHON -c 'import sys; assert sys.version_info >= (3,5)'
     then
         echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
@@ -1096,7 +1096,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation '$dep'" \
+                "$PIP --no-cache-dir install '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1804,7 +1804,7 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
+if test "$PYTHON_DIST" = "anaconda" && ! test -z "\$(which conda)"
 then
     eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV

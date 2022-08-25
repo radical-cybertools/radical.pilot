@@ -342,7 +342,7 @@ class AgentSchedulingComponent(rpu.Component):
                 if name in self._raptor_tasks:
 
                     tasks = self._raptor_tasks[name]
-                    del(self._raptor_tasks[name])
+                    del self._raptor_tasks[name]
 
                     self._log.debug('relay %d tasks to raptor %s', len(tasks), name)
                     self._raptor_queues[name].put(tasks)
@@ -351,7 +351,7 @@ class AgentSchedulingComponent(rpu.Component):
                 if '*' in self._raptor_tasks:
 
                     tasks = self._raptor_tasks['*']
-                    del(self._raptor_tasks['*'])
+                    del self._raptor_tasks['*']
 
                     self._log.debug('* relay %d tasks to raptor %s', len(tasks), name)
                     self._raptor_queues[name].put(tasks)
@@ -368,11 +368,11 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.warn('raptor queue %s unknown [%s]', name, msg)
 
                 else:
-                    del(self._raptor_queues[name])
+                    del self._raptor_queues[name]
 
                 if name in self._raptor_tasks:
                     tasks = self._raptor_tasks[name]
-                    del(self._raptor_tasks[name])
+                    del self._raptor_tasks[name]
 
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
                     self.advance(tasks, state=rps.FAILED,
@@ -723,8 +723,9 @@ class AgentSchedulingComponent(rpu.Component):
             td = task['description']
             task['$set']      = ['resources']
             task['resources'] = {'cpu': td['cpu_processes'] *
-                                        td.get('cpu_threads', 1),
-                                 'gpu': td['gpu_processes']}
+                                        td['cpu_threads'],
+                                 'gpu': td['gpu_processes'] *
+                                        td['cpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -840,8 +841,9 @@ class AgentSchedulingComponent(rpu.Component):
                     td = task['description']
                     task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td.get('cpu_threads', 1),
-                                         'gpu': td['gpu_processes']}
+                                                td['cpu_threads'],
+                                         'gpu': td['gpu_processes'] *
+                                                td['cpu_processes']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -984,7 +986,6 @@ class AgentSchedulingComponent(rpu.Component):
       # td  = task['description']
 
       # self._prof.prof('schedule_try', uid=uid)
-
         slots = self.schedule_task(task)
         if not slots:
 

@@ -170,7 +170,7 @@ class FUNCS(AgentExecutingComponent) :
         fout = ru.ru_open('%s/%s.out' % (sandbox, funcs['uid']), "w")
         ferr = ru.ru_open('%s/%s.err' % (sandbox, funcs['uid']), "w")
 
-        self._prof.prof('exec_start', uid=funcs['uid'])
+        self._prof.prof('task_run_start', uid=funcs['uid'])
         # we really want to use preexec_fn:
         # pylint: disable=W1509
         funcs['proc'] = subprocess.Popen(args       = cmdline,
@@ -183,7 +183,7 @@ class FUNCS(AgentExecutingComponent) :
                                          shell      = True,
                                          cwd        = sandbox)
 
-        self._prof.prof('exec_ok', uid=funcs['uid'])
+        self._prof.prof('task_run_ok', uid=funcs['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -196,7 +196,7 @@ class FUNCS(AgentExecutingComponent) :
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
-            assert(task['description']['cpu_process_type'] == 'FUNC')
+            assert task['description']['cpu_process_type'] == 'FUNC'
             self._req_queue.put(task)
 
 

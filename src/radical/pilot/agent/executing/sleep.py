@@ -68,6 +68,7 @@ class Sleep(AgentExecutingComponent) :
         for task in tasks:
 
             try:
+                self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
             except Exception:
@@ -87,6 +88,9 @@ class Sleep(AgentExecutingComponent) :
 
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
+            finally:
+                self._prof.prof('task_stop', uid=task['uid'])
+
         with self._tasks_lock:
             self._tasks.extend(tasks)
 
@@ -97,14 +101,15 @@ class Sleep(AgentExecutingComponent) :
 
         now = time.time()
 
+        # assert t['description']['executable'].endswith('sleep')
         task['to_finish'] = now + float(task['description']['arguments'][0])
 
         uid = task['uid']
-        self._prof.prof('exec_start',      uid=uid)
-        self._prof.prof('exec_ok',         uid=uid)
-        self._prof.prof('task_start',      uid=uid)
-        self._prof.prof('task_exec_start', uid=uid)
-        self._prof.prof('app_start',       uid=uid)
+        self._prof.prof('task_run_start', uid=uid)
+        self._prof.prof('task_run_ok',    uid=uid)
+        self._prof.prof('launch_start',   uid=uid)
+        self._prof.prof('exec_start',     uid=uid)
+        self._prof.prof('app_start',      uid=uid)
 
 
     # --------------------------------------------------------------------------
@@ -134,9 +139,9 @@ class Sleep(AgentExecutingComponent) :
                 task['target_state'] = 'DONE'
 
                 self._prof.prof('app_stop',         uid=uid)
-                self._prof.prof('task_exec_stop',   uid=uid)
-                self._prof.prof('task_stop',        uid=uid)
                 self._prof.prof('exec_stop',        uid=uid)
+                self._prof.prof('launch_stop',      uid=uid)
+                self._prof.prof('task_run_stop',    uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
 
             self._log.debug('collected                : %d', len(to_finish))

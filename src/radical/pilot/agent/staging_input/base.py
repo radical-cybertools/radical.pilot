@@ -72,9 +72,6 @@ class AgentStagingInputComponent(rpu.Component):
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_STAGING_INPUT, publish=True, push=False)
 
         self._work(tasks)

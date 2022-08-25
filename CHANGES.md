@@ -3,6 +3,61 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.16.0 Release                                                        2022-08-15
+--------------------------------------------------------------------------------
+
+  - add check for exception message
+  - add test for `Agent_0`
+  - fix `cpu_threads` for special tasks (service, sub-agent)
+  - fix `task['resources']` value
+  - fix uid generation for components (use shared file for counters)
+  - fix master task tmgr
+  - fix raptor tests
+  - fix rp serializer unittest
+  - fix sub_agent keyerror
+  - keep agent's config with sub-agents in sync with default one
+  - remove confusion of task attribute names (slots vs. resources)
+  - set default values for agent and service tasks descriptions
+  - set env variable (`RP_PILOT_SANDBOX`) for agent and service tasks launchers
+  - update exec profile events
+  - update headers for mpirun- and mpiexec-modules
+  - update LM env setup for `MPIRun` and `MPIExec` special case (MPT=true)
+  - update LM IBRun
+  - update mpi-info extraction
+
+
+1.15.1  Hotfix Release                                                2022-07-04
+--------------------------------------------------------------------------------
+
+  - fix syntactic error in env prep script
+
+
+1.15.0  Release                                                       2022-07-04
+--------------------------------------------------------------------------------
+
+  - added tests for PRTE LM
+  - added tests for `rank_cmd` (IBRun and SRun LMs)
+  - adding TMGR stats
+  - adding xsede.expanse to the resource config
+  - always interprete prep_env version request
+  - anaconda support for prepare_env
+  - Checking input staging exists before tar-ing Fixes #2483
+  - ensure pip in venv mode
+  - fixed `_rm_info` in IBRun LM
+  - fixed status callback for SAGA Launcher
+  - fixed type in `ornl.summit_prte` config
+  - fix Ibrun set rank env
+  - fix raptor env vals
+  - use os.path to check if file exists Fixes #2483
+  - remove node names duplication in SRun LM command
+  - hide node-count from saga job description
+  - 'state_history' is no longer supported
+  - support existing VEs for `prepare_env`
+  - updated installation of dependencies in bootstrapper
+  - updated PRTE LM setup and config (including new release of PRRTE on Summit)
+  - updating PMGR/AGENT stats - see #2401
+
+
 1.14.0  Release                                                       2022-04-13
 --------------------------------------------------------------------------------
 
