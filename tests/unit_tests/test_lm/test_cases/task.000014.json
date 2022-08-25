@@ -31,6 +31,9 @@
                 "gpus_per_node"  : 6,
                 "lfs_per_node"   : 0,
                 "mem_per_node"   : 0
+            },
+            "resource_cfg": {
+                "system_architecture": {"smt": 2}
             }
         }
     },
@@ -38,7 +41,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --nodes 1 --ntasks 1 --cpus-per-task 2 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
+                "launch_cmd" : "srun --nodes 1 --ntasks 1 --cpus-per-task 2 --threads-per-core 2 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"15\""
             }
         }
