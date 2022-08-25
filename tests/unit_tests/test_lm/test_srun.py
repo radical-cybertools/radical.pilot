@@ -123,13 +123,15 @@ class TestSrun(TestCase):
             if result != 'RuntimeError':
 
                 td = task.get('description', {})
-                if td.get('gpu_processes', 0):
-                    lm_srun._rm_info.update({
-                        'gpus': td['cpu_processes'] * td['gpu_processes']})
+                lm_srun._rm_info.update({
+                    'requested_gpus'  : td['cpu_processes'] *
+                                        td.get('gpu_processes', 0),
+                    'threads_per_core': task.get('resource_cfg', {}).
+                                        get('system_architecture', {}).
+                                        get('smt', 1)})
 
                 command = lm_srun.get_launch_cmds(task, '')
                 self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
-                lm_srun._rm_info.clear()
 
                 if task.get('slots'):
 
