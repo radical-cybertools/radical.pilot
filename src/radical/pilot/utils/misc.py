@@ -9,7 +9,7 @@ import radical.utils as ru
 # max number of t out/err chars to push to tail
 MAX_IO_LOGLENGTH = 1024
 
-# cache resource cnfigs
+# cache resource configs
 _rcfgs = None
 
 
