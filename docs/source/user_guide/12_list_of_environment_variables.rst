@@ -34,7 +34,7 @@ __________________
       - The default log level when not set
       - ERROR
     * - .. envvar:: RADICAL_DEFAULT_REPORT
-      - Reporter module. Can be set it on [TRUE/1) or off [FALSE/0/OFF]
+      - Reporter module. Can be set it on [TRUE/1] or off [FALSE/0/OFF]
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_REPORT_TGT
       - Similar to …LOG_TGT: List of comma separated targets [0/null, 1/stdout, 2/stderr, ./{report_name/path}] to write the report info.
