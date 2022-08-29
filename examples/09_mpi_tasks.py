@@ -125,8 +125,7 @@ if __name__ == '__main__':
             for p in range(p_num):
                 for t in range(t_num):
                     rank = '%d:%d/%d' % (p, t, t_num)
-                    assert(rank in ranks), 'missing rank %s (%s)' % (rank,
-                            ranks)
+                    assert rank in ranks, 'missing rank %s (%s)' % (rank, ranks)
 
 
     except Exception as e:

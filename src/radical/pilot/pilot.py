@@ -7,7 +7,6 @@ import copy
 import time
 
 import radical.utils as ru
-
 from . import states    as rps
 from . import constants as rpc
 
@@ -106,6 +105,7 @@ class Pilot(object):
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
+        self._endpoint         = ru.Url()
 
         pilot = self.as_dict()
 
@@ -115,13 +115,16 @@ class Pilot(object):
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
+        self._endpoint         = self._session._get_pilot_fs_endpoint(pilot)
 
         # contexts for staging url expansion
         # NOTE: no task sandboxes defined!
         self._rem_ctx = {'pwd'     : self._pilot_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox}
+                         'resource': self._resource_sandbox,
+                         'endpoint': self._endpoint,
+                         }
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,
                          'client'  : self._client_sandbox,
@@ -197,7 +200,7 @@ class Pilot(object):
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
 
-        assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
+        assert pilot_dict['uid'] == self.uid, 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order and
         #       without gaps.
@@ -513,7 +516,7 @@ class Pilot(object):
                     if cb_name not in self._callbacks[metric]:
                         raise ValueError("unknown callback '%s'" % cb_name)
 
-                    del(self._callbacks[metric][cb_name])
+                    del self._callbacks[metric][cb_name]
 
 
     # --------------------------------------------------------------------------
@@ -656,14 +659,11 @@ class Pilot(object):
 
         for sd in sds:
             sd['prof_id'] = self.uid
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
 
-        # ask the pmgr to send the staging reuests to the stager
+        # ask the pmgr to send the staging requests to the stager
         self._pmgr._pilot_staging_input(sds)
-
 
     # --------------------------------------------------------------------------
     #
