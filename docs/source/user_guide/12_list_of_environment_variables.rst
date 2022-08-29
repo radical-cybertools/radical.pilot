@@ -25,28 +25,28 @@ __________________
       - Limit task cancelation, not to force state "CANCELLED" on a Task Manager side. Note that corresponding command for pilot(s) to cancel tasks is published anyway
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEFAULT_LOG_TGT
-      - The log target. #TODO Need more clarification
+      - The log target.
       - .
     * - .. envvar:: RADICAL_DEFAULT_LOG_DIR
       - The Log dir
       - $PWD
     * - .. envvar:: RADICAL_DEFAULT_LOG_LVL
-      - #TODO Description
+      - The default log level when not set
       - ERROR
     * - .. envvar:: RADICAL_DEFAULT_REPORT
-      - #TODO Description
+      - Reporter module. Can be set it on (TRUE, 1) or off (FALSE, 0, OFF)
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_REPORT_TGT
-      - #TODO Description
+      - This could be similar to …LOG_TGT: “List of comma separated targets [“0”/“null”, “1”/“stdout”, “2”/“stderr”, “.”, “<report_name/path>“] to write the report info.
       - stderr
     * - .. envvar:: RADICAL_DEFAULT_REPORT_DIR
       - Directory of Reporter module
       - $PWD
     * - .. envvar:: RADICAL_DEFAULT_PROFILE
-      - #TODO Description
+      - Flag to turn profiling/tracing on or off”, where “off” will be set with FALSE, 0, OFF
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_PROFILE_DIR
-      - #TODO Description
+      - Directory for profiles/traces
       - $PWD
 
 .. raw:: html
@@ -86,7 +86,7 @@ __________________
       - TRUE
     * - <NS>_LOG_TGT
       - Where to report to. List of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] to write the debug output for a corresponding namespace NS.
-      - #TODO
+      - {NOT_SET}
 
 .. raw:: html
 
@@ -122,7 +122,7 @@ __________________
       - FALSE
     * - .. envvar:: UMS_OMPIX_PRRTE_DIR
       - Installation directory for PMIx/PRRTE used in RP LM PRTE (optional, to be obsolete).
-      - #TODO
+      - {NOT_SET}
     * - .. envvar:: RADICAL_SAGA_SMT
       - Sets SMT settings on some resources. Usually covered via resource config options
       - 1
