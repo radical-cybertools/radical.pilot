@@ -15,7 +15,6 @@ from ... import utils     as rpu
 EXECUTING_NAME_POPEN   = 'POPEN'
 EXECUTING_NAME_FLUX    = 'FLUX'
 EXECUTING_NAME_SLEEP   = 'SLEEP'
-EXECUTING_NAME_FUNCS   = 'FUNCS'
 
 
 # ------------------------------------------------------------------------------
@@ -50,14 +49,12 @@ class AgentExecutingComponent(rpu.Component):
 
         from .popen    import Popen
         from .flux     import Flux
-        from .funcs    import FUNCS
         from .sleep    import Sleep
 
         impl = {
             EXECUTING_NAME_POPEN  : Popen,
             EXECUTING_NAME_FLUX   : Flux,
             EXECUTING_NAME_SLEEP  : Sleep,
-            EXECUTING_NAME_FUNCS  : FUNCS,
         }
 
         if name not in impl:
