@@ -219,7 +219,7 @@ class ResourceManager(object):
 
         rcfg = self._cfg.resource_cfg
         rm_info.mem_per_node     = rcfg.mem_per_node or 0
-        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT'))\
+        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT', 0))\
                                    or rcfg.get('system_architecture', {}).\
                                            get('smt', 1)
 
