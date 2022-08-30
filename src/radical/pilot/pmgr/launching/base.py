@@ -286,6 +286,13 @@ class PMGRLaunchingComponent(rpu.Component):
         for pilot in pilots:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
+            if schema == 'interactive' and 'ornl' in resource:
+                smt_cmd = r""
+                smt_cmd += r"expr $(jsrun -n1 -bpacked:1 /bin/bash -c 'echo $OMP_PLACES') :"
+                smt_cmd += r" '.*\(.\)}' | tr 0 1;"
+                smt = ru.sh_callout(smt_cmd, shell=True)[0].strip()
+                os.environ["RADICAL_SMT"] = smt
+
             buckets[resource][schema].append(pilot)
 
         for resource in buckets:
@@ -764,7 +771,7 @@ class PMGRLaunchingComponent(rpu.Component):
                 cleanup = cleanup.replace('v', '')
 
         # estimate requested resources
-        smt = system_architecture.get('smt', 1)
+        smt = os.environ.get('RADICAL_SMT') or system_architecture.get('smt', 1)
 
         if cores_per_node and smt:
             cores_per_node *= int(smt)
