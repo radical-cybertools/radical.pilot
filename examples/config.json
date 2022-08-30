@@ -38,13 +38,6 @@
         "cores"    : 64
     },
 
-    "local.localhost_funcs" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : "local",
-        "cores"    : 16
-    },
-
     "local.local" : {
         "project"  : null,
         "queue"    : null,
