@@ -25,3 +25,4 @@ given basic application.
    09_mpi_tasks.rst
    10_pre_and_post_exec.rst
    11_containerized_compute_tasks.rst
+   12_list_of_environment_variables.rst

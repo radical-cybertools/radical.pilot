@@ -12,11 +12,9 @@ from ... import utils     as rpu
 
 # ------------------------------------------------------------------------------
 # 'enum' for RP's spawner types
-EXECUTING_NAME_POPEN    = 'POPEN'
-EXECUTING_NAME_FLUX     = 'FLUX'
-EXECUTING_NAME_SLEEP    = 'SLEEP'
-EXECUTING_NAME_FUNCS    = 'FUNCS'
-EXECUTING_NAME_MPIFUNCS = "MPIFUNCS"
+EXECUTING_NAME_POPEN   = 'POPEN'
+EXECUTING_NAME_FLUX    = 'FLUX'
+EXECUTING_NAME_SLEEP   = 'SLEEP'
 
 
 # ------------------------------------------------------------------------------
@@ -49,18 +47,14 @@ class AgentExecutingComponent(rpu.Component):
 
         name = cfg['spawner']
 
-        from .popen      import Popen
-        from .flux       import Flux
-        from .funcs      import FUNCS
-        from .funcs_mpi  import MPIFUNCS
-        from .sleep      import Sleep
+        from .popen    import Popen
+        from .flux     import Flux
+        from .sleep    import Sleep
 
         impl = {
-            EXECUTING_NAME_POPEN    : Popen,
-            EXECUTING_NAME_FLUX     : Flux,
-            EXECUTING_NAME_SLEEP    : Sleep,
-            EXECUTING_NAME_FUNCS    : FUNCS,
-            EXECUTING_NAME_MPIFUNCS : FUNCS,
+            EXECUTING_NAME_POPEN  : Popen,
+            EXECUTING_NAME_FLUX   : Flux,
+            EXECUTING_NAME_SLEEP  : Sleep,
         }
 
         if name not in impl:

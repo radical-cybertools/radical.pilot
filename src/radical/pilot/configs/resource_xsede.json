@@ -280,6 +280,42 @@
         "task_pre_exec"               : []
     },
 
+    "comet": {
+        "description"                 : "The retired Comet HPC resource at SDSC 'HPC for the 99%%' (https://www.sdsc.edu/support/user_guides/comet.html).",
+        "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
+        "schemas"                     : ["ssh"],
+        "mandatory_args"              : ["project"],
+        "ssh"                         :
+        {
+            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
+            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        },
+        "default_queue"               : "compute",
+        "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
+        "lfs_size_per_node"           : 176105,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN"],
+                                         "MPIRUN": {
+                                            "pre_exec_cached": [
+                                               "module load gcc",
+                                               "module load openmpi"
+                                            ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : ["module load python"],
+        "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
+        "valid_roots"                 : ["/oasis/scratch/comet"],
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 24,
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {"gpu": "k80"}
+    },
+
     "bridges2": {
         "description"                 : "The XSEDE 'Bridges2' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
