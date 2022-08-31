@@ -577,8 +577,6 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'
-                self.stop()
-
                 return False  # we are done
 
             elif cmd == 'cancel_tasks':
