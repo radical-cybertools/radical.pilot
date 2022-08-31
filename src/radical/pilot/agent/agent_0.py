@@ -620,7 +620,6 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _proxy_state_cb(self, topic, msg):
-
         # no need to check - blindly forward all messages to the proxy
         self.publish(rpc.PROXY_STATE_PUBSUB, topic=topic, msg=msg)
 
