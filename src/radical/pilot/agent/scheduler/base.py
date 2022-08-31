@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
@@ -235,6 +235,7 @@ class AgentSchedulingComponent(rpu.Component):
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
         self._queue_unsched = mp.Queue()
+        self._term          = mp.Event()  # reassign Event (multiprocessing)
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
@@ -527,7 +528,7 @@ class AgentSchedulingComponent(rpu.Component):
         While handled by this component, the tasks will be in `AGENT_SCHEDULING`
         state.
 
-        This methods takes care of initial state change to `AGENT_SCHEDULING`,
+        This method takes care of initial state change to `AGENT_SCHEDULING`,
         and then puts them forward onto the queue towards the actual scheduling
         process (self._schedule_tasks).
         '''
