@@ -113,7 +113,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
             tarball_available = False
             try:
-                if  sandbox.is_file(PROFILES_TARBALL) and sandbox.get_size(PROFILES_TARBALL):
+                if  sandbox.is_file(PROFILES_TARBALL) and \
+                        sandbox.get_size(PROFILES_TARBALL):
                     log.info("profiles tarball exists")
                 else:
                     log.warn("profiles tarball doesnt exists! creating now.")
@@ -122,9 +123,8 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     log.debug('js  : %s', js_url)
                     js = rs.job.Service(js_url, session=session)
 
-                    # find <pilot_sandbox> -name \*.prof > profiles.lst; tar jcf profiles.tbz -T profiles.lst
-                    cmd = "find %s -name \\*.prof  -exec tar -czf %s/%s {} +" % (sandbox.url.path, sandbox.url.path,
-                                                                                 PROFILES_TARBALL)
+                    cmd = "cd %s; find . -name \\*.prof > profiles.lst; " \
+                          "tar czf %s -T profiles.lst" % (sandbox.url.path, PROFILES_TARBALL)
                     j = js.run_job(cmd)
                     j.wait()
                     log.debug('tarball cmd for profiles : %s', cmd)
