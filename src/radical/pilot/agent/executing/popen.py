@@ -331,21 +331,12 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_task_env(task, launcher)
 
             tmp += self._separator
-            tmp += '# RP environment per rank\n'
-            tmp += 'case "$RP_RANK" in\n'
-            for rank_id, rank in enumerate(ranks):
-                tmp += '    %d)\n' % rank_id
-                tmp += self._get_rank_env(rank)
-                tmp += '        ;;\n'
-            tmp += 'esac\n'
-
-            tmp += self._separator
             tmp += '# pre-exec commands\n'
             tmp += self._get_prof('exec_pre', tid)
             tmp += self._get_pre_exec(task)
 
             tmp += self._separator
-            tmp += '# execute ranks\n'
+            tmp += '# execute rank(s)\n'
             tmp += self._get_prof('rank_start', tid)
             tmp += 'case "$RP_RANK" in\n'
             for rank_id, rank in enumerate(ranks):
@@ -685,28 +676,6 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_env(self, rank):
-
-        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
-        #        with exactly one entry, corresponding to the rank process to be
-        #        started.
-
-        ret  = ''
-
-        # FIXME: need to distinguish between logical and physical IDs
-        gmap = rank['gpu_map']
-        if gmap:
-            # equivalent to the 'physical' value for original `cvd_id_mode`
-            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
-            ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
-
-        cmap = rank['core_map'][0]
-        ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
-
-        return ret
-
-    # --------------------------------------------------------------------------
-    #
     def _get_exec_ranks(self, ranks, sig):
 
         ret = 'case "$RP_RANK" in\n'
@@ -782,9 +751,27 @@ class Popen(AgentExecutingComponent):
     #
     def _get_rank_exec(self, task, rank_id, rank, launcher):
 
-        # FIXME: core pinning goes here
+        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        #        with exactly one entry, corresponding to the rank process to be
+        #        started.
 
         ret = ''
+        td  = task['description']
+
+        # FIXME: need to distinguish between logical and physical IDs
+        gmap = rank['gpu_map']
+        if gmap:
+            # equivalent to the 'physical' value for original `cvd_id_mode`
+            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
+            if td['gpu_process_type'] == rpc.CUDA:
+                ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
+
+        cmap = rank['core_map'][0]
+        if td['cpu_thread_type'] == rpc.OpenMP:
+            ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
+
+        # FIXME: core pinning goes here
+
         cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
         for cmd in cmds:
             ret += '        %s\n' % cmd
