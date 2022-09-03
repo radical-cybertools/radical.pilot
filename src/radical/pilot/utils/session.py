@@ -110,7 +110,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             # Try to fetch a tarball of profiles, so that we can get them
             # all in one (SAGA) go!
-            PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
+            PROFILES_TARBALL = '%s.prof.tbz' % pilot['uid']
             tarball_available = False
             try:
                 if  sandbox.is_file(PROFILES_TARBALL) and \
@@ -124,7 +124,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                     js = rs.job.Service(js_url, session=session)
 
                     cmd = "cd %s; find . -name \\*.prof > profiles.lst; " \
-                          "tar czf %s -T profiles.lst" % (sandbox.url.path, PROFILES_TARBALL)
+                          "tar cjf %s -T profiles.lst" % (sandbox.url.path, PROFILES_TARBALL)
                     j = js.run_job(cmd)
                     j.wait()
                     log.debug('tarball cmd for profiles : %s', cmd)
@@ -163,7 +163,7 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             if tarball_available:
                 log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
                 try:
-                    tarball = tarfile.open(ftgt.path, mode='r:gz')
+                    tarball = tarfile.open(ftgt.path, mode='r:bz2')
                     tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
 
                     profiles = glob.glob("%s/%s/*.prof" %
