@@ -2,6 +2,8 @@
 import os
 import sys
 
+from typing import Dict, List, Any, Union
+
 import radical.utils as ru
 
 from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
@@ -9,10 +11,10 @@ from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
 
 # ------------------------------------------------------------------------------
 #
-def expand_description(descr):
-    """
-    convert any simple, string based staging directive in the description into
-    its dictionary equivalent
+def expand_description(descr: Dict[str, Any]) -> None:
+    '''
+    convert any simple, string based staging directive in the given task
+    description into its dictionary equivalent
 
     In this context, the following kinds of expansions are performed:
 
@@ -29,7 +31,7 @@ def expand_description(descr):
     This method changes the given description in place - repeated calls on the
     same description instance will have no effect.  However, we expect this
     method to be called only once during task construction.
-    """
+    '''
 
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
     if descr.get('output_staging') is None: descr['output_staging'] = list()
@@ -40,11 +42,11 @@ def expand_description(descr):
 
 # ------------------------------------------------------------------------------
 #
-def expand_staging_directives(sds):
-    """
+def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
+                             ) -> List[Dict[str, Any]]:
+    '''
     Take an abbreviated or compressed staging directive and expand it.
-    """
-
+    '''
 
     if not sds:
         return []
@@ -78,7 +80,7 @@ def expand_staging_directives(sds):
             # sanity check on dict syntax
             valid_keys = ['source', 'target', 'action', 'flags', 'priority',
                           'uid', 'prof_id']
-            for k in sd:
+            for k in sd.keys():
                 if k not in valid_keys:
                     raise ValueError('"%s" is invalid on staging directive' % k)
 
@@ -116,7 +118,7 @@ def expand_staging_directives(sds):
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
 
-        # we warn the user when  src or tgt are using the deprecated
+        # we warn the user when src or tgt are using the deprecated
         # `staging://` schema
         if str(expanded['source']).startswith('staging://'):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
@@ -127,7 +129,6 @@ def expand_staging_directives(sds):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
             expanded['target'] = str(expanded['target']).replace('staging://',
                                                                  'pilot://')
-
         ret.append(expanded)
 
     return ret
@@ -135,7 +136,10 @@ def expand_staging_directives(sds):
 
 # ------------------------------------------------------------------------------
 #
-def complete_url(path, context, log=None):
+def complete_url(path   : str,
+                 context: Dict[str, str],
+                 log    : ru.Logger = None
+                ) -> ru.Url:
     '''
     Some paths in data staging directives are to be interpreted relative to
     certain locations, namely relative to
@@ -217,6 +221,7 @@ def complete_url(path, context, log=None):
     log.debug('   expand url  %s', purl)
     log.debug('   expand with %s', context[purl.schema])
     log.debug('             > %s', ret)
+
     return ret
 
 
