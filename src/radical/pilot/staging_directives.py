@@ -219,7 +219,7 @@ def complete_url(path   : str,
             ret.path += '/%s' % purl.path
 
     log.debug('   expand url  %s', purl)
-    log.debug('   expand with %s', context[purl.schema])
+    log.debug('   expand with %s', context.get(purl.schema))
     log.debug('             > %s', ret)
 
     return ret
