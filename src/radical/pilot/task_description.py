@@ -197,55 +197,60 @@ class TaskDescription(ru.TypedDict):
        [type: `str` | default: `""`] A shell command to be executed.  This
        attribute is used for the `TASK_SHELL` mode.
 
-    .. data:: cpu_processes
+    .. data:: ranks
 
        [type: `int` | default: `1`] The number of application processes to start
-       on CPU cores.
+       on CPU cores.  For two ranks or more, an MPI communicator will be
+       available to the processes.
 
-    .. data:: cpu_threads
+       `ranks` replaces the deprecated attribute `cpu_processes`.  The attribute
+       `cpu_process_type` was previously used to signal the need for an MPI
+       communicator - that attribute is now also deprecated and will be ignored.
 
-       [type: `int` | default: `1`] The number of threads each process will
-       start on CPU cores.
+    .. data:: cores_per_rank
 
-    .. data:: cpu_process_type
+       [type: `int` | default: `1`] The number of cpu cores each process will
+       have available to start it's own threads or processes on.
 
-       [type: `str` | default: `""`] The process type, determines startup
-       method (`<empty>/POSIX`, `MPI`).
+       `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
-    .. data:: cpu_thread_type
+    .. data:: threading_type
 
        [type: `str` | default: `""`] The thread type, influences startup and
        environment (`<empty>/POSIX`, `OpenMP`).
 
-    .. data:: gpu_processes
+       `threading_type` replaces the deprecated attribute `cpu_thread_type`.
 
-       [type: `int` | default: `0`] The number of application processes to
-       start on GPU cores.
+    .. data:: gpus_per_rank
 
-    .. data:: gpu_threads
+       [type: `int` | default: `0`] The number of gpus made available to each
+       rank.
 
-       [type: `int` | default: `1`] The number of threads each process will
-       start on GPU cores.
+       `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
+       attributes `gpu_threads` and `gpu_process_type` are also deprecated and
+       will be ignored.
 
-    .. data:: gpu_process_type
+    .. data:: gpu_type
 
-       [type: `str` | default: `""`] The process type, determines startup
-       method (`<empty>/POSIX`, `MPI`).
+       [type: `str` | default: `""`] The type of GPU environment to provide to
+       the ranks (`<empty>`, `CUDA`, `ROCm`).
 
-    .. data:: gpu_thread_type
+       `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
 
-       [type: `str` | default: `""`] The thread type, influences startup and
-       environment (`<empty>/POSIX`, `OpenMP`, `CUDA`).
 
-    .. data:: lfs_per_process
+    .. data:: lfs_per_rank
 
-       [type: `int` | default: `0`] Local File Storage per process - amount of
+       [type: `int` | default: `0`] Local File Storage per rank - amount of
        data (MB) required on the local file system of the node.
 
-    .. data:: mem_per_process
+       `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
+
+    .. data:: mem_per_rank
 
        [type: `int` | default: `0`] Amount of physical memory required per
-       process.
+       rank.
+
+       `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
     .. data:: environment
 
