@@ -156,10 +156,16 @@ def complete_url(path, context, log=None):
     URLs to be used to expand the path for those schemas
 
     Other URL schemas are left alone, any non-URL strings are interpreted as
-    path in the context of `pwd`.
+    path in the context of `pwd`, i.e. in the context of the working directory
+    of the current process, unless a `pwd` entry is provided in the `context`
+    dict). `file://` schemas are left unaltered and are expected to point to
+    absolute locations in the file system.
 
-    The method returns an instance of ru.Url.  Note that URL parsing is not
-    really cheap, so this method should be used conservatively.
+    The method returns an instance of ru.Url.  Even if the URL is not altered,
+    a new instance (deep copy) will be returned.
+
+    NOTE: URL parsing is not really cheap, so this method should be used
+    conservatively.
     '''
 
     # FIXME: consider evaluation of env vars
@@ -180,28 +186,38 @@ def complete_url(path, context, log=None):
             purl.schema = 'pwd'
 
     log.debug('  -> %s', purl)
-    schema = purl.schema
 
-    if schema not in list(context.keys()):
+    if purl.schema not in list(context.keys()):
 
-        log.debug('             = %s (%s)', purl, list(context.keys()))
-        return purl
+        ret = purl
+        log.debug('             = %s (%s)', ret, list(context.keys()))
 
     else:
+
+        expand = True
 
         # we expect hostname elements to be absent for schemas we expand
         if purl.host:
             raise ValueError('URLs cannot specify `host` for expanded schemas')
 
-        ret = ru.Url(context[schema])
+        if purl.schema == 'file':
+            # we leave `file://` URLs unaltered
+            ret = purl
+            expand = False
 
-        ret.path += '/%s' % purl.path
+        elif purl.schema == 'pwd' and 'pwd' not in context:
+            ret = ru.Url(os.getcwd())
 
-        log.debug('   expand url  %s', purl)
-        log.debug('   expand with %s', context[schema])
-        log.debug('             > %s', ret)
-        return ret
+        else:
+            ret = ru.Url(context[purl.schema])
 
+        if expand:
+            ret.path += '/%s' % purl.path
+
+    log.debug('   expand url  %s', purl)
+    log.debug('   expand with %s', context[purl.schema])
+    log.debug('             > %s', ret)
+    return ret
 
 
 # ------------------------------------------------------------------------------
