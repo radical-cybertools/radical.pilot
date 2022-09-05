@@ -1,4 +1,6 @@
 
+# pylint: disable=access-member-before-definition
+
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
@@ -44,9 +46,18 @@ NAMED_ENV        = 'named_env'
 SANDBOX          = 'sandbox'
 
 # resource requirements
+RANKS            = 'ranks'                    # ranks
+CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
+GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
+THREADING_TYPE   = 'threading_type'           # OpenMP?
+GPU_TYPE         = 'gpu_type'                 # CUDA / ROCm?
+LFS_PER_RANK     = 'lfs_per_rank'             # disk space per rank
+MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
+
+# deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
-CPU_PROCESS_TYPE = 'cpu_process_type'         # MPI?
-CPU_THREADS      = 'cpu_threads'              # cores per rank
+CPU_PROCESS_TYPE = 'cpu_process_type'         # disk space per rank
+CPU_THREADS      = 'cpu_threads'              # memory per rank
 CPU_THREAD_TYPE  = 'cpu_thread_type'          # OpenMP?
 
 GPU_PROCESSES    = 'gpu_processes'            # gpus per rank
@@ -57,6 +68,7 @@ GPU_THREAD_TYPE  = 'gpu_thread_type'          # ?
 LFS_PER_PROCESS  = 'lfs_per_process'          # disk space per rank
 MEM_PER_PROCESS  = 'mem_per_process'          # memory per rank
 
+# task setup
 INPUT_STAGING    = 'input_staging'
 OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
@@ -508,16 +520,25 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
 
-        CPU_PROCESSES   : int         ,
-        CPU_PROCESS_TYPE: str         ,
-        CPU_THREADS     : int         ,
-        CPU_THREAD_TYPE : str         ,
-        GPU_PROCESSES   : int         ,
-        GPU_PROCESS_TYPE: str         ,
-        GPU_THREADS     : int         ,
-        GPU_THREAD_TYPE : str         ,
-        LFS_PER_PROCESS : int         ,
-        MEM_PER_PROCESS : int         ,
+        RANKS           : int         ,
+        CORES_PER_RANK  : int         ,
+        GPUS_PER_RANK   : int         ,
+        THREADING_TYPE  : str         ,
+        GPU_TYPE        : str         ,
+        LFS_PER_RANK    : int         ,
+        MEM_PER_RANK    : int         ,
+
+        # deprecated
+        CPU_PROCESSES   : int         ,  # RANKS
+        CPU_PROCESS_TYPE: str         ,  # n/a
+        CPU_THREADS     : int         ,  # CORES_PER_RANK
+        CPU_THREAD_TYPE : str         ,  # THREADING_TYPE
+        GPU_PROCESSES   : int         ,  # GPUS_PER_RANK
+        GPU_PROCESS_TYPE: str         ,  # GPU_TYPE
+        GPU_THREADS     : int         ,  # n/a
+        GPU_THREAD_TYPE : str         ,  # n/a
+        LFS_PER_PROCESS : int         ,  # LFS_PER_RANK
+        MEM_PER_PROCESS : int         ,  # MEM_PER_RANK
 
         RESTARTABLE     : bool        ,
         SCHEDULER       : str         ,
@@ -554,13 +575,22 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
 
-        CPU_PROCESSES   : 1           ,
+        RANKS           : 1           ,
+        CORES_PER_RANK  : 1           ,
+        GPUS_PER_RANK   : 0           ,
+        THREADING_TYPE  : ''          ,
+        GPU_TYPE        : ''          ,
+        LFS_PER_RANK    : 0           ,
+        MEM_PER_RANK    : 0           ,
+
+        # deprecated
+        CPU_PROCESSES   : 0           ,
         CPU_PROCESS_TYPE: ''          ,
-        CPU_THREADS     : 1           ,
+        CPU_THREADS     : 0           ,
         CPU_THREAD_TYPE : ''          ,
         GPU_PROCESSES   : 0           ,
         GPU_PROCESS_TYPE: ''          ,
-        GPU_THREADS     : 1           ,
+        GPU_THREADS     : 0           ,
         GPU_THREAD_TYPE : ''          ,
         LFS_PER_PROCESS : 0           ,
         MEM_PER_PROCESS : 0           ,
@@ -613,6 +643,60 @@ class TaskDescription(ru.TypedDict):
             if not self.get('command'):
                 raise ValueError("TASK_SHELL Task needs 'command'")
 
+        # backward compatibility for deprecated attributes
+        if self.cpu_processes:
+            if self.ranks:
+                raise ValueError('use `ranks` or `cpu_processes`')
+            else:
+                self.ranks = self.cpu_processes
+                self.cpu_processes = 0
+
+        if self.cpu_threads:
+            if self.cores_per_rank:
+                raise ValueError('use `cores_per_rank` `cpu_threads')
+            else:
+                self.cores_per_rank = self.cpu_threads
+                self.cpu_threads = 0
+
+        if self.cpu_thread_type:
+            if self.threading_type:
+                raise ValueError('use `threading_type` or `cpu_thread_type`')
+            else:
+                self.threading_type = self.cpu_thread_type
+                self.cpu_thread_type = None
+
+        if self.gpu_processes:
+            if self.gpus_per_rank:
+                raise ValueError('use `gpus_per_rank` or `gpu_processes`')
+            else:
+                self.gpus_per_rank = self.gpu_processes
+                self.gpu_processes = 0
+
+        if self.gpu_process_type:
+            if self.gpu_type:
+                raise ValueError('use `gpu_type` or `gpu_process_type`')
+            else:
+                self.gpu_type = self.gpu_process_type
+                self.gpu_process_type = 0
+
+        if self.lfs_per_process:
+            if self.lfs_per_rank:
+                raise ValueError('use `lfs_per_rank` or `lfs_per_process`')
+            else:
+                self.lfs_per_rank = self.lfs_per_process
+                self.lfs_per_process = 0
+
+        if self.mem_per_process:
+            if self.mem_per_rank:
+                raise ValueError('use `mem_per_rank` or `mem_per_process`')
+            else:
+                self.mem_per_rank = self.mem_per_process
+                self.mem_per_process = 0
+
+        # deprecated and ignored
+        if self.cpu_process_type: pass
+        if self.gpu_threads     : pass
+        if self.gpu_thread_type : pass
 
       # if self.mode in [TASK_SHELL, TASK_PROC]:
       #
