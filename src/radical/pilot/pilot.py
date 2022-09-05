@@ -625,7 +625,8 @@ class Pilot(object):
         At this point, the implementation only accepts `virtualenv` type
         requests, where `version` specifies the Python version to use, and
         `setup` is expected to be a list of module specifiers which need to be
-        installed into the environment.
+        installed into the environment.  Note that the subminor parts of the
+        version specifier are ignored.
         '''
 
         self.rpc('prepare_env', {'env_name': env_name,
