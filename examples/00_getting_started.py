@@ -84,7 +84,6 @@ if __name__ == '__main__':
             td = rp.TaskDescription()
             td.stage_on_error = True
             td.executable     = '/bin/date'
-            td.cpu_processes  = 1
 
             tds.append(td)
             report.progress()

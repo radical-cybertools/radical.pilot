@@ -282,7 +282,7 @@ if __name__ == '__main__':
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
     descr['ranks']         = nodes_pw * cpn
-    descr['gpu_processes'] = nodes_pw * gpn
+    descr['gpus_per_rank'] = nodes_pw * gpn
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
