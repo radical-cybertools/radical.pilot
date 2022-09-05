@@ -161,8 +161,8 @@ def complete_url(path, context, log=None):
     dict). `file://` schemas are left unaltered and are expected to point to
     absolute locations in the file system.
 
-    The method returns an instance of ru.Url.  Even if the URL is not altered,
-    a new instance (deep copy) will be returned.
+    The method returns an instance of `:py:class:`radical.utils.Url`.  Even if
+    the URL is not altered, a new instance (deep copy) will be returned.
 
     NOTE: URL parsing is not really cheap, so this method should be used
     conservatively.
