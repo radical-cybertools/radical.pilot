@@ -650,53 +650,32 @@ class TaskDescription(ru.TypedDict):
 
         # backward compatibility for deprecated attributes
         if self.cpu_processes:
-            if self.ranks:
-                raise ValueError('use `ranks` or `cpu_processes`')
-            else:
-                self.ranks = self.cpu_processes
-                self.cpu_processes = 0
+            self.ranks = self.cpu_processes
+            self.cpu_processes = 0
 
         if self.cpu_threads:
-            if self.cores_per_rank:
-                raise ValueError('use `cores_per_rank` `cpu_threads')
-            else:
-                self.cores_per_rank = self.cpu_threads
-                self.cpu_threads = 0
+            self.cores_per_rank = self.cpu_threads
+            self.cpu_threads = 0
 
         if self.cpu_thread_type:
-            if self.threading_type:
-                raise ValueError('use `threading_type` or `cpu_thread_type`')
-            else:
-                self.threading_type = self.cpu_thread_type
-                self.cpu_thread_type = None
+            self.threading_type = self.cpu_thread_type
+            self.cpu_thread_type = None
 
         if self.gpu_processes:
-            if self.gpus_per_rank:
-                raise ValueError('use `gpus_per_rank` or `gpu_processes`')
-            else:
-                self.gpus_per_rank = self.gpu_processes
-                self.gpu_processes = 0
+            self.gpus_per_rank = self.gpu_processes
+            self.gpu_processes = 0
 
         if self.gpu_process_type:
-            if self.gpu_type:
-                raise ValueError('use `gpu_type` or `gpu_process_type`')
-            else:
-                self.gpu_type = self.gpu_process_type
-                self.gpu_process_type = 0
+            self.gpu_type = self.gpu_process_type
+            self.gpu_process_type = 0
 
         if self.lfs_per_process:
-            if self.lfs_per_rank:
-                raise ValueError('use `lfs_per_rank` or `lfs_per_process`')
-            else:
-                self.lfs_per_rank = self.lfs_per_process
-                self.lfs_per_process = 0
+            self.lfs_per_rank = self.lfs_per_process
+            self.lfs_per_process = 0
 
         if self.mem_per_process:
-            if self.mem_per_rank:
-                raise ValueError('use `mem_per_rank` or `mem_per_process`')
-            else:
-                self.mem_per_rank = self.mem_per_process
-                self.mem_per_process = 0
+            self.mem_per_rank = self.mem_per_process
+            self.mem_per_process = 0
 
         # deprecated and ignored
         if self.cpu_process_type: pass
