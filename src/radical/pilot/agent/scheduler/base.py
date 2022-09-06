@@ -255,7 +255,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # start a process to host the actual scheduling algorithm
-        self._p = mp.Process(target=self._schedule_tasks, args=(self._term,))
+        self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
 
@@ -553,7 +553,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_tasks(self, term):
+    def _schedule_tasks(self):
         '''
         This method runs in a separate process and hosts the actual scheduling
         algorithm invocation.  The process is fed by two queues: a queue of
@@ -563,9 +563,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
-
-        # re-assign termination Event object
-        self._term = term
 
         # The loop alternates between
         #
