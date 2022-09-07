@@ -133,7 +133,10 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
                               j.exit_code)
                     if not j.exit_code:
                         log.info("profiles tarball created successfully")
-
+                    else:
+                        log.warn("profiles tarball creation failed %s %s %s",
+                                 j.get_stdout_string(), j.get_stderr_string(),
+                                j.exit_code)
                 ftgt = rs.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
@@ -358,7 +361,7 @@ def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
 
             for logfile in logfiles:
 
-                ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
+                ftgt = ru.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
                 ret.append("%s" % ftgt.path)
 
                 if skip_existing and os.path.isfile(ftgt.path) \
