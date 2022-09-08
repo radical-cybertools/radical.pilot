@@ -84,7 +84,9 @@ class Task(object):
         self._return_value     = None
         self._exception        = None
         self._pilot            = descr.get('pilot')
+        self._endpoint_fs      = None
         self._resource_sandbox = None
+        self._session_sandbox  = None
         self._pilot_sandbox    = None
         self._task_sandbox     = None
         self._client_sandbox   = None
@@ -137,7 +139,7 @@ class Task(object):
 
     # --------------------------------------------------------------------------
     #
-    def _update(self, task_dict):
+    def _update(self, task_dict, reconnect=False):
         '''
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
@@ -149,13 +151,15 @@ class Task(object):
         current = self.state
         target  = task_dict['state']
 
-        if target not in [rps.FAILED, rps.CANCELED]:
-            s_tgt = rps._task_state_value(target)
-            s_cur = rps._task_state_value(current)
-            if s_tgt - s_cur != 1:
-                self._log.error('%s: invalid state transition %s -> %s',
-                                self.uid, current, target)
-                raise RuntimeError('invalid state transition')
+        if not reconnect:
+            if target not in [rps.FAILED, rps.CANCELED]:
+                s_tgt = rps._task_state_value(target)
+                s_cur = rps._task_state_value(current)
+                if s_tgt - s_cur != 1:
+                    self._log.error('%s: invalid state transition %s -> %s',
+                                    self.uid, current, target)
+                    raise RuntimeError('invalid state transition %s: %s -> %s'
+                            % (self.uid, current, target))
 
         self._state = target
 
@@ -163,8 +167,8 @@ class Task(object):
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
-                    'resource_sandbox', 'pilot_sandbox', 'task_sandbox',
-                    'client_sandbox']:
+                    'endpoint_fs', 'resource_sandbox', 'session_sandbox',
+                    'pilot_sandbox', 'task_sandbox', 'client_sandbox']:
 
             val = task_dict.get(key, None)
             if val is not None:
@@ -193,7 +197,9 @@ class Task(object):
             'return_value':     self.return_value,
             'exception':        self.exception,
             'pilot':            self.pilot,
+            'endpoint_fs':      self.endpoint_fs,
             'resource_sandbox': self.resource_sandbox,
+            'session_sandbox':  self.session_sandbox,
             'pilot_sandbox':    self.pilot_sandbox,
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
@@ -434,8 +440,16 @@ class Task(object):
 
 
     @property
+    def endpoint_fs(self):
+        return self._endpoint_fs
+
+    @property
     def resource_sandbox(self):
         return self._resource_sandbox
+
+    @property
+    def session_sandbox(self):
+        return self._session_sandbox
 
     @property
     def pilot_sandbox(self):
