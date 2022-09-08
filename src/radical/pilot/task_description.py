@@ -4,7 +4,6 @@ __license__   = 'MIT'
 
 import radical.utils as ru
 
-
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
@@ -53,7 +52,6 @@ OpenMP                 = 'OpenMP'
 CUDA                   = 'CUDA'
 FUNC                   = 'FUNC'
 # FIXME: move process/thread types to `radical.pilot.constants`
-
 
 # ExecutableTaskDescription
 EXECUTABLE             = 'executable'
@@ -234,12 +232,6 @@ class TaskDescription(ru.TypedDict):
 
        ...
 
-    .. data:: kernel
-
-       [type: `str` | default: `""`] Name of a simulation kernel, which expands
-       to description attributes once the task is scheduled to a pilot and
-       resource. `TODO: explain in detail, referencing EnTK.`
-
     .. data:: restartable
 
        [type: `bool` | default: `False`] If the task starts to execute on
@@ -327,7 +319,7 @@ class TaskDescription(ru.TypedDict):
       Flags:
 
         * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-        the fly
+          the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
 
 
@@ -667,4 +659,3 @@ class CallableTaskDescription(TaskDescription):
 
 
 # ------------------------------------------------------------------------------
-

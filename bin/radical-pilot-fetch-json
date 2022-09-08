@@ -18,7 +18,7 @@ if __name__ == '__main__':
     sid = sys.argv[1]
     mongo, db, dbname, cname, pname = ru.mongodb_connect(os.environ['RADICAL_PILOT_DBURL'])
 
-    docs = rpu.get_session_docs(db, sid)
+    docs = rpu.get_session_docs(sid, db)
     print("saving json to %s.json" % sid)
     ru.write_json(docs, "%s.json" % sid)
 

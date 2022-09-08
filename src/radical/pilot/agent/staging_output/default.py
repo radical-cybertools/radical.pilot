@@ -57,9 +57,6 @@ class Default(AgentStagingOutputComponent):
     #
     def work(self, tasks):
 
-        if not isinstance(tasks, list):
-            tasks = [tasks]
-
         self.advance(tasks, rps.AGENT_STAGING_OUTPUT, publish=True, push=False)
 
         # we first filter out any tasks which don't need any input staging, and
@@ -69,7 +66,7 @@ class Default(AgentStagingOutputComponent):
         no_staging_tasks = list()
         staging_tasks    = list()
 
-        for task in tasks:
+        for task in ru.as_list(tasks):
 
             uid = task['uid']
 
@@ -112,18 +109,66 @@ class Default(AgentStagingOutputComponent):
                 no_staging_tasks.append(task)
 
         if no_staging_tasks:
-            self.advance(no_staging_tasks, publish=True, push=True)
+            self._advance_tasks(no_staging_tasks, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                publish=True, push=True)
 
-        for task,actionables in staging_tasks:
+        for task, actionables in staging_tasks:
             self._handle_task_staging(task, actionables)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _advance_tasks(self, tasks, state, publish, push):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in ru.as_list(tasks):
+            buckets[task['origin']].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                         publish=publish, push=push)
+
+        # task state notifications are not bulkable
+        if buckets['raptor']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
+                                            'arg': buckets['agent']})
+
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_task_stdio(self, task):
 
-        sbox = task['task_sandbox_path']
+        if task.get('stdio'):
+            # no need to fetch stdio, the LM or launcher did that
+            # FIXME: do we need to pull profile events?
+            return
+
+        sbox = task.get('task_sandbox_path')
         uid  = task['uid']
+
+        # no sbox, no io
+        if not sbox:
+            return
 
         self._prof.prof('staging_stdout_start', uid=uid)
       # self._log.debug('out: %s', task.get('stdout_file'))
@@ -173,12 +218,15 @@ class Default(AgentStagingOutputComponent):
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
-                        if line:
-                            ts, event, comp, tid, _uid, state, msg = \
-                                                                 line.split(',')
-                            self._prof.prof(ts=float(ts), event=event,
-                                            comp=comp, tid=tid, uid=_uid,
-                                            state=state, msg=msg)
+                        if not line:
+                            continue
+                        if line[0] == '#':
+                            continue
+                        ts, event, comp, tid, _uid, state, msg = \
+                                                             line.split(',')
+                        self._prof.prof(ts=float(ts), event=event,
+                                        comp=comp, tid=tid, uid=_uid,
+                                        state=state, msg=msg)
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 
@@ -204,24 +252,35 @@ class Default(AgentStagingOutputComponent):
 
         task_sandbox     = ru.Url(task['task_sandbox'])
         pilot_sandbox    = ru.Url(task['pilot_sandbox'])
+        session_sandbox  = ru.Url(task['session_sandbox'])
         resource_sandbox = ru.Url(task['resource_sandbox'])
+        endpoint_fs      = ru.Url(task['endpoint_fs'])
 
         task_sandbox.schema     = 'file'
         pilot_sandbox.schema    = 'file'
+        session_sandbox.schema  = 'file'
         resource_sandbox.schema = 'file'
+        endpoint_fs.schema      = 'file'
 
         task_sandbox.host       = 'localhost'
         pilot_sandbox.host      = 'localhost'
+        session_sandbox.host    = 'localhost'
         resource_sandbox.host   = 'localhost'
+        endpoint_fs.host        = 'localhost'
 
         src_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
         tgt_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
+
 
         # we can now handle the actionable staging directives
         for sd in actionables:
@@ -234,7 +293,7 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER], \
                               'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
@@ -267,10 +326,10 @@ class Default(AgentStagingOutputComponent):
             tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
-            assert(src.schema == 'file'), 'staging src must be file://'
+            assert src.schema == 'file', 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert(tgt.schema == 'file'), 'staging tgt expected as file://'
+                assert tgt.schema == 'file', 'staging tgt expected as file://'
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
@@ -322,8 +381,8 @@ class Default(AgentStagingOutputComponent):
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging
-        self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
-                           publish=True, push=False)
+        self._advance_tasks(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                  publish=True, push=False)
 
 
 # ------------------------------------------------------------------------------

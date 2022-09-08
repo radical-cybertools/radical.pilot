@@ -1,16 +1,23 @@
 
+# pylint: disable=global-statement
+
 import os
 import time
+
+from typing import Union
 
 import radical.utils as ru
 
 # max number of t out/err chars to push to tail
 MAX_IO_LOGLENGTH = 1024
 
+# cache resource configs
+_rcfgs = None
+
 
 # ------------------------------------------------------------------------------
 #
-def tail(txt, maxlen=MAX_IO_LOGLENGTH):
+def tail(txt: str, maxlen: int = MAX_IO_LOGLENGTH) -> str:
 
     # shorten the given string to the last <n> characters, and prepend
     # a notification.  This is used to keep logging information in mongodb
@@ -27,7 +34,7 @@ def tail(txt, maxlen=MAX_IO_LOGLENGTH):
 
 # ------------------------------------------------------------------------------
 #
-def get_rusage():
+def get_rusage() -> str:
 
     import resource
 
@@ -43,9 +50,9 @@ def get_rusage():
          % (rtime, utime, stime, rss)
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #
-def create_tar(tgt, dnames):
+def create_tar(tgt: str, dnames: str) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''
@@ -79,5 +86,132 @@ def create_tar(tgt, dnames):
     fout.close()
 
 
-# ----------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+#
+def get_resource_configs() -> ru.Config:
+    '''
+    Return all resource configurations used by `radical.pilot`.
+
+    Returns:
+
+        :obj:`radical.utils.Config`: the resource configurations
+
+        Configurations for the individual resources are organized as sites and
+        resources:
+
+           cfgs = get_resource_configs()
+           sites = cfgs.keys()
+           for site in sites:
+               resource_names = cfgs[site].keys()
+    '''
+
+    global _rcfgs
+
+    if not _rcfgs:
+        _rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+
+    # return a deep copy
+    return ru.Config(from_dict=_rcfgs)
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_config(resource: str) -> Union[None, ru.Config]:
+    '''
+    For the given resource label, return the resource configuration used by
+    `radical.pilot`.
+
+
+    Args:
+        resource (:obj:`str`): resource label for which to return the cfg
+
+    Returns:
+
+        :obj:`radical.utils.Config`: the resource configuration
+
+        The method returns `None` if no resource config is found for the
+        specified resource label.
+    '''
+
+    # populate cache
+    if not _rcfgs:
+        get_resource_configs()
+
+    site, host = resource.split('.', 1)
+
+    if site not in _rcfgs:
+        return None
+
+    if host not in _rcfgs[site]:
+        return None
+
+    # return a deep copy
+    return ru.Config(cfg=_rcfgs[site][host])
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_fs_url(resource: str,
+                        schema  : str = None) -> Union[None, ru.Url]:
+    '''
+    For the given resource label, return the contact URL of the resource's file
+    system.
+
+
+    Args:
+        resource (:obj:`str`): resource label for which to return the url
+        schema (:obj:`str`, optional): access schema to use for resource
+            access.  Defaults to the default access schema as defined in the
+            resources config files.
+
+    Returns:
+
+        :obj:`radical.utils.Url`: the file system URL
+
+        The method returns `None` if no resource config is found for the
+        specified resource label and access schema.
+    '''
+
+    rcfg = get_resource_config(resource)
+
+    if not schema:
+        schema = rcfg['schemas'][0]
+
+    # return a deep copy
+    return ru.Url(rcfg[schema]['filesystem_endpoint'])
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_job_url(resource: str,
+                         schema  : str = None) -> Union[None, ru.Url]:
+    '''
+    For the given resource label, return the contact URL of the resource's job
+    manager.
+
+
+    Args:
+        resource (:obj:`str`): resource label for which to return the url
+        schema (:obj:`str`, optional): access schema to use for resource
+            access.  Defaults to the default access schema as defined in the
+            resources config files.
+
+    Returns:
+
+        :obj:`radical.utils.Url`: the job manager URL
+
+        The method returns `None` if no resource config is found for the
+        specified resource label and access schema.
+    '''
+
+    rcfg = get_resource_config(resource)
+
+    if not schema:
+        schema = rcfg['schemas'][0]
+
+    # return a deep copy
+    return ru.Url(rcfg[schema]['job_manager_endpoint'])
+
+
+# ------------------------------------------------------------------------------
 

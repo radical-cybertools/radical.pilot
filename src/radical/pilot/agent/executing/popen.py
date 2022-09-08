@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument
+
 
 __copyright__ = 'Copyright 2013-2016, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -27,16 +27,22 @@ from .base import AgentExecutingComponent
 _pids = list()
 
 
-def _kill():
+# pylint: disable=unused-argument
+def _kill(*args, **kwargs):
+
     for pid in _pids:
+
+        # skip test mocks
         if not isinstance(pid, int):
-            # skip test mocks
             continue
+
         try   : os.killpg(pid, signal.SIGTERM)
         except: pass
 
 
 atexit.register(_kill)
+signal.signal(signal.SIGTERM, _kill)
+signal.signal(signal.SIGINT,  _kill)
 # ------------------------------------------------------------------------------
 
 
@@ -46,18 +52,6 @@ class Popen(AgentExecutingComponent):
 
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-      # session._log.debug('popen init start')
-        AgentExecutingComponent.__init__(self, cfg, session)
-
-        self._proc_term = mt.Event()
-      # session._log.debug('popen init stop')
-
 
     # --------------------------------------------------------------------------
     #
@@ -79,13 +73,6 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        # FIXME: should be moved to base class `AgentExecutingComponent`?
-        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -113,6 +100,7 @@ class Popen(AgentExecutingComponent):
         for task in tasks:
 
             try:
+                self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
             except Exception:
@@ -133,6 +121,9 @@ class Popen(AgentExecutingComponent):
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
+
+            finally:
+                self._prof.prof('task_stop', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -277,7 +268,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# pre-launch commands\n'
             tmp += self._get_prof('launch_pre', tid)
-            tmp += self._get_pre_launch(task, launcher)
+            tmp += self._get_pre_launch(task)
 
             tmp += self._separator
             tmp += '# launch commands\n'
@@ -289,7 +280,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += '# post-launch commands\n'
             tmp += self._get_prof('launch_post', tid)
-            tmp += self._get_post_launch(task, launcher)
+            tmp += self._get_post_launch(task)
 
             tmp += self._separator
             tmp += self._get_prof('launch_stop', tid)
@@ -337,7 +328,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in pre_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_pre_rank(rank_id, cmds)
+                    tmp += self._get_pre_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -369,7 +360,7 @@ class Popen(AgentExecutingComponent):
                 for rank_id, cmds in post_rank.items():
                     rank_id = int(rank_id)
                     tmp += '    %d)\n' % rank_id
-                    tmp += self._get_post_rank(rank_id, cmds)
+                    tmp += self._get_post_rank(cmds)
                     tmp += '        ;;\n'
                 tmp += 'esac\n\n'
 
@@ -388,17 +379,6 @@ class Popen(AgentExecutingComponent):
             fout.write(tmp)
 
 
-      # # ensure that the named env exists
-      # env = td.get('named_env')
-      # if env:
-      #     if not os.path.isdir('%s/%s' % (self._pwd, env)):
-      #         raise ValueError('invalid named env %s for task %s'
-      #                         % (env, task['uid']))
-      #     pre = ru.as_list(td.get('pre_exec'))
-      #     pre.insert(0, '. %s/%s/bin/activate' % (self._pwd, env))
-      #     pre.insert(0, '. %s/deactivate'      % (self._pwd))
-      #     td['pre_exec'] = pre
-
         # make sure scripts are executable
         st_l = os.stat('%s/%s' % (sbox, launch_script))
         st_e = os.stat('%s/%s' % (sbox, exec_script))
@@ -412,9 +392,9 @@ class Popen(AgentExecutingComponent):
             fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
 
         # make sure the sandbox exists
-        self._prof.prof('exec_mkdir', uid=tid)
+        self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
-        self._prof.prof('exec_mkdir_done', uid=tid)
+        self._prof.prof('task_mkdir_done', uid=tid)
 
         # launch and exec script are done, get ready for execution.
         cmdline = '/bin/sh %s' % launch_script
@@ -423,7 +403,7 @@ class Popen(AgentExecutingComponent):
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
-        self._prof.prof('exec_start', uid=tid)
+        self._prof.prof('task_run_start', uid=tid)
         task['proc'] = subprocess.Popen(args       = cmdline,
                                         executable = None,
                                         stdin      = None,
@@ -435,7 +415,7 @@ class Popen(AgentExecutingComponent):
         # decoupling from parent process group is disabled,
         # in case of enabling it, one of the following options should be added:
         #    `preexec_fn=os.setsid` OR `start_new_session=True`
-        self._prof.prof('exec_ok', uid=tid)
+        self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
@@ -448,7 +428,7 @@ class Popen(AgentExecutingComponent):
     def _watch(self):
 
         try:
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 tasks = list()
                 try:
@@ -506,7 +486,7 @@ class Popen(AgentExecutingComponent):
                     # above and the kill command below.  We probably should pull
                     # state after kill again?
 
-                    self._prof.prof('exec_cancel_start', uid=tid)
+                    self._prof.prof('task_run_cancel_start', uid=tid)
 
                     # We got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
@@ -523,9 +503,9 @@ class Popen(AgentExecutingComponent):
                     with self._cancel_lock:
                         self._tasks_to_cancel.remove(tid)
 
-                    self._prof.prof('exec_cancel_stop', uid=tid)
+                    self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del(task['proc'])  # proc is not json serializable
+                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
@@ -535,7 +515,7 @@ class Popen(AgentExecutingComponent):
 
             else:
 
-                self._prof.prof('exec_stop', uid=tid)
+                self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
                 task['proc'].wait()
@@ -548,7 +528,7 @@ class Popen(AgentExecutingComponent):
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._tasks_to_watch.remove(task)
-                del(task['proc'])  # proc is not json serializable
+                del task['proc']  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=tid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
@@ -579,6 +559,7 @@ class Popen(AgentExecutingComponent):
     #
     # launcher
     #
+# pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
@@ -599,7 +580,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_pre_launch(self, task, launcher):
+    def _get_pre_launch(self, task):
 
         ret  = ''
         cmds = task['description']['pre_launch']
@@ -625,7 +606,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_launch(self, task, launcher):
+    def _get_post_launch(self, task):
 
         ret  = ''
         cmds = task['description']['post_launch']
@@ -741,7 +722,7 @@ class Popen(AgentExecutingComponent):
     #
     # rank
     #
-    def _get_pre_rank(self, rank_id, cmds=None):
+    def _get_pre_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []
@@ -803,7 +784,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_post_rank(self, rank_id, cmds=None):
+    def _get_post_rank(self, cmds=None):
 
         ret = ''
         cmds = cmds or []

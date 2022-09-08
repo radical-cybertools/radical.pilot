@@ -1,6 +1,7 @@
 
-# pylint: disable=unused-argument    # W0613 Unused argument 'timeout' & 'input'
-# pylint: disable=redefined-builtin  # W0622 Redefining built-in 'input'
+__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
+
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
@@ -59,7 +60,9 @@ class ComponentManager(object):
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
         self._sid  = self._cfg.sid
-        self._uid  = ru.generate_id('cmgr', ns=self._sid)
+
+        self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
+                                    ru.ID_CUSTOM, ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
@@ -228,15 +231,16 @@ class ComponentManager(object):
         # and then remove the `bridges` and `components` sections
         #
         scfg = ru.Config(cfg=cfg)
-        if 'bridges'    in scfg: del(scfg['bridges'])
-        if 'components' in scfg: del(scfg['components'])
+        if 'bridges'    in scfg: del scfg['bridges']
+        if 'components' in scfg: del scfg['components']
         ru.expand_env(scfg)
 
         for cname, ccfg in cfg.get('components', {}).items():
 
             for _ in range(ccfg.get('count', 1)):
 
-                ccfg.uid         = ru.generate_id(cname, ns=self._sid)
+                ccfg.uid         = ru.generate_id(cname + '.%(item_counter)04d',
+                                                  ru.ID_CUSTOM, ns=self._sid)
                 ccfg.cmgr        = self.uid
                 ccfg.kind        = cname
                 ccfg.sid         = cfg.sid
@@ -422,7 +426,7 @@ class Component(object):
         self._session = session
 
         # we always need an UID
-        assert(self._uid), 'Component needs a uid (%s)' % type(self)
+        assert self._uid, 'Component needs a uid (%s)' % type(self)
 
         # state we carry over the fork
         self._debug      = cfg.get('debug')
@@ -490,7 +494,7 @@ class Component(object):
 
             time.sleep(0.1)
 
-        assert(self._thread.is_alive())
+        assert self._thread.is_alive()
 
 
     # --------------------------------------------------------------------------
@@ -554,8 +558,9 @@ class Component(object):
 
                }
 
-        assert(cfg.kind in comp), '%s not in %s' % (cfg.kind, list(comp.keys()))
+        assert cfg.kind in comp, '%s not in %s' % (cfg.kind, list(comp.keys()))
 
+        session._log.debug('create 1 %s: %s', cfg.kind, comp[cfg.kind])
         return comp[cfg.kind].create(cfg, session)
 
 
@@ -578,7 +583,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-        self._log.debug('command incoming: %s', msg)
+      # self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -599,8 +604,8 @@ class Component(object):
             self._log.info('got termination command')
             self.stop()
 
-        else:
-            self._log.debug('command ignored: %s', cmd)
+      # else:
+      #     self._log.debug('command ignored: %s', cmd)
 
         return True
 
@@ -676,7 +681,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self, timeout=None):                                         # noqa
+    def stop(self):
         '''
         We need to terminate and join all threads, close all communication
         channels, etc.  But we trust on the correct invocation of the finalizers
@@ -695,7 +700,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, input, worker=None):
+    def register_input(self, states, qname, worker=None):
         '''
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -724,7 +729,7 @@ class Component(object):
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        self._inputs[name] = {'queue'  : self.get_input_ep(input),
+        self._inputs[name] = {'queue'  : self.get_input_ep(qname),
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -746,7 +751,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def unregister_input(self, states, input, worker):
+    def unregister_input(self, states, qname, worker):
         '''
         This methods is the inverse to the 'register_input()' method.
         '''
@@ -760,12 +765,12 @@ class Component(object):
                              '_'.join([str(s) for s in states]))
 
         if name not in self._inputs:
-            self._log.warn('input %s not registered', name)
+            self._log.warn('input %s not registered [%s]', name, qname)
             return
 
         self._inputs[name]['queue'].stop()
-        del(self._inputs[name])
-        self._log.debug('unregistered input %s', name)
+        del self._inputs[name]
+        self._log.debug('unregistered input %s [%s]', name, qname)
 
         for state in states:
 
@@ -775,12 +780,12 @@ class Component(object):
                 self._log.warn('%s input %s unknown', worker.__name__, state)
                 continue
 
-            del(self._workers[state])
+            del self._workers[state]
 
 
     # --------------------------------------------------------------------------
     #
-    def register_output(self, states, output):
+    def register_output(self, states, qname):
         '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
@@ -801,49 +806,49 @@ class Component(object):
 
         for state in states:
 
-            self._log.debug('%s register output %s:%s', self.uid, state, output)
+            self._log.debug('%s register output %s:%s', self.uid, state, qname)
 
             # we want a *unique* output queue for each state.
             if state in self._outputs:
                 self._log.warn("%s replaces output for %s : %s -> %s"
-                        % (self.uid, state, self._outputs[state], output))
+                        % (self.uid, state, self._outputs[state], qname))
 
-            if not output:
+            if not qname:
                 # this indicates a final state
                 self._log.debug('%s register output to None %s', self.uid, state)
                 self._outputs[state] = None
 
             else:
                 # non-final state, ie. we want a queue to push to:
-                self._outputs[state] = self.get_output_ep(output)
+                self._outputs[state] = self.get_output_ep(qname)
 
 
     # --------------------------------------------------------------------------
     #
-    def get_input_ep(self, input):
+    def get_input_ep(self, qname):
         '''
         return an input endpoint
         '''
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, input)
+        fname = '%s/%s.cfg' % (self._cfg.path, qname)
         cfg   = ru.read_json(fname)
 
-        return ru.zmq.Getter(input, url=cfg['get'])
+        return ru.zmq.Getter(qname, url=cfg['get'])
 
 
     # --------------------------------------------------------------------------
     #
-    def get_output_ep(self, output):
+    def get_output_ep(self, qname):
         '''
         return an output endpoint
         '''
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, output)
+        fname = '%s/%s.cfg' % (self._cfg.path, qname)
         cfg   = ru.read_json(fname)
 
-        return ru.zmq.Putter(output, url=cfg['put'])
+        return ru.zmq.Putter(qname, url=cfg['put'])
 
 
     # --------------------------------------------------------------------------
@@ -866,7 +871,7 @@ class Component(object):
               # raise ValueError('state %s has no output registered' % state)
                 continue
 
-            del(self._outputs[state])
+            del self._outputs[state]
             self._log.debug('unregistered output for %s', state)
 
 
@@ -991,7 +996,7 @@ class Component(object):
                 return
 
             self._threads[name].stop()  # implies join
-            del(self._threads[name])
+            del self._threads[name]
 
         self._log.debug("TERM : %s unregistered idler %s", self.uid, name)
 
@@ -1004,7 +1009,7 @@ class Component(object):
         of notifications on the given pubsub channel.
         '''
 
-        assert(pubsub not in self._publishers)
+        assert pubsub not in self._publishers
 
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
@@ -1070,13 +1075,13 @@ class Component(object):
 
         for name in self._inputs:
 
-            input  = self._inputs[name]['queue']
+            qname  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = input.get_nowait(500)  # in microseconds
+            things = qname.get_nowait(500)  # in microseconds
             things = ru.as_list(things)
 
             if not things:
@@ -1100,8 +1105,8 @@ class Component(object):
 
             for state,things in buckets.items():
 
-                assert(state in states), 'cannot handle state %s' % state
-                assert(state in self._workers), 'no worker for state %s' % state
+                assert state in states, 'cannot handle state %s' % state
+                assert state in self._workers, 'no worker for state %s' % state
 
                 try:
                     to_cancel = list()
@@ -1175,8 +1180,6 @@ class Component(object):
 
         things = ru.as_list(things)
 
-        self._log.debug('advance bulk: %s [%s, %s]', len(things), push, publish)
-
         # assign state, sort things by state
         buckets = dict()
         for thing in things:
@@ -1199,6 +1202,10 @@ class Component(object):
                 buckets[_state] = list()
             buckets[_state].append(thing)
 
+        for _state,_things in buckets.items():
+            self._log.debug('advance bulk: %s [%s, %s, %s]',
+                            len(_things), push, publish, _state)
+
         # should we publish state information on the state pubsub?
         if publish:
 
@@ -1210,9 +1217,9 @@ class Component(object):
             # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
                 if '$all' in thing:
-                    del(thing['$all'])
+                    del thing['$all']
                     if '$set' in thing:
-                        del(thing['$set'])
+                        del thing['$set']
                     to_publish.append(thing)
 
                 elif thing['state'] in rps.FINAL:
@@ -1225,7 +1232,7 @@ class Component(object):
                     if '$set' in thing:
                         for key in thing['$set']:
                             tmp[key] = thing[key]
-                        del(thing['$set'])
+                        del thing['$set']
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
@@ -1238,7 +1245,7 @@ class Component(object):
         # never carry $all and across component boundaries!
         for thing in things:
             if '$all' in thing:
-                del(thing['$all'])
+                del thing['$all']
 
         # should we push things downstream, to the next component
         if push:
@@ -1260,7 +1267,8 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        self._log.debug("lost  %s [%s]", thing['uid'], _state)
+                        self._log.debug("lost  %s [%s] : %s", thing['uid'],
+                                _state, self._outputs)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue

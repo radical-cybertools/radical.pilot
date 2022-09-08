@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -9,14 +9,9 @@ import sys
 import radical.pilot as rp
 import radical.utils as ru
 
-dh = ru.DebugHelper()
 
-
-# ------------------------------------------------------------------------------
-#
-# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
-#
-# ------------------------------------------------------------------------------
+pwd = os.path.dirname(os.path.abspath(__file__))
+dh  = ru.DebugHelper()
 
 
 # ------------------------------------------------------------------------------
@@ -28,8 +23,9 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) == 2: resource = sys.argv[1]
-    else                 : resource = 'local.localhost_funcs'
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    elif len(sys.argv) == 2: resource = sys.argv[1]
+    else                   : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -43,7 +39,7 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/../config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
@@ -54,13 +50,12 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 60,  # pilot runtime (min)
+                   'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue',   None),
-                   'access_schema' : config[resource].get('schema',  None),
-                   'cores'         : 8,
-                   'gpus'          : config[resource].get('gpus', 0),
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
                   }
         pdesc = rp.PilotDescription(pd_init)
 
@@ -74,15 +69,15 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
 
         # Create a workload of Tasks.
-        # Each task runs '/bin/date'.
+        # Each compute task runs '/bin/date'.
 
-        n = 10
-        report.progress_tgt(n, label='create')
+        n = 32  # number of tasks to run
+        report.info('create %d task description(s)\n\t' % n)
 
         tds = list()
         for i in range(0, n):
 
-            # create a new Task description, and fill it.
+            # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             td = rp.CallableTaskDescription()
             td.pre_exec = ['import math']
@@ -90,26 +85,25 @@ if __name__ == '__main__':
             td.args     = [i]
             tds.append(td)
             report.progress()
-
-        report.progress_done()
+        report.ok('>>ok\n')
 
         # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning Tasks to the Pilots.
         tasks = tmgr.submit_tasks(tds)
 
-        # Wait for all tasks to reach a final state (DONE, CANCELED or
-        # FAILED).
-        report.header('gather results')
-        tmgr.wait_tasks()
+        # die - this is where the restart attempt will continue
+        # but before, we store some UIDs
+        with ru.ru_open('%s/restart.dat' % pwd, 'w') as fout:
+            fout.write('session_id %s\n' % session.uid)
+            fout.write('tmgr_ids   %s\n' % tmgr.uid)
+            fout.write('pmgrs_ids  %s\n' % pmgr.uid)
+            fout.write('pilot_ids  %s\n' % pilot.uid)
+            fout.write('task_ids   %s\n' % ':'.join(u.uid for u in tasks))
 
-        for task in (tasks[-10:]):
-            if task.state == rp.DONE:
-                print('\t+ %s: %-10s: %10s: %s'
-                     % (task.uid, task.state, task.pilot, task.stdout))
-            else:
-                print('\t- %s: %-10s: %10s: %s'
-                     % (task.uid, task.state, task.pilot, task.stderr))
+        pilot.wait(state=rp.PMGR_ACTIVE)
+        print('killme %s' % os.getpid())
+        sys.exit(0)
 
 
     except Exception as e:
@@ -130,7 +124,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(download=True)
+      # session.close(download=False)
 
     report.header()
 

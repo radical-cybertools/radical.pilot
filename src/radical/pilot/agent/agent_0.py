@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2014-2016, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
@@ -13,6 +13,7 @@ import radical.utils       as ru
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
+from ..   import TaskDescription
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
@@ -28,9 +29,9 @@ class Agent_0(rpu.Worker):
 
     This class inherits the rpu.Worker, so that it can use its communication
     bridges and callback mechanisms.  Specifically, it will pull the DB for
-    new tasks to be exexuted and forwards them to the agent's component
+    new tasks to be executed and forwards them to the agent's component
     network (see `work()`).  It will also watch the DB for any commands to be
-    forwarded (pilot termination, task cancelation, etc), and will take care
+    forwarded (pilot termination, task cancellation, etc.), and will take care
     of heartbeat messages to be sent to the client module.  To do all this, it
     initializes a DB connection in `initialize()`.
     '''
@@ -313,7 +314,7 @@ class Agent_0(rpu.Worker):
         # write deep-copies of the config for each sub-agent (sans from agent.0)
         for sa in self._cfg.get('agents', {}):
 
-            assert(sa != 'agent.0'), 'expect subagent, not agent.0'
+            assert (sa != 'agent.0'), 'expect subagent, not agent.0'
 
             # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
@@ -345,37 +346,39 @@ class Agent_0(rpu.Worker):
 
         # launch the `./services` script on the service node reserved by the RM.
         nodes = self._rm.info.service_node_list
-        assert(nodes)
+        assert nodes
 
         bs_name = "%s/bootstrap_2.sh"     % self._pwd
         ls_name = "%s/services_launch.sh" % self._pwd
         ex_name = "%s/services_exec.sh"   % self._pwd
 
-        threads = self._rm.info.cores_per_node * \
-                  self._rm.info.threads_per_core
-
-        service_task = {
-            'uid'              : 'rp.services',
+        service_task_uid = 'rp.services'
+        service_task     = {
+            'uid'              : service_task_uid,
             'task_sandbox_path': self._pwd,
-            'description'      : {'cpu_processes' : 1,
-                                  'cpu_threads'   : threads,
-                                  'gpu_processes' : 0,
-                                  'gpu_threads'   : 0,
-                                  'executable'    : '/bin/sh',
-                                  'arguments'     : [bs_name, 'services']},
-            'slots': {'ranks'  : [{'node_name'    : nodes[0]['node_name'],
-                                   'node_id'      : nodes[0]['node_id'],
-                                   'core_map'     : [[0]],
-                                   'gpu_map'      : [],
-                                   'lfs'          : 0,
-                                   'mem'          : 0}]}
+            'description'      : TaskDescription({
+                'uid'          : service_task_uid,
+                'cpu_processes': 1,
+                'cpu_threads'  : self._rm.info.cores_per_node,
+                'executable'   : '/bin/sh',
+                'arguments'    : [bs_name, 'services']
+            }).as_dict(),
+            'slots': {'ranks'  : [{'node_name': nodes[0]['node_name'],
+                                   'node_id'  : nodes[0]['node_id'],
+                                   'core_map' : [[0]],
+                                   'gpu_map'  : [],
+                                   'lfs'      : 0,
+                                   'mem'      : 0}]}
         }
 
         launcher = self._rm.find_launcher(service_task)
         if not launcher:
             raise RuntimeError('no launch method found for sub agent')
 
+        # FIXME: set RP environment (as in Popen Executor)
+
         tmp  = '#!/bin/sh\n\n'
+        tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
             tmp += '%s || exit 1\n' % cmd
@@ -394,15 +397,15 @@ class Agent_0(rpu.Worker):
 
 
         # make sure scripts are executable
-        st = os.stat(ls_name)
-        st = os.stat(ex_name)
-        os.chmod(ls_name, st.st_mode | stat.S_IEXEC)
-        os.chmod(ex_name, st.st_mode | stat.S_IEXEC)
+        st_l = os.stat(ls_name)
+        st_e = os.stat(ex_name)
+        os.chmod(ls_name, st_l.st_mode | stat.S_IEXEC)
+        os.chmod(ex_name, st_e.st_mode | stat.S_IEXEC)
 
         # spawn the sub-agent
         cmdline = './%s' % ls_name
 
-        self._log.info ('create services: %s' % cmdline)
+        self._log.info('create services: %s' % cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
         self._log.debug('services started done')
@@ -434,9 +437,6 @@ class Agent_0(rpu.Worker):
         # the respective command lines per agent instance, and run via
         # popen.
         #
-
-        threads = self._rm.info.cores_per_node * \
-                  self._rm.info.threads_per_core
 
         for idx, sa in enumerate(self._cfg['agents']):
 
@@ -472,18 +472,19 @@ class Agent_0(rpu.Worker):
                 agent_task = {
                     'uid'              : sa,
                     'task_sandbox_path': self._pwd,
-                    'description'      : {'cpu_processes' : 1,
-                                          'cpu_threads'   : threads,
-                                          'gpu_processes' : 0,
-                                          'gpu_threads'   : 0,
-                                          'executable'    : '/bin/sh',
-                                          'arguments'     : [bs_name, sa]},
-                    'slots': {'ranks'  : [{'node_name'    : node['node_name'],
-                                           'node_id'      : node['node_id'],
-                                           'core_map'     : [[0]],
-                                           'gpu_map'      : [],
-                                           'lfs'          : 0,
-                                           'mem'          : 0}]}
+                    'description'      : TaskDescription({
+                        'uid'          : sa,
+                        'cpu_processes': 1,
+                        'cpu_threads'  : self._rm.info.cores_per_node,
+                        'executable'   : '/bin/sh',
+                        'arguments'    : [bs_name, sa]
+                    }).as_dict(),
+                    'slots': {'ranks'  : [{'node_name': node['node_name'],
+                                           'node_id'  : node['node_id'],
+                                           'core_map' : [[0]],
+                                           'gpu_map'  : [],
+                                           'lfs'      : 0,
+                                           'mem'      : 0}]}
                 }
 
                 # find a launcher to use
@@ -491,13 +492,16 @@ class Agent_0(rpu.Worker):
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
 
+                # FIXME: set RP environment (as in Popen Executor)
 
                 tmp  = '#!/bin/sh\n\n'
+                tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
                     tmp += '%s || exit 1\n' % cmd
+
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
-                tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
+                tmp += '%s\nexit $?\n\n' % cmds
 
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
@@ -511,10 +515,10 @@ class Agent_0(rpu.Worker):
                     fout.write(tmp)
 
                 # make sure scripts are executable
-                st = os.stat(launch_script)
-                st = os.stat(exec_script)
-                os.chmod(launch_script, st.st_mode | stat.S_IEXEC)
-                os.chmod(exec_script,   st.st_mode | stat.S_IEXEC)
+                st_l = os.stat(launch_script)
+                st_e = os.stat(exec_script)
+                os.chmod(launch_script, st_l.st_mode | stat.S_IEXEC)
+                os.chmod(exec_script,   st_e.st_mode | stat.S_IEXEC)
 
                 # spawn the sub-agent
                 cmdline = launch_script
@@ -573,8 +577,6 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'
-                self.stop()
-
                 return False  # we are done
 
             elif cmd == 'cancel_tasks':
@@ -677,27 +679,31 @@ class Agent_0(rpu.Worker):
             # we don't handle that request
             return True
 
-        ret     = None
         rpc_res = {'uid': arg['uid']}
         try:
             if req == 'hello'   :
-                ret = 'hello %s' % ' '.join(arg['arg'])
+                out = 'hello %s' % ' '.join(arg['arg'])
 
             elif req == 'prepare_env':
                 env_name = arg['arg']['env_name']
                 env_spec = arg['arg']['env_spec']
-                ret      = self._prepare_env(env_name, env_spec)
+                out      = self._prepare_env(env_name, env_spec)
+
+            else:
+                # unknown command
+                return True
+
+            # request succeeded - respond with return value
+            rpc_res['err'] = None
+            rpc_res['out'] = out
+            rpc_res['ret'] = 0
 
         except Exception as e:
             # request failed for some reason - indicate error
             rpc_res['err'] = repr(e)
-            rpc_res['ret'] = None
+            rpc_res['out'] = None
+            rpc_res['ret'] = 1
             self._log.exception('control cmd failed')
-
-        else:
-            # request succeeded - respond with return value
-            rpc_res['err'] = None
-            rpc_res['ret'] = ret
 
         # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
@@ -784,10 +790,14 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
-        etype = env_spec['type']
-        evers = env_spec['version']
+        self._log.debug('env_spec: %s', env_spec)
+
+        etype = env_spec.get('type', 'venv')
+        evers = env_spec.get('version', '')
+        path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
+        out   = None
 
         pre_exec = '-P ". env/bs0_pre_0.sh" '
         for cmd in pre:
@@ -796,13 +806,24 @@ class Agent_0(rpu.Worker):
         if emods: mods = '-m "%s"' % ','.join(emods)
         else    : mods = ''
 
-        assert(etype == 'virtualenv')
-        assert(evers)
+      # assert etype == 'virtualenv'
+      # assert evers
+
+        # only create a new VE if path is not set or if it does not exist
+        if path:
+            path = path.rstrip('/')
+
+        ve_local_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
+        if path: ve_path = path
+        else   : ve_path = ve_local_path
+
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s/env/rp_named_env.%s -v %s %s %s ' \
-                 '| tee -a env.log 2>&1' \
-               % (rp_cse, self._pwd, env_name, evers, mods, pre_exec)
+        ve_cmd = '/bin/bash %s -d -p %s -t %s -v %s %s %s > env.log 2>&1' \
+               % (rp_cse, ve_path, etype, evers, mods, pre_exec)
+
+        # FIXME: we should export all sandboxes etc. to the prep_env.
+        os.environ['RP_RESOURCE_SANDBOX'] = '../../'
 
         self._log.debug('env cmd: %s', ve_cmd)
         out, err, ret = ru.sh_callout(ve_cmd, shell=True)
@@ -812,9 +833,16 @@ class Agent_0(rpu.Worker):
         if ret:
             raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
 
+        # if the ve lives outside of the pilot sandbox, link it
+        if path:
+            os.symlink(path,          ve_local_path)
+            os.symlink(path + '.env', ve_local_path + '.env')
+
+        self._log.debug('ve_path: %s', ve_path)
+
         # prepare the env to be loaded in task exec scripts
-        ve_path = '%s/env/rp_named_env.%s' % (self._pwd, env_name)
-        with ru.ru_open('%s.sh' % ve_path, 'w') as fout:
+        sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
+        with ru.ru_open(sh_path, 'w') as fout:
             fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler

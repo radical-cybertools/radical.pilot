@@ -9,7 +9,7 @@ import radical.utils as ru
 from .continuous import Continuous
 
 from ... import states    as rps
-from ... import task_description as rpcud
+from ... import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ class ContinuousColo(Continuous):
                 return
 
             # this uniit wants to be ordered - keep it in our registry
-            assert(uid not in self._tasks), 'duplicated task %s' % uid
+            assert uid not in self._tasks, 'duplicated task %s' % uid
             self._tasks[uid] = task
 
             bag   = colo_tag['bag']
@@ -98,7 +98,7 @@ class ContinuousColo(Continuous):
                 self._bags[bag]['size'] = size
 
             else:
-                assert(size == self._bags[bag]['size']), \
+                assert size == self._bags[bag]['size'], \
                        'inconsistent bag size'
 
             # add task to order
@@ -177,7 +177,7 @@ class ContinuousColo(Continuous):
             # delete all bags which have been pushed out
             for bag in to_delete:
 
-                del(self._bags[bag])
+                del self._bags[bag]
 
 
         # advance all scheduled tasks and push them out
@@ -208,13 +208,13 @@ class ContinuousColo(Continuous):
         pseudo['uid'] = 'pseudo.'
 
         descr = pseudo['description']
-        descr['cpu_process_type'] = rpcud.POSIX  # force single node
-        descr['cpu_thread_type']  = rpcud.POSIX
+        descr['cpu_process_type'] = rpc.POSIX  # force single node
+        descr['cpu_thread_type']  = rpc.POSIX
         descr['cpu_processes']    = 0
         descr['cpu_threads']      = 1
 
-        descr['gpu_process_type'] = rpcud.POSIX  # force single node
-        descr['gpu_thread_type']  = rpcud.POSIX
+        descr['gpu_process_type'] = rpc.POSIX  # force single node
+        descr['gpu_thread_type']  = rpc.POSIX
         descr['gpu_processes']    = 0
         descr['gpu_threads']      = 1
 

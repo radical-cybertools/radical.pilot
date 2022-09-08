@@ -29,15 +29,6 @@ echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
 
-# create a `deactivate` script
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
 then
@@ -129,10 +120,10 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e
 VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
-"pyzmq netifaces setproctitle msgpack regex"
+"pyzmq netifaces setproctitle msgpack regex dill"
 
 VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
-"zmq netifaces setproctitle msgpack regex"
+"zmq netifaces setproctitle msgpack regex dill"
 
 if ! test -z "$RADICAL_DEBUG"
 then
@@ -473,6 +464,14 @@ rehash()
     else
         PYTHON="$explicit_python"
     fi
+
+    if test -z "$PYTHON"
+    then
+        echo "ERROR: no python"
+        env_dump no_python.env
+        exit 1
+    fi
+
     PYTHON_VERSION=`$PYTHON -c 'from distutils.sysconfig import get_python_version; print(get_python_version())'`
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
@@ -520,7 +519,7 @@ rehash()
 verify_install()
 {
     echo -n "verify python viability: $PYTHON ..."
-    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (3,5))'
+    if ! $PYTHON -c 'import sys; assert sys.version_info >= (3,5)'
     then
         echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
@@ -1097,7 +1096,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation '$dep'" \
+                "$PIP --no-cache-dir install '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1124,7 +1123,7 @@ virtenv_update()
     #       modules on india etc.
     for dep in $VIRTENV_RADICAL_DEPS
     do
-        run_cmd "install $dep" \
+        run_cmd "install '$dep'" \
                 "$PIP install --upgrade $dep" \
              || echo "Couldn't update $dep! Lets see how far we get ..."
     done
@@ -1721,6 +1720,13 @@ create_deactivate
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
 
+if test -z "$PILOT_SCRIPT"
+then
+    echo "ERROR: rp installation incomplete?"
+    env_dump > env.rp.error
+    exit 1
+fi
+
 
 # after all is said and done, we should end up with a usable python version.
 # Verify it
@@ -1798,7 +1804,7 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && ! test -z $(which conda)
+if test "$PYTHON_DIST" = "anaconda" && ! test -z "\$(which conda)"
 then
     eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV

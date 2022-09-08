@@ -4,7 +4,7 @@
         "project"  : null,
         "queue"    : null,
         "schema"   : null,
-        "cores"    : 1,
+        "cores"    : 32,
         "gpus"     : 0
     },
 
@@ -38,13 +38,6 @@
         "cores"    : 64
     },
 
-    "local.localhost_funcs" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : "local",
-        "cores"    : 16
-    },
-
     "local.local" : {
         "project"  : null,
         "queue"    : null,
@@ -65,6 +58,13 @@
         "queue"    : "debug",
         "schema"   : "ssh",
         "cores"    : 64
+    },
+
+    "xsede.expanse": {
+        "project"  : "UNC100",
+        "queue"    : "compute",
+        "schema"   : "local",
+        "cores"    : 128
     },
 
     "xsede.supermic_ssh" : {
@@ -127,7 +127,7 @@
     "xsede.bridges2" : {
         "project"  : null,
         "queue"    : "RM",
-        "schema"   : "gsissh",
+        "schema"   : "local",
         "cores"    : 128
     },
 

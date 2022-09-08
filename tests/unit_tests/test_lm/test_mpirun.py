@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
@@ -21,6 +23,7 @@ class TestMPIRun(TestCase):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun.name = 'mpirun'
+        lm_mpirun._log = mock.Mock()
 
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_mpirun.name.lower()
@@ -47,6 +50,7 @@ class TestMPIRun(TestCase):
                                          mocked_mpi_info, mocked_init):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun._log = mock.Mock()
 
         for _flag in ['mpt', 'rsh']:
             lm_mpirun.name = 'mpirun_%s' % _flag
@@ -118,9 +122,18 @@ class TestMPIRun(TestCase):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
         lm_mpirun._env_sh = 'env/lm_mpirun.sh'
+        lm_mpirun._mpt    = False
 
         lm_env = lm_mpirun.get_launcher_env()
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_mpirun._env_sh, lm_env)
+        self.assertNotIn('export MPI_SHEPHERD=true', lm_env)
+
+        # special case - MPT
+        lm_mpirun._mpt = True
+
+        lm_env = lm_mpirun.get_launcher_env()
+        self.assertIn('export MPI_SHEPHERD=true', lm_env)
+
 
     # --------------------------------------------------------------------------
     #
@@ -139,11 +152,33 @@ class TestMPIRun(TestCase):
         test_cases = setUp('lm', 'mpirun')
         for task, result in test_cases:
 
+            lm_mpirun._mpi_flavor = task.get('mpi_flavor', 'unknown')
+
             command = lm_mpirun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
             command = lm_mpirun.get_rank_exec(task, None, None)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIRun, '__init__', return_value=None)
+    def test_get_rank_cmd(self, mocked_init):
+
+        lm_mpirun = MPIRun('', {}, None, None, None)
+        lm_mpirun._mpt = False
+
+        command = lm_mpirun.get_rank_cmd()
+        self.assertIn('$MPI_RANK', command)
+        self.assertIn('$PMIX_RANK', command)
+        self.assertNotIn('$MPT_MPI_RANK', command)
+
+        # special case - MPT
+        lm_mpirun._mpt = True
+
+        command = lm_mpirun.get_rank_cmd()
+        self.assertIn('$MPT_MPI_RANK', command)
 
 # ------------------------------------------------------------------------------
 
@@ -157,6 +192,7 @@ if __name__ == '__main__':
     tc.test_can_launch()
     tc.test_get_launcher_env()
     tc.test_get_launch_rank_cmds()
+    tc.test_get_rank_cmd()
 
 
 # ------------------------------------------------------------------------------

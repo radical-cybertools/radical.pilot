@@ -78,18 +78,18 @@ class RMInfo(ru.TypedDict):
     #
     def _verify(self):
 
-        assert(self['requested_nodes'  ])
-        assert(self['requested_cores'  ])
-        assert(self['requested_gpus'   ] is not None)
+        assert self['requested_nodes'  ]
+        assert self['requested_cores'  ]
+        assert self['requested_gpus'   ] is not None
 
-      # assert(self['partitions'       ] is not None)
-        assert(self['node_list'])
-        assert(self['agent_node_list'  ] is not None)
-        assert(self['service_node_list'] is not None)
+      # assert self['partitions'       ] is not None
+        assert self['node_list']
+        assert self['agent_node_list'  ] is not None
+        assert self['service_node_list'] is not None
 
-        assert(self['cores_per_node'   ])
-        assert(self['gpus_per_node'    ] is not None)
-        assert(self['threads_per_core' ] is not None)
+        assert self['cores_per_node'   ]
+        assert self['gpus_per_node'    ] is not None
+        assert self['threads_per_core' ] is not None
 
 
 # ------------------------------------------------------------------------------
@@ -199,7 +199,7 @@ class ResourceManager(object):
         be interpreted by the specific agent scheduler instance.
         '''
 
-        raise NotImplementedError('_update_node_info is not implemented')
+        raise NotImplementedError('_init_from_scratch is not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -209,19 +209,19 @@ class ResourceManager(object):
         rm_info = RMInfo()
 
         # fill well defined default attributes
-        rm_info.requested_nodes  = self._cfg['nodes']
-        rm_info.requested_cores  = self._cfg['cores']
-        rm_info.requested_gpus   = self._cfg['gpus']
-        assert rm_info.requested_cores
+        rm_info.requested_nodes  = self._cfg.nodes
+        rm_info.requested_cores  = self._cfg.cores
+        rm_info.requested_gpus   = self._cfg.gpus
+        rm_info.cores_per_node   = self._cfg.cores_per_node
+        rm_info.gpus_per_node    = self._cfg.gpus_per_node
+        rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
+        rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
-        rcfg = self._cfg['resource_cfg']
-        rm_info.cores_per_node   = rcfg.get('cores_per_node',    0)
-        rm_info.gpus_per_node    = rcfg.get('gpus_per_node',     0)
-        rm_info.mem_per_node     = rcfg.get('mem_per_node',      0)
-        rm_info.lfs_per_node     = rcfg.get('lfs_size_per_node', 0)
-        rm_info.lfs_path         = ru.expand_env(rcfg.get('lfs_path_per_node'))
+        rcfg = self._cfg.resource_cfg
+        rm_info.mem_per_node     = rcfg.mem_per_node or 0
+        rm_info.threads_per_core = rcfg.get('system_architecture', {}).\
+                                        get('smt', 1)
 
-        rm_info.threads_per_core = int(os.environ.get('RADICAL_SAGA_SMT', 1))
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
 
@@ -241,7 +241,7 @@ class ResourceManager(object):
                               n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
-        assert (alloc_nodes >= rm_info.requested_nodes)
+        assert alloc_nodes >= rm_info.requested_nodes
 
         # however, the config can override core and gpu detection,
         # and decide to block some resources
@@ -259,15 +259,15 @@ class ResourceManager(object):
             for node in rm_info.node_list:
 
                 for idx in blocked_cores:
-                    assert(len(node['cores']) > idx)
+                    assert len(node['cores']) > idx
                     node['cores'][idx] = rpc.DOWN
 
                 for idx in blocked_gpus:
-                    assert(len(node['gpus']) > idx)
+                    assert len(node['gpus']) > idx
                     node['gpus'][idx] = rpc.DOWN
 
-        assert (alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores)
-        assert (alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus)
+        assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
+        assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -291,7 +291,7 @@ class ResourceManager(object):
                 for _ in range(agent_nodes):
                     rm_info.agent_node_list.append(rm_info.node_list.pop())
 
-            assert(agent_nodes == len(rm_info.agent_node_list))
+            assert agent_nodes == len(rm_info.agent_node_list)
 
         if service_nodes:
 
@@ -299,7 +299,7 @@ class ResourceManager(object):
                 for _ in range(service_nodes):
                     rm_info.service_node_list.append(rm_info.node_list.pop())
 
-            assert(service_nodes == len(rm_info.service_node_list))
+            assert service_nodes == len(rm_info.service_node_list)
 
         self._log.info('compute nodes: %s' % len(rm_info.node_list))
         self._log.info('agent   nodes: %s' % len(rm_info.agent_node_list))
@@ -331,12 +331,12 @@ class ResourceManager(object):
                 self._log.debug('prepare lm %s', name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
+                lm_cfg['resource']    = self._cfg.resource
                 self._launchers[name] = rpa.LaunchMethod.create(
                     name, lm_cfg, rm_info, self._log, self._prof)
 
             except:
                 self._log.exception('skip LM %s' % name)
-                print('skip', name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
@@ -469,7 +469,7 @@ class ResourceManager(object):
             with ru.ru_open(fname, 'r') as fin:
                 for line in fin.readlines():
                     node = line.strip()
-                    assert(' ' not in node)
+                    assert ' ' not in node
                     if node in nodes: nodes[node] += 1
                     else            : nodes[node]  = 1
 

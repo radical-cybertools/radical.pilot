@@ -285,13 +285,19 @@ class Default(TMGRStagingInputComponent):
         self._prof.prof("create_sandbox_start", uid=uid)
 
         src_context = {'pwd'      : os.getcwd(),                # !!!
+                       'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
-                       'resource' : task['resource_sandbox']}
+                       'session'  : task['session_sandbox'],
+                       'resource' : task['resource_sandbox'],
+                       'endpoint' : task['endpoint_fs']}
         tgt_context = {'pwd'      : task['task_sandbox'],       # !!!
+                       'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
-                       'resource' : task['resource_sandbox']}
+                       'session'  : task['session_sandbox'],
+                       'resource' : task['resource_sandbox'],
+                       'endpoint' : task['endpoint_fs']}
 
         # we have actionable staging directives, and thus we need a task
         # sandbox.

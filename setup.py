@@ -193,9 +193,10 @@ df = [('%s/'                      % base, ['docs/source/events.md']),
       ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
       ('%s/examples'              % base, glob.glob('examples/hello*')),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
-      ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
-      ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
-      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
+      ('%s/examples/docs'         % base, glob.glob('examples/docs/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.cfg')),
+      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*.py')),
 ]
 
 
@@ -233,7 +234,6 @@ setup_args = {
     'package_dir'        : {'': 'src'},
     'scripts'            : [
                             'bin/radical-pilot-agent',
-                            'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
@@ -246,6 +246,7 @@ setup_args = {
                             'bin/radical-pilot-fetch-json',
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-profiles',
+                            'bin/radical-pilot-hello.sh',
                             'bin/radical-pilot-inspect',
                             'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',
@@ -264,7 +265,8 @@ setup_args = {
                             'radical.saga>=1.12',
                             'radical.gtod',
                             'pymongo<4',
-                            'setproctitle'
+                            'setproctitle',
+                            'dill'
                            ],
     'tests_require'      : ['pytest',
                             'pylint',
