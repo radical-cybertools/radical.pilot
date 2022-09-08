@@ -35,9 +35,10 @@ PWD = os.getcwd()
 #
 class LaunchMethod(object):
 
-    MPI_FLAVOR_OMPI    = 'OMPI'
-    MPI_FLAVOR_HYDRA   = 'HYDRA'
-    MPI_FLAVOR_UNKNOWN = 'unknown'
+    MPI_FLAVOR_OMPI     = 'OMPI'
+    MPI_FLAVOR_HYDRA    = 'HYDRA'
+    MPI_FLAVOR_SPECTRUM = 'SPECTRUM'
+    MPI_FLAVOR_UNKNOWN  = 'unknown'
 
 
     # --------------------------------------------------------------------------
@@ -278,6 +279,10 @@ class LaunchMethod(object):
                 elif '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
+
+                elif 'ibm spectrum mpi' in line.lower():
+                    version = line.split(')', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_SPECTRUM
 
                 elif 'version' in line.lower():
                     version = line.lower().split('version')[1].\
