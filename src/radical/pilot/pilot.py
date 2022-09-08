@@ -600,7 +600,7 @@ class Pilot(object):
         env_name: name of the environment to prepare (str)
         env_spec: specification of the environment to prepare (dict), like:
 
-            {'type'   : 'virtualenv',
+            {'type'   : 'venv',
              'version': '3.6',
              'setup'  : ['radical.pilot==1.0', 'pandas']},
 
@@ -616,16 +616,14 @@ class Pilot(object):
         pre_exec: command to be executed when creating the env
 
         where the `type` specifies the environment type, `version` specifies the
-        env version to deploy, and `setup` specifies how the environment is to
-        be prepared.  If `path` is specified the env will be created at that
+        Python version to deploy, and `setup` specifies how the environment is
+        to be prepared.  If `path` is specified the env will be created at that
         path.  If a VE exists at that path, it will be used as is (an update is
         not performed but might get implemented later if a use case calls for
         it).
 
-        At this point, the implementation only accepts `virtualenv` type
-        requests, where `version` specifies the Python version to use, and
-        `setup` is expected to be a list of module specifiers which need to be
-        installed into the environment.
+        Note: the `version` specifier is only interpreted up to minor version,
+        sibminor and less are ignored.
         '''
 
         self.rpc('prepare_env', {'env_name': env_name,
