@@ -73,13 +73,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, cfg='default'):
+    def __init__(self, session, uid=None, cfg='default'):
         '''
         Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
             * session [:class:`rp.Session`]:
               The session instance to use.
+            * uid (`string`):
+              ID for pilot manager, to be used for reconnect
             * cfg (`dict` or `string`):
               The configuration or name of configuration to use.
 
@@ -89,8 +91,14 @@ class PilotManager(rpu.Component):
 
         assert session.primary, 'pmgr needs primary session'
 
-        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
+        # initialize the base class (with no intent to fork)
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=session.uid)
 
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
@@ -134,6 +142,12 @@ class PilotManager(rpu.Component):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
+        if self._reconnect:
+            self._session._reconnect_pmgr(self)
+            self._reconnect_pilots()
+        else:
+            self._session._register_pmgr(self)
+
         # The output queue is used to forward submitted pilots to the
         # launching component.
         self.register_output(rps.PMGR_LAUNCHING_PENDING,
@@ -157,9 +171,6 @@ class PilotManager(rpu.Component):
 
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_pmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -200,6 +211,7 @@ class PilotManager(rpu.Component):
 
         **Arguments:**
             * **terminate** [`bool`]: cancel non-final pilots if True (default)
+              NOTE: pilots cannot be reconnected to after termination
         """
 
         if self._closed:
@@ -218,7 +230,6 @@ class PilotManager(rpu.Component):
             self.cancel_pilots(_timeout=20)
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
-
 
         self._terminate.set()
         self._cmgr.close()
@@ -628,6 +639,30 @@ class PilotManager(rpu.Component):
 
         if ret_list: return pilots
         else       : return pilots[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_pilots(self):
+        '''
+        When reconnecting, we need to dig information about all pilots from the
+        DB for which this pmgr is responsible.
+        '''
+
+        from .pilot             import Pilot
+        from .pilot_description import PilotDescription
+
+      # self.is_valid()
+
+        pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+
+        with self._pilots_lock:
+            for ud in pilot_docs:
+
+                descr = PilotDescription(ud['description'])
+                pilot = Pilot(pmgr=self, descr=descr)
+
+                self._pilots[pilot.uid] = pilot
 
 
     # --------------------------------------------------------------------------
