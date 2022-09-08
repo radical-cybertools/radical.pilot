@@ -111,7 +111,7 @@ def get_resource_configs() -> ru.Config:
         _rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
 
     # return a deep copy
-    return ru.Config(cfg=_rcfgs)
+    return ru.Config(from_dict=_rcfgs)
 
 
 # ------------------------------------------------------------------------------
@@ -172,23 +172,13 @@ def get_resource_fs_url(resource: str,
         specified resource label and access schema.
     '''
 
-    # populate cache
-    if not _rcfgs:
-        get_resource_configs()
-
-    site, host = resource.split('.', 1)
-
-    if site not in _rcfgs:
-        return None
-
-    if host not in _rcfgs[site]:
-        return None
+    rcfg = get_resource_config(resource)
 
     if not schema:
-        schema = _rcfgs[site][host]['schemas'][0]
+        schema = rcfg['schemas'][0]
 
     # return a deep copy
-    return ru.Url(_rcfgs[site][host][schema]['filesystem_endpoint'])
+    return ru.Url(rcfg[schema]['filesystem_endpoint'])
 
 
 # ------------------------------------------------------------------------------
@@ -214,23 +204,13 @@ def get_resource_job_url(resource: str,
         specified resource label and access schema.
     '''
 
-    # populate cache
-    if not _rcfgs:
-        get_resource_configs()
-
-    site, host = resource.split('.', 1)
-
-    if site not in _rcfgs:
-        return None
-
-    if host not in _rcfgs[site]:
-        return None
+    rcfg = get_resource_config(resource)
 
     if not schema:
-        schema = _rcfgs[site][host]['schemas'][0]
+        schema = rcfg['schemas'][0]
 
     # return a deep copy
-    return ru.Url(_rcfgs[site][host][schema]['job_manager_endpoint'])
+    return ru.Url(rcfg[schema]['job_manager_endpoint'])
 
 
 # ------------------------------------------------------------------------------
