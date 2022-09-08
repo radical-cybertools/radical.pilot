@@ -16,6 +16,8 @@ from radical.pilot.session import Session
 #
 class TestSession(TestCase):
 
+    _cleanup_files = []
+
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -23,19 +25,25 @@ class TestSession(TestCase):
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
-    def setUpClass(cls, *args, **kwargs):
+    def setUpClass(cls, *args, **kwargs) -> None:
+
         cls._session = Session()
+        cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def tearDownClass(cls):
-        for d in glob.glob('./rp.session.*'):
-            if os.path.isdir(d):
-                try:
-                    shutil.rmtree(d)
-                except OSError as e:
-                    print('[ERROR] %s - %s' % (e.filename, e.strerror))
+    def tearDownClass(cls) -> None:
+
+        for p in cls._cleanup_files:
+            for f in glob.glob(p):
+                if os.path.isdir(f):
+                    try:
+                        shutil.rmtree(f)
+                    except OSError as e:
+                        print('[ERROR] %s - %s' % (e.filename, e.strerror))
+                else:
+                    os.unlink(f)
 
     # --------------------------------------------------------------------------
     #
