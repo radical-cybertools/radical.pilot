@@ -24,7 +24,8 @@
                                     "core_map"  : [[0]],
                                     "gpu_map"   : [[0]],
                                     "lfs"       : 0}]
-            }
+            },
+            "mpi_flavor": "SPECTRUM"
         }
     },
 
@@ -38,7 +39,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun": {
-                "launch_cmd" : "mpirun  -np 1   -host node1",
+                "launch_cmd" : "mpirun  -gpu -np 1   -host node1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "ibrun" : {
