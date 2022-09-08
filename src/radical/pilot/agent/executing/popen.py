@@ -52,18 +52,6 @@ class Popen(AgentExecutingComponent):
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
 
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-      # session._log.debug('popen init start')
-        AgentExecutingComponent.__init__(self, cfg, session)
-
-        self._proc_term = mt.Event()
-      # session._log.debug('popen init stop')
-
-
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -84,13 +72,6 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        # FIXME: should be moved to base class `AgentExecutingComponent`?
-        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -411,7 +392,7 @@ class Popen(AgentExecutingComponent):
     def _watch(self):
 
         try:
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 tasks = list()
                 try:
