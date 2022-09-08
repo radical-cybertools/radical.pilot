@@ -109,13 +109,19 @@ class Default(TMGRStagingOutputComponent):
         uid = task['uid']
 
         src_context = {'pwd'      : task['task_sandbox'],       # !!!
+                       'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
-                       'resource' : task['resource_sandbox']}
+                       'session'  : task['session_sandbox'],
+                       'resource' : task['resource_sandbox'],
+                       'endpoint' : task['endpoint_fs']}
         tgt_context = {'pwd'      : os.getcwd(),                # !!!
+                       'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
-                       'resource' : task['resource_sandbox']}
+                       'session'  : task['session_sandbox'],
+                       'resource' : task['resource_sandbox'],
+                       'endpoint' : task['endpoint_fs']}
 
         # url used for cache (sandbox url w/o path)
         tmp      = rs.Url(task["task_sandbox"])

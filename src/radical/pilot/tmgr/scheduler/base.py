@@ -339,12 +339,13 @@ class TMGRSchedulingComponent(rpu.Component):
 
         self._log.debug('assign %s to %s', uid, pid)
 
-        task['pilot'           ] = pid
-        task['client_sandbox'  ] = str(self._session._get_client_sandbox())
-        task['resource_sandbox'] = str(self._session._get_resource_sandbox(pilot))
-        task['pilot_sandbox'   ] = str(self._session._get_pilot_sandbox(pilot))
-        task['task_sandbox'    ] = str(self._session._get_task_sandbox(task, pilot))
-
+        task['pilot'            ] = pid
+        task['client_sandbox'   ] = str(self._session._get_client_sandbox())
+        task['endpoint_fs'      ] = str(self._session._get_endpoint_fs(pilot))
+        task['resource_sandbox' ] = str(self._session._get_resource_sandbox(pilot))
+        task['session_sandbox'  ] = str(self._session._get_session_sandbox(pilot))
+        task['pilot_sandbox'    ] = str(self._session._get_pilot_sandbox(pilot))
+        task['task_sandbox'     ] = str(self._session._get_task_sandbox(task, pilot))
         task['task_sandbox_path'] = ru.Url(task['task_sandbox']).path
 
         with self._tasks_lock:
