@@ -202,8 +202,17 @@ class MPIRun(LaunchMethod):
         if self._mpt: np = 1
         else        : np = len(host_list)
 
-        cmd = '%s %s %s -np %d %s %s %s %s' % \
-            (self._ccmrun, self._command, mpt_hosts_string, np,
+        options = ''
+        if td.get('gpu_processes') \
+                and self._mpi_flavor == self.MPI_FLAVOR_SPECTRUM:
+            # https://on-demand.gputechconf.com/gtc/2018/presentation/
+            # s8314-multi-gpu-programming-with-mpi.pdf - s.18
+            options = '-gpu '
+
+        options += '-np %d' % np
+
+        cmd = '%s %s %s %s %s %s %s %s' % \
+            (self._ccmrun, self._command, mpt_hosts_string, options,
              self._dplace, self._omplace, hosts_string, exec_path)
 
         return cmd.strip()
