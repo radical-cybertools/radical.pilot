@@ -84,7 +84,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, cfg='default', scheduler=None):
+    def __init__(self, session, cfg='default', scheduler=None, uid=None):
         """
         Creates a new TaskManager and attaches it to the session.
 
@@ -95,13 +95,21 @@ class TaskManager(rpu.Component):
               The configuration or name of configuration to use.
             * scheduler (`string`):
               The name of the scheduler plug-in to use.
+            * uid (`string`):
+              ID for unit manager, to be used for reconnect
 
         **Returns:**
             * A new `TaskManager` object [:class:`radical.pilot.TaskManager`].
         """
 
-        self._uid         = ru.generate_id('tmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
+        # initialize the base class (with no intent to fork)
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('tmgr.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=session.uid)
 
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
@@ -117,7 +125,7 @@ class TaskManager(rpu.Component):
             self._callbacks[m] = dict()
 
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
-        #       a predefined config and amed it at the same time.  This might
+        #       a predefined config and name it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
         #
         name = None
@@ -125,19 +133,19 @@ class TaskManager(rpu.Component):
             name = cfg
             cfg  = None
 
-        cfg           = ru.Config('radical.pilot.tmgr', name=name, cfg=cfg)
-        cfg.uid       = self._uid
-        cfg.owner     = self._uid
-        cfg.sid       = session.uid
-        cfg.base      = session.base
-        cfg.path      = session.path
-        cfg.dburl     = session.dburl
-        cfg.heartbeat = session.cfg.heartbeat
+        cfg                = ru.Config('radical.pilot.tmgr', name=name, cfg=cfg)
+        cfg.uid            = self._uid
+        cfg.owner          = self._uid
+        cfg.sid            = session.uid
+        cfg.base           = session.base
+        cfg.path           = session.path
+        cfg.dburl          = session.dburl
+        cfg.heartbeat      = session.cfg.heartbeat
+        cfg.client_sandbox = session._get_client_sandbox()
 
         if scheduler:
             # overwrite the scheduler from the config file
             cfg.scheduler = scheduler
-
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
@@ -149,6 +157,13 @@ class TaskManager(rpu.Component):
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
+
+        # let session know we exist
+        if self._reconnect:
+            self._session._reconnect_tmgr(self)
+            self._reconnect_tasks()
+        else:
+            self._session._register_tmgr(self)
 
         # The output queue is used to forward submitted tasks to the
         # scheduling component.
@@ -176,9 +191,6 @@ class TaskManager(rpu.Component):
 
         # also listen to the state pubsub for task state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_tmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -872,6 +884,32 @@ class TaskManager(rpu.Component):
 
         if ret_list: return tasks
         else       : return tasks[0]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_tasks(self):
+        '''
+        When reconnecting, we need to dig information about all tasks from the
+        DB for which this tmgr is responsible.
+        '''
+
+        from .task             import Task
+        from .task_description import TaskDescription
+
+        task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
+
+        with self._tasks_lock:
+
+            for doc in task_docs:
+
+                descr = TaskDescription(doc['description'])
+                descr.uid = doc['uid']
+
+                task = Task(tmgr=self, descr=descr, origin='client')
+                task._update(doc, reconnect=True)
+
+                self._tasks[task.uid] = task
 
 
     # --------------------------------------------------------------------------
