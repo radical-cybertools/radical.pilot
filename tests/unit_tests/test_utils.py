@@ -18,17 +18,22 @@ import radical.pilot.utils.misc       as rpu_misc
 #
 class TestUtils(TestCase):
 
+    _cleanup_files = []
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def tearDownClass(cls):
-        for p in ['./rp.session.*', '/tmp/rp_cache_*']:
-            for d in glob.glob(p):
-                if os.path.isdir(d):
+    def tearDownClass(cls) -> None:
+
+        for p in cls._cleanup_files:
+            for f in glob.glob(p):
+                if os.path.isdir(f):
                     try:
-                        shutil.rmtree(d)
+                        shutil.rmtree(f)
                     except OSError as e:
                         print('[ERROR] %s - %s' % (e.filename, e.strerror))
+                else:
+                    os.unlink(f)
 
     # --------------------------------------------------------------------------
     #
@@ -108,7 +113,7 @@ class TestUtils(TestCase):
         with self.assertRaises(AssertionError):
             rpu_db.get_session_docs('unknown_sid', db=None, cachedir=None)
 
-        sid = 'rp.session.0000'
+        sid = 'rp.session.test_rputils.0000'
         ru.rec_makedir(sid)
 
         session_json = {
@@ -121,9 +126,11 @@ class TestUtils(TestCase):
 
         cache = os.path.join(rpu_db._CACHE_BASEDIR, '%s.json' % sid)
 
-        # no cache dir and no cache file
-        self.assertFalse(os.path.exists(rpu_db._CACHE_BASEDIR))
+        # no cache file
         self.assertFalse(os.path.exists(cache))
+        # if cache dir doesn't exist then set it for "cleanup"
+        if not os.path.exists(rpu_db._CACHE_BASEDIR):
+            self._cleanup_files.append(rpu_db._CACHE_BASEDIR)
 
         json_data = rpu_db.get_session_docs(sid, db=None, cachedir=None)
 
@@ -131,8 +138,15 @@ class TestUtils(TestCase):
         self.assertTrue(os.path.isfile(cache))
         self.assertEqual(json_data, ru.read_json(cache))
 
+        self.assertEqual(session_json['pilot'][0]['uid'],
+                         json_data['pilot'][0]['uid'])
+        self.assertIn('task_ids', json_data['pilot'][0])
+
         # read from cache
         self.assertEqual(json_data, rpu_db.get_session_docs(sid))
+
+        # set dirs and files for cleanup
+        self._cleanup_files.extend([sid, cache])
 
     # --------------------------------------------------------------------------
     #
