@@ -28,6 +28,10 @@ class TestLauncher(TestCase):
                 self.sid = 'sid.0'
                 self.cfg = ru.Config(cfg={'dburl': 'db://'})
 
+            def _get_endpoint_fs(self, pilot):
+                return ru.Url(pilot['description'].get('endpoint_fs') or
+                              '/')
+
             def _get_resource_sandbox(self, pilot):
                 return ru.Url(pilot['description'].get('sandbox') or
                               '/resource/sandbox')

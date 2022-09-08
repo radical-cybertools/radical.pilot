@@ -76,6 +76,7 @@ class DBSession(object):
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True
+
         else:
             docs = self._c.find({'type' : 'session',
                                  'uid'  : sid})
@@ -144,7 +145,7 @@ class DBSession(object):
     @property
     def is_connected(self):
 
-        return (self._connected is None)
+        return (self._connected is not None)
 
 
     # --------------------------------------------------------------------------
@@ -187,6 +188,35 @@ class DBSession(object):
         # FIXME: evaluate retval
         self._c.insert(ru.as_dict(pmgr_doc))
 
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_pmgrs(self, pmgr_ids=None):
+        '''
+        Get pilot manager docs
+        '''
+
+        if self.closed:
+            raise Exception('No active session.')
+
+
+        if not pmgr_ids:
+            cursor = self._c.find({'type' : 'pmgr'})
+
+        else:
+            if not isinstance(pmgr_ids, list):
+                pmgr_ids = [pmgr_ids]
+
+            cursor = self._c.find({'type' : 'pmgr',
+                                   'uid'  : {'$in': pmgr_ids}})
+
+        # make sure we return every pmgr doc only once
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
+        docs = ret.values()
+
+        return docs
 
 
     # --------------------------------------------------------------------------
@@ -413,6 +443,36 @@ class DBSession(object):
 
         # FIXME: evaluate retval
         self._c.insert(ru.as_dict(tmgr_doc))
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_tmgrs(self, tmgr_ids=None):
+        '''
+        Get task manager docs
+        '''
+
+        if self.closed:
+            raise Exception('No active session.')
+
+
+        if not tmgr_ids:
+            cursor = self._c.find({'type' : 'tmgr'})
+
+        else:
+            if not isinstance(tmgr_ids, list):
+                tmgr_ids = [tmgr_ids]
+
+            cursor = self._c.find({'type' : 'tmgr',
+                                   'uid'  : {'$in': tmgr_ids}})
+
+        # make sure we return every tmgr doc only once
+        # https://www.quora.com/How-did-mongodb-return-duplicated-but-different-documents
+        ret  = {doc['uid'] : doc for doc in cursor}
+        docs = ret.values()
+
+        return docs
 
 
     # --------------------------------------------------------------------------
