@@ -93,7 +93,7 @@ class TestContinuous(TestCase):
             component._tagged_nodes = set()
             component._node_offset  = 0
             component._partitions   = {}
-            component._proc_term    = mp.Event()
+            component._term         = mp.Event()
             component._queue_sched  = mp.Queue()
             component._waitpool     = {}
 
