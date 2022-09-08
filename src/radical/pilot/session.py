@@ -142,7 +142,8 @@ class Session(rs.Session):
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
-        self._cache      = {'resource_sandbox' : dict(),
+        self._cache      = {'endpoint_fs'      : dict(),
+                            'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
                             'client_sandbox'   : self._cfg.client_sandbox,
@@ -198,6 +199,8 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
+        import pprint
+        self._log.debug('cmgr cfg: %s', pprint.pformat(self._cfg))
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
@@ -495,6 +498,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pmgr(self, pmgr):
+
+        if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
+            raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
+
+        self._pmgrs[pmgr.uid] = pmgr
+
+
+    # --------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         '''
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
@@ -540,6 +553,16 @@ class Session(rs.Session):
     def _register_tmgr(self, tmgr):
 
         self._dbs.insert_tmgr(tmgr.as_dict())
+        self._tmgrs[tmgr.uid] = tmgr
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_tmgr(self, tmgr):
+
+        if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
+            raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
+
         self._tmgrs[tmgr.uid] = tmgr
 
 
@@ -836,24 +859,43 @@ class Session(rs.Session):
 
         pid = pilot['uid']
         with self._cache_lock:
-            if  pid in self._cache['pilot_sandbox']:
-                return self._cache['pilot_sandbox'][pid]
 
-        # cache miss
-        session_sandbox     = self._get_session_sandbox(pilot)
-        pilot_sandbox       = rs.Url(session_sandbox)
-        pilot_sandbox.path += '/%s/' % pilot['uid']
+            if pid not in self._cache['pilot_sandbox']:
+
+                # cache miss
+                session_sandbox     = self._get_session_sandbox(pilot)
+                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox.path += '/%s/' % pilot['uid']
+
+                self._cache['pilot_sandbox'][pid] = pilot_sandbox
+
+            return self._cache['pilot_sandbox'][pid]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_endpoint_fs(self, pilot):
+
+        # FIXME: this should get 'resource, schema=None' as parameters
+
+        resource = pilot['description'].get('resource')
+
+        if not resource:
+            raise ValueError('Cannot get endpoint filesystem w/o resource target')
 
         with self._cache_lock:
-            self._cache['pilot_sandbox'][pid] = pilot_sandbox
 
-        return pilot_sandbox
+            if resource not in self._cache['endpoint_fs']:
 
+                # cache miss
+                resource_sandbox  = self._get_resource_sandbox(pilot)
+                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs.path  = ''
 
-    def _get_pilot_fs_endpoint(self, pilot):
-        fs_url = ru.Url(self._get_resource_sandbox(pilot))
-        fs_url.path = '/'
-        return fs_url
+                self._cache['endpoint_fs'][resource] = endpoint_fs
+
+            return self._cache['endpoint_fs'][resource]
+
 
     # --------------------------------------------------------------------------
     #
