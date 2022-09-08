@@ -1,4 +1,6 @@
 
+# pylint: disable=global-statement
+
 import os
 import time
 
