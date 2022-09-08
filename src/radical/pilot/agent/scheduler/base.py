@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
@@ -235,7 +235,7 @@ class AgentSchedulingComponent(rpu.Component):
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
         self._queue_unsched = mp.Queue()
-        self._proc_term     = mp.Event()  # signal termination of scheduler proc
+        self._term          = mp.Event()  # reassign Event (multiprocessing)
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
@@ -264,7 +264,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
-        self._proc_term.set()
         self._p.terminate()
 
 
@@ -529,7 +528,7 @@ class AgentSchedulingComponent(rpu.Component):
         While handled by this component, the tasks will be in `AGENT_SCHEDULING`
         state.
 
-        This methods takes care of initial state change to `AGENT_SCHEDULING`,
+        This method takes care of initial state change to `AGENT_SCHEDULING`,
         and then puts them forward onto the queue towards the actual scheduling
         process (self._schedule_tasks).
         '''
@@ -619,7 +618,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_publisher(rpc.STATE_PUBSUB)
 
         resources = True  # fresh start, all is free
-        while not self._proc_term.is_set():
+        while not self._term.is_set():
 
             self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
                     len(self._waitpool))
@@ -748,7 +747,7 @@ class AgentSchedulingComponent(rpu.Component):
         to_raptor   = dict()  # some tasks get forwared to raptor
         try:
 
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 data = self._queue_sched.get(timeout=0.001)
 
@@ -898,7 +897,7 @@ class AgentSchedulingComponent(rpu.Component):
             # bulk optimization. For the 0.001 sleep, 128 as bulk size results
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
                 task = self._queue_unsched.get(timeout=0.01)
                 to_unschedule.append(task)
                 if len(to_unschedule) > 512:
