@@ -241,7 +241,7 @@ class ResourceManager(object):
                               n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
-        assert (alloc_nodes >= rm_info.requested_nodes)
+        assert alloc_nodes >= rm_info.requested_nodes
 
         # however, the config can override core and gpu detection,
         # and decide to block some resources
@@ -266,8 +266,8 @@ class ResourceManager(object):
                     assert len(node['gpus']) > idx
                     node['gpus'][idx] = rpc.DOWN
 
-        assert (alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores)
-        assert (alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus)
+        assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
+        assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -337,7 +337,6 @@ class ResourceManager(object):
 
             except:
                 self._log.exception('skip LM %s' % name)
-                print('skip', name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')

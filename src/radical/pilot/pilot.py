@@ -99,21 +99,21 @@ class Pilot(object):
         # query for those sandboxes.
         self._pilot_jsurl      = ru.Url()
         self._pilot_jshop      = ru.Url()
+        self._endpoint_fs      = ru.Url()
         self._resource_sandbox = ru.Url()
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
         self._client_sandbox   = ru.Url()
-        self._endpoint         = ru.Url()
 
         pilot = self.as_dict()
 
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
+        self._endpoint_fs      = self._session._get_endpoint_fs     (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         self._client_sandbox   = self._session._get_client_sandbox()
-        self._endpoint         = self._session._get_pilot_fs_endpoint(pilot)
 
         # contexts for staging url expansion
         # NOTE: no task sandboxes defined!
@@ -121,13 +121,15 @@ class Pilot(object):
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
                          'resource': self._resource_sandbox,
-                         'endpoint': self._endpoint,
-                         }
+                         'session' : self._session_sandbox,
+                         'endpoint': self._endpoint_fs}
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox}
+                         'resource': self._resource_sandbox,
+                         'session' : self._session_sandbox,
+                         'endpoint': self._endpoint_fs}
 
 
         # we need to expand plaaceholders in the sandboxes
@@ -144,6 +146,7 @@ class Pilot(object):
                 expand['pd.%s' % k.upper()] = v
                 expand['pd.%s' % k.lower()] = v
 
+        self._endpoint_fs     .path  = self._endpoint_fs     .path % expand
         self._resource_sandbox.path  = self._resource_sandbox.path % expand
         self._session_sandbox .path  = self._session_sandbox .path % expand
         self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
@@ -244,23 +247,24 @@ class Pilot(object):
         Returns a Python dictionary representation of the object.
         '''
 
-        ret = {'session':          self.session.uid,
-               'pmgr':             self.pmgr.uid,
-               'uid':              self.uid,
-               'type':             'pilot',
-               'state':            self.state,
-               'log':              self.log,
-               'stdout':           self.stdout,
-               'stderr':           self.stderr,
-               'resource':         self.resource,
-               'resource_sandbox': str(self._resource_sandbox),
-               'session_sandbox':  str(self._session_sandbox),
-               'pilot_sandbox':    str(self._pilot_sandbox),
-               'client_sandbox':   str(self._client_sandbox),
-               'js_url':           str(self._pilot_jsurl),
-               'js_hop':           str(self._pilot_jshop),
-               'description':      self.description,  # this is a deep copy
-               'resource_details': self.resource_details
+        ret = {'session'          : self.session.uid,
+               'pmgr'             : self.pmgr.uid,
+               'uid'              : self.uid,
+               'type'             : 'pilot',
+               'state'            : self.state,
+               'log'              : self.log,
+               'stdout'           : self.stdout,
+               'stderr'           : self.stderr,
+               'resource'         : self.resource,
+               'endpoint_fs'      : str(self._endpoint_fs),
+               'resource_sandbox' : str(self._resource_sandbox),
+               'session_sandbox'  : str(self._session_sandbox),
+               'pilot_sandbox'    : str(self._pilot_sandbox),
+               'client_sandbox'   : str(self._client_sandbox),
+               'js_url'           : str(self._pilot_jsurl),
+               'js_hop'           : str(self._pilot_jshop),
+               'description'      : self.description,  # this is a deep copy
+               'resource_details' : self.resource_details
               }
 
         return ret
@@ -432,6 +436,10 @@ class Pilot(object):
         if self._pilot_sandbox:
             return str(self._pilot_sandbox)
 
+
+    @property
+    def endpoint_fs(self):
+        return self._endpoint_fs
 
     @property
     def resource_sandbox(self):
@@ -661,6 +669,9 @@ class Pilot(object):
         # ask the pmgr to send the staging requests to the stager
         self._pmgr._pilot_staging_input(sds)
 
+        return [sd['target'] for sd in sds]
+
+
     # --------------------------------------------------------------------------
     #
     def stage_out(self, sds=None):
@@ -686,6 +697,8 @@ class Pilot(object):
 
         # ask the pmgr to send the staging reuests to the stager
         self._pmgr._pilot_staging_output(sds)
+
+        return [sd['target'] for sd in sds]
 
 
 # ------------------------------------------------------------------------------
