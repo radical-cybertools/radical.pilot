@@ -152,6 +152,8 @@ class TestMPIRun(TestCase):
         test_cases = setUp('lm', 'mpirun')
         for task, result in test_cases:
 
+            lm_mpirun._mpi_flavor = task.get('mpi_flavor', 'unknown')
+
             command = lm_mpirun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
