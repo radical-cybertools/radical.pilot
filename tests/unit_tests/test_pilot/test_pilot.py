@@ -27,6 +27,7 @@ class TestPilot(TestCase):
 
         session = pmgr._session
 
+        session._get_endpoint_fs      = mock.Mock(return_value = sandbox_url)
         session._get_resource_sandbox = mock.Mock(return_value = sandbox_url)
         session._get_session_sandbox  = mock.Mock(return_value = sandbox_url)
         session._get_pilot_sandbox    = mock.Mock(return_value = sandbox_url)
