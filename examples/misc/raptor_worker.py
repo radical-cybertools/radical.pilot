@@ -23,6 +23,7 @@ class MyWorker(rp.raptor.MPIWorker):
 
     # --------------------------------------------------------------------------
     #
+    # TODO: This does not appear to be used.
     def my_hello(self, uid, count=0):
         '''
         important work
@@ -63,4 +64,3 @@ class MyWorker(rp.raptor.MPIWorker):
 
 
 # ------------------------------------------------------------------------------
-

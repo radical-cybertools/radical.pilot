@@ -1,4 +1,29 @@
 #!/usr/bin/env python3
+"""Demonstrate the "raptor" features for remote Task management.
+
+This script and its supporting files may use relative file paths. Run from the
+directory in which you found it.
+
+Refer to the ``raptor.cfg`` file in the same directory for configurable run time details.
+
+By default, this example uses the ``local.localhost`` resource with the ``local``
+access scheme. Before running, confirm that you are able to ssh to localhost
+without being prompted for a password.
+
+In this example, we
+* Launch one or more raptor "master" task(s), which self-submits additional tasks.
+  (TODO: How do we check/confirm their results?)
+* Stage scripts to be used by a raptor "Worker" (TODO: unused?)
+* Provision a Python virtual environment with :py:func:`~radical.pilot.prepare_env`
+* Submit several tasks that will be routed through the master(s) to the worker(s).
+* Submit a non-raptor task in the same Pilot environment
+
+The raptor.cfg file should be adjusted to avoid oversubscribing your resources.
+In particular,
+TODO: what are the constraints of total cores, master cores, worker
+    and task cores with respect to each other? And what are the corresponding
+    TaskDescription fields?
+"""
 
 import os
 import sys
@@ -7,6 +32,11 @@ import radical.utils as ru
 import radical.pilot as rp
 
 from radical.pilot import PythonTask
+
+# We import `logging` after RADICAL components because RCT needs to modify the
+# logging module on import.
+import logging
+logging.basicConfig(level=logging.INFO)
 
 pytask = PythonTask.pythontask
 
@@ -47,52 +77,58 @@ def task_state_cb(task, state):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        cfg_file = './raptor.cfg'
+        cfg_file = os.path.join(os.path.dirname(__file__), 'raptor.cfg')
     else:
         cfg_file = sys.argv[1]
 
     cfg         = ru.Config(cfg=ru.read_json(cfg_file))
     sleep       = int(cfg.sleep)
-    cpn         = cfg.cpn
-    gpn         = cfg.gpn
+    cores_per_node         = cfg.cores_per_node
+    gpus_per_node         = cfg.gpus_per_node
     n_masters   = cfg.n_masters
     n_workers   = cfg.n_workers
-    masters_pn  = cfg.masters_pn
-    nodes_pw    = cfg.nodes_pw
+    masters_per_node  = cfg.masters_per_node
+    nodes_per_worker  = cfg.nodes_per_worker
     nodes_rp    = cfg.nodes_rp
     workload    = cfg.workload
     tasks_rp    = cfg.tasks_rp
     nodes_agent = cfg.nodes_agent
+
+    cores_per_task = cfg.cores_per_task
 
     # each master uses a node, and each worker on each master uses a node
     # use 8 additional cores for non-raptor tasks
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters * (cpn / masters_pn)
+        pd.cores   = n_masters * (cores_per_node / masters_per_node)
         pd.gpus    = 0
 
-        pd.cores  += n_masters * n_workers * cpn * nodes_pw
-        pd.gpus   += n_masters * n_workers * gpn * nodes_pw
+        pd.cores  += n_masters * n_workers * cores_per_node * nodes_per_worker
+        pd.gpus   += n_masters * n_workers * gpus_per_node * nodes_per_worker
 
-        pd.cores  += nodes_agent * cpn
-        pd.gpus   += nodes_agent * gpn
+        pd.cores  += nodes_agent * cores_per_node
+        pd.gpus   += nodes_agent * gpus_per_node
 
-        pd.cores  += nodes_rp * cpn
-        pd.gpus   += nodes_rp * gpn
+        pd.cores  += nodes_rp * cores_per_node
+        pd.gpus   += nodes_rp * gpus_per_node
 
         pd.runtime = cfg.runtime
 
+        pd.cores = 8
 
+        # Launch a raptor master task, which will launch workers and self-submit some
+        # additional tasks for illustration purposes.
         tds = list()
 
+        master_ids = [ru.generate_id('master.%(item_counter)06d', ru.ID_CUSTOM, ns=session.uid) for _ in range(n_masters)]
+        cores_per_master = cores_per_node // masters_per_node
         for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
-            td.uid            = ru.generate_id('master.%(item_counter)06d',
-                                               ru.ID_CUSTOM,
-                                               ns=session.uid)
+            td.uid            = master_ids[i]
             td.arguments      = [cfg_file, i]
-            td.cpu_threads    = int(cpn / masters_pn)
+            td.cpu_processes  = 1
+            td.cpu_threads = cores_per_master
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -111,52 +147,73 @@ if __name__ == '__main__':
         pmgr  = rp.PilotManager(session=session)
         tmgr  = rp.TaskManager(session=session)
         pilot = pmgr.submit_pilots(pd)
+        tmgr.add_pilots(pilot)
+
+        logging.info('Submitting raptor master(s): ' + ', '.join(t.uid for t in tds))
         task  = tmgr.submit_tasks(tds)
+        if not isinstance(task, list):
+            task = [task]
+
+        tmgr.wait_tasks(uids=[t.uid for t in task], state=rp.AGENT_EXECUTING)
 
       # pmgr.wait_pilots(uid=pilot.uid, state=[rp.PMGR_ACTIVE])
+        logging.info('Staging files for the worker `my_hello` command.')
+        # TODO: Where is this used?
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
+
+        # Issue an RPC to provision a Python virtual environment for the later raptor tasks.
+        # Note that we are telling prepare_env to install radical.pilot and radical.utils from
+        # sdist archives on the local filesystem. This only works for the default resource,
+        # local.localhost.
+        logging.info('Calling pilot.prepare_env()')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'venv',
-                                    'version': '3.8',
+                                    'version': f'{sys.version_info.major}.{sys.version_info.minor}',
                                     'path'   : '$RP_RESOURCE_SANDBOX/ve_raptor/',
-                                    'setup'  : ['$HOME/j/rp/',
-                                                '$HOME/j/ru/',
+                                    'setup'  : [rp.sdist_path,
+                                                ru.sdist_path,
                                                 'mpi4py']})
 
-        # submit some test tasks
         tds = list()
         for i in range(tasks_rp):
-
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.exe.c.%06d' % i,
-                'mode'            : rp.TASK_EXECUTABLE,
-                'scheduler'       : None,
-                'cpu_processes'   : 2,
+                'uid': 'task.exe.c.%06d' % i,
+                'mode': rp.TASK_EXECUTABLE,
+                'scheduler': None,
+                'cpu_processes': cores_per_task,
                 'cpu_process_type': rp.MPI,
-                'executable'      : '/bin/sh',
-                'arguments'       : ['-c',
-                                     "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]}))
+                'executable': '/bin/sh',
+                'arguments': ['-c',
+                              "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]
+            }))
+        logging.info('Submitting non-raptor task(s) that will execute independently of the master: '
+                     ', '.join(t.uid for t in tds))
+
+        # submit some test tasks that will be routed through the raptor master
+        # and which will execute in the named virtual environment we provisioned.
+        logging.info('Preparing additional raptor tasks.')
+        for i in range(tasks_rp):
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.1.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.2.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.3.%06d' % i,
@@ -164,72 +221,73 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_FUNCTION,
                 'function'        : 'my_hello',
                 'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=0)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'function'        : bson,
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'function'        : bson,
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EVAL,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'code'            :
                     'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exec.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXEC,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'code'            :
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.proc.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PROC,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.shell.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
-                'cpu_processes'   : 2,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler'       : 'master.%06d' % (i % n_masters)}))
+                'scheduler'       : master_ids[i % n_masters]}))
 
+        logging.info('Submitting tasks ' + ', '.join(t.uid for t in tds))
         tasks = tmgr.submit_tasks(tds)
 
-        tmgr.add_pilots(pilot)
+        logging.info('Waiting for tasks ' + ', '.join(t.uid for t in tds))
         tmgr.register_callback(task_state_cb)
         tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
@@ -241,4 +299,3 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-

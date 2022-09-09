@@ -10,9 +10,11 @@ import radical.pilot as rp
 from radical.pilot import PythonTask
 
 
-# This script has to run as a task within an pilot allocation, and is
-# a demonstration of a task overlay within the RCT framework.
-# It will:
+# This script has to run as a task within a pilot allocation, and is
+# a demonstration of a task overlay within the RCT framework. It is expected
+# to be staged and launched by the `raptor.py` script in the radical.pilot
+# examples/misc directory.
+# This master task will:
 #
 #   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
@@ -270,9 +272,9 @@ if __name__ == '__main__':
     cfg.rank     = int(sys.argv[2])
 
     n_workers  = cfg.n_workers
-    nodes_pw   = cfg.nodes_pw
-    cpn        = cfg.cpn
-    gpn        = cfg.gpn
+    nodes_per_worker   = cfg.nodes_per_worker
+    cores_per_node        = cfg.cores_per_node
+    gpus_per_node         = cfg.gpus_per_node
     descr      = cfg.worker_descr
     pwd        = os.getcwd()
 
@@ -289,8 +291,8 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    descr['cpu_processes'] = nodes_pw * cpn
-    descr['gpu_processes'] = nodes_pw * gpn
+    descr['cpu_processes'] = nodes_per_worker * cores_per_node
+    descr['gpu_processes'] = nodes_per_worker * gpus_per_node
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
@@ -308,4 +310,3 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-
