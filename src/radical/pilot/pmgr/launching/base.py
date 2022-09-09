@@ -286,13 +286,6 @@ class PMGRLaunchingComponent(rpu.Component):
         for pilot in pilots:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
-            if schema == 'interactive' and 'ornl' in resource:
-                smt_cmd = r""
-                smt_cmd += r"expr $(jsrun -n1 -bpacked:1 /bin/bash -c 'echo $OMP_PLACES') :"
-                smt_cmd += r" '.*\(.\)}' | tr 0 1;"
-                smt = ru.sh_callout(smt_cmd, shell=True)[0].strip()
-                os.environ["RADICAL_SMT"] = smt
-
             buckets[resource][schema].append(pilot)
 
         for resource in buckets:
@@ -987,7 +980,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
         jd_dict.file_transfer         = list()
-        jd_dict.environment           = dict()
+        jd_dict.environment           = {'RADICAL_SMT': smt}
         jd_dict.system_architecture   = dict(system_architecture)
 
         # job description environment variable(s) setup
