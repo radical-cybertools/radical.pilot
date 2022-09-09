@@ -809,7 +809,7 @@ class PMGRLaunchingComponent(rpu.Component):
                         requested_cores, requested_gpus)
 
         # set mandatory args
-        bs_args = ['-l', './bootstrap_0.sh']
+        bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
         # add dists to staging files, if needed:
         # don't stage on `rp_version==installed` or `virtenv_mode==local`
@@ -980,7 +980,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
         jd_dict.file_transfer         = list()
-        jd_dict.environment           = dict()
+        jd_dict.environment           = {'RP_PILOT_SANDBOX' : pilot_sandbox}
         jd_dict.system_architecture   = dict(system_architecture)
 
         # job description environment variable(s) setup
