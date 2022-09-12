@@ -113,38 +113,37 @@ def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
             PROFILES_TARBALL = '%s.prof.tbz' % pilot['uid']
             tarball_available = False
             try:
-                if  sandbox.is_file(PROFILES_TARBALL) and \
-                        sandbox.get_size(PROFILES_TARBALL):
-                    log.info("profiles tarball exists")
-                else:
-                    log.warn("profiles tarball doesnt exists! creating now.")
-                    # so lets create a tarball right now with SAGA JobService
-                    js_url = pilot['js_hop']
-                    log.debug('js  : %s', js_url)
-                    js = rs.job.Service(js_url, session=session)
-
-                    cmd = "cd %s; find . -name \\*.prof > profiles.lst; " \
-                          "tar cjf %s -T profiles.lst" % (sandbox.url.path, PROFILES_TARBALL)
-                    j = js.run_job(cmd)
-                    j.wait()
-                    log.debug('tarball cmd for profiles : %s', cmd)
-                    log.debug('tar result : %s\n---\n%s\n---\n%s',
-                              j.get_stdout_string(), j.get_stderr_string(),
-                              j.exit_code)
-                    if not j.exit_code:
-                        log.info("profiles tarball created successfully")
-                    else:
-                        log.warn("profiles tarball creation failed %s %s %s",
-                                 j.get_stdout_string(), j.get_stderr_string(),
-                                j.exit_code)
                 ftgt = rs.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
                 if skip_existing and os.path.isfile(ftgt.path) \
                         and os.stat(ftgt.path).st_size > 0:
-
                     log.info("skip fetching of '%s/%s' to '%s'.",
                              sandbox_url, PROFILES_TARBALL, tgt_url)
                     tarball_available = True
                 else:
+                    if sandbox.is_file(PROFILES_TARBALL) and \
+                            sandbox.get_size(PROFILES_TARBALL):
+                        log.info("profiles tarball exists in sandbox")
+                    else:
+                        log.warn("profiles tarball doesnt exists in sandbox! creating now.")
+                        # so lets create a tarball right now with SAGA JobService
+                        js_url = pilot['js_hop']
+                        log.debug('js  : %s', js_url)
+                        js = rs.job.Service(js_url, session=session)
+
+                        cmd = "cd %s; find . -name \\*.prof > profiles.lst; " \
+                              "tar cjf %s -T profiles.lst" % (sandbox.url.path, PROFILES_TARBALL)
+                        j = js.run_job(cmd)
+                        j.wait()
+                        log.debug('tarball cmd for profiles : %s', cmd)
+                        log.debug('tar result : %s\n---\n%s\n---\n%s',
+                                  j.get_stdout_string(), j.get_stderr_string(),
+                                  j.exit_code)
+                        if not j.exit_code:
+                            log.info("profiles tarball created successfully")
+                        else:
+                            log.warn("profiles tarball creation failed %s %s %s",
+                                     j.get_stdout_string(), j.get_stderr_string(),
+                                     j.exit_code)
 
                     log.info("fetch '%s%s' to '%s'.", sandbox_url,
                              PROFILES_TARBALL, tgt_url)
