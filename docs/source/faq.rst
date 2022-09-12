@@ -191,25 +191,23 @@ SMT settings in interactive mode
 The use case described throughout this document all submit the pilot agent via
 the local resource manager (i.e., the batch system).  It is however possible to
 run an RP application in an interactive job allocation.  For example, the
-`ornl.summit` resource configuration defines an `interactive` access schema
-which can be used for that purpose.  A respective pilot description would look
-like this:
+`ornl.summit_interactive` resource configuration defines an `interactive`
+access schema (similar to this, `tacc.frontera` has `interactive` schema), which
+can be used for that purpose.  A respective pilot description would look like
+this:
 
     import radical.pilot as rp
 
     pd = rp.PilotDescription()
-    pd.resource = 'ornl.summit'
+    pd.resource = 'ornl.summit_interactive'
     pd.schema   = 'interactive'
     pd.cores    = 1024
     pd.runtime  = 10
 
 However, care needs to be taken to ensure the correct SMT setting to be used in
 this case: as the job allocation was not created by RP itself, the pilot is
-unaware of the SMT settings requested for the allocation.  The user must either
-set the environment variable `RADICAL_SMT`, or adapt the `smt` value in the
-`system_architecture` entry of the respective resource config:
-
-    "system_architecture": {"smt": 4}
+unaware of the SMT settings requested for the allocation.  The user must set
+the environment variable `RADICAL_SMT`.
 
 In some cases, the user may need to inspect the node configuration to determine
 the actual SMT value.  We provide a shell command for summit as illustrative
