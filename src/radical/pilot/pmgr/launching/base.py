@@ -980,7 +980,7 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
         jd_dict.file_transfer         = list()
-        jd_dict.environment           = {'RADICAL_SMT': smt}
+        jd_dict.environment           = dict()
         jd_dict.system_architecture   = dict(system_architecture)
 
         # job description environment variable(s) setup
@@ -988,6 +988,7 @@ class PMGRLaunchingComponent(rpu.Component):
             jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
 
         jd_dict.environment['RADICAL_BASE'] = resource_sandbox
+        jd_dict.environment['RADICAL_SMT']  = smt
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
