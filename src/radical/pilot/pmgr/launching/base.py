@@ -767,8 +767,8 @@ class PMGRLaunchingComponent(rpu.Component):
                 cleanup = cleanup.replace('v', '')
 
         # estimate requested resources
-        smt = int(os.environ.get('RADICAL_SMT')
-                  or system_architecture.get('smt', 1))
+        smt = int(os.environ.get('RADICAL_SMT') or
+                  system_architecture.get('smt', 1))
 
         if cores_per_node and smt:
             cores_per_node *= int(smt)
