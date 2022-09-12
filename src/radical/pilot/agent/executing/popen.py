@@ -664,9 +664,11 @@ class Popen(AgentExecutingComponent):
             ret += '    %d)\n' % int(rank_id)
             for cmd in cmds:
                 # FIXME: exit on error, but don't stall other ranks on sync
-                ret += \
-                    '        %s' % cmd + \
-                    '\n' if sig == 'pre_exec' else ' %s' % self._get_check(sig)
+                ret += '        %s' % cmd
+                if sig == 'pre_exec':
+                    ret += '\n'
+                else:
+                    ret += ' %s' % self._get_check(sig)
             ret += '        ;;\n'
         ret += 'esac\n'
 
