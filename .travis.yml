@@ -28,6 +28,27 @@ env:
       #    - MAIN_CMD="ru-runcheck.sh flake8 tests/ bin/ examples/"
       #    - MAIN_CMD="ru-runcheck.sh pylint tests/ bin/ examples/"
 
+jobs:
+  include:
+  - name: "Docker test"
+    services:
+      - docker
+    install:
+      - docker build -t rp-complete -f docker/rp-complete.dockerfile .
+# Note: If we want to target specific branches, use something like the following, with corresponding updates in rp-complete.dockerfile
+#      - echo TRAVIS_BRANCH is $TRAVIS_BRANCH
+#      - RPREF=$TRAVIS_BRANCH
+#      - (cd docker ; docker build -t rp-complete -f rp-complete.dockerfile --build-arg RPREF=${RPREF:-devel} .)
+    script:
+      - docker run --rm --name rp_test -d rp-complete
+      - docker ps
+      - sleep 5
+      # Consider testing more examples, based on problem areas.
+      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/00*"
+# Ref issue #2218
+#      - docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/misc/task_overlay.py radical.pilot/examples/misc/task_overlay.cfg"
+      - docker kill rp_test
+
 before_install:
   - uname -a
   - ulimit -a
