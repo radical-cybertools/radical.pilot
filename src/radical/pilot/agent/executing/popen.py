@@ -164,9 +164,9 @@ class Popen(AgentExecutingComponent):
         # The second script (`task.exec.sh`) is instantiated once per task rank.
         # It first resets the environment created by the launcher, then prepares
         # the environment for the tasks.  Next it runs the `pre_exec` directives
-        # for all ranks, then the individual `pre_rank` directives are executed,
-        # and then, after all ranks are synchronized, finally the task ranks
-        # begin to run.
+        # for all ranks and per rank (if commands for particular rank are
+        # defined) are executed, and then, after all ranks are synchronized,
+        # finally the task ranks begin to run.
         #
         # The scripts thus show the following structure:
         #
@@ -194,7 +194,7 @@ class Popen(AgentExecutingComponent):
         # # task environment setup (`pre_exec`)
         # module load gromacs
         #
-        # # rank specific setup (`pre_rank`)
+        # # rank specific setup
         # touch task.000000.ranks
         # if test "$MPI_RANK" = 0; then
         #   export CUDA_VISIBLE_DEVICES=0
@@ -219,14 +219,13 @@ class Popen(AgentExecutingComponent):
         # mdrun -i ... -o ... -foo ... 1> task.000000.$MPI_RANK.out \
         #                              2> task.000000.$MPI_RANK.err
         #
-        # # now do the very same stuff for the `post_rank` and `post_exec`
-        # # directives
+        # # now do the very same stuff for the `post_exec` directive
         # ...
         #
         # ----------------------------------------------------------------------
         #
         # NOTE: MongoDB only accepts string keys, and thus the rank IDs in
-        #       pre_rank and post_rank dictionaries are rendered as strings.
+        #       pre_exec and post_exec dictionaries are rendered as strings.
         #       This should be changed to more intuitive integers once MongoDB
         #       is phased out.
         #

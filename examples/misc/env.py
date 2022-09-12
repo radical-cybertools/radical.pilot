@@ -33,18 +33,17 @@ if __name__ == '__main__':
             td.pre_launch       = ['echo   pre_launch',
                                    'export RP_PRE_LAUNCH=True']
             td.pre_exec         = ['echo "pre exec $RP_RANK: `date`"',
-                                   'export RP_PRE_EXEC=True']
-            td.pre_rank         = {'0': ['export RP_PRE_RANK_0=True',
-                                         'echo pre_rank 0:$RP_RANK: `date`',
-                                         'sleep 2',
-                                         'echo pre_rank 0:$RP_RANK: `date`',
-                                        ],
-                                   '3': ['export RP_PRE_RANK_3=True',
-                                         'echo pre_rank 3:$RP_RANK: `date`',
-                                         'sleep 5',
-                                         'echo pre_rank 3:$RP_RANK: `date`',
-                                         ]}
-            td.post_rank        = ['echo post_rank $RP_RANK']
+                                   'export RP_PRE_EXEC=True',
+                                   {'0': ['export RP_PRE_RANK_0=True',
+                                          'echo pre_exec 0:$RP_RANK: `date`',
+                                          'sleep 2',
+                                          'echo pre_exec 0:$RP_RANK: `date`',
+                                          ],
+                                    '3': ['export RP_PRE_RANK_3=True',
+                                          'echo pre_exec 3:$RP_RANK: `date`',
+                                          'sleep 5',
+                                          'echo pre_exec 3:$RP_RANK: `date`',
+                                          ]}]
             td.post_exec        = ['echo post_exec $RP_RANK']
             td.post_launch      = ['echo post_launch']
             td.environment      = {'FOO_BAR': 'foo_bar'}

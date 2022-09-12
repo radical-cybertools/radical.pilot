@@ -22,9 +22,7 @@
              "stderr"           : null,
              "named_env"        : "",
              "pre_launch"       : [],
-             "post_launch"      : [],
-             "pre_rank"         : [],
-             "post_rank"        : []
+             "post_launch"      : []
          },
          "task_sandbox_path"    : "/tmp"
      },
