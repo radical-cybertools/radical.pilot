@@ -30,7 +30,7 @@ class TestPopen(TestCase):
     def setUpClass(cls) -> None:
 
         cls._test_case = ru.read_json('%s/test_cases/test_base.json' % base)
-        assert(cls._test_case), 'how is this test supposed to work???'
+        assert cls._test_case, 'how is this test supposed to work???'
 
 
     # --------------------------------------------------------------------------
