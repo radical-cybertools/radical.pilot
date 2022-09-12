@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-__author__    = 'RADICAL Team'
-__email__     = 'radical@rutgers.edu'
-__copyright__ = 'Copyright 2013-20, RADICAL Research, Rutgers University'
+__author__    = 'RADICAL-Cybertools Team'
+__email__     = 'info@radical-cybertools.org'
+__copyright__ = 'Copyright 2013-22, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 
@@ -16,13 +16,36 @@ import shutil
 
 import subprocess as sp
 
-
 from setuptools import setup, Command, find_namespace_packages
 
 
 # ------------------------------------------------------------------------------
 name     = 'radical.pilot'
 mod_root = 'src/radical/pilot/'
+
+# ------------------------------------------------------------------------------
+#
+# pip warning:
+# "In-tree builds are now default. pip 22.1 will enforce this behaviour change.
+#  A possible replacement is to remove the --use-feature=in-tree-build flag."
+#
+# With this change we need to make sure to clean out all temporary files from
+# the src tree. Specifically create (and thus need to clean)
+#   - VERSION
+#   - SDIST
+#   - the sdist file itself (a tarball)
+#
+# `pip install` (or any other direct or indirect invocation of `setup.py`) will
+# in fact run `setup.py` multiple times: one on the top level, and internally
+# again with other arguments to build sdist and bwheel packages.  We must *not*
+# clean out temporary files in those internal runs as that would invalidate the
+# install.
+#
+# We thus introduce an env variable `SDIST_LEVEL` which allows us to separate
+# internal calls from the top level invocation - we only clean on the latter
+# (see end of this file).
+sdist_level = int(os.environ.get('SDIST_LEVEL', 0))
+os.environ['SDIST_LEVEL'] = str(sdist_level + 1)
 
 
 # ------------------------------------------------------------------------------
@@ -67,7 +90,7 @@ def get_version(_mod_root):
         if not src_root:
             src_root = '.'
 
-        with open(src_root + '/VERSION', 'r') as f:
+        with open(src_root + '/VERSION', 'r', encoding='utf-8') as f:
             _version_base = f.readline().strip()
 
         # attempt to get version detail information from git
@@ -105,14 +128,15 @@ def get_version(_mod_root):
 
         # make sure the version files exist for the runtime version inspection
         _path = '%s/%s' % (src_root, _mod_root)
-        with open(_path + '/VERSION', 'w') as f:
-            f.write(_version + '\n')
+        with open(_path + '/VERSION', 'w', encoding='utf-8') as f:
+            f.write(_version_base + '\n')
+            f.write(_version      + '\n')
 
-        _sdist_name = '%s-%s.tar.gz' % (name, _version)
-        _sdist_name = _sdist_name.replace('/', '-')
-        _sdist_name = _sdist_name.replace('@', '-')
-        _sdist_name = _sdist_name.replace('#', '-')
-        _sdist_name = _sdist_name.replace('_', '-')
+        _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
+      # _sdist_name = _sdist_name.replace('/', '-')
+      # _sdist_name = _sdist_name.replace('@', '-')
+      # _sdist_name = _sdist_name.replace('#', '-')
+      # _sdist_name = _sdist_name.replace('_', '-')
 
         if '--record'    in sys.argv or \
            'bdist_egg'   in sys.argv or \
@@ -122,14 +146,14 @@ def get_version(_mod_root):
             # pip install will untar the sdist in a tmp tree.  In that tmp
             # tree, we won't be able to derive git version tags -- so we pack
             # the formerly derived version as ./VERSION
-            shutil.move("VERSION", "VERSION.bak")              # backup
-            shutil.copy("%s/VERSION" % _path, "VERSION")       # version to use
-            os.system  ("python setup.py sdist")               # build sdist
+            shutil.move('VERSION', 'VERSION.bak')              # backup
+            shutil.copy('%s/VERSION' % _path, 'VERSION')       # version to use
+            os.system  ('python3 setup.py sdist')              # build sdist
             shutil.copy('dist/%s' % _sdist_name,
                         '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')              # restore version
 
-        with open(_path + '/SDIST', 'w') as f:
+        with open(_path + '/SDIST', 'w', encoding='utf-8') as f:
             f.write(_sdist_name + '\n')
 
         return _version_base, _version_detail, _sdist_name, _path
@@ -139,23 +163,14 @@ def get_version(_mod_root):
 
 
 # ------------------------------------------------------------------------------
-# check python version, should be >= 3.6
-if sys.hexversion < 0x03060000:
-    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
-
-
-# ------------------------------------------------------------------------------
 # get version info -- this will create VERSION and srcroot/VERSION
 version, version_detail, sdist_name, path = get_version(mod_root)
 
 
 # ------------------------------------------------------------------------------
-#
-def read(fname):
-    try:
-        return open(fname).read()
-    except Exception:
-        return ''
+# check python version, should be >= 3.6
+if sys.hexversion < 0x03060000:
+    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
 
 
 # ------------------------------------------------------------------------------
@@ -165,7 +180,7 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        _, _, ret = sh_callout('python setup.py sdist upload -r pypi')
+        _, _, ret = sh_callout('python3 setup.py sdist upload -r pypi')
         raise SystemExit(ret)
 
 
@@ -178,11 +193,10 @@ df = [('%s/'                      % base, ['docs/source/events.md']),
       ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
       ('%s/examples'              % base, glob.glob('examples/hello*')),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
-      ('%s/examples/docs'         % base, glob.glob('examples/docs/*')),
-      ('%s/examples/misc'         % base, glob.glob('examples/misc/*')),
-      ('%s/examples/kmeans'       % base, glob.glob('examples/kmeans/*')),
-      ('%s/examples/mandelbrot'   % base, glob.glob('examples/mandelbrot/*')),
-      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*')),
+      ('%s/examples/docs'         % base, glob.glob('examples/docs/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.py')),
+      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.cfg')),
+      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*.py')),
 ]
 
 
@@ -193,7 +207,6 @@ setup_args = {
     'namespace_packages' : ['radical'],
     'version'            : version,
     'description'        : 'The RADICAL pilot job framework',
-  # 'long_description'   : (read('README.md') + '\n\n' + read('CHANGES.md')),
     'author'             : 'RADICAL Group at Rutgers University',
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
@@ -220,6 +233,8 @@ setup_args = {
     'packages'           : find_namespace_packages('src', include=['radical.*']),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
+                            'bin/radical-pilot-agent',
+                            'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
                             'bin/radical-pilot-cleanup',
@@ -228,33 +243,31 @@ setup_args = {
                             'bin/radical-pilot-create-static-ve',
                             'bin/radical-pilot-deploy-ompi.sh',
                             'bin/radical-pilot-fetch-db',
+                            'bin/radical-pilot-fetch-json',
                             'bin/radical-pilot-fetch-logfiles',
                             'bin/radical-pilot-fetch-profiles',
-                            'bin/radical-pilot-fetch-logfiles',
-                            'bin/radical-pilot-fetch-json',
+                            'bin/radical-pilot-hello.sh',
                             'bin/radical-pilot-inspect',
+                            'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',
+                            'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
+                            'bin/radical-pilot-ve',
                             'bin/radical-pilot-version',
-                            'bin/radical-pilot-agent',
-                            'bin/radical-pilot-agent-funcs',
-                            'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-worker',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.5.2',
-                            'radical.saga>=1.5.2',
-                            'pymongo',
-                            'python-hostlist',
-                            'netifaces',
+    'install_requires'   : ['radical.utils>=1.12',
+                            'radical.saga>=1.12',
+                            'radical.gtod',
+                            'pymongo<4',
                             'setproctitle',
-                            'ntplib'
+                            'dill'
                            ],
-    'extras_require'     : {'autopilot' : ['github3.py']},
     'tests_require'      : ['pytest',
                             'pylint',
                             'flake8',
@@ -283,10 +296,14 @@ setup_args = {
 #
 setup(**setup_args)
 
-os.system('rm -rf src/%s.egg-info' % name)
-# os.system('rm -rf %s/VERSION'      % path)
-# os.system('rm -rf %s/VERSION.git'  % path)
-# os.system('rm -rf %s/SDIST'        % path)
+
+# ------------------------------------------------------------------------------
+# clean temporary files from source tree
+if sdist_level == 0:
+    os.system('rm -vrf src/%s.egg-info' % name)
+    os.system('rm -vf  %s/%s'           % (path, sdist_name))
+    os.system('rm -vf  %s/VERSION'      % path)
+    os.system('rm -vf  %s/SDIST'        % path)
 
 
 # ------------------------------------------------------------------------------

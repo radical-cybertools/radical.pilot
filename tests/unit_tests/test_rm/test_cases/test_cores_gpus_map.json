@@ -1,0 +1,131 @@
+{
+    "rm_info": [
+        {
+            "node_list" : [
+                {
+                    "node_name" : "a",
+                    "node_id"   : "1",
+                    "cores"     : [0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"      : [0, 0],
+                    "lfs"       : 0,
+                    "mem"       : 128
+                }
+            ],
+            "agent_node_list"   : [],
+            "service_node_list" : []
+        },
+        {
+            "node_list" : [
+                {
+                    "node_name" : "b",
+                    "node_id"   : "1",
+                    "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"      : [0, 0],
+                    "lfs"       : 0,
+                    "mem"       : 128
+                }
+            ],
+            "agent_node_list"   : [],
+            "service_node_list" : []
+        },
+        {
+            "node_list" : [
+                {
+                    "node_name" : "c",
+                    "node_id"   : "1",
+                    "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"      : [0, 0],
+                    "lfs"       : 0,
+                    "mem"       : 128
+                }
+            ],
+            "agent_node_list"   : [],
+            "service_node_list" : []
+        },
+        {
+            "node_list" : [
+                {
+                    "node_name" : "d",
+                    "node_id"   : "1",
+                    "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                    "gpus"      : [0, 0],
+                    "lfs"       : 0,
+                    "mem"       : 128
+                }
+            ],
+            "agent_node_list"   : [],
+            "service_node_list" : []
+        }
+    ],
+    "rm_cfg": [
+        {
+            "nodes"             : 1,
+            "cores"             : 8,
+            "gpus"              : 2,
+            "cores_per_node"    : 8,
+            "gpus_per_node"     : 2,
+            "lfs_size_per_node" : 0,
+            "resource_cfg"      : {"mem_per_node"  : 128,
+                                   "blocked_cores" : []}
+        },
+        {
+            "nodes"             : 1,
+            "cores"             : 10,
+            "gpus"              : 1,
+            "cores_per_node"    : 12,
+            "gpus_per_node"     : 2,
+            "lfs_size_per_node" : 0,
+            "resource_cfg"      : {"mem_per_node"  : 128,
+                                   "blocked_cores" : [0, 2],
+                                   "blocked_gpus"  : [1]}
+        },
+        {
+            # requested more NODES than allocated
+            "nodes"             : 2,
+            "cores"             : 20,
+            "gpus"              : 2,
+            "cores_per_node"    : 12,
+            "gpus_per_node"     : 2,
+            "lfs_size_per_node" : 0,
+            "resource_cfg"      : {"mem_per_node"  : 128,
+                                   "blocked_cores" : [0, 2],
+                                   "blocked_gpus"  : [1]}
+        },
+        {
+            # requested more CORES than allocated
+            "nodes"             : 0,
+            "cores"             : 20,
+            "gpus"              : 2,
+            "cores_per_node"    : 12,
+            "gpus_per_node"     : 2,
+            "lfs_size_per_node" : 0,
+            "resource_cfg"      : {"mem_per_node"  : 128,
+                                   "blocked_cores" : [0, 2],
+                                   "blocked_gpus"  : [1]}
+        }
+    ],
+    "result": [
+        [
+            {
+                "node_name"  : "a",
+                "node_id"    : "1",
+                "cores"      : [0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 0],
+                "lfs"        : 0,
+                "mem"        : 128
+            }
+        ],
+        [
+            {
+                "node_name"  : "b",
+                "node_id"    : "1",
+                "cores"      : [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 2],
+                "lfs"        : 0,
+                "mem"        : 128
+            }
+        ],
+        "AssertionError",
+        "AssertionError"
+    ]
+}

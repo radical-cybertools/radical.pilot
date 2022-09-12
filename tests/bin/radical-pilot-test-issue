@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+
+import os
+import argparse
+
+from github import Github
+from datetime import date
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+parser = argparse.ArgumentParser()
+parser.add_argument('--resource', '-r', type=str, required=True,
+                    help='Resource name that tests failed')
+parser.add_argument('--log', '-l', type=str, required=True,
+                    help='Log filename')
+
+args  = parser.parse_args()
+
+token = os.getenv('GIT_TOKEN', None)
+if not token:
+    raise RuntimeError('GIT_TOKEN environment variable not set')
+
+g = Github(token)
+repo = g.get_repo("radical-cybertools/radical.pilot")
+
+
+with ru.ru_open(args.log) as fin:
+
+    title = "Integration Tests failed on %s : %s" % (args.resource, date.today())
+    body  = '```python\n' + fin.read() + '\n```'
+
+    repo.create_issue(title=title,
+                      body=body,
+                      labels=[repo.get_label(name="topic:testing"),
+                              repo.get_label(name="type:bug"),
+                              repo.get_label(name="layer:rp")])
+
+# ------------------------------------------------------------------------------

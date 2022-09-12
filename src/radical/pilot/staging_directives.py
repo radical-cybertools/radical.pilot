@@ -2,6 +2,8 @@
 import os
 import sys
 
+from typing import Dict, List, Any, Union
+
 import radical.utils as ru
 
 from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
@@ -9,27 +11,27 @@ from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
 
 # ------------------------------------------------------------------------------
 #
-def expand_description(descr):
-    """
-    convert any simple, string based staging directive in the description into
-    its dictionary equivalent
+def expand_description(descr: Dict[str, Any]) -> None:
+    '''
+    convert any simple, string based staging directive in the given task
+    description into its dictionary equivalent
 
     In this context, the following kinds of expansions are performed:
 
       in:  ['input.dat']
       out: {'source' : 'client:///input.dat',
-            'target' : 'unit:///input.dat',
+            'target' : 'task:///input.dat',
             'action' : rp.TRANSFER}
 
       in:  ['input.dat > staged.dat']
       out: {'source' : 'client:///input.dat',
-            'target' : 'unit:///staged.dat',
+            'target' : 'task:///staged.dat',
             'action' : rp.TRANSFER}
 
     This method changes the given description in place - repeated calls on the
     same description instance will have no effect.  However, we expect this
-    method to be called only once during unit construction.
-    """
+    method to be called only once during task construction.
+    '''
 
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
     if descr.get('output_staging') is None: descr['output_staging'] = list()
@@ -40,17 +42,16 @@ def expand_description(descr):
 
 # ------------------------------------------------------------------------------
 #
-def expand_staging_directives(sds):
-    """
+def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
+                             ) -> List[Dict[str, Any]]:
+    '''
     Take an abbreviated or compressed staging directive and expand it.
-    """
+    '''
 
     if not sds:
         return []
 
-    if not isinstance(sds, list):
-        sds = [sds]
-
+    sds = ru.as_list(sds)
     ret = list()
     for sd in sds:
 
@@ -65,18 +66,21 @@ def expand_staging_directives(sds):
             elif '<'  in sd: tgt, src = sd.split('<' , 2)
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
-            expanded = {'uid':      ru.generate_id('sd'),
-                        'source':   src.strip(),
+            # FIXME: ns = session ID
+            expanded = {'source':   src.strip(),
                         'target':   tgt.strip(),
                         'action':   DEFAULT_ACTION,
                         'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY}
+                        'priority': DEFAULT_PRIORITY,
+                        'uid':      ru.generate_id('sd.%(item_counter)06d',
+                                                    ru.ID_CUSTOM, ns='foo')}
 
         elif isinstance(sd, dict):
 
             # sanity check on dict syntax
-            valid_keys = ['source', 'target', 'action', 'flags', 'priority']
-            for k in sd:
+            valid_keys = ['source', 'target', 'action', 'flags', 'priority',
+                          'uid', 'prof_id']
+            for k in sd.keys():
                 if k not in valid_keys:
                     raise ValueError('"%s" is invalid on staging directive' % k)
 
@@ -98,7 +102,7 @@ def expand_staging_directives(sds):
                 for flag in flags:
                     if isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
-                    int_flags != flag
+                    int_flags |= flag
                 flags = int_flags
 
             elif isinstance(flags, str):
@@ -114,7 +118,7 @@ def expand_staging_directives(sds):
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
 
-        # we warn the user when  src or tgt are using the deprecated
+        # we warn the user when src or tgt are using the deprecated
         # `staging://` schema
         if str(expanded['source']).startswith('staging://'):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
@@ -125,7 +129,6 @@ def expand_staging_directives(sds):
             sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
             expanded['target'] = str(expanded['target']).replace('staging://',
                                                                  'pilot://')
-
         ret.append(expanded)
 
     return ret
@@ -133,36 +136,45 @@ def expand_staging_directives(sds):
 
 # ------------------------------------------------------------------------------
 #
-def complete_url(path, context, log=None):
+def complete_url(path   : str,
+                 context: Dict[str, str],
+                 log    : ru.Logger = None
+                ) -> ru.Url:
     '''
     Some paths in data staging directives are to be interpreted relative to
     certain locations, namely relative to
 
         * `client://`  : the client's working directory
-        * `resource://`: the RP    sandbox on the target resource
-        * `pilot://`   : the pilot sandbox on the target resource
-        * `unit://`    : the unit  sandbox on the target resource
+        * `endpoint://`: the root file system on the target resource
+        * `resource://`: the sandbox base dir on the target resource
+        * `session://` : the session sandbox  on the target resource
+        * `pilot://`   : the pilot   sandbox  on the target resource
+        * `task://`    : the task    sandbox  on the target resource
+
+    All location are interpreted as directories, never as files.
 
     For the above schemas, we interpret `schema://` the same as `schema:///`,
     ie. we treat this as a namespace, not as location qualified by a hostname.
 
     The `context` parameter is expected to be a dict which provides a set of
-    URLs to be used to expand the path.
+    URLs to be used to expand the path for those schemas
 
-    Other URL schemas are left alone, any other strings are interpreted as
-    path in the context of `pwd`.
+    Other URL schemas are left alone, any non-URL strings are interpreted as
+    path in the context of `pwd`, i.e. in the context of the working directory
+    of the current process, unless a `pwd` entry is provided in the `context`
+    dict). `file://` schemas are left unaltered and are expected to point to
+    absolute locations in the file system.
 
-    The method returns an instance of ru.Url.  Note that URL parsing is not
-    really cheap, so this method should be used conservatively.
+    The method returns an instance of `:py:class:`radical.utils.Url`.  Even if
+    the URL is not altered, a new instance (deep copy) will be returned.
+
+    NOTE: URL parsing is not really cheap, so this method should be used
+    conservatively.
     '''
 
     # FIXME: consider evaluation of env vars
 
-    purl = ru.Url(path)
-
-    log.debug('<- %s (%s)', path, type(path))
-    log.debug('   %s', purl)
-
+    purl     = ru.Url(path)
     str_path = str(path)
 
     # we always want a schema, and fall back to file:// or pwd://, depending if
@@ -177,41 +189,41 @@ def complete_url(path, context, log=None):
         else:
             purl.schema = 'pwd'
 
-    schema = purl.schema
+    log.debug('  -> %s', purl)
 
-    if schema == 'client':
-        # 'client' is 'pwd' in client context.
-        # We don't check context though.
-        schema = 'pwd'
+    if purl.schema not in list(context.keys()):
 
-    log.debug('   %s', schema)
-    if schema in list(context.keys()):
+        ret = purl
+        log.debug('             = %s (%s)', ret, list(context.keys()))
 
-        # we interpret any hostname as part of the path element
-        if   purl.host and purl.path: ppath = '%s/%s' % (purl.host, purl.path)
-        elif purl.host              : ppath =    '%s' %            (purl.host)
-        elif purl.path              : ppath =    '%s' %            (purl.path)
-        else                        : ppath =     '.'
+    else:
 
-        if schema not in context:
-            raise ValueError('cannot expand schema (%s) for staging' % schema)
+        expand = True
 
-        log.debug('   expand with %s', context[schema])
-        ret = ru.Url(context[schema])
+        # we expect hostname elements to be absent for schemas we expand
+        if purl.host:
+            raise ValueError('URLs cannot specify `host` for expanded schemas')
 
-        if schema in ['resource', 'pilot']:
-            # use a dedicated staging area dir
-            ret.path += '/staging_area'
+        if purl.schema == 'file':
+            # we leave `file://` URLs unaltered
+            ret = purl
+            expand = False
 
-        ret.path += '/%s' % ppath
-        purl      = ret
+        elif purl.schema == 'pwd' and 'pwd' not in context:
+            ret = ru.Url(os.getcwd())
 
-    # if not schema is set, assume file:// on localhost
-    if not purl.schema:
-        purl.schema = 'file'
+        else:
+            ret = ru.Url(context[purl.schema])
 
-    log.debug('-> %s', purl)
-    return purl
+        if expand:
+            ret.path += '/%s' % purl.path
+
+        if expand:
+            log.debug('   expand with %s', context.get(purl.schema))
+
+    log.debug('             > %s', ret)
+
+    return ret
 
 
 # ------------------------------------------------------------------------------

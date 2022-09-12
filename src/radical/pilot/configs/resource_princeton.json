@@ -17,19 +17,57 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order" : ["SRUN", "MPIRUN"],
+                                         "SRUN"  : {},
+                                         "MPIRUN": {}
+                                        },
+        "pre_bootstrap_0"             : ["module load anaconda3",
+                                         "module load openmpi/gcc"
+                                        ],
+        "valid_roots"                 : [],
+        "default_remote_workdir"      : "/scratch/gpfs/$USER/",
+        "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
+        "virtenv_mode"                : "use",
+        "python_dist"                 : "default",
+        "rp_version"                  : "local",
+        "task_pre_exec"               : [],
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 0,
+        "mem_per_node"                : 0,
+        "forward_tunnel_endpoint"     : "traverse.princeton.edu"
+    },
+
+    "traverse_mpirun": {
+        "description"                 : "",
+        "notes"                       : "",
+        "schemas"                     : ["local"],
+        "mandatory_args"              : [],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://traverse.princeton.edu/",
+            "job_manager_hop"         : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "default_queue"               : "test",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 32,
+        "gpus_per_node"               : 4,
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order" : ["MPIRUN"],
+                                         "MPIRUN": {}
+                                        },
         "pre_bootstrap_0"             : ["module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$HOME/",
         "valid_roots"                 : [],
-        "rp_version"                  : "installed",
-        "python_dist"                 : "anaconda",
-        "virtenv"                     : "/home/amerzky/radical.pilot.sandbox/ve.rp",
+        "rp_version"                  : "local",
+        "python_dist"                 : "default",
+        "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
@@ -58,9 +96,15 @@
         "gpus_per_node"               : 0,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {
+                                             "pre_exec_cached": [
+                                                 "module load intel/18.0/64/18.0.3.222",
+                                                 "module load intel-mpi/intel/2018.3/64"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel/18.0/64/18.0.3.222",
                                          "module load intel-mpi/intel/2018.3/64",
@@ -72,8 +116,7 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,
@@ -85,7 +128,7 @@
         "notes"                       : "",
         "schemas"                     : ["local", "ssh"],
         "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://tigercpu.princeton.edu/",
             "job_manager_hop"         : "fork://localhost/",
@@ -102,9 +145,15 @@
         "gpus_per_node"               : 4,
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
-        "agent_launch_method"         : "SSH",
-        "task_launch_method"          : "SRUN",
-        "mpi_launch_method"           : "SRUN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {
+                                             "pre_exec_cached": [
+                                                 "module load intel/18.0/64/18.0.3.222",
+                                                 "module load intel-mpi/intel/2018.3/64"
+                                             ]
+                                         }
+                                        },
         "pre_bootstrap_0"             : ["module purge",
                                          "module load intel/18.0/64/18.0.3.222",
                                          "module load intel-mpi/intel/2018.3/64",
@@ -116,8 +165,7 @@
         "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
-        "export_to_cu"                : [],
-        "cu_pre_exec"                 : [],
+        "task_pre_exec"               : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "mem_per_node"                : 0,

@@ -30,22 +30,12 @@ class Hombre(AgentSchedulingComponent):
     #
     def __init__(self, cfg, session):
 
-        self.nodes = None
+        self.nodes = list()
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         # homogeneous workloads are always uniform
         self._uniform_wl = True
-
-
-    # --------------------------------------------------------------------------
-    #
-    # FIXME: this should not be overloaded here, but in the base class
-    #
-    def finalize_child(self):
-
-        # make sure that parent finalizers are called
-        super(Hombre, self).finalize_child()
 
 
     # --------------------------------------------------------------------------
@@ -65,7 +55,7 @@ class Hombre(AgentSchedulingComponent):
             raise ValueError('HOMBRE needs oversubscription enabled')
 
         # NOTE: We delay the actual configuration until we received the first
-        #       unit to schedule - at that point we can slice and dice the
+        #       task to schedule - at that point we can slice and dice the
         #       resources into suitable static slots.
         self._configured = False
 
@@ -74,48 +64,48 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _delayed_configure(self, cud):
+    def _delayed_configure(self, td):
 
         if self._configured:
             return
 
-        self.chunk  = {'cpu_processes'    : cud['cpu_processes'   ],
-                       'cpu_process_type' : cud['cpu_process_type'],
-                       'cpu_threads'      : cud['cpu_threads'     ],
-                       'cpu_thread_type'  : cud['cpu_thread_type' ],
+        self.chunk  = {'cpu_processes'    : td['cpu_processes'   ],
+                       'cpu_process_type' : td['cpu_process_type'],
+                       'cpu_threads'      : td['cpu_threads'     ],
+                       'cpu_thread_type'  : td['cpu_thread_type' ],
 
-                       'gpu_processes'    : cud['gpu_processes'   ],
-                       'gpu_process_type' : cud['gpu_process_type'],
-                       'gpu_threads'      : cud['gpu_threads'     ],
-                       'gpu_thread_type'  : cud['gpu_thread_type' ],
+                       'gpu_processes'    : td['gpu_processes'   ],
+                       'gpu_process_type' : td['gpu_process_type'],
+                       'gpu_threads'      : td['gpu_threads'     ],
+                       'gpu_thread_type'  : td['gpu_thread_type' ],
                        }
 
-        self.cpn     = self._rm_cores_per_node
-        self.gpn     = self._rm_gpus_per_node
+        self.cpn     = self._rm.info.cores_per_node
+        self.gpn     = self._rm.info.gpus_per_node
 
         self.free    = list()     # list of free chunks
         self.lock    = ru.Lock()  # lock for the above list
 
-        cores_needed = cud['cpu_processes'] * cud['cpu_threads']
-        gpus_needed  = cud['gpu_processes']
+        cores_needed = td['cpu_processes'] * td['cpu_threads']
+        gpus_needed  = td['gpu_processes']
 
         # check if we need single or multi-node chunks
-        if  cud['cpu_process_type'] != 'MPI' and \
-            cud['gpu_process_type'] != 'MPI' :
+        if  td['cpu_process_type'] != 'MPI' and \
+            td['gpu_process_type'] != 'MPI' :
 
             # single node task - check if it fits
             if cores_needed > self.cpn or \
                gpus_needed  > self.gpn:
-                raise ValueError('unit does not fit on node')
+                raise ValueError('task does not fit on node')
 
 
         # ---------------------------------------------------------------------
         # create as many equal sized chunks from the available nodes as
         # possible, and put them into the `free` list.  The actual scheduling
-        # algorithm will blindly pick chunks from that list whenever a new CUD
+        # algorithm will blindly pick chunks from that list whenever a new TD
         # arrives.
-        cblock   = cud['cpu_threads']
-        ncblocks = cud['cpu_processes']
+        cblock   = td['cpu_threads']
+        ncblocks = td['cpu_processes']
         cblocks  = list()
         cidx     = 0
 
@@ -124,7 +114,7 @@ class Hombre(AgentSchedulingComponent):
             cidx += cblock
 
         gblock   = 1
-        ngblocks = cud['gpu_processes']
+        ngblocks = td['gpu_processes']
         gblocks  = list()
         gidx     = 0
         while gidx + gblock <= self.gpn:
@@ -141,13 +131,12 @@ class Hombre(AgentSchedulingComponent):
         # ----------------------------------------------------------------------
         def next_slot(slot=None):
             if slot:
-                del(slot['ncblocks'])
-                del(slot['ngblocks'])
+                del slot['ncblocks']
+                del slot['ngblocks']
                 self.free.append(slot)
-            return {'nodes'         : list(),
+            return {'ranks'         : list(),
                     'cores_per_node': self.cpn,
                     'gpus_per_node' : self.gpn,
-                    'lm_info'       : self._rm_lm_info,
                     'ncblocks'      : 0,
                     'ngblocks'      : 0}
         # ---------------------------------------------------------------------
@@ -162,17 +151,17 @@ class Hombre(AgentSchedulingComponent):
                 slot = next_slot(slot)
 
             node  = self.nodes[nidx]
-            nuid  = node['uid']
-            nname = node['name']
+            nuid  = node['node_id']
+            nname = node['node_name']
             ok    = True
 
             while slot['ncblocks'] < ncblocks:
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
-                                          'core_map': [cblock],
-                                          'gpu_map' : []})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [cblock],
+                                          'gpu_map'  : []})
                     slot['ncblocks'] += 1
                 else:
                     ok = False
@@ -184,10 +173,10 @@ class Hombre(AgentSchedulingComponent):
                     # move the process onto core `0` (oversubscribed)
                     # enabled)
                     gblock = node['gblocks'].pop(0)
-                    slot['nodes'].append({'name'    : nname,
-                                          'uid'     : nuid,
-                                          'core_map': [[0]],
-                                          'gpu_map' : [gblock]})
+                    slot['ranks'].append({'node_name': nname,
+                                          'node_id'  : nuid,
+                                          'core_map' : [[0]],
+                                          'gpu_map'  : [gblock]})
                     slot['ngblocks'] += 1
                 else:
                     ok = False
@@ -214,24 +203,31 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _allocate_slot(self, cud):
+    def schedule_task(self, task):
+
+        return self._allocate_slot(task['description'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _allocate_slot(self, td):
         '''
         This is the main method of this implementation, and is triggered when
-        a unit needs to be mapped to a set of cores / gpus.
+        a task needs to be mapped to a set of cores / gpus.
         '''
 
       # self._log.debug('=> allocate [%d]', len(self.free))
-        self._delayed_configure(cud)
+        self._delayed_configure(td)
 
         # ensure that all CUDs require the same amount of reources
         for k,v in list(self.chunk.items()):
-            if cud[k] != v:
-                raise ValueError('hetbre?  %d != %d' % (v, cud[k]))
+            if td[k] != v:
+                raise ValueError('hetbre?  %d != %d' % (v, td[k]))
 
       # self._log.debug('find new slot')
-        slots = self._find_slots(cud)
+        slots = self._find_slots()
         if slots:
-            self._log.debug('allocate slot %s', slots['nodes'])
+            self._log.debug('allocate slot %s', slots['ranks'])
         else:
             self._log.debug('allocate slot %s', slots)
 
@@ -239,6 +235,14 @@ class Hombre(AgentSchedulingComponent):
 
 
         return slots
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def unschedule_task(self, task):
+
+        return self._release_slot(task['slots'])
 
 
     # --------------------------------------------------------------------------
@@ -251,7 +255,7 @@ class Hombre(AgentSchedulingComponent):
         '''
 
       # self._log.debug('=> release  [%d]', len(self.free))
-        self._log.debug('release  slot %s', slots['nodes'])
+        self._log.debug('release  slot %s', slots['ranks'])
         with self.lock:
             self.free.append(slots)
       # self._log.debug('<= release  [%d]', len(self.free))
@@ -259,7 +263,7 @@ class Hombre(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_slots(self, cores_requested):
+    def _find_slots(self):
 
         # check if we have free chunks laying around - return one
         with self.lock:

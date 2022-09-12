@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,unused-argument
 
 import os
 import glob
@@ -8,17 +8,18 @@ import radical.utils as ru
 from ..       import states as s
 from .session import fetch_json
 
-_debug = os.environ.get('RP_PROF_DEBUG')
+_debug      = os.environ.get('RP_PROF_DEBUG')
+_node_index = dict()
 
 
 # ------------------------------------------------------------------------------
 #
-# pilot and unit activities: core hours are derived by multiplying the
-# respective time durations with pilot size / unit size.  The 'idle'
+# pilot and task activities: core hours are derived by multiplying the
+# respective time durations with pilot size / task size.  The 'idle'
 # utilization and the 'agent' utilization are derived separately.
 #
 # Note that durations should add up to the `x_total` generations to ensure
-# accounting for the complete unit/pilot utilization.
+# accounting for the complete task/pilot utilization.
 #
 # An updated list of events is available at docs/source/events.md
 
@@ -31,19 +32,21 @@ PILOT_DURATIONS = {
     # times between PMGR_ACTIVE and the termination command are not
     # considered pilot specific consumptions.  If some resources remain
     # unused during that time, it is either due to inefficiencies of
-    # workload management (accounted for in the unit consumption metrics),
+    # workload management (accounted for in the task consumption metrics),
     # or the pilot is starving for workload.
     'consume' : {
         'boot'      : [{ru.EVENT: 'bootstrap_0_start'},
-                       {ru.EVENT: 'sync_rel'         }],
-        'setup_1'   : [{ru.EVENT: 'sync_rel'         },
+                       {ru.EVENT: 'bootstrap_0_ok'   }],
+        'setup_1'   : [{ru.EVENT: 'bootstrap_0_ok'   },
                        {ru.STATE: s.PMGR_ACTIVE      }],
-        'ignore'    : [{ru.STATE: s.PMGR_ACTIVE      },
+        'idle'      : [{ru.STATE: s.PMGR_ACTIVE      },
                        {ru.EVENT: 'cmd'              ,
                         ru.MSG  : 'cancel_pilot'     }],
         'term'      : [{ru.EVENT: 'cmd'              ,
                         ru.MSG  : 'cancel_pilot'     },
                        {ru.EVENT: 'bootstrap_0_stop' }],
+        'agent'     : [{ru.EVENT: 'sub_agent_start'  },
+                       {ru.EVENT: 'sub_agent_stop'   }],
     },
     # FIXME: separate out DVM startup time
     #   'rte'       : [{ru.STATE: s.PMGR_ACTIVE    },
@@ -59,143 +62,72 @@ PILOT_DURATIONS = {
 }
 
 
-# The set of default unit durations that are available for every unit
+# The set of default task durations that are available for every task
 # description, default resource configuration, and default scheduler and
 # launcher.
-UNIT_DURATIONS_DEFAULT = {
+TASK_DURATIONS_DEFAULT = {
     'consume' : {
         'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
                          {ru.STATE: s.AGENT_EXECUTING        }],
         'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'task_run_start'         }],
+        'exec_rp'     : [{ru.EVENT: 'task_run_start'         },
+                         {ru.EVENT: 'launch_start'           }],
+        'exec_sh'     : [{ru.EVENT: 'launch_start'           },
                          {ru.EVENT: 'exec_start'             }],
-        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                         {ru.EVENT: 'cu_start'               }],
-        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                         {ru.EVENT: 'cu_exec_start'          }],
-        'exec_cmd'    : [{ru.EVENT: 'cu_exec_start'          },
-                         {ru.EVENT: 'cu_exec_stop'           }],
-        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                         {ru.EVENT: 'cu_stop'                }],
-        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
+        'exec_cmd'    : [{ru.EVENT: 'exec_start'             },
                          {ru.EVENT: 'exec_stop'              }],
-        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+        'term_sh'     : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'launch_stop'            }],
+        'term_rp'     : [{ru.EVENT: 'launch_stop'            },
+                         {ru.EVENT: 'task_run_stop'          }],
+        'unschedule'  : [{ru.EVENT: 'task_run_stop'          },
                          {ru.EVENT: 'unschedule_stop'        }]
 
-      # # if we have cmd_start / cmd_stop:
-      # 'exec_sh'     : [{ru.EVENT: 'cu_start'               },
+      # if we have cmd_start / cmd_stop (exec_sh including all preparations):
+      # 'exec_sh'     : [{ru.EVENT: 'task_start'             },
       #                  {ru.EVENT: 'cmd_start'              }],
       # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
       #                  {ru.EVENT: 'cmd_stop'               }],
       # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
-      #                  {ru.EVENT: 'cu_stop'                }],
+      #                  {ru.EVENT: 'task_stop'              }],
     }
 }
 
 
-# The set of default unit durations augmented with the durations of the app
-# events. App events are generated by RADICAL Synapse and by `hello_rp.sh`. The
-# latter is useful for testing as a sleep command drop-in.
-UNIT_DURATIONS_APP = {
+# The set of default task durations augmented with the durations of the app
+# events. App events are generated by RADICAL Synapse and by the script
+# `radical-pilot-hello.sh`. The latter is useful for testing as
+# a sleep command drop-in.
+TASK_DURATIONS_APP = {
     'consume' : {
         'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
                          {ru.STATE: s.AGENT_EXECUTING        }],
         'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
+                         {ru.EVENT: 'task_run_start'         }],
+        'exec_rp'     : [{ru.EVENT: 'task_run_start'         },
+                         {ru.EVENT: 'launch_start'           }],
+        'exec_sh'     : [{ru.EVENT: 'launch_start'           },
                          {ru.EVENT: 'exec_start'             }],
-        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                         {ru.EVENT: 'cu_start'               }],
-        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                         {ru.EVENT: 'cu_exec_start'          }],
-        'init_app'    : [{ru.EVENT: 'cu_exec_start'          },
+        'init_app'    : [{ru.EVENT: 'exec_start'             },
                          {ru.EVENT: 'app_start'              }],
         'exec_cmd'    : [{ru.EVENT: 'app_start'              },
                          {ru.EVENT: 'app_stop'               }],
         'term_app'    : [{ru.EVENT: 'app_stop'               },
-                         {ru.EVENT: 'cu_exec_stop'           }],
-        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                         {ru.EVENT: 'cu_stop'                }],
-        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
                          {ru.EVENT: 'exec_stop'              }],
-        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
+        'term_sh'     : [{ru.EVENT: 'exec_stop'              },
+                         {ru.EVENT: 'launch_stop'            }],
+        'term_rp'     : [{ru.EVENT: 'launch_stop'            },
+                         {ru.EVENT: 'task_run_stop'          }],
+        'unschedule'  : [{ru.EVENT: 'task_run_stop'          },
                          {ru.EVENT: 'unschedule_stop'        }]
     }
 }
 
 
-# The set of default unit durations with the durations generated when using
-# PRRTE as launch method.
-UNIT_DURATIONS_PRTE = {
-    'consume' : {
-        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                         {ru.STATE: s.AGENT_EXECUTING        }],
-        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
-                         {ru.EVENT: 'exec_start'             }],
-        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                         {ru.EVENT: 'cu_start'               }],
-        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                         {ru.EVENT: 'cu_exec_start'          }],
-        'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                         {ru.EVENT: 'prte_init_complete'     }],
-        'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                         {ru.EVENT: 'prte_sending_launch_msg'}],
-        'exec_cmd'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                         {ru.EVENT: 'prte_iof_complete'      }],
-        'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-                         {ru.EVENT: 'prte_notify_completed'  }],
-        'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
-                         {ru.EVENT: 'cu_exec_stop'           }],
-        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                         {ru.EVENT: 'cu_stop'                }],
-        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                         {ru.EVENT: 'exec_stop'              }],
-        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                         {ru.EVENT: 'unschedule_stop'        }],
-
-      # # if we have app_start / app_stop:
-      # 'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-      #                  {ru.EVENT: 'cmd_start'              }],
-      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-      #                  {ru.EVENT: 'cmd_stop'               }],
-      # 'prte_phase_3': [{ru.EVENT: 'cmd_stop'               },
-      #                  {ru.EVENT: 'prte_notify_completed'  }],
-    }
-}
-
-
-# The set of default unit durations with the durations generated when using
-# PRRTE as launch method and an app that records app events (e.g., RADICAL
-# Synapse and `hello_rp.sh`).
-UNIT_DURATIONS_PRTE_APP  = {
-    'consume' : {
-        'exec_queue'  : [{ru.EVENT: 'schedule_ok'            },
-                         {ru.STATE: s.AGENT_EXECUTING        }],
-        'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING        },
-                         {ru.EVENT: 'exec_start'             }],
-        'exec_rp'     : [{ru.EVENT: 'exec_start'             },
-                         {ru.EVENT: 'cu_start'               }],
-        'exec_sh'     : [{ru.EVENT: 'cu_start'               },
-                         {ru.EVENT: 'cu_exec_start'          }],
-        'prte_phase_1': [{ru.EVENT: 'cu_exec_start'          },
-                         {ru.EVENT: 'prte_init_complete'     }],
-        'prte_phase_2': [{ru.EVENT: 'prte_init_complete'     },
-                         {ru.EVENT: 'prte_sending_launch_msg'}],
-        'init_app'    : [{ru.EVENT: 'prte_sending_launch_msg'},
-                         {ru.EVENT: 'app_start'              }],
-        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                         {ru.EVENT: 'app_stop'               }],
-        'term_app'    : [{ru.EVENT: 'app_stop'               },
-                         {ru.EVENT: 'prte_iof_complete'      }],
-        'prte_phase_3': [{ru.EVENT: 'prte_iof_complete'      },
-                         {ru.EVENT: 'prte_notify_completed'  }],
-        'prte_phase_4': [{ru.EVENT: 'prte_notify_completed'  },
-                         {ru.EVENT: 'cu_exec_stop'           }],
-        'term_sh'     : [{ru.EVENT: 'cu_exec_stop'           },
-                         {ru.EVENT: 'cu_stop'                }],
-        'term_rp'     : [{ru.EVENT: 'cu_stop'                },
-                         {ru.EVENT: 'exec_stop'              }],
-        'unschedule'  : [{ru.EVENT: 'exec_stop'              },
-                         {ru.EVENT: 'unschedule_stop'        }]
-    }
-}
+# FIXME: TASK_DURATIONS_PRTE
+# The set of default task durations with the durations generated when using
+# PRRTE as a launch method.
 
 
 # ----------------------------------------------------------------------------
@@ -404,106 +336,102 @@ PILOT_DURATIONS_DEBUG_RU = {
 }
 
 
-# Set of default unit durations for RADICAL-Analytics. All the durations
-# are contiguos.
-UNIT_DURATIONS_DEBUG_SHORT = {
-    'u_umgr_create'              : [{'STATE': s.NEW                         },
-                                    {'STATE': s.UMGR_SCHEDULING_PENDING     }],
-    'u_umgr_schedule_queue'      : [{'STATE': s.UMGR_SCHEDULING_PENDING     },
-                                    {'STATE': s.UMGR_SCHEDULING             }],
-    'u_umgr_schedule'            : [{'STATE': s.UMGR_SCHEDULING             },
-                                    {'STATE': s.UMGR_STAGING_INPUT_PENDING  }],
+# Set of default task durations for RADICAL-Analytics. All the durations
+# are contiguous.
+TASK_DURATIONS_DEBUG_SHORT = {
+    't_tmgr_create'              : [{'STATE': s.NEW                         },
+                                    {'STATE': s.TMGR_SCHEDULING_PENDING     }],
+    't_tmgr_schedule_queue'      : [{'STATE': s.TMGR_SCHEDULING_PENDING     },
+                                    {'STATE': s.TMGR_SCHEDULING             }],
+    't_tmgr_schedule'            : [{'STATE': s.TMGR_SCHEDULING             },
+                                    {'STATE': s.TMGR_STAGING_INPUT_PENDING  }],
     # push to mongodb
-    'u_umgr_stage_in_queue'      : [{'STATE': s.UMGR_STAGING_INPUT_PENDING  },
-                                    {'STATE': s.UMGR_STAGING_INPUT          }],
+    't_tmgr_stage_in_queue'      : [{'STATE': s.TMGR_STAGING_INPUT_PENDING  },
+                                    {'STATE': s.TMGR_STAGING_INPUT          }],
     # wait in mongodb
-    'u_umgr_stage_in'            : [{'STATE': s.UMGR_STAGING_INPUT          },
+    't_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
                                     {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
     # pull from mongodb
-    'u_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
+    't_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
                                     {'STATE': s.AGENT_STAGING_INPUT         }],
-    'u_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
+    't_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },
                                     {'STATE': s.AGENT_SCHEDULING_PENDING    }],
-    'u_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
+    't_agent_schedule_queue'     : [{'STATE': s.AGENT_SCHEDULING_PENDING    },
                                     {'STATE': s.AGENT_SCHEDULING            }],
-    'u_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
+    't_agent_schedule'           : [{'STATE': s.AGENT_SCHEDULING            },
                                     {'STATE': s.AGENT_EXECUTING_PENDING     }],
-    'u_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
+    't_agent_execute_queue'      : [{'STATE': s.AGENT_EXECUTING_PENDING     },
                                     {'STATE': s.AGENT_EXECUTING             }],
-    'u_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
-                                    {'EVENT': 'exec_mkdir'                  }],
-    'u_agent_execute_mkdir'      : [{'EVENT': 'exec_mkdir'                  },
-                                    {'EVENT': 'exec_mkdir_done'             }],
-    'u_agent_execute_layer_start': [{'EVENT': 'exec_mkdir_done'             },
-                                    {'EVENT': 'exec_start'                  }],
-    # orte, ssh, mpi, ...
-    'u_agent_execute_layer'      : [{'EVENT': 'exec_start'                  },
-                                    [{'EVENT': 'exec_ok'                    },
-                                     {'EVENT': 'exec_fail'                  }]],
+    't_agent_execute_prepare'    : [{'STATE': s.AGENT_EXECUTING             },
+                                    {'EVENT': 'task_mkdir'                  }],
+    't_agent_execute_mkdir'      : [{'EVENT': 'task_mkdir'                  },
+                                    {'EVENT': 'task_mkdir_done'             }],
+    't_agent_execute_layer_start': [{'EVENT': 'task_mkdir_done'             },
+                                    {'EVENT': 'task_run_start'              }],
+    # ssh, mpi, ...
+    't_agent_execute_layer'      : [{'EVENT': 'task_run_start'              },
+                                    {'EVENT': 'task_run_ok'                 }],
     # PROBLEM: discontinuity
-    'u_agent_lm_start'           : [{'EVENT': 'cu_start'                    },
-                                    {'EVENT': 'cu_pre_start'                }],
-    'u_agent_lm_pre_execute'     : [{'EVENT': 'cu_pre_start'                },
-                                    {'EVENT': 'cu_pre_stop'                 }],
-    'u_agent_lm_execute_start'   : [{'EVENT': 'cu_pre_stop'                 },
-                                    {'EVENT': 'cu_exec_start'               }],
-    'u_agent_lm_execute'         : [{'EVENT': 'cu_exec_start'               },
-                                    {'EVENT': 'cu_exec_stop'                }],
-    'u_agent_lm_stop'            : [{'EVENT': 'cu_exec_stop'                },
-                                    {'EVENT': 'cu_stop'                     }],
-    'u_agent_stage_out_start'    : [{'EVENT': 'cu_stop'                     },
+    't_agent_lm_start'           : [{'EVENT': 'task_run_start'              },
+                                    {'EVENT': 'launch_start'                }],
+    't_agent_lm_submit'          : [{'EVENT': 'launch_start'                },
+                                    {'EVENT': 'exec_start'                  }],
+    't_agent_lm_execute'         : [{'EVENT': 'exec_start'                  },
+                                    {'EVENT': 'exec_stop'                   }],
+    't_agent_lm_stop'            : [{'EVENT': 'exec_stop'                   },
+                                    {'EVENT': 'task_run_stop'               }],
+    't_agent_stage_out_start'    : [{'EVENT': 'task_run_stop'               },
                                     {'STATE': s.AGENT_STAGING_OUTPUT_PENDING}],
-    'u_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
+    't_agent_stage_out_queue'    : [{'STATE': s.AGENT_STAGING_OUTPUT_PENDING},
                                     {'STATE': s.AGENT_STAGING_OUTPUT        }],
-    'u_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
-                                    {'STATE': s.UMGR_STAGING_OUTPUT_PENDING }],
+    't_agent_stage_out'          : [{'STATE': s.AGENT_STAGING_OUTPUT        },
+                                    {'STATE': s.TMGR_STAGING_OUTPUT_PENDING }],
     # push/pull mongodb
-    'u_agent_push_to_umgr'       : [{'STATE': s.UMGR_STAGING_OUTPUT_PENDING },
-                                    {'STATE': s.UMGR_STAGING_OUTPUT         }],
-    'u_umgr_destroy'             : [{'STATE': s.UMGR_STAGING_OUTPUT         },
+    't_agent_push_to_tmgr'       : [{'STATE': s.TMGR_STAGING_OUTPUT_PENDING },
+                                    {'STATE': s.TMGR_STAGING_OUTPUT         }],
+    't_tmgr_destroy'             : [{'STATE': s.TMGR_STAGING_OUTPUT         },
                                     [{'STATE': s.DONE                       },
                                      {'STATE': s.CANCELED                   },
                                      {'STATE': s.FAILED                     }]],
-    'u_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
+    't_agent_unschedule'         : [{'EVENT': 'unschedule_start'            },
                                     {'EVENT': 'unschedule_stop'             }]
 }
 
-UNIT_DURATIONS_DEBUG = _convert_sdurations(UNIT_DURATIONS_DEBUG_SHORT)
+TASK_DURATIONS_DEBUG = _convert_sdurations(TASK_DURATIONS_DEBUG_SHORT)
 
 
-# Debug unit durations tagged with keys taht can be used when calculating
+# Debug task durations tagged with keys taht can be used when calculating
 # resource utilization.
 # TODO: add the 'client' tag to relevant resource utilization methods.
-_udd = UNIT_DURATIONS_DEBUG
-UNIT_DURATIONS_DEBUG_RU = {
+_udd = TASK_DURATIONS_DEBUG
+TASK_DURATIONS_DEBUG_RU = {
     'client' : {
-        'u_umgr_create'              : _udd['u_umgr_create'],
-        'u_umgr_schedule_queue'      : _udd['u_umgr_schedule_queue'],
-        'u_umgr_schedule'            : _udd['u_umgr_schedule'],
-        'u_umgr_stage_in_queue'      : _udd['u_umgr_stage_in_queue'],
-        'u_umgr_stage_in'            : _udd['u_umgr_stage_in'],
-        'u_umgr_destroy'             : _udd['u_umgr_destroy'],
-        'u_agent_unschedule'         : _udd['u_agent_unschedule']
+        't_tmgr_create'              : _udd['t_tmgr_create'],
+        't_tmgr_schedule_queue'      : _udd['t_tmgr_schedule_queue'],
+        't_tmgr_schedule'            : _udd['t_tmgr_schedule'],
+        't_tmgr_stage_in_queue'      : _udd['t_tmgr_stage_in_queue'],
+        't_tmgr_stage_in'            : _udd['t_tmgr_stage_in'],
+        't_tmgr_destroy'             : _udd['t_tmgr_destroy'],
+        't_agent_unschedule'         : _udd['t_agent_unschedule']
     },
     'consume'  : {
-        'u_agent_stage_in_queue'     : _udd['u_agent_stage_in_queue'],
-        'u_agent_stage_in'           : _udd['u_agent_stage_in'],
-        'u_agent_schedule_queue'     : _udd['u_agent_schedule_queue'],
-        'u_agent_schedule'           : _udd['u_agent_schedule'],
-        'u_agent_execute_queue'      : _udd['u_agent_execute_queue'],
-        'u_agent_execute_prepare'    : _udd['u_agent_execute_prepare'],
-        'u_agent_execute_mkdir'      : _udd['u_agent_execute_mkdir'],
-        'u_agent_execute_layer_start': _udd['u_agent_execute_layer_start'],
-        'u_agent_execute_layer'      : _udd['u_agent_execute_layer'],
-        'u_agent_lm_start'           : _udd['u_agent_lm_start'],
-        'u_agent_lm_pre_execute'     : _udd['u_agent_lm_pre_execute'],
-        'u_agent_lm_execute_start'   : _udd['u_agent_lm_execute_start'],
-        'u_agent_lm_execute'         : _udd['u_agent_lm_execute'],
-        'u_agent_lm_stop'            : _udd['u_agent_lm_stop'],
-        'u_agent_stage_out_start'    : _udd['u_agent_stage_out_start'],
-        'u_agent_stage_out_queue'    : _udd['u_agent_stage_out_queue'],
-        'u_agent_stage_out'          : _udd['u_agent_stage_out'],
-        'u_agent_push_to_umgr'       : _udd['u_agent_push_to_umgr'],
+        't_agent_stage_in_queue'     : _udd['t_agent_stage_in_queue'],
+        't_agent_stage_in'           : _udd['t_agent_stage_in'],
+        't_agent_schedule_queue'     : _udd['t_agent_schedule_queue'],
+        't_agent_schedule'           : _udd['t_agent_schedule'],
+        't_agent_execute_queue'      : _udd['t_agent_execute_queue'],
+        't_agent_execute_prepare'    : _udd['t_agent_execute_prepare'],
+        't_agent_execute_mkdir'      : _udd['t_agent_execute_mkdir'],
+        't_agent_execute_layer_start': _udd['t_agent_execute_layer_start'],
+        't_agent_execute_layer'      : _udd['t_agent_execute_layer'],
+        't_agent_lm_start'           : _udd['t_agent_lm_start'],
+        't_agent_lm_submit'          : _udd['t_agent_lm_submit'],
+        't_agent_lm_execute'         : _udd['t_agent_lm_execute'],
+        't_agent_lm_stop'            : _udd['t_agent_lm_stop'],
+        't_agent_stage_out_start'    : _udd['t_agent_stage_out_start'],
+        't_agent_stage_out_queue'    : _udd['t_agent_stage_out_queue'],
+        't_agent_stage_out'          : _udd['t_agent_stage_out'],
+        't_agent_push_to_tmgr'       : _udd['t_agent_push_to_tmgr'],
     }
 }
 
@@ -637,8 +565,8 @@ def get_session_description(sid, src=None, dburl=None):
                 for elem in json:
                     fix_uids(elem)
             elif isinstance(json, dict):
-                if 'unitmanager' in json and 'umgr' not in json:
-                    json['umgr'] = json['unitmanager']
+                if 'taskmanager' in json and 'tmgr' not in json:
+                    json['tmgr'] = json['taskmanager']
                 if 'pilotmanager' in json and 'pmgr' not in json:
                     json['pmgr'] = json['pilotmanager']
                 if '_id' in json and 'uid' not in json:
@@ -650,7 +578,7 @@ def get_session_description(sid, src=None, dburl=None):
         fix_uids(json)
     fix_json(json)
 
-    assert(sid == json['session']['uid']), 'sid inconsistent'
+    assert sid == json['session'][0]['uid'], 'sid inconsistent'
 
     ret             = dict()
     ret['entities'] = dict()
@@ -658,8 +586,8 @@ def get_session_description(sid, src=None, dburl=None):
     tree      = dict()
     tree[sid] = {'uid'      : sid,
                  'etype'    : 'session',
-                 'cfg'      : json['session']['cfg'],
-                 'has'      : ['umgr', 'pmgr'],
+                 'cfg'      : json['session'][0]['cfg'],
+                 'has'      : ['tmgr', 'pmgr'],
                  'children' : list()
                 }
 
@@ -673,13 +601,13 @@ def get_session_description(sid, src=None, dburl=None):
                      'children' : list()
                     }
 
-    for umgr in sorted(json['umgr'], key=lambda k: k['uid']):
-        uid = umgr['uid']
+    for tmgr in sorted(json['tmgr'], key=lambda k: k['uid']):
+        uid = tmgr['uid']
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
-                     'etype'    : 'umgr',
-                     'cfg'      : umgr['cfg'],
-                     'has'      : ['unit'],
+                     'etype'    : 'tmgr',
+                     'cfg'      : tmgr['cfg'],
+                     'has'      : ['task'],
                      'children' : list()
                     }
         # also inject the pilot description, and resource specifically
@@ -693,35 +621,44 @@ def get_session_description(sid, src=None, dburl=None):
         tree[uid] = {'uid'        : uid,
                      'etype'      : 'pilot',
                      'cfg'        : pilot['cfg'],
+                     'resources'  : pilot['resources'],
                      'description': pilot['description'],
-                     'has'        : ['unit'],
+                     'has'        : ['task'],
                      'children'   : list()
                     }
         # also inject the pilot description, and resource specifically
 
-    for unit in sorted(json['unit'], key=lambda k: k['uid']):
-        uid  = unit['uid']
-        pid  = unit['pilot']
-        umgr = unit['umgr']
-        tree[pid ]['children'].append(uid)
-        tree[umgr]['children'].append(uid)
+    for task in sorted(json['task'], key=lambda k: k['uid']):
+        uid  = task['uid']
+        tmgr = task.get('tmgr')
+        if tmgr:
+            tree[tmgr]['children'].append(uid)
+
+        pid  = task['pilot']
+        tree[pid]['children'].append(uid)
+
+        if 'resources' not in task:
+            td = task['description']
+            task['resources'] = {'cpu': td['cpu_processes'] * td['cpu_threads'],
+                                 'gpu': td['gpu_processes']}
         tree[uid] = {'uid'         : uid,
-                     'etype'       : 'unit',
-                     'cfg'         : unit,
-                     'description' : unit['description'],
+                     'etype'       : 'task',
+                     'cfg'         : task,
+                     'resources'   : task['resources'],
+                     'description' : task['description'],
                      'has'         : list(),
                      'children'    : list()
                     }
         # remove duplicate
-        del(tree[uid]['cfg']['description'])
+        del tree[uid]['cfg']['description']
 
     ret['tree'] = tree
 
     ret['entities']['pilot']   = {'state_model'  : s._pilot_state_values,
                                   'state_values' : s._pilot_state_inv_full,
                                   'event_model'  : dict()}
-    ret['entities']['unit']    = {'state_model'  : s._unit_state_values,
-                                  'state_values' : s._unit_state_inv_full,
+    ret['entities']['task']    = {'state_model'  : s._task_state_values,
+                                  'state_values' : s._task_state_inv_full,
                                   'event_model'  : dict()}
     ret['entities']['session'] = {'state_model'  : None,  # has no states
                                   'state_values' : None,
@@ -734,10 +671,14 @@ def get_session_description(sid, src=None, dburl=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_node_index(node_list, node, cpn, gpn):
+def get_node_index(node_list, node_uid, pn):
 
-    r0 = node_list.index(node) * (cpn + gpn)
-    r1 = r0 + cpn + gpn - 1
+    if not _node_index:
+        for idx,n in enumerate(node_list):
+            _node_index[n['node_id']] = idx
+
+    r0 = _node_index[node_uid] * pn
+    r1 = r0 + pn - 1
 
     return [r0, r1]
 
@@ -757,7 +698,7 @@ def get_duration(thing, dur):
     if not len(t0) or not len(t1):
         return [None, None]
 
-    return(t0[0], t1[-1])
+    return (t0[0], t1[-1])
 
 
 # ------------------------------------------------------------------------------
@@ -808,12 +749,16 @@ def cluster_resources(resources):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_provision(pilot):
+def _get_pilot_provision(pilot, rtype):
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     nodes, _, _ = _get_nodes(pilot)
 
@@ -827,7 +772,7 @@ def _get_pilot_provision(pilot):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node, cpn, gpn)
+            r0, r1 = get_node_index(nodes, node['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -837,10 +782,11 @@ def _get_pilot_provision(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def get_provided_resources(session):
+def get_provided_resources(session, rtype='cpu'):
     '''
-    For all ra.pilots, return the amount and time of resources provided.
-    This computes sets of 4-tuples of the form: [t0, t1, r0, r1] where:
+    For all ra.pilots, return the amount and time of the type of resources
+    provided. This computes sets of 4-tuples of the form: [t0, t1, r0, r1]
+    where:
 
         t0: time, begin of resource provision
         t1: time, begin of resource provision
@@ -850,10 +796,13 @@ def get_provided_resources(session):
     The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
     '''
 
+    if rtype not in ['cpu', 'gpu']:
+        raise Exception('unknown resource type: %s' % rtype)
+
     provided = dict()
     for p in session.get(etype='pilot'):
 
-        data = _get_pilot_provision(p)
+        data = _get_pilot_provision(p, rtype)
 
         for metric in data:
 
@@ -868,9 +817,9 @@ def get_provided_resources(session):
 
 # ------------------------------------------------------------------------------
 #
-def get_consumed_resources(session, udurations=None):
+def get_consumed_resources(session, rtype='cpu', tdurations=None):
     '''
-    For all ra.pilot or ra.unit entities, return the amount and time of
+    For all ra.pilot or ra.task entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
 
       - a resource type (we know about cores and gpus)
@@ -902,11 +851,11 @@ def get_consumed_resources(session, udurations=None):
     log = ru.Logger('radical.pilot.utils')
 
     consumed = dict()
-    for e in session.get(etype=['pilot', 'unit']):
+    for e in session.get(etype=['pilot', 'task']):
 
-        if   e.etype == 'pilot': data = _get_pilot_consumption(e)
-        elif e.etype == 'unit' : data = _get_unit_consumption(session,  e,
-                                                              udurations)
+        if   e.etype == 'pilot': data = _get_pilot_consumption(e, rtype)
+        elif e.etype == 'task' : data = _get_task_consumption(session, e, rtype,
+                                                              tdurations)
 
         for metric in data:
 
@@ -920,19 +869,19 @@ def get_consumed_resources(session, udurations=None):
     # we defined two additional metrics, 'warmup' and 'drain', which are defined
     # for all resources of the pilot.  `warmup` is defined as the time from
     # when the pilot becomes active, to the time the resource is first consumed
-    # by a unit.  `drain` is the inverse: the  time from when any unit last
+    # by a task.  `drain` is the inverse: the  time from when any task last
     # consumed the resource to the time when the pilot begins termination.
     for pilot in session.get(etype='pilot'):
 
-        if udurations:
-            # print('DEBUG: using udurations')
-            unit_durations = udurations
-        elif pilot.cfg['task_launch_method'] == 'PRTE':
-            # print('DEBUG: using prte configuration')
-            unit_durations = UNIT_DURATIONS_PRTE
-        else:
-            # print('DEBUG: using default configuration')
-            unit_durations = UNIT_DURATIONS_DEFAULT
+      # if tdurations:
+      #     # print('DEBUG: using tdurations')
+      #     task_durations = tdurations
+      # elif pilot.cfg['task_launch_method'] == 'PRTE':
+      #     # print('DEBUG: using prte configuration')
+      #     task_durations = TASK_DURATIONS_PRTE
+      # else:
+      #     # print('DEBUG: using default configuration')
+      #     task_durations = TASK_DURATIONS_DEFAULT
 
         pt    = pilot.timestamps
         log.debug('timestamps:')
@@ -940,14 +889,33 @@ def get_consumed_resources(session, udurations=None):
             log.debug('    %10.2f  %-20s  %-15s  %-15s  %-15s  %-15s  %s',
                            ts[0],  ts[1], ts[2], ts[3], ts[4], ts[5], ts[6])
 
-        p_min = pt(event=PILOT_DURATIONS['consume']['ignore'][0]) [0]
-        p_max = pt(event=PILOT_DURATIONS['consume']['ignore'][1])[-1]
-      # p_max = pilot.events[-1][ru.TIME]
+        p_min = None
+        p_max = None
+
+        try   : p_min = pilot.timestamps(event={1: 'bootstrap_0_start'})[0]
+        except: pass
+
+        try   : p_max = pilot.timestamps(event={1: 'bootstrap_0_stop'})[0]
+        except: pass
+
+        # fallback for missing bootstrap events
+        if p_min is None: p_min = pilot.timestamps(state='PMGR_ACTIVE')
+        if p_max is None: p_max = pilot.events[-1][ru.TIME]
+
+        assert p_min is not None
+        assert p_max is not None
+
         log.debug('pmin, pmax: %10.2f / %10.2f', p_min, p_max)
 
-        pid = pilot.uid
-        cpn = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-        gpn = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
+        pid  = pilot.uid
+        rnd  = 'cores_per_node'
+        rmap = 'core_map'
+
+        if rtype == 'gpu':
+            rnd  = 'gpus_per_node'
+            rmap = 'gpu_map'
+
+        pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
         nodes, _, pnodes = _get_nodes(pilot)
 
@@ -956,49 +924,39 @@ def get_consumed_resources(session, udurations=None):
         #
         #   resource_id : [t_min=None, t_max=None]
         #
-        # and then iterate over all units.  Wen we find a unit using some
+        # and then iterate over all tasks.  Wen we find a task using some
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode, cpn, gpn)
+            idx = get_node_index(nodes, pnode['node_id'], pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
 
+        for task in session.get(etype='task'):
 
-        for unit in session.get(etype='unit'):
-
-            if unit.cfg.get('pilot') != pid:
+            if task.cfg.get('pilot') != pid:
                 continue
 
             try:
-                snodes = unit.cfg['slots']['nodes']
-                ut     = unit.timestamps
-                u_min  = ut(event=unit_durations['consume']['exec_queue'][0]) [0]
-                u_max  = ut(event=unit_durations['consume']['unschedule'][1])[-1]
+                ranks  = task.cfg['slots']['ranks']
+                tts    = task.timestamps
+                task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
+                task_max  = tts(event=task['consume']['unschedule'][1])[-1]
+
             except:
                 continue
 
-            for snode in snodes:
+            for rank in ranks:
 
-                node  = [snode['name'], snode['uid']]
-                r0, _ = get_node_index(nodes, node, cpn, gpn)
+                r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
-                for core_map in snode['core_map']:
-                    for core in core_map:
-                        idx = r0 + core
+                for resource_map in rank[rmap]:
+                    for resource in resource_map:
+                        idx   = r0 + resource
                         t_min = resources[idx][0]
                         t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
-                        resources[idx] = [t_min, t_max]
-
-                for gpu_map in snode['gpu_map']:
-                    for gpu in gpu_map:
-                        idx = r0 + cpn + gpu
-                        t_min = resources[idx][0]
-                        t_max = resources[idx][1]
-                        if t_min is None or t_min > u_min: t_min = u_min
-                        if t_max is None or t_max < u_max: t_max = u_max
+                        if t_min is None or t_min > task_min: t_min = task_min
+                        if t_max is None or t_max < task_max: t_max = task_max
                         resources[idx] = [t_min, t_max]
 
         # now sift through resources and find buckets of pairs with same t_min
@@ -1013,7 +971,7 @@ def get_consumed_resources(session, udurations=None):
 
             if t_min is None:
 
-                assert(t_max is None)
+                assert t_max is None
                 bucket_none.append(idx)
 
             else:
@@ -1074,7 +1032,7 @@ def _get_nodes(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_pilot_consumption(pilot):
+def _get_pilot_consumption(pilot, rtype):
 
     # Pilots consume resources in different ways:
     #
@@ -1093,10 +1051,14 @@ def _get_pilot_consumption(pilot):
     # task*, which allows us to compute tasks specific resource utilization
     # overheads.
 
-    pid   = pilot.uid
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
-    ret   = dict()
+    pid = pilot.uid
+    ret = dict()
+    rnd = 'cores_per_node'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
     # Account for agent resources.  Agents use full nodes, i.e., cores and GPUs
     # We happen to know that agents use the first nodes in the allocation and
@@ -1115,7 +1077,7 @@ def _get_pilot_consumption(pilot):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode, cpn, gpn)
+            r0, r1 = get_node_index(nodes, anode['node_id'], pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1123,7 +1085,7 @@ def _get_pilot_consumption(pilot):
     # account for all other pilot metrics
     for metric in PILOT_DURATIONS['consume']:
 
-        if metric == 'ignore':
+        if metric == 'idle':
             continue
 
         boxes = list()
@@ -1131,7 +1093,7 @@ def _get_pilot_consumption(pilot):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node, cpn, gpn)
+                r0, r1 = get_node_index(nodes, node['node_id'], pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1141,12 +1103,12 @@ def _get_pilot_consumption(pilot):
 
 # ------------------------------------------------------------------------------
 #
-def _get_unit_consumption(session, unit, udurations=None):
+def _get_task_consumption(session, task, rtype, tdurations=None):
 
-    # we need to know what pilot the unit ran on.  If we don't find a designated
+    # we need to know what pilot the task ran on.  If we don't find a designated
     # pilot, no resources were consumed
-    uid = unit.uid
-    pid = unit.cfg['pilot']
+    uid = task.uid
+    pid = task.cfg['pilot']
 
     if not pid:
         return dict()
@@ -1155,83 +1117,236 @@ def _get_unit_consumption(session, unit, udurations=None):
     pilot = session.get(uid=pid)
 
     if isinstance(pilot, list):
-        assert(len(pilot) == 1)
+        assert len(pilot) == 1
         pilot = pilot[0]
 
     # FIXME: it is inefficient to query those values again and again
-    cpn   = pilot.cfg['resource_details']['rm_info']['cores_per_node']
-    gpn   = pilot.cfg['resource_details']['rm_info']['gpus_per_node']
     nodes, _, _ = _get_nodes(pilot)
 
-    # Units consume only those resources they are scheduled on.
-    if 'slots' not in unit.cfg:
+    rnd  = 'cores_per_node'
+    rmap = 'core_map'
+
+    if rtype == 'gpu':
+        rnd  = 'gpus_per_node'
+        rmap = 'gpu_map'
+
+    pn = pilot.cfg['resource_details']['rm_info'][rnd]
+
+    # Tasks consume only those resources they are scheduled on.
+    if 'slots' not in task.cfg:
         return dict()
 
-    snodes    = unit.cfg['slots']['nodes']
+    ranks     = task.cfg['slots']['ranks']
     resources = list()
-    for snode in snodes:
+    for rank in ranks:
 
-        node  = [snode['name'], snode['uid']]
-        r0, _ = get_node_index(nodes, node, cpn, gpn)
+        r0, _ = get_node_index(nodes, rank['node_id'], pn)
 
-        for core_map in snode['core_map']:
-            for core in core_map:
-                resources.append(r0 + core)
-
-        for gpu_map in snode['gpu_map']:
-            for gpu in gpu_map:
-                resources.append(r0 + cpn + gpu)
+        for resource_map in rank[rmap]:
+            for resource in resource_map:
+                resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)
 
-    # we heuristically switch between PRTE event traces and normal (fork) event
-    # traces
-    if udurations:
-        unit_durations = udurations
-    elif pilot.cfg['task_launch_method'] == 'PRTE':
-        unit_durations = UNIT_DURATIONS_PRTE
+    if tdurations:
+        task_durations = tdurations
     else:
-        unit_durations = UNIT_DURATIONS_DEFAULT
+        task_durations = TASK_DURATIONS_DEFAULT
 
     if _debug:
         print()
 
     ret = dict()
-    for metric in unit_durations['consume']:
+    for metric in task_durations['consume']:
 
         boxes = list()
-        t0, t1 = get_duration(unit, unit_durations['consume'][metric])
+        t0, t1 = get_duration(task, task_durations['consume'][metric])
 
 
         if t0 is not None:
 
             if _debug:
                 print('%s: %-15s : %10.3f - %10.3f = %10.3f'
-                     % (unit.uid, metric, t1, t0, t1 - t0))
+                     % (task.uid, metric, t1, t0, t1 - t0))
             for r in resources:
                 boxes.append([t0, t1, r[0], r[1]])
 
         else:
             if _debug:
-                print('%s: %-15s : -------------- ' % (unit.uid, metric))
-                dur = unit_durations['consume'][metric]
+                print('%s: %-15s : -------------- ' % (task.uid, metric))
+                dur = task_durations['consume'][metric]
                 print(dur)
 
                 for e in dur:
                     if ru.STATE in e and ru.EVENT not in e:
                         e[ru.EVENT] = 'state'
 
-                t0 = unit.timestamps(event=dur[0])
-                t1 = unit.timestamps(event=dur[1])
+                t0 = task.timestamps(event=dur[0])
+                t1 = task.timestamps(event=dur[1])
                 print(t0)
                 print(t1)
-                for e in unit.events:
+                for e in task.events:
                     print('\t'.join([str(x) for x in e]))
 
               # sys.exit()
 
         ret[metric] = {uid: boxes}
+
+    return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_transitions(pilot, task_metrics=None, pilot_metrics=None):
+
+    task_metrics  = task_metrics  or TASK_DURATIONS_DEFAULT
+    pilot_metrics = pilot_metrics or PILOT_DURATIONS
+
+
+    # we try to find points in time where resource usage moved from purpose A to
+    # purpose B.  For example, consider this metric:
+    #
+    #   'exec_queue'  : [{ru.EVENT: 'schedule_ok'    },
+    #                    {ru.STATE: s.AGENT_EXECUTING}],
+    #   'exec_prep'   : [{ru.STATE: s.AGENT_EXECUTING},
+    #                    {ru.EVENT: 'exec_start'     }],
+    #   'exec_cmd'    : [{ru.EVENT: 'exec_start'     },
+    #                    {ru.EVENT: 't_start'        }],
+    #
+    # then we convert this into the following structure:
+    #
+    # [
+    #   # event                          from         to
+    #   [{ru.EVENT: 'schedule_ok'    },  None,        'exec_queue'],
+    #   [{ru.STATE: s.AGENT_EXECUTING}, 'exec_queue', 'exec_prep'],
+    #   [{ru.EVENT: 'exec_start'     }, 'exec_prep',  'exec_rp'],
+    #   [{ru.EVENT: 't_start'        }, 'exec_rp',    'None]
+    # ]
+    #
+    # which we will use like this:
+    #
+    #   - go through all events for a task
+    #   - if event is in the list above
+    #     - reduce resources in `from` metric
+    #     - increase resource in `to` metric
+    #
+    # If `from` or `to` are None, then the resources are taken from / given to
+    # the pilot's idle resources.  We thus rename the 'None' to 'idle'.
+
+    # dig though metric, find all pairs of matching start/stop events
+    task_transitions = list()
+    for metric,spec in task_metrics['consume'].items():
+
+        # find the metric's transition spec
+        m = None
+        for m in task_transitions:
+            if m[0] == spec[0]:
+                break
+            m = None
+
+        # if we don't find that spec registered, register it as start event
+        if not m:
+            task_transitions.append([spec[0], None, metric])
+        else:
+            # if we know the transition, just register the stop event
+            assert m[2] is None
+            m[2] = metric
+
+        # the inverse of the above where we check stop events, register, and
+        # insert start events (in case transitions are not causally ordered)
+        m = None
+        for m in task_transitions:
+            if m[0] == spec[1]:
+                break
+            m = None
+        if not m:
+            task_transitions.append([spec[1], metric, None])
+        else:
+            assert m[1] is None
+            m[1] = metric
+
+    # task transitions which, after the above search, miss start or stop events
+    # will add / remove resources from the pilot's idle pool.
+    for t in task_transitions:
+        if t[1] is None: t[1] = 'idle'
+        if t[2] is None: t[2] = 'idle'
+
+    # do the same for the pilot metrics / transitions, only that now we
+    # translate `None` as `system`, which is where the pilot obtains it's
+    # resources from.  Also note that some transition events can have double
+    # entries, for example, if a event passes some resources to a sub-agent, and
+    # some other resources remain in the pilot.
+    #
+    # Note that we also handle the `agent` metrics to cover resources used by
+    # the agent (and thus not making it into usable).
+    pilot_transitions = list()
+    for metric,spec in pilot_metrics['consume'].items():
+
+        # same as above, but for pilot transition events
+        m = None
+        for m in pilot_transitions:
+            if m[0] == spec[0]:
+                break
+            m = None
+        if not m:
+            pilot_transitions.append([spec[0], None, metric])
+        else:
+            assert m[2] is None
+            m[2] = metric
+
+        m = None
+        for m in pilot_transitions:
+            if m[0] == spec[1]:
+                break
+            m = None
+        if not m:
+            pilot_transitions.append([spec[1], metric, None])
+        else:
+            assert m[1] is None
+            m[1] = metric
+
+    for t in pilot_transitions:
+        # agent resources are taked from the pilot
+        # pilot resources are taken from the system
+        if t[1] is None:
+            if t[2] == 'agent': t[1] = 'setup_1'
+            else              : t[1] = 'system'
+        if t[2] is None:
+            if t[1] == 'agent': t[2] = 'term'
+            else              : t[2] = 'system'
+
+    return pilot_transitions, task_transitions
+
+
+# ------------------------------------------------------------------------------
+#
+def get_resource_timelines(task, transitions):
+    '''
+    For each specific task, return a set of tuples of the form:
+
+        [start, stop, metric]
+
+    which reports what metric has been used during what time span.
+    '''
+
+    # we need to know what pilot the task ran on.  If we don't find a designated
+    # pilot, no resources were consumed
+    tid = task.uid
+    pid = task.cfg['pilot']
+
+    if not pid:
+        # task was never assigned to a pilot
+        return dict()
+
+    if 'slots' not in task.cfg:
+        # the task was never scheduled
+        return dict()
+
+    ret = list()
+    for metric, spec in transitions['consume'].items():
+        t0, t1 = get_duration(task, spec)
+        ret.append([t0, t1, metric, tid])
 
     return ret
 

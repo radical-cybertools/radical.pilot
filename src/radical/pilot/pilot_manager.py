@@ -1,4 +1,6 @@
 
+# pylint: disable=protected-access
+
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
@@ -27,7 +29,7 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 class PilotManager(rpu.Component):
     '''
 
-    A PilotManager manages :class:`rp.ComputePilot` instances that are
+    A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
     It is possible to attach one or more :ref:`chapter_machconf` to a
@@ -40,26 +42,26 @@ class PilotManager(rpu.Component):
 
         pm = rp.PilotManager(session=s)
 
-        pd = rp.ComputePilotDescription()
+        pd = rp.PilotDescription()
         pd.resource = "futuregrid.alamo"
         pd.cpus = 16
 
         p1 = pm.submit_pilots(pd)  # create first  pilot with 16 cores
         p2 = pm.submit_pilots(pd)  # create second pilot with 16 cores
 
-        # Create a workload of 128 '/bin/sleep' compute units
-        compute_units = []
-        for unit_count in range(0, 128):
-            cu = rp.ComputeUnitDescription()
-            cu.executable = "/bin/sleep"
-            cu.arguments = ['60']
-            compute_units.append(cu)
+        # Create a workload of 128 '/bin/sleep' tasks
+        tasks = []
+        for task_count in range(0, 128):
+            t = rp.TaskDescription()
+            t.executable = "/bin/sleep"
+            t.arguments = ['60']
+            tasks.append(t)
 
         # Combine the two pilots, the workload and a scheduler via
-        # a UnitManager.
-        um = rp.UnitManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
-        um.add_pilot(p1)
-        um.submit_units(compute_units)
+        # a TaskManager.
+        tm = rp.TaskManager(session=session, scheduler=rp.SCHEDULER_ROUND_ROBIN)
+        tm.add_pilot(p1)
+        tm.submit_tasks(tasks)
 
 
     The pilot manager can issue notification on pilot state changes.  Whenever
@@ -71,13 +73,15 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, cfg='default'):
+    def __init__(self, session, uid=None, cfg='default'):
         '''
         Creates a new PilotManager and attaches is to the session.
 
         **Arguments:**
             * session [:class:`rp.Session`]:
               The session instance to use.
+            * uid (`string`):
+              ID for pilot manager, to be used for reconnect
             * cfg (`dict` or `string`):
               The configuration or name of configuration to use.
 
@@ -85,17 +89,25 @@ class PilotManager(rpu.Component):
             * A new `PilotManager` object [:class:`rp.PilotManager`].
         '''
 
-        assert(session.primary), 'pmgr needs primary session'
+        assert session.primary, 'pmgr needs primary session'
 
+        # initialize the base class (with no intent to fork)
+        if uid:
+            self._reconnect = True
+            self._uid       = uid
+        else:
+            self._reconnect = False
+            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=session.uid)
+
+        self._uids        = list()   # known UIDs
         self._pilots      = dict()
-        self._pilots_lock = ru.RLock('pmgr.pilots_lock')
+        self._pilots_lock = mt.RLock()
         self._callbacks   = dict()
-        self._pcb_lock    = ru.RLock('pmgr.pcb_lock')
+        self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
         self._rec_id      = 0       # used for session recording
-        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
-                                           ru.ID_CUSTOM, ns=session.uid)
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -109,14 +121,15 @@ class PilotManager(rpu.Component):
             name = cfg
             cfg  = None
 
-        cfg           = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
-        cfg.uid       = self._uid
-        cfg.owner     = self._uid
-        cfg.sid       = session.uid
-        cfg.base      = session.base
-        cfg.path      = session.path
-        cfg.dburl     = session.dburl
-        cfg.heartbeat = session.cfg.heartbeat
+        cfg                = ru.Config('radical.pilot.pmgr', name=name, cfg=cfg)
+        cfg.uid            = self._uid
+        cfg.owner          = self._uid
+        cfg.sid            = session.uid
+        cfg.base           = session.base
+        cfg.path           = session.path
+        cfg.dburl          = session.dburl
+        cfg.heartbeat      = session.cfg.heartbeat
+        cfg.client_sandbox = session._get_client_sandbox()
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
@@ -129,16 +142,24 @@ class PilotManager(rpu.Component):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
+        if self._reconnect:
+            self._session._reconnect_pmgr(self)
+            self._reconnect_pilots()
+        else:
+            self._session._register_pmgr(self)
+
         # The output queue is used to forward submitted pilots to the
         # launching component.
         self.register_output(rps.PMGR_LAUNCHING_PENDING,
                              rpc.PMGR_LAUNCHING_QUEUE)
 
-        # we also listen on the control pubsub, to learn about completed staging
-        # directives
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._staging_ack_cb)
+        # get queue for staging requests
+        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
+
+        # we also listen for completed staging directives
+        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
-        self._sds_lock   = ru.Lock('pmgr_sds_lock')
+        self._sds_lock   = mt.Lock()
 
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
@@ -150,9 +171,6 @@ class PilotManager(rpu.Component):
 
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
-
-        # let session know we exist
-        self._session._register_pmgr(self)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -193,6 +211,7 @@ class PilotManager(rpu.Component):
 
         **Arguments:**
             * **terminate** [`bool`]: cancel non-final pilots if True (default)
+              NOTE: pilots cannot be reconnected to after termination
         """
 
         if self._closed:
@@ -211,7 +230,6 @@ class PilotManager(rpu.Component):
             self.cancel_pilots(_timeout=20)
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
-
 
         self._terminate.set()
         self._cmgr.close()
@@ -256,8 +274,7 @@ class PilotManager(rpu.Component):
             return False
 
         # send heartbeat
-        self._session._dbs.pilot_command('pilot_heartbeat', {'pmgr': self._uid})
-
+        self._pilot_send_hb()
         return True
 
 
@@ -398,65 +415,78 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_input(self, pilot, directives):
-        '''
-        Run some staging directives for a pilot.  We pass this request on to
-        the launcher, and wait until the launcher confirms completion on the
-        command pubsub.
-        '''
+    def _pilot_send_hb(self, pid=None):
 
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(directives)
-        uids = [sd['uid'] for sd in sds]
-        self._active_sds = dict()
-
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pilot_staging_input_request',
-                                          'arg' : {'pilot' : pilot,
-                                                   'sds'   : sds}})
-        # keep track of SDS we sent off
-        for sd in sds:
-            sd['state'] = rps.NEW
-            self._active_sds[sd['uid']] = sd
-
-        # and wait for their completion
-        with self._sds_lock:
-            sd_states = [sd['state'] for sd
-                                     in  list(self._active_sds.values())
-                                     if  sd['uid'] in uids]
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd
-                                         in  list(self._active_sds.values())
-                                         if  sd['uid'] in uids]
-
-        if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
+        self._session._dbs.pilot_command('heartbeat', {'pmgr': self._uid}, pid)
 
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_output(self, pilot, directives):
+    def _pilot_staging_input(self, sds):
         '''
-        Run some staging directives for a pilot.  We pass this request on to
-        the launcher, and wait until the launcher confirms completion on the
-        command pubsub.
+        Run some staging directives for a pilot.
         '''
 
         # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(directives)
+        sds  = expand_staging_directives(sds)
         uids = [sd['uid'] for sd in sds]
-        self._active_sds = dict()
 
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'pilot_staging_output_request',
-                                          'arg': {'pilot' : pilot,
-                                                  'sds'   : sds}})
-        # keep track of SDS we sent off
-        for sd in sds:
-            sd['state'] = rps.NEW
-            self._active_sds[sd['uid']] = sd
+        # prepare to wait for completion
+        with self._sds_lock:
 
-        # and wait for their completion
+            self._active_sds = dict()
+            for sd in sds:
+                sd['state'] = rps.NEW
+                self._active_sds[sd['uid']] = sd
+
+            sd_states = [sd['state'] for sd
+                                     in  self._active_sds.values()
+                                     if  sd['uid'] in uids]
+        # push them out
+        self._stager_queue.put(sds)
+
+        while rps.NEW in sd_states:
+            time.sleep(1.0)
+            with self._sds_lock:
+                sd_states = [sd['state'] for sd
+                                         in  self._active_sds.values()
+                                         if  sd['uid'] in uids]
+
+        if rps.FAILED in sd_states:
+            errs = list()
+            for uid in self._active_sds:
+                if self._active_sds[uid].get('error'):
+                    errs.append(self._active_sds[uid]['error'])
+
+            if errs:
+                raise RuntimeError('pilot staging failed: %s' % errs)
+            else:
+                raise RuntimeError('pilot staging failed')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _pilot_staging_output(self, sds):
+        '''
+        Run some staging directives for a pilot.
+        '''
+
+        # add uid, ensure its a list, general cleanup
+        sds  = expand_staging_directives(sds)
+        uids = [sd['uid'] for sd in sds]
+
+        # prepare to wait for completion
+        with self._sds_lock:
+
+            self._active_sds = dict()
+            for sd in sds:
+                sd['state'] = rps.NEW
+                self._active_sds[sd['uid']] = sd
+
+        # push them out
+        self._stager_queue.put(sds)
+
+        # wait for their completion
         with self._sds_lock:
             sd_states = [sd['state'] for sd in self._active_sds.values()
                                             if sd['uid'] in uids]
@@ -467,7 +497,15 @@ class PilotManager(rpu.Component):
                                                 if sd['uid'] in uids]
 
         if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
+            errs = list()
+            for uid in self._active_sds:
+                if self._active_sds[uid].get('error'):
+                    errs.append(self._active_sds[uid]['error'])
+
+            if errs:
+                raise RuntimeError('pilot staging failed: %s' % errs)
+            else:
+                raise RuntimeError('pilot staging failed')
 
 
     # --------------------------------------------------------------------------
@@ -480,11 +518,14 @@ class PilotManager(rpu.Component):
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        if cmd in ['pilot_staging_input_result', 'pilot_staging_output_result']:
+        if cmd == 'staging_result':
+
             with self._sds_lock:
                 for sd in arg['sds']:
-                    if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['state'] = sd['state']
+                    uid = sd['uid']
+                    if uid in self._active_sds:
+                        self._active_sds[uid]['state'] = sd['state']
+                        self._active_sds[uid]['error'] = sd['error']
 
         return True
 
@@ -503,11 +544,11 @@ class PilotManager(rpu.Component):
     #
     def list_pilots(self):
         """
-        Returns the UIDs of the :class:`rp.ComputePilots` managed by
+        Returns the UIDs of the :class:`rp.Pilots` managed by
         this pilot manager.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` UIDs [`string`].
+              * A list of :class:`rp.Pilot` UIDs [`string`].
         """
 
         with self._pilots_lock:
@@ -520,19 +561,19 @@ class PilotManager(rpu.Component):
     #
     def submit_pilots(self, descriptions):
         """
-        Submits on or more :class:`rp.ComputePilot` instances to the
+        Submits on or more :class:`rp.Pilot` instances to the
         pilot manager.
 
         **Arguments:**
-            * **descriptions** [:class:`rp.ComputePilotDescription`
-              or list of :class:`rp.ComputePilotDescription`]: The
-              description of the compute pilot instance(s) to create.
+            * **descriptions** [:class:`rp.PilotDescription`
+              or list of :class:`rp.PilotDescription`]: The
+              description of the pilot instance(s) to create.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` objects.
+              * A list of :class:`rp.Pilot` objects.
         """
 
-        from .compute_pilot import ComputePilot
+        from .pilot import Pilot
 
         ret_list = True
         if not isinstance(descriptions, list):
@@ -550,19 +591,7 @@ class PilotManager(rpu.Component):
         pilot_docs = list()
         for pd in descriptions :
 
-            if not pd.runtime:
-                raise ValueError('pilot runtime must be defined')
-
-            if pd.runtime <= 0:
-                raise ValueError('pilot runtime must be positive')
-
-            if not pd.cores:
-                raise ValueError('pilot size must be defined')
-
-            if not pd.resource:
-                raise ValueError('pilot target resource must be defined')
-
-            pilot = ComputePilot(pmgr=self, descr=pd)
+            pilot = Pilot(pmgr=self, descr=pd)
             pilots.append(pilot)
             pilot_doc = pilot.as_dict()
             pilot_docs.append(pilot_doc)
@@ -593,12 +622,18 @@ class PilotManager(rpu.Component):
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
 
-        # Only after the insert can we hand the pilots over to the next
+        # immediately send first heartbeat
+        for pilot_doc in pilot_docs:
+            pid = pilot_doc['uid']
+            self._pilot_send_hb(pid)
+
+        # Only after the insert/update can we hand the pilots over to the next
         # components (ie. advance state).
         for pd in pilot_docs:
             pd['state'] = rps.PMGR_LAUNCHING_PENDING
             self._update_pilot(pd, advance=False)
         self.advance(pilot_docs, publish=True, push=True)
+
 
         self._rep.ok('>>ok\n')
 
@@ -608,15 +643,39 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pilots(self):
+        '''
+        When reconnecting, we need to dig information about all pilots from the
+        DB for which this pmgr is responsible.
+        '''
+
+        from .pilot             import Pilot
+        from .pilot_description import PilotDescription
+
+      # self.is_valid()
+
+        pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+
+        with self._pilots_lock:
+            for ud in pilot_docs:
+
+                descr = PilotDescription(ud['description'])
+                pilot = Pilot(pmgr=self, descr=descr)
+
+                self._pilots[pilot.uid] = pilot
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_pilots(self, uids=None):
-        """Returns one or more compute pilots identified by their IDs.
+        """Returns one or more pilots identified by their IDs.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute pilot objects to return.
+              pilot objects to return.
 
         **Returns:**
-              * A list of :class:`rp.ComputePilot` objects.
+              * A list of :class:`rp.Pilot` objects.
         """
 
         if not uids:
@@ -645,11 +704,11 @@ class PilotManager(rpu.Component):
     #
     def wait_pilots(self, uids=None, state=None, timeout=None):
         """
-        Returns when one or more :class:`rp.ComputePilots` reach a
+        Returns when one or more :class:`rp.Pilots` reach a
         specific state.
 
         If `pilot_uids` is `None`, `wait_pilots` returns when **all**
-        ComputePilots reach the state defined in `state`.  This may include
+        Pilots reach the state defined in `state`.  This may include
         pilots which have previously terminated or waited upon.
 
         **Example**::
@@ -659,15 +718,15 @@ class PilotManager(rpu.Component):
         **Arguments:**
 
             * **pilot_uids** [`string` or `list of strings`]
-              If pilot_uids is set, only the ComputePilots with the specified
+              If pilot_uids is set, only the Pilots with the specified
               uids are considered. If pilot_uids is `None` (default), all
-              ComputePilots are considered.
+              Pilots are considered.
 
             * **state** [`string`]
-              The state that ComputePilots have to reach in order for the call
+              The state that Pilots have to reach in order for the call
               to return.
 
-              By default `wait_pilots` waits for the ComputePilots to
+              By default `wait_pilots` waits for the Pilots to
               reach a terminal state, which can be one of the following:
 
               * :data:`rp.rps.DONE`
@@ -768,11 +827,11 @@ class PilotManager(rpu.Component):
     #
     def cancel_pilots(self, uids=None, _timeout=None):
         """
-        Cancel one or more :class:`rp.ComputePilots`.
+        Cancel one or more :class:`rp.Pilots`.
 
         **Arguments:**
             * **uids** [`string` or `list of strings`]: The IDs of the
-              compute pilot objects to cancel.
+              pilot objects to cancel.
         """
 
         if not uids:
@@ -795,7 +854,7 @@ class PilotManager(rpu.Component):
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
 
         # inform pmgr.launcher - it will force-kill the pilot after some delay
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 
@@ -808,7 +867,7 @@ class PilotManager(rpu.Component):
         """
         Registers a new callback function with the PilotManager.  Manager-level
         callbacks get called if the specified metric changes.  The default
-        metric `PILOT_STATE` fires the callback if any of the ComputePilots
+        metric `PILOT_STATE` fires the callback if any of the Pilots
         managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
@@ -834,9 +893,9 @@ class PilotManager(rpu.Component):
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._pcb_lock:
-            cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb,
-                                                'cb_data' : cb_data}
+            cb_id = id(cb)
+            self._callbacks[metric][cb_id] = {'cb'      : cb,
+                                              'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -858,16 +917,28 @@ class PilotManager(rpu.Component):
             for metric in metrics:
 
                 if cb:
-                    to_delete = [cb.__name__]
+                    to_delete = [id(cb)]
                 else:
                     to_delete = list(self._callbacks[metric].keys())
 
-                for cb_name in to_delete:
+                for cb_id in to_delete:
 
-                    if cb_name not in self._callbacks[metric]:
-                        raise ValueError("unknown callback '%s'" % cb_name)
+                    if cb_id not in self._callbacks[metric]:
+                        raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del(self._callbacks[metric][cb_name])
+                    del self._callbacks[metric][cb_id]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def check_uid(self, uid):
+
+        # ensure that uid is not yet known
+        if uid in self._uids:
+            return False
+        else:
+            self._uids.append(uid)
+            return True
 
 
 # ------------------------------------------------------------------------------

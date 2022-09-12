@@ -13579,7 +13579,7 @@ Persistency}</string>
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc
 
-\f0\fs20 \cf0             Unit Manager}</string>
+\f0\fs20 \cf0             Task Manager}</string>
 						<key>VerticalPad</key>
 						<integer>0</integer>
 					</dict>
@@ -14430,7 +14430,7 @@ Persistency}</string>
 {\colortbl;\red255\green255\blue255;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\qc
 
-\f0\fs20 \cf0             Unit Manager}</string>
+\f0\fs20 \cf0             Task Manager}</string>
 						<key>VerticalPad</key>
 						<integer>0</integer>
 					</dict>

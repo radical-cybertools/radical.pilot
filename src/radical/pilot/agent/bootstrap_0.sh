@@ -1,10 +1,25 @@
-#!/bin/bash -l
+#!/bin/sh
+# combine stdout and stderr
+exec 2>&1
 
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
+export LC_NUMERIC="C"
+
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
+
+# we should always find the RU env helper in our cwd
+. ./radical-utils-env.sh
+
+# get out of any virtual or conda env (from .bashrc etc)
+env_deactivate
+
+# store the sorted env for logging, but also so that we can dig original env
+# settings for task environments, if needed
+mkdir -p env
+env_dump -t env/bs0_orig.env
 
 
 # Report where we are, as this is not always what you expect ;-)
@@ -13,21 +28,6 @@ echo "# -------------------------------------------------------------------"
 echo "bootstrap_0 running on host: `hostname -f`."
 echo "bootstrap_0 started as     : '$0 $@'"
 echo "safe environment of bootstrap_0"
-
-# store the sorted env for logging, but also so that we can dig original env
-# settings for task environments, if needed
-env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' > env.orig
-
-
-# create a `deactivate` script
-old_path=$(  grep 'export PATH='       env.orig | cut -f 2- -d '=')
-old_pypath=$(grep 'export PYTHONPATH=' env.orig | cut -f 2- -d '=')
-old_pyhome=$(grep 'export PYTHONHOME=' env.orig | cut -f 2- -d '=')
-
-echo "export PATH='$old_path'"          > deactivate
-echo "export PYTHONPATH='$old_pypath'" >> deactivate
-echo "export PYTHONHOME='$old_pyhome'" >> deactivate
-
 
 # interleave stdout and stderr, to get a coherent set of log messages
 if test -z "$RP_BOOTSTRAP_0_REDIR"
@@ -52,7 +52,7 @@ fi
 # Copyright 2013-2015, RADICAL @ Rutgers
 # Licensed under the MIT License
 #
-# This script launches a radical.pilot compute pilot.  If needed, it creates and
+# This script launches a radical.pilot pilot.  If needed, it creates and
 # populates a virtualenv on the fly, into $VIRTENV.
 #
 # https://xkcd.com/1987/
@@ -119,11 +119,11 @@ VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
 VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
 
-VIRTENV_RADICAL_DEPS="pymongo colorama python-hostlist ntplib "\
-"pyzmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
+"pyzmq netifaces setproctitle msgpack regex dill"
 
-VIRTENV_RADICAL_MODS="pymongo colorama hostlist ntplib "\
-"zmq netifaces setproctitle msgpack future regex"
+VIRTENV_RADICAL_MODS="pymongo colorama ntplib "\
+"zmq netifaces setproctitle msgpack regex dill"
 
 if ! test -z "$RADICAL_DEBUG"
 then
@@ -153,30 +153,19 @@ export MAKEFLAGS="-j"
 #
 create_deactivate()
 {
-    # capture the current environment
-    env | sort | grep '=' | sed -e 's/\([^=]*\)=\(.*\)/export \1="\2"/g' \
-        > env.bs_0
+    # at this point we activated the agent VE and thus have RU availale.  Use
+    # `radical-utils-env.sh` to create a script to recover the virgin env
+    # (`bs0_orig.env`) from the current state (`bs0_acivate.env`)
+    which radical-utils-env.sh
+    . radical-utils-env.sh
+    env_dump -t env/bs0_active.env
+    env_prep -s env/bs0_orig.env -r env/bs0_active.env -t env/bs0_orig.sh
 
-    # find all variables which changed
-    changed=$(diff -w env.orig env.bs_0 | grep '='        \
-                                        | cut -f 3 -d ' ' \
-                                        | cut -f 1 -d '=' \
-                                        | sort -u)
-
-    # capture the original values in `deactivate`.  If no original value exists,
-    # unset the variable
-    for var in $changed
-    do
-        orig=$(grep -e "^export $var=" env.orig)
-        if test -z "$orig"
-        then
-            # var did not exist
-            echo "unset  $var" >> deactivate
-        else
-            # var existed, value may or may not be empty
-            echo "$orig" >> deactivate
-        fi
-    done
+    # we also prepare a script to return to the `pre_bootstrap_0` state: all
+    # pre_bootstrap_0 commands have been run, but the virtualenv is not yet
+    # activated.  This can be used in case a different VE is to be created or
+    # used.
+    env_prep -s env/bs0_pre_0.env -r env/bs0_active.env -t env/bs0_pre_0.sh
 }
 
 
@@ -192,26 +181,60 @@ create_gtod()
         if ! contains "$tmp" '%'
         then
             # we can use the system tool
-            echo "#!/bin/sh"       > ./gtod
-            echo "date '+%s.%6N'" >> ./gtod
+            echo "#!/bin/sh"       > ./gtod.sh
+            echo "date '+%s.%6N'" >> ./gtod.sh
         fi
     else
         shell=/bin/sh
         test -x '/bin/bash' && shell=/bin/bash
 
-        echo "#!$SHELL"                                > ./gtod
-        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod
-        echo "then"                                   >> ./gtod
-        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod
-        echo "else"                                   >> ./gtod
-        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod
-        echo "fi"                                     >> ./gtod
+        echo "#!$SHELL"                                > ./gtod.sh
+        echo "export LC_NUMERIC=C"                    >> ./gtod.sh
+        echo "if test -z \"\$EPOCHREALTIME\""         >> ./gtod.sh
+        echo "then"                                   >> ./gtod.sh
+        echo "  awk 'BEGIN {srand(); print srand()}'" >> ./gtod.sh
+        echo "else"                                   >> ./gtod.sh
+        echo "  echo \${EPOCHREALTIME:0:20}"          >> ./gtod.sh
+        echo "fi"                                     >> ./gtod.sh
     fi
 
-    chmod 0755 ./gtod
+    chmod 0755 ./gtod.sh
 
-    TIME_ZERO=`./gtod`
-    export TIME_ZERO
+    # initialize profile
+    PROFILE="bootstrap_0.prof"
+    now=$(./gtod.sh)
+    echo "#time,event,comp,thread,uid,state,msg" > "$PROFILE"
+
+    ip=$(ip addr \
+         | grep 'state UP' -A2 \
+         | grep 'inet' \
+         | awk '{print $2}' \
+         | cut -f1 -d'/' \
+         | tr '\n' ' ' \
+         | cut -f1 -d' ')
+    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+        "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
+        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        | tee -a "$PROFILE"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+create_prof(){
+
+    cat > ./prof <<EOT
+#!/bin/sh
+
+test -z "\$RP_PROF_TGT" && exit
+
+now=\$(\$RP_GTOD)
+printf "%.7f,\$1,\$RP_SPAWNER_ID,MainThread,\$RP_TASK_ID,AGENT_EXECUTING,\\\n" \$now\\
+    >> "\$RP_PROF_TGT"
+
+EOT
+
+    chmod 0755 ./prof
 }
 
 
@@ -228,15 +251,7 @@ profile_event()
 
     event=$1
     msg=$2
-
-    epoch=`./gtod`
-    now=$(awk "BEGIN{print($epoch - $TIME_ZERO)}")
-
-    if ! test -f "$PROFILE"
-    then
-        # initialize profile
-        echo "#time,name,uid,state,event,msg" > "$PROFILE"
-    fi
+    now=$(./gtod.sh)
 
     # TIME   = 0  # time of event (float, seconds since epoch)  mandatory
     # EVENT  = 1  # event ID (string)                           mandatory
@@ -247,7 +262,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "PMGR_ACTIVE_PENDING" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
         | tee -a "$PROFILE"
 }
 
@@ -303,7 +318,7 @@ waitfor()
     TIMEOUT="$1";  shift
     COMMAND="$*"
 
-    START=`echo \`./gtod\` | cut -f 1 -d .`
+    START=`echo \`./gtod.sh\` | cut -f 1 -d .`
     END=$((START + TIMEOUT))
     NOW=$START
 
@@ -320,7 +335,7 @@ waitfor()
         else
             echo "COND ok ($RET)"
         fi
-        NOW=`echo \`./gtod\` | cut -f 1 -d .`
+        NOW=`echo \`./gtod.sh\` | cut -f 1 -d .`
     done
 
     if test "$RET" = 0
@@ -445,10 +460,18 @@ rehash()
     # we need to do this again after the virtenv is loaded
     if test -z "$explicit_python"
     then
-        PYTHON=`which python`
+        PYTHON=`which python3`
     else
         PYTHON="$explicit_python"
     fi
+
+    if test -z "$PYTHON"
+    then
+        echo "ERROR: no python"
+        env_dump no_python.env
+        exit 1
+    fi
+
     PYTHON_VERSION=`$PYTHON -c 'from distutils.sysconfig import get_python_version; print(get_python_version())'`
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
@@ -496,7 +519,7 @@ rehash()
 verify_install()
 {
     echo -n "verify python viability: $PYTHON ..."
-    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (3,5))'
+    if ! $PYTHON -c 'import sys; assert sys.version_info >= (3,5)'
     then
         echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
@@ -650,7 +673,8 @@ virtenv_setup()
         ve_create=TRUE
         ve_update=FALSE
 
-    elif test "$virtenv_mode" = "use"
+    elif test "$virtenv_mode" = "use" \
+         -o   "$virtenv_mode" = "local"
     then
         if ! test -d "$virtenv/"
         then
@@ -691,7 +715,7 @@ virtenv_setup()
     case "$RP_VERSION" in
 
         local)
-            for sdist in `echo $SDISTS | tr ':' ' '`
+            for sdist in $(echo $SDISTS | tr ':' ' ')
             do
                 src=${sdist%.tgz}
                 src=${sdist%.tar.gz}
@@ -744,7 +768,8 @@ virtenv_setup()
     #       a SANDBOX install target.  SANDBOX installation will only work with
     #       'python setup.py install' (pip cannot handle it), so we have to use
     #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
-    if test "$virtenv_mode" = "use"
+    if test "$virtenv_mode" = "use" \
+       -o   "$virtenv_mode" = "local"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
@@ -853,17 +878,23 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
-        test -e "`which conda`" && conda activate "$virtenv" || \
-        (test -e "$virtenv/bin/activate" && . "$virtenv/bin/activate")
+        if ! test -z $(which conda); then
+            eval "$(conda shell.posix hook)"
+            conda activate "$virtenv"
+
+        elif test -e "$virtenv/bin/activate"; then
+            . "$virtenv/bin/activate"
+        fi
+
         if test -z "$CONDA_PREFIX"; then
-            echo "ERROR: activating of (conda) virtenv failed - abort"
+            echo "Loading of conda env failed!"
             exit 1
         fi
     else
         unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
         if test -z "$VIRTUAL_ENV"; then
-            echo "ERROR: activating of virtenv failed - abort"
+            echo "Loading of virtual env failed!"
             exit 1
         fi
     fi
@@ -1065,7 +1096,7 @@ virtenv_create()
     for dep in $VIRTENV_RADICAL_DEPS
     do
         run_cmd "install $dep" \
-                "$PIP --no-cache-dir install --no-build-isolation $dep" \
+                "$PIP --no-cache-dir install '$dep'" \
              || echo "Couldn't install $dep! Lets see how far we get ..."
     done
 
@@ -1092,7 +1123,7 @@ virtenv_update()
     #       modules on india etc.
     for dep in $VIRTENV_RADICAL_DEPS
     do
-        run_cmd "install $dep" \
+        run_cmd "install '$dep'" \
                 "$PIP install --upgrade $dep" \
              || echo "Couldn't update $dep! Lets see how far we get ..."
     done
@@ -1268,7 +1299,6 @@ rp_install()
   # fi
 
     pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --build '$PILOT_SANDBOX/rp_install/build'"
     pip_flags="$pip_flags --prefix '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
@@ -1281,9 +1311,6 @@ rp_install()
         then
             echo "Couldn't install $src! Lets see how far we get ..."
         fi
-
-        # NOTE: why? fuck pip, that's why!
-        rm -rf "$PILOT_SANDBOX/rp_install/build"
 
         # clean out the install source if it is a local dir
         if test -d "$src"
@@ -1315,14 +1342,9 @@ verify_rp_install()
     echo
     echo "`$PYTHON --version` ($PYTHON)"
     echo "PYTHONPATH: $PYTHONPATH"
-    radical-stack
- (  $PYTHON -c 'import radical.utils as ru; print("RU: %s %s" % (ru.version_detail, ru.__file__))' \
- && $PYTHON -c 'import radical.saga  as rs; print("RS: %s %s" % (rs.version_detail, rs.__file__))' \
- && $PYTHON -c 'import radical.pilot as rp; print("RP: %s %s" % (rp.version_detail, rp.__file__))' \
- && (echo 'install ok!'; true) \
- ) \
- || (echo 'install failed!'; false) \
- || exit 1
+    $PYTHON $(which radical-stack) \
+        || (echo 'install failed!'; false) \
+        || exit 1
     echo
     echo "---------------------------------------------------------------------"
     echo
@@ -1404,6 +1426,29 @@ pre_bootstrap_2()
 $cmd"
 }
 
+
+# -------------------------------------------------------------------------------
+#
+# Build the PREBOOTSTRAP2 variable to pass down to sub-agents
+#
+add_services()
+{
+    echo "$* &" >> ./services
+}
+
+
+# -------------------------------------------------------------------------------
+#
+# untar the pilot sandbox
+#
+untar()
+{
+    # FIXME: concurrently starting pilots may conflict on SDIST extraction
+    tar="$1"
+    tar zxvf ../"$tar" -C .. "$PILOT_ID" $(echo $SDISTS | tr ':' ' ')
+}
+
+
 # ------------------------------------------------------------------------------
 #
 # MAIN
@@ -1421,6 +1466,7 @@ $cmd"
 #    -g   virtualenv distribution (default, 1.9, system)
 #    -h   hostport to create tunnel to
 #    -i   python Interpreter to use, e.g., python2.7
+#    -j   add a command for the service node
 #    -m   mode of stack installion
 #    -p   pilot ID
 #    -r   radical-pilot version version to install in virtenv
@@ -1430,34 +1476,48 @@ $cmd"
 #    -w   execute commands before bootstrapping phase 2: the worker
 #    -x   exit cleanup - delete pilot sandbox, virtualenv etc. after completion
 #    -y   runtime limit
+#    -z   untar initial pilot sandbox tarball
 #
-while getopts "a:b:cd:e:f:g:h:i:m:p:r:s:t:v:w:x:y:" OPTION; do
+# NOTE: -z makes some assumptions on sandbox and tarball location
+#
+while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
-        a)  SESSION_SANDBOX="$OPTARG"  ;;
-        b)  PYTHON_DIST="$OPTARG"  ;;
-        c)  CCM='TRUE'  ;;
-        d)  SDISTS="$OPTARG"  ;;
-        e)  pre_bootstrap_0 "$OPTARG"  ;;
-        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG"  ;;
-        g)  VIRTENV_DIST="$OPTARG"  ;;
-        h)  HOSTPORT="$OPTARG"  ;;
-        i)  PYTHON="$OPTARG"  ;;
-        m)  VIRTENV_MODE="$OPTARG"  ;;
-        p)  PILOT_ID="$OPTARG"  ;;
-        r)  RP_VERSION="$OPTARG"  ;;
-        s)  SESSION_ID="$OPTARG"  ;;
-        t)  TUNNEL_BIND_DEVICE="$OPTARG" ;;
-        v)  VIRTENV=$(eval echo "$OPTARG")  ;;
-        w)  pre_bootstrap_2 "$OPTARG"  ;;
-        x)  CLEANUP="$OPTARG"  ;;
-        y)  RUNTIME="$OPTARG"  ;;
+        a)  SESSION_SANDBOX="$OPTARG"         ;;
+        b)  PYTHON_DIST="$OPTARG"             ;;
+        c)  CCM='TRUE'                        ;;
+        d)  SDISTS="$OPTARG"                  ;;
+        e)  pre_bootstrap_0 "$OPTARG"         ;;
+        f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
+        g)  VIRTENV_DIST="$OPTARG"            ;;
+        h)  HOSTPORT="$OPTARG"                ;;
+        i)  PYTHON="$OPTARG"                  ;;
+        j)  add_services "$OPTARG"            ;;
+        m)  VIRTENV_MODE="$OPTARG"            ;;
+        p)  PILOT_ID="$OPTARG"                ;;
+        r)  RP_VERSION="$OPTARG"              ;;
+        s)  SESSION_ID="$OPTARG"              ;;
+        t)  TUNNEL_BIND_DEVICE="$OPTARG"      ;;
+        v)  VIRTENV=$(eval echo "$OPTARG")    ;;
+        w)  pre_bootstrap_2 "$OPTARG"         ;;
+        x)  CLEANUP="$OPTARG"                 ;;
+        y)  RUNTIME="$OPTARG"                 ;;
+        z)  TARBALL="$OPTARG"                 ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
     esac
 done
 
+# pre_bootstrap_0 is done at this point, save resulting env
+env_dump -t env/bs0_pre_0.env
+
+echo '# -------------------------------------------------------------------'
+echo '# untar sandbox'
+echo '# -------------------------------------------------------------------'
+untar "$TARBALL"
+echo '# -------------------------------------------------------------------'
+
 # before we change anything else in the pilot environment, we safe a couple of
-# env vars to later re-create a close-to-pristine env for unit execution.
+# env vars to later re-create a close-to-pristine env for task execution.
 _OLD_VIRTUAL_PYTHONPATH="$PYTHONPATH"
 _OLD_VIRTUAL_PYTHONHOME="$PYTHONHOME"
 _OLD_VIRTUAL_PATH="$PATH"
@@ -1503,14 +1563,10 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
 # Create header for profile log
-if ! test -z "$RADICAL_PILOT_PROFILE$RADICAL_PROFILE"
-then
-    echo 'create gtod'
-    create_gtod
-else
-    echo 'create gtod'
-    create_gtod
-fi
+echo 'create gtod, prof'
+create_gtod
+create_prof
+pilot_state="PMGR_ACTIVE_PENDING"
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1520,7 +1576,7 @@ profile_event 'bootstrap_0_start'
 echo "VIRTENV           : $VIRTENV"
 if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
     case "$VIRTENV_MODE" in
-        recreate|update|use)
+        recreate|update|use|local)
             VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
             '{ if ($1 == envname) print $NF }'`; pwd -P)
             ;;
@@ -1561,11 +1617,16 @@ get_tunnel(){
     echo "# Setting up forward tunnel to $addr."
 
     # Bind to localhost
-    BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
-
-    if test -z "$BIND_ADDRESS"
+    # Check if ifconfig exists
+    if test -f /sbin/ifconfig
     then
-        BIND_ADDRESS=$(/sbin/ifconfig lo | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+        BIND_ADDRESS=$(/sbin/ifconfig $TUNNEL_BIND_DEVICE|grep "inet addr"|cut -f2 -d:|cut -f1 -d" ")
+        if test -z "$BIND_ADDRESS"
+        then
+            BIND_ADDRESS=$(/sbin/ifconfig lo0 | grep 'inet' | xargs echo | cut -f 2 -d ' ')
+        fi
+    else
+        BIND_ADDRESS=$(host `hostname` | awk '{print $NF}')
     fi
 
     if test -z "$BIND_ADDRESS"
@@ -1643,6 +1704,7 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
                  "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
+create_deactivate
 
 # ------------------------------------------------------------------------------
 # launch the radical agent
@@ -1657,16 +1719,22 @@ virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 # FIXME: the second option should use $RP_MOD_PATH, or should derive the path
 #       from the imported rp modules __file__.
 PILOT_SCRIPT=`which radical-pilot-agent`
-# if test "$RP_INSTALL_TARGET" = 'PILOT_SANDBOX'
-# then
-#     PILOT_SCRIPT="$PILOT_SANDBOX/rp_install/bin/radical-pilot-agent"
-# else
-#     PILOT_SCRIPT="$VIRTENV/rp_install/bin/radical-pilot-agent"
-# fi
+
+if test -z "$PILOT_SCRIPT"
+then
+    echo "ERROR: rp installation incomplete?"
+    env_dump > env.rp.error
+    exit 1
+fi
+
 
 # after all is said and done, we should end up with a usable python version.
 # Verify it
 verify_install
+
+# all is installed - keep a local copy of `radical-gtod` so that task profiling
+# is independent of its location in the pilot VE
+test -z $(which radical-gtod) || cp $(which radical-gtod) ./gtod
 
 AGENT_CMD="$PYTHON $PILOT_SCRIPT"
 
@@ -1736,8 +1804,9 @@ export PATH="$PB1_PATH"
 export LD_LIBRARY_PATH="$PB1_LDLB"
 
 # activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && test -e "`which conda`"
+if test "$PYTHON_DIST" = "anaconda" && ! test -z "\$(which conda)"
 then
+    eval "\$(conda shell.posix hook)"
     conda activate $VIRTENV
 else
     . $VIRTENV/bin/activate
@@ -1764,101 +1833,38 @@ export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
 
-# start agent, forward arguments
+# start services and agent, forward arguments
 # NOTE: exec only makes sense in the last line of the script
-exec $AGENT_CMD "\$1" 1>"\$1.out" 2>"\$1.err"
+if test "\$1" = 'services'
+then
+    # start the services script
+    exec ./services 1>> services.out 2>> services.err
+else
+    # start a sub-agent
+    exec $AGENT_CMD "\$1" 1>>"\$1.out" 2>>"\$1.err"
+fi
 
 EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
-#
-# Create a barrier to start the agent.
-# This can be used by experimental scripts to push all units to the DB before
-# the agent starts.
-#
-if ! test -z "$RADICAL_PILOT_BARRIER"
-then
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Entering barrier for $RADICAL_PILOT_BARRIER ..."
-    echo "# -------------------------------------------------------------------"
-
-    profile_event 'client_barrier_start'
-
-    while ! test -f $RADICAL_PILOT_BARRIER
-    do
-        sleep 1
-    done
-
-    profile_event 'client_barrier_stop'
-
-    echo
-    echo "# -------------------------------------------------------------------"
-    echo "# Leaving barrier"
-    echo "# -------------------------------------------------------------------"
-fi
-
-# # I am ashamed that we have to resort to this -- lets hope it's temporary...
-# cat > packer.sh <<EOT
-# #!/bin/sh
-#
-# PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-# LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-#
-# echo "start packing profiles / logfiles [\$(date)]"
-# while ! test -e exit.signal
-# do
-#
-#     if test -z "\$(ls *.prof )"
-#     then
-#         echo "skip  packing profiles [\$(date)]"
-#     else
-#         echo "check packing profiles [\$(date)]"
-#         mkdir prof/
-#         cp  *.prof prof/
-#         tar -czf "\$PROFILES_TARBALL.tmp" prof/ || true
-#         mv       "\$PROFILES_TARBALL.tmp" "\$PROFILES_TARBALL"
-#         rm -rf prof/
-#     fi
-#
-#
-#     # we always have a least the cfg file
-#     if true
-#     then
-#         echo "check packing logfiles [\$(date)]"
-#         mkdir log/
-#         cp  *.log *.out *.err *,cfg log/
-#         tar -czf "\$LOGFILES_TARBALL.tmp" log/ || true
-#         mv       "\$LOGFILES_TARBALL.tmp" "\$LOGFILES_TARBALL"
-#         rm -rf log/
-#     fi
-#
-#     ls -l *.tgz
-#     sleep 10
-# done
-# echo "stop  packing profiles / logfiles [\$(date)]"
-# EOT
-# chmod 0755 packer.sh
-# ./packer.sh 2>&1 >> bootstrap_0.out &
-# PACKER_ID=$!
-
-# all env settings are done, bootstrap stages are created - as last action
-# capture the resulting env differences in a deactivate script
-create_deactivate
+# add a `wait` to the services script
+test -f ./services && echo 'wait' >> ./services
+test -f ./services && chmod 0755     ./services
 
 # start the master agent instance (zero)
-profile_event 'sync_rel' 'agent.0'
+profile_event 'bootstrap_0_ok'
 if test -z "$CCM"; then
     ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 else
     ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1> agent.0.bootstrap_2.out \
-                   2> agent.0.bootstrap_2.err &
+                   1>> agent.0.bootstrap_2.out \
+                   2>> agent.0.bootstrap_2.err &
 fi
 AGENT_PID=$!
+pilot_state="PMGR_ACTIVE"
 
 while true
 do
@@ -1901,7 +1907,7 @@ profile_event 'agent_final' "$AGENT_PID:$AGENT_EXITCODE `date --rfc-3339=ns | cu
 
 # cleanup flags:
 #   l : pilot log files
-#   u : unit work dirs
+#   u : task work dirs
 #   v : virtualenv
 #   e : everything
 echo
@@ -1911,7 +1917,7 @@ echo "#"
 
 profile_event 'cleanup_start'
 contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
-contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/unit.*"
+contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/task.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
 profile_event 'cleanup_stop'

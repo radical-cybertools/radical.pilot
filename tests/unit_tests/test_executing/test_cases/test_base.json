@@ -1,0 +1,40 @@
+{
+    "task": {
+         "uid"                  : "task.000000",
+         "name"                 : "test_task",
+         "description": {
+             "executable"       : "/bin/sleep",
+             "arguments"        : ["10"],
+             "environment"      : {},
+             "pre_exec"         : ["test_pre_exec"],
+             "post_exec"        : ["test_post_exec"],
+             "cpu_processes"    : 1,
+             "cpu_threads"      : 0,
+             "cpu_process_type" : null,
+             "gpu_processes"    : 0,
+             "gpu_process_type" : null,
+             "gpu_thread_type"  : null,
+             "mem_per_process"  : 128,
+             "lfs_per_process"  : 0,
+             "name"             : "test_task",
+             "stdout"           : null,
+             "stderr"           : null,
+             "named_env"        : "",
+             "pre_launch"       : [],
+             "post_launch"      : [],
+             "pre_rank"         : [],
+             "post_rank"        : []
+         },
+         "task_sandbox_path"    : "/tmp"
+     },
+
+    "setup": {
+        "slots": {"ranks"       : [{"node_name" : "a",
+                                    "node_id"   : "1",
+                                    "core_map"  : [[0]],
+                                    "gpu_map"   : [],
+                                    "mem"       : 0,
+                                    "lfs"       : 0}]
+        }
+    }
+}

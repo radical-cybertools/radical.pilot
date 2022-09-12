@@ -9,9 +9,11 @@ import threading as mt
 
 import radical.utils as ru
 
-from ...  import states    as rps
-from ...  import constants as rpc
+from ...   import states    as rps
+from ...   import constants as rpc
 
+from ..    import LaunchMethod
+from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
 
@@ -50,7 +52,16 @@ class Flux(AgentExecutingComponent) :
                            'RUN'     : rps.AGENT_EXECUTING,
                            'CLEANUP' : None,
                            'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
+                           'PRIORITY': None,
                           }
+
+        # we get an instance of the resource manager (init from registry info)
+        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+                                          cfg=self._cfg, log=self._log,
+                                          prof=self._prof)
+
+      # assert self._rm.from_info
+
 
         # thread termination signal
         self._term = mt.Event()
@@ -85,8 +96,8 @@ class Flux(AgentExecutingComponent) :
                self._listener_setup.is_set():
                 break
 
-        assert(self._watcher_setup.is_set())
-        assert(self._listener_setup.is_set())
+        assert self._watcher_setup.is_set()
+        assert self._listener_setup.is_set()
 
 
     # --------------------------------------------------------------------------
@@ -98,7 +109,7 @@ class Flux(AgentExecutingComponent) :
         cmd = msg['cmd']
       # arg = msg['arg']
 
-        if cmd == 'cancel_units':
+        if cmd == 'cancel_tasks':
 
             # FIXME: clarify how to cancel tasks in Flux
             pass
@@ -108,11 +119,11 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def work(self, tasks):
 
-        self._task_q.put(ru.as_list(units))
+        self._task_q.put(ru.as_list(tasks))
 
-        if self._term:
+        if self._term.is_set():
             self._log.warn('threads triggered termination')
             self.stop()
 
@@ -121,18 +132,19 @@ class Flux(AgentExecutingComponent) :
     #
     def _listen(self):
 
+        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self._cfg.pid
+        lm_cfg['reg_addr']  = self._cfg.reg_addr
+        lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+                                                  self._log, self._prof)
         flux_handle = None
-
         try:
-            # thread local initialization
-            import flux
 
-            flux_url    = self._cfg['rm_info']['lm_info']\
-                                              ['flux_env']['FLUX_URI']
-            flux_handle = flux.Flux(url=flux_url)
+            flux_handle = lm.fh.get_handle()
             flux_handle.event_subscribe('job-state')
 
             # FIXME: how tot subscribe for task return code information?
+            # pylint: disable=import-error
           # def _flux_cb(self, *args, **kwargs):
           #     print('--------------- flux cb %s' % [args, kwargs])
           #
@@ -183,8 +195,8 @@ class Flux(AgentExecutingComponent) :
 
         for event in events:
 
-            flux_id, flux_state = event
-            state = self._event_map[flux_state]
+            flux_state = event[1]  # event: flux_id, flux_state
+            state = self._event_map.get(flux_state)
 
             if state is None:
                 # ignore this state transition
@@ -231,30 +243,44 @@ class Flux(AgentExecutingComponent) :
                 try:
                     for task in self._task_q.get_nowait():
 
-                        flux_id = task['flux_id']
-                        assert flux_id not in tasks
-                        tasks[flux_id] = task
+                        active = True
+                        try:
 
-                        # handle and purge cached events for that task
-                        if flux_id in events:
-                            if self.handle_events(task, events[flux_id]):
-                                # task completed - purge data
-                                # NOTE: this assumes events are ordered
-                                if flux_id in events: del(events[flux_id])
-                                if flux_id in tasks : del(tasks[flux_id])
+                            flux_id = task['flux_id']
+                            assert flux_id not in tasks
+                            tasks[flux_id] = task
 
-                    active = True
+                            # handle and purge cached events for that task
+                            if flux_id in events:
+                                if self.handle_events(task, events[flux_id]):
+                                    # task completed - purge data
+                                    # NOTE: this assumes events are ordered
+                                    if flux_id in events: del events[flux_id]
+                                    if flux_id in tasks : del tasks[flux_id]
+
+                        except Exception:
+
+                            self._log.exception("error collecting Task")
+                            if task['stderr'] is None:
+                                task['stderr'] = ''
+                            task['stderr'] += '\nPilot cannot collect task:\n'
+                            task['stderr'] += '\n'.join(ru.get_exception_trace())
+
+                            # can't rely on the executor base to free the task resources
+                            self._prof.prof('unschedule_start', uid=task['uid'])
+                            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                            self.advance(task, rps.FAILED, publish=True, push=False)
 
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some events
                     pass
 
-
                 try:
 
                     for event in self._event_q.get_nowait():
 
-                        flux_id, flux_event = event
+                        flux_id = event[0]  # event: flux_id, flux_state
 
                         if flux_id in tasks:
 
@@ -262,8 +288,8 @@ class Flux(AgentExecutingComponent) :
                             if self.handle_events(tasks[flux_id], [event]):
                                 # task completed - purge data
                                 # NOTE: this assumes events are ordered
-                                if flux_id in events: del(events[flux_id])
-                                if flux_id in tasks : del(tasks[flux_id])
+                                if flux_id in events: del events[flux_id]
+                                if flux_id in tasks : del tasks[flux_id]
 
                         else:
                             # unknown task, store events for later
@@ -279,7 +305,6 @@ class Flux(AgentExecutingComponent) :
 
                 if not active:
                     time.sleep(0.01)
-
 
         except Exception:
             self._log.exception('Error in watcher loop')

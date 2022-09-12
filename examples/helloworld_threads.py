@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This is an example multithreaded program that is used
 # by different examples and tests.

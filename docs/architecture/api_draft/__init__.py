@@ -1,4 +1,4 @@
-
+# pylint: disable=import-error
 
 from constants                     import *
 from exceptions                    import *
@@ -9,22 +9,20 @@ from callback                      import Callback
 from attributes                    import Attributes
 from description                   import Description
 
-from compute_unit_description      import ComputeUnitDescription
-from data_unit_description         import DataUnitDescription
+from task_description              import TaskDescription
+from data_task_description         import DataTaskDescription
 
-from unit                          import Unit
-from compute_unit                  import ComputeUnit
-from data_unit                     import DataUnit
+from task                          import Task
+from data_task                     import DataTask
 
-from compute_pilot_description     import ComputePilotDescription
+from pilot_description             import PilotDescription
 from data_pilot_description        import DataPilotDescription
 
 from pilot                         import Pilot
-from compute_pilot                 import ComputePilot
 from data_pilot                    import DataPilot
 
 from pilot_manager                 import PilotManager
-from unit_manager                  import UnitManager
+from task_manager                  import TaskManager
 
 
 # ------------------------------------------------------------------------------
@@ -33,7 +31,8 @@ from unit_manager                  import UnitManager
 
 
 import os
-import subprocess as sp
+import subprocess    as sp
+import radical.utils as ru
 
 
 # ------------------------------------------------------------------------------
@@ -43,13 +42,12 @@ version = "unknown"
 try :
     cwd     = os.path.dirname (os.path.abspath (__file__))
     fn      = os.path.join    (cwd, '../VERSION')
-    version = open (fn).read ().strip ()
+    version = ru.ru_open(fn).read ().strip ()
 
     p   = sp.Popen (['git', 'describe', '--tags', '--always'],
                     stdout=sp.PIPE)
     out = p.communicate()[0]
 
-    # ignore pylint error on p.returncode -- false positive
     if  out and not p.returncode :
         version += '-' + out.strip()
 

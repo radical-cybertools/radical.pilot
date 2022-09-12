@@ -1,24 +1,65 @@
 #!/bin/sh
 
-script="$0"
-prefix="$1"
-arg="$2"
+echo "[$0 $*]"
 
-echo
-echo "script : $script"
-echo "prefix : $prefix"
-echo "arg    : $arg"
-echo
+ru_env=$(which radical-utils-env.sh)
+if test -z '$ru_env'
+then
+    echo "$0 needs radical.utils installed"
+    exit 1
+fi
 
-reqs="pymongo==2.8 python-hostlist netifaces setproctitle ntplib pyzmq"
-reqs="$reqs apache-libcloud colorama backports.ssl-match-hostname msgpack-python"
-reqs="$reqs future regex msgpack parse"
+. radical-utils-env.sh
 
-# setuptools="setuptools==0.6c11"
-# pip="pip==1.4.1"
+set -e  # exit on all errors
 
-setuptools="setuptools"
-pip="pip"
+SCRIPT="$0"
+PREFIX=       # full path or virtenv name
+VERSION=      # python version (e.g., 2.7, 3.6, etc.)
+              # NOTE: for virtualenv corresponding version should be installed
+MODULES=      # alternative list of pre-installed modules/packages
+DEFAULTS=     # install default modules
+ETYPE='venv'  # type of environment: 'virtualenv'/'venv' or 'anaconda'/'conda'
+
+pre_exec(){
+    echo "pre exec: $*"
+    $*
+    echo "pre exec done"
+}
+
+while getopts "e:p:P:v:m:t:d" OPTION; do
+    case $OPTION in
+        p)  PREFIX="$OPTARG"    ;;
+        P)  pre_exec "$OPTARG"  ;;
+        v)  VERSION="$OPTARG"   ;;
+        m)  MODULES="$OPTARG"   ;;
+        t)  ETYPE="$OPTARG"     ;;
+        d)  DEFAULTS=True       ;;
+        *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+            return 1;;
+    esac
+done
+
+test -z "$PREFIX"  && echo "no prefix" && exit
+
+test "$ETYPE" = 'anaconda'   && ETYPE='conda'
+test "$ETYPE" = 'virtualenv' && ETYPE='venv'
+
+# sanitize name (remove trailing slashes etc)
+PREFIX="$(dirname $PREFIX)/$(basename $PREFIX)"
+
+
+# move from comma separated to space separated module list
+MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
+
+if ! test -z "$DEFAULTS"
+then
+    # by default, install all RCT dependencies
+    MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
+    MODULES="$MODULES msgpack-python netifaces ntplib parse dill"
+    MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
+fi
+
 
 # ------------------------------------------------------------------------------
 #
@@ -35,11 +76,20 @@ help(){
 
     cat <<EOT
 
-    usage: $0 <target> [-h]
+    $0
 
-    This script creates a virtualenv at the given target location.  That
-    virtualenv should be suitable to be used as static VE for a radical.pilot
-    target resource, and can be specified in a resource configuration for RP.
+    This script creates a virtual environment (conda or venv) at the given
+    target path.  That environment should be suitable to be used as static env
+    for a radical.pilot target resource, and can be specified in a resource
+    configuration for RP.
+
+    Options:
+      -p <prefix>    - path to use for environment
+      -P <pre_exec>  - command to be run before creation
+      -v <version>   - python version to be used
+      -m <modules>   - comma separated list of modules to install
+      -t <type>      - environment type to create (venv, conda)
+      -d             - install default RCT dependencies into the new environment
 
 EOT
     exit $ret
@@ -48,161 +98,154 @@ EOT
 
 # ------------------------------------------------------------------------------
 #
-progress(){
-
-  while read X
-  do
-    echo -n .
-  done
-  echo
-}
-
-# ------------------------------------------------------------------------------
-#
-
-if test "$prefix" = "-h"
-then
-    help
-fi
-
-if test -z "$prefix"
-then
-    help "missing target"
-fi
-
-# We don't want to overwrite VE's -- the hack to get the namespace import in
-# place is too invasive to be applied to an existing VE.
-if test -e "$prefix"
-then
-    help "target '$prefix' exists"
-fi
+test    "$PREFIX" = "-h" && help
+test -z "$PREFIX"        && help "missing target"
 
 # Ensure we install in an absolute path -- pip seems to like that better...
-case $prefix in
+case $PREFIX in
     /*)
         ;;
     *)
-        prefix="`pwd`/$prefix"
+        PREFIX="$(pwd)/$PREFIX"
         ;;
 esac
 
+PYTHON=python3
 
-if test "$arg" = "bw"
+if test -z "$VERSION"
 then
-    # BW wants us to run all things python in its own process group (I assume
-    # a cgroup or something), so we spawn that here and continue the script at
-    # the same place
-    echo "invoke BW magic"
-    module load bwpy
-    exec bwpy-environ -- /bin/sh "$script" "$prefix" bwpy
-
-elif test "$arg" = "bwpy"
+    VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+fi
+if test -z "$VERSION"
 then
-    # this is where we end up after the `exec` call in the branch above
-    echo "create bwpy ve [$prefix]"
-    PYTHON=python2.7
-else
-    # this is not BW.
-    echo "create rct ve [$prefix]"
-    PYTHON=python
+    VERSION='3.8'
 fi
 
-# create the ve, install bare necessities
-mkdir -p "$prefix"
-cd $prefix
+# we only ever use major and minor version numbers, and will ignore subminor
+VERSION=$(echo $VERSION | cut -f 1,2 -d '.')
 
-# for conda environments, install virtualenv in the env
-if ! test -z "$CONDA_DEFAULT_ENV"
+# check env type
+if test "$ETYPE" = 'conda'
 then
-    # conda developers did not think this through... :-(
-    CONDA="$(which conda 2>/dev/null | head -n 1)"
-    test -z "$CONDA" && CONDA="$_CONDA_EXE"
-    test -z "$CONDA" && CONDA="$CONDA_EXE"
-    if test -z "$CONDA"
+
+    which conda || help "conda not found"
+    eval "$(conda shell.bash hook)"
+    conda activate base
+
+    if test -d "$PREFIX"
     then
-        echo "conda is not functional"
-        exit 1
-    fi
-    echo -n "install conda virtualenv "
-    "$CONDA" install -y virtualenv 2>&1 | progress || exit 1
-fi
+        printf "env at $PREFIX exists\n"
+        conda activate "$PREFIX"
 
+    else
 
-VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
-if test -z "$VIRTENV_CMD"
-then
-    echo -n "install private virtualenv "
-    VIRTENV_TGZ="virtualenv-1.9.tar.gz"
-    VIRTENV_TGZ_URL="https://pypi.python.org/packages/source/v/virtualenv/$VIRTENV_TGZ"
-    curl -k -L -O "$VIRTENV_TGZ_URL" 2>&1 | progress
-    tar zxmf "$VIRTENV_TGZ"
-    VIRTENV_CMD="$PYTHON virtualenv-1.9/virtualenv.py"
-fi
+        printf "create  $ETYPE ve [$PREFIX]\n"
+        conda create -y -p "$PREFIX" "python=$VERSION"
+        conda activate "$PREFIX"
 
-echo -n "create  virtualenv "
-stdbuf -oL $VIRTENV_CMD "$prefix" | progress
-.          "$prefix"/bin/activate
+        echo -n "update  setuptools pip wheel"
+        conda install setuptools pip wheel || exit 1
 
-echo -n "update  setuptools "
-pip install --no-cache-dir --upgrade --no-build-isolation $setuptools | progress || exit 1
-echo -n "update  pip "
-pip install --no-cache-dir --upgrade --no-build-isolation $pip        | progress || exit 1
+        for mod in $MODULES
+        do
+            # use `pip install` instead of `conda install` if `mod` is a path
+            case "$mod" in
+                /*|*/*)
+                    echo -n "install $mod with pip"
+                    pip install "$mod" || exit 1
+                    ;;
+                *)
+                    echo -n "install $mod with conda"
+                    conda install "$mod" \
+                    || pip install "$mod" || exit 1
+                    ;;
+            esac
+        done
 
-for req in $reqs
-do
-    echo -n "install $req "
-    stdbuf -oL pip install --no-cache-dir --upgrade --no-build-isolation $req | progress   || exit 1
-done
-
-# install the radical stack (utils, saga, pilot) into a separate tree
-# ($prefix/rp_install(, so that any local install can use the ve *w/o*
-# the radical stack, by re-routing PYTHONPATH
-python_version=`$PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_version())'`
-ve_mod_prefix=` $PYTHON -c 'import distutils.sysconfig as sc; print(sc.get_python_lib())'`
-rp_mod_prefix=`echo $ve_mod_prefix | sed -e "s|$prefix|$prefix/rp_install/|"`
-
-# BW doesn't like us anymore: after loading the bwpy module, we also need to
-# create a new process group to get a  workable Python.  We thus patch the
-# virtualenv to do the necessary actions automatically, by wrapping the python
-# executable in a small script which sets up that environment.
-if test "$arg" = "bwpy"
-then
-
-    echo "fix bwpy ve"
-    old_cwd=$(pwd)
-    cd $prefix/bin
-    cwd=$(pwd -P)
-
-    # find binary - fucking virtualenv seems to pick the bin name randomly or
-    # whatever...
-    for p in python*
-    do
-        if   ! test -e $p; then echo "miss   $p"
-        elif ! test -x $p; then echo "ignore $p"
-        elif   test -h $p
+        if ! test -z "$MODULES"
         then
-            echo "wrap   $p"
-            tgt=$(readlink $p)
-            rm -f $p
-            echo "#!/bin/sh" > $p
-            echo "exec bwpy-environ -- $tgt \"\$@\"" >> $p
-            chmod 0755  $p
-        else
-            echo "patch  $p"
-            mv   $p $p.rp
-            echo "#!/bin/sh" > $p
-            echo "exec bwpy-environ -- $cwd/$p.rp \"\$@\"" >> $p
-            chmod 0755  $p
+            echo -n "install pymongo<4 "
+            conda install 'pymongo<4'
         fi
-    done
+    fi
+
+elif test "$ETYPE" = 'venv'
+then
+    if ! test -z "$VERSION"
+    then
+        PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+        if ! test "$VERSION" = "$PY_VERSION"
+        then
+            echo "requested version $VERSION not supported for venv ($PY_VERSION)"
+            exit 1
+        fi
+    fi
+
+    if test -d "$PREFIX"
+    then
+        printf "\nenv at $PREFIX exists\n"
+        . "$PREFIX"/bin/activate
+    else
+
+        # TODO: find out why this hangs in GH ci
+        # VIRTENV_CMD="$(which virtualenv 2>/dev/null)"
+        VIRTENV_CMD="$PYTHON -m venv"
+
+        if test -z "$VIRTENV_CMD"
+        then
+            echo -n "install private virtualenv "
+            VIRTENV_VER=20.0.27
+            VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+            VIRTENV_TGZ_URL="https://github.com/pypa/virtualenv/archive/$VIRTENV_TGZ"
+
+            curl -k -L -O "$VIRTENV_TGZ_URL"
+            tar zxf "$VIRTENV_TGZ"
+            VIRTENV_CMD="$PYTHON $VIRTENV_VER/virtualenv.py"
+        fi
+
+        echo -n "create  virtualenv "
+        $VIRTENV_CMD "$PREFIX"
+
+        . "$PREFIX"/bin/activate
+
+        # ensure we have pip
+        python3 -m ensurepip
+
+        echo -n "update  setuptools pip wheel"
+        pip install --no-cache-dir --upgrade setuptools pip wheel || exit 1
+
+        for mod in $MODULES
+        do
+            echo -n "install $mod with pip"
+            pip install --no-cache-dir "$mod" || exit 1
+        done
+
+        if ! test -z "$MODULES"
+        then
+            echo -n "install pymongo<4 "
+            pip install --no-cache-dir 'pymongo<4'
+        fi
+    fi
 fi
+
+
+
+env_dump -t "$PREFIX.env"
 
 # print the ve information and stack versions for verification
 echo
 echo "---------------------------------------------------------------------"
 echo
+echo "PWD       : $(pwd)"
+echo "ENV       : $PREFIX.env"
+echo "SCRIPT    : $SCRIPT"
+echo "PREFIX    : $PREFIX"
+echo "VERSION   : $VERSION"
+echo "MODULES   : $MODULES"
+echo "DEFAULTS  : $DEFAULTS"
+echo "PYTHON    : $(which $PYTHON) ($($PYTHON -V))"
 echo "PYTHONPATH: $PYTHONPATH"
-echo "python: `which python` (`python -V`)"
+echo "RCT_STACK : $(radical-stack || true)"
 echo
 echo "---------------------------------------------------------------------"
 echo

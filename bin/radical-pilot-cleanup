@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -38,9 +38,9 @@ def usage (msg=None, noexit=False) :
         list  : show  a  list   of sessions in the database
         close : reconnect to a session and close it
 
-      Closing a session will cancel all its compute units and pilots.
+      Closing a session will cancel all its tasks and pilots.
       The default MongoDB is '%s'
-      
+
 """ % (sys.argv[0], sys.argv[0], _DEFAULT_DBURL))
 
     if  msg :
@@ -80,7 +80,7 @@ def close_session (dburl, session) :
 
 
 # ------------------------------------------------------------------------------
-# 
+#
 def parse_commandline():
 
     return options
@@ -106,17 +106,17 @@ if __name__ == '__main__' :
     if  options.help :
         usage ()
 
-    if  options.mode in ['help'] : 
+    if  options.mode in ['help'] :
         usage ()
 
     if  not options.mode :
         usage ("No mode specified")
 
-    if  not options.url : 
-        options.url = _DEFAULT_DBURL 
+    if  not options.url :
+        options.url = _DEFAULT_DBURL
 
 
-    mode    = options.mode 
+    mode    = options.mode
     url     = options.url
     session = options.session
 
@@ -131,11 +131,11 @@ if __name__ == '__main__' :
 
     for m in mode.split (',') :
 
-        if  m not in ['list', 'close', 'help'] : 
+        if  m not in ['list', 'close', 'help'] :
             usage ("Unsupported mode '%s'" % m)
 
         if   m == 'list' : list_sessions (dbclient, dbname, session)
-        elif m == 'close': close_session (url, session) 
+        elif m == 'close': close_session (url, session)
         elif m == 'help' : usage (noexit=True)
         else             : usage ("unknown mode '%s'" % mode)
 

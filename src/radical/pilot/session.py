@@ -1,4 +1,3 @@
-# pylint: disable=protected-access,unused-argument
 
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -12,8 +11,8 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .db import DBSession
-from .   import utils as rpu
+from .db        import DBSession
+from .          import utils as rpu
 
 
 # ------------------------------------------------------------------------------
@@ -22,8 +21,8 @@ class Session(rs.Session):
     '''
     A Session is the root object of all RP objects in an application instance:
     it holds :class:`radical.pilot.PilotManager` and
-    :class:`radical.pilot.UnitManager` instances which in turn hold
-    :class:`radical.pilot.ComputePilot` and :class:`radical.pilot.ComputeUnit`
+    :class:`radical.pilot.TaskManager` instances which in turn hold
+    :class:`radical.pilot.Pilot` and :class:`radical.pilot.Task`
     instances, and several other components which operate on those stateful
     entities.
     '''
@@ -43,7 +42,8 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True):
+    def __init__(self, dburl=None, uid=None, cfg=None, _primary=True,
+                 **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -68,8 +68,13 @@ class Session(rs.Session):
               inherit the original session ID, but will not attempt to create
               a new DB collection - if such a DB connection is needed, the
               component needs to establish that on its own.
-        '''
 
+        If additional key word arguments are provided, they will be used as the
+        default arguments to Session.close(). (This can be useful when the
+        Session is used as a Python context manager, such that close() is called
+        automatically at the end of a ``with`` block.)
+        '''
+        self._close_options = _CloseOptions(close_options)
         # NOTE: `name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces a minor API inconsistency.
@@ -83,7 +88,7 @@ class Session(rs.Session):
         self._primary = _primary
 
         self._pmgrs   = dict()  # map IDs to pmgr instances
-        self._umgrs   = dict()  # map IDs to umgr instances
+        self._tmgrs   = dict()  # map IDs to tmgr instances
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
@@ -110,7 +115,7 @@ class Session(rs.Session):
 
         else:
             for k in ['sid', 'base', 'path']:
-                assert(k in self._cfg), 'non-primary session misses %s' % k
+                assert k in self._cfg, 'non-primary session misses %s' % k
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -137,7 +142,8 @@ class Session(rs.Session):
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
-        self._cache      = {'resource_sandbox' : dict(),
+        self._cache      = {'endpoint_fs'      : dict(),
+                            'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
                             'client_sandbox'   : self._cfg.client_sandbox,
@@ -159,7 +165,6 @@ class Session(rs.Session):
 
         # create db connection - need a dburl to connect to
         if not dburl: dburl = self._cfg.dburl
-        if not dburl: dburl = self._cfg.default_dburl
         if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
 
         self._cfg.dburl = dburl
@@ -168,7 +173,7 @@ class Session(rs.Session):
         if dburl_no_passwd.get_password():
             dburl_no_passwd.set_password('****')
 
-        self._rep.info ('<<database   : ')  
+        self._rep.info ('<<database   : ')
         self._rep.plain('[%s]'    % dburl_no_passwd)
         self._log.info('dburl %s' % dburl_no_passwd)
 
@@ -194,6 +199,8 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
+        import pprint
+        self._log.debug('cmgr cfg: %s', pprint.pformat(self._cfg))
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
@@ -218,20 +225,18 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     # context manager `with` clause
-    # FIXME: cleanup_on_close, terminate_on_close attributes?
     #
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.close(download=True)
+        self.close()
 
 
     # --------------------------------------------------------------------------
     #
-    def close(self, cleanup=False, terminate=True, download=False):
+    def close(self, **kwargs):
         '''
-
         Closes the session.  All subsequent attempts access objects attached to
         the session will result in an error. If cleanup is set to True,
         the session data is removed from the database.
@@ -254,32 +259,33 @@ class Session(rs.Session):
         self._log.debug("session %s closing", self._uid)
         self._prof.prof("session_close", uid=self._uid)
 
-        # set defaults
-        if cleanup   is None: cleanup   = True
-        if terminate is None: terminate = True
+        # Merge kwargs with current defaults stored in self._close_options
+        self._close_options.update(kwargs)
+        self._close_options.verify()
 
-        if  cleanup:
-            # cleanup implies terminate
-            terminate = True
+        # to call for `_verify` method and to convert attributes
+        # to their types if needed (but None value will stay if it is set)
 
-        for umgr_uid, umgr in self._umgrs.items():
-            self._log.debug("session %s closes umgr   %s", self._uid, umgr_uid)
-            umgr.close()
-            self._log.debug("session %s closed umgr   %s", self._uid, umgr_uid)
+        options = self._close_options
+
+        for tmgr_uid, tmgr in self._tmgrs.items():
+            self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
+            tmgr.close()
+            self._log.debug("session %s closed tmgr   %s", self._uid, tmgr_uid)
 
         for pmgr_uid, pmgr in self._pmgrs.items():
             self._log.debug("session %s closes pmgr   %s", self._uid, pmgr_uid)
-            pmgr.close(terminate=terminate)
+            pmgr.close(terminate=options.terminate)
             self._log.debug("session %s closed pmgr   %s", self._uid, pmgr_uid)
 
         if self._cmgr:
             self._cmgr.close()
 
         if self._dbs:
-            self._log.debug("session %s closes db (%s)", self._uid, cleanup)
-            self._dbs.close(delete=cleanup)
+            self._log.debug("session %s closes db (%s)", self._uid, options.cleanup)
+            self._dbs.close(delete=options.cleanup)
 
-        self._log.debug("session %s closed (delete=%s)", self._uid, cleanup)
+        self._log.debug("session %s closed (delete=%s)", self._uid, options.cleanup)
         self._prof.prof("session_stop", uid=self._uid)
         self._prof.close()
 
@@ -287,11 +293,11 @@ class Session(rs.Session):
 
         # after all is said and done, we attempt to download the pilot log- and
         # profiles, if so wanted
-        if download:
+        if options.download:
 
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
-            tgt = os.getcwd()
+            tgt = self._cfg.base
             self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
@@ -382,7 +388,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert(self._primary)
+        assert self._primary
         return self._cmgr
 
 
@@ -492,6 +498,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pmgr(self, pmgr):
+
+        if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
+            raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
+
+        self._pmgrs[pmgr.uid] = pmgr
+
+
+    # --------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         '''
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
@@ -534,51 +550,61 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _register_umgr(self, umgr):
+    def _register_tmgr(self, tmgr):
 
-        self._dbs.insert_umgr(umgr.as_dict())
-        self._umgrs[umgr.uid] = umgr
+        self._dbs.insert_tmgr(tmgr.as_dict())
+        self._tmgrs[tmgr.uid] = tmgr
 
 
     # --------------------------------------------------------------------------
     #
-    def list_unit_managers(self):
+    def _reconnect_tmgr(self, tmgr):
+
+        if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
+            raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
+
+        self._tmgrs[tmgr.uid] = tmgr
+
+
+    # --------------------------------------------------------------------------
+    #
+    def list_task_managers(self):
         '''
-        Lists the unique identifiers of all :class:`radical.pilot.UnitManager`
+        Lists the unique identifiers of all :class:`radical.pilot.TaskManager`
         instances associated with this session.
 
         **Returns:**
-            * A list of :class:`radical.pilot.UnitManager` uids (`list` of `strings`).
+            * A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
         '''
 
-        return list(self._umgrs.keys())
+        return list(self._tmgrs.keys())
 
 
     # --------------------------------------------------------------------------
     #
-    def get_unit_managers(self, umgr_uids=None):
+    def get_task_managers(self, tmgr_uids=None):
         '''
-        returns known UnitManager(s).
+        returns known TaskManager(s).
 
         **Arguments:**
 
-            * **umgr_uids** [`string`]:
-              unique identifier of the UnitManager we want
+            * **tmgr_uids** [`string`]:
+              unique identifier of the TaskManager we want
 
         **Returns:**
-            * One or more [:class:`radical.pilot.UnitManager`] objects.
+            * One or more [:class:`radical.pilot.TaskManager`] objects.
         '''
 
         return_scalar = False
-        if not isinstance(umgr_uids, list):
-            umgr_uids     = [umgr_uids]
+        if not isinstance(tmgr_uids, list):
+            tmgr_uids     = [tmgr_uids]
             return_scalar = True
 
-        if umgr_uids: umgrs = [self._umgrs[uid] for uid in umgr_uids]
-        else        : umgrs =  list(self._umgrs.values())
+        if tmgr_uids: tmgrs = [self._tmgrs[uid] for uid in tmgr_uids]
+        else        : tmgrs =  list(self._tmgrs.values())
 
-        if return_scalar: return umgrs[0]
-        else            : return umgrs
+        if return_scalar: return tmgrs[0]
+        else            : return tmgrs
 
 
     # --------------------------------------------------------------------------
@@ -586,13 +612,11 @@ class Session(rs.Session):
     def list_resources(self):
         '''
         Returns a list of known resource labels which can be used in a pilot
-        description.  Not that resource aliases won't be listed.
+        description.
         '''
 
         resources = list()
         for domain in self._rcfgs:
-            if domain == 'aliases':
-                continue
             for host in self._rcfgs[domain]:
                 resources.append('%s.%s' % (domain, host))
 
@@ -601,54 +625,10 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def add_resource_config(self, resource_config):
-        '''
-        Adds a new :class:`ru.Config` to the session's dictionary of known
-        resources, or accept a string which points to a configuration file.
-
-        For example::
-
-               rc = ru.Config("./mycluster.json")
-               rc.job_manager_endpoint = "ssh+pbs://mycluster
-               rc.filesystem_endpoint  = "sftp://mycluster
-               rc.default_queue        = "private"
-
-               session = rp.Session()
-               session.add_resource_config(rc)
-
-               pd = rp.ComputePilotDescription()
-               pd.resource = "mycluster"
-               pd.cores    = 16
-               pd.runtime  = 5 # minutes
-
-               pilot = pm.submit_pilots(pd)
-        '''
-
-        if isinstance(resource_config, str):
-
-            # let exceptions fall through
-            rcs = ru.Config('radical.pilot.resource', name=resource_config)
-
-            for rc in rcs:
-                self._log.info('load rcfg for %s' % rc)
-                self._rcfgs[rc] = rcs[rc].as_dict()
-
-        else:
-            self._log.debug('load rcfg for %s', resource_config.label)
-            self._rcfgs[resource_config.label] = resource_config.as_dict()
-
-
-    # --------------------------------------------------------------------------
-    #
     def get_resource_config(self, resource, schema=None):
         '''
         Returns a dictionary of the requested resource config
         '''
-
-        if  resource in self._rcfgs.get('aliases', {}):
-            self._log.warning("using alias '%s' for deprecated resource '%s'"
-                              % (self._rcfgs.aliases.resource, resource))
-            resource = self._rcfgs.aliases.resource
 
         domain, host = resource.split('.', 1)
         if domain not in self._rcfgs:
@@ -673,12 +653,13 @@ class Session(rs.Session):
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
 
+        resource_cfg.label = resource
         return resource_cfg
 
 
     # --------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None, fetch_client=False):
+    def fetch_profiles(self, tgt=None):
 
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
@@ -686,7 +667,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_logfiles(self, tgt=None, fetch_client=False):
+    def fetch_logfiles(self, tgt=None):
 
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
                                   session=self)
@@ -694,7 +675,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_json(self, tgt=None, fetch_client=False):
+    def fetch_json(self, tgt=None):
 
         return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
                               session=self)
@@ -765,7 +746,7 @@ class Session(rs.Session):
                             expand['pd.%s' % k.lower()] = v
                     sandbox_raw = sandbox_raw % expand
 
-                if '_' in sandbox_raw and 'summit' in resource:
+                if '_' in sandbox_raw and 'ornl' in resource:
                     sandbox_raw = sandbox_raw.split('_')[0]
 
                 # If the sandbox contains expandables, we need to resolve those
@@ -878,51 +859,75 @@ class Session(rs.Session):
 
         pid = pilot['uid']
         with self._cache_lock:
-            if  pid in self._cache['pilot_sandbox']:
-                return self._cache['pilot_sandbox'][pid]
 
-        # cache miss
-        session_sandbox     = self._get_session_sandbox(pilot)
-        pilot_sandbox       = rs.Url(session_sandbox)
-        pilot_sandbox.path += '/%s/' % pilot['uid']
+            if pid not in self._cache['pilot_sandbox']:
 
-        with self._cache_lock:
-            self._cache['pilot_sandbox'][pid] = pilot_sandbox
+                # cache miss
+                session_sandbox     = self._get_session_sandbox(pilot)
+                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox.path += '/%s/' % pilot['uid']
 
-        return pilot_sandbox
+                self._cache['pilot_sandbox'][pid] = pilot_sandbox
+
+            return self._cache['pilot_sandbox'][pid]
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_unit_sandbox(self, unit, pilot):
+    def _get_endpoint_fs(self, pilot):
 
-        # If a sandbox is specified in the unit description, then interpret
+        # FIXME: this should get 'resource, schema=None' as parameters
+
+        resource = pilot['description'].get('resource')
+
+        if not resource:
+            raise ValueError('Cannot get endpoint filesystem w/o resource target')
+
+        with self._cache_lock:
+
+            if resource not in self._cache['endpoint_fs']:
+
+                # cache miss
+                resource_sandbox  = self._get_resource_sandbox(pilot)
+                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs.path  = ''
+
+                self._cache['endpoint_fs'][resource] = endpoint_fs
+
+            return self._cache['endpoint_fs'][resource]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_task_sandbox(self, task, pilot):
+
+        # If a sandbox is specified in the task description, then interpret
         # relative paths as relativet to the pilot sandbox.
 
-        # unit sandboxes are cached in the unit dict
-        unit_sandbox = unit.get('unit_sandbox')
-        if unit_sandbox:
-            return unit_sandbox
+        # task sandboxes are cached in the task dict
+        task_sandbox = task.get('task_sandbox')
+        if task_sandbox:
+            return task_sandbox
 
         # specified in description?
-        if not unit_sandbox:
-            sandbox  = unit['description'].get('sandbox')
+        if not task_sandbox:
+            sandbox  = task['description'].get('sandbox')
             if sandbox:
-                unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+                task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
                 if sandbox[0] == '/':
-                    unit_sandbox.path = sandbox
+                    task_sandbox.path = sandbox
                 else:
-                    unit_sandbox.path += '/%s/' % sandbox
+                    task_sandbox.path += '/%s/' % sandbox
 
         # default
-        if not unit_sandbox:
-            unit_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
-            unit_sandbox.path += "/%s/" % unit['uid']
+        if not task_sandbox:
+            task_sandbox = ru.Url(self._get_pilot_sandbox(pilot))
+            task_sandbox.path += "/%s/" % task['uid']
 
         # cache
-        unit['unit_sandbox'] = str(unit_sandbox)
+        task['task_sandbox'] = str(task_sandbox)
 
-        return unit_sandbox
+        return task_sandbox
 
 
     # --------------------------------------------------------------------------
@@ -1010,6 +1015,42 @@ class Session(rs.Session):
         print('  issue  : %s' % title)
         print('  problem: %s' % body)
         print('----------------------------------------------------')
+
+
+# ------------------------------------------------------------------------------
+#
+class _CloseOptions(ru.TypedDict):
+    '''
+    Options and validation for Session.close().
+
+    **Arguments:**
+        * **cleanup**   (`bool`):
+          Remove session from MongoDB (implies * terminate). (default False)
+        * **download** (`bool`):
+          Fetch pilot profiles and database entries. (default False)
+        * **terminate** (`bool`):
+          Shut down all pilots associated with the session. (default True)
+    '''
+
+    _schema = {
+        'cleanup'  : bool,
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'cleanup'  : False,
+        'download' : False,
+        'terminate': True
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if self.get('cleanup') and not self.get('terminate'):
+            self.terminate = True
 
 
 # ------------------------------------------------------------------------------

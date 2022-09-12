@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = "Copyright 2013-2014, http://radical.rutgers.edu"
 __license__   = "MIT"
@@ -25,7 +25,7 @@ def pilot_state_cb (pilot, state):
     if not pilot:
         return
 
-    print("[Callback]: ComputePilot '%s' state: %s." % (pilot.uid, state))
+    print("[Callback]: Pilot '%s' state: %s." % (pilot.uid, state))
 
     if state == rp.FAILED:
         sys.exit (1)
@@ -33,17 +33,17 @@ def pilot_state_cb (pilot, state):
 
 # ------------------------------------------------------------------------------
 #
-def unit_state_cb (unit, state):
+def task_state_cb (task, state):
 
-    if not unit:
+    if not task:
         return
 
     global CNT
 
-    print("[Callback]: unit %s on %s: %s." % (unit.uid, unit.pilot_id, state))
+    print("[Callback]: task %s on %s: %s." % (task.uid, task.pilot_id, state))
 
     if state == rp.FAILED:
-        print("stderr: %s" % unit.stderr)
+        print("stderr: %s" % task.stderr)
         sys.exit(2)
 
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
       # c.user_pass = "PutYourPasswordHere"
         session.add_context(c)
 
-        # Add a Pilot Manager. Pilot managers manage one or more ComputePilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)
 
@@ -100,62 +100,62 @@ if __name__ == "__main__":
         # https://radicalpilot.readthedocs.io/en/stable/ \
         #        machconf.html#preconfigured-resources
         #
-        pdesc = rp.ComputePilotDescription ()
+        pdesc = rp.PilotDescription ()
         pdesc.resource = "local.localhost"
         pdesc.runtime  = 10
         pdesc.cores    = 16
         pdesc.cleanup  = True
 
         # submit the pilot.
-        print("Submitting Compute Pilot to Pilot Manager ...")
+        print("Submitting  Pilot to Pilot Manager ...")
         pilot = pmgr.submit_pilots(pdesc)
 
-        # Combine the ComputePilot, the ComputeUnits and a scheduler via
-        # a UnitManager object.
-        print("Initializing Unit Manager ...")
-        umgr = rp.UnitManager (session=session,
+        # Combine the Pilot, the Tasks and a scheduler via
+        # a TaskManager object.
+        print("Initializing Task Manager ...")
+        tmgr = rp.TaskManager (session=session,
                                scheduler=rp.SCHEDULER_DIRECT_SUBMISSION)
 
-        # Register our callback with the UnitManager. This callback will get
-        # called every time any of the units managed by the UnitManager
+        # Register our callback with the TaskManager. This callback will get
+        # called every time any of the tasks managed by the TaskManager
         # change their state.
-        umgr.register_callback(unit_state_cb)
+        tmgr.register_callback(task_state_cb)
 
-        # Add the created ComputePilot to the UnitManager.
-        print("Registering Compute Pilot with Unit Manager ...")
-        umgr.add_pilots(pilot)
+        # Add the created Pilot to the TaskManager.
+        print("Registering  Pilot with Task Manager ...")
+        tmgr.add_pilots(pilot)
 
-        NUMBER_JOBS  = 10  # the total number of cus to run
+        NUMBER_JOBS  = 10  # the total number of tasks to run
 
-        # submit CUs to pilot job
-        cudesc_list = []
+        # submit tasks to pilot job
+        taskdesc_list = []
         for i in range(NUMBER_JOBS):
 
-            # -------- BEGIN USER DEFINED CU DESCRIPTION --------- #
-            cudesc = rp.ComputeUnitDescription()
-            cudesc.executable    = "python"
-            cudesc.arguments     = ["helloworld_mpi.py"]
-            cudesc.input_staging = ["../helloworld_mpi.py"]
-            cudesc.cores         = 8
-            cudesc.mpi           = True
-            # -------- END USER DEFINED CU DESCRIPTION --------- #
+            # -------- BEGIN USER DEFINED Task DESCRIPTION --------- #
+            taskdesc = rp.TaskDescription()
+            taskdesc.executable    = "python"
+            taskdesc.arguments     = ["helloworld_mpi.py"]
+            taskdesc.input_staging = ["../helloworld_mpi.py"]
+            taskdesc.cores         = 8
+            taskdesc.mpi           = True
+            # -------- END USER DEFINED Task DESCRIPTION --------- #
 
-            cudesc_list.append(cudesc)
+            taskdesc_list.append(taskdesc)
 
-        # Submit the previously created ComputeUnit descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning ComputeUnits to the ComputePilots.
-        print("Submit Compute Units to Unit Manager ...")
-        cu_set = umgr.submit_units (cudesc_list)
+        # assigning Tasks to the Pilots.
+        print("Submit Tasks to Task Manager ...")
+        task_set = tmgr.submit_tasks (taskdesc_list)
 
-        print("Waiting for CUs to complete ...")
-        umgr.wait_units()
-        print("All CUs completed successfully!")
+        print("Waiting for tasks to complete ...")
+        tmgr.wait_tasks()
+        print("All tasks completed successfully!")
 
-        for unit in cu_set:
+        for task in task_set:
             print('* Task %s - state: %s, exit code: %s, started: %s, '
-                  'finished: %s, stdout: %s' % (unit.uid, unit.state,
-                  unit.exit_code, unit.start_time, unit.stop_time, unit.stdout))
+                  'finished: %s, stdout: %s' % (task.uid, task.state,
+                  task.exit_code, task.start_time, task.stop_time, task.stdout))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

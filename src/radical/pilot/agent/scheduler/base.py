@@ -1,12 +1,14 @@
 
-__copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
-
+import copy
 import time
 import queue
+import pprint
 import logging
 
+import threading          as mt
 import multiprocessing    as mp
 
 import radical.utils      as ru
@@ -14,6 +16,8 @@ import radical.utils      as ru
 from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
+
+from ..resource_manager import ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -25,9 +29,7 @@ SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_TORUS              = "TORUS"
 SCHEDULER_NAME_NOOP               = "NOOP"
-SCHEDULER_NAME_TORUS              = "TORUS"
 
 # SCHEDULER_NAME_YARN               = "YARN"
 # SCHEDULER_NAME_SPARK              = "SPARK"
@@ -38,7 +40,7 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 
 # ------------------------------------------------------------------------------
 #
-# An RP agent scheduler will place incoming units onto a set of cores and gpus.
+# An RP agent scheduler will place incoming tasks onto a set of cores and gpus.
 #
 # This is the agent scheduler base class.  It provides the framework for
 # implementing diverse scheduling algorithms and mechanisms, tailored toward
@@ -47,22 +49,22 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 # The base class provides the following functionality to the implementations:
 #
 #   - obtain configuration settings from config files and environments
-#   - create aself._nodes list to represent available resources;
+#   - create self.nodes list to represent available resources;
 #   - general control and data flow:
 #
 #       # main loop
-#       self._handle_unit(unit):  # unit arrives
-#         try_allocation(unit)    # placement is attempted
+#       self._handle_task(task):  # task arrives
+#         try_allocation(task)    # placement is attempted
 #         if success:
-#            advance(unit)        # pass unit to executor
+#            advance(task)        # pass task to executor
 #         else:
-#            wait.append(unit)    # place unit in a wait list
+#            wait.append(task)    # place task in a wait list
 #
 #   - notification management:
-#     - the scheduler receives notifications about units which completed
-#       execution, and whose resources can now be used again for other units,
+#     - the scheduler receives notifications about tasks which completed
+#       execution, and whose resources can now be used again for other tasks,
 #     - the above triggers an 'unschedule' (free resources) action and also a
-#       `schedule` action (check waitpool if waiting units can now be placed).
+#       `schedule` action (check waitpool if waiting tasks can now be placed).
 #
 #
 # A scheduler implementation will derive from this base class, and overload the
@@ -72,18 +74,18 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 #     - make sure that the base class configuration is usable
 #     - do any additional configuration
 #
-#   _schecule_unit(unit):
-#     - given a unit (incl. description), find and return a suitable allocation
+#   _schecule_task(task):
+#     - given a task (incl. description), find and return a suitable allocation
 #
-#   unschedule_unit(unit):
-#     - release the allocation held by that unit
+#   unschedule_task(task):
+#     - release the allocation held by that task
 #
 #
 # The scheduler needs (in the general case) three pieces of information:
 #
 #   - the layout of the resource (nodes, cores, gpus);
-#   - the current state of those (what cores/gpus are used by other units)
-#   - the requirements of the unit (single/multi node, cores, gpus)
+#   - the current state of those (what cores/gpus are used by other tasks)
+#   - the requirements of the task (single/multi node, cores, gpus)
 #
 # The first part (layout) is provided by the ResourceManager, in the form of a nodelist:
 #
@@ -101,7 +103,7 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 #                ...
 #               ]
 #
-# When allocating a set of resource for a unit (2 cores, 1 gpu), we can now
+# When allocating a set of resource for a task (2 cores, 1 gpu), we can now
 # record those as used:
 #
 #    nodelist = [{name : 'node_1', cores: [##--------------], gpus : [#-]},
@@ -109,11 +111,11 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 #                ...
 #               ]
 #
-# This solves the second part from our list above.  The third part, unit
-# requirements, are obtained from the unit dict passed for scheduling: the unit
+# This solves the second part from our list above.  The third part, task
+# requirements, are obtained from the task dict passed for scheduling: the task
 # description contains requests for `cores` and `gpus`.
 #
-# Note that the unit description will also list the number of processes and
+# Note that the task description will also list the number of processes and
 # threads for cores and gpus, and also flags the use of `mpi`, 'openmp', etc.
 # The scheduler will have to make sure that for each process to be placed, the
 # given number of additional cores are available *and reserved* to create
@@ -122,22 +124,19 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 # the thread creation for the application.
 #
 # The scheduler algorithm will then attempt to find a suitable set of cores and
-# gpus in the nodelist into which the unit can be placed.  It will mark those as
-# `rpc.BUSY`, and attach the set of cores/gpus to the unit dictionary, as (here
+# gpus in the nodelist into which the task can be placed.  It will mark those as
+# `rpc.BUSY`, and attach the set of cores/gpus to the task dictionary, as (here
 # for system with 8 cores & 1 gpu per node):
 #
-#     unit = { ...
+#     task = { ...
 #       'cpu_processes'   : 4,
 #       'cpu_process_type': 'mpi',
 #       'cpu_threads'     : 2,
 #       'gpu_processes    : 2,
 #       'slots' :
-#       {                 # [[node,   node_uid,   [cpu idx],        [gpu idx]]]
-#         'nodes'         : [[node_1, node_uid_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_uid_2, [[1, 3], [5, 7]], [[0]    ]]],
-#         'cores_per_node': 8,
-#         'gpus_per_node' : 1,
-#         'lm_info'       : { ... }
+#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -152,27 +151,15 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 # (`cpu_threads=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
-# intent to support the launch methods to enact the placement decition made by
+# intent to support the launch methods to enact the placement decision made by
 # the scheduler.  In fact, a scheduler may use a completely different slot
 # structure than above - but then is likely bound to a specific launch method
-# which can interpret that structure.  A notable example is the BG/Q torus
-# scheduler which will only work in combination with the dplace launch methods.
-# `lm_info` is an opaque field which allows to communicate specific settings
-# from the rm to the launch method.
-#
-# FIXME: `lm_info` should be communicated to the LM instances in creation, not
-#        as part of the slots.  Its constant anyway, as lm_info is set only
-#        once during rm startup.
-#
-# NOTE:  While the nodelist resources are listed as strings above, we in fact
-#        use a list of integers, to simplify some operations, and to
-#        specifically avoid string copies on manipulations.  We only convert
-#        to a stringlist for visual representation (`self.slot_status()`).
+# which can interpret that structure.
 #
 # NOTE:  The scheduler will allocate one core per node and GPU, as some startup
 #        methods only allow process placements to *cores*, even if GPUs are
 #        present and requested (hi aprun).  We should make this decision
-#        dependent on the `lm_info` field - but at this point we don't have this
+#        dependent on the launch method - but at this point we don't have this
 #        information (at least not readily available).
 #
 # TODO:  use named tuples for the slot structure to make the code more readable,
@@ -180,11 +167,11 @@ SCHEDULER_NAME_TORUS              = "TORUS"
 #
 # NOTE:  The set of profiler events generated by this component are:
 #
-#        schedule_try    : search for unit resources starts    (uid: uid)
-#        schedule_fail   : search for unit resources failed    (uid: uid)
-#        schedule_ok     : search for unit resources succeeded (uid: uid)
-#        unschedule_start: unit resource freeing starts        (uid: uid)
-#        unschedule_stop : unit resource freeing stops         (uid: uid)
+#        schedule_try    : search for task resources starts    (uid: uid)
+#        schedule_fail   : search for task resources failed    (uid: uid)
+#        schedule_ok     : search for task resources succeeded (uid: uid)
+#        unschedule_start: task resource freeing starts        (uid: uid)
+#        unschedule_stop : task resource freeing stops         (uid: uid)
 #
 #        See also:
 #        https://github.com/radical-cybertools/radical.pilot/blob/feature/ \
@@ -202,10 +189,10 @@ class AgentSchedulingComponent(rpu.Component):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'name'  : 'name-of-node',
-    #       'uid'   : 'uid-of-node',
-    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
-    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
+    #     { 'node_name' : 'name-of-node',
+    #       'node_id'   : 'uid-of-node',
+    #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
     #   ]
     #
@@ -216,9 +203,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     def __init__(self, cfg, session):
 
-        self.nodes = None
-        self._uid  = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
-                                    ru.ID_CUSTOM)
+        self.nodes = []
         rpu.Component.__init__(self, cfg, session)
 
 
@@ -229,71 +214,48 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def initialize(self):
 
-        # The scheduler needs the ResourceManager information which have been collected
-        # during agent startup.  We dig them out of the config at this point.
-        #
-        # NOTE: this information is insufficient for the torus scheduler!
-        self._pid                 = self._cfg['pid']
-        self._rm_info           = self._cfg['rm_info']
-        self._rm_lm_info        = self._cfg['rm_info']['lm_info']
-        self._rm_node_list      = self._cfg['rm_info']['node_list']
-        self._rm_cores_per_node = self._cfg['rm_info']['cores_per_node']
-        self._rm_gpus_per_node  = self._cfg['rm_info']['gpus_per_node']
-        self._rm_lfs_per_node   = self._cfg['rm_info']['lfs_per_node']
-        self._rm_mem_per_node   = self._cfg['rm_info']['mem_per_node']
+        # The scheduler needs the ResourceManager information which have been
+        # collected during agent startup.
+        self._rm = ResourceManager.create(self._cfg.resource_manager,
+                                          self._cfg, self._log, self._prof)
 
-        if not self._rm_node_list:
-            raise RuntimeError("ResourceManager %s didn't _configure node_list."
-                              % self._rm_info['name'])
-
-        if self._rm_cores_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure cores_per_node."
-                              % self._rm_info['name'])
-
-        if self._rm_gpus_per_node is None:
-            raise RuntimeError("ResourceManager %s didn't _configure gpus_per_node."
-                              % self._rm_info['name'])
+        self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
-        # lookups of replacement units.  And outdated binlist is mostly
+        # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool = dict()  # map uid:task
-        self._ts_map   = dict()
-        self._ts_valid = False  # set to False to trigger re-binning
+        self._waitpool   = dict()  # map uid:task
+        self._ts_map     = dict()
+        self._ts_valid   = False   # set to False to trigger re-binning
+        self._active_cnt = 0       # count of currently scheduled tasks
+        self._named_envs = list()  # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
         self._queue_unsched = mp.Queue()
-        self._proc_term     = mp.Event()  # signal termination ot scheduler proc
+        self._term          = mp.Event()  # reassign Event (multiprocessing)
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
-        self.nodes = list()
-        for node, node_uid in self._rm_node_list:
-            self.nodes.append({'uid'  : node_uid,
-                               'name' : node,
-                               'cores': [rpc.FREE] * self._rm_cores_per_node,
-                               'gpus' : [rpc.FREE] * self._rm_gpus_per_node,
-                               'lfs'  :              self._rm_lfs_per_node,
-                               'mem'  :              self._rm_mem_per_node})
+        self.nodes = copy.deepcopy(self._rm.info.node_list)
 
         # configure the scheduler instance
         self._configure()
         self.slot_status("slot status after  init")
 
-        # register unit input channels
+        # register task input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
                             rpc.AGENT_SCHEDULING_QUEUE, self.work)
 
-        # we need unschedule updates to learn about units for which to free the
+        # we need unschedule updates to learn about tasks for which to free the
         # allocated cores.  Those updates MUST be issued after execution, ie.
         # by the AgentExecutionComponent.
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # start a process to host the actual scheduling algorithm
-        self._p = mp.Process(target=self._schedule_units)
+        self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
 
@@ -330,39 +292,95 @@ class AgentSchedulingComponent(rpu.Component):
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .flux               import Flux
-        from .torus              import Torus
         from .noop               import Noop
 
-      # from .yarn               import Yarn
-      # from .spark              import Spark
-      # from .continuous_summit  import ContinuousSummit
-      # from .continuous_fifo    import ContinuousFifo
-      # from .scattered          import Scattered
+        impl = {
 
-        try:
-            impl = {
+            SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+            SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS         : Continuous,
+            SCHEDULER_NAME_HOMBRE             : Hombre,
+            SCHEDULER_NAME_FLUX               : Flux,
+            SCHEDULER_NAME_NOOP               : Noop,
+        }
 
-                SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
-                SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
-                SCHEDULER_NAME_CONTINUOUS         : Continuous,
-                SCHEDULER_NAME_HOMBRE             : Hombre,
-                SCHEDULER_NAME_FLUX               : Flux,
-                SCHEDULER_NAME_TORUS              : Torus,
-                SCHEDULER_NAME_NOOP               : Noop,
+        if name not in impl:
+            raise ValueError('Scheduler %s unknown' % name)
 
-              # SCHEDULER_NAME_YARN               : Yarn,
-              # SCHEDULER_NAME_SPARK              : Spark,
-              # SCHEDULER_NAME_CONTINUOUS_SUMMIT  : ContinuousSummit,
-              # SCHEDULER_NAME_CONTINUOUS_FIFO    : ContinuousFifo,
-              # SCHEDULER_NAME_SCATTERED          : Scattered,
+        return impl[name](cfg, session)
 
-            }[name]
 
-            impl = impl(cfg, session)
-            return impl
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
+        '''
+        listen on the control channel for raptor queue registration commands
+        '''
 
-        except KeyError:
-            raise ValueError("Scheduler '%s' unknown or defunct" % name)
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'register_named_env':
+
+            env_name = arg['env_name']
+            self._named_envs.append(env_name)
+
+
+        elif cmd == 'register_raptor_queue':
+
+            name  = arg['name']
+            queue = arg['queue']
+            addr  = arg['addr']
+
+            self._log.debug('register raptor queue: %s', name)
+            with self._raptor_lock:
+
+                self._raptor_queues[name] = ru.zmq.Putter(queue, addr)
+
+                # send tasks which were collected for this queue
+                if name in self._raptor_tasks:
+
+                    tasks = self._raptor_tasks[name]
+                    del self._raptor_tasks[name]
+
+                    self._log.debug('relay %d tasks to raptor %s', len(tasks), name)
+                    self._raptor_queues[name].put(tasks)
+
+                # also send any tasks which were collected for *any* queue
+                if '*' in self._raptor_tasks:
+
+                    tasks = self._raptor_tasks['*']
+                    del self._raptor_tasks['*']
+
+                    self._log.debug('* relay %d tasks to raptor %s', len(tasks), name)
+                    self._raptor_queues[name].put(tasks)
+
+
+        elif cmd == 'unregister_raptor_queue':
+
+            name = arg['name']
+            self._log.debug('unregister raptor queue: %s', name)
+
+            with self._raptor_lock:
+
+                if name not in self._raptor_queues:
+                    self._log.warn('raptor queue %s unknown [%s]', name, msg)
+
+                else:
+                    del self._raptor_queues[name]
+
+                if name in self._raptor_tasks:
+                    tasks = self._raptor_tasks[name]
+                    del self._raptor_tasks[name]
+
+                    self._log.debug('fail %d tasks: %d', len(tasks), name)
+                    self.advance(tasks, state=rps.FAILED,
+                                        publish=True, push=False)
+
+        else:
+            self._log.debug('command ignored: [%s]', cmd)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -380,12 +398,12 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_uid, cores, gpus in slots['nodes']:
-        for slot_node in slots['nodes']:
+        # for node_name, node_id, cores, gpus in slots['ranks']:
+        for rank in slots['ranks']:
 
             # Find the entry in the the slots list
 
-            # TODO: [Optimization] Assuming 'uid' is the ID of the node, it
+            # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
@@ -395,7 +413,7 @@ class AgentSchedulingComponent(rpu.Component):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['uid'] == slot_node['uid']:
+                if node['node_id'] == rank['node_id']:
                     node_found = True
                     break
 
@@ -403,27 +421,27 @@ class AgentSchedulingComponent(rpu.Component):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = slot_node['core_map']
+            cores = rank['core_map']
             for cslot in cores:
                 for core in cslot:
                     node['cores'][core] = new_state
 
-            gpus = slot_node['gpu_map']
+            gpus = rank['gpu_map']
             for gslot in gpus:
                 for gpu in gslot:
                     node['gpus'][gpu] = new_state
 
-            if slot_node['lfs']['path']:
+            if rank['lfs']:
                 if new_state == rpc.BUSY:
-                    node['lfs']['size'] -= slot_node['lfs']['size']
+                    node['lfs'] -= rank['lfs']
                 else:
-                    node['lfs']['size'] += slot_node['lfs']['size']
+                    node['lfs'] += rank['lfs']
 
-            if slot_node['mem']:
+            if rank['mem']:
                 if new_state == rpc.BUSY:
-                    node['mem'] -= slot_node['mem']
+                    node['mem'] -= rank['mem']
                 else:
-                    node['mem'] += slot_node['mem']
+                    node['mem'] += rank['mem']
 
 
 
@@ -462,7 +480,7 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _refresh_ts_map(self):
 
-        # The ts map only gets invalidated when new units get added to the
+        # The ts map only gets invalidated when new tasks get added to the
         # waitpool.  Removing tasks does *not* invalidate it.
         #
         # This method should only be called opportunistically, i.e., when a task
@@ -476,7 +494,7 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._waitpool:
             return
 
-        for uid,task in self._waitpool.items():
+        for uid, task in self._waitpool.items():
             ts = task['tuple_size']
             if ts not in self._ts_map:
                 self._ts_map[ts] = set()
@@ -487,47 +505,44 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def schedule_unit(self, unit):
+    def schedule_task(self, task):
 
-        raise NotImplementedError('schedule_unit needs to be implemented.')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def unschedule_unit(self, unit):
-
-        raise NotImplementedError('unschedule_unit needs to be implemented.')
+        raise NotImplementedError('schedule_task needs to be implemented.')
 
 
     # --------------------------------------------------------------------------
     #
-    def work(self, units):
+    def unschedule_task(self, task):
+
+        raise NotImplementedError('unschedule_task needs to be implemented.')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def work(self, tasks):
         '''
         This is the main callback of the component, which is called for any
-        incoming (set of) unit(s).  Units arriving here must always be in
+        incoming (set of) task(s).  Tasks arriving here must always be in
         `AGENT_SCHEDULING_PENDING` state, and must always leave in either
         `AGENT_EXECUTING_PENDING` or in a FINAL state (`FAILED` or `CANCELED`).
-        While handled by this component, the units will be in `AGENT_SCHEDULING`
+        While handled by this component, the tasks will be in `AGENT_SCHEDULING`
         state.
 
-        This methods takes care of initial state change to `AGENT_SCHEDULING`,
+        This method takes care of initial state change to `AGENT_SCHEDULING`,
         and then puts them forward onto the queue towards the actual scheduling
-        process (self._schedule_units).
+        process (self._schedule_tasks).
         '''
 
-        # unify handling of bulks / non-bulks
-        units = ru.as_list(units)
-
         # advance state, publish state change, and push to scheduler process
-        self.advance(units, rps.AGENT_SCHEDULING, publish=True, push=False)
-        self._queue_sched.put(units)
+        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
+        self._queue_sched.put(tasks)
 
 
     # --------------------------------------------------------------------------
     #
     def unschedule_cb(self, topic, msg):
         '''
-        release (for whatever reason) all slots allocated to this unit
+        release (for whatever reason) all slots allocated to this task
         '''
 
         self._queue_unsched.put(msg)
@@ -538,13 +553,16 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _schedule_units(self):
+    def _schedule_tasks(self):
         '''
         This method runs in a separate process and hosts the actual scheduling
         algorithm invocation.  The process is fed by two queues: a queue of
         incoming tasks to schedule, and a queue of slots freed by finishing
         tasks.
         '''
+
+        #  FIXME: the component does not clean out subscribers after fork :-/
+        self._subscribers = dict()
 
         # The loop alternates between
         #
@@ -570,7 +588,7 @@ class AgentSchedulingComponent(rpu.Component):
         #         break  # larger tasks won't work
         #
         #   if any_resources:  # otherwise: why bother
-        #     for task in queue_units.get():
+        #     for task in queue_tasks.get():
         #         if task <= max_task:
         #           if try_schedule:
         #             advance
@@ -584,16 +602,26 @@ class AgentSchedulingComponent(rpu.Component):
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
 
+        #  subscribe to control messages, e.g., to register raptor queues
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
-        # register unit output channels
+        # also keep a backlog of raptor tasks until their queues are registered
+        self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
+        self._raptor_tasks  = dict()           # raptor_master_id : [task]
+        self._raptor_lock   = mt.Lock()        # lock for the above
+
+        # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
 
-        resources = True  # fresh start, all is free
-        while not self._proc_term.is_set():
+        self._publishers = dict()
+        self.register_publisher(rpc.STATE_PUBSUB)
 
-          # self._log.debug('=== schedule units 0: %s, w: %d', resources,
-          #         len(self._waitpool))
+        resources = True  # fresh start, all is free
+        while not self._term.is_set():
+
+            self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
+                    len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
 
@@ -602,14 +630,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-              # self._log.debug('=== schedule units w: %s %s', r_wait, a)
+                self._log.debug_3('schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-          # self._log.debug('=== schedule units i: %s %s', r_inc, a)
+            self._log.debug_3('schedule tasks i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -624,12 +652,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-          # self._log.debug('=== schedule units c: %s %s', r, a)
+            self._log.debug_3('schedule tasks c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-          # self._log.debug('=== schedule units x: %s %s', resources, active)
+            self._log.debug_3('schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -652,20 +680,54 @@ class AgentSchedulingComponent(rpu.Component):
         # We define `tuple_size` as
         #     `(cpu_processes + gpu_processes) * cpu_threads`
         #
-        tasks = list(self._waitpool.values())
-        tasks.sort(key=lambda x:
+        to_wait    = list()
+        to_test    = list()
+
+        for task in self._waitpool.values():
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if named_env in self._named_envs:
+                    to_test.append(task)
+                else:
+                    to_wait.append(task)
+            else:
+                to_test.append(task)
+
+        to_test.sort(key=lambda x:
                 (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-        scheduled, unscheduled = ru.lazy_bisect(tasks,
+      # self._log.debug_9('before bisec: %d', len(to_test))
+        scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
+      # self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
+      #                                           len(unscheduled), len(failed))
 
-        self._waitpool = {task['uid']:task for task in unscheduled}
+        for task, error in failed:
+            task['stderr']       = error
+            task['control']      = 'tmgr_pending'
+            task['target_state'] = 'FAILED'
+            task['$all']         = True
+
+            self._log.error('bisect failed on %s: %s', task['uid'], error)
+            self.advance(scheduled, rps.FAILED, publish=True, push=False)
+
+        self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
+
+        # update task resources
+        for task in scheduled:
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['cpu_processes'] *
+                                        td['cpu_threads'],
+                                 'gpu': td['gpu_processes'] *
+                                        td['cpu_processes']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
+
         # method counts as `active` if anything was scheduled
         active = bool(scheduled)
 
@@ -680,58 +742,135 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def _schedule_incoming(self):
 
-        # fetch all units from the queue
-        units = list()
+        # fetch all tasks from the queue
+        to_schedule = list()  # some tasks get scheduled here
+        to_raptor   = dict()  # some tasks get forwared to raptor
         try:
 
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
+
                 data = self._queue_sched.get(timeout=0.001)
 
                 if not isinstance(data, list):
                     data = [data]
 
-                for unit in data:
-                    self._set_tuple_size(unit)
-                    units.append(unit)
+                for task in data:
+                    # check if this task is to be scheduled by sub-schedulers
+                    # like raptor
+                    raptor = task['description'].get('scheduler')
+                    if raptor:
+                        if raptor not in to_raptor:
+                            to_raptor[raptor] = [task]
+                        else:
+                            to_raptor[raptor].append(task)
+
+                    else:
+                        # no raptor - schedule it here
+                        self._set_tuple_size(task)
+                        to_schedule.append(task)
 
         except queue.Empty:
             # no more unschedule requests
             pass
 
-        if not units:
+        # forward raptor tasks to their designated raptor
+        if to_raptor:
+
+            with self._raptor_lock:
+
+                for name in to_raptor:
+
+                    if name in self._raptor_queues:
+                        # forward to specified raptor queue
+                        self._log.debug('fwd %s: %d', name,
+                                        len(to_raptor[name]))
+                        self._raptor_queues[name].put(to_raptor[name])
+
+                    elif self._raptor_queues and name == '*':
+                        # round robin to available raptor queues
+                        names   = list(self._raptor_queues.keys())
+                        n_names = len(names)
+                        for idx in range(len(to_raptor[name])):
+                            task  = to_raptor[name][idx]
+                            qname = names[idx % n_names]
+                            self._log.debug('* put task %s to rq %s',
+                                    task['uid'], qname)
+                            self._raptor_queues[qname].put(task)
+
+                    else:
+                        # keep around until a raptor queue registers
+                        self._log.debug('cache %s: %d', name,
+                                        len(to_raptor[name]))
+
+                        if name not in self._raptor_tasks:
+                            self._raptor_tasks[name] = to_raptor[name]
+                        else:
+                            self._raptor_tasks[name] += to_raptor[name]
+
+        if not to_schedule:
             # no resource change, no activity
             return None, False
 
-      # self.slot_status("before schedule incoming [%d]" % len(units))
+      # self.slot_status("before schedule incoming [%d]" % len(to_schedule))
 
-        # handle largest units first
+        # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
-        to_wait = list()
-        for unit in sorted(units, key=lambda x: x['tuple_size'][0],
+        to_wait    = list()
+        for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
-            # either we can place the unit straight away, or we have to
+            # FIXME: This is a slow and inefficient way to wait for named VEs.
+            #        The semantics should move to the upcoming eligibility
+            #        checker
+            # FIXME: Note that this code is duplicated in _schedule_waitpool
+            named_env = task['description'].get('named_env')
+            if named_env:
+                if named_env not in self._named_envs:
+                    to_wait.append(task)
+                    self._log.debug('delay %s, no env %s',
+                                    task['uid'], named_env)
+                    continue
+
+            # either we can place the task straight away, or we have to
             # put it in the wait pool.
-            if self._try_allocation(unit):
+            try:
+                if self._try_allocation(task):
+                    # task got scheduled - advance state, notify world about the
+                    # state change, and push it out toward the next component.
+                    td = task['description']
+                    task['$set']      = ['resources']
+                    task['resources'] = {'cpu': td['cpu_processes'] *
+                                                td['cpu_threads'],
+                                         'gpu': td['gpu_processes'] *
+                                                td['cpu_processes']}
+                    self.advance(task, rps.AGENT_EXECUTING_PENDING,
+                                 publish=True, push=True)
 
-                # task got scheduled - advance state, notify world about the
-                # state change, and push it out toward the next component.
-                self.advance(unit, rps.AGENT_EXECUTING_PENDING,
-                             publish=True, push=True)
+                else:
+                    to_wait.append(task)
 
-            else:
-                to_wait.append(unit)
+            except Exception as e:
 
-        # all units which could not be scheduled are added to the waitpool
-        self._waitpool.update({task['uid']:task for task in to_wait})
+                task['stderr']       = str(e)
+                task['control']      = 'tmgr_pending'
+                task['target_state'] = 'FAILED'
+                task['$all']         = True
 
-        # we performed some activity (worked on units)
+                self._log.exception('scheduling failed for %s', task['uid'])
+
+                self.advance(task, rps.FAILED, publish=True, push=False)
+
+
+        # all tasks which could not be scheduled are added to the waitpool
+        self._waitpool.update({task['uid']: task for task in to_wait})
+
+        # we performed some activity (worked on tasks)
         active = True
 
-        # if units remain waiting, we are out of usable resources
+        # if tasks remain waiting, we are out of usable resources
         resources = not bool(to_wait)
 
-        # incoming units which have to wait are the only reason to rebuild the
+        # incoming tasks which have to wait are the only reason to rebuild the
         # tuple_size map
         self._ts_valid = False
 
@@ -745,9 +884,24 @@ class AgentSchedulingComponent(rpu.Component):
 
         to_unschedule = list()
         try:
-            while not self._proc_term.is_set():
-                unit = self._queue_unsched.get(timeout=0.001)
-                to_unschedule.append(unit)
+
+            # Timeout and bulk limit below are somewhat arbitrary, but the
+            # behaviour is benign.  The goal is to avoid corner cases: for the
+            # sleep, avoid no sleep (busy idle) and also significant latencies.
+            # Anything smaller than 0.01 is under our noise level and works ok
+            # for the latency, and anything larger than 0 is sufficient to avoid
+            # busy idle.
+            #
+            # For the unschedule bulk, the corner case to avoid is waiting for
+            # too long to fill a bulk so that latencies add a up and negate the
+            # bulk optimization. For the 0.001 sleep, 128 as bulk size results
+            # in a max added latency of about 0.1 second, which is one order of
+            # magnitude above our noise level again and thus acceptable (tm).
+            while not self._term.is_set():
+                task = self._queue_unsched.get(timeout=0.01)
+                to_unschedule.append(task)
+                if len(to_unschedule) > 512:
+                    break
 
         except queue.Empty:
             # no more unschedule requests
@@ -762,24 +916,26 @@ class AgentSchedulingComponent(rpu.Component):
             self._refresh_ts_map()
 
 
-        for unit in to_unschedule:
-            # if we find a waiting unit with the same tuple size, we don't free
-            # the slots, but just pass them on unchanged to the waiting unit.
-            # Thus we replace the unscheduled unit on the same cores / GPUs
+        for task in to_unschedule:
+            # if we find a waiting task with the same tuple size, we don't free
+            # the slots, but just pass them on unchanged to the waiting task.
+            # Thus we replace the unscheduled task on the same cores / GPUs
             # immediately. This assumes that the `tuple_size` is good enough to
-            # judge the legality of the resources for the new target unit.
+            # judge the legality of the resources for the new target task.
+            #
+            # FIXME
 
-          # ts = tuple(unit['tuple_size'])
+          # ts = tuple(task['tuple_size'])
           # if self._ts_map.get(ts):
           #
           #     replace = self._waitpool[self._ts_map[ts].pop()]
-          #     replace['slots'] = unit['slots']
+          #     replace['slots'] = task['slots']
           #     placed.append(placed)
           #
-          #     # unschedule unit A and schedule unit B have the same
+          #     # unschedule task A and schedule task B have the same
           #     # timestamp
           #     ts = time.time()
-          #     self._prof.prof('unschedule_stop', uid=unit['uid'],
+          #     self._prof.prof('unschedule_stop', uid=task['uid'],
           #                     timestamp=ts)
           #     self._prof.prof('schedule_fast', uid=replace['uid'],
           #                     timestamp=ts)
@@ -787,11 +943,12 @@ class AgentSchedulingComponent(rpu.Component):
           #                  publish=True, push=True)
           # else:
           #
-          #     # no replacement unit found: free the slots, and try to
-          #     # schedule other units of other sizes.
-          #     to_release.append(unit)
+          #     # no replacement task found: free the slots, and try to
+          #     # schedule other tasks of other sizes.
+          #     to_release.append(task)
 
-            to_release.append(unit)
+            self._active_cnt -= 1
+            to_release.append(task)
 
         if not to_release:
             if not to_unschedule:
@@ -801,17 +958,17 @@ class AgentSchedulingComponent(rpu.Component):
                 # no new resources, but activity
                 return False, True
 
-        # we have units to unschedule, which will free some resources. We can
-        # thus try to schedule larger units again, and also inform the caller
+        # we have tasks to unschedule, which will free some resources. We can
+        # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
-        for unit in to_release:
-            self.unschedule_unit(unit)
-            self._prof.prof('unschedule_stop', uid=unit['uid'])
+        for task in to_release:
+            self.unschedule_task(task)
+            self._prof.prof('unschedule_stop', uid=task['uid'])
 
-        # we placed some previously waiting units, and need to remove those from
+        # we placed some previously waiting tasks, and need to remove those from
         # the waitpool
-        self._waitpool = {task['uid']:task for task in self._waitpool.values()
-                                           if  task['uid'] not in placed}
+        self._waitpool = {task['uid']: task for task in self._waitpool.values()
+                                            if  task['uid'] not in placed}
 
         # we have new resources, and were active
         return True, True
@@ -819,32 +976,37 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _try_allocation(self, unit):
+    def _try_allocation(self, task):
         '''
-        attempt to allocate cores/gpus for a specific unit.
+        attempt to allocate cores/gpus for a specific task.
         '''
 
-        uid = unit['uid']
+        uid = task['uid']
+      # td  = task['description']
+
       # self._prof.prof('schedule_try', uid=uid)
-
-        slots = self.schedule_unit(unit)
+        slots = self.schedule_task(task)
         if not slots:
 
             # schedule failure
           # self._prof.prof('schedule_fail', uid=uid)
+
+            # if schedule fails while no other task is scheduled, then the
+            # `schedule_task` will never be able to succeed - fail that task
+            if self._active_cnt == 0:
+                self._log.error('task cannot be scheduled ever: %s',
+                        pprint.pformat(task['description']))
+                raise RuntimeError('insufficient resources')
+
             return False
+
+        self._active_cnt += 1
 
         # the task was placed, we need to reflect the allocation in the
         # nodelist state (BUSY) and pass placement to the task, to have
         # it enacted by the executor
         self._change_slot_states(slots, rpc.BUSY)
-        unit['slots'] = slots
-
-        env_dict = unit['description'].get('environment', {})
-        env_dict['NODE_LFS_PATH'] = slots['lfs_per_node']['path']
-        unit['description']['environment'] = env_dict
-
-        self._handle_cuda(unit)
+        task['slots'] = slots
 
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
@@ -854,115 +1016,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _handle_cuda(self, unit):
-
-        # Check if unit requires GPUs.  If so, set CUDA_VISIBLE_DEVICES to the
-        # list of assigned  GPU IDs.  We only handle uniform GPU setting for
-        # now, and will isse a warning on non-uniform ones.
-        #
-        # The default setting is ``
-        #
-        # FIXME: This code should probably live elsewhere, not in this
-        #        performance critical scheduler base class
-        #
-        # FIXME: The specification for `CUDA_VISIBLE_DEVICES` is actually Launch
-        #        Method dependent.  Assume the scheduler assigns the second GPU.
-        #        Manually, one would set `CVD=1`.  That also holds for launch
-        #        methods like `fork` which leave GPU indexes unaltered.  Other
-        #        launch methods like `jsrun` mask the system GPUs and only the
-        #        second GPU is visible to the task.  To CUDA the system now
-        #        seems to have only one GPU, and we need set it to `CVD=0`.
-        #
-        #        In other words, CVD sometimes needs to be set to the physical
-        #        GPU IDs, and at other times to the logical GPU IDs (IDs as
-        #        visible to the task).  This also implies that this code should
-        #        actually live within the launch method.  On the upside, the
-        #        Launch Method should also be able to handle heterogeneus tasks.
-        #
-        #        For now, we default the CVD ID mode to `physical`, thus
-        #        assuming that unassigned GPUs are not masked away, as for
-        #        example with `fork` and 'prte'.
-
-        lm_info     = self._cfg['rm_info']['lm_info']
-        cvd_id_mode = lm_info.get('cvd_id_mode', 'physical')
-
-        unit['description']['environment']['CUDA_VISIBLE_DEVICES'] = ''
-        gpu_maps = list()
-        for node in unit['slots']['nodes']:
-            if node['gpu_map'] not in gpu_maps:
-                gpu_maps.append(node['gpu_map'])
-
-        if not gpu_maps or not gpu_maps[0]:
-            # no gpu maps, nothing to do
-            pass
-
-        elif len(gpu_maps) > 1:
-            # FIXME: this does not actually check for uniformity
-            self._log.warn('cannot set CUDA_VISIBLE_DEVICES for non-uniform'
-                           'GPU schedule (%s) - task may fail!' % gpu_maps)
-
-        else:
-            # uniform, non-zero gpu map
-            gpu_map = gpu_maps[0]
-
-            if cvd_id_mode == 'physical':
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                        = ','.join([str(gpu_set[0]) for gpu_set in gpu_map])
-
-            elif cvd_id_mode == 'logical':
-                unit['description']['environment']['CUDA_VISIBLE_DEVICES']\
-                        = ','.join([str(x) for x in range(len(gpu_map))])
-
-            else:
-                raise ValueError('invalid CVD mode %s' % cvd_id_mode)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_node_maps(self, cores, gpus, threads_per_proc):
-        '''
-        For a given set of cores and gpus, chunk them into sub-sets so that each
-        sub-set can host one application process and all threads of that
-        process.  Note that we currently consider all GPU applications to be
-        single-threaded.
-
-        example:
-            cores  : [1, 2, 3, 4, 5, 6, 7, 8]
-            gpus   : [1, 2]
-            tpp    : 4
-            result : [[1, 2, 3, 4], [5, 6, 7, 8]], [[1], [2]]
-
-        For more details, see top level comment of `base.py`.
-        '''
-
-        core_map = list()
-        gpu_map  = list()
-
-        # make sure the core sets can host the requested number of threads
-        assert(not len(cores) % threads_per_proc)
-        n_procs =  int(len(cores) / threads_per_proc)
-
-        idx = 0
-        for _ in range(n_procs):
-            p_map = list()
-            for _ in range(threads_per_proc):
-                p_map.append(cores[idx])
-                idx += 1
-            core_map.append(p_map)
-
-        assert(idx == len(cores)), \
-              ('%s -- %s -- %s -- %s' % idx, len(cores), cores, n_procs)
-
-        # gpu procs are considered single threaded right now (FIXME)
-        for g in gpus:
-            gpu_map.append([g])
-
-        return core_map, gpu_map
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _set_tuple_size(self, unit):
+    def _set_tuple_size(self, task):
         '''
         Scheduling, in very general terms, maps resource request to available
         resources.  While the scheduler may check arbitrary task attributes in
@@ -977,8 +1031,8 @@ class AgentSchedulingComponent(rpu.Component):
         use it for fast task-to-placement lookups.
         '''
 
-        d = unit['description']
-        unit['tuple_size'] = tuple([d.get('cpu_processes', 1),
+        d = task['description']
+        task['tuple_size'] = tuple([d.get('cpu_processes', 1),
                                     d.get('cpu_threads',   1),
                                     d.get('gpu_processes', 0),
                                     d.get('cpu_process_type')])

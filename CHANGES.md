@@ -3,6 +3,388 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.16.0 Release                                                        2022-08-15
+--------------------------------------------------------------------------------
+
+  - add check for exception message
+  - add test for `Agent_0`
+  - fix `cpu_threads` for special tasks (service, sub-agent)
+  - fix `task['resources']` value
+  - fix uid generation for components (use shared file for counters)
+  - fix master task tmgr
+  - fix raptor tests
+  - fix rp serializer unittest
+  - fix sub_agent keyerror
+  - keep agent's config with sub-agents in sync with default one
+  - remove confusion of task attribute names (slots vs. resources)
+  - set default values for agent and service tasks descriptions
+  - set env variable (`RP_PILOT_SANDBOX`) for agent and service tasks launchers
+  - update exec profile events
+  - update headers for mpirun- and mpiexec-modules
+  - update LM env setup for `MPIRun` and `MPIExec` special case (MPT=true)
+  - update LM IBRun
+  - update mpi-info extraction
+
+
+1.15.1  Hotfix Release                                                2022-07-04
+--------------------------------------------------------------------------------
+
+  - fix syntactic error in env prep script
+
+
+1.15.0  Release                                                       2022-07-04
+--------------------------------------------------------------------------------
+
+  - added tests for PRTE LM
+  - added tests for `rank_cmd` (IBRun and SRun LMs)
+  - adding TMGR stats
+  - adding xsede.expanse to the resource config
+  - always interprete prep_env version request
+  - anaconda support for prepare_env
+  - Checking input staging exists before tar-ing Fixes #2483
+  - ensure pip in venv mode
+  - fixed `_rm_info` in IBRun LM
+  - fixed status callback for SAGA Launcher
+  - fixed type in `ornl.summit_prte` config
+  - fix Ibrun set rank env
+  - fix raptor env vals
+  - use os.path to check if file exists Fixes #2483
+  - remove node names duplication in SRun LM command
+  - hide node-count from saga job description
+  - 'state_history' is no longer supported
+  - support existing VEs for `prepare_env`
+  - updated installation of dependencies in bootstrapper
+  - updated PRTE LM setup and config (including new release of PRRTE on Summit)
+  - updating PMGR/AGENT stats - see #2401
+
+
+1.14.0  Release                                                       2022-04-13
+--------------------------------------------------------------------------------
+
+  - support for MPI function tasks
+  - support different RAPTOR workers
+  - simplify / unify task and function descriptions
+  - refactor resource aquisition
+  - pilot submission via PSIJ or SAGA
+  - added resource config for Crusher@OLCF/ORNL
+  - support for execution of serialized function
+  - pilot size can now be specified in number of nodes
+  - support for PARSL integration
+  - improved SMT handling
+  - fixed resource configuration for `jsrun`
+  - fix argument escapes
+  - raptor consistently reports exceptions now
+  
+
+1.13.0  Release                                                       2022-03-21
+--------------------------------------------------------------------------------
+
+   - fix slurm nodefile/nodelist
+   - clean temporary setup files
+   - fixed test for LM `Srun`
+   - local execution needs to check FORK first
+   - fix Bridges-2 resource config
+
+
+1.12.0  Release                                                       2022-02-28
+--------------------------------------------------------------------------------
+
+  - fix callback unregistration
+  - fix capturing of task exit code
+  - fix srun version command
+  - fix metric setup / lookup in tmgr
+  - get backfilling scheduler back in sync
+  - re-introduced LM to handle `aprun`
+  - Remove task log and the state_history
+  - ru.Description -> ru.TypedDict
+  - set LM's initial env with activated VE
+  - updated LSF handling cores indexing for LM JSRun
+  - use proper shell quoting
+  - use ru.TypedDict for Munch, fix tests
+
+
+1.11.2  Hotfix Release                                                2022-01-21
+--------------------------------------------------------------------------------
+
+  - for non-mpi tasks, ensure that `$RP_RANK` is set to `0`
+
+
+1.11.0  Release                                                       2022-01-19
+--------------------------------------------------------------------------------
+
+  - improve environment isolation for tasks and RCT components
+  - add test for LM Srun
+  - add resource manager instance to Executor base class
+  - add test for blocked cores and gpus parameters (RM base)
+  - add unittest to test LM base class initialization from Registry
+  - add raptor test
+  - add prepare_env example
+  - add raptor request and result cb registration
+  - avoid shebang use during bootstrap, pip sometimes screws it up
+  - detect slurm version and use node file/list
+  - enable nvme on summit
+  - ensure correct out/err file paths
+  - extended GPU handling
+  - fix configs to be aligned with env isolation setup
+  - fix LM PRTE rank setup command
+  - fix `cfg.task_environment` handling
+  - simplify BS env setup
+  - forward resource reqs for raptor tasks
+  - iteration on flux executor integration
+  - limit pymongo version
+  - provision radical-gtod
+  - reconcile named env with env isolation
+  - support Spock
+  - support ALCF/JLSE Arcticus and Iris testbeds
+  - fix staging behavior under `stage_on_error`
+  - removed dead code
+
+
+1.10.2 Hotfix Release                                                 2021-12-14
+--------------------------------------------------------------------------------
+
+  - constrain mongodb version dependency
+
+
+1.10.0 Release                                                        2021-11-22
+--------------------------------------------------------------------------------
+
+  - Add fallback for ssh tunnel on ifconfig-less nodes
+  - cleanup old resources
+  - removed OSG leftovers
+  - updating test cases
+  - fix recursive flag
+
+
+1.9.2  Hotfix Release                                                 2021-10-27
+--------------------------------------------------------------------------------
+
+  - fix shell escaping for task arguments
+
+
+1.9.0  Release                                                        2021-10-18
+--------------------------------------------------------------------------------
+
+  - amarel cfg
+
+
+1.8.0  Release                                                        2021-09-23
+--------------------------------------------------------------------------------
+
+  - fixed pilot staging for input directories
+  - clean up configs
+  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - refreshed module list for Summit
+  - return virtenv setup parameters
+  - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
+  - use local virtual env (either venv or conda) for Summit
+
+
+1.6.8  Hotfix Release                                                 2021-08-24
+--------------------------------------------------------------------------------
+
+  - adapt flux integration to changes in flux event model
+  - fix a merge problem on flux termination handling
+
+
+1.6.7  Release                                                        2021-07-09
+--------------------------------------------------------------------------------
+
+  - artifact upload for RA integration test
+  - encapsulate kwargs handling for Session.close().
+  - ensure state updates
+  - fail tasks which can never be scheduled
+  - fixed jsrun resource_set_file to use `cpu_index_using: logical`
+  - separate cpu/gpu utilization
+  - fix error handling in data stager
+  - use methods from the new module `host` within RU (>=1.6.7)
+
+
+1.6.6  Release                                                        2021-05-18
+--------------------------------------------------------------------------------
+
+  - added flags to keep `prun` aware of gpus (PRTE2 LM)
+  - add service node support
+  - Bridges mpiexec confing fix
+  - task level profiling now python independent
+  - executor errors should not affect task bulks
+  - revive ibrun support, include layout support
+  - MPI standard prescribes -H, not -host
+  - remove pilot staging area
+  - reduce profiling verbosity
+  - restore original env before task execution
+  - scattered repex staging fixes
+  - slurm env fixes
+  - updated documentation for `PilotDescription` and `TaskDescription`
+
+
+1.6.5  Release                                                        2021-04-14
+--------------------------------------------------------------------------------
+
+  - added flag `exclusive` for tags (in task description, default `False`)
+  - Adding Bridges2 and Comet
+  - always specifu GPU number on srun
+  - apply RP+* env vars to raptor tasks
+  - avoid a termination race
+  - Summit LFS config and JSRUN integration tests
+  - gh workflows and badges
+  - ensure that RU lock names are unique
+  - fixed env creation command and updated env setup check processes
+  - fixed launch command for PRTE2 LM
+  - fix missing event updates
+  - fix ve isolation for prep_env
+  - keep track of tagged nodes (no nodes overlapping between different tags)
+  - ensure conda activate works
+  - allow output staging on failed tasks
+  - python 2 -> 3 fix for shebangs
+  - remove support for add_resource_config
+  - Stampede2 migrates to work2 filesystem
+  - update setup module (use `python3`)
+  
+
+1.6.3  Hotfix Release                                                 2021-04-03
+--------------------------------------------------------------------------------
+
+  - fix uid assignment for managers
+
+
+1.6.2  Hotfix Release                                                 2021-03-26
+--------------------------------------------------------------------------------
+
+  - switch to pep-440 for sdist and wheel versioning, to keep pip happy
+
+
+1.6.1  Release                                                        2021-03-09
+--------------------------------------------------------------------------------
+
+  - support for Andes@ORNL, obsolete Rhea@ORNL
+  - add_pilot() also accepts pilot dict
+  - fixed conda activation for PRTE2 config (Summit@ORNL)
+  - fixed partitions handling in LSF_SUMMIT RM
+  - reorganized DVM start process (prte2)
+  - conf fixes for comet
+  - updated events for PRTE2 LM
+  - integration test for Bridges2
+  - prepare partitioning
+
+
+1.6.0  Release                                                        2021-02-13
+--------------------------------------------------------------------------------
+
+  - rename ComputeUnit             -> Task
+  - rename ComputeUnitDescription  -> TaskDescription
+  - rename ComputePilot            -> Pilot
+  - rename ComputePilotDescription -> PilotDescription
+  - rename UnitManager             -> TaskManager
+  - related renames to state and constant names etc
+  - backward compatibility for now deprecated names
+  - preparation for agent partitioning (RM)
+  - multi-DVM support for PRTE.v1 and PRTE.v2
+  - RM class tests
+  - Bridges2 support
+  - fix to co-scheduling tags
+  - fix handling of IP variable in bootstrap
+  - doc and test updates, linter fixes, etc
+  - update scheduler tag types
+
+
+1.5.12 Release                                                        2021-02-02
+--------------------------------------------------------------------------------
+
+  - multi-dvm support
+  - cleanup of raptor
+  - fix for bootstrap profiling
+  - fix help string in bin/radical-pilot-create-static-ve
+  - forward compatibility for tags
+  - fix data stager for multi-pilot case
+  - parametric integration tests
+  - scattered fixes for raptor and sub-agent profiling
+  - support new resource utilization plots
+
+
+1.5.11 Release                                                        2021-01-19
+--------------------------------------------------------------------------------
+
+  - cleanup pypi tarball
+
+
+1.5.10 Release                                                        2021-01-18
+--------------------------------------------------------------------------------
+
+  - gpu related fixes (summit)
+  - avoid a race condition during termination
+  - fix bootstrapper timestamps
+  - fixed traverse config
+  - fix nod counting for FORK rm
+  - fix staging context
+  - move staging ops into separate worker
+  - use C locale in bootstrapper
+
+
+1.5.8 Release                                                         2020-12-09
+--------------------------------------------------------------------------------
+
+  - improve test coverage
+  - add env isolation prototype and documentation
+  - change agent launcher to ssh for bridges
+  - fix sub agent init
+  - fix Cheyenne support
+  - define an intel-friendly bridges config
+  - add environment preparation to pilot
+  - example fixes
+  - fixed procedure of adding resource config to the session
+  - fix mpiexec_mpt LM
+  - silence scheduler log
+  - removed resource aliases
+  - updated docs for resource config
+  - updated env variable RADICAL_BASE for a job description
+  - work around pip problem on Summit
+
+
+1.5.7 Release                                                         2020-10-30
+--------------------------------------------------------------------------------
+
+  - Adding init files in all test folders
+  - document containerized tasks
+  - Fix #2221
+  - Fix read_config
+  - doc fixes / additions
+  - adding unit tests, component tests
+  - remove old examples
+  - fixing rp_analytics #2114
+  - inject workers as MPI task
+  - remove debug prints
+  - mpirun configs for traverse, stampede2
+  - ru.Config is responsible to pick configs from correct paths
+  - test agent execution/base
+  - unit test for popen/spawn #1881
+
+
+1.5.4 Release                                                         2020-10-01
+--------------------------------------------------------------------------------
+
+  - fix jsrun GPU mapping
+
+
+1.5.4 Release                                                         2020-09-14
+--------------------------------------------------------------------------------
+
+  - Arbitrary udurations for consumed resources
+  - Fix unit tests
+  - Fix python stack on Summit
+  - add module test
+  - added PRTE2 for PRRTEv2
+  - added attribute for SAGA job description using env variable (SMT)
+  - added config for PRRTE launch method at Frontera
+  - added test for PRTE2
+  - added test for rcfg parameter SystemArchitecture
+  - allow virtenv_mode=local to reuse client ve
+  - bulk communication for task overlay
+  - fixed db close/disconnect method
+  - fixed tests and pylint
+  - PRTE fixes / updates
+  - remove "debug" rp_version remnant
+
 
 1.5.2 Hotfix Release                                                  2020-08-11
 --------------------------------------------------------------------------------
@@ -133,7 +515,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - ensure PATH setting for sub-agents
   - CUDA is now handled by LM
   - fix / improve documentation
-  - Sched optimization: unit lookup in O(1)
+  - Sched optimization: task lookup in O(1)
   - Stampede2 prun config
   - testing, flaking, linting and travis fixes
   - add `pilot.stage_out` (symmetric to `pilot.stage_in`)
@@ -193,7 +575,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - remove outdated resources
   - ensure that pilot env reaches func executor
   - ensureID uniqueness across processes
-  - fix inconsistencies in unit sandbox handling
+  - fix inconsistencies in task sandbox handling
   - fix gpu placement alg
   - fix issue #1910
   - fix torque nodefile name and path
@@ -279,7 +661,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add ssh access to cheyenne
   - cleanup examples
   - fix dplace support
-  - support app specified unit sandboxes
+  - support app specified task sandboxes
   - fix pilot statepush over tunnels
   - fix titan ve creation, add new static ve
   - fix for cheyenne
@@ -309,7 +691,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
   - fix bridges default partition (#1816)
   - fix #1826
-  - fix off-by-one error on unit state check
+  - fix off-by-one error on task state check
   - ignore failing DB disconnect
   - follow rename of saga-python to radical.saga
 
@@ -336,7 +718,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - fix Titan OMPI installation
-  - support metdata for units
+  - support metdata for tasks
   - fix git error detection during setup
 
 
@@ -356,7 +738,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 --------------------------------------------------------------------------------
 
   - improve event documentation
-  - support CU level metadata
+  - support Task level metadata
 
 
 0.50.16 Release                                                       2018-10-26
@@ -478,7 +860,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 0.47.12 Release                                                       2018-05-19
 --------------------------------------------------------------------------------
 
-  - ensure that units are started in their own process group, to ensure clean
+  - ensure that tasks are started in their own process group, to ensure clean
     cancellation semantics.
 
 
@@ -573,9 +955,9 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add xsede.supermic_orte configuration
   - add xsede.supermic_ortelib configuration
   - apply RU's managed process to termination stress test
-  - attempt to localize aprun units
+  - attempt to localize aprun tasks
   - better hops for titan
-  - better integration of CU script and app profs
+  - better integration of Task script and app profs
   - catch up with config changes for local testing
   - centralize URL derivation for pilot job service endpoints, hops, and sandboxes
   - clarify use of namespace vs. full qualified URL in the context of RP file staging
@@ -596,7 +978,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - make sure a canceled pilot stays canceled
   - make cb return codes consistent
   - make sure profs are flushed on termination
-  - make sure the umgr only pulls units its interested in
+  - make sure the tmgr only pulls tasks its interested in
   - profile mkdir
   - publish resource_details (incl. lm_info) again
   - re-add a profile flag to advance()
@@ -606,7 +988,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - setup number of cores per node on stampede2
   - smaller default pilot size for supermic
   - switch to ibrun for comet_ssh
-  - track unit drops
+  - track task drops
   - use js hop for untar
   - using new process class
   - GPU/CPU pinning test is now complete, needs some env settings in the launchers
@@ -696,7 +1078,7 @@ Version 0.46                                                          2017-08-11
   - add conf for spark n wrangler, comet
   - add docs to the cu env inject
   - expose spark's master url
-  - fix CU env setting (stampede)
+  - fix Task env setting (stampede)
   - configuration for spark and anaconda
   - resource config entries for titan
   - disable PYTHONHOME setting in titan_aprun
@@ -709,7 +1091,7 @@ Version 0.46                                                          2017-08-11
   - update installation.rst
   - analytics backport
   - use profiler from RU
-  - when calling a unit state callback, missed states also trigger callbacks
+  - when calling a task state callback, missed states also trigger callbacks
 
 
 0.43.1 Release                                                        2016-09-09
@@ -725,7 +1107,7 @@ Version 0.46                                                          2017-08-11
   - add a local confiuration for bw
   - add early binding eample for osg
   - add greenfield config (only works for single-node runs at the moment)
-  - add PYTHONPATH to the vars we reset for CU envs
+  - add PYTHONPATH to the vars we reset for Task envs
   - allow overloading of agent config
   - fix #1071
   - fix synapse example
@@ -738,14 +1120,14 @@ Version 0.46                                                          2017-08-11
   - fix getip
   - fix iface detection
   - fix reordering of states for some update sequences
-  - fix unit cancellation
+  - fix task cancellation
   - improve ve create script
   - make orte-submit aware of non-mpi CUs
   - move env preservation to an earlier point, to avoid pre-exec stuff
   - Python distribution mandatory to all confs
   - Remove temp agent config directory.
   - Resolving #1107
-  - Schedule behind the real unit and support multicore.
+  - Schedule behind the real task and support multicore.
   - SchedulerContinuous -> AgentSchedulingComponent.
   - Take ccmrun out of bootstrap_2.
   - Tempfile is not a tempfile so requires explicit removal.
@@ -809,7 +1191,7 @@ Version 0.46                                                          2017-08-11
     - ORTE used for more resources
     - improved examples, profiling
     - communication cleanup
-    - large CU support
+    - large Task support
     - lrms hook fixes
     - agent code splitup
 
@@ -853,7 +1235,7 @@ Version 0.46                                                          2017-08-11
 0.37.5 Release                                                        2015-10-19
 --------------------------------------------------------------------------------
 
-  - timing fix to ensure unit state ordering
+  - timing fix to ensure task state ordering
 
 
 0.37.3 Release                                                        2015-10-19
@@ -880,12 +1262,12 @@ Version 0.46                                                          2017-08-11
 
   - change default spawner to POPEN
   - use hostlist to avoid mpirun* limitations
-  - support default callbacks on units and pilots
+  - support default callbacks on tasks and pilots
   - use a config for examples
   - add lrms shutdown hook for ORTE LM
   - various updates to examples and documentation
   - create logfile and profile tarballs on the fly
-  - export some RP env vars to units
+  - export some RP env vars to tasks
   - Fix a mongodb race
   - internally unregister pilot cbs on shutdown
   - move agent.stop to finally clause, to correctly react on signals
@@ -906,7 +1288,7 @@ Version 0.46                                                          2017-08-11
 
   - simplify agent process tree, process naming
   - improve session and agent termination
-  - several fixes and chages to the unit state model (refer to documentation!)
+  - several fixes and chages to the task state model (refer to documentation!)
   - fix POPEN state reporting
   - split agent component into individual, relocatable processes
   - improve and generalize agent bootstrapping
@@ -930,7 +1312,7 @@ Version 0.46                                                          2017-08-11
   - several resource specific configuration fixes (mostly stampede, archer, bw)
   - backport stdout/stderr/log retrieval
   - better logging of clone/drops, better error handling for configs
-  - fix, improve profiling of CU execution
+  - fix, improve profiling of Task execution
   - make profile an object
   - use ZMQ pubsub and queues for agent/sub-agent communication
   - decouple launch methods from scheduler for most LMs
@@ -1075,7 +1457,7 @@ Version 0.46                                                          2017-08-11
   - also use staging flags on input staging
   - stampede environment fix
   - Added missing stampede alias
-  - adds timestamps to unit and pilot logentries
+  - adds timestamps to task and pilot logentries
   - fix state tags for plots
   - fix plot style for waitq
   - introduce UNSCHEDULED state as per #233
@@ -1098,11 +1480,11 @@ Version 0.46                                                          2017-08-11
   - Documentation of MPI support
   - Documentation of data staging operations
   - correct handling of data transfer exceptions
-  - fix handling of non-ascii data in unit stdio
+  - fix handling of non-ascii data in task stdio
   - simplify switching of access schemas on pilot submission
-  - disable pilot virtualenv for unit execution
+  - disable pilot virtualenv for task execution
   - MPI support for DaVinci
-  - performance optimizations on file transfers, unit sandbox setup
+  - performance optimizations on file transfers, task sandbox setup
   - fix ibrun tmp file problem on stampede
 
 
@@ -1161,7 +1543,7 @@ New Features
 
 API Changes:
 
-  - ComputeUnitDescription.working\_dir\_priv removed
+  - TaskDescription.working\_dir\_priv removed
   - Extended state model
   - resource\_configurations parameter removed from PilotManager c`tor
 
@@ -1192,7 +1574,7 @@ API Changes:
 0.10 Release                                                       Apr. 29. 2014
 --------------------------------------------------------------------------------
 
-  - Support for state transition introspection via CU/Pilot state\_history
+  - Support for state transition introspection via Task/Pilot state\_history
   - Cleaned up an streamlined Input and Outpout file transfer workers
   - Support for interchangeable pilot agents
   - Closed tickets:
@@ -1238,7 +1620,7 @@ API Changes:
 
   - Tutorial 2 release (Github only)
   - Added support for multiprocessing worker
-  - Support for CU stdout and stderr transfer via MongoDB GridFS
+  - Support for Task stdout and stderr transfer via MongoDB GridFS
   - Closed tickets:
     - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
 

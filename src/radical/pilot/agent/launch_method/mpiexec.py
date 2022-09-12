@@ -1,7 +1,6 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
-
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 import radical.utils as ru
 
@@ -14,54 +13,134 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, name, cfg, session):
+    def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        LaunchMethod.__init__(self, name, cfg, session)
+        self._mpt    : bool  = False
+        self._rsh    : bool  = False
+        self._ccmrun : str   = ''
+        self._dplace : str   = ''
+        self._omplace: str   = ''
+        self._command: str   = ''
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure(self):
-
-        self.launch_command = ru.which([
-            'mpiexec',            # General case
-            'mpiexec.mpich',      # Linux, MPICH
-            'mpiexec.hydra',      # Linux, MPICH
-            'mpiexec.openempi',   # Linux, MPICH
-            'mpiexec-mpich-mp',   # Mac OSX MacPorts
-            'mpiexec-openmpi-mp'  # Mac OSX MacPorts
-        ])
-
-        self.mpi_version, self.mpi_flavor = self._get_mpi_info(self.launch_command)
+        LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def construct_command(self, cu, launch_script_hop):
+    def _init_from_scratch(self, env, env_sh):
 
-        slots        = cu['slots']
-        cud          = cu['description']
-        task_exec    = cud['executable']
-        task_env     = cud.get('environment') or dict()
-        task_args    = cud.get('arguments')   or list()
-        task_argstr  = self._create_arg_string(task_args)
+        lm_info = {
+            'env'    : env,
+            'env_sh' : env_sh,
+            'command': ru.which([
+                'mpiexec',             # General case
+                'mpiexec.mpich',       # Linux, MPICH
+                'mpiexec.hydra',       # Linux, MPICH
+                'mpiexec.openmpi',     # Linux, MPICH
+                'mpiexec-mpich-mp',    # Mac OSX MacPorts
+                'mpiexec-openmpi-mp',  # Mac OSX MacPorts
+                'mpiexec_mpt',         # Cheyenne (NCAR)
+            ]),
+            'mpt'    : False,
+            'rsh'    : False,
+            'ccmrun' : '',
+            'dplace' : '',
+            'omplace': ''
+        }
 
-        # Construct the executable and arguments
-        if task_argstr: task_command = "%s %s" % (task_exec, task_argstr)
-        else          : task_command = task_exec
+        if not lm_info['command']:
+            raise ValueError('mpiexec not found - cannot start MPI tasks')
 
-        env_string = ''
-        env_list   = self.EXPORT_ENV_VARIABLES + list(task_env.keys())
-        if env_list:
+        if '_mpt' in self.name.lower():
+            lm_info['mpt'] = True
 
-            if self.mpi_flavor == self.MPI_FLAVOR_HYDRA:
-                env_string = '-envlist "%s"' % ','.join(env_list)
+        if '_rsh' in self.name.lower():
+            lm_info['rsh'] = True
 
-            elif self.mpi_flavor == self.MPI_FLAVOR_OMPI:
-                for var in env_list:
-                    env_string += '-x "%s" ' % var
+        # do we need ccmrun or dplace?
+        if '_ccmrun' in self.name.lower():
+            lm_info['ccmrun'] = ru.which('ccmrun')
+            assert lm_info['ccmrun']
 
-        if 'nodes' not in slots:
+        if '_dplace' in self.name.lower():
+            lm_info['dplace'] = ru.which('dplace')
+            assert lm_info['dplace']
+
+        # cheyenne always needs mpt and omplace
+        if 'cheyenne' in ru.get_hostname():
+            lm_info['omplace'] = 'omplace'
+            lm_info['mpt']     = True
+
+        mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
+        lm_info['mpi_version']  = mpi_version
+        lm_info['mpi_flavor']   = mpi_flavor
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_from_info(self, lm_info):
+
+        self._env         = lm_info['env']
+        self._env_sh      = lm_info['env_sh']
+        self._command     = lm_info['command']
+
+        assert self._command
+
+        self._mpt         = lm_info['mpt']
+        self._rsh         = lm_info['rsh']
+        self._dplace      = lm_info['dplace']
+        self._ccmrun      = lm_info['ccmrun']
+
+        self._mpi_version = lm_info['mpi_version']
+        self._mpi_flavor  = lm_info['mpi_flavor']
+
+        # ensure empty string on unset omplace
+        if not lm_info['omplace']:
+            self._omplace = ''
+        else:
+            self._omplace = 'omplace'
+
+
+    # --------------------------------------------------------------------------
+    #
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def can_launch(self, task):
+
+        if not task['description']['executable']:
+            return False, 'no executable'
+
+        return True, ''
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher_env(self):
+
+        lm_env_cmds = ['. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+
+        # Cheyenne is the only machine that requires mpiexec_mpt.
+        # We then have to set MPI_SHEPHERD=true
+        if self._mpt:
+            lm_env_cmds.append('export MPI_SHEPHERD=true')
+
+        return lm_env_cmds
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launch_cmds(self, task, exec_path):
+
+        slots = task['slots']
+
+        if 'ranks' not in slots:
             raise RuntimeError('insufficient information to launch via %s: %s'
                               % (self.name, slots))
 
@@ -69,13 +148,13 @@ class MPIExec(LaunchMethod):
         # slot sets, but do not account for threads.  Since multiple slots
         # entries can have the same node names, we *add* new information.
         host_slots = dict()
-        for node in slots['nodes']:
-            node_name = node['name']
+        for rank in slots['ranks']:
+            node_name = rank['node_name']
             if node_name not in host_slots:
                 host_slots[node_name] = 0
-            host_slots[node_name] += len(node['core_map'])
+            host_slots[node_name] += len(rank['core_map'])
 
-        # If we have a CU with many cores, and the compression didn't work
+        # If we have a Task with many cores, and the compression didn't work
         # out, we will create a hostfile and pass that as an argument
         # instead of the individual hosts.  The hostfile has this format:
         #
@@ -97,31 +176,67 @@ class MPIExec(LaunchMethod):
         arg_max = 4096
 
         # This is the command w/o the host string
-        command_stub = "%s %%s %s %s" % (self.launch_command,
-                                         env_string, task_command)
+        cmd_stub = '%s %%s %s %s' % (self._command, self._omplace, exec_path)
 
         # cluster hosts by number of slots
         host_string = ''
-        for node,nslots in list(host_slots.items()):
-            host_string += '-host %s -n %s ' % (','.join([node] * nslots), nslots)
-        command = command_stub % host_string
+        if not self._mpt:
+            for node, nslots in list(host_slots.items()):
+                host_string += '-host '
+                host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
+        else:
+            hosts = list()
+            for node, nslots in list(host_slots.items()):
+                hosts += [node] * nslots
+            host_string += ','.join(hosts)
+            host_string += ' -n 1'
 
-        if len(command) > arg_max:
+        cmd = cmd_stub % host_string
+
+        if len(cmd) > arg_max:
 
             # Create a hostfile from the list of hosts.  We create that in the
-            # unit sandbox
-            fname = '%s/mpi_hostfile' % cu['unit_sandbox_path']
-            with open(fname, 'w') as f:
-                for node,nslots in list(host_slots.items()):
+            # task sandbox
+            hostfile = '%s/mpi_hostfile' % task['task_sandbox_path']
+            with ru.ru_open(hostfile, 'w') as f:
+                for node, nslots in list(host_slots.items()):
                     f.write('%20s \tslots=%s\n' % (node, nslots))
-            host_string = "-hostfile %s" % fname
+            host_string = '-hostfile %s' % hostfile
 
-        command = command_stub % host_string
-        self._log.debug('mpiexec cmd: %s', command)
+        cmd = cmd_stub % host_string
 
-        assert(len(command) <= arg_max)
+        self._log.debug('mpiexec cmd: %s', cmd)
+        assert (len(cmd) <= arg_max)
 
-        return command, None
+        return cmd.strip()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_cmd(self):
+
+        # FIXME: we know the MPI flavor, so make this less guesswork
+
+        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+
+        if self._mpt:
+            ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_exec(self, task, rank_id, rank):
+
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td['arguments']
+        task_argstr  = self._create_arg_string(task_args)
+        command      = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------
