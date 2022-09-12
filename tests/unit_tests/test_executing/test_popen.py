@@ -93,6 +93,27 @@ class TestPopen(TestCase):
         for prefix in ['.launch.sh', '.exec.sh', '.sl']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
             self.assertTrue(os.path.isfile(path))
+
+            with ru.ru_open(path) as fd:
+                content = fd.read()
+
+            if 'launch' in prefix:
+                self.assertIn('$RP_PROF launch_start', content)
+
+            elif 'exec' in prefix:
+                self.assertIn('$RP_PROF exec_start', content)
+                for pre_exec_cmd in task['description']['pre_exec']:
+
+                    if isinstance(pre_exec_cmd, str):
+                        self.assertIn('%s' % pre_exec_cmd, content)
+
+                    elif isinstance(pre_exec_cmd, dict):
+                        self.assertIn('case "$RP_RANK" in', content)
+                        for rank_id, cmds in pre_exec_cmd.items():
+                            self.assertIn('%s)\n' % rank_id, content)
+                            for cmd in ru.as_list(cmds):
+                                self.assertIn('%s\n' % cmd, content)
+
             try   : os.remove(path)
             except: pass
 

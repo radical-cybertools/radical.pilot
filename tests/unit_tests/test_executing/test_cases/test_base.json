@@ -6,9 +6,14 @@
              "executable"       : "/bin/sleep",
              "arguments"        : ["10"],
              "environment"      : {},
-             "pre_exec"         : ["test_pre_exec"],
+             "pre_exec"         : ["test_pre_exec",
+                                   {"0": "echo 'rank 0'",
+                                    "1": ["echo 'rank 1 - command 1'",
+                                          "echo 'rank 1 - command 2'"]
+                                   }
+                                  ],
              "post_exec"        : ["test_post_exec"],
-             "cpu_processes"    : 1,
+             "cpu_processes"    : 2,
              "cpu_threads"      : 0,
              "cpu_process_type" : null,
              "cpu_thread_type"  : null,
