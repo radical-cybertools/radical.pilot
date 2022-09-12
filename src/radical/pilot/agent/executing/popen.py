@@ -662,6 +662,7 @@ class Popen(AgentExecutingComponent):
         ret = 'case "$RP_RANK" in\n'
         for rank_id, cmds in ranks.items():
             ret += '    %d)\n' % int(rank_id)
+            cmds = ru.as_list(cmds)
             for cmd in cmds:
                 # FIXME: exit on error, but don't stall other ranks on sync
                 ret += '        %s' % cmd
