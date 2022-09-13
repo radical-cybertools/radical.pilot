@@ -3,6 +3,7 @@
 src/radical/pilot/VERSION
 src/radical/pilot/VERSION.git
 rp.session.*
+.session.vim
 
 # C extensions
 *.so
