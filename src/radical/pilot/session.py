@@ -298,13 +298,15 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            self.fetch_json    (tgt=tgt)
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        if self.closed and self.created:
+            self._rep.info('<<session lifetime: %.1fs' %
+                           (self.closed - self.created))
         self._rep.ok('>>ok\n')
 
 
@@ -398,8 +400,11 @@ class Session(rs.Session):
     def created(self):
         '''Returns the UTC date and time the session was created.
         '''
-        if self._dbs: return self._dbs.created
-        else        : return None
+        if self._dbs: ret = self._dbs.created
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -410,8 +415,11 @@ class Session(rs.Session):
         Return time when the session connected to the DB
         '''
 
-        if self._dbs: return self._dbs.connected
-        else        : return None
+        if self._dbs: ret = self._dbs.connected
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -429,8 +437,11 @@ class Session(rs.Session):
         '''
         Returns the time of closing
         '''
-        if self._dbs: return self._dbs.closed
-        else        : return None
+        if self._dbs: ret = self._dbs.closed
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -659,10 +670,18 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def fetch_json(self, tgt=None):
+
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+                              session=self, skip_existing=True)
+
+
+    # --------------------------------------------------------------------------
+    #
     def fetch_profiles(self, tgt=None):
 
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
+                                  session=self, skip_existing=True)
 
 
     # --------------------------------------------------------------------------
@@ -670,15 +689,7 @@ class Session(rs.Session):
     def fetch_logfiles(self, tgt=None):
 
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def fetch_json(self, tgt=None):
-
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
-                              session=self)
+                                  session=self, skip_existing=True)
 
 
     # --------------------------------------------------------------------------

@@ -26,8 +26,8 @@ Task I/O
 
 To instruct RADICAL-Pilot to handle files for you, there are two things to
 take care of. First you need to specify the respective input and output files
-for the Task in so called `staging directives`. Additionally you need
-to associate these `staging directives` to the the Task by means of
+for the Task in so called :any:`staging directives <staging_directives>`. Additionally you need
+to associate these :any:`staging directives <staging_directives>` to the the Task by means of
 the ``input_staging`` and ``output_staging`` members.
 
 What it looks like
@@ -47,7 +47,7 @@ The following code snippet shows this in action:
     cud.input_staging  = INPUT_FILE_NAME
     cud.output_staging = OUTPUT_FILE_NAME
 
-Here the `staging directives` ``INPUT_FILE_NAME`` and ``OUTPUT_FILE_NAME``
+Here the :any:`staging directives <staging_directives>` ``INPUT_FILE_NAME`` and ``OUTPUT_FILE_NAME``
 are simple strings that both specify a single filename and are associated to
 the Task Description ``cud`` for input and output respectively.
 
@@ -63,7 +63,7 @@ The :ref:`example-string` example demonstrates this in full glory.
 Staging Directives
 ------------------
 
-The format of the `staging directives` can either be a string as above or a
+The format of the *staging directives* can either be a string as above or a
 dict of the following structure:
 
 .. code-block:: python
@@ -101,14 +101,14 @@ The semantics of the keys from the dict are as follows:
   the behavior of the action, creating parent directories while writing file.
 
 - ``priority`` (default: 0): This optional field can be used to instruct the
-  back end to priority the actions on the ``staging directives``. E.g. to
+  back end to priority the actions on the *staging directives*. E.g. to
   first stage the output that is required for immediate further analysis and
   afterwards some output files that are of secondary concern.
 
 The :ref:`example-dict` example demonstrates this in full glory.
 
-When the `staging directives` are specified as a string as we did earlier,
-that implies a `staging directive` where the ``source`` and the ``target``
+When the *staging directives* are specified as a string as we did earlier,
+that implies a *staging directive* where the ``source`` and the ``target``
 are equal to the content of the string, the ``action`` is set to the default
 action ``TRANSFER``, the ``flags`` are set to the default flag 
 ``CREATE_PARENTS``, and the ``priority`` is set to the default value ``0``:
