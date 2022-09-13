@@ -8,28 +8,77 @@ import radical.utils as ru
 
 from   .db_utils import get_session_docs
 
-rs.fs = rs.filesystem
+rs_fs = rs.filesystem
 
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+def fetch_json(sid, tgt=None, skip_existing=False, session=None, log=None):
     '''
-    sid: session for which all profiles are fetched
-    src: dir to look for client session profiles ($src/$sid/*.prof)
-    tgt: dir to store the profile in
-         - $tgt/$sid/*.prof,
-         - $tgt/$sid/$pid/*.prof)
-
-    returns list of file names
+    returns file name
     '''
 
     if not log and session:
         log = session._log
-        rep = session._rep
     elif not log:
         log = ru.Logger('radical.pilot.utils')
+
+    if session:
+        rep = session._rep
+    else:
+        rep = ru.Reporter('radical.pilot.utils')
+
+    if not tgt:
+        tgt = os.getcwd()
+
+    if tgt.startswith('/'):
+        dst = '%s/%s/%s.json' % (tgt, sid, sid)
+    else:
+        dst = '%s/%s/%s/%s.json' % (os.getcwd(), tgt, sid, sid)
+
+    ru.rec_makedir(os.path.dirname(dst))
+
+    if skip_existing and os.path.isfile(dst) and os.path.getsize(dst):
+        log.info("session already in %s", dst)
+        return dst
+
+    # FIXME: MongoDB
+    raise NotImplementedError('MongoDB missing')
+
+    json_docs = ...
+    ru.write_json(json_docs, dst)
+
+    log.info("session written to %s", dst)
+    rep.ok("+ %s (json)\n" % sid)
+
+    return dst
+
+
+# ------------------------------------------------------------------------------
+#
+def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
+        session=None, skip_existing=False, fetch_client=False, log=None):
+    '''
+    ext : file extension to fetch
+    name: full name of filetype for log messages etc
+    sid : session for which all files are fetched
+    src : dir to look for client session files ($src/$sid/*.ext)
+    tgt : dir to store the files in
+          - $tgt/$sid/*.ext,
+          - $tgt/$sid/$pid/*.ext)
+
+    returns list of file names (fetched and/or cached)
+    '''
+
+    if not log and session:
+        log = session._log
+
+    elif not log:
+        log = ru.Logger('radical.pilot.utils')
+
+    if session:
+        rep = session._rep
+    else:
         rep = ru.Reporter('radical.pilot.utils')
 
     ret = list()
@@ -40,44 +89,47 @@ def fetch_profiles (sid, src=None, tgt=None, access=None,
     if not tgt:
         tgt = os.getcwd()
 
+    # no point in fetching client files into client sandbox
+    if src == tgt:
+        fetch_client = False
+
     if not tgt.startswith('/') and '://' not in tgt:
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
     tgt_url = rs.Url("%s/%s/" % (tgt, sid))
 
-    # Turn URLs without schema://host into file://localhost,
-    # so that they dont become interpreted as relative.
-    if not tgt_url.schema:
-        tgt_url.schema = 'file'
-    if not tgt_url.host:
-        tgt_url.host = 'localhost'
+    # turn URLs without `schema://host` into `file://localhost`,
+    # so that they dont become interpreted as relative paths.
+    if not tgt_url.schema: tgt_url.schema = 'file'
+    if not tgt_url.host  : tgt_url.host   = 'localhost'
 
-    # first fetch session profile
+    # create target dir for session
+    ru.rec_makedir(tgt_url.path)
+
+    # first fetch client files
     if fetch_client:
-        client_profiles = glob.glob("%s/%s/*.prof" % (src, sid))
-        if not client_profiles:
-            raise RuntimeError('no client profiles in %s/%s' % (src, sid))
+        client_files = glob.glob("%s/%s/**.%s" % (src, sid, ext))
+        if not client_files:
+            raise RuntimeError('no client %s in %s/%s' % (name, src, sid))
 
-        for client_profile in client_profiles:
+        for client_file in client_files:
 
-            ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_profile)))
+            ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
-                    and os.stat(ftgt.path).st_size > 0:
+                             and os.path.getsize(ftgt.path):
                 pass
             else:
-                prof_file = rs.fs.File(client_profile, session=session)
-                prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-                prof_file.close()
+                log.debug('fetch client file %s' % client_file)
+                rs_file = rs_fs.File(client_file, session=session)
+                rs_file.copy(ftgt, flags=rs_fs.CREATE_PARENTS)
+                rs_file.close()
 
-            if not os.path.isfile(client_profile):
-                raise RuntimeError('profile %s does not exist' % client_profile)
-
-    # FIXME: MongoDB
-    json_docs  = ...
-    return
+    # we need the session json for pilot details
+    json_name  = fetch_json(sid, tgt, skip_existing, session, log)
+    json_docs  = ru.read_json(json_name)
     pilots     = json_docs['pilot']
     num_pilots = len(pilots)
 
@@ -86,317 +138,113 @@ def fetch_profiles (sid, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
+        pid = pilot['uid']
+
+        # create target dir for this pilot
+        ru.rec_makedir('%s/%s' % (tgt_url.path, pid))
+
         try:
-            log.debug("processing pilot '%s'", pilot['uid'])
+            log.debug("processing pilot '%s'", pid)
 
             sandbox_url = rs.Url(pilot['pilot_sandbox'])
 
             if access:
                 # Allow to use a different access schema than used for the the
                 # run.  Useful if you ran from the headnode, but would like to
-                # retrieve the profiles to your desktop (Hello Titan).
+                # retrieve the files to your desktop (Hello Titan).
                 access_url = rs.Url(access)
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-              # print "Overriding remote sandbox: %s" % sandbox_url
+            sandbox = rs_fs.Directory (sandbox_url, session=session)
 
-            sandbox = rs.fs.Directory (sandbox_url, session=session)
-
-            # Try to fetch a tarball of profiles, so that we can get them
+            # Try to fetch a tarball of files, so that we can get them
             # all in one (SAGA) go!
-            PROFILES_TARBALL = '%s.prof.tgz' % pilot['uid']
-            tarball_available = False
-            try:
-                if  sandbox.is_file(PROFILES_TARBALL) and \
-                    sandbox.get_size(PROFILES_TARBALL):
+            tarball_name  = '%s.%s.tbz'   % (pid, ext)
+            tarball_tgt   = '%s/%s/%s/%s' % (tgt, sid, pid, tarball_name)
+            tarball_local = False
 
-                    log.info("profiles tarball exists")
-                    ftgt = rs.Url('%s/%s' % (tgt_url, PROFILES_TARBALL))
+            # check if we have a local tarball already
+            if skip_existing and \
+               os.path.isfile(tarball_tgt) and \
+               os.path.getsize(tarball_tgt):
+                tarball_local = True
 
-                    if skip_existing and os.path.isfile(ftgt.path) \
-                            and os.stat(ftgt.path).st_size > 0:
+            if not tarball_local:
+                # need to fetch tarball
+                #  - if no remote tarball exists, create it
+                #  - fetch remote tarball
 
-                        log.info("skip fetching of '%s/%s' to '%s'.",
-                                 sandbox_url, PROFILES_TARBALL, tgt_url)
-                        tarball_available = True
-                    else:
+                tarball_remote = False
+                if sandbox.is_file(tarball_name) and \
+                        sandbox.get_size(tarball_name):
+                    tarball_remote = True
 
-                        log.info("fetch '%s%s' to '%s'.", sandbox_url,
-                                 PROFILES_TARBALL, tgt_url)
+                if not tarball_remote:
+                    # so lets create a tarball with SAGA JobService
+                    js_url = pilot['js_hop']
+                    log.debug('js  : %s', js_url)
+                    js  = rs.job.Service(js_url, session=session)
+                    cmd = "cd %s; find . -name \\*.%s > %s.lst; " \
+                          "tar cjf %s -T %s.lst" % (sandbox.url.path, ext, ext,
+                              tarball_name, ext)
+                    j = js.run_job(cmd)
+                    j.wait()
 
-                        prof_file = rs.fs.File("%s%s" % (sandbox_url,
-                                            PROFILES_TARBALL), session=session)
-                        prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-                        prof_file.close()
+                    log.debug('tar cmd   : %s', cmd)
+                    log.debug('tar result: %s\n---\n%s\n---\n%s',
+                              j.get_stdout_string(), j.get_stderr_string(),
+                              j.exit_code)
 
-                        tarball_available = True
-                else:
-                    log.warn("profiles tarball doesnt exists!")
+                    if j.exit_code:
+                        raise RuntimeError('could not create tarball: %s' %
+                                j.get_stderr_string())
 
-            except rs.DoesNotExist:
-                log.exception("exception(TODO): profile tarball doesnt exists!")
+                # we not have a remote tarball and can fetch it
+                log.info("fetch '%s%s' to '%s'.", sandbox_url,
+                         tarball_name, tgt_url)
 
-            try:
-                os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
-            except OSError:
-                pass
+                rs_file = rs_fs.File("%s%s" % (sandbox_url, tarball_name),
+                                     session=session)
+                rs_file.copy(tarball_tgt, flags=rs_fs.CREATE_PARENTS)
+                rs_file.close()
 
-            # We now have a local tarball
-            if tarball_available:
-                log.info("Extract tarball %s to '%s'.", ftgt.path, tgt_url.path)
-                try:
-                    tarball = tarfile.open(ftgt.path, mode='r:gz')
-                    tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
+            # we now have a local tarball - unpack it
+            # note that we do not check if it was unpacked before - it's simpler
+            # (and possibly cheaper) to just do that again
+            log.info('Extract tarball %s', tarball_tgt)
+            tarball = tarfile.open(tarball_tgt, mode='r:bz2')
+            tarball.extractall("%s/%s" % (tgt_url.path, pid))
 
-                    profiles = glob.glob("%s/%s/*.prof" %
-                                         (tgt_url.path, pilot['uid']))
-                    ret.extend(profiles)
-                    os.unlink(ftgt.path)
+            files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
+            ret.extend(files)
 
-                    # If extract succeeded, no need to fetch individual profiles
-                    rep.ok("+ %s (profiles)\n" % pilot['uid'])
-                    continue
-
-                except Exception as e:
-                    log.warn('could not extract tarball %s [%s]', ftgt.path, e)
-
-            # If we dont have a tarball (for whichever reason), fetch individual
-            # profiles
-            profiles = sandbox.list('*.prof')
-            for prof in profiles:
-
-                ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], prof))
-                ret.append("%s" % ftgt.path)
-
-                if skip_existing and os.path.isfile(ftgt.path) \
-                                 and os.stat(ftgt.path).st_size > 0:
-                    pass
-                else:
-                    prof_file = rs.fs.File("%s%s" % (sandbox_url, prof),
-                                           session=session)
-                    prof_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-                    prof_file.close()
-
-            rep.ok("+ %s (profiles)\n" % pilot['uid'])
+            rep.ok("+ %s (%s)\n" % (pid, name))
 
         except Exception:
-            rep.error("- %s (profiles)\n" % pilot['uid'])
-            log.exception('failed to fetch profiles for %s', pilot['uid'])
+            # do not raise, we still try the other pilots
+            rep.error("- %s (%s)\n" % (pid, name))
+            log.exception('failed to fetch %s for %s', pid, name)
 
     return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def fetch_profiles (sid, src=None, tgt=None, access=None,
+        session=None, skip_existing=False, fetch_client=False, log=None):
+
+    return fetch_filetype('prof', 'profiles', sid, src, tgt, access,
+            session, skip_existing, fetch_client, log)
 
 
 # ------------------------------------------------------------------------------
 #
 def fetch_logfiles (sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
-    '''
-    sid: session for which all logfiles are fetched
-    src: dir to look for client session logfiles
-    tgt: dir to store the logfile in
 
-    returns list of file names
-    '''
-
-    if not log and session:
-        log = session._log
-        rep = session._rep
-    elif not log:
-        log = ru.Logger('radical.pilot.utils')
-        rep = ru.Reporter('radical.pilot.utils')
-
-    ret = list()
-
-    if not src:
-        src = os.getcwd()
-
-    if not tgt:
-        tgt = os.getcwd()
-
-    if not tgt.startswith('/') and '://' not in tgt:
-        tgt = "%s/%s" % (os.getcwd(), tgt)
-
-    # we always create a session dir as real target
-    tgt_url = rs.Url("%s/%s/" % (tgt, sid))
-
-    # Turn URLs without schema://host into file://localhost,
-    # so that they dont become interpreted as relative.
-    if not tgt_url.schema:
-        tgt_url.schema = 'file'
-    if not tgt_url.host:
-        tgt_url.host = 'localhost'
-
-    if fetch_client:
-        # first fetch session logfile
-        client_logfile = "%s/%s.log" % (src, sid)
-
-        ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_logfile)))
-        ret.append("%s" % ftgt.path)
-
-        if skip_existing and os.path.isfile(ftgt.path) \
-                and os.stat(ftgt.path).st_size > 0:
-            pass
-        else:
-            log_file = rs.fs.File(client_logfile, session=session)
-            log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-            log_file.close()
-
-
-    # FIXME: MongoDB
-    json_docs  = ...
-    return
-    pilots     = json_docs['pilot']
-    num_pilots = len(pilots)
-
-    log.info("Session: %s", sid)
-    log.info("Number of pilots in session: %d", num_pilots)
-
-    for pilot in pilots:
-
-        try:
-            sandbox_url = rs.Url(pilot['pilot_sandbox'])
-
-            if access:
-
-                # Allow to use a different access schema than used for the the
-                # run.  Useful if you ran from the headnode, but would like to
-                # retrieve the logfiles to your desktop (Hello Titan).
-                access_url = rs.Url(access)
-                sandbox_url.schema = access_url.schema
-                sandbox_url.host   = access_url.host
-
-            sandbox  = rs.fs.Directory (sandbox_url, session=session)
-
-            # Try to fetch a tarball of logfiles, so that we can get
-            # them all in one (SAGA) go!
-            LOGFILES_TARBALL  = '%s.log.tgz' % pilot['uid']
-            tarball_available = False
-            try:
-                if  sandbox.is_file(LOGFILES_TARBALL) and \
-                    sandbox.get_size(LOGFILES_TARBALL):
-
-                    log.info("logfiles tarball exists")
-                    ftgt = rs.Url('%s/%s' % (tgt_url, LOGFILES_TARBALL))
-
-                    if skip_existing and os.path.isfile(ftgt.path) \
-                            and os.stat(ftgt.path).st_size > 0:
-
-                        log.info("Skip fetching of '%s/%s' to '%s'.",
-                                 sandbox_url, LOGFILES_TARBALL, tgt_url)
-                        tarball_available = True
-                    else:
-
-                        log.info("Fetching '%s%s' to '%s'.",
-                                sandbox_url, LOGFILES_TARBALL, tgt_url)
-                        log_file = rs.fs.File("%s%s" % (sandbox_url,
-                                                              LOGFILES_TARBALL),
-                                              session=session)
-                        log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-                        log_file.close()
-
-                        tarball_available = True
-                else:
-                    log.warn("logiles tarball doesnt exists")
-
-            except rs.DoesNotExist:
-                log.warn("logfiles tarball doesnt exists")
-
-            try:
-                os.mkdir("%s/%s" % (tgt_url.path, pilot['uid']))
-            except OSError:
-                pass
-
-            # We now have a local tarball
-            if tarball_available:
-                log.debug("Extract tarball %s to %s", ftgt.path, tgt_url.path)
-
-                try:
-                    tarball = tarfile.open(ftgt.path)
-                    tarball.extractall("%s/%s" % (tgt_url.path, pilot['uid']))
-
-                    logfiles = glob.glob("%s/%s/*.log" % (tgt_url.path,
-                                                          pilot['uid']))
-                    log.info("tarball %s extracted to '%s/%s/'.",
-                            ftgt.path, tgt_url.path, pilot['uid'])
-                    ret.extend(logfiles)
-                    os.unlink(ftgt.path)
-
-                except Exception as e:
-                    log.warn('could not extract tarball %s [%s]', ftgt.path, e)
-
-                # If extract succeeded, no need to fetch individual logfiles
-                rep.ok("+ %s (logfiles)\n" % pilot['uid'])
-                continue
-
-            # If we dont have a tarball (for whichever reason),
-            # fetch individual logfiles
-            logfiles = sandbox.list('*.log')
-
-            for logfile in logfiles:
-
-                ftgt = rs.Url('%s/%s/%s' % (tgt_url, pilot['uid'], logfile))
-                ret.append("%s" % ftgt.path)
-
-                if skip_existing and os.path.isfile(ftgt.path) \
-                                 and os.stat(ftgt.path).st_size > 0:
-
-                    continue
-
-                log_file = rs.fs.File("%s%s" % (sandbox_url, logfile),
-                                                session=session)
-                log_file.copy(ftgt, flags=rs.fs.CREATE_PARENTS)
-                log_file.close()
-
-            rep.ok("+ %s (logfiles)\n" % pilot['uid'])
-
-        except Exception:
-            rep.error("- %s (logfiles)\n" % pilot['uid'])
-
-    return ret
-
-
-# ------------------------------------------------------------------------------
-#
-def fetch_json(sid, tgt=None, skip_existing=False, session=None,
-        log=None):
-    '''
-    returns file name
-    '''
-
-    if not log and session:
-        log = session._log
-        rep = session._rep
-    elif not log:
-        log = ru.Logger('radical.pilot.utils')
-        rep = ru.Reporter('radical.pilot.utils')
-
-    if not tgt:
-        tgt = '.'
-
-    if tgt.startswith('/'):
-        # Assume an absolute path
-        dst = os.path.join(tgt, '%s.json' % sid)
-    else:
-        # Assume a relative path
-        dst = os.path.join(os.getcwd(), tgt, '%s.json' % sid)
-
-    try           : os.makedirs(os.path.dirname(tgt))
-    except OSError: pass  # dir exists
-
-    if skip_existing       and \
-       os.path.isfile(dst) and \
-       os.stat(dst).st_size > 0:
-        log.info("session already in %s", dst)
-
-    else:
-        json_docs = get_session_docs(sid)
-        ru.write_json(json_docs, dst)
-
-        log.info("session written to %s", dst)
-
-    rep.ok("+ %s (json)\n" % sid)
-    return dst
+    return fetch_filetype('log', 'logfiles', sid, src, tgt, access,
+            session, skip_existing, fetch_client, log)
 
 
 # ------------------------------------------------------------------------------
