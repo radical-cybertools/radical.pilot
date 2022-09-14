@@ -126,17 +126,26 @@ def deserialize_file(fname):
 #
 def deserialize_obj(obj):
     '''
-    Deserialize object from str
+    Deserialize object from str.
+
+    Raises
+    ------
+    TypeError
+        if object cannot be deserialized.
+    ValueError
+        if no result is found.
+
     '''
     result = None
 
     try:
         result = dill.loads(obj)
     except Exception as e:
-        raise Exception ("failed to deserialize from object") from e
+        raise TypeError("failed to deserialize from object") from e
 
-    if result is None:
-        raise RuntimeError('failed to deserialize')
+    # Ref https://github.com/radical-cybertools/radical.pilot/pull/ \
+    #                        2615#discussion_r870356482
+    assert result is not None
     return result
 
 
