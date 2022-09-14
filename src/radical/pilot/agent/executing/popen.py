@@ -317,7 +317,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_pre_exec(task)
 
             # pre_rank list is applied to rank 0, dict to the ranks listed
-            pre_rank = td['pre_rank']
+            pre_rank = td.get('pre_rank')
             if isinstance(pre_rank, list): pre_rank = {'0': pre_rank}
 
             if pre_rank:
@@ -347,7 +347,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_prof('rank_stop', tid)
 
             # post_rank list is applied to rank 0, dict to the ranks listed
-            post_rank = td['post_rank']
+            post_rank = td.get('post_rank')
             if isinstance(post_rank, list): post_rank = {'0': post_rank}
 
             if post_rank:
