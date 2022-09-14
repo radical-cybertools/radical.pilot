@@ -119,7 +119,6 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'venv',
-                                    'version': '3.6',
                                     'path'   : '/tmp/ve_raptor/',
                                     'setup'  : ['$HOME/j/rp/',
                                                 '$HOME/j/ru/',
