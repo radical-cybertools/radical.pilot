@@ -6,7 +6,7 @@ Frequently Asked Questions
 **************************
 
 Here are some answers to frequently-asked questions. Got a question that isn't
-answered here? Open an issue in the RADICAL-Pilot github 
+answered here? Open an issue in the RADICAL-Pilot github
 `issue tracker <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 .. .. _mailing list: radical-pilot-users@googlegroups.com
@@ -65,8 +65,8 @@ Even though this should already be set up by default on many HPC clusters, it
 is not always the case. The following instructions will help you to set up
 password-less SSH between the cluster nodes correctly.
 
-Log-in to the **head-node** or **login-node** of the HPC cluster and run the 
-following commands:  
+Log-in to the **head-node** or **login-node** of the HPC cluster and run the
+following commands:
 
 .. code-block:: bash
 
@@ -78,9 +78,9 @@ following commands:
 .. code-block:: bash
 
     Generating public/private rsa key pair.
-    Enter file in which to save the key (/home/e290/e290/oweidner/.ssh/id_rsa): 
-    Enter passphrase (empty for no passphrase): 
-    Enter same passphrase again: 
+    Enter file in which to save the key (/home/e290/e290/oweidner/.ssh/id_rsa):
+    Enter passphrase (empty for no passphrase):
+    Enter same passphrase again:
     Your identification has been saved in /home/e290/e290/oweidner/.ssh/id_rsa.
     Your public key has been saved in /home/e290/e290/oweidner/.ssh/id_rsa.pub.
     The key fingerprint is:
@@ -92,10 +92,10 @@ Next, add you newly generated key to ~/.ssh/authorized_keys:
 
     cat id_rsa.pub >> ~/.ssh/authorized_keys
 
-This should be all. Next time you run radical.pilot, you shouldn't see that 
-error message anymore. 
+This should be all. Next time you run radical.pilot, you shouldn't see that
+error message anymore.
 
-(For more general information on SSH keys, check out this 
+(For more general information on SSH keys, check out this
 link: https://linuxize.com/post/how-to-setup-passwordless-ssh-login/)
 
 
@@ -143,17 +143,17 @@ a prompt set as `$PS1`). The snippet below shows how to do that:
       echo "hello $USER"
       date
     fi
-    
+
 
 Pop-up "Do you want the application python to accept incoming network connections?" on macOS
 --------------------------------------------------------------------------------------------
 
 Currently, we do not support RADICAL-Pilot on macOS. If macOS support is
-critical for you, please open 
+critical for you, please open
 `an issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 .. This is coming from the firewall on your Mac. You can either:
-..    - click "Allow" (many times) 
+..    - click "Allow" (many times)
 ..    - disable your firewall (temporarily)
 ..    - Sign the application per instructions here: http://apple.stackexchange.com/a/121010
 
@@ -163,12 +163,12 @@ Error "Could not detect shell prompt (timeout)"
 
 We support `sh` and `bash` as login shells on the target machines.  Please try
 to switch to those shells if you use others like `zsh` and `csh/tcsh`.  If you
-need other shells supported, please open 
+need other shells supported, please open
 `an issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 Prompt detecting behavior can be improved by calling `touch $HOME/.hushlogin`
 on the target machine, which will suppress some system messages on login. If
-the problem persists, please open 
+the problem persists, please open
 `an issue <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 Details: we implement a rather cumbersome screen scraping via an interactive
@@ -184,3 +184,37 @@ Number of concurrent RADICAL-Pilot scripts that can can be executed
 From a RADICAL-Pilot perspective, there is no limit, but as SSH is used to
 access many systems, there is a resource-specific limit of the number of
 concurrent SSH connections one can make.
+
+SMT settings in interactive mode
+-------------------------------------------------------------------
+
+The use case described throughout this document all submit the pilot agent via
+the local resource manager (i.e., the batch system).  It is however possible to
+run an RP application in an interactive job allocation.  For example, the
+`ornl.summit_interactive` resource configuration defines an `interactive`
+access schema (similar to this, `tacc.frontera` has `interactive` schema), which
+can be used for that purpose.  A respective pilot description would look like
+this:
+
+    import radical.pilot as rp
+
+    pd = rp.PilotDescription()
+    pd.resource = 'ornl.summit_interactive'
+    pd.schema   = 'interactive'
+    pd.cores    = 1024
+    pd.runtime  = 10
+
+However, care needs to be taken to ensure the correct SMT setting to be used in
+this case: as the job allocation was not created by RP itself, the pilot is
+unaware of the SMT settings requested for the allocation.  The user must set
+the environment variable `RADICAL_SMT`.
+
+In some cases, the user may need to inspect the node configuration to determine
+the actual SMT value.  We provide a shell command for summit as illustrative
+example:
+
+    jsrun -n1 -bpacked:1 /bin/bash -c 'echo $OMP_PLACES' \
+          | expr "$X" : '.*\(.\)}' \
+          | tr 0 1
+
+
