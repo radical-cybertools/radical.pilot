@@ -7,7 +7,6 @@ import copy
 import time
 
 import radical.utils as ru
-
 from . import states    as rps
 from . import constants as rpc
 
@@ -100,6 +99,7 @@ class Pilot(object):
         # query for those sandboxes.
         self._pilot_jsurl      = ru.Url()
         self._pilot_jshop      = ru.Url()
+        self._endpoint_fs      = ru.Url()
         self._resource_sandbox = ru.Url()
         self._session_sandbox  = ru.Url()
         self._pilot_sandbox    = ru.Url()
@@ -109,6 +109,7 @@ class Pilot(object):
 
         self._pilot_jsurl, self._pilot_jshop \
                                = self._session._get_jsurl           (pilot)
+        self._endpoint_fs      = self._session._get_endpoint_fs     (pilot)
         self._resource_sandbox = self._session._get_resource_sandbox(pilot)
         self._session_sandbox  = self._session._get_session_sandbox (pilot)
         self._pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
@@ -119,12 +120,16 @@ class Pilot(object):
         self._rem_ctx = {'pwd'     : self._pilot_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox}
+                         'resource': self._resource_sandbox,
+                         'session' : self._session_sandbox,
+                         'endpoint': self._endpoint_fs}
 
         self._loc_ctx = {'pwd'     : self._client_sandbox,
                          'client'  : self._client_sandbox,
                          'pilot'   : self._pilot_sandbox,
-                         'resource': self._resource_sandbox}
+                         'resource': self._resource_sandbox,
+                         'session' : self._session_sandbox,
+                         'endpoint': self._endpoint_fs}
 
 
         # we need to expand plaaceholders in the sandboxes
@@ -141,6 +146,7 @@ class Pilot(object):
                 expand['pd.%s' % k.upper()] = v
                 expand['pd.%s' % k.lower()] = v
 
+        self._endpoint_fs     .path  = self._endpoint_fs     .path % expand
         self._resource_sandbox.path  = self._resource_sandbox.path % expand
         self._session_sandbox .path  = self._session_sandbox .path % expand
         self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
@@ -195,7 +201,7 @@ class Pilot(object):
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
 
-        assert(pilot_dict['uid'] == self.uid), 'update called on wrong instance'
+        assert pilot_dict['uid'] == self.uid, 'update called on wrong instance'
 
         # NOTE: this method relies on state updates to arrive in order and
         #       without gaps.
@@ -241,23 +247,24 @@ class Pilot(object):
         Returns a Python dictionary representation of the object.
         '''
 
-        ret = {'session':          self.session.uid,
-               'pmgr':             self.pmgr.uid,
-               'uid':              self.uid,
-               'type':             'pilot',
-               'state':            self.state,
-               'log':              self.log,
-               'stdout':           self.stdout,
-               'stderr':           self.stderr,
-               'resource':         self.resource,
-               'resource_sandbox': str(self._resource_sandbox),
-               'session_sandbox':  str(self._session_sandbox),
-               'pilot_sandbox':    str(self._pilot_sandbox),
-               'client_sandbox':   str(self._client_sandbox),
-               'js_url':           str(self._pilot_jsurl),
-               'js_hop':           str(self._pilot_jshop),
-               'description':      self.description,  # this is a deep copy
-               'resource_details': self.resource_details
+        ret = {'session'          : self.session.uid,
+               'pmgr'             : self.pmgr.uid,
+               'uid'              : self.uid,
+               'type'             : 'pilot',
+               'state'            : self.state,
+               'log'              : self.log,
+               'stdout'           : self.stdout,
+               'stderr'           : self.stderr,
+               'resource'         : self.resource,
+               'endpoint_fs'      : str(self._endpoint_fs),
+               'resource_sandbox' : str(self._resource_sandbox),
+               'session_sandbox'  : str(self._session_sandbox),
+               'pilot_sandbox'    : str(self._pilot_sandbox),
+               'client_sandbox'   : str(self._client_sandbox),
+               'js_url'           : str(self._pilot_jsurl),
+               'js_hop'           : str(self._pilot_jshop),
+               'description'      : self.description,  # this is a deep copy
+               'resource_details' : self.resource_details
               }
 
         return ret
@@ -431,6 +438,10 @@ class Pilot(object):
 
 
     @property
+    def endpoint_fs(self):
+        return self._endpoint_fs
+
+    @property
     def resource_sandbox(self):
         return self._resource_sandbox
 
@@ -511,7 +522,7 @@ class Pilot(object):
                     if cb_name not in self._callbacks[metric]:
                         raise ValueError("unknown callback '%s'" % cb_name)
 
-                    del(self._callbacks[metric][cb_name])
+                    del self._callbacks[metric][cb_name]
 
 
     # --------------------------------------------------------------------------
@@ -597,32 +608,30 @@ class Pilot(object):
         env_name: name of the environment to prepare (str)
         env_spec: specification of the environment to prepare (dict), like:
 
-            {'type'   : 'virtualenv',
-             'version': '3.6',
-             'setup'  : ['radical.pilot==1.0', 'pandas']},
+            {'type'    : 'venv',
+             'version' : '3.6',
+             'pre_exec': ['module load python'],
+             'setup'   : ['radical.pilot==1.0', 'pandas']},
 
-            {'type'   : 'conda',
-             'version': '3.8',
-             'setup'  : ['numpy']}
+            {'type'    : 'conda',
+             'version' : '3.8',
+             'setup'   : ['numpy']}
 
             {'type'   : 'conda',
              'version': '3.8',
              'path'   : '/path/to/ve',
              'setup'  : ['numpy']}
 
-        pre_exec: command to be executed when creating the env
 
         where the `type` specifies the environment type, `version` specifies the
-        env version to deploy, and `setup` specifies how the environment is to
-        be prepared.  If `path` is specified the env will be created at that
+        Python version to deploy, and `setup` specifies how the environment is
+        to be prepared.  If `path` is specified the env will be created at that
         path.  If a VE exists at that path, it will be used as is (an update is
-        not performed but might get implemented later if a use case calls for
-        it).
+        not performed). `pre_exec` commands are be executed before env creation
+        and setup are attempted.
 
-        At this point, the implementation only accepts `virtualenv` type
-        requests, where `version` specifies the Python version to use, and
-        `setup` is expected to be a list of module specifiers which need to be
-        installed into the environment.
+        Note: the `version` specifier is only interpreted up to minor version,
+        sibminor and less are ignored.
         '''
 
         self.rpc('prepare_env', {'env_name': env_name,
@@ -654,13 +663,13 @@ class Pilot(object):
 
         for sd in sds:
             sd['prof_id'] = self.uid
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
 
-        # ask the pmgr to send the staging reuests to the stager
+        # ask the pmgr to send the staging requests to the stager
         self._pmgr._pilot_staging_input(sds)
+
+        return [sd['target'] for sd in sds]
 
 
     # --------------------------------------------------------------------------
@@ -688,6 +697,8 @@ class Pilot(object):
 
         # ask the pmgr to send the staging reuests to the stager
         self._pmgr._pilot_staging_output(sds)
+
+        return [sd['target'] for sd in sds]
 
 
 # ------------------------------------------------------------------------------

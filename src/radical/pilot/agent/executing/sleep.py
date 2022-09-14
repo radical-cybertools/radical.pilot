@@ -101,7 +101,7 @@ class Sleep(AgentExecutingComponent) :
 
         now = time.time()
 
-        # assert(t['description']['executable'].endswith('sleep'))
+        # assert t['description']['executable'].endswith('sleep')
         task['to_finish'] = now + float(task['description']['arguments'][0])
 
         uid = task['uid']

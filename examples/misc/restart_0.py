@@ -6,18 +6,12 @@ __license__   = 'MIT'
 import os
 import sys
 
-verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
-os.environ['RADICAL_PILOT_VERBOSE'] = verbose
-
 import radical.pilot as rp
 import radical.utils as ru
 
 
-# ------------------------------------------------------------------------------
-#
-# READ the RADICAL-Pilot documentation: https://radicalpilot.readthedocs.io/
-#
-# ------------------------------------------------------------------------------
+pwd = os.path.dirname(os.path.abspath(__file__))
+dh  = ru.DebugHelper()
 
 
 # ------------------------------------------------------------------------------
@@ -37,7 +31,7 @@ if __name__ == '__main__':
     # fails, there is not much we can do anyways...
     session = rp.Session()
 
-    # all other pilot code is now tried/excepted. If an exception is caught, we
+    # all other pilot code is now tried/excepted.  If an exception is caught, we
     # can rely on the session object to exist and be valid, and we can thus tear
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
@@ -45,12 +39,12 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
+        config = ru.read_json('%s/../config.json' % pwd)
         report.ok('>>ok\n')
 
         report.header('submit pilots')
 
-        # Add a PilotManager. PilotManagers manage one or more pilots.
+        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         pmgr = rp.PilotManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -58,80 +52,68 @@ if __name__ == '__main__':
         pd_init = {'resource'      : resource,
                    'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
-                   'project'       : config[resource].get('project', None),
-                   'queue'         : config[resource].get('queue', None),
-                   'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
-                   'gpus'          : config[resource].get('gpus', 0),
-                   }
+                   'project'       : config[resource]['project'],
+                   'queue'         : config[resource]['queue'],
+                   'access_schema' : config[resource]['schema'],
+                   'cores'         : config[resource]['cores']
+                  }
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        pilot.prepare_env('numpy_env', {'type'   : 'virtualenv',
-                                        'version': '3.6',
-                                        'setup'  : ['numpy']})
-
-
         report.header('submit tasks')
 
-        # Register the pilot in a TaskManager object.
+        # Register the Pilot in a TaskManager object.
         tmgr = rp.TaskManager(session=session)
         tmgr.add_pilots(pilot)
 
-        # Create a workload of tasks.
-        # Each task runs '/bin/date'.
-        n = 2  # number of tasks to run
+        # Create a workload of Tasks.
+        # Each compute task runs '/bin/date'.
+
+        n = 32  # number of tasks to run
         report.info('create %d task description(s)\n\t' % n)
 
         tds = list()
         for i in range(0, n):
 
-            # create a new task description, and fill it.
+            # create a new CU description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable = 'python3'
-            td.arguments  = ['-c', 'import numpy; print(numpy.__file__)']
-            td.named_env  = 'numpy_env'
+            td.executable       = '/bin/sleep'
+            td.arguments        = ['60']
+            td.gpu_processes    = 0
+            td.cpu_processes    = 2
+            td.cpu_threads      = 2
+          # td.cpu_process_type = rp.MPI
+          # td.cpu_thread_type  = rp.OpenMP
             tds.append(td)
             report.progress()
-
         report.ok('>>ok\n')
 
-        # Submit the previously created task descriptions to the
+        # Submit the previously created Task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning tasks to the pilots.
+        # assigning Tasks to the Pilots.
         tasks = tmgr.submit_tasks(tds)
 
-        # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
-        report.header('gather results')
-        tmgr.wait_tasks()
+        # die - this is where the restart attempt will continue
+        # but before, we store some UIDs
+        with ru.ru_open('%s/restart.dat' % pwd, 'w') as fout:
+            fout.write('session_id %s\n' % session.uid)
+            fout.write('tmgr_ids   %s\n' % tmgr.uid)
+            fout.write('pmgrs_ids  %s\n' % pmgr.uid)
+            fout.write('pilot_ids  %s\n' % pilot.uid)
+            fout.write('task_ids   %s\n' % ':'.join(u.uid for u in tasks))
 
-        report.info('\n')
-        for task in tasks:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n'
-                    % (task.uid, task.state[:4],
-                        task.exit_code, task.stdout[:35]))
-
-        # get some more details for one task:
-        task_dict = tasks[0].as_dict()
-        report.plain("task workdir : %s\n" % task_dict['task_sandbox'])
-        report.plain("pilot id     : %s\n" % task_dict['pilot'])
-        report.plain("exit code    : %s\n" % task_dict['exit_code'])
-        report.plain("stdout       : %s\n" % task_dict['stdout'])
-
-        # get some more details for one task:
-        task_dict = tasks[1].as_dict()
-        report.plain("task workdir : %s\n" % task_dict['task_sandbox'])
-        report.plain("pilot id     : %s\n" % task_dict['pilot'])
-        report.plain("exit code    : %s\n" % task_dict['exit_code'])
-        report.plain("exit stdout  : %s\n" % task_dict['stdout'])
+        pilot.wait(state=rp.PMGR_ACTIVE)
+        print('killme %s' % os.getpid())
+        sys.exit(0)
 
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
         report.error('caught Exception: %s\n' % e)
+        ru.print_exception_trace()
         raise
 
     except (KeyboardInterrupt, SystemExit):
@@ -139,13 +121,14 @@ if __name__ == '__main__':
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
+        ru.print_exception_trace()
         report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+      # session.close(download=False)
 
     report.header()
 

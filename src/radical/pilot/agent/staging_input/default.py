@@ -98,28 +98,38 @@ class Default(AgentStagingInputComponent):
         #   * paths are directly translatable across schemas
         #   * resource level storage is in fact accessible via file://
         #
-        # FIXME: this is costly and should be cached.
+        # FIXME: URL creation and manipulation is costly and should be cached
 
         task_sandbox     = ru.Url(task['task_sandbox'])
         pilot_sandbox    = ru.Url(task['pilot_sandbox'])
+        session_sandbox  = ru.Url(task['session_sandbox'])
         resource_sandbox = ru.Url(task['resource_sandbox'])
+        endpoint_fs      = ru.Url(task['endpoint_fs'])
 
         task_sandbox.schema     = 'file'
         pilot_sandbox.schema    = 'file'
+        session_sandbox.schema  = 'file'
         resource_sandbox.schema = 'file'
+        endpoint_fs.schema      = 'file'
 
         task_sandbox.host       = 'localhost'
         pilot_sandbox.host      = 'localhost'
+        session_sandbox.host    = 'localhost'
         resource_sandbox.host   = 'localhost'
+        endpoint_fs.host        = 'localhost'
 
         src_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
         tgt_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
 
 
         # we can now handle the actionable staging directives
@@ -133,8 +143,8 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE,
-                              rpc.TRANSFER, rpc.TARBALL])
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE,
+                              rpc.TRANSFER, rpc.TARBALL]
 
             # we only handle staging which does *not* include 'client://' src or
             # tgt URLs - those are handled by the tmgr staging components
@@ -167,10 +177,10 @@ class Default(AgentStagingInputComponent):
             tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
-            assert(tgt.schema == 'file'), 'staging tgt must be file://'
+            assert tgt.schema == 'file', 'staging tgt must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert(src.schema == 'file'), 'staging src expected as file://'
+                assert src.schema == 'file', 'staging src expected as file://'
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)

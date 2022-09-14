@@ -53,18 +53,6 @@ class Popen(AgentExecutingComponent):
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
 
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-      # session._log.debug('popen init start')
-        AgentExecutingComponent.__init__(self, cfg, session)
-
-        self._proc_term = mt.Event()
-      # session._log.debug('popen init stop')
-
-
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -85,13 +73,6 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        # FIXME: should be moved to base class `AgentExecutingComponent`?
-        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -447,7 +428,7 @@ class Popen(AgentExecutingComponent):
     def _watch(self):
 
         try:
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 tasks = list()
                 try:
@@ -524,7 +505,7 @@ class Popen(AgentExecutingComponent):
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del(task['proc'])  # proc is not json serializable
+                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
@@ -547,7 +528,7 @@ class Popen(AgentExecutingComponent):
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._tasks_to_watch.remove(task)
-                del(task['proc'])  # proc is not json serializable
+                del task['proc']  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=tid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 

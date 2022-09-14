@@ -577,8 +577,6 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'
-                self.stop()
-
                 return False  # we are done
 
             elif cmd == 'cancel_tasks':
@@ -808,8 +806,8 @@ class Agent_0(rpu.Worker):
         if emods: mods = '-m "%s"' % ','.join(emods)
         else    : mods = ''
 
-      # assert(etype == 'virtualenv')
-      # assert(evers)
+      # assert etype == 'virtualenv'
+      # assert evers
 
         # only create a new VE if path is not set or if it does not exist
         if path:

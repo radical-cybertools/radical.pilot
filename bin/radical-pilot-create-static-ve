@@ -112,18 +112,21 @@ esac
 
 PYTHON=python3
 
+if test -z "$VERSION"
+then
+    VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+fi
+if test -z "$VERSION"
+then
+    VERSION='3.8'
+fi
+
+# we only ever use major and minor version numbers, and will ignore subminor
+VERSION=$(echo $VERSION | cut -f 1,2 -d '.')
+
 # check env type
 if test "$ETYPE" = 'conda'
 then
-
-    if test -z "$VERSION"
-    then
-        VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
-    fi
-    if test -z "$VERSION"
-    then
-        VERSION='3.8'
-    fi
 
     which conda || help "conda not found"
     eval "$(conda shell.bash hook)"

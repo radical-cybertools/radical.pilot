@@ -175,8 +175,8 @@ class _Resources(object):
         self._log.info('dealloc ok %30s: %s', uid, self)
 
         # remove temporary information from task
-        del(task['rank'])
-        del(task['ranks'])
+        del task['rank']
+        del task['ranks']
 
 
 # ------------------------------------------------------------------------------
@@ -572,7 +572,7 @@ class _Worker(mt.Thread):
 
         finally:
             if 'mpi_comm' in task:
-                del(task['mpi_comm'])
+                del task['mpi_comm']
 
             # sub-communicator must always be destroyed
             if group: group.Free()
@@ -626,9 +626,22 @@ class _Worker(mt.Thread):
 
         self._log.debug('=== orig args: %s : %s', args, kwargs)
 
-        # check if `func_name` is a global name
-        names   = dict(list(globals().items()) + list(locals().items()))
-        to_call = names.get(func)
+        # check if we have a serialized object
+        self._log.debug('func serialized: %d: %s', len(func), func)
+        try:
+            # FIXME: can we have a better test than try/except?  This hides
+            #        potential errors...
+            # FIXME: ensure we did not get args and kwargs from above
+            to_call, args, kwargs = PythonTask.get_func_attr(func)
+            py_func = True
+        except:
+            pass
+
+        if not to_call:
+            assert func
+            # check if `func_name` is a global name
+            names   = dict(list(globals().items()) + list(locals().items()))
+            to_call = names.get(func)
 
         # if not, check if this is a class method of this worker implementation
         if not to_call:
@@ -717,7 +730,7 @@ class _Worker(mt.Thread):
             if comm:
                 if py_func:
                     if 'comm' in kwargs:
-                        del(kwargs['comm'])
+                        del kwargs['comm']
                     elif args:
                         args[0] = None
                 else:
@@ -740,7 +753,7 @@ class _Worker(mt.Thread):
 
         uid  = task['uid']
         code = task['description']['code']
-        assert(code)
+        assert code
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr

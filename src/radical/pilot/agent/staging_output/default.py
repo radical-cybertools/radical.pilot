@@ -252,24 +252,35 @@ class Default(AgentStagingOutputComponent):
 
         task_sandbox     = ru.Url(task['task_sandbox'])
         pilot_sandbox    = ru.Url(task['pilot_sandbox'])
+        session_sandbox  = ru.Url(task['session_sandbox'])
         resource_sandbox = ru.Url(task['resource_sandbox'])
+        endpoint_fs      = ru.Url(task['endpoint_fs'])
 
         task_sandbox.schema     = 'file'
         pilot_sandbox.schema    = 'file'
+        session_sandbox.schema  = 'file'
         resource_sandbox.schema = 'file'
+        endpoint_fs.schema      = 'file'
 
         task_sandbox.host       = 'localhost'
         pilot_sandbox.host      = 'localhost'
+        session_sandbox.host    = 'localhost'
         resource_sandbox.host   = 'localhost'
+        endpoint_fs.host        = 'localhost'
 
         src_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
         tgt_context = {'pwd'      : str(task_sandbox),       # !!!
                        'task'     : str(task_sandbox),
                        'pilot'    : str(pilot_sandbox),
-                       'resource' : str(resource_sandbox)}
+                       'session'  : str(session_sandbox),
+                       'resource' : str(resource_sandbox),
+                       'endpoint' : str(endpoint_fs)}
+
 
         # we can now handle the actionable staging directives
         for sd in actionables:
@@ -282,7 +293,7 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            assert(action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER]), \
+            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER], \
                               'invalid staging action'
 
             # we only handle staging which does *not* include 'client://' src or
@@ -315,10 +326,10 @@ class Default(AgentStagingOutputComponent):
             tgt = complete_url(tgt, tgt_context, self._log)
 
             # Currently, we use the same schema for files and folders.
-            assert(src.schema == 'file'), 'staging src must be file://'
+            assert src.schema == 'file', 'staging src must be file://'
 
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert(tgt.schema == 'file'), 'staging tgt expected as file://'
+                assert tgt.schema == 'file', 'staging tgt expected as file://'
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
