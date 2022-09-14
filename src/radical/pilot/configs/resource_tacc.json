@@ -1,19 +1,25 @@
 
 {
+
     "frontera": {
         "description"                 : "Petascale computing system at the Texas Advanced Computing Center (TACC)",
-        "notes"                       : "Always launch RP from a login node if you do not have a waiver from TACC for an external IP address",
-        "schemas"                     : ["local", "ssh"],
+        "notes"                       : "Always launch RP from a login node or within a compute (interactive) node if you do not have a waiver from TACC for an external IP address",
+        "schemas"                     : ["local", "ssh", "interactive"],
         "mandatory_args"              : ["project"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
+            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+        },
         "ssh"                         :
         {
             "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
         },
-        "local"                       :
+        "interactive"                       :
         {
-            "job_manager_endpoint"    : "slurm://frontera.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://frontera.tacc.utexas.edu/"
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",

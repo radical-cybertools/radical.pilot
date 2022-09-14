@@ -767,10 +767,11 @@ class PMGRLaunchingComponent(rpu.Component):
                 cleanup = cleanup.replace('v', '')
 
         # estimate requested resources
-        smt = system_architecture.get('smt', 1)
+        smt = int(os.environ.get('RADICAL_SMT') or
+                  system_architecture.get('smt', 1))
 
         if cores_per_node and smt:
-            cores_per_node *= int(smt)
+            cores_per_node *= smt
 
         avail_cores_per_node = cores_per_node
         avail_gpus_per_node  = gpus_per_node
@@ -809,7 +810,7 @@ class PMGRLaunchingComponent(rpu.Component):
                         requested_cores, requested_gpus)
 
         # set mandatory args
-        bs_args = ['-l', './bootstrap_0.sh']
+        bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
         # add dists to staging files, if needed:
         # don't stage on `rp_version==installed` or `virtenv_mode==local`
@@ -987,7 +988,9 @@ class PMGRLaunchingComponent(rpu.Component):
         if self._prof.enabled:
             jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
 
-        jd_dict.environment['RADICAL_BASE'] = resource_sandbox
+        jd_dict.environment['RP_PILOT_SANDBOX'] = pilot_sandbox
+        jd_dict.environment['RADICAL_BASE']     = resource_sandbox
+        jd_dict.environment['RADICAL_SMT']      = smt
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
