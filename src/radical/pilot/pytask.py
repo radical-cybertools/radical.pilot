@@ -61,11 +61,14 @@ class PythonTask(object):
             raise ValueError('bson object should be string')
 
         pytask = deserialize_bson(bson_obj)
-        if any(key not in pytask for key in ('args', 'kwargs', 'func')):
-            raise TypeError('Encoded object does not have the expected schema.')
-        args = list(pytask['args'])
+
+        for key in ['func', 'args', 'kwargs']:
+            if key not in pytask:
+                raise TypeError('Encoded object has unexpected schema.')
+
+        args   = pytask['args']
         kwargs = pytask['kwargs']
-        func = deserialize_obj(pytask['func'])
+        func   = deserialize_obj(pytask['func'])
 
         return func, args, kwargs
 
@@ -103,3 +106,4 @@ class PythonTask(object):
 
 
 # ------------------------------------------------------------------------------
+

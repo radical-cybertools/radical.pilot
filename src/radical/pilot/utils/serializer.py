@@ -143,7 +143,8 @@ def deserialize_obj(obj):
     except Exception as e:
         raise TypeError("failed to deserialize from object") from e
 
-    # Ref https://github.com/radical-cybertools/radical.pilot/pull/2615#discussion_r870356482
+    # Ref https://github.com/radical-cybertools/radical.pilot/pull/ \
+    #                        2615#discussion_r870356482
     assert result is not None
     return result
 
@@ -167,3 +168,4 @@ def deserialize_bson(obj):
 
 
 # ------------------------------------------------------------------------------
+

@@ -620,6 +620,8 @@ class _Worker(mt.Thread):
         uid  = task['uid']
         func = task['description']['function']
 
+        to_call = ''
+        names   = ''
         args    = task['description'].get('args',   [])
         kwargs  = task['description'].get('kwargs', {})
         py_func = False
@@ -637,9 +639,9 @@ class _Worker(mt.Thread):
         except:
             pass
 
+        # check if `func_name` is a global name
         if not to_call:
             assert func
-            # check if `func_name` is a global name
             names   = dict(list(globals().items()) + list(locals().items()))
             to_call = names.get(func)
 
@@ -647,20 +649,23 @@ class _Worker(mt.Thread):
         if not to_call:
             to_call = getattr(self._base, func, None)
 
+        # check if we have a serialized object
         if not to_call:
-            # check if we have a serialized object
             self._log.debug('func serialized: %d: %s', len(func), func)
+
             try:
                 to_call, _args, _kwargs = PythonTask.get_func_attr(func)
-            except Exception as e:
-                self._log.debug(f'{uid} function is not a PythonTask: ', exc_info=e)
+
+            except Exception:
+                self._log.exception('function is not a PythonTask [%s] ', uid)
+
             else:
                 py_func = True
                 if args or kwargs:
-                    raise ValueError(
-                        f'{uid} "args" and "kwargs" must be empty for PythonTask function')
+                    raise ValueError('`args` and `kwargs` must be empty for'
+                                     'PythonTask function [%s]' % uid)
                 else:
-                    args = _args
+                    args   = _args
                     kwargs = _kwargs
 
         if not to_call:
@@ -1180,3 +1185,4 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
+
