@@ -748,6 +748,8 @@ class Session(rs.Session):
                     for k,v in pilot['description'].items():
                         if v is None:
                             v = ''
+                        if k == 'project' and '_' in v and 'ornl' in resource:
+                            v = v.split('_')[0]
                         expand['pd.%s' % k] = v
                         if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()
@@ -757,8 +759,6 @@ class Session(rs.Session):
                             expand['pd.%s' % k.lower()] = v
                     sandbox_raw = sandbox_raw % expand
 
-                if '_' in sandbox_raw and 'ornl' in resource:
-                    sandbox_raw = sandbox_raw.split('_')[0]
 
                 # If the sandbox contains expandables, we need to resolve those
                 # remotely.
