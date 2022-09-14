@@ -1,29 +1,33 @@
 #!/usr/bin/env python3
-"""Demonstrate the "raptor" features for remote Task management.
+
+'''
+Demonstrate the "raptor" features for remote Task management.
 
 This script and its supporting files may use relative file paths. Run from the
 directory in which you found it.
 
-Refer to the ``raptor.cfg`` file in the same directory for configurable run time details.
+Refer to the ``raptor.cfg`` file in the same directory for configurable run time
+details.
 
-By default, this example uses the ``local.localhost`` resource with the ``local``
-access scheme. Before running, confirm that you are able to ssh to localhost
-without being prompted for a password.
+By default, this example uses the ``local.localhost`` resource with the
+``local`` access scheme.
 
 In this example, we
-* Launch one or more raptor "master" task(s), which self-submits additional tasks.
-  (TODO: How do we check/confirm their results?)
-* Stage scripts to be used by a raptor "Worker" (TODO: unused?)
-* Provision a Python virtual environment with :py:func:`~radical.pilot.prepare_env`
-* Submit several tasks that will be routed through the master(s) to the worker(s).
-* Submit a non-raptor task in the same Pilot environment
+  - Launch one or more raptor "master" task(s), which self-submits additional
+    tasks.  (TODO: How do we check/confirm their results?)
+  - Stage scripts to be used by a raptor "Worker" (TODO: unused?)
+  - Provision a Python virtual environment with
+    :py:func:`~radical.pilot.prepare_env`
+  - Submit several tasks that will be routed through the master(s) to the
+    worker(s).
+  - Submit a non-raptor task in the same Pilot environment
 
 The raptor.cfg file should be adjusted to avoid oversubscribing your resources.
 In particular,
 TODO: what are the constraints of total cores, master cores, worker
     and task cores with respect to each other? And what are the corresponding
     TaskDescription fields?
-"""
+'''
 
 import os
 import sys
@@ -33,10 +37,7 @@ import radical.pilot as rp
 
 from radical.pilot import PythonTask
 
-# We import `logging` after RADICAL components because RCT needs to modify the
-# logging module on import.
-import logging
-logging.basicConfig(level=logging.INFO)
+logger = ru.Logger('radical.pilot')
 
 pytask = PythonTask.pythontask
 
@@ -48,7 +49,6 @@ def func_mpi(comm, msg, sleep=0):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
-  # raise RuntimeError('oops 3')
 
 
 # ------------------------------------------------------------------------------
@@ -77,27 +77,26 @@ def task_state_cb(task, state):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        cfg_file = os.path.join(os.path.dirname(__file__), 'raptor.cfg')
+        cfg_file = '%s/%s' % (os.path.dirname(__file__), 'raptor.cfg')
     else:
         cfg_file = sys.argv[1]
 
-    cfg         = ru.Config(cfg=ru.read_json(cfg_file))
-    sleep       = int(cfg.sleep)
-    cores_per_node         = cfg.cores_per_node
-    gpus_per_node         = cfg.gpus_per_node
-    n_masters   = cfg.n_masters
-    n_workers   = cfg.n_workers
-    masters_per_node  = cfg.masters_per_node
-    nodes_per_worker  = cfg.nodes_per_worker
-    nodes_rp    = cfg.nodes_rp
-    workload    = cfg.workload
-    tasks_rp    = cfg.tasks_rp
-    nodes_agent = cfg.nodes_agent
+    cfg              = ru.Config(cfg=ru.read_json(cfg_file))
+    sleep            = int(cfg.sleep)
+    cores_per_node   = cfg.cores_per_node
+    gpus_per_node    = cfg.gpus_per_node
+    n_masters        = cfg.n_masters
+    n_workers        = cfg.n_workers
+    masters_per_node = cfg.masters_per_node
+    nodes_per_worker = cfg.nodes_per_worker
+    nodes_rp         = cfg.nodes_rp
+    tasks_raptor     = cfg.tasks_raptor
+    tasks_rp         = cfg.tasks_rp
+    nodes_agent      = cfg.nodes_agent
 
-    cores_per_task = cfg.cores_per_task
+    cores_per_task   = cfg.cores_per_task
 
-    # each master uses a node, and each worker on each master uses a node
-    # use 8 additional cores for non-raptor tasks
+    # Each master uses a node, and each worker also uses a node.
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -115,13 +114,14 @@ if __name__ == '__main__':
 
         pd.runtime = cfg.runtime
 
-        pd.cores = 8
+        # Launch a raptor master task, which will launch workers and self-submit
+        # some additional tasks for illustration purposes.
 
-        # Launch a raptor master task, which will launch workers and self-submit some
-        # additional tasks for illustration purposes.
+        master_ids = [ru.generate_id('master.%(item_counter)06d',
+                                     ru.ID_CUSTOM, ns=session.uid)
+                      for _ in range(n_masters)]
+
         tds = list()
-
-        master_ids = [ru.generate_id('master.%(item_counter)06d', ru.ID_CUSTOM, ns=session.uid) for _ in range(n_masters)]
         cores_per_master = cores_per_node // masters_per_node
         for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
@@ -144,12 +144,14 @@ if __name__ == '__main__':
                                 ]
             tds.append(td)
 
-        pmgr  = rp.PilotManager(session=session)
-        tmgr  = rp.TaskManager(session=session)
+        pmgr = rp.PilotManager(session=session)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.register_callback(task_state_cb)
+
         pilot = pmgr.submit_pilots(pd)
         tmgr.add_pilots(pilot)
 
-        logging.info('Submitting raptor master(s): ' + ', '.join(t.uid for t in tds))
+        logger.info('Submit raptor master(s) %s', [t.uid for t in tds])
         task  = tmgr.submit_tasks(tds)
         if not isinstance(task, list):
             task = [task]
@@ -157,44 +159,44 @@ if __name__ == '__main__':
         tmgr.wait_tasks(uids=[t.uid for t in task], state=rp.AGENT_EXECUTING)
 
       # pmgr.wait_pilots(uid=pilot.uid, state=[rp.PMGR_ACTIVE])
-        logging.info('Staging files for the worker `my_hello` command.')
+        logger.info('Stage files for the worker `my_hello` command.')
         # TODO: Where is this used?
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
 
-        # Issue an RPC to provision a Python virtual environment for the later raptor tasks.
-        # Note that we are telling prepare_env to install radical.pilot and radical.utils from
-        # sdist archives on the local filesystem. This only works for the default resource,
-        # local.localhost.
-        logging.info('Calling pilot.prepare_env()')
+        # Issue an RPC to provision a Python virtual environment for the later
+        # raptor tasks.  Note that we are telling prepare_env to install
+        # radical.pilot and radical.utils from sdist archives on the local
+        # filesystem. This only works for the default resource, local.localhost.
+        logger.info('Call pilot.prepare_env()')
         pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type'   : 'venv',
-                                    'version': f'{sys.version_info.major}.{sys.version_info.minor}',
-                                    'path'   : '$RP_RESOURCE_SANDBOX/ve_raptor/',
-                                    'setup'  : [rp.sdist_path,
-                                                ru.sdist_path,
-                                                'mpi4py']})
+                          env_spec={'type' : 'venv',
+                                    'path' : '/tmp/ve_raptor/',
+                                    'setup': [rp.sdist_path,
+                                              ru.sdist_path,
+                                              'mpi4py']})
 
+        # submit some non-raptor tasks which will exexute independently of the
+        # raptor masters and workers
         tds = list()
         for i in range(tasks_rp):
             tds.append(rp.TaskDescription({
-                'uid': 'task.exe.c.%06d' % i,
-                'mode': rp.TASK_EXECUTABLE,
-                'scheduler': None,
-                'cpu_processes': cores_per_task,
+                'uid'             : 'task.exe.c.%06d' % i,
+                'mode'            : rp.TASK_EXECUTABLE,
+                'scheduler'       : None,
+                'cpu_processes'   : cores_per_task,
                 'cpu_process_type': rp.MPI,
-                'executable': '/bin/sh',
-                'arguments': ['-c',
+                'executable'      : '/bin/sh',
+                'arguments'       : ['-c',
                               "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]
             }))
-        logging.info('Submitting non-raptor task(s) that will execute independently of the master: '
-                     ', '.join(t.uid for t in tds))
+        logger.info('Submit non-raptor task(s) %s ', [t.uid for t in tds])
 
-        # submit some test tasks that will be routed through the raptor master
-        # and which will execute in the named virtual environment we provisioned.
-        logging.info('Preparing additional raptor tasks.')
-        for i in range(tasks_rp):
+        # submit some tasks that will be routed through the raptor master and
+        # which will execute in the named virtual environment we provisioned.
+        logger.info('Prepare raptor tasks.')
+        for i in range(tasks_raptor):
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.1.%06d' % i,
@@ -284,11 +286,10 @@ if __name__ == '__main__':
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : master_ids[i % n_masters]}))
 
-        logging.info('Submitting tasks ' + ', '.join(t.uid for t in tds))
+        logger.info('Submit tasks %s', [t.uid for t in tds])
         tasks = tmgr.submit_tasks(tds)
 
-        logging.info('Waiting for tasks ' + ', '.join(t.uid for t in tds))
-        tmgr.register_callback(task_state_cb)
+        logger.info('Wait for tasks %s', [t.uid for t in tds])
         tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
         for task in tasks:

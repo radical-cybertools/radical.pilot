@@ -23,7 +23,6 @@ class MyWorker(rp.raptor.MPIWorker):
 
     # --------------------------------------------------------------------------
     #
-    # TODO: This does not appear to be used.
     def my_hello(self, uid, count=0):
         '''
         important work
@@ -46,7 +45,7 @@ class MyWorker(rp.raptor.MPIWorker):
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
+                            'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
 
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',

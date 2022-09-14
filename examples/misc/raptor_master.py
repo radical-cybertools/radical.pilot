@@ -97,7 +97,7 @@ class MyMaster(rp.raptor.Master):
                 'cpu_process_type': rp.MPI,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                            'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.m.%06d' % i,
@@ -118,7 +118,6 @@ class MyMaster(rp.raptor.Master):
                 'cpu_process_type': rp.MPI,
                 'function'        : bson,
                 'scheduler'       : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
@@ -128,7 +127,6 @@ class MyMaster(rp.raptor.Master):
                 'cpu_processes'   : 2,
                 'function'        : bson,
                 'scheduler'       : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.m.%06d' % i,
@@ -148,7 +146,8 @@ class MyMaster(rp.raptor.Master):
                 'cpu_processes'   : 2,
                 'cpu_process_type': rp.MPI,
                 'code'            :
-                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'import os\n'
+                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
                 'scheduler'       : 'master.000000'}))
 
@@ -271,12 +270,12 @@ if __name__ == '__main__':
     cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
     cfg.rank     = int(sys.argv[2])
 
-    n_workers  = cfg.n_workers
-    nodes_per_worker   = cfg.nodes_per_worker
-    cores_per_node        = cfg.cores_per_node
-    gpus_per_node         = cfg.gpus_per_node
-    descr      = cfg.worker_descr
-    pwd        = os.getcwd()
+    n_workers        = cfg.n_workers
+    nodes_per_worker = cfg.nodes_per_worker
+    cores_per_node   = cfg.cores_per_node
+    gpus_per_node    = cfg.gpus_per_node
+    descr            = cfg.worker_descr
+    pwd              = os.getcwd()
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -304,9 +303,6 @@ if __name__ == '__main__':
     master.submit()
     master.join()
     master.stop()
-
-    # simply terminate
-    # FIXME: clean up workers
 
 
 # ------------------------------------------------------------------------------
