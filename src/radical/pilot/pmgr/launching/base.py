@@ -771,7 +771,7 @@ class PMGRLaunchingComponent(rpu.Component):
                   system_architecture.get('smt', 1))
 
         if cores_per_node and smt:
-            cores_per_node *= int(smt)
+            cores_per_node *= smt
 
         avail_cores_per_node = cores_per_node
         avail_gpus_per_node  = gpus_per_node
