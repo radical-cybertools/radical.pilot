@@ -602,6 +602,17 @@ class _Worker(mt.Thread):
         unnamed parameters, and `kwargs`, and optional dictionary of named
         parameters.
 
+        *function* is resolved first against `locals()`, then `globals()`, then
+        attributes of the implementation class (member functions of *base*, as
+        provided to `_Worker()`). Finally, an attempt is made to deserialize a
+        PythonTask from *function*. The first non-null resolution of *function*
+        is used as the callable.
+
+        Raises
+        ------
+        ValueError
+            if *function* cannot be resolved.
+
         NOTE: MPI function tasks will get a private communicator passed as first
               unnamed argument.
         '''
@@ -628,9 +639,9 @@ class _Worker(mt.Thread):
         except:
             pass
 
+        # check if `func_name` is a global name
         if not to_call:
             assert func
-            # check if `func_name` is a global name
             names   = dict(list(globals().items()) + list(locals().items()))
             to_call = names.get(func)
 
@@ -638,9 +649,28 @@ class _Worker(mt.Thread):
         if not to_call:
             to_call = getattr(self._base, func, None)
 
+        # check if we have a serialized object
+        if not to_call:
+            self._log.debug('func serialized: %d: %s', len(func), func)
+
+            try:
+                to_call, _args, _kwargs = PythonTask.get_func_attr(func)
+
+            except Exception:
+                self._log.exception('function is not a PythonTask [%s] ', uid)
+
+            else:
+                py_func = True
+                if args or kwargs:
+                    raise ValueError('`args` and `kwargs` must be empty for'
+                                     'PythonTask function [%s]' % uid)
+                else:
+                    args   = _args
+                    kwargs = _kwargs
+
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task))
+            raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
         if comm:
@@ -693,7 +723,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = [e.__class__.__qualname__, str(e)]
             ret = 1
 
         finally:
@@ -1155,3 +1185,4 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
+
