@@ -29,6 +29,8 @@ If you want to use a remote HPC resource (in this example a cluster named
     pdesc.runtime  = 60
     pdesc.cores    = 128
 
+Resource keys have the form :file:`{site}.{host}`.
+
 Using a ``resource`` key other than "local.localhost" implicitly tells
 RADICAL-Pilot that it is targeting a remote resource. RADICAL-Pilot is using
 the SSH/GSISSH (and SFTP/GSISFTP) protocols to communicate with remote
@@ -117,8 +119,8 @@ provided resource configuration files, you can write your own, and save it in
 ``$HOME/.radical/pilot/configs/<your_resource_configuration_file_name>.json``.
 
 .. note:: The remote resource configuration file name must start with
-          "resource\_" and end with the ".json" suffix. Within each resource
-          file, multiple resources can be listed. For example, the
+          "resource\_", followed by the *site* name, and end with the ".json" suffix. Within each resource
+          file, multiple resource *host*s can be listed. For example, the
           :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
           file contains many different HPC resources from XSEDE.
 
@@ -198,3 +200,19 @@ All fields are mandatory, unless indicated otherwise below.
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
+
+Access to Resource definitions
+==============================
+
+At run time, built-in and custom configs are merged to provide the definitions
+seen by RP with *e.g.* :py:func:`radical.pilot.Session.get_resource_config()`.
+The following tools are available to look up resource definitions without an
+active :py:class:`~radical.pilot.Session`.
+
+.. autofunction:: radical.pilot.utils.misc.get_resource_config
+
+.. autofunction:: radical.pilot.utils.misc.get_resource_configs
+
+.. autofunction:: radical.pilot.utils.misc.get_resource_fs_url
+
+.. autofunction:: radical.pilot.utils.misc.get_resource_job_url
