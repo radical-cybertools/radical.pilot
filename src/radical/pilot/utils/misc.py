@@ -157,9 +157,12 @@ def get_resource_fs_url(resource: str,
     For the given resource label, return the contact URL of the resource's file
     system.
 
+    This URL is equivalent to the base ``endpoint:///`` URL available for use
+    in a `staging_directive` once a `Session` is active.
 
     Args:
         resource (:obj:`str`): resource label for which to return the url
+
         schema (:obj:`str`, optional): access schema to use for resource
             access.  Defaults to the default access schema as defined in the
             resources config files.
@@ -192,6 +195,7 @@ def get_resource_job_url(resource: str,
 
     Args:
         resource (:obj:`str`): resource label for which to return the url
+
         schema (:obj:`str`, optional): access schema to use for resource
             access.  Defaults to the default access schema as defined in the
             resources config files.
