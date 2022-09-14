@@ -124,12 +124,10 @@ if __name__ == '__main__':
                         'action': rp.TRANSFER})
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type'   : 'venv',
-                                    'version': '3.6',
-                                    'path'   :  '/home/merzky/j/rp.3/ve3/',
-                                  # 'setup'  : ['/home/merzky/j/rp.3/',
-                                  #             '/home/merzky/j/ru/',
-                                  #             'mpi4py']
-                                   })
+                                    'path'   : '/tmp/ve_raptor/',
+                                    'setup'  : ['$HOME/j/rp/',
+                                                '$HOME/j/ru/',
+                                                'mpi4py']})
 
         # submit some test tasks
         tds = list()
