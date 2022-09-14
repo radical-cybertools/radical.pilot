@@ -31,13 +31,6 @@
         "cores"    : 64
     },
 
-    "local.localhost_flux" : {
-        "project"  : null,
-        "queue"    : null,
-        "schema"   : null,
-        "cores"    : 64
-    },
-
     "local.local" : {
         "project"  : null,
         "queue"    : null,

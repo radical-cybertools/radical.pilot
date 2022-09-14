@@ -116,10 +116,6 @@ if test -z "$VERSION"
 then
     VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
 fi
-if test -z "$VERSION"
-then
-    VERSION='3.8'
-fi
 
 # we only ever use major and minor version numbers, and will ignore subminor
 VERSION=$(echo $VERSION | cut -f 1,2 -d '.')
@@ -140,7 +136,12 @@ then
     else
 
         printf "create  $ETYPE ve [$PREFIX]\n"
-        conda create -y -p "$PREFIX" "python=$VERSION"
+        if test -z "$VERSION"
+        then
+            conda create -y -p "$PREFIX"
+        else
+            conda create -y -p "$PREFIX" "python=$VERSION"
+        fi
         conda activate "$PREFIX"
 
         echo -n "update  setuptools pip wheel"
@@ -173,11 +174,14 @@ elif test "$ETYPE" = 'venv'
 then
     if ! test -z "$VERSION"
     then
-        PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
-        if ! test "$VERSION" = "$PY_VERSION"
+        if ! test -z "$VERSION"
         then
-            echo "requested version $VERSION not supported for venv ($PY_VERSION)"
-            exit 1
+            PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+            if ! test "$VERSION" = "$PY_VERSION"
+            then
+                echo "requested version $VERSION not supported for venv ($PY_VERSION)"
+                exit 1
+            fi
         fi
     fi
 
