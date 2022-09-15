@@ -15,7 +15,7 @@ By default, this example uses the ``local.localhost`` resource with the
 In this example, we
   - Launch one or more raptor "master" task(s), which self-submits additional
     tasks.  (TODO: How do we check/confirm their results?)
-  - Stage scripts to be used by a raptor "Worker" (TODO: unused?)
+  - Stage scripts to be used by a raptor "Worker"
   - Provision a Python virtual environment with
     :py:func:`~radical.pilot.prepare_env`
   - Submit several tasks that will be routed through the master(s) to the
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters * (cores_per_node / masters_per_node)
+        pd.cores   = n_masters * (cores_per_node // masters_per_node)
         pd.gpus    = 0
 
         pd.cores  += n_masters * n_workers * cores_per_node * nodes_per_worker
