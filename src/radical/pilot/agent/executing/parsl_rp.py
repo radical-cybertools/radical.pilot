@@ -52,6 +52,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
     @typeguard.typechecked
     def __init__(self,
                  label: str = 'RADICALExecutor',
+                 bulk_mode: bool = False,
                  resource: str = None,
                  login_method: str = None,
                  walltime: int = None,
@@ -65,6 +66,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self._uid               = 'rp.parsl_executor'
         # RP required
         self.project            = project
+        self.bulk_mode          = bulk_mode
         self.resource           = resource
         self.login_method       = login_method
         self.partition          = partition
@@ -209,15 +211,16 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         # create a bulking thread to run the actual task submittion to RP in
         # bulks
-        self._max_bulk_size = 1024
-        self._max_bulk_time =    3        # seconds
-        self._min_bulk_time =    0.1      # seconds
+        if self.bulk_mode:
+            self._max_bulk_size = 1024
+            self._max_bulk_time = 3        # seconds
+            self._min_bulk_time = 0.1      # seconds
 
-        self._bulk_queue    = queue.Queue()
-        self._bulk_thread   = mt.Thread(target=self._bulk_collector)
+            self._bulk_queue    = queue.Queue()
+            self._bulk_thread   = mt.Thread(target=self._bulk_collector)
 
-        self._bulk_thread.daemon = True
-        self._bulk_thread.start()
+            self._bulk_thread.daemon = True
+            self._bulk_thread.start()
 
         return True
 
@@ -272,7 +275,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         func, args, task_type = self.unwrap(func, args)
 
         if BASH in task_type:
-          # self.log.debug(BASH)
             if callable(func):
                 # These lines of code are from parsl/app/bash.py
                 try:
@@ -292,9 +294,8 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
                 task.pre_exec = kwargs.get('pre_exec', [])
 
         elif PYTHON in task_type or not task_type:
-          # self.log.debug(PYTHON)
             task.mode       = rp.TASK_FUNCTION
-            task_id         = self._task_counter
+            task_id         = int(self._task_counter.split('task.')[1])
             task.scheduler  = 'master.%06d' % (task_id % self.n_masters)
             task.function   = PythonTask(func, *args, **kwargs)
 
@@ -351,16 +352,9 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self._task_counter += 1
-        # FIXME: use uid generator
-        task_id = 'task.parsl.%06d' % self._task_counter
-
-      # # ----------------------------------------------------------------------
-      # # test code: this is the fastest possible executor implementation
-      # self.future_tasks[task_id] = Future()
-      # self.future_tasks[task_id].set_result(3)
-      # return self.future_tasks[task_id]
-      # # ----------------------------------------------------------------------
+        self._task_counter = ru.generate_id('task.%(item_counter)06d',
+                                    ru.ID_CUSTOM, ns=self.session.uid)
+        task_id = self._task_counter
 
         self.log.debug("got %s from parsl-DFK", task_id)
 
@@ -374,8 +368,12 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         # set the future with corresponding id
         self.future_tasks[task_id] = Future()
 
-        # push task to rp submit thread
-        self._bulk_queue.put(task)
+        if self.bulk_mode: 
+            # push task to rp submit thread
+            self._bulk_queue.put(task)
+        else:
+            # submit the task to rp
+            self.tmgr.submit_tasks(task)
 
         return self.future_tasks[task_id]
 
