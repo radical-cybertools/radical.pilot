@@ -77,7 +77,8 @@ def task_state_cb(task, state):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        cfg_file = '%s/%s' % (os.path.dirname(__file__), 'raptor.cfg')
+        cfg_file = '%s/%s' % (os.path.dirname(os.path.abspath(__file__)),
+                              'raptor.cfg')
     else:
         cfg_file = sys.argv[1]
 
