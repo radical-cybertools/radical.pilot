@@ -26,6 +26,7 @@ pytask = PythonTask.pythontask
 
 SLEEP = 5
 
+
 @pytask
 def func_mpi(comm, msg, sleep=SLEEP):
     # pylint: disable=reimported
