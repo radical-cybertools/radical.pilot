@@ -101,7 +101,8 @@ if __name__ == '__main__':
     session   = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
-        pd.cores   = n_masters * (cores_per_node // masters_per_node)
+        cores_per_master = cores_per_node // masters_per_node
+        pd.cores   = n_masters * cores_per_master
         pd.gpus    = 0
 
         pd.cores  += n_masters * n_workers * cores_per_node * nodes_per_worker
@@ -123,7 +124,6 @@ if __name__ == '__main__':
                       for _ in range(n_masters)]
 
         tds = list()
-        cores_per_master = cores_per_node // masters_per_node
         for i in range(n_masters):
             td = rp.TaskDescription(cfg.master_descr)
             td.uid            = master_ids[i]
