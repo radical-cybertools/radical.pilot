@@ -366,7 +366,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         # set the future with corresponding id
         self.future_tasks[rp_tid] = Future()
 
-        if self.bulk_mode: 
+        if self.bulk_mode:
             # push task to rp submit thread
             self._bulk_queue.put(task)
         else:
