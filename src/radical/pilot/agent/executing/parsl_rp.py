@@ -73,7 +73,6 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         self.walltime           = walltime
 
         self.label              = label
-        self._task_counter      = 0
         self.future_tasks       = {}
 
         self.max_tasks          = max_tasks       # Pilot cores
@@ -269,7 +268,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         return func, args, task_type
 
 
-    def task_translate(self, func, args, kwargs):
+    def task_translate(self, tid, func, args, kwargs):
 
         task = rp.TaskDescription()
         func, args, task_type = self.unwrap(func, args)
@@ -295,8 +294,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
 
         elif PYTHON in task_type or not task_type:
             task.mode       = rp.TASK_FUNCTION
-            task_id         = int(self._task_counter.split('task.')[1])
-            task.scheduler  = 'master.%06d' % (task_id % self.n_masters)
+            task.scheduler  = 'master.%06d' % (tid % self.n_masters)
             task.function   = PythonTask(func, *args, **kwargs)
 
         task.stdout           = kwargs.get('stdout', '')
@@ -352,21 +350,21 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
         Kwargs:
             - **kwargs (dict) : A dictionary of arbitrary keyword args for func.
         """
-        self._task_counter = ru.generate_id('task.%(item_counter)06d',
-                                    ru.ID_CUSTOM, ns=self.session.uid)
-        task_id = self._task_counter
+        rp_tid    = ru.generate_id('task.%(item_counter)06d',
+                           ru.ID_CUSTOM, ns=self.session.uid)
+        parsl_tid = int(rp_tid.split('task.')[1])
 
-        self.log.debug("got %s from parsl-DFK", task_id)
+        self.log.debug("got %s from parsl-DFK", rp_tid)
 
-        self.prof.prof(event='trans_start', uid=task_id)
-        task = self.task_translate(func, args, kwargs)
-        self.prof.prof(event='trans_stop', uid=task_id)
+        self.prof.prof(event='trans_start', uid=rp_tid)
+        task = self.task_translate(parsl_tid, func, args, kwargs)
+        self.prof.prof(event='trans_stop', uid=rp_tid)
 
         # assign task id for rp task
-        task.uid = task_id
+        task.uid = rp_tid
 
         # set the future with corresponding id
-        self.future_tasks[task_id] = Future()
+        self.future_tasks[rp_tid] = Future()
 
         if self.bulk_mode: 
             # push task to rp submit thread
@@ -375,7 +373,7 @@ class RADICALExecutor(NoStatusHandlingExecutor, RepresentationMixin):
             # submit the task to rp
             self.tmgr.submit_tasks(task)
 
-        return self.future_tasks[task_id]
+        return self.future_tasks[rp_tid]
 
 
     def _get_job_ids(self):
