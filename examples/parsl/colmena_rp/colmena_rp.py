@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Perform GPR Active Learning where simulations are sent in batches"""
 from pathlib import Path
 
