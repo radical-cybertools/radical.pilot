@@ -210,7 +210,10 @@ class TaskDescription(ru.TypedDict):
     .. data:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
-       have available to start it's own threads or processes on.
+       have available to start it's own threads or processes on.  By default,
+       `core` refers to an physical CPU core - but if the pilot has been
+       launched with SMT-settings > 1, `core` will refer to a virtual core or
+       hyperthread instead (the name depends on the CPU vendor).
 
        `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
