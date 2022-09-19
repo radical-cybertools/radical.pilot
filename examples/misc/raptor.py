@@ -37,7 +37,10 @@ import radical.pilot as rp
 
 from radical.pilot import PythonTask
 
-logger = ru.Logger('radical.pilot')
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger()
+# logger = ru.Logger('raptor')
 
 pytask = PythonTask.pythontask
 
@@ -66,9 +69,9 @@ def func_non_mpi(a):
 # ------------------------------------------------------------------------------
 #
 def task_state_cb(task, state):
-    print('task %s: %s' % (task['uid'], state))
+    logger.info('task %s: %s' % (task['uid'], state))
     if state == rp.FAILED:
-        print('task %s failed' % task['uid'])
+        logger.info('task %s failed' % task['uid'])
         sys.exit()
 
 
@@ -116,6 +119,32 @@ if __name__ == '__main__':
 
         pd.runtime = cfg.runtime
 
+        pmgr = rp.PilotManager(session=session)
+        tmgr = rp.TaskManager(session=session)
+        tmgr.register_callback(task_state_cb)
+
+        pilot = pmgr.submit_pilots(pd)
+        tmgr.add_pilots(pilot)
+
+        pmgr.wait_pilots(uids=pilot.uid, state=[rp.PMGR_ACTIVE])
+
+        logger.info('Stage files for the worker `my_hello` command.')
+        # See raptor_worker.py.
+        pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
+                        'target': 'radical-pilot-hello.sh',
+                        'action': rp.TRANSFER})
+
+        # Issue an RPC to provision a Python virtual environment for the later
+        # raptor tasks.  Note that we are telling prepare_env to install
+        # radical.pilot and radical.utils from sdist archives on the local
+        # filesystem. This only works for the default resource, local.localhost.
+        logger.info('Call pilot.prepare_env()')
+        pilot.prepare_env(env_name='ve_raptor',
+                          env_spec={'type' : 'venv',
+                                    'setup': [rp.sdist_path,
+                                              ru.sdist_path,
+                                              'mpi4py']})
+
         # Launch a raptor master task, which will launch workers and self-submit
         # some additional tasks for illustration purposes.
 
@@ -145,41 +174,21 @@ if __name__ == '__main__':
                                 ]
             tds.append(td)
 
-        pmgr = rp.PilotManager(session=session)
-        tmgr = rp.TaskManager(session=session)
-        tmgr.register_callback(task_state_cb)
+        if len(tds) > 0:
+            logger.info('Submit raptor master(s) %s', [t.uid for t in tds])
+            task  = tmgr.submit_tasks(tds)
+            if not isinstance(task, list):
+                task = [task]
 
-        pilot = pmgr.submit_pilots(pd)
-        tmgr.add_pilots(pilot)
+            states = tmgr.wait_tasks(
+                uids=[t.uid for t in task],
+                state=rp.FINAL + [rp.AGENT_EXECUTING],
+                timeout=60
+            )
+            logger.info('Master states: ' + str(states))
 
-        logger.info('Submit raptor master(s) %s', [t.uid for t in tds])
-        task  = tmgr.submit_tasks(tds)
-        if not isinstance(task, list):
-            task = [task]
-
-        tmgr.wait_tasks(uids=[t.uid for t in task], state=rp.AGENT_EXECUTING)
-
-      # pmgr.wait_pilots(uid=pilot.uid, state=[rp.PMGR_ACTIVE])
-        logger.info('Stage files for the worker `my_hello` command.')
-        # TODO: Where is this used?
-        pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
-                        'target': 'radical-pilot-hello.sh',
-                        'action': rp.TRANSFER})
-
-        # Issue an RPC to provision a Python virtual environment for the later
-        # raptor tasks.  Note that we are telling prepare_env to install
-        # radical.pilot and radical.utils from sdist archives on the local
-        # filesystem. This only works for the default resource, local.localhost.
-        logger.info('Call pilot.prepare_env()')
-        pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type' : 'venv',
-                                    'path' : '/tmp/ve_raptor/',
-                                    'setup': [rp.sdist_path,
-                                              ru.sdist_path,
-                                              'mpi4py']})
-
-        # submit some non-raptor tasks which will exexute independently of the
-        # raptor masters and workers
+        # submit some non-raptor tasks which will execute independently of the
+        # raptor masters and workers. (Make sure there are enough cores allocated!)
         tds = list()
         for i in range(tasks_rp):
             tds.append(rp.TaskDescription({
@@ -287,14 +296,15 @@ if __name__ == '__main__':
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : master_ids[i % n_masters]}))
 
-        logger.info('Submit tasks %s', [t.uid for t in tds])
-        tasks = tmgr.submit_tasks(tds)
+        if len(tds) > 0:
+            logger.info('Submit tasks %s', [t.uid for t in tds])
+            tasks = tmgr.submit_tasks(tds)
 
-        logger.info('Wait for tasks %s', [t.uid for t in tds])
-        tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
+            logger.info('Wait for tasks %s', [t.uid for t in tds])
+            tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
-        for task in tasks:
-            print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
+            for task in tasks:
+                print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
 
     finally:
         session.close(download=True)

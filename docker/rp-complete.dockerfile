@@ -13,6 +13,8 @@
 #     # shell scripts on the default PATH. The current working directory also
 #     # needs to be writable.
 #     docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/00*"
+#     # Some tests expect to be executed from within the immediate parent directory.
+#     docker exec -ti -u rp rp_test bash -c ". /home/rp/rp-venv/bin/activate && cd /home/rp/radical.pilot/examples/misc && python raptor.py"
 #     # If '-d' was used with 'run', you can just kill the container when done.
 #     docker kill rp_test
 #
