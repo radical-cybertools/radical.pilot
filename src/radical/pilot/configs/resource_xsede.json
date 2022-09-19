@@ -321,12 +321,12 @@
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["local", "interactive", "gsissh", "ssh"],
       # "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://bridges2.psc.xsede.org/",
             "filesystem_endpoint"     : "file://bridges2.psc.xsede.org/"
         },
-        "interactive"
+        "interactive"                 :
         {
             "job_manager_endpoint"    : "fork://bridges2.psc.xsede.org/",
             "filesystem_endpoint"     : "file://bridges2.psc.xsede.org/"
