@@ -140,8 +140,9 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["JSRUN"],
-                                         "JSRUN": {
+                                         "order" : ["MPIRUN", "JSRUN"],
+                                         "MPIRUN": {},
+                                         "JSRUN" : {
                                              "pre_exec_cached": [
                                                # "module unload xl",
                                                # "module unload xalt"
@@ -192,8 +193,9 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["JSRUN"],
-                                         "JSRUN": {
+                                         "order" : ["MPIRUN", "JSRUN"],
+                                         "MPIRUN": {},
+                                         "JSRUN" : {
                                              "pre_exec_cached": [
                                                # "module unload xl",
                                                # "module unload xalt"
