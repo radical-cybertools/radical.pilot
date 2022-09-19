@@ -1164,14 +1164,15 @@ class TaskManager(rpu.Component):
 
         # In the default case of calling 'advance' above, we just set the state,
         # so we *know* tasks are canceled.
-
-        # We do not wait and block the call until all the tasks are marked cancelled.
-        # This means when inspecting for state just after a state change, we may observe
-        # a old state, instead of CANCELLED.
-        # This is done so cyclic state change do not get hanged.
-        # Example if task is changing state and user requests for task to be cancelled,
-        # the cancelling of task will hang because a previous state change operation is
-        # ongoing.
+        #
+        # We do not wait and block the call until all the tasks are marked
+        # cancelled.  This means when inspecting for state just after a state
+        # change, we may observe a old state, instead of CANCELLED.
+        #
+        # This is done so cyclic state change do not get hanged.  Example if
+        # task is changing state and user requests for task to be cancelled, the
+        # cancelling of task will hang because a previous state change operation
+        # is ongoing.
 
 
     # --------------------------------------------------------------------------
