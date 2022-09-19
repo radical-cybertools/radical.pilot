@@ -251,6 +251,7 @@ class Popen(AgentExecutingComponent):
             tmp  = ''
             tmp += self._header
             tmp += self._separator
+            tmp += self._get_rp_funcs()
             tmp += self._get_rp_env(task)
             tmp += self._separator
             tmp += self._get_prof('launch_start', tid)
@@ -302,6 +303,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_rank_ids(n_ranks, launcher)
 
             tmp += self._separator
+            tmp += self._get_rp_funcs()
             tmp += self._get_rp_env(task)
             tmp += self._separator
             tmp += self._get_prof('exec_start', tid)
@@ -321,7 +323,10 @@ class Popen(AgentExecutingComponent):
             tmp += 'case "$RP_RANK" in\n'
             for rank_id, rank in enumerate(ranks):
                 tmp += '    %d)\n' % rank_id
+                tmp += self._get_rank_env(task, rank_id, rank, launcher)
+                tmp += self._get_rank_pre_exec(task, rank_id, rank, launcher)
                 tmp += self._get_rank_exec(task, rank_id, rank, launcher)
+                tmp += self._get_rank_post_exec(task, rank_id, rank, launcher)
                 tmp += '        ;;\n'
             tmp += 'esac\n'
             tmp += 'RP_RET=$?\n'
@@ -514,16 +519,22 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_check(self, event):
+    def _get_prof(self, event, tid, msg=''):
 
-        return '\\\n        || (echo "%s failed"; false) || exit 1\n' % event
+        return '$RP_PROF %s\n' % event
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_prof(self, event, tid, msg=''):
+    def _get_rp_funcs(self):
 
-        return '$RP_PROF %s\n' % event
+        # define helper functions
+        ret  = '\nrp_error() {\n'
+        ret += '    echo "$1 failed" 1>&2\n'
+        ret += '    exit 1\n'
+        ret += '}\n\n'
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -569,7 +580,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('launcher env'))
+            ret += '%s || rp_error launcher_env' % cmd
         return ret
 
 
@@ -580,7 +591,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['pre_launch']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('pre_launch'))
+            ret += '%s || rp_error pre_launch' % cmd
 
         return ret
 
@@ -606,7 +617,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['post_launch']
         for cmd in cmds:
-            ret += '%s %s' % (cmd, self._get_check('post_launch'))
+            ret += '%s || rp_error post_launch' % cmd
 
         return ret
 
@@ -651,29 +662,17 @@ class Popen(AgentExecutingComponent):
         else:
             ret += 'test -z "$RP_RANK" && export RP_RANK=0\n'
 
+        # also define a method to sync all ranks on certain events
+        ret += '\nrp_sync_ranks() {\n'
+        ret += '    sig=$1\n'
+        ret += '    echo $RP_RANK >> $sig.sig\n'
+        ret += '    while test $(cat $sig.sig | wc -l) -lt $RP_RANKS; do\n'
+        ret += '        sleep 1\n'
+        ret += '    done\n'
+        ret += '}\n\n'
+
         return ret
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_exec_ranks(self, ranks, sig):
-
-        ret = 'case "$RP_RANK" in\n'
-        for rank_id, cmds in ranks.items():
-            ret += '    %d)\n' % int(rank_id)
-            cmds = ru.as_list(cmds)
-            for cmd in cmds:
-                # FIXME: exit on error, but don't stall other ranks on sync
-                ret += '        %s' % cmd
-                if sig == 'pre_exec':
-                    ret += '\n'
-                else:
-                    ret += ' %s' % self._get_check(sig)
-            ret += '        ;;\n'
-        ret += 'esac\n'
-
-        ret += self._get_rank_sync(sig, len(ranks))
-        return ret
 
     # --------------------------------------------------------------------------
     #
@@ -684,10 +683,9 @@ class Popen(AgentExecutingComponent):
 
         if pre_exec:
             for cmd in pre_exec:
+                # here we only run pre_exec commands which apply to all ranks
                 if isinstance(cmd, str):
-                    ret += '%s %s' % (cmd, self._get_check('pre_exec'))
-                elif isinstance(cmd, dict):
-                    ret += self._get_exec_ranks(cmd, 'pre_exec')
+                    ret += '%s || rp_error pre_exec' % cmd
 
         return ret
 
@@ -701,10 +699,9 @@ class Popen(AgentExecutingComponent):
 
         if post_exec:
             for cmd in post_exec:
+                # here we only run post_exec commands which apply to all ranks
                 if isinstance(cmd, str):
-                    ret += '%s %s' % (cmd, self._get_check('post_exec'))
-                elif isinstance(cmd, dict):
-                    ret += self._get_exec_ranks(cmd, 'post_exec')
+                    ret += '%s || rp_error post_exec' % cmd
 
         return ret
 
@@ -715,33 +712,28 @@ class Popen(AgentExecutingComponent):
     #
     def _get_rank_sync(self, sig, ranks):
 
-        # FIXME: only sync if LM needs it (`if lm._ranks_need_sync`)
-
         if ranks == 1:
             return ''
 
         # FIXME: make sure that all ranks are alive
-        ret  = '# sync ranks before %s commands\n' % sig
-        ret += 'echo $RP_RANK >> %s.sig\n\n' % sig
-        ret += 'while test $(cat %s.sig | wc -l) -lt $RP_RANKS; do\n' % sig
-        ret += '    sleep 1\n'
-        ret += 'done\n\n'
+        ret = 'rp_sync_ranks %s\n' % sig.replace(' ', '_')
 
         return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_exec(self, task, rank_id, rank, launcher):
+    def _get_rank_env(self, task, rank_id, rank, launcher):
+
+        ret = ''
+        td  = task['description']
 
         # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
         #        with exactly one entry, corresponding to the rank process to be
         #        started.
 
-        ret = ''
-        td  = task['description']
-
         # FIXME: need to distinguish between logical and physical IDs
+
         gmap = rank['gpu_map']
         if gmap:
             # equivalent to the 'physical' value for original `cvd_id_mode`
@@ -753,11 +745,74 @@ class Popen(AgentExecutingComponent):
         if td['cpu_thread_type'] == rpc.OpenMP:
             ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
 
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_pre_exec(self, task, rank_id, rank, launcher):
+
+        ret = ''
+        td  = task['description']
+
+        # run per-rank pre_exec commands if defined, and if so, also sync ranks
+        pre_exec  = td.get('pre_exec', [])
+        need_sync = False
+
+        for entry in pre_exec:
+            self._log.debug('=== %d: pre_exec: %s', rank, entry)
+            # here we only run post_exec commands which apply to *this* rank
+            if isinstance(entry, dict):
+                for k,v in entry.items():
+                    need_sync = True
+                    if int(k) != rank_id:
+                        continue
+                    for cmd in ru.as_list(v):
+                        ret += '        %s || rp_error pre_exec_per_rank\n' % cmd
+
+        if need_sync:
+            ret += '        rp_sync_ranks pre_exec\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_exec(self, task, rank_id, rank, launcher):
+
+        ret = ''
+
+        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        #        with exactly one entry, corresponding to the rank process to be
+        #        started.
+
         # FIXME: core pinning goes here
 
         cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
         for cmd in cmds:
             ret += '        %s\n' % cmd
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_rank_post_exec(self, task, rank_id, rank, launcher):
+
+        ret = ''
+        td  = task['description']
+
+        # run per-rank post_exec commands if defined, but don't sync
+        post_exec = td.get('post_exec', [])
+
+        for entry in post_exec:
+            # here we only run post_exec commands which apply to *this* rank
+            if isinstance(entry, dict):
+                for k,v in entry.items():
+                    if int(k) != rank_id:
+                        continue
+                    for cmd in ru.as_list(v):
+                        ret += '        %s || rp_error post_exec_per_rank\n' % cmd
 
         return ret
 

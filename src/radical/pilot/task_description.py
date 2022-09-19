@@ -305,6 +305,10 @@ class TaskDescription(ru.TypedDict):
        which represents a list of actions applied to specified ranks (key is a
        rankID and value is a list of actions to be performed for this rank).
 
+       NOTE: all rank-specific `pre_exec` commands will be executed *after*
+       `pre_exec` commands which apply to all ranks - otherwise order is
+       preserved.
+
        The actions/commands are executed on the respective nodes where the
        ranks are placed, and the actual rank startup will be delayed until
        all `pre_exec` commands have completed.
@@ -316,7 +320,7 @@ class TaskDescription(ru.TypedDict):
        environment).
 
        No assumption should be made on the specific shell environment the
-       commands are executed in.
+       commands are executed in other than a POSIC shell environment.
 
        Errors in executing these commands will result in the task to enter
        `FAILED` state, and no execution of the actual workload will be
@@ -328,6 +332,10 @@ class TaskDescription(ru.TypedDict):
        after the task finishes. The same remarks as on `pre_exec` apply,
        inclusive the point on error handling, which again will cause the task
        to fail, even if the actual execution was successful.
+
+       NOTE: all rank-specific `post_exec` commands will be executed *before*
+       `post_exec` commands which apply to all ranks - otherwise order is
+       preserved.
 
     .. data:: restartable
 

@@ -84,7 +84,17 @@ if __name__ == '__main__':
             td = rp.TaskDescription()
             td.stage_on_error = True
             td.executable     = '/bin/date'
-            td.cpu_processes  = 1
+            td.pre_exec       = ['echo pre_all_1',
+                                 {'1': ['echo pre_1a',
+                                        'echo pre_1b'],
+                                  '2': 'echo pre_2'},
+                                 'echo pre_all_2']
+            td.post_exec      = ['echo post_all_1',
+                                 {'1': ['echo post_1a',
+                                        'echo post_1b'],
+                                  '3': 'echo post_3'},
+                                 'echo post_all_2']
+            td.cpu_processes  = 4
 
             tds.append(td)
             report.progress()
