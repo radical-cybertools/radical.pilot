@@ -328,8 +328,8 @@
         },
         "interactive"                 :
         {
-            "job_manager_endpoint"    : "fork://bridges2.psc.xsede.org/",
-            "filesystem_endpoint"     : "file://bridges2.psc.xsede.org/"
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "gsissh"                      :
         {
