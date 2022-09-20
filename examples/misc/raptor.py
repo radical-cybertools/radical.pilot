@@ -180,7 +180,7 @@ if __name__ == '__main__':
                 state=rp.FINAL + [rp.AGENT_EXECUTING],
                 timeout=60
             )
-            logger.info('Master states: ' + str(states))
+            logger.info('Master states: %s', str(states))
 
         # submit some non-raptor tasks which will execute independently of the
         # raptor masters and workers. (ensure `cfg.nodes_rp > 0`)
