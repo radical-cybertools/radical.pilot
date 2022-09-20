@@ -10,11 +10,12 @@ Refer to the ``raptor.cfg`` file in the same directory for configurable run time
 details.
 
 By default, this example uses the ``local.localhost`` resource with the
-``local`` access scheme.
+``local`` access scheme where RP oversubscribes resources to emulate multiple
+nodes.
 
 In this example, we
   - Launch one or more raptor "master" task(s), which self-submits additional
-    tasks.  (TODO: How do we check/confirm their results?)
+    tasks (results are logged in the master's `result_cb` callback).
   - Stage scripts to be used by a raptor "Worker"
   - Provision a Python virtual environment with
     :py:func:`~radical.pilot.prepare_env`
@@ -22,11 +23,6 @@ In this example, we
     worker(s).
   - Submit a non-raptor task in the same Pilot environment
 
-The raptor.cfg file should be adjusted to avoid oversubscribing your resources.
-In particular,
-TODO: what are the constraints of total cores, master cores, worker
-    and task cores with respect to each other? And what are the corresponding
-    TaskDescription fields?
 '''
 
 import os
@@ -100,8 +96,7 @@ if __name__ == '__main__':
 
     cores_per_task   = cfg.cores_per_task
 
-    # Each master uses a node, and each worker also uses a node.
-    session   = rp.Session()
+    session = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
         cores_per_master = cores_per_node // masters_per_node
@@ -311,3 +306,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
+
