@@ -65,9 +65,9 @@ def func_non_mpi(a):
 # ------------------------------------------------------------------------------
 #
 def task_state_cb(task, state):
-    logger.info('task %s: %s' % (task['uid'], state))
+    logger.info('task %s: %s', task['uid'], state)
     if state == rp.FAILED:
-        logger.info('task %s failed' % task['uid'])
+        logger.info('task %s failed', task['uid'])
         sys.exit()
 
 
@@ -183,7 +183,7 @@ if __name__ == '__main__':
             logger.info('Master states: ' + str(states))
 
         # submit some non-raptor tasks which will execute independently of the
-        # raptor masters and workers. (Make sure there are enough cores allocated!)
+        # raptor masters and workers. (ensure `cfg.nodes_rp > 0`)
         tds = list()
         for i in range(tasks_rp):
             tds.append(rp.TaskDescription({
