@@ -294,6 +294,16 @@ class Popen(AgentExecutingComponent):
         ranks   = task['slots']['ranks']
         n_ranks = len(ranks)
 
+        # the exec shell script runs the same set of commands for all ranks.
+        # However, if the ranks need different GPU's assigned, or if either pre-
+        # or post-exec directives contain per-rank dictionaries, then we switch
+        # per-rank in the script for all sections between pre- and post-exec.
+        switch_per_rank = False
+        if td.get('gpu_processes') or \
+           any([isinstance(x, dict) for x in td.get('pre_exec',  [])]) or \
+           any([isinstance(x, dict) for x in td.get('post_exec', [])]):
+            switch_per_rank = True
+
         with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
 
             tmp  = ''
@@ -308,34 +318,38 @@ class Popen(AgentExecutingComponent):
             tmp += self._separator
             tmp += self._get_prof('exec_start', tid)
 
-            tmp += self._separator
-            tmp += '# task environment\n'
-            tmp += self._get_task_env(task, launcher)
+            tmp += self._get_task_env(task, launcher, switch_per_rank)
 
-            tmp += self._separator
-            tmp += '# pre-exec commands\n'
-            tmp += self._get_prof('exec_pre', tid)
-            tmp += self._get_pre_exec(task)
+            if switch_per_rank:
 
-            tmp += self._separator
-            tmp += '# execute rank(s)\n'
-            tmp += self._get_prof('rank_start', tid)
-            tmp += 'case "$RP_RANK" in\n'
-            for rank_id, rank in enumerate(ranks):
-                tmp += '    %d)\n' % rank_id
-                tmp += self._get_rank_env(task, rank_id, rank, launcher)
-                tmp += self._get_rank_pre_exec(task, rank_id, rank, launcher)
-                tmp += self._get_rank_exec(task, rank_id, rank, launcher)
-                tmp += self._get_rank_post_exec(task, rank_id, rank, launcher)
-                tmp += '        ;;\n'
-            tmp += 'esac\n'
-            tmp += 'RP_RET=$?\n'
-            tmp += self._get_prof('rank_stop', tid)
+                tmp += self._separator
+                tmp += '# switch remaining task execution steps per rank\n'
+                tmp += 'case "$RP_RANK" in\n'
 
-            tmp += self._separator
-            tmp += '# post exec commands\n'
-            tmp += self._get_prof('exec_post', tid)
-            tmp += self._get_post_exec(task)
+                for rank_id, rank in enumerate(ranks):
+                    tmp += '\n    %d)' % rank_id
+                    tmp += self._get_env_per_rank(task, rank_id, rank, launcher)
+                    tmp += self._get_pre_exec_per_rank(task, rank_id, rank)
+                    tmp += self._get_exec_per_rank(task, launcher)
+                    tmp += self._get_post_exec_per_rank(task, rank_id, rank)
+                    tmp += '        RP_RET=$?\n'
+                    tmp += '        ;;\n'
+
+                tmp += 'esac\n'
+
+            else:
+                tmp += self._separator
+                tmp += '# pre-exec commands\n'
+                tmp += self._get_pre_exec(task)
+
+                tmp += self._separator
+                tmp += '# execute task\n'
+                tmp += self._get_exec(task, launcher)
+                tmp += 'RP_RET=$?\n'
+
+                tmp += self._separator
+                tmp += '# post exec commands\n'
+                tmp += self._get_post_exec(task)
 
             tmp += self._separator
             tmp += self._get_prof('exec_stop', tid)
@@ -626,7 +640,7 @@ class Popen(AgentExecutingComponent):
     #
     # exec
     #
-    def _get_task_env(self, task, launcher):
+    def _get_task_env(self, task, launcher, switch_per_rank):
 
         ret = ''
         td  = task['description']
@@ -641,6 +655,16 @@ class Popen(AgentExecutingComponent):
             ret += '\n# task env settings\n'
             for key, val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
+
+        # als add OMP_NUM_THREADS if that is uniform per rank
+        if not switch_per_rank:
+            if td['cpu_thread_type'] == rpc.OpenMP:
+                num_threads = td.get('cpu_threads', 1)
+                ret += 'export OMP_NUM_THREADS="%d"\n' % num_threads
+
+        if ret:
+            ret += self._separator
+            ret  = '# task environment\n' + ret
 
         return ret
 
@@ -676,38 +700,6 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_pre_exec(self, task):
-
-        ret = ''
-        pre_exec = task['description']['pre_exec']
-
-        if pre_exec:
-            for cmd in pre_exec:
-                # here we only run pre_exec commands which apply to all ranks
-                if isinstance(cmd, str):
-                    ret += '%s || rp_error pre_exec' % cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_post_exec(self, task):
-
-        ret  = ''
-        post_exec = task['description']['post_exec']
-
-        if post_exec:
-            for cmd in post_exec:
-                # here we only run post_exec commands which apply to all ranks
-                if isinstance(cmd, str):
-                    ret += '%s || rp_error post_exec' % cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
     # rank
     #
     def _get_rank_sync(self, sig, ranks):
@@ -723,7 +715,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_env(self, task, rank_id, rank, launcher):
+    def _get_env_per_rank(self, task, rank_id, rank, launcher):
 
         ret = ''
         td  = task['description']
@@ -745,23 +737,28 @@ class Popen(AgentExecutingComponent):
         if td['cpu_thread_type'] == rpc.OpenMP:
             ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
 
+        if ret:
+            ret = '        # rank environment\n' + ret
+
         return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_pre_exec(self, task, rank_id, rank, launcher):
+    def _get_pre_exec_per_rank(self, task, rank_id, rank):
 
-        ret = ''
+        ret = '\n        # pre-exec commands\n'
         td  = task['description']
 
         # run per-rank pre_exec commands if defined, and if so, also sync ranks
         pre_exec  = td.get('pre_exec', [])
         need_sync = False
 
+        ret += '        ' + self._get_prof('exec_pre', task['uid'])
+
         for entry in pre_exec:
-            self._log.debug('=== %d: pre_exec: %s', rank, entry)
-            # here we only run post_exec commands which apply to *this* rank
+
+            need_sync = True
             if isinstance(entry, dict):
                 for k,v in entry.items():
                     need_sync = True
@@ -769,6 +766,8 @@ class Popen(AgentExecutingComponent):
                         continue
                     for cmd in ru.as_list(v):
                         ret += '        %s || rp_error pre_exec_per_rank\n' % cmd
+            elif isinstance(entry, str):
+                ret += '        %s || rp_error pre_exec\n' % entry
 
         if need_sync:
             ret += '        rp_sync_ranks pre_exec\n'
@@ -778,41 +777,98 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_exec(self, task, rank_id, rank, launcher):
+    def _get_pre_exec(self, task):
 
         ret = ''
+        td  = task['description']
 
-        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
-        #        with exactly one entry, corresponding to the rank process to be
-        #        started.
+        post_exec = td.get('pre_exec', [])
 
-        # FIXME: core pinning goes here
+        ret += self._get_prof('exec_pre', task['uid'])
 
-        cmds = ru.as_list(launcher.get_rank_exec(task, rank_id, rank))
-        for cmd in cmds:
-            ret += '        %s\n' % cmd
+        for entry in post_exec:
+
+            assert isinstance(entry, str)
+            ret += '%s || rp_error pre_exec\n' % entry
 
         return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_post_exec(self, task, rank_id, rank, launcher):
+    def _get_exec_per_rank(self, task, launcher):
 
-        ret = ''
+        ret = '\n        # execute rank(s)\n'
+        tmp = self._get_exec(task, launcher)
+        for line in tmp.split('\n'):
+            ret += '        ' + line + '\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_exec(self, task, launcher):
+
+        # FIXME: core pinning goes here
+
+        ret  = ''
+        ret += self._get_prof('rank_start', task['uid'])
+
+        cmds = ru.as_list(launcher.get_exec(task))
+        for cmd in cmds:
+            ret += '%s\n' % cmd
+
+        ret += self._get_prof('rank_stop', task['uid'])
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_post_exec_per_rank(self, task, rank_id, rank):
+
+        ret = '        # post-exec commands\n'
         td  = task['description']
 
-        # run per-rank post_exec commands if defined, but don't sync
+        ret += '        ' + self._get_prof('post_exec', task['uid'])
+
         post_exec = td.get('post_exec', [])
+        need_sync = False
 
         for entry in post_exec:
-            # here we only run post_exec commands which apply to *this* rank
+
+            need_sync = True
             if isinstance(entry, dict):
                 for k,v in entry.items():
+                    need_sync = True
                     if int(k) != rank_id:
                         continue
                     for cmd in ru.as_list(v):
                         ret += '        %s || rp_error post_exec_per_rank\n' % cmd
+            elif isinstance(entry, str):
+                ret += '        %s || rp_error post_exec\n' % entry
+
+        if need_sync:
+            ret += '        rp_sync_ranks post_exec\n'
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_post_exec(self, task):
+
+        ret = ''
+        td  = task['description']
+
+        # run per-rank post_exec commands if defined, and if so, also sync ranks
+        post_exec = td.get('post_exec', [])
+
+        for entry in post_exec:
+
+            assert isinstance(entry, str)
+            ret += '%s || rp_error post_exec\n' % entry
 
         return ret
 
