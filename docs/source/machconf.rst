@@ -165,7 +165,6 @@ A configuration file has to be valid JSON. The structure is as follows:
                                              "module unload mpi.ibm", "module load mpi.intel",
                                              "source /home/hpc/pr87be/di29sut/pilotve/bin/activate"
                                             ],
-            "valid_roots"                 : ["/home", "/gpfs/work", "/gpfs/scratch"],
             "agent_scheduler"             : "CONTINUOUS",
             "agent_spawner"               : "POPEN"
         },
@@ -195,7 +194,6 @@ All fields are mandatory, unless indicated otherwise below.
 * ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
-* ``valid_roots``: list of shared file system roots (optional). Note: pilot sandboxes must lie under these roots.
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
