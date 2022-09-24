@@ -290,7 +290,6 @@ class Popen(AgentExecutingComponent):
 
             fout.write(tmp)
 
-
         ranks   = task['slots']['ranks']
         n_ranks = len(ranks)
 

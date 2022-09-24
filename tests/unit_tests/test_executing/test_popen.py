@@ -112,7 +112,7 @@ class TestPopen(TestCase):
                         for rank_id, cmds in pre_exec_cmd.items():
                             self.assertIn('%s)\n' % rank_id, content)
                             for cmd in ru.as_list(cmds):
-                                self.assertIn('%s\n' % cmd, content)
+                                self.assertIn('%s' % cmd, content)
 
             try   : os.remove(path)
             except: pass
