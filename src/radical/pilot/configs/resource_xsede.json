@@ -14,11 +14,8 @@
             "job_manager_endpoint"    : "slurm+ssh://expanse.sdsc.xsede.org",
             "filesystem_endpoint"     : "sftp://expanse.sdsc.xsede.org"
         },
-
         "default_remote_workdir"      :  "/expanse/lustre/scratch/$USER/temp_project",
-        "valid_roots"                 : ["/expanse/lustre/"],
         "default_queue"               : "compute",
-
         "resource_manager"            : "SLURM",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
@@ -27,14 +24,12 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-
         "launch_methods"              : {
                                          "order" : ["MPIRUN"],
                                          "MPIRUN": {"pre_exec_cached": ["module load slurm",
                                                                         "module load gcc",
                                                                         "module load openmpi"]}
                                         },
-
         "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 1000000,
         "mem_per_node"                : 256000,
@@ -85,7 +80,6 @@
                                         "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -130,7 +124,6 @@
                                          "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -178,7 +171,6 @@
                                          "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -224,14 +216,10 @@
                                          "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "export_to_cu"                : ["LMOD_CMD",
-                                         "LMOD_SYSTEM_DEFAULT_MODULES",
-                                         "LD_LIBRARY_PATH"],
-        "cu_pre_exec"                 : ["module restore"]
+        "task_pre_exec"               : ["module restore"]
     },
 
     "stampede2_srun": {
@@ -273,7 +261,6 @@
                                          "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
-        "valid_roots"                 : ["/scratch", "$SCRATCH", "/work2", "$WORK2"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -307,7 +294,6 @@
                                         },
         "pre_bootstrap_0"             : ["module load python"],
         "default_remote_workdir"      : "/oasis/scratch/comet/$USER/temp_project",
-        "valid_roots"                 : ["/oasis/scratch/comet"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -319,12 +305,17 @@
     "bridges2": {
         "description"                 : "The XSEDE 'Bridges2' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
+        "schemas"                     : ["local", "interactive", "gsissh", "ssh"],
       # "mandatory_args"              : [],
-        "local"                      :
+        "local"                       :
         {
             "job_manager_endpoint"    : "slurm://bridges2.psc.xsede.org/",
             "filesystem_endpoint"     : "file://bridges2.psc.xsede.org/"
+        },
+        "interactive"                 :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "gsissh"                      :
         {
@@ -353,7 +344,6 @@
                                         },
         "pre_bootstrap_0"             : ["module load anaconda3"],
         "default_remote_workdir"      : "$PROJECT",
-        "valid_roots"                 : ["/home", "/ocean"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
