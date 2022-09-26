@@ -16,7 +16,7 @@
             "job_manager_endpoint"    : "slurm+ssh://frontera.tacc.utexas.edu/",
             "filesystem_endpoint"     : "sftp://frontera.tacc.utexas.edu/"
         },
-        "interactive"                       :
+        "interactive"                 :
         {
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
@@ -48,7 +48,6 @@
                                         "module load   python3/3.9.2"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -92,7 +91,6 @@
                                          "module load python3/3.7.0"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
@@ -140,7 +138,6 @@
             "module load   prrte/master"
         ],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "python_dist"                 : "default",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local"
@@ -188,7 +185,6 @@
                                          "module load python3/3.8.1"
                                         ],
         "default_remote_workdir"      : "$SCRATCH",
-        "valid_roots"                 : ["$SCRATCH", "$WORK"],
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default"
