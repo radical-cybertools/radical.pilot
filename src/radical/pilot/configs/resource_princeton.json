@@ -25,7 +25,6 @@
         "pre_bootstrap_0"             : ["module load anaconda3",
                                          "module load openmpi/gcc"
                                         ],
-        "valid_roots"                 : [],
         "default_remote_workdir"      : "/scratch/gpfs/$USER/",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
@@ -62,7 +61,6 @@
         "pre_bootstrap_0"             : ["module load anaconda3"
                                         ],
         "default_remote_workdir"      : "$HOME/",
-        "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
@@ -113,7 +111,6 @@
         "default_remote_workdir"      : "/scratch/gpfs/$USER/",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
         "task_pre_exec"               : [],
@@ -162,7 +159,6 @@
         "default_remote_workdir"      : "/scratch/gpfs/$USER/",
         "virtenv"                     : "/scratch/gpfs/$USER/ve.rp",
         "virtenv_mode"                : "use",
-        "valid_roots"                 : [],
         "rp_version"                  : "local",
         "python_dist"                 : "default",
         "task_pre_exec"               : [],
