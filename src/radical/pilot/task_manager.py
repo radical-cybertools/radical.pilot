@@ -1163,10 +1163,16 @@ class TaskManager(rpu.Component):
         self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
 
         # In the default case of calling 'advance' above, we just set the state,
-        # so we *know* tasks are canceled.  But we nevertheless wait until that
-        # state progression trickled through, so that the application will see
-        # the same state on task inspection.
-        self.wait_tasks(uids=uids)
+        # so we *know* tasks are canceled.
+        #
+        # We do not wait and block the call until all the tasks are marked
+        # cancelled.  This means when inspecting for state just after a state
+        # change, we may observe a old state, instead of CANCELLED.
+        #
+        # This is done so cyclic state change do not get hanged.  Example if
+        # task is changing state and user requests for task to be cancelled, the
+        # cancelling of task will hang because a previous state change operation
+        # is ongoing.
 
 
     # --------------------------------------------------------------------------
