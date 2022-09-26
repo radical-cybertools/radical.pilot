@@ -22,7 +22,6 @@
         "pre_bootstrap_0"             : [
                                          "module load miniconda-3"
                                         ],
-        "valid_roots"                 : ["$HOME"],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 64,
@@ -53,7 +52,6 @@
         "pre_bootstrap_0"             : [
             ". /home/$USER/.miniconda3/etc/profile.d/conda.sh"
         ],
-        "valid_roots"                 : ["$HOME"],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "python_dist"                 : "default",
@@ -96,7 +94,6 @@
                                          "module load spack/linux-rhel7-x86_64",
                                          "module load py-virtualenv"
                                         ],
-        "valid_roots"                 : [ "$HOME" ],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 96,
