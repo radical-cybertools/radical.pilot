@@ -28,7 +28,6 @@
                                         "module load intel/17.0.4"
                                         ],
         "default_remote_workdir"      : "/scratch/$USER",
-        "valid_roots"                 : ["/scratch/$USER", "/home/$USER"],
         "python_dist"                 : "default",
         "virtenv_dist"                : "default",
         "virtenv_mode"                : "create",
