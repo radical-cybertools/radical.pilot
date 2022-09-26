@@ -163,7 +163,6 @@ def list_resources (verbose) :
             print("    %-25s : %s" % ('spmd variation'         , cfg['spmd_variation']))
             print("    %-25s : %s" % ('python_interpreter'     , cfg['python_interpreter'     ]))
             print("    %-25s : %s" % ('default_remote_workdir' , cfg['default_remote_workdir' ]))
-            print("    %-25s : %s" % ('valid_roots'            , cfg['valid_roots'            ]))
             print("    %-25s : %s" % ('pre_bootstrap_1'        , cfg['pre_bootstrap_1'        ]))
             print("    %-25s : %s" % ('pre_bootstrap_2'        , cfg['pre_bootstrap_2'        ]))
             print("    %-25s : %s" % ('bootstrapper'           , cfg['bootstrapper'           ]))
