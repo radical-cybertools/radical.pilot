@@ -15,10 +15,18 @@ RUN apt-get update && \
         git \
         openssh-server \
         iputils-ping \
+        libopenmpi-dev \
+        locales \
+        openmpi-bin \
+        openssh-server \
         python3-dev \
         python3-venv \
-        vim && \
+        vim \
+        wget && \
     rm -rf /var/lib/apt/lists/*
+
+RUN locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
 
 # Reference https://docs.docker.com/engine/examples/running_ssh_service/
 RUN mkdir /var/run/sshd
