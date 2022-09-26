@@ -22,7 +22,6 @@
         "pre_bootstrap_0"             : [],
         "pre_bootstrap_1"             : [],
         "default_remote_workdir"      : "$HOME/",
-        "valid_roots"                 : ["/"],
         "rp_version"                  : "installed",
         "virtenv_mode"                : "use",
         "virtenv"                     : "/home/merzky/radical/radical.pilot.3/ve3/",
@@ -30,39 +29,6 @@
         "virtenv_dist"                : "system",
         "cores_per_node"              :  16,
         "gpus_per_node"               :   4,
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 100
-    },
-
-    "summit": {
-        "description"                 : "",
-        "notes"                       : "",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_queue"               : "",
-        "resource_manager"            : "DEBUG",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS_SUMMIT",
-        "agent_spawner"               : "POPEN",
-        "launch_methods"              : {
-                                         "order" : ["FORK"],
-                                         "FORK"  : {}
-                                        },
-        "pre_bootstrap_0"             : [ ],
-        "pre_bootstrap_1"             : [ ],
-        "default_remote_workdir"      : "$HOME/",
-        "valid_roots"                 : ["/"],
-        "rp_version"                  : "installed",
-        "virtenv_mode"                : "use",
-        "virtenv"                     : "/home/merzky/radical/radical.pilot.test/ve/",
-        "python_dist"                 : "default",
-        "virtenv_dist"                : "system",
-        "cores_per_node"              : 42,
-        "gpus_per_node"               :  6,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 100
     },
@@ -107,45 +73,6 @@
         "fake_resources"              : true
     },
 
-    "prte": {
-        "description"                 : "Your local machine.",
-        "notes"                       : "",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "default_remote_workdir"      : "$HOME",
-        "resource_manager"            : "FORK",
-      # "agent_type"                  : "default",
-        "agent_type"                  : "multicore",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "launch_methods"              : {
-                                         "order": ["FORK", "PRRTE"],
-                                         "FORK" : {},
-                                         "PRRTE": {}
-                                        },
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-      # "virtenv"                     : "$HOME/radical/radical.pilot.merge/ve/",
-        "python_dist"                 : "default",
-        "pre_bootstrap_0"             : [
-            "export PRRTE_PREFIX=$HOME/radical/prte/install.tn/",
-            "export PATH=$PRRTE_PREFIX/bin/:$PATH",
-            "export LD_LIBRARY_PATH=$PRRTE_PREFIX/lib/:$LD_LIBRARY_PATH",
-            "export PKG_CONFIG_PATH=$PRRTE_PREFIX/share/pkgconfig/:$PKG_CONFIG_PATH"
-        ],
-        "cores_per_node"              : 8,
-        "gpus_per_node"               : 1
-    },
-
     "flux": {
         "description"                 : "",
         "notes"                       : "",
@@ -162,7 +89,6 @@
         },
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
-        "agent_type"                  : "default",
         "agent_config"                : "default",
       # "agent_scheduler"             : "CONTINUOUS",
       # "agent_spawner"               : "POPEN",
