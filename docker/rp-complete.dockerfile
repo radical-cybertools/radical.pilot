@@ -8,7 +8,7 @@
 #     docker run --rm --name rp_test -d rp-complete
 #     # Either use '-d' with 'run' or issue the 'exec' in a separate terminal
 #     # after waiting a few seconds for the DB to be ready to accept connections.
-#     docker exec -ti -u rp rp_test bash -c "cd ~/radical.pilot && ~/rp-venv/bin/python -m pytest tests"
+#     docker exec -ti -u rp rp_test bash -c ". /home/rp/rp-venv/bin/activate && cd ~/radical.pilot && ~/rp-venv/bin/python -m pytest tests"
 #     # The examples need the venv to be activated in order to find supporting
 #     # shell scripts on the default PATH. The current working directory also
 #     # needs to be writable.
@@ -30,11 +30,17 @@ RUN apt-get update && \
         gcc \
         git \
         iputils-ping \
+        libopenmpi-dev \
+        locales \
+        openmpi-bin \
         python3-dev \
         python3-venv \
         vim \
         wget && \
     rm -rf /var/lib/apt/lists/*
+
+RUN locale-gen en_US.UTF-8 && \
+    update-locale LANG=en_US.UTF-8
 
 USER rp
 
@@ -49,6 +55,7 @@ RUN (cd ~rp && \
         coverage \
         flake8 \
         'mock==2.0.0' \
+        mpi4py \
         netifaces \
         ntplib \
         pylint \
