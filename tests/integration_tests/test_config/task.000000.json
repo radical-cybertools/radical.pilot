@@ -4,7 +4,7 @@
         "description": {
             "executable"     : "hello_jsrun",
             "arguments"      : ["|", "sort"],
-            "cpu_processes"  : 1
+            "ranks"          : 1
         },
         "task_sandbox_path"  : ".",
         "slots": {

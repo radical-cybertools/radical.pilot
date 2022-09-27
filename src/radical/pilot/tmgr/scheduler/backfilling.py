@@ -184,8 +184,8 @@ class Backfilling(TMGRSchedulingComponent):
 
                 # this task is now considered done
                 info['done'].append(uid)
-                info['used'] -= task['description']['cpu_processes'] \
-                              * task['description']['cpu_threads']
+                info['used'] -= task['description']['ranks'] \
+                              * task['description']['cores_per_rank']
                 reschedule = True
                 self._log.debug('upd task %s - schedule (used: %s)',
                                 uid, info['used'])
@@ -297,8 +297,8 @@ class Backfilling(TMGRSchedulingComponent):
                     unscheduled[uid] = task
                     continue
 
-                cores   = task['description']['cpu_processes'] \
-                        * task['description']['cpu_threads']
+                cores   = task['description']['ranks'] \
+                        * task['description']['cores_per_rank']
                 success = False
                 for pid in list(pids):
 
