@@ -75,8 +75,8 @@ class CCMRun(LaunchMethod):
     def get_launch_cmds(self, task, exec_path):
 
         # NOTE: we actually ignore the slots defined by the scheduler
-        # FIXME: cpu_threads
-        task_cores = task['description']['cpu_processes']
+        # FIXME: threads_per_rank
+        task_cores = task['description']['ranks']
         cmd = '%s -n %d %s' % (self._command, task_cores, exec_path)
 
         return cmd.rstrip()

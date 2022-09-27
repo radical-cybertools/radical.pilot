@@ -124,8 +124,8 @@ class TestSrun(TestCase):
 
                 td = task.get('description', {})
                 lm_srun._rm_info.update({
-                    'requested_gpus'  : td['cpu_processes'] *
-                                        td.get('gpu_processes', 0),
+                    'requested_gpus'  : td['ranks'] *
+                                        td.get('gpus_per_rank', 0),
                     'threads_per_core': task.get('resource_cfg', {}).
                                         get('system_architecture', {}).
                                         get('smt', 1)})

@@ -80,7 +80,7 @@ if __name__ == '__main__':
 
         if True:
             td = rp.TaskDescription()
-            td.executable     = 'task.00'
+            td.uid            = 'task.00'
             td.executable     = '/bin/date'
             td.pre_exec       = ['echo pre_all_1',
                                  {'1': ['echo pre_1a',
@@ -92,12 +92,12 @@ if __name__ == '__main__':
                                         'echo post_1b'],
                                   '3': 'echo post_3'},
                                  'echo post_all_2']
-            td.cpu_processes  = 4
+            td.ranks          = 4
             tds.append(td)
 
         if True:
-            td.executable     = 'task.01'
             td = rp.TaskDescription()
+            td.uid            = 'task.01'
             td.executable     = '/bin/date'
             td.pre_exec       = ['echo pre_all_1',
                                  'echo pre_all_2']
@@ -106,12 +106,12 @@ if __name__ == '__main__':
                                         'echo post_1b'],
                                   '3': 'echo post_3'},
                                  'echo post_all_2']
-            td.cpu_processes  = 4
+            td.ranks          = 4
             tds.append(td)
 
         if True:
             td = rp.TaskDescription()
-            td.executable     = 'task.02'
+            td.uid            = 'task.02'
             td.executable     = '/bin/date'
             td.pre_exec       = ['echo pre_all_1',
                                  {'1': ['echo pre_1a',
@@ -120,31 +120,31 @@ if __name__ == '__main__':
                                  'echo pre_all_2']
             td.post_exec      = ['echo post_all_1',
                                  'echo post_all_2']
-            td.cpu_processes  = 4
+            td.ranks          = 4
             tds.append(td)
 
         if True:
             td = rp.TaskDescription()
-            td.executable     = 'task.03'
+            td.uid            = 'task.03'
             td.executable     = '/bin/date'
             td.pre_exec       = ['echo pre_all_1',
                                  'echo pre_all_2']
             td.post_exec      = ['echo post_all_1',
                                  'echo post_all_2']
             td.cpu_process_type = rp.MPI
-            td.cpu_processes  = 4
-            td.gpu_processes  = 1
+            td.ranks          = 4
+            td.gpus_per_rank  = 1
             tds.append(td)
 
         if True:
             td = rp.TaskDescription()
-            td.executable     = 'task.04'
+            td.uid            = 'task.04'
             td.executable     = '/bin/date'
             td.pre_exec       = ['echo pre_all_1',
                                  'echo pre_all_2']
             td.post_exec      = ['echo post_all_1',
                                  'echo post_all_2']
-            td.cpu_processes  = 4
+            td.ranks          = 4
 
             tds.append(td)
 

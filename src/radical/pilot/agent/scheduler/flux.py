@@ -138,22 +138,22 @@ class Flux(AgentSchedulingComponent):
             },
             'version': 1,
             'resources': [{
-                'count': td['cpu_processes'],
+                'count': td['ranks'],
                 'type' : 'slot',
                 'label': 'task',
                 'with' : [{
-                    'count': td['cpu_threads'],
+                    'count': td['cores_per_rank'],
                     'type' : 'core'
                     # }, {
-                    #     'count': td['gpu_processes'],
+                    #     'count': td['gpus_per_rank'],
                     #     'type' : 'gpu'
                 }]
             }]
         }
 
-        if td['gpu_processes']:
+        if td['gpus_per_rank']:
             spec['resources'][0]['with'].append({
-                    'count': td['gpu_processes'],
+                    'count': td['gpus_per_rank'],
                     'type' : 'gpu'})
 
         return spec

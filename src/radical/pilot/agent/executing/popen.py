@@ -657,8 +657,8 @@ class Popen(AgentExecutingComponent):
 
         # als add OMP_NUM_THREADS if that is uniform per rank
         if not switch_per_rank:
-            if td['cpu_thread_type'] == rpc.OpenMP:
-                num_threads = td.get('cpu_threads', 1)
+            if td['threading_type'] == rpc.OpenMP:
+                num_threads = td.get('cores_per_rank', 1)
                 ret += 'export OMP_NUM_THREADS="%d"\n' % num_threads
 
         if ret:
@@ -733,7 +733,7 @@ class Popen(AgentExecutingComponent):
                 ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
 
         cmap = rank['core_map'][0]
-        if td['cpu_thread_type'] == rpc.OpenMP:
+        if td['threading_type'] == rpc.OpenMP:
             ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
 
         if ret:

@@ -350,8 +350,8 @@ class PRTE(LaunchMethod):
         slots     = task['slots']
         td        = task['description']
 
-        n_procs   = td['cpu_processes']
-        n_threads = td['cpu_threads']
+        n_procs   = td['ranks']
+        n_threads = td['cores_per_rank']
 
         if not self._details.get('dvm_list'):
             raise RuntimeError('details with dvm_list not set (%s)' % self.name)

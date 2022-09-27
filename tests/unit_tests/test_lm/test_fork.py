@@ -53,12 +53,10 @@ class TestFork(TestCase):
         self.assertFalse(lm_fork.can_launch(
             task={'slots': {'ranks': [{'node_name': 'not_localhost_00'}]}})[0])
         self.assertFalse(lm_fork.can_launch(
-            task={'description': {'executable': None,
-                                  'cpu_process_type': 'POSIX'},
+            task={'description': {'executable': None, 'ranks': 1},
                   'slots': {'ranks': [{'node_name': 'localhost'}]}})[0])
         self.assertTrue(lm_fork.can_launch(
-            task={'description': {'executable': 'script',
-                                  'cpu_process_type': 'POSIX'},
+            task={'description': {'executable': 'script', 'ranks': 1},
                   'slots': {'ranks': [{'node_name': 'localhost'}]}})[0])
 
     # --------------------------------------------------------------------------

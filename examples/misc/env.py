@@ -11,9 +11,9 @@ if __name__ == '__main__':
 
     try:
         pmgr    = rp.PilotManager(session=session)
-        pd_init = {'resource'      : 'local.debug',
-                   'runtime'       : 10,
-                   'cores'         : 32
+        pd_init = {'resource': 'local.debug',
+                   'runtime' : 10,
+                   'cores'   : 32
                   }
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
@@ -27,9 +27,8 @@ if __name__ == '__main__':
             td.executable       = '/bin/sh'
             td.arguments        = ['-c', 'echo "out $RP_RANK: `date`"; '
                                          'env | grep RP_ | sort > $RP_RANK.env']
-            td.cpu_processes    = 4
-            td.gpu_processes    = 1
-            td.cpu_process_type = rp.MPI
+            td.ranks            = 4
+            td.gpuRs_per_rank   = 1
             td.pre_launch       = ['echo   pre_launch',
                                    'export RP_PRE_LAUNCH=True']
             td.pre_exec         = ['echo "pre exec $RP_RANK: `date`"',
