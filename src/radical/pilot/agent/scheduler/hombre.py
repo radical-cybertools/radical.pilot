@@ -69,15 +69,11 @@ class Hombre(AgentSchedulingComponent):
         if self._configured:
             return
 
-        self.chunk  = {'cpu_processes'    : td['cpu_processes'   ],
-                       'cpu_process_type' : td['cpu_process_type'],
-                       'cpu_threads'      : td['cpu_threads'     ],
-                       'cpu_thread_type'  : td['cpu_thread_type' ],
-
-                       'gpu_processes'    : td['gpu_processes'   ],
-                       'gpu_process_type' : td['gpu_process_type'],
-                       'gpu_threads'      : td['gpu_threads'     ],
-                       'gpu_thread_type'  : td['gpu_thread_type' ],
+        self.chunk  = {'ranks'         : td['ranks'         ],
+                       'cores_per_rank': td['cores_per_rank'],
+                       'threading_type': td['threading_type'],
+                       'gpus_per_rank' : td['gpus_per_rank' ],
+                       'gpu_type'      : td['gpu_type'      ],
                        }
 
         self.cpn     = self._rm.info.cores_per_node
@@ -86,12 +82,11 @@ class Hombre(AgentSchedulingComponent):
         self.free    = list()     # list of free chunks
         self.lock    = ru.Lock()  # lock for the above list
 
-        cores_needed = td['cpu_processes'] * td['cpu_threads']
-        gpus_needed  = td['gpu_processes']
+        cores_needed = td['ranks'] * td['cores_per_rank']
+        gpus_needed  = td['ranks'] * td['gpus_per_rank']
 
         # check if we need single or multi-node chunks
-        if  td['cpu_process_type'] != 'MPI' and \
-            td['gpu_process_type'] != 'MPI' :
+        if  td['ranks'] == 1:
 
             # single node task - check if it fits
             if cores_needed > self.cpn or \
@@ -104,8 +99,8 @@ class Hombre(AgentSchedulingComponent):
         # possible, and put them into the `free` list.  The actual scheduling
         # algorithm will blindly pick chunks from that list whenever a new TD
         # arrives.
-        cblock   = td['cpu_threads']
-        ncblocks = td['cpu_processes']
+        cblock   = td['cores_per_rank']
+        ncblocks = td['ranks']
         cblocks  = list()
         cidx     = 0
 
@@ -114,7 +109,7 @@ class Hombre(AgentSchedulingComponent):
             cidx += cblock
 
         gblock   = 1
-        ngblocks = td['gpu_processes']
+        ngblocks = td['gpus_per_rank']
         gblocks  = list()
         gidx     = 0
         while gidx + gblock <= self.gpn:

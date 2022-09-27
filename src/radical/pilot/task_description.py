@@ -1,4 +1,6 @@
 
+# pylint: disable=access-member-before-definition
+
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
@@ -44,9 +46,18 @@ NAMED_ENV        = 'named_env'
 SANDBOX          = 'sandbox'
 
 # resource requirements
+RANKS            = 'ranks'                    # ranks
+CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
+GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
+THREADING_TYPE   = 'threading_type'           # OpenMP?
+GPU_TYPE         = 'gpu_type'                 # CUDA / ROCm?
+LFS_PER_RANK     = 'lfs_per_rank'             # disk space per rank
+MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
+
+# deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
-CPU_PROCESS_TYPE = 'cpu_process_type'         # MPI?
-CPU_THREADS      = 'cpu_threads'              # cores per rank
+CPU_PROCESS_TYPE = 'cpu_process_type'         # disk space per rank
+CPU_THREADS      = 'cpu_threads'              # memory per rank
 CPU_THREAD_TYPE  = 'cpu_thread_type'          # OpenMP?
 
 GPU_PROCESSES    = 'gpu_processes'            # gpus per rank
@@ -57,6 +68,7 @@ GPU_THREAD_TYPE  = 'gpu_thread_type'          # ?
 LFS_PER_PROCESS  = 'lfs_per_process'          # disk space per rank
 MEM_PER_PROCESS  = 'mem_per_process'          # memory per rank
 
+# task setup
 INPUT_STAGING    = 'input_staging'
 OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
@@ -185,55 +197,63 @@ class TaskDescription(ru.TypedDict):
        [type: `str` | default: `""`] A shell command to be executed.  This
        attribute is used for the `TASK_SHELL` mode.
 
-    .. data:: cpu_processes
+    .. data:: ranks
 
        [type: `int` | default: `1`] The number of application processes to start
-       on CPU cores.
+       on CPU cores.  For two ranks or more, an MPI communicator will be
+       available to the processes.
 
-    .. data:: cpu_threads
+       `ranks` replaces the deprecated attribute `cpu_processes`.  The attribute
+       `cpu_process_type` was previously used to signal the need for an MPI
+       communicator - that attribute is now also deprecated and will be ignored.
 
-       [type: `int` | default: `1`] The number of threads each process will
-       start on CPU cores.
+    .. data:: cores_per_rank
 
-    .. data:: cpu_process_type
+       [type: `int` | default: `1`] The number of cpu cores each process will
+       have available to start it's own threads or processes on.  By default,
+       `core` refers to an physical CPU core - but if the pilot has been
+       launched with SMT-settings > 1, `core` will refer to a virtual core or
+       hyperthread instead (the name depends on the CPU vendor).
 
-       [type: `str` | default: `""`] The process type, determines startup
-       method (`<empty>/POSIX`, `MPI`).
+       `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
-    .. data:: cpu_thread_type
+    .. data:: threading_type
 
        [type: `str` | default: `""`] The thread type, influences startup and
        environment (`<empty>/POSIX`, `OpenMP`).
 
-    .. data:: gpu_processes
+       `threading_type` replaces the deprecated attribute `cpu_thread_type`.
 
-       [type: `int` | default: `0`] The number of application processes to
-       start on GPU cores.
+    .. data:: gpus_per_rank
 
-    .. data:: gpu_threads
+       [type: `int` | default: `0`] The number of gpus made available to each
+       rank.
 
-       [type: `int` | default: `1`] The number of threads each process will
-       start on GPU cores.
+       `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
+       attributes `gpu_threads` and `gpu_process_type` are also deprecated and
+       will be ignored.
 
-    .. data:: gpu_process_type
+    .. data:: gpu_type
 
-       [type: `str` | default: `""`] The process type, determines startup
-       method (`<empty>/POSIX`, `MPI`).
+       [type: `str` | default: `""`] The type of GPU environment to provide to
+       the ranks (`<empty>`, `CUDA`, `ROCm`).
 
-    .. data:: gpu_thread_type
+       `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
 
-       [type: `str` | default: `""`] The thread type, influences startup and
-       environment (`<empty>/POSIX`, `OpenMP`, `CUDA`).
 
-    .. data:: lfs_per_process
+    .. data:: lfs_per_rank
 
-       [type: `int` | default: `0`] Local File Storage per process - amount of
+       [type: `int` | default: `0`] Local File Storage per rank - amount of
        data (MB) required on the local file system of the node.
 
-    .. data:: mem_per_process
+       `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
+
+    .. data:: mem_per_rank
 
        [type: `int` | default: `0`] Amount of physical memory required per
-       process.
+       rank.
+
+       `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
     .. data:: environment
 
@@ -508,16 +528,25 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
 
-        CPU_PROCESSES   : int         ,
-        CPU_PROCESS_TYPE: str         ,
-        CPU_THREADS     : int         ,
-        CPU_THREAD_TYPE : str         ,
-        GPU_PROCESSES   : int         ,
-        GPU_PROCESS_TYPE: str         ,
-        GPU_THREADS     : int         ,
-        GPU_THREAD_TYPE : str         ,
-        LFS_PER_PROCESS : int         ,
-        MEM_PER_PROCESS : int         ,
+        RANKS           : int         ,
+        CORES_PER_RANK  : int         ,
+        GPUS_PER_RANK   : int         ,
+        THREADING_TYPE  : str         ,
+        GPU_TYPE        : str         ,
+        LFS_PER_RANK    : int         ,
+        MEM_PER_RANK    : int         ,
+
+        # deprecated
+        CPU_PROCESSES   : int         ,  # RANKS
+        CPU_PROCESS_TYPE: str         ,  # n/a
+        CPU_THREADS     : int         ,  # CORES_PER_RANK
+        CPU_THREAD_TYPE : str         ,  # THREADING_TYPE
+        GPU_PROCESSES   : int         ,  # GPUS_PER_RANK
+        GPU_PROCESS_TYPE: str         ,  # GPU_TYPE
+        GPU_THREADS     : int         ,  # n/a
+        GPU_THREAD_TYPE : str         ,  # n/a
+        LFS_PER_PROCESS : int         ,  # LFS_PER_RANK
+        MEM_PER_PROCESS : int         ,  # MEM_PER_RANK
 
         RESTARTABLE     : bool        ,
         SCHEDULER       : str         ,
@@ -554,13 +583,22 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
 
-        CPU_PROCESSES   : 1           ,
+        RANKS           : 1           ,
+        CORES_PER_RANK  : 1           ,
+        GPUS_PER_RANK   : 0           ,
+        THREADING_TYPE  : ''          ,
+        GPU_TYPE        : ''          ,
+        LFS_PER_RANK    : 0           ,
+        MEM_PER_RANK    : 0           ,
+
+        # deprecated
+        CPU_PROCESSES   : 0           ,
         CPU_PROCESS_TYPE: ''          ,
-        CPU_THREADS     : 1           ,
+        CPU_THREADS     : 0           ,
         CPU_THREAD_TYPE : ''          ,
         GPU_PROCESSES   : 0           ,
         GPU_PROCESS_TYPE: ''          ,
-        GPU_THREADS     : 1           ,
+        GPU_THREADS     : 0           ,
         GPU_THREAD_TYPE : ''          ,
         LFS_PER_PROCESS : 0           ,
         MEM_PER_PROCESS : 0           ,
@@ -613,6 +651,39 @@ class TaskDescription(ru.TypedDict):
             if not self.get('command'):
                 raise ValueError("TASK_SHELL Task needs 'command'")
 
+        # backward compatibility for deprecated attributes
+        if self.cpu_processes:
+            self.ranks = self.cpu_processes
+            self.cpu_processes = 0
+
+        if self.cpu_threads:
+            self.cores_per_rank = self.cpu_threads
+            self.cpu_threads = 0
+
+        if self.cpu_thread_type:
+            self.threading_type = self.cpu_thread_type
+            self.cpu_thread_type = None
+
+        if self.gpu_processes:
+            self.gpus_per_rank = self.gpu_processes
+            self.gpu_processes = 0
+
+        if self.gpu_process_type:
+            self.gpu_type = self.gpu_process_type
+            self.gpu_process_type = 0
+
+        if self.lfs_per_process:
+            self.lfs_per_rank = self.lfs_per_process
+            self.lfs_per_process = 0
+
+        if self.mem_per_process:
+            self.mem_per_rank = self.mem_per_process
+            self.mem_per_process = 0
+
+        # deprecated and ignored
+        if self.cpu_process_type: pass
+        if self.gpu_threads     : pass
+        if self.gpu_thread_type : pass
 
       # if self.mode in [TASK_SHELL, TASK_PROC]:
       #

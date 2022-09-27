@@ -99,7 +99,6 @@ if __name__ == "__main__":
             td.executable = '/bin/bash'
             td.arguments = ['-c', 'cat %s %s > %s' %
                              (SHARED_INPUT_FILE, input_file, output_file)]
-            td.cpu_processes = 1
             td.input_staging = [sd_shared, input_file]
             td.output_staging = output_file
 
