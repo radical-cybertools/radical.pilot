@@ -63,23 +63,23 @@ class TestContinuousOrdered(TestCase):
                 {"uid"        : "task.000001",
                  "description": {"executable"     : "/bin/sleep",
                                  "arguments"      : ["10"],
-                                 "gpu_processes"  : 1,
-                                 "cpu_processes"  : 1,
-                                 "cpu_threads"    : 1,
+                                 "gpus_per_rank"  : 1,
+                                 "ranks"          : 1,
+                                 "cores_per_rank" : 1,
                                  "gpu_threads"    : 1,
-                                 "mem_per_process": 128,
-                                 "lfs_per_process": 2
+                                 "mem_per_rank"   : 128,
+                                 "lfs_per_rank"   : 2
                                 }
                 },
                 {"uid"        : "task.000002",
                  "description": {"executable"     : "/bin/sleep",
                                  "arguments"      : ["20"],
-                                 "gpu_processes"  : 1,
-                                 "cpu_processes"  : 1,
-                                 "cpu_threads"    : 1,
+                                 "gpus_per_rank"  : 1,
+                                 "ranks"          : 1,
+                                 "cores_per_rank" : 1,
                                  "gpu_threads"    : 1,
-                                 "mem_per_process": 128,
-                                 "lfs_per_process": 2
+                                 "mem_per_rank"   : 128,
+                                 "lfs_per_rank"   : 2
                                 },
                 }]
 
