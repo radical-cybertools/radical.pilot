@@ -5,51 +5,51 @@
 Using Containerized Tasks
 **********************************
 
-The present document aims to be a walkthrough of how to create MPI applications 
-inside Singularity containers and run them on a remote HPC cluster. We will use 
-Bridges as our cluster and the Intel MPI implementation that comes by default 
-installed on it. We will assume the Bind approach as our method of creating the 
+The present document aims to be a walkthrough of how to create MPI applications
+inside Singularity containers and run them on a remote HPC cluster. We will use
+Bridges as our cluster and the Intel MPI implementation that comes by default
+installed on it. We will assume the Bind approach as our method of creating the
 container, and familiarity on how to connect to Bridges.
 
 .. note:: If you want to learn more about the Bind vs Hybrid approach, please refer to:
           `Bind vs Hybrid Model <https://sylabs.io/guides/3.5/user-guide/mpi.html>`_
 
-If you want to run your experiment using the Hybrid model, or perhaps in a 
-different cluster like Comet or under a different MPI implementation, there is 
-an example for each case on thee following repo: 
+If you want to run your experiment using the Hybrid model, or perhaps in a
+different cluster like Comet or under a different MPI implementation, there is
+an example for each case on thee following repo:
 `<https://github.com/radical-group/koubbe/tree/master/Containers/First%20experiments/src/exp2>`_
 
 What is a container?
 -------------------
 
-A container is a standard task of software that packages up code and all 
-its dependencies so the application runs quickly and reliably from one 
-computer environment to another. A container image is a lightweight standalone, 
-executable package of software that includes everything needed to run an 
+A container is a standard task of software that packages up code and all
+its dependencies so the application runs quickly and reliably from one
+computer environment to another. A container image is a lightweight standalone,
+executable package of software that includes everything needed to run an
 application: code, runtime, system tools, system libraries and settings.
 
-The image becomes a container at runtime, and said containerized software will 
-always run the same, regardless of the infrastructure, ensuring that it works 
+The image becomes a container at runtime, and said containerized software will
+always run the same, regardless of the infrastructure, ensuring that it works
 uniformly despite differences for instance between development and staging.
 
 What is Singularity?
 -------------------
 
-Singularity is a container runtime that favors integration while still 
-preserving security restrictions on the container, and providing reproducible 
-images. Furthermore, it enables users to have full control of their environment. 
-Singularity containers can be used to package entire scientific workflows, 
-software and libraries, and even data. This means that you do not have to ask 
-your cluster administrator to install anything for you, you can put it in a 
+Singularity is a container runtime that favors integration while still
+preserving security restrictions on the container, and providing reproducible
+images. Furthermore, it enables users to have full control of their environment.
+Singularity containers can be used to package entire scientific workflows,
+software and libraries, and even data. This means that you do not have to ask
+your cluster administrator to install anything for you, you can put it in a
 Singularity container and run.
 
-In order to see the Initial Presentation on Containers, please visit 
+In order to see the Initial Presentation on Containers, please visit
 `Containers Initial Presentation <https://github.com/radical-group/koubbe/blob/master/Containers/First%20experiments/docs/Containers%20Initial%20Presentation.pdf>`_
 
-If you want to take a deeper look into containers and Singularity, please refer to 
+If you want to take a deeper look into containers and Singularity, please refer to
 the following document:
 
-`Case Studies of executing containerized scientific applications on High-Performance 
+`Case Studies of executing containerized scientific applications on High-Performance
 Computing Platforms using RADICAL-Cybertools <https://github.com/radical-group/koubbe/blob/master/Misc/Technical%20Report/GeorgeKoubbe_Report.pdf>`_
 
 Step-by-step on Bridges directly
@@ -95,11 +95,11 @@ Alright, let's dive right in.
 
     $ mpirun -n 4 -ppn 2 singularity exec --bind /opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64 $HOME/centos-openmpi.sif $HOME/hello_world_intel
 
-Congratulations if you made it this far! You were able to build, from a 
-preexisting Docker image, your own MPI application inside a Singularity 
-container and run it on Bridges directly. 
+Congratulations if you made it this far! You were able to build, from a
+preexisting Docker image, your own MPI application inside a Singularity
+container and run it on Bridges directly.
 
-.. note:: If you want to learn how to build it from your own definition 
+.. note:: If you want to learn how to build it from your own definition
           file, you can check the following link: `Build a container <https://sylabs.io/guides/3.5/user-guide/build_a_container.html>`_
 
 Step-by-step through RADICAL-Pilot
@@ -197,7 +197,7 @@ Below is the RP python script to run our container on Bridges:
                 cud = rp.TaskDescription()
                 #---------- Executable_Bridges ----------
                 # To run, place executable in Bridges and compile: $ mpicc -o mpi_hello_world mpi_hello_world.c
-                # if on Bridges directly, run with: mpirun -n 4 -ppn 2 -host r001,r002 ./mpi_hello_world 
+                # if on Bridges directly, run with: mpirun -n 4 -ppn 2 -host r001,r002 ./mpi_hello_world
                 #cud.executable  = '/home/karahbit/hello_world_intel'
                 #---------- Singularity_Bridges ---------
                 cud.pre_exec    = []
@@ -209,9 +209,8 @@ Below is the RP python script to run our container on Bridges:
                 cud.arguments   += ['--bind', '/opt/intel/compilers_and_libraries_2019.5.281/linux/mpi/intel64']
                 cud.arguments   += ['/home/karahbit/centos-openmpi.sif']
                 cud.arguments   += ['/home/karahbit/hello_world_intel']
-                cud.cpu_processes       = p_num
-                cud.cpu_process_type    = rp.MPI
-                cud.cpu_threads         = t_num
+                cud.ranks               = p_num
+                cud.cores_per_rank      = t_num
                 cuds.append(cud)
                 report.progress()
             report.ok('>>ok\n')
@@ -249,7 +248,7 @@ Below is the RP python script to run our container on Bridges:
         report.header()
 
         print("--- %s seconds ---" % (time.time() - start_time))
-        
+
 And you can run it by typing the following command, where "x" is the
 number of MPI processes you would like to spawn:
 
@@ -258,17 +257,17 @@ number of MPI processes you would like to spawn:
 Results
 -------------------
 
-Below are the results of the above experiment, showing the overhead 
-obtained when running, through RP, a containerized MPI Hello World 
+Below are the results of the above experiment, showing the overhead
+obtained when running, through RP, a containerized MPI Hello World
 application (blue bars), against the non-containerized version (orange
-bars). We can appreciate an overhead of 0.5%, 9%, 11% and 21% for 2, 4, 8 
-and 16 nodes respectively. 
+bars). We can appreciate an overhead of 0.5%, 9%, 11% and 21% for 2, 4, 8
+and 16 nodes respectively.
 
 .. image:: 11_containerized_tasks_1.png
 
 It's worth noting that the same experiment running on Comet gives
-us less noticeable overheads. A container overhead of around 2% was 
-achieved in all cases. Although execution times are considerably higher 
+us less noticeable overheads. A container overhead of around 2% was
+achieved in all cases. Although execution times are considerably higher
 than on Bridges, the overheads are much lower and consistent.
 
 .. image:: 11_containerized_tasks_2.png

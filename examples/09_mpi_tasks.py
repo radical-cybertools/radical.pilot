@@ -96,10 +96,9 @@ if __name__ == '__main__':
             td.executable       = '/bin/sh'
             td.arguments        = ['09_mpi_tasks.sh']
             td.input_staging    = ['%s/09_mpi_tasks.sh' % PWD]
-            td.cpu_processes    = p_num
-            td.cpu_process_type = rp.MPI
-            td.cpu_threads      = t_num
-            td.cpu_thread_type  = rp.OpenMP
+            td.ranks            = p_num
+            td.cores_per_rank   = t_num
+            td.threading_type   = rp.OpenMP
             tds.append(td)
             report.progress()
         report.ok('>>ok\n')

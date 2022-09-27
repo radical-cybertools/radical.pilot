@@ -62,13 +62,13 @@ if __name__ == '__main__':
             for s in range(n_stages):
                 for t in range(n_tasks):
                     td = rp.TaskDescription()
-                    td.executable       = '%s/pipeline_task.sh' % pwd
-                    td.arguments        = [p, s, t, 10]
-                    td.cpu_processes    = 1
-                    td.tags             = {'order': {'ns'   : p,
-                                                      'order': s,
-                                                      'size' : n_tasks}}
-                    td.name             =  'p%03d-s%03d-t%03d' % (p, s, t)
+                    td.executable = '%s/pipeline_task.sh' % pwd
+                    td.arguments  = [p, s, t, 10]
+                    td.ranks      = 1
+                    td.tags       = {'order': {'ns'   : p,
+                                                'order': s,
+                                                'size' : n_tasks}}
+                    td.name       =  'p%03d-s%03d-t%03d' % (p, s, t)
                     tds.append(td)
                     report.progress()
 

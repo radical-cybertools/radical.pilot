@@ -88,87 +88,80 @@ class MyMaster(rp.raptor.Master):
         for i in range(1):
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.exe.m.%06d' % i,
-                'mode'            : rp.TASK_EXECUTABLE,
-                'scheduler'       : None,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'executable'      : '/bin/sh',
-                'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                'uid'        : 'task.exe.m.%06d' % i,
+                'mode'       : rp.TASK_EXECUTABLE,
+                'scheduler'  : None,
+                'ranks'      : 1,
+                'executable' : '/bin/sh',
+                'arguments'  : ['-c',
+                                'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.call.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'function'        : 'hello_mpi',
-                'kwargs'          : {'msg': 'task.call.m.%06d' % i},
-                'scheduler'       : 'master.000000'}))
+                'uid'       : 'task.call.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_FUNCTION,
+                'ranks'     : 2,
+                'function'  : 'hello_mpi',
+                'kwargs'    : {'msg': 'task.call.m.%06d' % i},
+                'scheduler' : 'master.000000'}))
 
             bson = func_mpi(None, msg='task.call.m.%06d' % i, sleep=0)
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.mpi_ser_func.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'function'        : bson,
-                'scheduler'       : 'master.000000'}))
+                'uid'       : 'task.mpi_ser_func.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_FUNCTION,
+                'ranks'     : 2,
+                'function'  : bson,
+                'scheduler' : 'master.000000'}))
             self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             bson = func_non_mpi(i)
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.ser_func.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : 2,
-                'function'        : bson,
-                'scheduler'       : 'master.000000'}))
+                'uid'       : 'task.ser_func.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_FUNCTION,
+                'ranks'     : 1,
+                'function'  : bson,
+                'scheduler' : 'master.000000'}))
             self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.eval.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_EVAL,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'code'            :
+                'uid'       : 'task.eval.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_EVAL,
+                'ranks'     : 2,
+                'code'      :
                     'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.000000'}))
+                'scheduler' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.exec.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_EXEC,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'code'            :
+                'uid'       : 'task.exec.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_EXEC,
+                'ranks'     : 2,
+                'code'      :
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : 'master.000000'}))
+                'scheduler' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.proc.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_PROC,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'executable'      : '/bin/sh',
-                'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-                                           '$RP_TASK_ID"'],
-                'scheduler'       : 'master.000000'}))
+                'uid'       : 'task.proc.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_PROC,
+                'ranks'     : 2,
+                'executable': '/bin/sh',
+                'arguments' : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+                                     '$RP_TASK_ID"'],
+                'scheduler' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
-                'uid'             : 'task.shell.m.%06d' % i,
-              # 'timeout'         : 10,
-                'mode'            : rp.TASK_SHELL,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
-                'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler'       : 'master.000000'}))
+                'uid'       : 'task.shell.m.%06d' % i,
+              # 'timeout'   : 10,
+                'mode'      : rp.TASK_SHELL,
+                'ranks'     : 2,
+                'command'   : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'scheduler' : 'master.000000'}))
 
 
         self.submit_tasks(tds)
@@ -211,15 +204,14 @@ class MyMaster(rp.raptor.Master):
           # # for each `function` mode task, submit one more `proc` mode request
           # if mode == rp.TASK_FUNCTION:
           #     self.submit_tasks(rp.TaskDescription(
-          #         {'uid'             : uid.replace('call', 'extra'),
-          #        # 'timeout'         : 10,
-          #          'mode'            : rp.TASK_PROC,
-          #          'cpu_processes'   : 2,
-          #          'cpu_process_type': rp.MPI,
-          #          'executable'      : '/bin/sh',
-          #          'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-          #                                     '$RP_TASK_ID"'],
-          #          'scheduler'       : 'master.000000'}))
+          #         {'uid'       : uid.replace('call', 'extra'),
+          #        # 'timeout'   : 10,
+          #          'mode'      : rp.TASK_PROC,
+          #          'ranks'     : 2,
+          #          'executable': '/bin/sh',
+          #          'arguments' : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
+          #                               '$RP_TASK_ID"'],
+          #          'scheduler' : 'master.000000'}))
 
         return tasks
 
@@ -289,8 +281,8 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    descr['cpu_processes'] = nodes_pw * cpn
-    descr['gpu_processes'] = nodes_pw * gpn
+    descr['ranks']         = nodes_pw * cpn
+    descr['gpus_per_rank'] = nodes_pw * gpn
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
