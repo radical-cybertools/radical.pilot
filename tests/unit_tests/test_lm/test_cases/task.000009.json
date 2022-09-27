@@ -5,7 +5,7 @@
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : null,
-            "cpu_processes" : 1,
+            "ranks"         : 1,
             "environment"   : {"test_env": "test_val"}
         },
         "task_sandbox_path" : "/tmp"

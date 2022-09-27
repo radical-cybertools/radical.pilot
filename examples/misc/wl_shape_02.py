@@ -78,17 +78,16 @@ if __name__ == '__main__':
             # create a new Task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable       = 'date'
-          # td.arguments        = '1'.split()
-          # td.executable       = 'gmx'
-          # td.arguments        = args.split()
-            td.tags             = tags
-            td.gpu_processes    = 0
-            td.cpu_processes    = 2  # '1-32'
-            td.cpu_threads      = 2  # '1-16'
-            td.cpu_process_type = rp.MPI
-            td.cpu_thread_type  = rp.OpenMP
-      #     td.input_staging    = cudis
+            td.executable     = 'date'
+          # td.arguments      = '1'.split()
+          # td.executable     = 'gmx'
+          # td.arguments      = args.split()
+            td.tags           = tags
+            td.ranks          = 2  # '1-32'
+            td.cores_per_rank = 2  # '1-16'
+            td.gpus_per_rank  = 0
+            td.threading_type = rp.OpenMP
+      #     td.input_staging  = cudis
 
             tds.append(td)
             report.progress()

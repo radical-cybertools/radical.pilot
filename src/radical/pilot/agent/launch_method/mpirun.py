@@ -203,7 +203,7 @@ class MPIRun(LaunchMethod):
         else        : np = len(host_list)
 
         options = ''
-        if td.get('gpu_processes') \
+        if td.get('gpus_per_rank') \
                 and self._mpi_flavor == self.MPI_FLAVOR_SPECTRUM:
             # https://on-demand.gputechconf.com/gtc/2018/presentation/
             # s8314-multi-gpu-programming-with-mpi.pdf - s.18

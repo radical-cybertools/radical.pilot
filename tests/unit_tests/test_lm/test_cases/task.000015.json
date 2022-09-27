@@ -5,10 +5,9 @@
         "description": {
             "executable"       : "/bin/sleep",
             "arguments"        : ["15"],
-            "cpu_processes"    : 2,
-            "cpu_threads"      : 2,
-            "cpu_process_type" : "MPI",
-            "gpu_processes"    : 1,
+            "ranks"            : 2,
+            "cores_per_rank"   : 2,
+            "gpus_per_rank"    : 1,
             "environment"      : {}
         },
         "task_sandbox_path"    : "/tmp"
