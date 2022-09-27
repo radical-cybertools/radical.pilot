@@ -77,8 +77,8 @@ class IBRun(LaunchMethod):
         assert slots.get('ranks'), 'task.slots.ranks is not set or empty'
 
         td                 = task['description']
-        n_ranks            = td['cpu_processes']
-        n_threads_per_rank = td['cpu_threads']
+        n_ranks            = td['ranks']
+        n_threads_per_rank = td['cores_per_rank']
 
         # Usage of env variable IBRUN_TASKS_PER_NODE is purely for MPI tasks,
         # threads are not considered (info provided by TACC support)

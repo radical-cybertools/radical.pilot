@@ -62,13 +62,11 @@ if __name__ == '__main__':
         for b in range(n_bags):
             for tid,s in enumerate(task_size):
                 td = rp.TaskDescription()
-                td.executable       = '%s/colocated_task.sh' % pwd
-                td.arguments        = [b, bag_size, tid]
-                td.cpu_processes    = s
-                td.cpu_process_type = rp.MPI
-                td.tags             = {'colocate': {'bag' : b,
-                                                     'size': bag_size}}
-                td.name             =  'b%03d-t%03d' % (b, tid)
+                td.executable = '%s/colocated_task.sh' % pwd
+                td.arguments  = [b, bag_size, tid]
+                td.ranks      = s
+                td.tags       = {'colocate': {'bag' : b, 'size': bag_size}}
+                td.name       =  'b%03d-t%03d' % (b, tid)
                 print(td.name)
                 tds.append(td)
                 report.progress()
