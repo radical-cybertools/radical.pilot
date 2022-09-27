@@ -639,8 +639,8 @@ def get_session_description(sid, src=None, dburl=None):
 
         if 'resources' not in task:
             td = task['description']
-            task['resources'] = {'cpu': td['cpu_processes'] * td['cpu_threads'],
-                                 'gpu': td['gpu_processes']}
+            task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
+                                 'gpu': td['ranks'] * td['gpus_per_rank']}
         tree[uid] = {'uid'         : uid,
                      'etype'       : 'task',
                      'cfg'         : task,
