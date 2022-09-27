@@ -5,12 +5,10 @@
         "description": {
             "executable"       : "/bin/sleep",
             "arguments"        : ["10"],
-            "cpu_processes"    : 1,
-            "cpu_threads"      : 1,
-            "cpu_process_type" : "MPI",
-            "gpu_processes"    : 1,
-            "gpu_process_type" : "MPI",
-            "gpu_thread_type"  : "CUDA",
+            "ranks"            : 1,
+            "cores_per_rank"   : 1,
+            "gpus_per_rank"    : 1,
+            "gpu_type"         : "CUDA",
             "environment"      : {"CUDA_VISIBLE_DEVICES": 0}
         },
         "task_sandbox_path"    : "/tmp"
@@ -57,7 +55,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun --erf_input rs_layout_task_000005 --smpiargs=\"-gpu\"",
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000005 --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {

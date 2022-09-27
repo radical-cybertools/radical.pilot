@@ -5,9 +5,9 @@
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : null,
-            "cpu_processes" : 1,
-            "cpu_threads"   : 4,
-            "gpu_processes" : 0,
+            "ranks"         : 1,
+            "cores_per_rank": 4,
+            "gpus_per_rank" : 0,
             "environment"   : {"test_env": "test_val"}
         },
         "task_sandbox_path" : "/tmp"
