@@ -250,25 +250,21 @@ class Continuous(AgentSchedulingComponent):
         application processes would not be able to acquire the requested
         resources on the respective node.
 
-        Contrary to the documentation, this scheduler interprets `gpu_processes`
-        as number of GPUs that need to be available to each process, i.e., as
-        `gpus_per_process'.
-
         Note that all resources for non-MPI tasks will always need to be placed
         on a single node.
         '''
 
         self._log.debug_3('find_resources %s', task['uid'])
 
-        td = task['description']
-        mpi = bool('mpi' in td['cpu_process_type'].lower())
+        td  = task['description']
+        mpi = bool(td['ranks'] > 1)
 
         # dig out the allocation request details
-        req_slots      = td['cpu_processes']
-        cores_per_slot = td['cpu_threads']
-        gpus_per_slot  = td['gpu_processes']
-        lfs_per_slot   = td['lfs_per_process']
-        mem_per_slot   = td['mem_per_process']
+        req_slots      = td['ranks']
+        cores_per_slot = td['cores_per_rank']
+        gpus_per_slot  = td['gpus_per_rank']
+        lfs_per_slot   = td['lfs_per_rank']
+        mem_per_slot   = td['mem_per_rank']
 
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
