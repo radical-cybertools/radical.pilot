@@ -5,8 +5,8 @@
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["10"],
-            "cpu_processes" : 1,
-            "cpu_threads"   : 4,
+            "ranks"         : 1,
+            "cores_per_rank": 4,
             "environment"   : {}
         },
         "task_sandbox_path" : "/tmp"

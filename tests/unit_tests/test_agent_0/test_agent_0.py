@@ -140,8 +140,8 @@ class TestComponent(TestCase):
             agent_td = TaskDescription(agent_task['description'])
             # ensure that task description is correct
             agent_td.verify()
-            # check "cpu_threads" attribute
-            self.assertEqual(agent_td.cpu_threads,
+            # check "cores_per_rank" attribute
+            self.assertEqual(agent_td.cores_per_rank,
                              agent_0._rm.info.cores_per_node)
             return ''
 
