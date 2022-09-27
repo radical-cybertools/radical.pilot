@@ -48,11 +48,11 @@ class TestContinuous(TestCase):
             td = test_case['task']['description']
             alc_slots = component._find_resources(
                 node=test_case['setup']['nodes'][0],
-                find_slots=td['cpu_processes'],
-                cores_per_slot=td['cpu_threads'],
-                gpus_per_slot=td['gpu_processes'],
-                lfs_per_slot=td['lfs_per_process'],
-                mem_per_slot=td['mem_per_process'],
+                find_slots=td['ranks'],
+                cores_per_slot=td['cores_per_rank'],
+                gpus_per_slot=td['gpus_per_rank'],
+                lfs_per_slot=td['lfs_per_rank'   ],
+                mem_per_slot=td['mem_per_rank'   ],
                 partial=False)
 
             if alc_slots is None:
@@ -102,10 +102,10 @@ class TestContinuous(TestCase):
                 for t in tasks:
                     td = t['description']
                     self.assertEqual(
-                        t['resources'], {'cpu': td['cpu_processes'] *
-                                                td['cpu_threads'],
-                                         'gpu': td['gpu_processes'] *
-                                                td['cpu_processes']})
+                        t['resources'], {'cpu': td['ranks'] *
+                                                td['cores_per_rank'],
+                                         'gpu': td['ranks'] *
+                                                td['gpus_per_rank']})
 
             component.advance = advance
 
@@ -159,9 +159,9 @@ class TestContinuous(TestCase):
 
             task['description'].update({'tags': {'colocate' : 'exclusive_tag',
                                                  'exclusive': True},
-                                        'cpu_processes': 1,
-                                        'cpu_threads'  : 1,
-                                        'gpu_processes': 0})
+                                        'ranks': 1,
+                                        'cores_per_rank': 1,
+                                        'gpus_per_rank': 0})
 
             pre_sched_n_tagged_nodes = len(component._tagged_nodes)
             component.schedule_task(task)

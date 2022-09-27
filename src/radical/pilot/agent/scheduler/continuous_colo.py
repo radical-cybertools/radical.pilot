@@ -208,15 +208,11 @@ class ContinuousColo(Continuous):
         pseudo['uid'] = 'pseudo.'
 
         descr = pseudo['description']
-        descr['cpu_process_type'] = rpc.POSIX  # force single node
-        descr['cpu_thread_type']  = rpc.POSIX
-        descr['cpu_processes']    = 0
-        descr['cpu_threads']      = 1
-
-        descr['gpu_process_type'] = rpc.POSIX  # force single node
-        descr['gpu_thread_type']  = rpc.POSIX
-        descr['gpu_processes']    = 0
-        descr['gpu_threads']      = 1
+        descr['threading_type']   = rpc.POSIX  # force single node
+        descr['ranks']            = 1
+        descr['cores_per_rank']   = 1
+        descr['gpus_per_rank']    = 0
+        descr['gpu_type']         = None
 
         self._log.debug('try schedule uids  %s ', self._bags[bag]['uids'])
       # self._log.debug('try schedule tasks  %s ', pprint.pformat(tasks))
@@ -225,8 +221,8 @@ class ContinuousColo(Continuous):
             td = task['description']
             pseudo['uid'] += task['uid']
 
-            descr['cpu_processes'] += td['cpu_processes'] * td['cpu_threads']
-            descr['gpu_processes'] += td['gpu_processes']
+            descr['cores_per_rank'] += td['ranks'] * td['cores_per_rank']
+            descr['gpus_per_rank']  += td['ranks'] * td['gpus_per_rank']
 
       # self._log.debug('try schedule pseudo %s ', pprint.pformat(pseudo))
 
@@ -249,13 +245,13 @@ class ContinuousColo(Continuous):
             tslots = copy.deepcopy(slots)
             descr  = task['description']
 
-            for _ in range(descr['cpu_processes']):
+            for _ in range(descr['threads_per_rank']):
                 block = list()
                 for _ in range(descr['cpu_threads']):
                     block.append(cpus.pop(0)[0])
                 tslots['ranks'][0]['core_map'].append(block)
 
-            for _ in range(descr['gpu_processes']):
+            for _ in range(descr['gpus_pre_rank']):
 
                 block = list()
                 block.append(gpus.pop(0)[0])
