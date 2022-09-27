@@ -18,7 +18,6 @@ class TestTask(TestCase):
 
         tmgr = rp.TaskManager(None)
         tmgr._uid     = 'tmgr.0000'
-        tmgr._uids    = list()
         tmgr._log     = mock.Mock()
         tmgr._prof    = mock.Mock()
         tmgr._session = mock.Mock(uid=str(time.time()))  # restart uid counter
@@ -49,12 +48,33 @@ class TestTask(TestCase):
         self.assertEqual(rp.Task(tmgr, descr, 'test').uid, 'task.000001')
 
 
+    # --------------------------------------------------------------------------
+    #
+    def test_task_description(self):
+
+        td = rp.TaskDescription({'executable'      : 'true',
+                                 'cpu_processes'   : 2,
+                                 'cpu_threads'     : 3,
+                                 'cpu_process_type': rp.MPI,
+                                 'gpu_processes'   : 4,
+                                 'gpu_threads'     : 5,
+                                 'gpu_process_type': rp.CUDA})
+
+        td.verify()
+
+        assert td.ranks          == 2
+        assert td.cores_per_rank == 3
+        assert td.gpus_per_rank  == 4
+        assert td.gpu_type       == rp.CUDA
+
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     tc = TestTask()
     tc.test_task_uid()
+    tc.test_task_description()
 
 
 # ------------------------------------------------------------------------------
