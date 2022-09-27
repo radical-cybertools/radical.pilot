@@ -175,14 +175,15 @@ class APRun(LaunchMethod):
     def get_launch_cmds(self, task, exec_path):
 
         td      = task['description']
-        n_ranks = td['cpu_processes']
+        n_ranks = td['ranks']
+        n_cores = td.get('cores_per_rank', 1)
 
         ranks_per_node = os.environ.get('SAGA_PPN') or n_ranks
         ranks_per_node = min(n_ranks, int(ranks_per_node))
 
         options = APRunOptions({'ranks_per_node'  : ranks_per_node,
                                 'ranks'           : n_ranks,
-                                'threads_per_rank': td.get('cpu_threads', 1)})
+                                'threads_per_rank': n_cores})
 
         # get configurable options
         cfg_options = self._lm_cfg.get('options', {})

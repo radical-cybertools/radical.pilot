@@ -129,14 +129,13 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # for system with 8 cores & 1 gpu per node):
 #
 #     task = { ...
-#       'cpu_processes'   : 4,
-#       'cpu_process_type': 'mpi',
-#       'cpu_threads'     : 2,
-#       'gpu_processes    : 2,
+#       'ranks'         : 4,
+#       'cores_per_rank': 2,
+#       'gpus_per_rank  : 2,
 #       'slots' :
-#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
-#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                          [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -678,7 +677,7 @@ class AgentSchedulingComponent(rpu.Component):
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
         # We define `tuple_size` as
-        #     `(cpu_processes + gpu_processes) * cpu_threads`
+        #     `ranks * cores_per_rank * gpus_per_rank`
         #
         to_wait    = list()
         to_test    = list()
@@ -694,7 +693,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_test.append(task)
 
         to_test.sort(key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
@@ -721,10 +720,10 @@ class AgentSchedulingComponent(rpu.Component):
         for task in scheduled:
             td = task['description']
             task['$set']      = ['resources']
-            task['resources'] = {'cpu': td['cpu_processes'] *
-                                        td['cpu_threads'],
-                                 'gpu': td['gpu_processes'] *
-                                        td['cpu_processes']}
+            task['resources'] = {'cpu': td['ranks'] *
+                                        td['cores_per_rank'],
+                                 'gpu': td['ranks'] *
+                                        td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -839,10 +838,10 @@ class AgentSchedulingComponent(rpu.Component):
                     # state change, and push it out toward the next component.
                     td = task['description']
                     task['$set']      = ['resources']
-                    task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td['cpu_threads'],
-                                         'gpu': td['gpu_processes'] *
-                                                td['cpu_processes']}
+                    task['resources'] = {'cpu': td['ranks'] *
+                                                td['cores_per_rank'],
+                                         'gpu': td['ranks'] *
+                                                td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -1032,10 +1031,9 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         d = task['description']
-        task['tuple_size'] = tuple([d.get('cpu_processes', 1),
-                                    d.get('cpu_threads',   1),
-                                    d.get('gpu_processes', 0),
-                                    d.get('cpu_process_type')])
+        task['tuple_size'] = tuple([d.get('ranks'         , 1),
+                                    d.get('cores_per_rank', 1),
+                                    d.get('gpus_per_rank' , 0)])
 
 
 # ------------------------------------------------------------------------------
