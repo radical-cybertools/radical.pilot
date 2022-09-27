@@ -304,11 +304,10 @@ class Master(rpu.Component):
 
                 td = dict()
                 td['named_env']        = descr.get('named_env')
-                td['cpu_processes']    = descr['cpu_processes']
-                td['cpu_process_type'] = rpc.MPI
-                td['cpu_thread_type']  = rpc.POSIX
-                td['cpu_threads']      = descr.get('cpu_threads', 1)
-                td['gpu_processes']    = descr.get('gpu_processes', 0)
+                td['ranks']            = descr['ranks']
+                td['threading_type']   = rpc.POSIX
+                td['cores_per_rank']   = descr.get('cores_per_rank', 1)
+                td['gpus_per_rank']    = descr.get('gpus_per_rank', 0)
                 td['environment']      = descr.get('environment', {})
 
                 # this master is obviously running in a suitable python3 env,
@@ -341,10 +340,10 @@ class Master(rpu.Component):
                 task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
                 task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
                 task['pilot']             = os.environ['RP_PILOT_ID']
-                task['resources']         = {'cpu': td['cpu_processes'] *
-                                                    td.get('cpu_threads', 1),
-                                             'gpu': td['gpu_processes'] *
-                                                    td.get('cpu_processes', 1)}
+                task['resources']         = {'cpu': td['ranks'] *
+                                                    td.get('cores_per_rank', 1),
+                                             'gpu': td['ranks'] *
+                                                    td.get('gpus_per_rank', 1)}
                 tasks.append(task)
 
                 # NOTE: the order of insert / state update relies on that order
@@ -558,10 +557,10 @@ class Master(rpu.Component):
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
             task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
             task['pilot']             = os.environ['RP_PILOT_ID']
-            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
-                                                td.get('cpu_threads',   1),
-                                         'gpu': td['gpu_processes'] *
-                                                td.get('cpu_processes', 1)}
+            task['resources']         = {'cpu': td['ranks'] *
+                                                td.get('cores_per_rank', 1),
+                                         'gpu': td['ranks'] *
+                                                td.get('gpus_per_rank', 0)}
 
             # NOTE: the order of insert / state update relies on that order
             #       being maintained through the component's message push,
