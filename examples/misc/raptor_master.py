@@ -222,20 +222,24 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
+        """Log results.
 
+        Log file is named by the master tasks UID.
+        """
         for task in tasks:
 
             mode = task['description']['mode']
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.debug('=== out: %s', task['stdout'])
-            self._log.debug('result_cb  %s: %s [%s] [%s]',
+            self._log.info('=== out: %s', task['stdout'])
+            self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
                             sorted(task['stdout']),
                             task['return_value'])
 
+            # Note that stdout is part of the master task result.
             print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
                                               task['stdout'],
                                               task['return_value']))
@@ -300,4 +304,3 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
-

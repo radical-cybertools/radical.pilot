@@ -33,10 +33,12 @@ import radical.pilot as rp
 
 from radical.pilot import PythonTask
 
-import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger()
-# logger = ru.Logger('raptor')
+# To enable logging, some environment variables need to be set.
+# Ref
+# * https://radicalpilot.readthedocs.io/en/stable/overview.html#what-about-logging
+# * https://radicalpilot.readthedocs.io/en/stable/developer.html#debugging
+# For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
+logger = ru.Logger('raptor')
 
 pytask = PythonTask.pythontask
 
@@ -96,6 +98,10 @@ if __name__ == '__main__':
 
     cores_per_task   = cfg.cores_per_task
 
+    # we use a reporter class for nicer output
+    report = ru.Reporter(name='radical.pilot')
+    report.title('Raptor example (RP version %s)' % rp.version)
+
     session = rp.Session()
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
@@ -123,7 +129,7 @@ if __name__ == '__main__':
 
         pmgr.wait_pilots(uids=pilot.uid, state=[rp.PMGR_ACTIVE])
 
-        logger.info('Stage files for the worker `my_hello` command.')
+        report.info('Stage files for the worker `my_hello` command.\n')
         # See raptor_worker.py.
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
@@ -133,12 +139,13 @@ if __name__ == '__main__':
         # raptor tasks.  Note that we are telling prepare_env to install
         # radical.pilot and radical.utils from sdist archives on the local
         # filesystem. This only works for the default resource, local.localhost.
-        logger.info('Call pilot.prepare_env()')
+        report.info('Call pilot.prepare_env()... ')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type' : 'venv',
                                     'setup': [rp.sdist_path,
                                               ru.sdist_path,
                                               'mpi4py']})
+        report.info('done\n')
 
         # Launch a raptor master task, which will launch workers and self-submit
         # some additional tasks for illustration purposes.
@@ -170,7 +177,7 @@ if __name__ == '__main__':
             tds.append(td)
 
         if len(tds) > 0:
-            logger.info('Submit raptor master(s) %s', [t.uid for t in tds])
+            report.info('Submit raptor master(s) %s\n' % str([t.uid for t in tds]))
             task  = tmgr.submit_tasks(tds)
             if not isinstance(task, list):
                 task = [task]
@@ -195,11 +202,11 @@ if __name__ == '__main__':
                 'arguments'       : ['-c',
                               "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]
             }))
-        logger.info('Submit non-raptor task(s) %s ', [t.uid for t in tds])
+        report.info('Submit non-raptor task(s) %s \n' % str([t.uid for t in tds]))
 
         # submit some tasks that will be routed through the raptor master and
         # which will execute in the named virtual environment we provisioned.
-        logger.info('Prepare raptor tasks.')
+        report.info('Prepare raptor tasks.\n')
         for i in range(tasks_raptor):
 
             tds.append(rp.TaskDescription({
@@ -285,18 +292,20 @@ if __name__ == '__main__':
                 'scheduler'       : master_ids[i % n_masters]}))
 
         if len(tds) > 0:
-            logger.info('Submit tasks %s', [t.uid for t in tds])
+            report.info('Submit tasks %s.\n' % str([t.uid for t in tds]))
             tasks = tmgr.submit_tasks(tds)
 
             logger.info('Wait for tasks %s', [t.uid for t in tds])
             tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
 
             for task in tasks:
-                print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
+                report.info('%s [%s]: %s' % (task.uid, task.state, task.stdout))
 
     finally:
         session.close(download=True)
 
+    report.info('Logs from the master task should now be in local files like '
+                f'rp.session.{session.uid}/{pilot.uid}/{master_ids[0]}.log'
+                )
 
 # ------------------------------------------------------------------------------
-
