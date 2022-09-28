@@ -1,9 +1,12 @@
 # This Dockerfile is used to create an image for the "radicalpilot" service in
-# the stack.yml docker-compose file in this directory.
+# the compose.yml file in this directory.
 # When a container is launched from this image with no arguments, the container
 # will run an sshd daemon.
 # Example:
 #     docker build -t radicalpilot -f radicalpilot.dockerfile ..
+#
+# This Dockerfile is hosted at https://github.com/radical-cybertools/radical.pilot/tree/devel/docker
+# See README.md in this directory for instructions.
 
 FROM ubuntu:bionic
 
@@ -82,7 +85,7 @@ USER root
 # Radical Pilot assumes the user is defined in the same database as in the URL.
 # The Docker entry point creates users in the "admin" database, so we can just
 # tell RP to use the same. The username and password are configured in the env
-# passed to the mongo container in stack.yml. The service name from stack.yml
+# passed to the mongo container in compose.yml. The service name from compose.yml
 # also determines the URL host name.
 # Note that the default mongodb port number is 27017.
 ENV RADICAL_PILOT_DBURL="mongodb://root:password@mongo:27017/admin"
