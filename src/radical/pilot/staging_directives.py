@@ -145,7 +145,7 @@ def complete_url(path   : str,
     certain locations, namely relative to
 
         * `client://`  : the client's working directory
-        * `endpoint://`: the root file system on the target resource
+        * `endpoint://`: the root of the target resource's file system
         * `resource://`: the sandbox base dir on the target resource
         * `session://` : the session sandbox  on the target resource
         * `pilot://`   : the pilot   sandbox  on the target resource
