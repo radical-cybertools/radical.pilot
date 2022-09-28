@@ -153,7 +153,7 @@ if __name__ == '__main__':
             td.uid            = master_ids[i]
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
-            td.cpu_threads = cores_per_master
+            td.cpu_threads    = cores_per_master
             td.input_staging  = [{'source': 'raptor_master.py',
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -190,8 +190,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.exe.c.%06d' % i,
                 'mode'            : rp.TASK_EXECUTABLE,
                 'scheduler'       : None,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
                               "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]
@@ -207,7 +206,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.call.c.1.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : cores_per_task,
+                'ranks'           : 1,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
                 'scheduler'       : master_ids[i % n_masters]}))
@@ -216,8 +215,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.call.c.2.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
                 'scheduler'       : master_ids[i % n_masters]}))
@@ -235,8 +233,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'function'        : bson,
                 'scheduler'       : master_ids[i % n_masters]}))
 
@@ -245,7 +242,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'cpu_processes'   : cores_per_task,
+                'ranks'           : 1,
                 'function'        : bson,
                 'scheduler'       : master_ids[i % n_masters]}))
 
@@ -253,8 +250,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.eval.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EVAL,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'code'            :
                     'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
@@ -264,8 +260,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.exec.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXEC,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'code'            :
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
@@ -275,8 +270,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.proc.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PROC,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
@@ -286,8 +280,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.shell.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
-                'cpu_processes'   : cores_per_task,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'command'         : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : master_ids[i % n_masters]}))
 
