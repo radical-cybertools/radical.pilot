@@ -1,22 +1,5 @@
-# When a container is launched from this image with no arguments,
-# the entry point script will launch and initialize a MongoDB instance.
-# It will take a few seconds to be ready for connections, after which
-# radical.pilot will be able to use pymongo to connect.
-# Example:
-#     # From repository root directory
-#     docker build -t rp-complete -f docker/rp-complete.dockerfile .
-#     docker run --rm --name rp_test -d rp-complete
-#     # Either use '-d' with 'run' or issue the 'exec' in a separate terminal
-#     # after waiting a few seconds for the DB to be ready to accept connections.
-#     docker exec -ti -u rp rp_test bash -c ". /home/rp/rp-venv/bin/activate && cd ~/radical.pilot && ~/rp-venv/bin/python -m pytest tests"
-#     # The examples need the venv to be activated in order to find supporting
-#     # shell scripts on the default PATH. The current working directory also
-#     # needs to be writable.
-#     docker exec -ti -u rp rp_test bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/00*"
-#     # If '-d' was used with 'run', you can just kill the container when done.
-#     docker kill rp_test
-#
-
+# This Dockerfile is hosted at https://github.com/radical-cybertools/radical.pilot/tree/devel/docker
+# See README.md in this directory for instructions.
 
 FROM mongo:bionic
 # Reference https://github.com/docker-library/mongo/blob/master/4.2/Dockerfile
