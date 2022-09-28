@@ -305,7 +305,7 @@ if __name__ == '__main__':
         session.close(download=True)
 
     report.info('Logs from the master task should now be in local files like '
-                f'rp.session.{session.uid}/{pilot.uid}/{master_ids[0]}.log'
+                f'{session.uid}/{pilot.uid}/{master_ids[0]}.log\n'
                 )
 
 # ------------------------------------------------------------------------------
