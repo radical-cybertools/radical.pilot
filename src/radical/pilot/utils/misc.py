@@ -160,7 +160,7 @@ def get_resource_fs_url(resource: str,
     of 'root' dependends of the access protocol and the providing service
     implementation).
 
-    This URL is equivalent to the base ``endpoint:///`` URL available for use
+    For example, `rs.filesystem.directory(get_resource_fs_url(...)).change_dir('/')` is equivalent to the base ``endpoint:///`` URL available for use
     in a `staging_directive` once a `Session` is active.
 
     Args:
