@@ -154,7 +154,7 @@ def get_resource_config(resource: str) -> Union[None, ru.Config]:
 def get_resource_fs_url(resource: str,
                         schema  : str = None) -> Union[None, ru.Url]:
     '''
-    For the given resource label, return the contact URL pointing to the root
+    For the given resource label, return the contact URL
     of the resource's file system.  This corresponds to the
     `filesystem_endpoint` setting in the resource config. Note that the notion
     of 'root' dependends of the access protocol and the providing service
