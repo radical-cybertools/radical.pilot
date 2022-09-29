@@ -177,7 +177,8 @@ if __name__ == '__main__':
             tds.append(td)
 
         if len(tds) > 0:
-            report.info('Submit raptor master(s) %s\n' % str([t.uid for t in tds]))
+            report.info('Submit raptor master(s) %s\n'
+                       % str([t.uid for t in tds]))
             task  = tmgr.submit_tasks(tds)
             if not isinstance(task, list):
                 task = [task]
@@ -202,7 +203,8 @@ if __name__ == '__main__':
                 'arguments'       : ['-c',
                               "echo 'hello $RP_RANK/$RP_RANKS: $RP_TASK_ID'"]
             }))
-        report.info('Submit non-raptor task(s) %s \n' % str([t.uid for t in tds]))
+        report.info('Submit non-raptor task(s) %s \n'
+                   % str([t.uid for t in tds]))
 
         # submit some tasks that will be routed through the raptor master and
         # which will execute in the named virtual environment we provisioned.
@@ -296,7 +298,7 @@ if __name__ == '__main__':
             tasks = tmgr.submit_tasks(tds)
 
             logger.info('Wait for tasks %s', [t.uid for t in tds])
-            tmgr.wait_tasks(uids=[t.uid for t in tasks])  # uids=[t.uid for t in tasks])
+            tmgr.wait_tasks(uids=[t.uid for t in tasks])
 
             for task in tasks:
                 report.info('%s [%s]: %s' % (task.uid, task.state, task.stdout))
@@ -304,8 +306,7 @@ if __name__ == '__main__':
     finally:
         session.close(download=True)
 
-    report.info('Logs from the master task should now be in local files like '
-                f'{session.uid}/{pilot.uid}/{master_ids[0]}.log\n'
-                )
+    report.info('Logs from the master task should now be in local files \n')
+    report.info('like %s/%s/%s.log\n' % (session.uid, pilot.uid, master_ids[0]))
 
 # ------------------------------------------------------------------------------
