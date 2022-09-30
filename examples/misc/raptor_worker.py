@@ -44,7 +44,7 @@ class MyWorker(rp.raptor.MPIWorker):
                 'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
+                            'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
 
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',
