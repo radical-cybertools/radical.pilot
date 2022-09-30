@@ -120,8 +120,8 @@ class APRun(LaunchMethod):
 
         # task_env = td['environment']
         # cmd_options += ''.join([' -e %s=%s' % x for x in task_env.items()])
-        # if td['cpu_threads'] > 1 and 'OMP_NUM_THREADS' not in task_env:
-        #     cmd_options += ' -e OMP_NUM_THREADS=%(cpu_threads)s' % td
+        # if td['cores_per_rank'] > 1 and 'OMP_NUM_THREADS' not in task_env:
+        #     cmd_options += ' -e OMP_NUM_THREADS=%(cores_per_rank)s' % td
 
         cmd = '%s %s %s' % (self._command, cmd_options, exec_path)
         return cmd.rstrip()
