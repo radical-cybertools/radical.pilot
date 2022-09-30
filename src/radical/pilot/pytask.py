@@ -69,7 +69,7 @@ class PythonTask(object):
         kwargs = pytask['kwargs']
         func   = deserialize_obj(pytask['func'])
 
-        return func, args, kwargs
+        return func, list(args), kwargs
 
 
     # --------------------------------------------------------------------------
