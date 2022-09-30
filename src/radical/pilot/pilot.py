@@ -626,9 +626,10 @@ class Pilot(object):
         where the `type` specifies the environment type, `version` specifies the
         Python version to deploy, and `setup` specifies how the environment is
         to be prepared.  If `path` is specified the env will be created at that
-        path.  If a VE exists at that path, it will be used as is (an update is
-        not performed). `pre_exec` commands are be executed before env creation
-        and setup are attempted.
+        path.  If `path` is not specified, RP will place the named env in the
+        pilot sandbox (under `env/named_env_<name>`). If a VE exists at that
+        path, it will be used as is (an update is not performed). `pre_exec`
+        commands are executed before env creation and setup are attempted.
 
         Note: the `version` specifier is only interpreted up to minor version,
         sibminor and less are ignored.
