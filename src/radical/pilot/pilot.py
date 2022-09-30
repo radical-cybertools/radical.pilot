@@ -629,7 +629,7 @@ class Pilot(object):
         path.  If `path` is not specified, RP will place the named env in the
         pilot sandbox (under `env/named_env_<name>`). If a VE exists at that
         path, it will be used as is (an update is not performed). `pre_exec`
-        commands are be executed before env creation and setup are attempted.
+        commands are executed before env creation and setup are attempted.
 
         Note: the `version` specifier is only interpreted up to minor version,
         sibminor and less are ignored.
