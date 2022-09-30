@@ -147,7 +147,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # The respective launch method is expected to create processes on the set of
 # cpus and gpus thus specified, (node_1, cores 0 and 4; node_2, cores 1 and 5).
 # The other reserved cores are for the application to spawn threads on
-# (`cpu_threads=2`).
+# (`cores_per_rank=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decision made by
