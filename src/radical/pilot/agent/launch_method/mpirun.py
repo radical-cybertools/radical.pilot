@@ -147,10 +147,10 @@ class MPIRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        slots        = task['slots']
-        uid          = task['uid']
-        td           = task['description']
-        sandbox      = task['task_sandbox_path']
+        slots      = task['slots']
+        uid        = task['uid']
+        td         = task['description']
+        sandbox    = task['task_sandbox_path']
         task_cores = td.get('cores_per_rank', 1)
 
         if '_dplace' in self.name and task_cores > 1:
