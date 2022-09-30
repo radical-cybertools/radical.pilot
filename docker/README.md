@@ -116,3 +116,40 @@ Edit the compose.yml file to configure.
 Shut down and clean up with
 
     docker compose down
+
+## Development
+
+The local repository is copied into the image when it is built.
+To update the radical.pilot software without rebuilding the image(s),
+you can use `docker cp` or a `tar` pipeline.
+
+For a small number of files, for instance,
+
+    docker cp ../examples/misc/raptor.cfg rp_test:/home/rp/radical.pilot/examples/misc/
+
+To update the package from source, change directory to the root of the repository
+or use `-C <path>`.
+
+For monolithic `rp_test` container as described above:
+
+    # From repo base
+    tar cf - . | docker cp - rp_test:/home/rp/radical.pilot/
+    # From docker directory
+    tar cf - -C .. . | docker cp - rp_test:/home/rp/radical.pilot/
+
+For `docker compose`:
+
+    # From repo base
+    tar cf - . | docker compose -f docker/compose.yml cp - login:/home/rp/radical.pilot/
+    # From docker directory
+    tar cf - -C .. . | docker compose cp - login:/home/rp/radical.pilot/
+
+The `uid` in the container will not match your uid in the host, and the `cp` ran as root.
+First, update the ownership and permissions of the transferred files.
+Then reinstall the package in the container. 
+
+    docker exec -u root rp_test bash -c "chown -R rp /home/rp && chmod u+rx -R /home/rp/radical.pilot"
+    docker exec -u rp rp_test bash -c ". ~/rp-venv/bin/activate && cd ~/radical.pilot && pip install --upgrade ."
+    # or
+    docker compose exec -u root login bash -c "chown -R rp /home/rp && chmod u+rx -R /home/rp/radical.pilot"
+    docker compose exec -u rp login bash -c ". ~/rp-venv/bin/activate && cd ~/radical.pilot && pip install --upgrade ."
