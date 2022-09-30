@@ -10,9 +10,11 @@ import radical.pilot as rp
 from radical.pilot import PythonTask
 
 
-# This script has to run as a task within an pilot allocation, and is
-# a demonstration of a task overlay within the RCT framework.
-# It will:
+# This script has to run as a task within a pilot allocation, and is
+# a demonstration of a task overlay within the RCT framework. It is expected
+# to be staged and launched by the `raptor.py` script in the radical.pilot
+# examples/misc directory.
+# This master task will:
 #
 #   - create a master which bootstraps a specific communication layer
 #   - insert n workers into the pilot (again as a task)
@@ -41,6 +43,7 @@ def func_non_mpi(a):
     import random
     b = random.random()
     t = math.exp(a * b)
+    print('hello! exp(%f) = %f' % (a * b, t))
     return t
 
 
@@ -91,10 +94,10 @@ class MyMaster(rp.raptor.Master):
                 'uid'        : 'task.exe.m.%06d' % i,
                 'mode'       : rp.TASK_EXECUTABLE,
                 'scheduler'  : None,
-                'ranks'      : 1,
+                'ranks'      : 2,
                 'executable' : '/bin/sh',
                 'arguments'  : ['-c',
-                                'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.call.m.%06d' % i,
@@ -115,7 +118,7 @@ class MyMaster(rp.raptor.Master):
                 'scheduler' : 'master.000000'}))
             self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
-            bson = func_non_mpi(i)
+            bson = func_non_mpi(i + 1)
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.ser_func.m.%06d' % i,
               # 'timeout'   : 10,
@@ -141,7 +144,8 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_EXEC,
                 'ranks'     : 2,
                 'code'      :
-                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'import os\n'
+                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
                 'scheduler' : 'master.000000'}))
 
@@ -219,20 +223,24 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
+        """Log results.
 
+        Log file is named by the master tasks UID.
+        """
         for task in tasks:
 
             mode = task['description']['mode']
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.debug('=== out: %s', task['stdout'])
-            self._log.debug('result_cb  %s: %s [%s] [%s]',
+            self._log.info('=== out: %s', task['stdout'])
+            self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
                             sorted(task['stdout']),
                             task['return_value'])
 
+            # Note that stdout is part of the master task result.
             print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
                                               task['stdout'],
                                               task['return_value']))
@@ -261,12 +269,12 @@ if __name__ == '__main__':
     cfg          = ru.Config(cfg=ru.read_json(cfg_fname))
     cfg.rank     = int(sys.argv[2])
 
-    n_workers  = cfg.n_workers
-    nodes_pw   = cfg.nodes_pw
-    cpn        = cfg.cpn
-    gpn        = cfg.gpn
-    descr      = cfg.worker_descr
-    pwd        = os.getcwd()
+    n_workers        = cfg.n_workers
+    nodes_per_worker = cfg.nodes_per_worker
+    cores_per_node   = cfg.cores_per_node
+    gpus_per_node    = cfg.gpus_per_node
+    descr            = cfg.worker_descr
+    pwd              = os.getcwd()
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -281,8 +289,8 @@ if __name__ == '__main__':
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
     print('workers: %d' % n_workers)
-    descr['ranks']         = nodes_pw * cpn
-    descr['gpus_per_rank'] = nodes_pw * gpn
+    descr['ranks']         = nodes_per_worker * cores_per_node
+    descr['gpus_per_rank'] = nodes_per_worker * gpus_per_node
     master.submit_workers(descr=descr, count=n_workers)
 
     # wait until `m` of those workers are up
@@ -295,9 +303,5 @@ if __name__ == '__main__':
     master.join()
     master.stop()
 
-    # simply terminate
-    # FIXME: clean up workers
-
 
 # ------------------------------------------------------------------------------
-
