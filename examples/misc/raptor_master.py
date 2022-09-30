@@ -118,7 +118,7 @@ class MyMaster(rp.raptor.Master):
                 'scheduler' : 'master.000000'}))
             self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
-            bson = func_non_mpi(i+1)
+            bson = func_non_mpi(i + 1)
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.ser_func.m.%06d' % i,
               # 'timeout'   : 10,
