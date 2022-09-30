@@ -247,7 +247,7 @@ class ContinuousColo(Continuous):
 
             for _ in range(descr['threads_per_rank']):
                 block = list()
-                for _ in range(descr['cpu_threads']):
+                for _ in range(descr['cores_per_rank']):
                     block.append(cpus.pop(0)[0])
                 tslots['ranks'][0]['core_map'].append(block)
 
