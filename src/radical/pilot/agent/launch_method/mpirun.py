@@ -147,15 +147,15 @@ class MPIRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        slots        = task['slots']
-        uid          = task['uid']
-        td           = task['description']
-        sandbox      = task['task_sandbox_path']
-        task_threads = td.get('cpu_threads', 1)
+        slots      = task['slots']
+        uid        = task['uid']
+        td         = task['description']
+        sandbox    = task['task_sandbox_path']
+        task_cores = td.get('cores_per_rank', 1)
 
-        if '_dplace' in self.name and task_threads > 1:
+        if '_dplace' in self.name and task_cores > 1:
             # dplace pinning would disallow threads to map to other cores
-            raise ValueError('dplace can not place threads [%d]' % task_threads)
+            raise ValueError('dplace can not place threads [%d]' % task_cores)
 
         # Extract all the hosts from the slots
         host_list = list()
