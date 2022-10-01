@@ -155,10 +155,13 @@ def get_resource_fs_url(resource: str,
                         schema  : str = None) -> Union[None, ru.Url]:
     '''
     For the given resource label, return the contact URL of the resource's file
-    system.
+    system.  This corresponds to the `filesystem_endpoint` setting in the
+    resource config.
 
-    This URL is equivalent to the base ``endpoint:///`` URL available for use
-    in a `staging_directive` once a `Session` is active.
+    For example,
+    `rs.filesystem.directory(get_resource_fs_url(...)).change_dir('/')`
+    is equivalent to the base ``endpoint:///`` URL available for use
+    in a `staging_directive`.
 
     Args:
         resource (:obj:`str`): resource label for which to return the url
