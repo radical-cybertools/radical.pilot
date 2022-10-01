@@ -168,11 +168,14 @@ def complete_url(path   : str,
     The method returns an instance of `:py:class:`radical.utils.Url`.  Even if
     the URL is not altered, a new instance (deep copy) will be returned.
 
+    `endpoint://` is based on the `filesystem_endpoint` attribute of the
+    resource config and points to the file system accessible  via that URL.
+    Note that the notion of 'root' dependends of the access protocol and the
+    providing service implementation.
+
     NOTE: URL parsing is not really cheap, so this method should be used
     conservatively.
 
-    NOTE: For `endpoint://`, the notion of 'root' dependends of the access
-    protocol and the providing service implementation.
     '''
 
     # FIXME: consider evaluation of env vars
