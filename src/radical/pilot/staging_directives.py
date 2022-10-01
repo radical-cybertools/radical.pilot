@@ -145,7 +145,7 @@ def complete_url(path   : str,
     certain locations, namely relative to
 
         * `client://`  : the client's working directory
-        * `endpoint://`: the root file system on the target resource
+        * `endpoint://`: the root of the target resource's file system
         * `resource://`: the sandbox base dir on the target resource
         * `session://` : the session sandbox  on the target resource
         * `pilot://`   : the pilot   sandbox  on the target resource
@@ -168,8 +168,14 @@ def complete_url(path   : str,
     The method returns an instance of `:py:class:`radical.utils.Url`.  Even if
     the URL is not altered, a new instance (deep copy) will be returned.
 
+    `endpoint://` is based on the `filesystem_endpoint` attribute of the
+    resource config and points to the file system accessible  via that URL.
+    Note that the notion of 'root' dependends of the access protocol and the
+    providing service implementation.
+
     NOTE: URL parsing is not really cheap, so this method should be used
     conservatively.
+
     '''
 
     # FIXME: consider evaluation of env vars
