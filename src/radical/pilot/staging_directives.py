@@ -170,6 +170,9 @@ def complete_url(path   : str,
 
     NOTE: URL parsing is not really cheap, so this method should be used
     conservatively.
+
+    NOTE: For `endpoint://`, the notion of 'root' dependends of the access
+    protocol and the providing service implementation.
     '''
 
     # FIXME: consider evaluation of env vars

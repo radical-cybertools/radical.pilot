@@ -156,8 +156,7 @@ def get_resource_fs_url(resource: str,
     '''
     For the given resource label, return the contact URL of the resource's file
     system.  This corresponds to the `filesystem_endpoint` setting in the
-    resource config. Note that the notion of 'root' dependends of the access
-    protocol and the providing service implementation).
+    resource config.
 
     For example,
     `rs.filesystem.directory(get_resource_fs_url(...)).change_dir('/')`
