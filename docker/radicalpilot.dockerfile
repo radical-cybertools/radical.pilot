@@ -7,29 +7,63 @@
 #
 # This Dockerfile is hosted at https://github.com/radical-cybertools/radical.pilot/tree/devel/docker
 # See README.md in this directory for instructions.
-
-FROM ubuntu:bionic
+FROM ubuntu:focal
 
 RUN apt-get update && \
-    apt-get install -y \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get -yq --no-install-suggests --no-install-recommends install apt-utils build-essential software-properties-common && \
+    apt-get install -y --no-install-recommends \
         curl \
         dnsutils \
-        gcc \
-        git \
-        openssh-server \
         iputils-ping \
-        libopenmpi-dev \
+        language-pack-en \
         locales \
-        openmpi-bin \
-        openssh-server \
-        python3-dev \
-        python3-venv \
-        vim \
-        wget && \
+        && \
     rm -rf /var/lib/apt/lists/*
 
 RUN locale-gen en_US.UTF-8 && \
     update-locale LANG=en_US.UTF-8
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        git \
+        libopenmpi-dev \
+        openmpi-bin \
+        openssh-server \
+        vim \
+        wget && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get -y --no-install-recommends install \
+        libmpich-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Note that mpic++ can be configured with `update-alternatives` for openmpi or mpich.
+# See https://stackoverflow.com/a/66538359/5351807
+# The mpic++ (both mpic++.openmpi and mpic++.mpich) uses g++ by default
+# (and so is not affected by alternatives for "c++").
+# mpic++.openmpi can be redirected with environment variables (e.g. OMPI_CXX=clang++ mpic++ ...).
+# It is not clear whether mpic++.mpich can be similarly configured, and it might be better
+# to do fancy tool chain manipulation through Spack instead of the Ubuntu system tools.
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y \
+        python3.8-dev \
+        python3.9-dev \
+        python3.8-venv \
+        python3.9-venv \
+        python-dev-is-python3 \
+        tox && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 8
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 9
 
 # Reference https://docs.docker.com/engine/examples/running_ssh_service/
 RUN mkdir /var/run/sshd
@@ -50,14 +84,15 @@ USER rp
 RUN (cd ~rp && python3 -m venv rp-venv)
 
 RUN (cd ~rp && \
-    rp-venv/bin/pip install --upgrade \
+    rp-venv/bin/pip install --upgrade --no-cache-dir \
         pip \
         setuptools \
         wheel && \
-    rp-venv/bin/pip install --upgrade \
+    rp-venv/bin/pip install --upgrade --no-cache-dir \
         coverage \
         flake8 \
         'mock==2.0.0' \
+        mpi4py \
         netifaces \
         ntplib \
         pylint \
@@ -67,16 +102,11 @@ RUN (cd ~rp && \
         setproctitle \
         )
 
-RUN . ~rp/rp-venv/bin/activate && \
-    pip install --upgrade \
-        'radical.saga>=1.0' \
-        'radical.utils>=1.1'
-
-COPY --chown=rp:radical . /radical.pilot
+COPY --chown=rp:radical . /home/rp/radical.pilot
 
 RUN (. ~rp/rp-venv/bin/activate && \
-    cd /radical.pilot && \
-    ~rp/rp-venv/bin/pip install .)
+    cd ~/radical.pilot && \
+    ~rp/rp-venv/bin/pip install --no-cache-dir .)
 
 
 USER root

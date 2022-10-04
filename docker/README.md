@@ -98,7 +98,7 @@ Once the services are up, start a shell in the `loging` service container with
 
 or invoke a Radical Pilot test with, e.g.
 
-    docker compose exec -ti -u rp login bash -c "cd && . /home/rp/rp-venv/bin/activate && python /radical.pilot/examples/00*"
+    docker compose exec -ti -u rp login bash -c "cd && . /home/rp/rp-venv/bin/activate && python radical.pilot/examples/00*"
 
 ### Port mapping services to the host machine
 
