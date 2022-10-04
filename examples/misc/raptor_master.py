@@ -311,7 +311,6 @@ if __name__ == '__main__':
 
     master.start()
     master.submit()
-  # time.sleep(120)
     master.join()
     master.stop()
 

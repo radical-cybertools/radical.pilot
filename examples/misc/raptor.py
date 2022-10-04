@@ -57,15 +57,14 @@ def func_mpi(comm, msg, sleep=SLEEP):
 # ------------------------------------------------------------------------------
 #
 @pytask
-def func_non_mpi(a):
+def func_non_mpi(a, sleep=SLEEP):
     import math
     import random
     import time
-    SLEEP = 3
     b = random.random()
     t = math.exp(a * b)
     print('func_non_mpi')
-    time.sleep(SLEEP)
+    time.sleep(sleep)
     return t
 
 

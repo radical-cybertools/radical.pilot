@@ -493,13 +493,12 @@ def get_hostmap_deprecated(profiles):
 def get_session_profile(sid, src=None):
 
     if not src:
-        src = "%s/%s" % (os.getcwd(), sid)
+        src = '%s/%s' % (os.getcwd(), sid)
 
     if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob("%s/*.prof"     % src)
-        profiles += glob.glob("%s/*/*.prof"   % src)
-        profiles += glob.glob("%s/*/*/*.prof" % src)
+        profiles  = glob.glob('%s/*.prof'    % src)
+        profiles += glob.glob('%s/**/*.prof' % src)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
@@ -535,7 +534,7 @@ def get_session_profile(sid, src=None):
 # ------------------------------------------------------------------------------
 #
 def get_session_description(sid, src=None, dburl=None):
-    """
+    '''
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
       - set of stateful entities
@@ -548,10 +547,10 @@ def get_session_description(sid, src=None, dburl=None):
 
     if `dburl` is given, its value is used to fetch session information from
     a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
-    """
+    '''
 
     if not src:
-        src = "%s/%s" % (os.getcwd(), sid)
+        src = '%s/%s' % (os.getcwd(), sid)
 
     if os.path.isfile('%s/%s.json' % (src, sid)):
         json = ru.read_json('%s/%s.json' % (src, sid))
