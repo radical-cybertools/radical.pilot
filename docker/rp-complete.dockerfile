@@ -4,20 +4,29 @@
 FROM mongo:bionic
 # Reference https://github.com/docker-library/mongo/blob/master/4.2/Dockerfile
 
+USER root
+
 RUN groupadd -r radical && useradd -r -g radical -m rp
 
 RUN apt-get update && \
-    apt-get install -y \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get -yq --no-install-suggests --no-install-recommends install apt-utils build-essential software-properties-common && \
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
         curl \
         dnsutils \
         gcc \
         git \
         iputils-ping \
+        language-pack-en \
         libopenmpi-dev \
         locales \
         openmpi-bin \
-        python3-dev \
+        openssh-client \
+        python3.8 \
+        python3.8-dev \
         python3-venv \
+        python3.8-venv \
         vim \
         wget && \
     rm -rf /var/lib/apt/lists/*
@@ -25,16 +34,19 @@ RUN apt-get update && \
 RUN locale-gen en_US.UTF-8 && \
     update-locale LANG=en_US.UTF-8
 
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 10
+
 USER rp
 
-RUN (cd ~rp && python3 -m venv rp-venv)
+RUN (cd ~rp && python3.8 -m venv rp-venv)
 
 RUN (cd ~rp && \
-    rp-venv/bin/pip install --upgrade \
+    rp-venv/bin/pip install --upgrade --no-cache-dir \
         pip \
         setuptools \
         wheel && \
-    rp-venv/bin/pip install --upgrade \
+    rp-venv/bin/pip install --upgrade --no-cache-dir \
         coverage \
         flake8 \
         'mock==2.0.0' \
@@ -48,16 +60,11 @@ RUN (cd ~rp && \
         setproctitle \
         )
 
-RUN . ~rp/rp-venv/bin/activate && \
-    pip install --upgrade \
-        'radical.saga>=1.0' \
-        'radical.utils>=1.1'
-
 # Install RP from the current local repository working directory.
 COPY --chown=rp:radical . /home/rp/radical.pilot
 RUN . ~rp/rp-venv/bin/activate && \
     cd ~rp/radical.pilot && \
-    pip install .
+    pip install --no-cache-dir .
 
 # Note: if we want the image to target a specific (configrable) branch, use the following instead.
 #
