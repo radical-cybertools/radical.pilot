@@ -6,7 +6,6 @@ import copy
 import time
 import queue
 import pprint
-import logging
 
 import threading          as mt
 import multiprocessing    as mp
