@@ -19,9 +19,6 @@ from ... import constants as rpc
 
 from ..resource_manager import ResourceManager
 
-# disable slot status prints by default
-_debug = False
-
 
 # ------------------------------------------------------------------------------
 #
@@ -456,10 +453,8 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
-        if not _debug:
-            return
-
-        if not self._log.isEnabledFor(logging.DEBUG):
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level < 5:
             return
 
         if not msg: msg = ''
