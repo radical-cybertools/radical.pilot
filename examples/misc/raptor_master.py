@@ -26,9 +26,11 @@ from radical.pilot import PythonTask
 
 pytask = PythonTask.pythontask
 
+SLEEP = 5
+
 
 @pytask
-def func_mpi(comm, msg, sleep=0):
+def func_mpi(comm, msg, sleep=SLEEP):
     # pylint: disable=reimported
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
@@ -37,12 +39,14 @@ def func_mpi(comm, msg, sleep=0):
 
 
 @pytask
-def func_non_mpi(a):
+def func_non_mpi(a, sleep=SLEEP):
     # pylint: disable=reimported
     import math
     import random
+    import time
     b = random.random()
     t = math.exp(a * b)
+    time.sleep(sleep)
     print('hello! exp(%f) = %f' % (a * b, t))
     return t
 
@@ -88,7 +92,7 @@ class MyMaster(rp.raptor.Master):
         # create additional tasks to be distributed to the workers.
 
         tds = list()
-        for i in range(1):
+        for i in range(16):
 
             tds.append(rp.TaskDescription({
                 'uid'        : 'task.exe.m.%06d' % i,
@@ -96,8 +100,8 @@ class MyMaster(rp.raptor.Master):
                 'scheduler'  : None,
                 'ranks'      : 2,
                 'executable' : '/bin/sh',
-                'arguments'  : ['-c',
-                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
+                'arguments'  : ['-c', 'sleep %d;' % SLEEP +
+                             'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.call.m.%06d' % i,
@@ -105,10 +109,11 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_FUNCTION,
                 'ranks'     : 2,
                 'function'  : 'hello_mpi',
-                'kwargs'    : {'msg': 'task.call.m.%06d' % i},
+                'kwargs'          : {'msg': 'task.call.m.%06d' % i,
+                                     'sleep': SLEEP},
                 'scheduler' : 'master.000000'}))
 
-            bson = func_mpi(None, msg='task.call.m.%06d' % i, sleep=0)
+            bson = func_mpi(None, msg='task.call.m.%06d' % i, sleep=SLEEP)
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.mpi_ser_func.m.%06d' % i,
               # 'timeout'   : 10,
@@ -134,8 +139,9 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_EVAL,
                 'ranks'     : 2,
                 'code'      :
-                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
+                    'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
+                    'time.sleep(%d)))' % SLEEP,
                 'scheduler' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
@@ -144,8 +150,8 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_EXEC,
                 'ranks'     : 2,
                 'code'      :
-                    'import os\n'
-                    'print("hello %s/%s: %s" % (os.environ["RP_RANK"],'
+                    'import time\ntime.sleep(%d)\n' % SLEEP +
+                    'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
                 'scheduler' : 'master.000000'}))
 
@@ -155,8 +161,10 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_PROC,
                 'ranks'     : 2,
                 'executable': '/bin/sh',
-                'arguments' : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-                                     '$RP_TASK_ID"'],
+                'arguments' : ['-c',
+                               'sleep %d; ' % SLEEP +
+                               'echo "hello $RP_RANK/$RP_RANKS: '
+                               '$RP_TASK_ID"'],
                 'scheduler' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
@@ -164,7 +172,8 @@ class MyMaster(rp.raptor.Master):
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_SHELL,
                 'ranks'     : 2,
-                'command'   : 'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
+                'command'   : 'sleep %d; ' % SLEEP +
+                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler' : 'master.000000'}))
 
 
@@ -201,21 +210,23 @@ class MyMaster(rp.raptor.Master):
             self._log.debug('request_cb %s\n' % (task['uid']))
 
             mode = task['description']['mode']
-            # uid  = task['description']['uid']
+            uid  = task['description']['uid']
 
             self._submitted[mode] += 1
 
-          # # for each `function` mode task, submit one more `proc` mode request
-          # if mode == rp.TASK_FUNCTION:
-          #     self.submit_tasks(rp.TaskDescription(
-          #         {'uid'       : uid.replace('call', 'extra'),
-          #        # 'timeout'   : 10,
-          #          'mode'      : rp.TASK_PROC,
-          #          'ranks'     : 2,
-          #          'executable': '/bin/sh',
-          #          'arguments' : ['-c', 'echo "hello $RP_RANK/$RP_RANKS: '
-          #                               '$RP_TASK_ID"'],
-          #          'scheduler' : 'master.000000'}))
+            # for each `function` mode task, submit one more `proc` mode request
+            if mode == rp.TASK_FUNCTION:
+                self.submit_tasks(rp.TaskDescription(
+                    {'uid'       : uid.replace('call', 'extra'),
+                   # 'timeout'   : 10,
+                     'mode'      : rp.TASK_PROC,
+                     'ranks'     : 2,
+                     'executable': '/bin/sh',
+                     'arguments' : ['-c',
+                                    'sleep %d; ' % SLEEP +
+                                    'echo "hello $RP_RANK/$RP_RANKS: '
+                                          '$RP_TASK_ID"'],
+                     'scheduler' : 'master.000000'}))
 
         return tasks
 
