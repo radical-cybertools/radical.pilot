@@ -268,6 +268,19 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     @property
+    def mode(self):
+        '''
+        Returns the task mode
+
+        **Returns:**
+            * A mode (string).
+        '''
+        return self._descr['mode']
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def origin(self):
         '''
         indicates where the task was created
