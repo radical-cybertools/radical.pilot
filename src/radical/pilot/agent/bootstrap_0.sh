@@ -50,6 +50,7 @@ fi
 # trap 'echo TRAP EXIT' EXIT
 # trap 'echo TRAP KILL' KILL
 # trap 'echo TRAP TERM' TERM
+# trap 'echo TRAP INT'  INT
 
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
@@ -215,7 +216,7 @@ create_gtod()
          | cut -f1 -d'/' \
          | tr '\n' ' ' \
          | cut -f1 -d' ')
-    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+    printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
         "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
@@ -264,10 +265,19 @@ profile_event()
     # STATE  = 5  # state of entity involved                    optional
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
-    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+    printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
-        | tee -a "$PROFILE"
+        >> "$PROFILE"
 }
+
+last_event()
+{
+    profile_event 'bootstrap_0_stop'
+}
+
+# make sure we captur last event
+trap last_event INT TERM
+
 
 
 # ------------------------------------------------------------------------------
@@ -1934,7 +1944,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'bootstrap_0_stop'
+    last_event
     profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"
