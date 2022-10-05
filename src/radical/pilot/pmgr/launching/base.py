@@ -788,11 +788,9 @@ class PMGRLaunchingComponent(rpu.Component):
             requested_nodes = 1
 
         if requested_nodes:
+
             if not avail_cores_per_node:
                 raise RuntimeError('use "cores" in PilotDescription')
-
-            requested_cores = requested_nodes * avail_cores_per_node
-            requested_gpus  = requested_nodes * avail_gpus_per_node
 
         else:
 
@@ -805,9 +803,14 @@ class PMGRLaunchingComponent(rpu.Component):
 
             requested_nodes = math.ceil(requested_nodes)
 
+        # now that we know the number of nodes to request, derive
+        # the *actual* number of cores and gpus we allocate
+        allocated_cores = requested_nodes * cores_per_node
+        allocated_gpus  = requested_nodes * gpus_per_node
+
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
-                        requested_cores, requested_gpus)
+                        allocated_cores, allocated_gpus)
 
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
@@ -854,8 +857,8 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
-        agent_cfg['cores']               = requested_cores
-        agent_cfg['gpus']                = requested_gpus
+        agent_cfg['cores']               = allocated_cores
+        agent_cfg['gpus']                = allocated_gpus
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
@@ -885,8 +888,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
-        pilot['resources'] = {'cpu': requested_cores,
-                              'gpu': requested_gpus}
+        pilot['resources'] = {'cpu': allocated_cores,
+                              'gpu': allocated_gpus}
         pilot['$set']      = ['resources']
 
 
