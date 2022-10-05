@@ -16,6 +16,8 @@ from .. import constants as rpc
 
 from .. import Session, Task, TaskDescription, TASK_EXECUTABLE
 
+from ..task_description import RAPTOR_WORKER
+
 
 def out(msg):
     sys.stdout.write('%s\n' % msg)
@@ -31,7 +33,10 @@ class Master(rpu.Component):
     def __init__(self, cfg=None):
 
         self._uid      = os.environ['RP_TASK_ID']
+        self._sid      = os.environ['RP_SESSION_ID']
         self._name     = os.environ['RP_TASK_NAME']
+        self._sbox     = os.environ['RP_TASK_SANDBOX']
+        self._psbox    = os.environ['RP_PILOT_SANDBOX']
 
         self._workers  = dict()      # wid: worker
         self._tasks    = dict()      # bookkeeping of submitted requests
@@ -44,15 +49,15 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self.register_publisher(rpc.STATE_PUBSUB)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
+        self.register_publisher(rpc.STATE_PUBSUB, self._psbox)
+        self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
 
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb, self._psbox)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
 
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
+                             rpc.AGENT_STAGING_INPUT_QUEUE, self._psbox)
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
@@ -60,7 +65,7 @@ class Master(rpu.Component):
         input_cfg = ru.Config(cfg={'channel'   : qname,
                                    'type'      : 'queue',
                                    'uid'       : '%s_input' % self._uid,
-                                   'path'      : self._cfg.path,
+                                   'path'      : self._sbox,
                                    'stall_hwm' : 0,
                                    'bulk_size' : 1})
 
@@ -69,21 +74,21 @@ class Master(rpu.Component):
 
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self._psbox)
 
         # set up zmq queues between this master and all workers for request
         # distribution and result collection
         req_cfg = ru.Config(cfg={'channel'   : 'raptor_tasks',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.req',
-                                 'path'      : self._cfg.path,
+                                 'path'      : self._sbox,
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1})
 
         res_cfg = ru.Config(cfg={'channel'   : 'raptor_results',
                                  'type'      : 'queue',
                                  'uid'       : self._uid + '.res',
-                                 'path'      : self._cfg.path,
+                                 'path'      : self._sbox,
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1})
 
@@ -143,11 +148,7 @@ class Master(rpu.Component):
         derive a worker base configuration from the control pubsub configuration
         '''
 
-        # FIXME: this uses insider knowledge on the config location and
-        #        structure.  It would be better if agent.0 creates the worker
-        #        base config from scratch on startup.
-
-        pwd = os.getcwd()
+        # FIXME: use registry for comm EP info exchange, not cfg files
 
         if cfg is None:
             cfg = dict()
@@ -155,19 +156,16 @@ class Master(rpu.Component):
         if cfg and 'path' in cfg:
             del cfg['path']
 
-        ru.dict_merge(cfg, ru.read_json('%s/../control_pubsub.json' % pwd))
+        ru.dict_merge(cfg, ru.read_json('%s/control_pubsub.json' % self._psbox))
 
         del cfg['channel']
         del cfg['cmgr']
 
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
-        cfg['base']    = pwd
-        cfg['sid']     = os.environ['RP_SESSION_ID']
-        cfg['base']    = os.environ['RP_PILOT_SANDBOX']
-
-        # FIXME: use registry for comm EP info exchange, not cfg files
-      # cfg['path'] = os.environ['RP_TASK_SANDBOX']
+        cfg['sid']     = self._sid
+        cfg['base']    = self._sbox
+        cfg['path']    = self._sbox
 
         cfg = ru.Config(cfg=cfg)
         cfg['uid'] = self._uid
@@ -286,8 +284,8 @@ class Master(rpu.Component):
         '''
         with self._lock:
 
-            tasks    = list()
-            base     = os.environ['RP_TASK_ID']
+            tasks = list()
+            base  = self._uid
 
             cfg            = copy.deepcopy(self._cfg)
             cfg['descr']   = descr
@@ -303,6 +301,7 @@ class Master(rpu.Component):
                 ru.write_json(cfg, fname)
 
                 td = dict()
+                td['mode']             = RAPTOR_WORKER
                 td['named_env']        = descr.get('named_env')
                 td['ranks']            = descr['ranks']
                 td['threading_type']   = rpc.POSIX
@@ -326,7 +325,6 @@ class Master(rpu.Component):
 
 
                 # all workers run in the same sandbox as the master
-                sbox = os.environ['RP_TASK_SANDBOX']
                 task = dict()
 
                 task['description']       = TaskDescription(td).as_dict()
@@ -334,8 +332,8 @@ class Master(rpu.Component):
                 task['status']            = 'NEW'
                 task['type']              = 'task'
                 task['uid']               = uid
-                task['task_sandbox_path'] = sbox
-                task['task_sandbox']      = 'file://localhost/' + sbox
+                task['task_sandbox_path'] = self._sbox
+                task['task_sandbox']      = 'file://localhost/' + self._sbox
                 task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
                 task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
                 task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
@@ -547,7 +545,7 @@ class Master(rpu.Component):
 
             td = task['description']
 
-            sbox = '%s/%s' % (os.environ['RP_TASK_SANDBOX'], td['uid'])
+            sbox = '%s/%s' % (self._sbox, td['uid'])
 
           # task['uid']               = td.get('uid')
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING

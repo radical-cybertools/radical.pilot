@@ -5,8 +5,9 @@ import glob
 
 import radical.utils as ru
 
-from ..       import states as s
-from .session import fetch_json
+from ..                 import states as s
+from ..task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE
+from .session           import fetch_json
 
 _debug      = os.environ.get('RP_PROF_DEBUG')
 _node_index = dict()
@@ -110,10 +111,10 @@ TASK_DURATIONS_APP = {
         'exec_sh'     : [{ru.EVENT: 'launch_start'           },
                          {ru.EVENT: 'exec_start'             }],
         'init_app'    : [{ru.EVENT: 'exec_start'             },
-                         {ru.EVENT: 'app_start'              }],
-        'exec_cmd'    : [{ru.EVENT: 'app_start'              },
-                         {ru.EVENT: 'app_stop'               }],
-        'term_app'    : [{ru.EVENT: 'app_stop'               },
+                         {ru.EVENT: 'rank_start'             }],
+        'exec_cmd'    : [{ru.EVENT: 'rank_start'             },
+                         {ru.EVENT: 'rank_stop'              }],
+        'term_app'    : [{ru.EVENT: 'rank_stop'              },
                          {ru.EVENT: 'exec_stop'              }],
         'term_sh'     : [{ru.EVENT: 'exec_stop'              },
                          {ru.EVENT: 'launch_stop'            }],
@@ -492,12 +493,12 @@ def get_hostmap_deprecated(profiles):
 def get_session_profile(sid, src=None):
 
     if not src:
-        src = "%s/%s" % (os.getcwd(), sid)
+        src = '%s/%s' % (os.getcwd(), sid)
 
     if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob("%s/*.prof"   % src)
-        profiles += glob.glob("%s/*/*.prof" % src)
+        profiles  = glob.glob('%s/*.prof'    % src)
+        profiles += glob.glob('%s/**/*.prof' % src)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
@@ -533,7 +534,7 @@ def get_session_profile(sid, src=None):
 # ------------------------------------------------------------------------------
 #
 def get_session_description(sid, src=None, dburl=None):
-    """
+    '''
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about
       - set of stateful entities
@@ -546,10 +547,10 @@ def get_session_description(sid, src=None, dburl=None):
 
     if `dburl` is given, its value is used to fetch session information from
     a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
-    """
+    '''
 
     if not src:
-        src = "%s/%s" % (os.getcwd(), sid)
+        src = '%s/%s' % (os.getcwd(), sid)
 
     if os.path.isfile('%s/%s.json' % (src, sid)):
         json = ru.read_json('%s/%s.json' % (src, sid))
@@ -641,8 +642,24 @@ def get_session_description(sid, src=None, dburl=None):
             td = task['description']
             task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
                                  'gpu': td['ranks'] * td['gpus_per_rank']}
+
+        # we determine the entity type by the task mode
+        etype = task.get('etype')
+        mode  = task['description'].get('mode')
+        if not etype:
+            mode = task['description']['mode']
+            if mode in [RAPTOR_MASTER, RAPTOR_WORKER]:
+                etype = mode
+            elif mode in [TASK_EXECUTABLE]:
+                etype = 'task'
+            else:
+                etype = 'raptor.task'
+
+        if _debug:
+            print('%-30s [%-30s] -> %-30s' % (uid, mode, etype))
+
         tree[uid] = {'uid'         : uid,
-                     'etype'       : 'task',
+                     'etype'       : etype,
                      'cfg'         : task,
                      'resources'   : task['resources'],
                      'description' : task['description'],
