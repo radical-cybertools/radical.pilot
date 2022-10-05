@@ -458,16 +458,6 @@ class Component(object):
         self._rep  = self._session._get_reporter(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
                                                  level=self._debug)
-      # self._prof.register_timing(name='component_lifetime',
-      #                            scope='uid=%s' % self.uid,
-      #                            start='component_start',
-      #                            stop='component_stop')
-      # self._prof.register_timing(name='entity_runtime',
-      #                            scope='entity',
-      #                            start='get',
-      #                            stop=['put', 'drop'])
-      # self._prof.prof('init1', uid=self._uid, msg=self._prof.path)
-
         self._q    = None
         self._in   = None
         self._out  = None
@@ -700,7 +690,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_input(self, states, qname, worker=None):
+    def register_input(self, states, qname, worker, path=None):
         '''
         Using this method, the component can be connected to a queue on which
         things are received to be worked upon.  The given set of states (which
@@ -729,7 +719,7 @@ class Component(object):
         if name in self._inputs:
             raise ValueError('input %s already registered' % name)
 
-        self._inputs[name] = {'queue'  : self.get_input_ep(qname),
+        self._inputs[name] = {'queue'  : self.get_input_ep(qname, path),
                               'states' : states}
 
         self._log.debug('registered input %s', name)
@@ -785,7 +775,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_output(self, states, qname):
+    def register_output(self, states, qname, path=None):
         '''
         Using this method, the component can be connected to a queue to which
         things are sent after being worked upon.  The given set of states (which
@@ -820,18 +810,21 @@ class Component(object):
 
             else:
                 # non-final state, ie. we want a queue to push to:
-                self._outputs[state] = self.get_output_ep(qname)
+                self._outputs[state] = self.get_output_ep(qname, path)
 
 
     # --------------------------------------------------------------------------
     #
-    def get_input_ep(self, qname):
+    def get_input_ep(self, qname, path=None):
         '''
         return an input endpoint
         '''
 
+        if not path:
+            path = self._cfg.path
+
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, qname)
+        fname = '%s/%s.cfg' % (path, qname)
         cfg   = ru.read_json(fname)
 
         return ru.zmq.Getter(qname, url=cfg['get'])
@@ -839,13 +832,16 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_output_ep(self, qname):
+    def get_output_ep(self, qname, path=None):
         '''
         return an output endpoint
         '''
 
+        if not path:
+            path = self._cfg.path
+
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, qname)
+        fname = '%s/%s.cfg' % (path, qname)
         cfg   = ru.read_json(fname)
 
         return ru.zmq.Putter(qname, url=cfg['put'])
@@ -1003,16 +999,19 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_publisher(self, pubsub):
+    def register_publisher(self, pubsub, path=None):
         '''
         Using this method, the component can registered itself to be a publisher
         of notifications on the given pubsub channel.
         '''
 
+        if not path:
+            path = self._cfg.path
+
         assert pubsub not in self._publishers
 
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
+        fname = '%s/%s.cfg' % (path, pubsub)
         cfg   = ru.read_json(fname)
 
         self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
@@ -1025,7 +1024,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_subscriber(self, pubsub, cb):
+    def register_subscriber(self, pubsub, cb, path=None):
         '''
         This method is complementary to the register_publisher() above: it
         registers a subscription to a pubsub channel.  If a notification
@@ -1042,8 +1041,11 @@ class Component(object):
         invocation.
         '''
 
+        if not path:
+            path = self._cfg.path
+
         # dig the addresses from the bridge's config file
-        fname = '%s/%s.cfg' % (self._cfg.path, pubsub)
+        fname = '%s/%s.cfg' % (path, pubsub)
         cfg   = ru.read_json(fname)
 
         if pubsub not in self._subscribers:
