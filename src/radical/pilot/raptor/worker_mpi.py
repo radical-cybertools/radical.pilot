@@ -701,10 +701,10 @@ class _Worker(mt.Thread):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             self._log.debug('=== to call %s: %s : %s', to_call, args, kwargs)
             val = to_call(*args, **kwargs)
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             exc = None
@@ -770,9 +770,9 @@ class _Worker(mt.Thread):
 
             self._log.debug('eval [%s] [%s]' % (code, task['uid']))
 
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             val = eval(code)
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             exc = None
@@ -836,9 +836,9 @@ class _Worker(mt.Thread):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             exec(src, {}, loc)                # pylint: disable=exec-used # noqa
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -883,14 +883,14 @@ class _Worker(mt.Thread):
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             proc = sp.Popen(cmd, env=tenv,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
             exc      = None
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('proc failed: %s' % task['uid'])
@@ -915,10 +915,10 @@ class _Worker(mt.Thread):
             cmd = task['description']['command']
             env = task['description']['environment']
           # self._log.debug('shell: --%s--', cmd)
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
             exc = None
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % task['uid'])
