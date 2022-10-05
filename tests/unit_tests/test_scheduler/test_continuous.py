@@ -69,7 +69,7 @@ class TestContinuous(TestCase):
 
         component = Continuous(cfg=None, session=None)
         component._uid      = 'agent_scheduling.0002'
-        component._log      = mock.Mock()
+        component._log      = ru.Logger('foo', targets=None, level='OFF')
         component._prof     = mock.Mock()
 
         # test `_schedule_incoming` and `_schedule_waitpool`

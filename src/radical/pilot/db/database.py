@@ -509,7 +509,6 @@ class DBSession(object):
 
             for doc in subset:
                 doc['_id']     = doc['uid']
-                doc['type']    = 'task'
                 doc['control'] = 'tmgr'
                 doc['states']  = [doc['state']]
                 doc['cmd']     = list()

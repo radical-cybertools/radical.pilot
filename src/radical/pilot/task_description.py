@@ -7,13 +7,15 @@ __license__   = 'MIT'
 import radical.utils as ru
 
 # task modes
-TASK_EXECUTABLE  = 'executable'
-TASK_FUNCTION    = 'function'
-TASK_METHOD      = 'method'
-TASK_EVAL        = 'eval'
-TASK_EXEC        = 'exec'
-TASK_PROC        = 'proc'
-TASK_SHELL       = 'shell'
+TASK_EXECUTABLE  = 'task.executable'
+TASK_FUNCTION    = 'task.function'
+TASK_METHOD      = 'task.method'
+TASK_EVAL        = 'task.eval'
+TASK_EXEC        = 'task.exec'
+TASK_PROC        = 'task.proc'
+TASK_SHELL       = 'task.shell'
+RAPTOR_MASTER    = 'raptor.master'
+RAPTOR_WORKER    = 'raptor.worker'
 
 # task description attributes
 UID              = 'uid'
@@ -559,7 +561,7 @@ class TaskDescription(ru.TypedDict):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : 'executable',
+        MODE            : None        ,
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
@@ -626,8 +628,7 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-
-        if self.mode == TASK_EXECUTABLE:
+        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER]:
             if not self.get('executable'):
                 raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
 
