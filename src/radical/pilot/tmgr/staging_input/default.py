@@ -187,8 +187,8 @@ class Default(TMGRStagingInputComponent):
 
             session_sbox = self._session._get_session_sandbox(pilot)
             task_sboxes  = task_sboxes_by_pid[pid]
-
-            if len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
+            if len(task_sboxes) >= self.cfg.get('task_bulk_mkdir_threshold',
+                                                TASK_BULK_MKDIR_THRESHOLD):
 
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 

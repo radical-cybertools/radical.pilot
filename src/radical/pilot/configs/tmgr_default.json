@@ -14,7 +14,8 @@
 
     # time to sleep between database polls (seconds)
     "db_poll_sleeptime" : 1.0,
-
+    #
+    "task_bulk_mkdir_threshold" : 16,
     "bridges" : {
         "tmgr_staging_input_queue"  : {"kind"      : "queue",
                                        "log_level" : "error",
