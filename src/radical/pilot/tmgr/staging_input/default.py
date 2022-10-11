@@ -68,7 +68,8 @@ class Default(TMGRStagingInputComponent):
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
-
+        self.TASK_BULK_MKDIR_THRESHOLD = self.cfg.get('task_bulk_mkdir_threshold',
+                     TASK_BULK_MKDIR_THRESHOLD)
 
     # --------------------------------------------------------------------------
     #
@@ -187,9 +188,7 @@ class Default(TMGRStagingInputComponent):
 
             session_sbox = self._session._get_session_sandbox(pilot)
             task_sboxes  = task_sboxes_by_pid[pid]
-            if len(task_sboxes) >= self.cfg.get('task_bulk_mkdir_threshold',
-                                                TASK_BULK_MKDIR_THRESHOLD):
-
+            if len(task_sboxes) >= self.TASK_BULK_MKDIR_THRESHOLD:
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
