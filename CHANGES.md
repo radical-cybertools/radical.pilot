@@ -3,6 +3,22 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.18.0 Release                                                        2022-10-11
+--------------------------------------------------------------------------------
+
+  - move raptor profiles and logfiles into sandboxes  
+  - consistent use of task modes  
+  - derive etypes from task modes
+  - clarify and troubleshoot raptor.py example
+  - docstring update
+  - make sure we issue a `bootstrap_0_stop` event
+  - raptor tasks now create `rank_start/ranks_stop` events
+  - reporte allocated resources for RA
+  - set MPIRun as default LM for Summit
+  - task manager cancel wont block: fixes #2336
+  - update task description (focus on `ranks`)
+
+
 1.17.0 Release                                                        2022-09-15
 --------------------------------------------------------------------------------
 
