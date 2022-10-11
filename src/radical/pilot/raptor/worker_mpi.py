@@ -12,7 +12,6 @@ import radical.utils       as ru
 from .worker            import Worker
 
 from ..pytask           import PythonTask
-from ..constants        import MPI as RP_MPI
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
@@ -116,7 +115,7 @@ class _Resources(object):
         self._log.debug_5('alloc %s', uid)
         self._prof.prof('schedule_try', uid=uid)
 
-        cores = task['description'].get('cpu_processes', 1)
+        cores = task['description'].get('ranks', 1)
 
         if cores > self._ranks:
             raise ValueError('insufficient resources to run task (%d > %d'
@@ -305,7 +304,7 @@ class _ResultPusher(mt.Thread):
         collected results
         '''
         uid   = task['uid']
-        ranks = task['description'].get('cpu_processes', 1)
+        ranks = task['description'].get('ranks', 1)
 
         if uid not in self._cache:
             self._cache[uid] = list()
@@ -527,7 +526,7 @@ class _Worker(mt.Thread):
         uid = task['uid']
         self._prof.prof('rp_exec_start', uid=uid)
         try:
-            if task['description'].get('cpu_process_type') == RP_MPI:
+            if task['description']['ranks'] > 1:
                 return self._dispatch_mpi(task)
             else:
                 return self._dispatch_non_mpi(task)
@@ -541,31 +540,24 @@ class _Worker(mt.Thread):
     #
     def _dispatch_mpi(self, task):
 
-        # NOTE: we cannot pass the new MPI communicator to shell, proc, exec or
-        #       eval tasks.  Nevertheless, we *can* run the requested number of
-        #       ranks.  So we only create and pass a communicator if explicitly
-        #       requested by `cpu_process_type`.
-
         comm  = None
         group = None
 
-        if task['description']['cpu_process_type'] == RP_MPI:
+        # create new communicator with all workers assigned to this task
+        group = self._group.Incl(task['ranks'])
+        comm  = self._world.Create_group(group)
+        if not comm:
+            out = None
+            err = 'MPI setup failed'
+            ret = 1
+            val = None
+            exc = None
+            return out, err, ret, val, exc
 
-            # create new communicator with all workers assigned to this task
-            group = self._group.Incl(task['ranks'])
-            comm  = self._world.Create_group(group)
-            if not comm:
-                out = None
-                err = 'MPI setup failed'
-                ret = 1
-                val = None
-                exc = None
-                return out, err, ret, val, exc
+        task['description']['environment']['RP_RANK']   = str(comm.rank)
+        task['description']['environment']['RP_RANKS']  = str(comm.size)
 
-            task['description']['environment']['RP_RANK']   = str(comm.rank)
-            task['description']['environment']['RP_RANKS']  = str(comm.size)
-
-            task['mpi_comm'] = comm
+        task['mpi_comm'] = comm
 
         try:
             return self._dispatch_non_mpi(task)
@@ -686,7 +678,7 @@ class _Worker(mt.Thread):
                 elif args and args[0] is None:
                     args[0] = comm
                 else:
-                    raise RuntimeError('can inject communicator for %s: %s: %s',
+                    raise RuntimeError("can't inject communicator for %s: %s: %s",
                                        task['uid'], args, kwargs)
             else:
                 args.insert(0, comm)
@@ -709,10 +701,10 @@ class _Worker(mt.Thread):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             self._log.debug('=== to call %s: %s : %s', to_call, args, kwargs)
             val = to_call(*args, **kwargs)
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             exc = None
@@ -778,9 +770,9 @@ class _Worker(mt.Thread):
 
             self._log.debug('eval [%s] [%s]' % (code, task['uid']))
 
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             val = eval(code)
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
             exc = None
@@ -844,9 +836,9 @@ class _Worker(mt.Thread):
 
             # assign a local variable to capture the code's return value.
             loc = dict()
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             exec(src, {}, loc)                # pylint: disable=exec-used # noqa
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -891,14 +883,14 @@ class _Worker(mt.Thread):
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             proc = sp.Popen(cmd, env=tenv,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
             exc      = None
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('proc failed: %s' % task['uid'])
@@ -923,10 +915,10 @@ class _Worker(mt.Thread):
             cmd = task['description']['command']
             env = task['description']['environment']
           # self._log.debug('shell: --%s--', cmd)
-            self._prof.prof('app_start', uid=uid)
+            self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
             exc = None
-            self._prof.prof('app_stop', uid=uid)
+            self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % task['uid'])
