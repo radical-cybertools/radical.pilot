@@ -6,7 +6,6 @@ import copy
 import time
 import queue
 import pprint
-import logging
 
 import threading          as mt
 import multiprocessing    as mp
@@ -129,14 +128,13 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # for system with 8 cores & 1 gpu per node):
 #
 #     task = { ...
-#       'cpu_processes'   : 4,
-#       'cpu_process_type': 'mpi',
-#       'cpu_threads'     : 2,
-#       'gpu_processes    : 2,
+#       'ranks'         : 4,
+#       'cores_per_rank': 2,
+#       'gpus_per_rank  : 2,
 #       'slots' :
-#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
-#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                          [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -148,7 +146,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # The respective launch method is expected to create processes on the set of
 # cpus and gpus thus specified, (node_1, cores 0 and 4; node_2, cores 1 and 5).
 # The other reserved cores are for the application to spawn threads on
-# (`cpu_threads=2`).
+# (`cores_per_rank=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decision made by
@@ -449,12 +447,13 @@ class AgentSchedulingComponent(rpu.Component):
     #
     # NOTE: any scheduler implementation which uses a different nodelist
     #       structure MUST overload this method.
-    def slot_status(self, msg=None):
+    def slot_status(self, msg=None, uid=None):
         '''
         Returns a multi-line string corresponding to the status of the node list
         '''
 
-        if not self._log.isEnabledFor(logging.DEBUG):
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level < 5:
             return
 
         if not msg: msg = ''
@@ -471,7 +470,10 @@ class AgentSchedulingComponent(rpu.Component):
                 ret += glyphs[gpu]
             ret += '|'
 
-        self._log.debug("status: %-30s: %s", msg, ret)
+        if not uid:
+            uid = ''
+
+        self._log.debug("status: %-30s [%25s]: %s", msg, uid, ret)
 
         return ret
 
@@ -678,7 +680,7 @@ class AgentSchedulingComponent(rpu.Component):
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
         # We define `tuple_size` as
-        #     `(cpu_processes + gpu_processes) * cpu_threads`
+        #     `ranks * cores_per_rank * gpus_per_rank`
         #
         to_wait    = list()
         to_test    = list()
@@ -694,7 +696,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_test.append(task)
 
         to_test.sort(key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
@@ -721,10 +723,10 @@ class AgentSchedulingComponent(rpu.Component):
         for task in scheduled:
             td = task['description']
             task['$set']      = ['resources']
-            task['resources'] = {'cpu': td['cpu_processes'] *
-                                        td['cpu_threads'],
-                                 'gpu': td['gpu_processes'] *
-                                        td['cpu_processes']}
+            task['resources'] = {'cpu': td['ranks'] *
+                                        td['cores_per_rank'],
+                                 'gpu': td['ranks'] *
+                                        td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -811,7 +813,7 @@ class AgentSchedulingComponent(rpu.Component):
             # no resource change, no activity
             return None, False
 
-      # self.slot_status("before schedule incoming [%d]" % len(to_schedule))
+        self.slot_status("before schedule incoming [%d]" % len(to_schedule))
 
         # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
@@ -839,10 +841,10 @@ class AgentSchedulingComponent(rpu.Component):
                     # state change, and push it out toward the next component.
                     td = task['description']
                     task['$set']      = ['resources']
-                    task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td['cpu_threads'],
-                                         'gpu': td['gpu_processes'] *
-                                                td['cpu_processes']}
+                    task['resources'] = {'cpu': td['ranks'] *
+                                                td['cores_per_rank'],
+                                         'gpu': td['ranks'] *
+                                                td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -874,7 +876,7 @@ class AgentSchedulingComponent(rpu.Component):
         # tuple_size map
         self._ts_valid = False
 
-      # self.slot_status("after  schedule incoming")
+        self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -962,7 +964,9 @@ class AgentSchedulingComponent(rpu.Component):
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
+            self.slot_status("slot status before unschedule %s", task['uid'])
             self.unschedule_task(task)
+            self.slot_status("slot status after  unschedule %s", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
         # we placed some previously waiting tasks, and need to remove those from
@@ -1008,6 +1012,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._change_slot_states(slots, rpc.BUSY)
         task['slots'] = slots
 
+        self.slot_status('after scheduled task', task['uid'])
+
         # got an allocation, we can go off and launch the process
         self._prof.prof('schedule_ok', uid=uid)
 
@@ -1032,10 +1038,9 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         d = task['description']
-        task['tuple_size'] = tuple([d.get('cpu_processes', 1),
-                                    d.get('cpu_threads',   1),
-                                    d.get('gpu_processes', 0),
-                                    d.get('cpu_process_type')])
+        task['tuple_size'] = tuple([d.get('ranks'         , 1),
+                                    d.get('cores_per_rank', 1),
+                                    d.get('gpus_per_rank' , 0)])
 
 
 # ------------------------------------------------------------------------------

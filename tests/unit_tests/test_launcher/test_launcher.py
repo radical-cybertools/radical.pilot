@@ -1,8 +1,5 @@
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = "Copyright 2020, http://radical.rutgers.edu"
-__license__   = "MIT"
-
 import os
 
 from unittest import TestCase
@@ -145,10 +142,13 @@ class TestLauncher(TestCase):
         # default value is {}
         self.assertEqual(pilot['jd_dict'].system_architecture, {})
 
-        # value for "ornl.summit" is 4
-        resource = 'ornl.summit'
-        rcfg = configs.ornl.summit
-        component._prepare_pilot(resource, rcfg, pilot, {}, '')
+        # value for "ornl.summit" is 1 (with MPIRun LM)
+        component._prepare_pilot('ornl.summit', configs.ornl.summit,
+                                 pilot, {}, '')
+        self.assertEqual(pilot['jd_dict'].system_architecture['smt'], 1)
+        # value for "ornl.summit_jsrun" is 4 (with JSRun LM)
+        component._prepare_pilot('ornl.summit_jsrun', configs.ornl.summit_jsrun,
+                                 pilot, {}, '')
         self.assertEqual(pilot['jd_dict'].system_architecture['smt'], 4)
 
 

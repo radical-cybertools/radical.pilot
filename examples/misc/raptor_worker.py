@@ -41,18 +41,16 @@ class MyWorker(rp.raptor.MPIWorker):
         td = rp.TaskDescription({
                 'mode'            : rp.TASK_EXECUTABLE,
                 'scheduler'       : None,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
+                            'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
 
         td = rp.TaskDescription({
               # 'uid'             : 'task.call.w.000000',
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXECUTABLE,
-                'cpu_processes'   : 2,
-                'cpu_process_type': rp.MPI,
+                'ranks'           : 2,
                 'executable'      : 'radical-pilot-hello.sh',
                 'arguments'       : ['1', 'task.call.w.000000']})
 
