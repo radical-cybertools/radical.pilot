@@ -111,7 +111,6 @@ class LaunchMethod(object):
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
-        from .jsrun_erf      import JSRUN_ERF
         from .prte           import PRTE
         from .flux           import Flux
         from .rsh            import RSH
@@ -132,7 +131,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
-                LM_NAME_JSRUN_ERF     : JSRUN_ERF,
+                LM_NAME_JSRUN_ERF     : JSRUN,
                 LM_NAME_PRTE          : PRTE,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
