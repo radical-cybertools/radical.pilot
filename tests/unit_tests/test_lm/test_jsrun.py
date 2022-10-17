@@ -8,7 +8,7 @@ from unittest import mock, TestCase
 import radical.utils as ru
 
 from .test_common import setUp
-from radical.pilot.agent.launch_method.jsrun import JSRUN
+from radical.pilot.agent.launch_method.jsrun import JSRUN, LaunchMethod
 
 
 # ------------------------------------------------------------------------------
@@ -29,6 +29,17 @@ class TestJSRun(TestCase):
         for rs_file in rs_files:
             try   : os.remove(rs_file)
             except: pass
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(LaunchMethod, '__init__', return_value=None)
+    def test_init(self, mocked_lm_init):
+
+        lm_jsrun = JSRUN('', {}, None, None, None)
+
+        # default initial values
+        self.assertEqual(lm_jsrun._command, '')
+        self.assertFalse(lm_jsrun._erf)
 
     # --------------------------------------------------------------------------
     #

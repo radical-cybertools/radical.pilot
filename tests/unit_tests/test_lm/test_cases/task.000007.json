@@ -44,7 +44,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "ssh"   : "RuntimeError",
-            "rsh"      : "RuntimeError",
+            "rsh"   : "RuntimeError",
             "jsrun_erf" : {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000007",
                 "rank_exec"  : "/bin/sleep \"10\""
