@@ -140,19 +140,19 @@ class Popen(AgentExecutingComponent):
         task['stdout'] = ''
         task['stderr'] = ''
 
-        stdout_file    = td.get('stdout') or '%s.out' % (tid)
-        stderr_file    = td.get('stderr') or '%s.err' % (tid)
+        stdout_file    = td.get('stdout') or '%s.out' % tid
+        stderr_file    = td.get('stderr') or '%s.err' % tid
 
         if stdout_file[0] != '/':
             task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
-            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % (stdout_file)
+            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % stdout_file
         else:
             task['stdout_file']       = stdout_file
             task['stdout_file_short'] = stdout_file
 
         if stderr_file[0] != '/':
             task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
-            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % (stderr_file)
+            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % stderr_file
         else:
             task['stderr_file']       = stderr_file
             task['stderr_file_short'] = stderr_file
@@ -198,14 +198,14 @@ class Popen(AgentExecutingComponent):
         # touch task.000000.ranks
         # if test "$MPI_RANK" = 0; then
         #   export CUDA_VISIBLE_DEVICES=0
-        #   export OENMP_NUM_THREADS=2
+        #   export OMP_NUM_THREADS=2
         #   export RANK_0_VAR=foo
         #   echo 0 >> task.000000.ranks
         # fi
         #
         # if test "$MPI_RANK" = 1; then
         #   export CUDA_VISIBLE_DEVICES=1
-        #   export OENMP_NUM_THREADS=4
+        #   export OMP_NUM_THREADS=4
         #   export RANK_1_VAR=bar
         #   echo 1 >> task.000000.ranks
         # fi
@@ -297,9 +297,11 @@ class Popen(AgentExecutingComponent):
         # However, if the ranks need different GPU's assigned, or if either pre-
         # or post-exec directives contain per-rank dictionaries, then we switch
         # per-rank in the script for all sections between pre- and post-exec.
+
+        self._extend_pre_exec(td, ranks)
+
         switch_per_rank = False
-        if td.get('gpu_processes') or \
-           any([isinstance(x, dict) for x in td.get('pre_exec',  [])]) or \
+        if any([isinstance(x, dict) for x in td.get('pre_exec',  [])]) or \
            any([isinstance(x, dict) for x in td.get('post_exec', [])]):
             switch_per_rank = True
 
@@ -327,7 +329,6 @@ class Popen(AgentExecutingComponent):
 
                 for rank_id, rank in enumerate(ranks):
                     tmp += '\n    %d)' % rank_id
-                    tmp += self._get_env_per_rank(task, rank_id, rank, launcher)
                     tmp += self._get_pre_exec_per_rank(task, rank_id, rank)
                     tmp += self._get_exec_per_rank(task, launcher)
                     tmp += self._get_post_exec_per_rank(task, rank_id, rank)
@@ -593,7 +594,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = launcher.get_launcher_env()
         for cmd in cmds:
-            ret += '%s || rp_error launcher_env' % cmd
+            ret += '%s || rp_error launcher_env\n' % cmd
         return ret
 
 
@@ -604,7 +605,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['pre_launch']
         for cmd in cmds:
-            ret += '%s || rp_error pre_launch' % cmd
+            ret += '%s || rp_error pre_launch\n' % cmd
 
         return ret
 
@@ -630,7 +631,7 @@ class Popen(AgentExecutingComponent):
         ret  = ''
         cmds = task['description']['post_launch']
         for cmd in cmds:
-            ret += '%s || rp_error post_launch' % cmd
+            ret += '%s || rp_error post_launch\n' % cmd
 
         return ret
 
@@ -654,12 +655,6 @@ class Popen(AgentExecutingComponent):
             ret += '\n# task env settings\n'
             for key, val in td['environment'].items():
                 ret += 'export %s="%s"\n' % (key, val)
-
-        # als add OMP_NUM_THREADS if that is uniform per rank
-        if not switch_per_rank:
-            if td['threading_type'] == rpc.OpenMP:
-                num_threads = td.get('cores_per_rank', 1)
-                ret += 'export OMP_NUM_THREADS="%d"\n' % num_threads
 
         if ret:
             ret += self._separator
@@ -714,10 +709,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _get_env_per_rank(self, task, rank_id, rank, launcher):
-
-        ret = ''
-        td  = task['description']
+    def _extend_pre_exec(self, td, ranks):
 
         # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
         #        with exactly one entry, corresponding to the rank process to be
@@ -725,21 +717,20 @@ class Popen(AgentExecutingComponent):
 
         # FIXME: need to distinguish between logical and physical IDs
 
-        gmap = rank['gpu_map']
-        if gmap:
-            # equivalent to the 'physical' value for original `cvd_id_mode`
-            gpus = ','.join([str(gpu_set[0]) for gpu_set in gmap])
-            if td['gpu_process_type'] == rpc.CUDA:
-                ret += '        export CUDA_VISIBLE_DEVICES=%s\n' % gpus
-
-        cmap = rank['core_map'][0]
         if td['threading_type'] == rpc.OpenMP:
-            ret += '        export OMP_NUM_THREADS="%d"\n' % len(cmap)
+            # for future updates: if task ranks are heterogeneous in terms of
+            #                     number of threads, then the following string
+            #                     should be converted into dictionary (per rank)
+            num_threads = td.get('cores_per_rank', 1)
+            assert (num_threads == len(ranks[0]['core_map'][0]))
+            td['pre_exec'].append('export OMP_NUM_THREADS=%d' % num_threads)
 
-        if ret:
-            ret = '        # rank environment\n' + ret
-
-        return ret
+        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
+            # equivalent to the 'physical' value for original `cvd_id_mode`
+            td['pre_exec'].append(
+                {str(rank_id): 'export CUDA_VISIBLE_DEVICES=%s' %
+                               ','.join([str(gm[0]) for gm in rank['gpu_map']])
+                 for rank_id, rank in enumerate(ranks)})
 
 
     # --------------------------------------------------------------------------
@@ -781,11 +772,11 @@ class Popen(AgentExecutingComponent):
         ret = ''
         td  = task['description']
 
-        post_exec = td.get('pre_exec', [])
+        pre_exec = td.get('pre_exec', [])
 
         ret += self._get_prof('exec_pre', task['uid'])
 
-        for entry in post_exec:
+        for entry in pre_exec:
 
             assert isinstance(entry, str)
             ret += '%s || rp_error pre_exec\n' % entry
