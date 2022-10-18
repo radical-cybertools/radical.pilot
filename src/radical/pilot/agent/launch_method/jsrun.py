@@ -160,14 +160,21 @@ class JSRUN(LaunchMethod):
                 self._create_resource_set_file(slots, uid, sbox)
 
         else:
-
+            # -b: bind to RS
+            # -n: number of RS
+            # -a: number of MPI tasks (ranks) per RS
+            # -c: number of CPUs (physical cores) per RS
             cmd_options = '–brs -n%(ranks)d -a1 '   \
                           '-c%(cores_per_rank)d' % td
 
         if td['gpus_per_rank']:
 
             if not self._erf:
-                cmd_options += ' -g%(gpus_per_rank)d' % td
+                # -g: number of GPUs per RS
+                # -r: number of RS per host (node)
+                cmd_options += ' -g%d -r%d' % (
+                    td['gpus_per_rank'],
+                    self._rm_info['gpus_per_node'] // td['gpus_per_rank'])
 
             # from https://www.olcf.ornl.gov/ \
             #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf

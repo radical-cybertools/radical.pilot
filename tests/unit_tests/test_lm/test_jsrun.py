@@ -152,6 +152,10 @@ class TestJSRun(TestCase):
                 task   = test_case[0]
                 result = test_case[1]
 
+                lm_jsrun._rm_info = {
+                    'gpus_per_node': task['slots']['gpus_per_node']
+                }
+
                 if result == 'AssertionError':
                     with self.assertRaises(AssertionError):
                         lm_jsrun.get_launch_cmds(task, '')

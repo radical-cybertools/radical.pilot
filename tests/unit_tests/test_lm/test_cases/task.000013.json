@@ -18,7 +18,7 @@
         "lm": {
             "slots": {
                 "cores_per_node": 16,
-                "gpus_per_node" : 1,
+                "gpus_per_node" : 2,
                 "lfs_per_node"  : 0,
                 "ranks"         : [{"node_name" : "node1",
                                     "node_id"   : "node1",
@@ -51,7 +51,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"  : {
-                "launch_cmd" : "jsrun –brs -n1 -a1 -c1 -g2 --smpiargs=\"off\"",
+                "launch_cmd" : "jsrun –brs -n1 -a1 -c1 -g2 -r1 --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf": {
