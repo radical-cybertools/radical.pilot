@@ -52,7 +52,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun" : {
-                "launch_cmd" : "jsrun –brs -n2 -a1 -c2",
+                "launch_cmd" : "jsrun -b rs -n2 -a1 -c2",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf" : {

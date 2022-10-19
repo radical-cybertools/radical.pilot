@@ -164,7 +164,7 @@ class JSRUN(LaunchMethod):
             # -n: number of RS
             # -a: number of MPI tasks (ranks) per RS
             # -c: number of CPUs (physical cores) per RS
-            cmd_options = '–brs -n%(ranks)d -a1 '   \
+            cmd_options = '-b rs -n%(ranks)d -a1 '  \
                           '-c%(cores_per_rank)d' % td
 
         if td['gpus_per_rank']:

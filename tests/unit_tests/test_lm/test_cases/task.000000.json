@@ -55,7 +55,7 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun –brs -n1 -a1 -c1",
+                "launch_cmd" : "jsrun -b rs -n1 -a1 -c1",
                 "rank_exec"  : "/bin/sleep"
             },
             "jsrun_erf": {
