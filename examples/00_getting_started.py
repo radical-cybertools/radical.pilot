@@ -58,7 +58,7 @@ if __name__ == '__main__':
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'cores'         : 100,
+                   'cores'         : config.get('cores', 1),
                    'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
@@ -77,76 +77,17 @@ if __name__ == '__main__':
 
         report.progress_tgt(n, label='create')
         tds = list()
+        for i in range(n):
 
-        if True:
+            # create a new task description, and fill it.
+            # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.uid            = 'task.00'
             td.executable     = '/bin/date'
-            td.pre_exec       = ['echo pre_all_1',
-                                 {'1': ['echo pre_1a',
-                                        'echo pre_1b'],
-                                  '2': 'echo pre_2'},
-                                 'echo pre_all_2']
-            td.post_exec      = ['echo post_all_1',
-                                 {'1': ['echo post_1a',
-                                        'echo post_1b'],
-                                  '3': 'echo post_3'},
-                                 'echo post_all_2']
-            td.ranks          = 4
-            tds.append(td)
-
-        if True:
-            td = rp.TaskDescription()
-            td.uid            = 'task.01'
-            td.executable     = '/bin/date'
-            td.pre_exec       = ['echo pre_all_1',
-                                 'echo pre_all_2']
-            td.post_exec      = ['echo post_all_1',
-                                 {'1': ['echo post_1a',
-                                        'echo post_1b'],
-                                  '3': 'echo post_3'},
-                                 'echo post_all_2']
-            td.ranks          = 4
-            tds.append(td)
-
-        if True:
-            td = rp.TaskDescription()
-            td.uid            = 'task.02'
-            td.executable     = '/bin/date'
-            td.pre_exec       = ['echo pre_all_1',
-                                 {'1': ['echo pre_1a',
-                                        'echo pre_1b'],
-                                  '2': 'echo pre_2'},
-                                 'echo pre_all_2']
-            td.post_exec      = ['echo post_all_1',
-                                 'echo post_all_2']
-            td.ranks          = 4
-            tds.append(td)
-
-        if True:
-            td = rp.TaskDescription()
-            td.uid            = 'task.03'
-            td.executable     = '/bin/date'
-            td.pre_exec       = ['echo pre_all_1',
-                                 'echo pre_all_2']
-            td.post_exec      = ['echo post_all_1',
-                                 'echo post_all_2']
-            td.cpu_process_type = rp.MPI
-            td.ranks          = 4
-            td.gpus_per_rank  = 1
-            tds.append(td)
-
-        if True:
-            td = rp.TaskDescription()
-            td.uid            = 'task.04'
-            td.executable     = '/bin/date'
-            td.pre_exec       = ['echo pre_all_1',
-                                 'echo pre_all_2']
-            td.post_exec      = ['echo post_all_1',
-                                 'echo post_all_2']
-            td.ranks          = 4
+            td.ranks          = 2
+            td.stage_on_error = True
 
             tds.append(td)
+            report.progress()
 
         report.progress_done()
 
