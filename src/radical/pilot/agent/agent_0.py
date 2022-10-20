@@ -868,8 +868,10 @@ class Agent_0(rpu.Worker):
         self._service.register_request('submit_tasks', self._ep_submit_tasks)
         self._service.start()
 
-        self._log.info('=== service_url: %s', self._service.addr)
+        state_cfg = ru.Config(path='./state_pubsub.cfg')
 
+        self._log.info('=== service_url : %s', self._service.addr)
+        self._log.info('=== state pubsub: %s', state_cfg.sub)
 
 
     # --------------------------------------------------------------------------
