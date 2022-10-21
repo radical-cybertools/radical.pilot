@@ -328,6 +328,7 @@ class Master(rpu.Component):
                 # all workers run in the same sandbox as the master
                 task = dict()
 
+                task['origin']            = 'raptor'
                 task['description']       = TaskDescription(td).as_dict()
                 task['state']             = rps.AGENT_STAGING_INPUT_PENDING
                 task['status']            = 'NEW'
