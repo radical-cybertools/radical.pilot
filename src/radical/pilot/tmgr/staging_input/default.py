@@ -71,6 +71,9 @@ class Default(TMGRStagingInputComponent):
         # to this task manager.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
+        self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
+                                             TASK_BULK_MKDIR_THRESHOLD)
+
 
     # --------------------------------------------------------------------------
     #
@@ -206,10 +209,7 @@ class Default(TMGRStagingInputComponent):
 
             task_sboxes  = sboxes[pid]
 
-            if False or len(task_sboxes) >= TASK_BULK_MKDIR_THRESHOLD:
-
-                session_sbox = self._session._get_session_sandbox(pilot)
-
+            if False or len(task_sboxes) >= self._mkdir_threshold:
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 
                 # no matter the bulk mechanism, we need a SAGA handle to the
@@ -294,12 +294,17 @@ class Default(TMGRStagingInputComponent):
                 try:
                     self._handle_task(task, actionables)
                     self._advance_tasks([task], pid=task['pilot'])
-
                 except Exception as e:
                     # FIXME: serialize exception
                     task['exception'] = str(e)
                     self._advance_tasks([task], pid=task['pilot'],
                                                 state=rps.FAILED)
+
+        if no_staging_tasks:
+            # nothing to stage, push to the agent
+            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
+                         publish=True, push=True)
+
 
 
     # --------------------------------------------------------------------------

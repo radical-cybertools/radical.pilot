@@ -14,6 +14,9 @@
         "timeout"  : 10.0
     },
 
+    # The threashold on which we decide to trigger bulk mkdir
+    "task_bulk_mkdir_threshold" : 16,
+
     "bridges" : {
         "tmgr_staging_input_queue"  : {"kind": "queue" },
         "tmgr_scheduling_queue"     : {"kind": "queue" },
