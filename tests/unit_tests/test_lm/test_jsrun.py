@@ -8,9 +8,11 @@ from unittest import mock, TestCase
 import radical.utils as ru
 
 from .test_common import setUp
-from radical.pilot.agent.launch_method.jsrun import JSRUN
+from radical.pilot.agent.launch_method.jsrun import JSRUN, LaunchMethod
 
 
+# ------------------------------------------------------------------------------
+#
 class TestJSRun(TestCase):
 
     # --------------------------------------------------------------------------
@@ -30,14 +32,31 @@ class TestJSRun(TestCase):
 
     # --------------------------------------------------------------------------
     #
+    @mock.patch.object(LaunchMethod, '__init__', return_value=None)
+    def test_init(self, mocked_lm_init):
+
+        lm_jsrun = JSRUN('', {}, None, None, None)
+
+        # default initial values
+        self.assertEqual(lm_jsrun._command, '')
+        self.assertFalse(lm_jsrun._erf)
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(JSRUN, '__init__', return_value=None)
     @mock.patch('radical.utils.which', return_value='/usr/bin/jsrun')
     def test_init_from_scratch(self, mocked_which, mocked_init):
 
         lm_jsrun = JSRUN('', {}, None, None, None)
 
+        lm_jsrun.name = 'JSRUN'
         lm_info = lm_jsrun._init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
+        self.assertFalse(lm_info['erf'])
+
+        lm_jsrun.name = 'JSRUN_ERF'
+        lm_info = lm_jsrun._init_from_scratch({}, '')
+        self.assertTrue(lm_info['erf'])
 
     # --------------------------------------------------------------------------
     #
@@ -48,11 +67,13 @@ class TestJSRun(TestCase):
 
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_jsrun.sh',
-                   'command': '/usr/bin/jsrun'}
+                   'command': '/usr/bin/jsrun',
+                   'erf'    : True}
         lm_jsrun._init_from_info(lm_info)
         self.assertEqual(lm_jsrun._env,     lm_info['env'])
         self.assertEqual(lm_jsrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_jsrun._command, lm_info['command'])
+        self.assertEqual(lm_jsrun._erf,     lm_info['erf'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
@@ -77,7 +98,8 @@ class TestJSRun(TestCase):
         lm_jsrun = JSRUN('', {}, None, None, None)
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_jsrun.sh',
-                   'command': '/usr/bin/jsrun'}
+                   'command': '/usr/bin/jsrun',
+                   'erf'    : False}
         lm_jsrun._init_from_info(lm_info)
         lm_env = lm_jsrun.get_launcher_env()
 
@@ -89,8 +111,9 @@ class TestJSRun(TestCase):
     def test_create_resource_set_file(self, mocked_init):
 
         lm_jsrun = JSRUN('', {}, None, None, None)
+        lm_jsrun._erf = True
 
-        test_cases = setUp('lm', 'jsrun')
+        test_cases = setUp('lm', 'jsrun_erf')
         for test_case in test_cases:
 
             if test_case[1] in ['AssertionError']:
@@ -114,28 +137,39 @@ class TestJSRun(TestCase):
                                   mocked_init):
 
         lm_jsrun = JSRUN('', {}, None, None, None)
-        lm_jsrun._log     = mocked_logger
         lm_jsrun._command = 'jsrun'
+        lm_jsrun._log     = mocked_logger
 
-        test_cases = setUp('lm', 'jsrun')
-        for test_case in test_cases:
+        lm_jsrun._erf = True
 
-            task   = test_case[0]
-            result = test_case[1]
+        for lm_name in ['jsrun', 'jsrun_erf']:
 
-            if result == 'AssertionError':
-                with self.assertRaises(AssertionError):
-                    lm_jsrun.get_launch_cmds(task, '')
+            lm_jsrun._erf = bool('_erf' in lm_name)
 
-            else:
-                rs_layout_file = test_case[3]
-                lm_jsrun._create_resource_set_file.return_value = rs_layout_file
+            test_cases = setUp('lm', lm_name)
+            for test_case in test_cases:
 
-                command = lm_jsrun.get_launch_cmds(task, '')
-                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+                task   = test_case[0]
+                result = test_case[1]
 
-                command = lm_jsrun.get_rank_exec(task, None, None)
-                self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+                lm_jsrun._rm_info = {
+                    'gpus_per_node': task['slots']['gpus_per_node']
+                }
+
+                if result == 'AssertionError':
+                    with self.assertRaises(AssertionError):
+                        lm_jsrun.get_launch_cmds(task, '')
+
+                else:
+                    if len(test_case) > 2:
+                        lm_jsrun._create_resource_set_file.return_value = \
+                            test_case[3]  # resource set file name
+
+                    command = lm_jsrun.get_launch_cmds(task, '')
+                    self.assertEqual(command, result['launch_cmd'], task['uid'])
+
+                    command = lm_jsrun.get_rank_exec(task, None, None)
+                    self.assertEqual(command, result['rank_exec'], task['uid'])
 
 # ------------------------------------------------------------------------------
 

@@ -115,7 +115,14 @@ class Worker(object):
     def get_master(self):
         '''
         The worker can submit tasks back to the master - this method will
-        return a small shim class to provide that capability
+        return a small shim class to provide that capability.  That class has
+        a single method `run_task` which accepts a single `rp.TaskDescription`
+        from which a `rp.Task` is created and executed.  The call then waits for
+        the task's completion before returning it in a dict representation, the
+        same as when passed to the master's `result_cb`.
+
+        Note: the `run_task` call is running in a separate thread and will thus
+              not block the master's progress.
         '''
 
         # ----------------------------------------------------------------------
