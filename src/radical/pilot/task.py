@@ -549,15 +549,19 @@ class Task(object):
               whether the task has reached the desired state or not.  The
               default value **None** never times out.  '''
 
-        states = ru.as_list(state)
-        if not states:
+        if not state:
             states = rps.FINAL
+        if not isinstance(state, list):
+            states = [state]
+        else:
+            states = state
+
 
         if self.state in rps.FINAL:
             # we will never see another state progression.  Raise an error
             # (unless we waited for this)
             if self.state in states:
-                return self.state
+                return
 
             # FIXME: do we want a raise here, really?  This introduces a race,
             #        really, on application level

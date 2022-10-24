@@ -520,6 +520,7 @@ class TaskManager(rpu.Component):
     #
     def _update_tasks(self, task_dicts):
 
+
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
         # note however that individual task callbacks are still being called on

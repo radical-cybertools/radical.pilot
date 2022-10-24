@@ -227,8 +227,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._waitpool   = dict()     # map uid:task
         self._ts_map     = dict()
         self._ts_valid   = False      # set to False to trigger re-binning
-        self._active_cnt = 0       # count of currently scheduled tasks
-        self._named_envs = list()  # record available named environments
+        self._active_cnt = 0          # count of currently scheduled tasks
+        self._named_envs = list()     # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
