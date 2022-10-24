@@ -58,8 +58,8 @@ MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
 
 # deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
-CPU_PROCESS_TYPE = 'cpu_process_type'         # disk space per rank
-CPU_THREADS      = 'cpu_threads'              # memory per rank
+CPU_PROCESS_TYPE = 'cpu_process_type'         # n/a
+CPU_THREADS      = 'cpu_threads'              # cores per rank
 CPU_THREAD_TYPE  = 'cpu_thread_type'          # OpenMP?
 
 GPU_PROCESSES    = 'gpu_processes'            # gpus per rank
@@ -76,6 +76,7 @@ OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
 PRE_LAUNCH       = 'pre_launch'
 PRE_EXEC         = 'pre_exec'
+PRE_EXEC_SYNC    = 'pre_exec_sync'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
 CLEANUP          = 'cleanup'
@@ -209,8 +210,8 @@ class TaskDescription(ru.TypedDict):
     .. data:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
-       have available to start it's own threads or processes on.  By default,
-       `core` refers to an physical CPU core - but if the pilot has been
+       have available to start its own threads or processes on.  By default,
+       `core` refers to a physical CPU core - but if the pilot has been
        launched with SMT-settings > 1, `core` will refer to a virtual core or
        hyperthread instead (the name depends on the CPU vendor).
 
@@ -238,7 +239,6 @@ class TaskDescription(ru.TypedDict):
        the ranks (`<empty>`, `CUDA`, `ROCm`).
 
        `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
-
 
     .. data:: lfs_per_rank
 
@@ -338,11 +338,17 @@ class TaskDescription(ru.TypedDict):
        environment).
 
        No assumption should be made on the specific shell environment the
-       commands are executed in.
+       commands are executed in other than a POSIX shell environment.
 
        Errors in executing these commands will result in the task to enter
        `FAILED` state, and no execution of the actual workload will be
        attempted.
+
+    .. data:: pre_exec_sync
+
+       [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
+       execution, which enforce to delay individual rank execution, until all
+       `pre_exec` actions for all ranks are completed.
 
     .. data:: post_exec
 
@@ -510,6 +516,7 @@ class TaskDescription(ru.TypedDict):
         NAMED_ENV       : str         ,
         PRE_LAUNCH      : [str]       ,
         PRE_EXEC        : [None]      ,
+        PRE_EXEC_SYNC   : bool        ,
         POST_LAUNCH     : [str]       ,
         POST_EXEC       : [None]      ,
         STDOUT          : str         ,
@@ -563,6 +570,7 @@ class TaskDescription(ru.TypedDict):
         NAMED_ENV       : ''          ,
         PRE_LAUNCH      : list()      ,
         PRE_EXEC        : list()      ,
+        PRE_EXEC_SYNC   : False       ,
         POST_LAUNCH     : list()      ,
         POST_EXEC       : list()      ,
         STDOUT          : ''          ,
@@ -657,7 +665,7 @@ class TaskDescription(ru.TypedDict):
 
         if self.gpu_process_type:
             self.gpu_type = self.gpu_process_type
-            self.gpu_process_type = 0
+            self.gpu_process_type = None
 
         if self.lfs_per_process:
             self.lfs_per_rank = self.lfs_per_process
