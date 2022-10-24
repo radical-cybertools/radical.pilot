@@ -38,37 +38,37 @@ class ResourceDescription(ru.TypedDict):
     """
 
     _schema = {
-        DESCRIPTION            : str  ,
-        NOTES                  : str   ,
-        SCHEMAS                : [dict()] ,
+        DESCRIPTION            : str        ,
+        NOTES                  : str        ,
+        SCHEMAS                : [None]     ,  # FIXME: define sub-schema
 
-        DEFAULT_REMOTE_WORKDIR : str   ,
-        DEFAULT_QUEUE          : str   ,
-        RESOURCE_MANAGER       : str   ,
-        AGENT_CONFIG           : str   ,
-        AGENT_SCHEDULER        : str   ,
-        AGENT_SPAWNER          : str   ,
-        PRE_BOOTSTRAP_0        : [str] ,
-        PRE_BOOTSTRAP_1        : [str] ,
-        RP_VERSION             : str   ,
-        VIRTENV_MODE           : str   ,
-        VIRTENV_DIST           : str   ,
-        PYTHON_DIST            : str   ,
-        LAUNCH_METHODS         : dict(),
-        LFS_PATH_PER_NODE      : str   ,
-        LFS_SIZE_PER_NODE      : str   ,
-        MEM_PER_NODE           : int   ,
-        CORES_PER_NODE         : int   ,
-        GPUS_PER_NODE          : int   ,
-        BLOCKED_CORES          : [int] ,
-        BLOCKED_GPUS           : [int] ,
-        SYSTEM_ARCHITECTURE    : dict(),
+        DEFAULT_REMOTE_WORKDIR : str        ,
+        DEFAULT_QUEUE          : str        ,
+        RESOURCE_MANAGER       : str        ,
+        AGENT_CONFIG           : str        ,
+        AGENT_SCHEDULER        : str        ,
+        AGENT_SPAWNER          : str        ,
+        PRE_BOOTSTRAP_0        : [str]      ,
+        PRE_BOOTSTRAP_1        : [str]      ,
+        RP_VERSION             : str        ,
+        VIRTENV_MODE           : str        ,
+        VIRTENV_DIST           : str        ,
+        PYTHON_DIST            : str        ,
+        LAUNCH_METHODS         : {str: None},  # FIXME: define sub-schema
+        LFS_PATH_PER_NODE      : str        ,
+        LFS_SIZE_PER_NODE      : str        ,
+        MEM_PER_NODE           : int        ,
+        CORES_PER_NODE         : int        ,
+        GPUS_PER_NODE          : int        ,
+        BLOCKED_CORES          : [int]      ,
+        BLOCKED_GPUS           : [int]      ,
+        SYSTEM_ARCHITECTURE    : {str:str}  ,
     }
 
     _defaults = {
         DESCRIPTION            : ''          ,
         NOTES                  : ''          ,
-        SCHEMAS                : [dict()]    ,
+        SCHEMAS                : list()      ,
 
         DEFAULT_REMOTE_WORKDIR : ''          ,
         DEFAULT_QUEUE          : ''          ,
@@ -91,7 +91,6 @@ class ResourceDescription(ru.TypedDict):
         BLOCKED_CORES          : [int]       ,
         BLOCKED_GPUS           : [int]       ,
         SYSTEM_ARCHITECTURE    : dict()      ,
-        
     }
 
 
