@@ -588,10 +588,8 @@ class PMGRLaunchingComponent(rpu.Component):
         spmd_variation          = rcfg.get('spmd_variation')
         task_pre_launch         = rcfg.get('task_pre_launch')
         task_pre_exec           = rcfg.get('task_pre_exec')
-        task_pre_rank           = rcfg.get('task_pre_rank')
         task_post_launch        = rcfg.get('task_post_launch')
         task_post_exec          = rcfg.get('task_post_exec')
-        task_post_rank          = rcfg.get('task_post_rank')
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         services               += rcfg.get('services', [])
@@ -879,10 +877,8 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_tmp']            = task_tmp
         agent_cfg['task_pre_launch']     = task_pre_launch
         agent_cfg['task_pre_exec']       = task_pre_exec
-        agent_cfg['task_pre_rank']       = task_pre_rank
         agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
-        agent_cfg['task_post_rank']      = task_post_rank
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
 
