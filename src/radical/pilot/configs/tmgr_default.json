@@ -15,6 +15,9 @@
     # time to sleep between database polls (seconds)
     "db_poll_sleeptime" : 1.0,
 
+    # The threashold on which we decide to trigger bulk mkdir
+    "task_bulk_mkdir_threshold" : 16,
+
     "bridges" : {
         "tmgr_staging_input_queue"  : {"kind"      : "queue",
                                        "log_level" : "error",
