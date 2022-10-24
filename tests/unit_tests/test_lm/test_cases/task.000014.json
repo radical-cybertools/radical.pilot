@@ -5,9 +5,10 @@
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["15"],
-            "ranks"         : 1,
+            "ranks"         : 2,
             "cores_per_rank": 2,
             "gpus_per_rank" : 2,
+            "gpu_type"      : "CUDA",
             "environment"   : {"test_env": "test_val"}
         },
         "task_sandbox_path" : "/tmp"
@@ -21,7 +22,15 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[0, 1]],
-                        "gpu_map"   : [[0, 1]],
+                        "gpu_map"   : [[0], [1]],
+                        "lfs"       : 0,
+                        "mem"       : 128
+                    },
+                    {
+                        "node_name" : "node1",
+                        "node_id"   : "00001",
+                        "core_map"  : [[2, 3]],
+                        "gpu_map"   : [[2], [3]],
                         "lfs"       : 0,
                         "mem"       : 128
                     }
@@ -40,8 +49,12 @@
 
     "results": {
         "lm": {
+            "jsrun": {
+                "launch_cmd" : "jsrun -b rs -n2 -a1 -c2 -g2 -r3 --smpiargs=\"-gpu\"",
+                "rank_exec"  : "/bin/sleep \"15\""
+            },
             "srun": {
-                "launch_cmd" : "srun --nodes 1 --ntasks 1 --cpus-per-task 2 --threads-per-core 2 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
+                "launch_cmd" : "srun --nodes 1 --ntasks 2 --cpus-per-task 2 --threads-per-core 2 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"15\""
             }
         }
