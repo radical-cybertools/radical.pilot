@@ -81,7 +81,7 @@ class TestFork(TestCase):
 
         test_cases = setUp('lm', 'fork')
         for task, result in test_cases:
-            command = lm_fork.get_rank_exec(task, None, None)
+            command = lm_fork.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 # ------------------------------------------------------------------------------
