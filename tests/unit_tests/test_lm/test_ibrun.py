@@ -109,7 +109,7 @@ class TestIBRun(TestCase):
             command = lm_ibrun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
-            command = lm_ibrun.get_rank_exec(task, None, None)
+            command = lm_ibrun.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
     # --------------------------------------------------------------------------
