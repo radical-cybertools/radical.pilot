@@ -8,6 +8,7 @@
             "ranks"         : 1,
             "cores_per_rank": 1,
             "gpus_per_rank" : 0,
+            "gpu_type"      : "",
             "environment"   : {}
         },
         "task_sandbox_path" : "/tmp"
@@ -54,6 +55,10 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "jsrun"   : {
+                "launch_cmd" : "jsrun -b rs -n1 -a1 -c1",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "jsrun_erf": {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000000",
                 "rank_exec"  : "/bin/sleep"
             },
@@ -67,10 +72,11 @@
             }
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}}\n"]
+            "jsrun_erf" : ["cpu_index_using: logical\n",
+                           "rank: 0: { host: node1; cpu: {0} }\n"]
         },
         "resource_filename": {
-            "jsrun" : "rs_layout_task_000000"
+            "jsrun_erf" : "rs_layout_task_000000"
         }
     }
 }
