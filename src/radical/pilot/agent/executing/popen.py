@@ -286,15 +286,15 @@ class Popen(AgentExecutingComponent):
 
             fout.write(tmp)
 
-        ranks   = task['slots']['ranks']
-        n_ranks = len(ranks)
-
         # the exec shell script runs the same set of commands for all ranks.
         # However, if the ranks need different GPU's assigned, or if either pre-
         # or post-exec directives contain per-rank dictionaries, then we switch
         # per-rank in the script for all sections between pre- and post-exec.
 
-        self._extend_pre_exec(td, ranks)
+        n_ranks = td['ranks']
+        slots   = task.setdefault('slots', {})
+
+        self._extend_pre_exec(td, slots.get('ranks'))
 
         with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
 
@@ -347,7 +347,7 @@ class Popen(AgentExecutingComponent):
         slots_fname = '%s/%s.sl' % (sbox, tid)
 
         with ru.ru_open(slots_fname, 'w') as fout:
-            fout.write('\n%s\n\n' % pprint.pformat(task['slots']))
+            fout.write('\n%s\n\n' % pprint.pformat(slots))
 
         # make sure the sandbox exists
         self._prof.prof('task_mkdir', uid=tid)
@@ -661,7 +661,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _extend_pre_exec(self, td, ranks):
+    def _extend_pre_exec(self, td, ranks=None):
 
         # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
         #        with exactly one entry, corresponding to the rank process to be
@@ -674,10 +674,9 @@ class Popen(AgentExecutingComponent):
             #                     number of threads, then the following string
             #                     should be converted into dictionary (per rank)
             num_threads = td.get('cores_per_rank', 1)
-            assert (num_threads == len(ranks[0]['core_map'][0]))
             td['pre_exec'].append('export OMP_NUM_THREADS=%d' % num_threads)
 
-        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
+        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
             # equivalent to the 'physical' value for original `cvd_id_mode`
             td['pre_exec'].append(
                 {str(rank_id): 'export CUDA_VISIBLE_DEVICES=%s' %
