@@ -343,7 +343,7 @@ class TaskDescription(ru.TypedDict):
        Errors in executing these commands will result in the task to enter
        `FAILED` state, and no execution of the actual workload will be
        attempted.
-    
+
     .. data:: pre_exec_sync
 
        [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
