@@ -168,7 +168,7 @@ class TestJSRun(TestCase):
                     command = lm_jsrun.get_launch_cmds(task, '')
                     self.assertEqual(command, result['launch_cmd'], task['uid'])
 
-                    command = lm_jsrun.get_rank_exec(task, None, None)
+                    command = lm_jsrun.get_exec(task)
                     self.assertEqual(command, result['rank_exec'], task['uid'])
 
 # ------------------------------------------------------------------------------

@@ -5,34 +5,47 @@
          "description": {
              "executable"       : "/bin/sleep",
              "arguments"        : ["10"],
-             "environment"      : {},
-             "pre_exec"         : ["test_pre_exec"],
+             "environment"      : {"TEST_ENV_STR": "test_env_value",
+                                   "TEST_ENV_INT": 3},
+             "pre_exec"         : ["test_pre_exec",
+                                   {"0": "echo 'rank 0'",
+                                    "1": ["echo 'rank 1 - command 1'",
+                                          "echo 'rank 1 - command 2'"]
+                                   }
+                                  ],
+             "pre_exec_sync"    : true,
              "post_exec"        : ["test_post_exec"],
-             "ranks"            : 1,
-             "cores_per_rank"   : 0,
-             "gpus_per_rank"    : 0,
-             "gpu_type"         : null,
+             "ranks"            : 2,
+             "cores_per_rank"   : 1,
+             "threading_type"   : "OpenMP",
+             "gpus_per_rank"    : 2,
+             "gpu_type"         : "CUDA",
              "mem_per_rank"     : 128,
              "lfs_per_rank"     : 0,
              "name"             : "test_task",
              "stdout"           : null,
              "stderr"           : null,
              "named_env"        : "",
-             "pre_launch"       : [],
-             "post_launch"      : [],
-             "pre_rank"         : [],
-             "post_rank"        : []
+             "pre_launch"       : ["echo 'command 1 in pre-launch'",
+                                   "echo 'command 2 in pre-launch'"],
+             "post_launch"      : []
          },
          "task_sandbox_path"    : "/tmp"
      },
 
     "setup": {
-        "slots": {"ranks"       : [{"node_name" : "a",
-                                    "node_id"   : "1",
-                                    "core_map"  : [[0]],
-                                    "gpu_map"   : [],
-                                    "mem"       : 0,
-                                    "lfs"       : 0}]
+        "slots": {"ranks" : [{"node_name" : "a",
+                              "node_id"   : "1",
+                              "core_map"  : [[0]],
+                              "gpu_map"   : [[0], [1]],
+                              "mem"       : 0,
+                              "lfs"       : 0},
+                             {"node_name" : "a",
+                              "node_id"   : "1",
+                              "core_map"  : [[1]],
+                              "gpu_map"   : [[2], [3]],
+                              "mem"       : 0,
+                              "lfs"       : 0}]
         }
     }
 }
