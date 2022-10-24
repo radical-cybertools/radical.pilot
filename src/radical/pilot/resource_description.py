@@ -1,4 +1,3 @@
-# pylint: disable=access-member-before-definition
 
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
@@ -7,7 +6,10 @@ import radical.utils as ru
 
 DESCRIPTION            = 'description'
 NOTES                  = 'notes'
+DEFAULT_SCHEMA         = 'default_schema'
 SCHEMAS                = 'schemas'
+JOB_MANAGER_ENDPOINT   = 'job_manager_endpoint'
+FILESYSTEM_ENDPOINT    = 'filesystem_endpoint'
 DEFAULT_REMOTE_WORKDIR = 'default_remote_workdir'
 DEFAULT_QUEUE          = 'default_queue'
 RESOURCE_MANAGER       = 'default_manager'
@@ -30,17 +32,34 @@ BLOCKED_CORES          = 'blocked_cores'
 BLOCKED_GPUS           = 'blocker_gpus'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 
+
+# ------------------------------------------------------------------------------
+#
+class AccessSchema(ru.TypedDict):
+
+    _schema = {
+            JOB_MANAGER_ENDPOINT: str,
+            FILESYSTEM_ENDPOINT : str,
+    }
+
+    _defaults = {
+            JOB_MANAGER_ENDPOINT: None,
+            FILESYSTEM_ENDPOINT : None,
+    }
+
+
 # ------------------------------------------------------------------------------
 #
 class ResourceDescription(ru.TypedDict):
-    """
+    '''
     docstrings goes here
-    """
+    '''
 
     _schema = {
         DESCRIPTION            : str        ,
         NOTES                  : str        ,
-        SCHEMAS                : [None]     ,  # FIXME: define sub-schema
+        DEFAULT_SCHEMA         : str        ,
+        SCHEMAS                : {str: AccessSchema},
 
         DEFAULT_REMOTE_WORKDIR : str        ,
         DEFAULT_QUEUE          : str        ,
@@ -54,7 +73,7 @@ class ResourceDescription(ru.TypedDict):
         VIRTENV_MODE           : str        ,
         VIRTENV_DIST           : str        ,
         PYTHON_DIST            : str        ,
-        LAUNCH_METHODS         : {str: None},  # FIXME: define sub-schema
+        LAUNCH_METHODS         : {str: None},
         LFS_PATH_PER_NODE      : str        ,
         LFS_SIZE_PER_NODE      : str        ,
         MEM_PER_NODE           : int        ,
@@ -62,12 +81,13 @@ class ResourceDescription(ru.TypedDict):
         GPUS_PER_NODE          : int        ,
         BLOCKED_CORES          : [int]      ,
         BLOCKED_GPUS           : [int]      ,
-        SYSTEM_ARCHITECTURE    : {str:str}  ,
+        SYSTEM_ARCHITECTURE    : {str: str} ,
     }
 
     _defaults = {
         DESCRIPTION            : ''          ,
         NOTES                  : ''          ,
+        DEFAULT_SCHEMA         : ''          ,
         SCHEMAS                : list()      ,
 
         DEFAULT_REMOTE_WORKDIR : ''          ,
