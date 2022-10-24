@@ -265,7 +265,7 @@ class TestPRTE(TestCase):
                 command = lm_prte.get_launch_cmds(task, '')
                 self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
-                command = lm_prte.get_rank_exec(task, None, None)
+                command = lm_prte.get_exec(task)
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 # ------------------------------------------------------------------------------
