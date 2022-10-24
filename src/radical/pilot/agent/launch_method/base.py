@@ -223,7 +223,7 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_rank_exec(self, task, rank_id, rank):
+    def get_exec(self, task):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
