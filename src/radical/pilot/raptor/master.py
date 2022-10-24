@@ -301,13 +301,13 @@ class Master(rpu.Component):
                 ru.write_json(cfg, fname)
 
                 td = dict()
-                td['mode']             = RAPTOR_WORKER
-                td['named_env']        = descr.get('named_env')
-                td['ranks']            = descr['ranks']
-                td['threading_type']   = rpc.POSIX
-                td['cores_per_rank']   = descr.get('cores_per_rank', 1)
-                td['gpus_per_rank']    = descr.get('gpus_per_rank', 0)
-                td['environment']      = descr.get('environment', {})
+                td['mode']           = RAPTOR_WORKER
+                td['named_env']      = descr.get('named_env')
+                td['ranks']          = descr['ranks']
+                td['threading_type'] = rpc.POSIX
+                td['cores_per_rank'] = descr.get('cores_per_rank', 1)
+                td['gpus_per_rank']  = descr.get('gpus_per_rank', 0)
+                td['environment']    = descr.get('environment', {})
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
@@ -321,8 +321,6 @@ class Master(rpu.Component):
                             % (descr.get('worker_file', ''),
                                descr.get('worker_class', 'DefaultWorker'),
                                fname)]
-
-
 
                 # all workers run in the same sandbox as the master
                 task = dict()
