@@ -272,7 +272,13 @@ class Default(TMGRStagingInputComponent):
                          publish=True, push=True)
 
         for task,actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            try:
+                self._handle_task(task, actionables)
+            except:
+                # staging failed - do not pass task to agent
+                task['control'] = 'tmgr'
+                raise
+
 
 
     # --------------------------------------------------------------------------
@@ -410,7 +416,6 @@ class Default(TMGRStagingInputComponent):
             tar_sd['action'] = rpc.TARBALL
             task['description']['input_staging'].append(tar_sd)
             os.remove(tar_path)
-
 
         # staging is done, we can advance the task at last
         self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
