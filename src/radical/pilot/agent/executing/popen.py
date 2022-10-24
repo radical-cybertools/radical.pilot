@@ -699,8 +699,13 @@ class Popen(AgentExecutingComponent):
         switch_per_rank = any([isinstance(x, dict) for x in entries])
         cmd_template    = '%s || rp_error %s\n'
 
+        sync_ranks_cmd = ''
+        if sig == 'pre_exec' and td['pre_exec_sync']:
+            sync_ranks_cmd = 'rp_sync_ranks %s\n' % sig
+
         if not switch_per_rank:
-            return ''.join([cmd_template % (x, sig) for x in entries])
+            return ''.join([cmd_template % (x, sig) for x in entries]) + \
+                   sync_ranks_cmd
 
         ret += 'case "$RP_RANK" in\n'
         for rank_id in range(n_ranks):
@@ -717,8 +722,7 @@ class Popen(AgentExecutingComponent):
 
             ret += '        ;;\n'
 
-        ret += 'esac\n'
-        ret += 'rp_sync_ranks %s\n' % sig
+        ret += 'esac\n' + sync_ranks_cmd
 
         return ret
 
