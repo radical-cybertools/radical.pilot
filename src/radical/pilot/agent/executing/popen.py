@@ -169,7 +169,7 @@ class Popen(AgentExecutingComponent):
         # and then, after all ranks are synchronized, finally the task ranks
         # begin to run.
         #
-        # The scripts thus show the following structure:
+        # The scripts thus show the following approximate structure:
         #
         # Launcher Script (`task.000000.launch.sh`):
         # ----------------------------------------------------------------------
@@ -420,6 +420,10 @@ class Popen(AgentExecutingComponent):
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
 
+        # handle task timeout if needed
+        self.handle_timeout(task)
+
+        # watch task for completion
         self._watch_queue.put(task)
 
 
@@ -480,38 +484,11 @@ class Popen(AgentExecutingComponent):
             if exit_code is None:
                 # Process is still running
 
-                if tid in self._tasks_to_cancel:
-
-                    # FIXME: there is a race condition between the state poll
-                    # above and the kill command below.  We probably should pull
-                    # state after kill again?
-
-                    self._prof.prof('task_run_cancel_start', uid=tid)
-
-                    # We got a request to cancel this task - send SIGTERM to the
-                    # process group (which should include the actual launch
-                    # method)
-                  # task['proc'].kill()
-                    action += 1
-                    try:
-                        os.killpg(task['proc'].pid, signal.SIGTERM)
-                    except OSError:
-                        # task is already gone, we ignore this
-                        pass
-                    task['proc'].wait()  # make sure proc is collected
-
-                    with self._cancel_lock:
+                with self._cancel_lock:
+                    if tid in self._tasks_to_cancel:
+                        action += 1
+                        self.cancel_task(task)
                         self._tasks_to_cancel.remove(tid)
-
-                    self._prof.prof('task_run_cancel_stop', uid=tid)
-
-                    del task['proc']  # proc is not json serializable
-                    self._prof.prof('unschedule_start', uid=tid)
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-                    self.advance(task, rps.CANCELED, publish=True, push=False)
-
-                    # we don't need to watch canceled tasks
-                    self._tasks_to_watch.remove(task)
 
             else:
 
@@ -548,6 +525,44 @@ class Popen(AgentExecutingComponent):
 
         return action
 
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, task):
+
+        if task not in self._tasks_to_watch:
+            # task completed meanwhile
+            return
+
+        tid = task['uid']
+
+        # FIXME: there is a race condition between the state poll
+        # above and the kill command below.  We probably should pull
+        # state after kill again?
+
+        self._prof.prof('task_run_cancel_start', uid=tid)
+
+        # We got a request to cancel this task - send SIGTERM to the
+        # process group (which should include the actual launch
+        # method)
+        task['proc'].kill()
+        try:
+            os.killpg(task['proc'].pid, signal.SIGTERM)
+        except OSError:
+            # task is already gone, we ignore this
+            pass
+        task['proc'].wait()  # make sure proc is collected
+
+        self._prof.prof('task_run_cancel_stop', uid=tid)
+
+        del task['proc']  # proc is not json serializable
+        self._prof.prof('unschedule_start', uid=tid)
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+        self.advance(task, rps.CANCELED, publish=True, push=False)
+
+        # we don't need to watch canceled tasks
+        # FIXME: list action should be locked
+        self._tasks_to_watch.remove(task)
+
 
     # --------------------------------------------------------------------------
     def _get_check(self, event):
@@ -559,7 +574,7 @@ class Popen(AgentExecutingComponent):
     #
     # launcher
     #
-# pylint: disable=unused-argument
+    # pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event

@@ -80,6 +80,7 @@ PRE_RANK         = 'pre_rank'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
 POST_RANK        = 'post_rank'
+TIMEOUT          = 'timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 STDOUT           = 'stdout'
@@ -370,6 +371,12 @@ class TaskDescription(ru.TypedDict):
 
        [type: `ANY` | default: `None`] User defined metadata.
 
+    .. data:: timeout
+
+       [type: `float` | default: `0.0`] Any timeout larger than 0 will result in
+       the task process to be killed after the specified amount of seconds.  The
+       task will then end up in `CANCELED` state.
+
     .. data:: cleanup
 
        [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
@@ -554,6 +561,7 @@ class TaskDescription(ru.TypedDict):
         SCHEDULER       : str         ,
         TAGS            : {None: None},
         METADATA        : None        ,
+        TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
     }
@@ -609,6 +617,7 @@ class TaskDescription(ru.TypedDict):
         SCHEDULER       : ''          ,
         TAGS            : dict()      ,
         METADATA        : None        ,
+        TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
     }
