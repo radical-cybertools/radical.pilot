@@ -1,10 +1,11 @@
 
-__copyright__ = "Copyright 2016, http://radical.rutgers.edu"
-__license__   = "MIT"
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__license__   = 'MIT'
 
 
 import radical.utils as ru
 
+from ...   import constants as rpc
 from .base import LaunchMethod
 
 
@@ -16,7 +17,8 @@ class JSRUN(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, rm_info, log, prof):
 
-        self._command: str = ''
+        self._erf    : bool = False
+        self._command: str  = ''
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -27,7 +29,11 @@ class JSRUN(LaunchMethod):
 
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
-                   'command': ru.which('jsrun')}
+                   'command': ru.which('jsrun'),
+                   'erf'    : False}
+
+        if '_erf' in self.name.lower():
+            lm_info['erf'] = True
 
         return lm_info
 
@@ -41,6 +47,8 @@ class JSRUN(LaunchMethod):
         self._command = lm_info['command']
 
         assert self._command
+
+        self._erf     = lm_info['erf']
 
 
     # --------------------------------------------------------------------------
@@ -70,10 +78,10 @@ class JSRUN(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _create_resource_set_file(self, slots, uid, sandbox):
-        """
+        '''
         This method takes as input a Task slots and creates the necessary
-        resource set file. This resource set file is then used by jsrun to
-        place and execute tasks on nodes.
+        resource set file (Explicit Resource File, ERF). This resource set
+        file is then used by jsrun to place and execute tasks on nodes.
 
         An example of a resource file is:
 
@@ -86,10 +94,6 @@ class JSRUN(LaunchMethod):
 
             rank 0 : {host: 2; cpu:  7; gpu: 2}
             rank 1 : {host: 2; cpu: 30; gpu: 5}
-
-        * Task 3: 1 proc, 1 thread per process*
-
-            1 : {host: 2; cpu:  7}
 
         Parameters
         ----------
@@ -109,14 +113,13 @@ class JSRUN(LaunchMethod):
 
         uid     : task ID (string)
         sandbox : task sandbox (string)
-        mpi     : MPI or not (bool, default: False)
-
-        """
+        '''
 
         # https://github.com/olcf-tutorials/ERF-CPU-Indexing
         # `cpu_index_using: physical` causes the following issue
         # "error in ptssup_mkcltsock_afunix()"
         rs_str  = 'cpu_index_using: logical\n'
+
         rank_id = 0
         for rank in slots['ranks']:
 
@@ -129,7 +132,7 @@ class JSRUN(LaunchMethod):
                 if gpu_maps:
                     gpus = [str(gpu_map[0]) for gpu_map in gpu_maps]
                     rs_str += '; gpu: {%s}' % ','.join(gpus)
-                rs_str  += '}\n'
+                rs_str  += ' }\n'
                 rank_id += 1
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
@@ -143,36 +146,51 @@ class JSRUN(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        uid   = task['uid']
-        slots = task['slots']
-        td    = task['description']
-        sbox  = task['task_sandbox_path']
+        uid = task['uid']
+        td  = task['description']
 
-        assert slots['ranks'], 'task.slots.ranks is not set'
+        if self._erf:
 
-        self._log.debug('prep %s', uid)
+            sbox  = task['task_sandbox_path']
+            slots = task['slots']
 
-        # from https://www.olcf.ornl.gov/ \
-        #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
-        #
-        # CUDA with    MPI, use jsrun --smpiargs="-gpu"
-        # CUDA without MPI, use jsrun --smpiargs="off"
-        #
-        # We only set this for CUDA tasks
-        if 'cuda' in td.get('gpu_type', '').lower():
-            if td['ranks'] > 1:
-                # MPI is enabled
-                smpiargs = '--smpiargs="-gpu"'
-            else:
-                smpiargs = '--smpiargs="off"'
+            assert slots['ranks'], 'task.slots.ranks not defined'
+
+            cmd_options = '--erf_input %s' % \
+                self._create_resource_set_file(slots, uid, sbox)
+
         else:
-            smpiargs = ''
+            # -b: bind to RS
+            # -n: number of RS
+            # -a: number of MPI tasks (ranks) per RS
+            # -c: number of CPUs (physical cores) per RS
+            cmd_options = '-b rs -n%(ranks)d -a1 '  \
+                          '-c%(cores_per_rank)d' % td
 
-        rs_fname = self._create_resource_set_file(slots=slots, uid=uid,
-                                                  sandbox=sbox)
+        if td['gpus_per_rank']:
 
-        cmd = '%s --erf_input %s %s %s' % (self._command, rs_fname,
-                                           smpiargs, exec_path)
+            if not self._erf:
+                # -g: number of GPUs per RS
+                # -r: number of RS per host (node)
+                cmd_options += ' -g%d -r%d' % (
+                    td['gpus_per_rank'],
+                    self._rm_info['gpus_per_node'] // td['gpus_per_rank'])
+
+            # from https://www.olcf.ornl.gov/ \
+            #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
+            #
+            # CUDA with    MPI, use jsrun --smpiargs="-gpu"
+            # CUDA without MPI, use jsrun --smpiargs="off"
+            #
+            # This is set for CUDA tasks only
+            if td['gpu_type'] == rpc.CUDA:
+                if td['ranks'] > 1:
+                    # MPI is enabled
+                    cmd_options += ' --smpiargs="-gpu"'
+                else:
+                    cmd_options += ' --smpiargs="off"'
+
+        cmd = '%s %s %s' % (self._command, cmd_options, exec_path)
         return cmd.rstrip()
 
 
