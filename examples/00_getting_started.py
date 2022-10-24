@@ -78,13 +78,13 @@ if __name__ == '__main__':
 
         report.progress_tgt(n, label='create')
         tds = list()
-        for i in range(0, n):
+        for i in range(n):
 
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.stage_on_error = True
             td.executable     = '/bin/date'
             td.ranks          = 2
+            td.stage_on_error = True
 
             tds.append(td)
             report.progress()

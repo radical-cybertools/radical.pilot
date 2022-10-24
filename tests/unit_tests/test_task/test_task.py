@@ -62,10 +62,12 @@ class TestTask(TestCase):
 
         td.verify()
 
-        assert td.ranks          == 2
-        assert td.cores_per_rank == 3
-        assert td.gpus_per_rank  == 4
-        assert td.gpu_type       == rp.CUDA
+        self.assertEqual(td.ranks,          2)
+        self.assertEqual(td.cores_per_rank, 3)
+        self.assertEqual(td.gpus_per_rank,  4)
+        self.assertEqual(td.gpu_type,       rp.CUDA)
+
+        self.assertFalse(td.pre_exec_sync)
 
 
 # ------------------------------------------------------------------------------
