@@ -13,6 +13,7 @@
                                           "echo 'rank 1 - command 2'"]
                                    }
                                   ],
+             "pre_exec_sync"    : true,
              "post_exec"        : ["test_post_exec"],
              "ranks"            : 2,
              "cores_per_rank"   : 1,
