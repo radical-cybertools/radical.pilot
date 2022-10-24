@@ -112,9 +112,9 @@ class Srun(LaunchMethod):
         td             = task['description']
         sbox           = task['task_sandbox_path']
 
-        n_tasks        = td['cpu_processes']
-        n_task_threads = td.get('cpu_threads', 1)
-        n_gpus         = td.get('gpu_processes', 0)
+        n_tasks        = td['ranks']
+        n_task_threads = td.get('cores_per_rank', 1)
+        n_task_gpus    = td.get('gpus_per_rank', 0)
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -142,25 +142,27 @@ class Srun(LaunchMethod):
                 if n_nodes > MIN_NNODES_IN_LIST:
                     nodefile = '%s/%s.nodes' % (sbox, uid)
                     with ru.ru_open(nodefile, 'w') as fout:
-                        fout.write(','.join(nodelist))
-                        fout.write('\n')
+                        fout.write(','.join(nodelist) + '\n')
 
         if self._traverse:
-            mapping = '--ntasks=%d '       % n_tasks \
-                    + '--cpus-per-task=%d' % n_task_threads \
+            mapping = '--ntasks=%d '        % n_tasks \
+                    + '--cpus-per-task=%d ' % n_task_threads \
                     + '--ntasks-per-core=1 --distribution="arbitrary"'
         else:
             mapping = '--nodes %d '        % n_nodes \
                     + '--ntasks %d '       % n_tasks \
                     + '--cpus-per-task %d' % n_task_threads
 
+        if self._rm_info['threads_per_core'] > 1:
+            mapping += ' --threads-per-core %d' % \
+                       self._rm_info['threads_per_core']
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('gpus') and n_gpus:
+        if self._rm_info.get('requested_gpus') and n_task_gpus:
             if self._traverse:
-                mapping += ' --gpus-per-task=%d' % n_gpus
+                mapping += ' --gpus-per-task=%d' % n_task_gpus
             else:
-                mapping += ' --gpus-per-task %d --gpu-bind closest' % n_gpus
+                mapping += ' --gpus-per-task %d --gpu-bind closest' % n_task_gpus
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile

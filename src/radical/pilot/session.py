@@ -115,7 +115,7 @@ class Session(rs.Session):
 
         else:
             for k in ['sid', 'base', 'path']:
-                assert(k in self._cfg), 'non-primary session misses %s' % k
+                assert k in self._cfg, 'non-primary session misses %s' % k
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -142,7 +142,8 @@ class Session(rs.Session):
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
-        self._cache      = {'resource_sandbox' : dict(),
+        self._cache      = {'endpoint_fs'      : dict(),
+                            'resource_sandbox' : dict(),
                             'session_sandbox'  : dict(),
                             'pilot_sandbox'    : dict(),
                             'client_sandbox'   : self._cfg.client_sandbox,
@@ -198,6 +199,8 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
+        import pprint
+        self._log.debug('cmgr cfg: %s', pprint.pformat(self._cfg))
         self._cmgr = rpu.ComponentManager(self._cfg)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
@@ -295,13 +298,15 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-            self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
+            self.fetch_json    (tgt=tgt)
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        self._rep.info('<<session lifetime: %.1fs' % (self.closed - self.created))
+        if self.closed and self.created:
+            self._rep.info('<<session lifetime: %.1fs' %
+                           (self.closed - self.created))
         self._rep.ok('>>ok\n')
 
 
@@ -385,7 +390,7 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert(self._primary)
+        assert self._primary
         return self._cmgr
 
 
@@ -395,8 +400,11 @@ class Session(rs.Session):
     def created(self):
         '''Returns the UTC date and time the session was created.
         '''
-        if self._dbs: return self._dbs.created
-        else        : return None
+        if self._dbs: ret = self._dbs.created
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -407,8 +415,11 @@ class Session(rs.Session):
         Return time when the session connected to the DB
         '''
 
-        if self._dbs: return self._dbs.connected
-        else        : return None
+        if self._dbs: ret = self._dbs.connected
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -426,8 +437,11 @@ class Session(rs.Session):
         '''
         Returns the time of closing
         '''
-        if self._dbs: return self._dbs.closed
-        else        : return None
+        if self._dbs: ret = self._dbs.closed
+        else        : ret = None
+
+        if ret:
+            return float(ret)
 
 
     # --------------------------------------------------------------------------
@@ -495,6 +509,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _reconnect_pmgr(self, pmgr):
+
+        if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
+            raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
+
+        self._pmgrs[pmgr.uid] = pmgr
+
+
+    # --------------------------------------------------------------------------
+    #
     def list_pilot_managers(self):
         '''
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
@@ -540,6 +564,16 @@ class Session(rs.Session):
     def _register_tmgr(self, tmgr):
 
         self._dbs.insert_tmgr(tmgr.as_dict())
+        self._tmgrs[tmgr.uid] = tmgr
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect_tmgr(self, tmgr):
+
+        if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
+            raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
+
         self._tmgrs[tmgr.uid] = tmgr
 
 
@@ -636,10 +670,18 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def fetch_json(self, tgt=None):
+
+        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
+                              session=self, skip_existing=True)
+
+
+    # --------------------------------------------------------------------------
+    #
     def fetch_profiles(self, tgt=None):
 
         return rpu.fetch_profiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
+                                  session=self, skip_existing=True)
 
 
     # --------------------------------------------------------------------------
@@ -647,15 +689,7 @@ class Session(rs.Session):
     def fetch_logfiles(self, tgt=None):
 
         return rpu.fetch_logfiles(self._uid, dburl=self.dburl, tgt=tgt,
-                                  session=self)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def fetch_json(self, tgt=None):
-
-        return rpu.fetch_json(self._uid, dburl=self.dburl, tgt=tgt,
-                              session=self)
+                                  session=self, skip_existing=True)
 
 
     # --------------------------------------------------------------------------
@@ -714,6 +748,8 @@ class Session(rs.Session):
                     for k,v in pilot['description'].items():
                         if v is None:
                             v = ''
+                        if k == 'project' and '_' in v and 'ornl' in resource:
+                            v = v.split('_')[0]
                         expand['pd.%s' % k] = v
                         if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()
@@ -723,8 +759,6 @@ class Session(rs.Session):
                             expand['pd.%s' % k.lower()] = v
                     sandbox_raw = sandbox_raw % expand
 
-                if '_' in sandbox_raw and 'ornl' in resource:
-                    sandbox_raw = sandbox_raw.split('_')[0]
 
                 # If the sandbox contains expandables, we need to resolve those
                 # remotely.
@@ -836,18 +870,42 @@ class Session(rs.Session):
 
         pid = pilot['uid']
         with self._cache_lock:
-            if  pid in self._cache['pilot_sandbox']:
-                return self._cache['pilot_sandbox'][pid]
 
-        # cache miss
-        session_sandbox     = self._get_session_sandbox(pilot)
-        pilot_sandbox       = rs.Url(session_sandbox)
-        pilot_sandbox.path += '/%s/' % pilot['uid']
+            if pid not in self._cache['pilot_sandbox']:
+
+                # cache miss
+                session_sandbox     = self._get_session_sandbox(pilot)
+                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox.path += '/%s/' % pilot['uid']
+
+                self._cache['pilot_sandbox'][pid] = pilot_sandbox
+
+            return self._cache['pilot_sandbox'][pid]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_endpoint_fs(self, pilot):
+
+        # FIXME: this should get 'resource, schema=None' as parameters
+
+        resource = pilot['description'].get('resource')
+
+        if not resource:
+            raise ValueError('Cannot get endpoint filesystem w/o resource target')
 
         with self._cache_lock:
-            self._cache['pilot_sandbox'][pid] = pilot_sandbox
 
-        return pilot_sandbox
+            if resource not in self._cache['endpoint_fs']:
+
+                # cache miss
+                resource_sandbox  = self._get_resource_sandbox(pilot)
+                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs.path  = ''
+
+                self._cache['endpoint_fs'][resource] = endpoint_fs
+
+            return self._cache['endpoint_fs'][resource]
 
 
     # --------------------------------------------------------------------------

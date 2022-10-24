@@ -53,18 +53,6 @@ class Popen(AgentExecutingComponent):
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
 
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-      # session._log.debug('popen init start')
-        AgentExecutingComponent.__init__(self, cfg, session)
-
-        self._proc_term = mt.Event()
-      # session._log.debug('popen init stop')
-
-
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -85,13 +73,6 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        # FIXME: should be moved to base class `AgentExecutingComponent`?
-        self._proc_term.set()
 
     # --------------------------------------------------------------------------
     #
@@ -336,7 +317,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_pre_exec(task)
 
             # pre_rank list is applied to rank 0, dict to the ranks listed
-            pre_rank = td['pre_rank']
+            pre_rank = td.get('pre_rank')
             if isinstance(pre_rank, list): pre_rank = {'0': pre_rank}
 
             if pre_rank:
@@ -366,7 +347,7 @@ class Popen(AgentExecutingComponent):
             tmp += self._get_prof('rank_stop', tid)
 
             # post_rank list is applied to rank 0, dict to the ranks listed
-            post_rank = td['post_rank']
+            post_rank = td.get('post_rank')
             if isinstance(post_rank, list): post_rank = {'0': post_rank}
 
             if post_rank:
@@ -447,7 +428,7 @@ class Popen(AgentExecutingComponent):
     def _watch(self):
 
         try:
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 tasks = list()
                 try:
@@ -524,7 +505,7 @@ class Popen(AgentExecutingComponent):
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del(task['proc'])  # proc is not json serializable
+                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
@@ -547,7 +528,7 @@ class Popen(AgentExecutingComponent):
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
                 self._tasks_to_watch.remove(task)
-                del(task['proc'])  # proc is not json serializable
+                del task['proc']  # proc is not json serializable
                 self._prof.prof('unschedule_start', uid=tid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 

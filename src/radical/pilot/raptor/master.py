@@ -154,12 +154,12 @@ class Master(rpu.Component):
             cfg = dict()
 
         if cfg and 'path' in cfg:
-            del(cfg['path'])
+            del cfg['path']
 
         ru.dict_merge(cfg, ru.read_json('%s/control_pubsub.json' % self._psbox))
 
-        del(cfg['channel'])
-        del(cfg['cmgr'])
+        del cfg['channel']
+        del cfg['cmgr']
 
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
@@ -301,14 +301,13 @@ class Master(rpu.Component):
                 ru.write_json(cfg, fname)
 
                 td = dict()
-                td['mode']             = RAPTOR_WORKER
-                td['named_env']        = descr.get('named_env')
-                td['cpu_processes']    = descr['cpu_processes']
-                td['cpu_process_type'] = rpc.MPI
-                td['cpu_thread_type']  = rpc.POSIX
-                td['cpu_threads']      = descr.get('cpu_threads', 1)
-                td['gpu_processes']    = descr.get('gpu_processes', 0)
-                td['environment']      = descr.get('environment', {})
+                td['mode']           = RAPTOR_WORKER
+                td['named_env']      = descr.get('named_env')
+                td['ranks']          = descr['ranks']
+                td['threading_type'] = rpc.POSIX
+                td['cores_per_rank'] = descr.get('cores_per_rank', 1)
+                td['gpus_per_rank']  = descr.get('gpus_per_rank', 0)
+                td['environment']    = descr.get('environment', {})
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
@@ -322,8 +321,6 @@ class Master(rpu.Component):
                             % (descr.get('worker_file', ''),
                                descr.get('worker_class', 'DefaultWorker'),
                                fname)]
-
-
 
                 # all workers run in the same sandbox as the master
                 task = dict()
@@ -340,10 +337,10 @@ class Master(rpu.Component):
                 task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
                 task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
                 task['pilot']             = os.environ['RP_PILOT_ID']
-                task['resources']         = {'cpu': td['cpu_processes'] *
-                                                    td.get('cpu_threads', 1),
-                                             'gpu': td['gpu_processes'] *
-                                                    td.get('cpu_processes', 1)}
+                task['resources']         = {'cpu': td['ranks'] *
+                                                    td.get('cores_per_rank', 1),
+                                             'gpu': td['ranks'] *
+                                                    td.get('gpus_per_rank', 1)}
                 tasks.append(task)
 
                 # NOTE: the order of insert / state update relies on that order
@@ -484,7 +481,7 @@ class Master(rpu.Component):
 
         # update td info and remove data
         task = self._task_service_data[tid][1]
-        del(self._task_service_data[tid])
+        del self._task_service_data[tid]
 
         # the task is completed and we can return it to the caller
         return task
@@ -508,7 +505,7 @@ class Master(rpu.Component):
                 # convert to task dict
                 task = Task(self, task, origin='raptor').as_dict()
 
-            assert('description' in task)
+            assert 'description' in task
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
             if mode == TASK_EXECUTABLE:
@@ -557,10 +554,10 @@ class Master(rpu.Component):
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
             task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
             task['pilot']             = os.environ['RP_PILOT_ID']
-            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
-                                                td.get('cpu_threads',   1),
-                                         'gpu': td['gpu_processes'] *
-                                                td.get('cpu_processes', 1)}
+            task['resources']         = {'cpu': td['ranks'] *
+                                                td.get('cores_per_rank', 1),
+                                         'gpu': td['ranks'] *
+                                                td.get('gpus_per_rank', 0)}
 
             # NOTE: the order of insert / state update relies on that order
             #       being maintained through the component's message push,

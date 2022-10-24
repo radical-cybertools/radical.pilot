@@ -94,19 +94,18 @@ class TestBaseScheduling(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_slot_status(self, mocked_logger, mocked_init):
+    def test_slot_status(self, mocked_init):
 
         rpa_sb._debug = True
         sched = AgentSchedulingComponent(cfg=None, session=None)
-        sched._log = mocked_logger
+        sched._log = ru.Logger('foo', targets=None, level='DEBUG_5')
 
         for c in self._test_cases['slot_status']:
             sched.nodes = c['nodes']
             self.assertEqual(sched.slot_status(), c['result'])
 
         # if log is NOT enabled for `logging.DEBUG`
-        sched._log.isEnabledFor.return_value = False
+        sched._log._debug_level = 0
         self.assertIsNone(sched.slot_status())
         rpa_sb._debug = False
 
@@ -121,7 +120,7 @@ class TestBaseScheduling(TestCase):
 
         component = AgentSchedulingComponent(None, None)
         component._active_cnt    = 0
-        component._log           = mock.Mock()
+        component._log           = ru.Logger('foo', targets=None, level='OFF')
         component._prof          = mock.Mock()
         component._prof.prof     = mock.Mock(return_value=True)
 

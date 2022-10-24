@@ -84,16 +84,15 @@ if __name__ == '__main__':
         # we create one pseudo task which installs radical.synapse in the pilot
         # ve
         td = rp.TaskDescription()
-        td.pre_exec    = ["unset PYTHONPATH",
-                           "virtualenv /tmp/rp_synapse_ve_$USER",
-                           ". /tmp/rp_synapse_ve_$USER/bin/activate",
-                           "pip install --upgrade radical.synapse"]
-        td.executable  = "radical-synapse-version"
-        td.cpu_processes = 1
+        td.pre_exec   = ["unset PYTHONPATH",
+                          "virtualenv /tmp/rp_synapse_ve_$USER",
+                          ". /tmp/rp_synapse_ve_$USER/bin/activate",
+                          "pip install --upgrade radical.synapse"]
+        td.executable = "radical-synapse-version"
 
         t = tmgr.submit_tasks(td)
         tmgr.wait_tasks(t.uid)
-        assert(t.state == rp.DONE)
+        assert t.state == rp.DONE
 
 
         report.header('submit synapse workload tasks')

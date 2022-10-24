@@ -3,6 +3,52 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.18.0 Release                                                        2022-10-11
+--------------------------------------------------------------------------------
+
+  - move raptor profiles and logfiles into sandboxes  
+  - consistent use of task modes  
+  - derive etypes from task modes
+  - clarify and troubleshoot raptor.py example
+  - docstring update
+  - make sure we issue a `bootstrap_0_stop` event
+  - raptor tasks now create `rank_start/ranks_stop` events
+  - reporte allocated resources for RA
+  - set MPIRun as default LM for Summit
+  - task manager cancel wont block: fixes #2336
+  - update task description (focus on `ranks`)
+
+
+1.17.0 Release                                                        2022-09-15
+--------------------------------------------------------------------------------
+
+  - add `docker compose` recipe.
+  - add option `-gpu` for IBM Spectrum MPI
+  - add comet resource config
+  - add doc of env variable
+  - add interactive schema to frontera config
+  - add rcfg inspection utilities
+  - also tarball log files, simplify code
+  - clarify semantics on `file` and `pwd` schemas
+  - document programmatical inspection resource definitions
+  - ensure RADICAL_SMT setting, document for end user
+  - fixed session cache (resolved `cachedir`)
+  - fix ornl resource sbox and summit interactive mode
+  - fix session test cleanup
+  - keep Spock's resource config in sync with Crusher's config
+  - make pilot launch and bootstrap CWD-independent
+  - make staging schemas consistent for pilot and task staging
+  - only use major and minor version for `prep_env` spec version
+  - pilot profiles and logfiles are now transferred as tarball #2663
+  - fix scheduler termination
+  - remove deprecated FUNCS executor
+  - support RP within interactive jobs
+  - simple attempt on api level reconnect
+  - stage_in.target fix for absolute path Fixes #2590
+  - update resource config for Crusher@ORNL
+  - use current working tree for docker rp source.
+
+
 1.16.0 Release                                                        2022-08-15
 --------------------------------------------------------------------------------
 

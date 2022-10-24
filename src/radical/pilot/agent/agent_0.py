@@ -354,21 +354,21 @@ class Agent_0(rpu.Worker):
 
         service_task_uid = 'rp.services'
         service_task     = {
-            'uid'              : service_task_uid,
-            'task_sandbox_path': self._pwd,
-            'description'      : TaskDescription({
-                'uid'          : service_task_uid,
-                'cpu_processes': 1,
-                'cpu_threads'  : self._rm.info.cores_per_node,
-                'executable'   : '/bin/sh',
-                'arguments'    : [bs_name, 'services']
+            'uid'               : service_task_uid,
+            'task_sandbox_path' : self._pwd,
+            'description'       : TaskDescription({
+                'uid'           : service_task_uid,
+                'ranks'         : 1,
+                'cores_per_rank': self._rm.info.cores_per_node,
+                'executable'    : '/bin/sh',
+                'arguments'     : [bs_name, 'services']
             }).as_dict(),
-            'slots': {'ranks'  : [{'node_name': nodes[0]['node_name'],
-                                   'node_id'  : nodes[0]['node_id'],
-                                   'core_map' : [[0]],
-                                   'gpu_map'  : [],
-                                   'lfs'      : 0,
-                                   'mem'      : 0}]}
+            'slots': {'ranks'   : [{'node_name': nodes[0]['node_name'],
+                                    'node_id'  : nodes[0]['node_id'],
+                                    'core_map' : [[0]],
+                                    'gpu_map'  : [],
+                                    'lfs'      : 0,
+                                    'mem'      : 0}]}
         }
 
         launcher = self._rm.find_launcher(service_task)
@@ -470,21 +470,21 @@ class Agent_0(rpu.Worker):
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
                 agent_task = {
-                    'uid'              : sa,
-                    'task_sandbox_path': self._pwd,
-                    'description'      : TaskDescription({
-                        'uid'          : sa,
-                        'cpu_processes': 1,
-                        'cpu_threads'  : self._rm.info.cores_per_node,
-                        'executable'   : '/bin/sh',
-                        'arguments'    : [bs_name, sa]
+                    'uid'               : sa,
+                    'task_sandbox_path' : self._pwd,
+                    'description'       : TaskDescription({
+                        'uid'           : sa,
+                        'ranks'         : 1,
+                        'cores_per_rank': self._rm.info.cores_per_node,
+                        'executable'    : '/bin/sh',
+                        'arguments'     : [bs_name, sa]
                     }).as_dict(),
-                    'slots': {'ranks'  : [{'node_name': node['node_name'],
-                                           'node_id'  : node['node_id'],
-                                           'core_map' : [[0]],
-                                           'gpu_map'  : [],
-                                           'lfs'      : 0,
-                                           'mem'      : 0}]}
+                    'slots': {'ranks'   : [{'node_name': node['node_name'],
+                                            'node_id'  : node['node_id'],
+                                            'core_map' : [[0]],
+                                            'gpu_map'  : [],
+                                            'lfs'      : 0,
+                                            'mem'      : 0}]}
                 }
 
                 # find a launcher to use
@@ -577,8 +577,6 @@ class Agent_0(rpu.Worker):
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'
-                self.stop()
-
                 return False  # we are done
 
             elif cmd == 'cancel_tasks':
@@ -795,7 +793,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('env_spec: %s', env_spec)
 
         etype = env_spec.get('type', 'venv')
-        evers = env_spec.get('version', '')
+        evers = env_spec.get('version')
         path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
         pre   = env_spec.get('pre_exec') or []
@@ -808,8 +806,8 @@ class Agent_0(rpu.Worker):
         if emods: mods = '-m "%s"' % ','.join(emods)
         else    : mods = ''
 
-      # assert(etype == 'virtualenv')
-      # assert(evers)
+      # assert etype == 'virtualenv'
+      # assert evers
 
         # only create a new VE if path is not set or if it does not exist
         if path:
@@ -819,9 +817,13 @@ class Agent_0(rpu.Worker):
         if path: ve_path = path
         else   : ve_path = ve_local_path
 
+        if evers:
+            evers = '-v %s' % evers
+        else:
+            evers = ''
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s -t %s -v %s %s %s > env.log 2>&1' \
+        ve_cmd = '/bin/bash %s -d -p %s -t %s %s %s %s > env.log 2>&1' \
                % (rp_cse, ve_path, etype, evers, mods, pre_exec)
 
         # FIXME: we should export all sandboxes etc. to the prep_env.

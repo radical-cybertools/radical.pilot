@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -22,6 +22,7 @@ LM_NAME_MPIRUN_CCMRUN = 'MPIRUN_CCMRUN'
 LM_NAME_MPIRUN_DPLACE = 'MPIRUN_DPLACE'
 LM_NAME_MPIRUN_RSH    = 'MPIRUN_RSH'
 LM_NAME_JSRUN         = 'JSRUN'
+LM_NAME_JSRUN_ERF     = 'JSRUN_ERF'
 LM_NAME_PRTE          = 'PRTE'
 LM_NAME_FLUX          = 'FLUX'
 LM_NAME_RSH           = 'RSH'
@@ -35,9 +36,10 @@ PWD = os.getcwd()
 #
 class LaunchMethod(object):
 
-    MPI_FLAVOR_OMPI    = 'OMPI'
-    MPI_FLAVOR_HYDRA   = 'HYDRA'
-    MPI_FLAVOR_UNKNOWN = 'unknown'
+    MPI_FLAVOR_OMPI     = 'OMPI'
+    MPI_FLAVOR_HYDRA    = 'HYDRA'
+    MPI_FLAVOR_SPECTRUM = 'SPECTRUM'
+    MPI_FLAVOR_UNKNOWN  = 'unknown'
 
 
     # --------------------------------------------------------------------------
@@ -129,6 +131,7 @@ class LaunchMethod(object):
                 LM_NAME_MPIRUN_MPT    : MPIRun,
                 LM_NAME_MPIRUN_DPLACE : MPIRun,
                 LM_NAME_JSRUN         : JSRUN,
+                LM_NAME_JSRUN_ERF     : JSRUN,
                 LM_NAME_PRTE          : PRTE,
                 LM_NAME_FLUX          : Flux,
                 LM_NAME_RSH           : RSH,
@@ -278,6 +281,10 @@ class LaunchMethod(object):
                 elif '(open mpi)' in line.lower():
                     version = line.split(')', 1)[1].strip()
                     flavor  = self.MPI_FLAVOR_OMPI
+
+                elif 'ibm spectrum mpi' in line.lower():
+                    version = line.split(')', 1)[1].strip()
+                    flavor  = self.MPI_FLAVOR_SPECTRUM
 
                 elif 'version' in line.lower():
                     version = line.lower().split('version')[1].\

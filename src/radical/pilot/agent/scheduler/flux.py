@@ -49,7 +49,7 @@ class Flux(AgentSchedulingComponent):
     def schedule_task(self, task):
 
         # this abstract method is not used in this implementation
-        assert(False)
+        assert False
 
 
     # --------------------------------------------------------------------------
@@ -57,7 +57,7 @@ class Flux(AgentSchedulingComponent):
     def unschedule_task(self, task):
 
         # this abstract method is not used in this implementation
-        assert(False)
+        assert False
 
 
     # --------------------------------------------------------------------------
@@ -138,22 +138,22 @@ class Flux(AgentSchedulingComponent):
             },
             'version': 1,
             'resources': [{
-                'count': td['cpu_processes'],
+                'count': td['ranks'],
                 'type' : 'slot',
                 'label': 'task',
                 'with' : [{
-                    'count': td['cpu_threads'],
+                    'count': td['cores_per_rank'],
                     'type' : 'core'
                     # }, {
-                    #     'count': td['gpu_processes'],
+                    #     'count': td['gpus_per_rank'],
                     #     'type' : 'gpu'
                 }]
             }]
         }
 
-        if td['gpu_processes']:
+        if td['gpus_per_rank']:
             spec['resources'][0]['with'].append({
-                    'count': td['gpu_processes'],
+                    'count': td['gpus_per_rank'],
                     'type' : 'gpu'})
 
         return spec

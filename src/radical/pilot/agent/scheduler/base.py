@@ -1,12 +1,11 @@
 
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import copy
 import time
 import queue
 import pprint
-import logging
 
 import threading          as mt
 import multiprocessing    as mp
@@ -18,9 +17,6 @@ from ... import states    as rps
 from ... import constants as rpc
 
 from ..resource_manager import ResourceManager
-
-# disable slot status prints by default
-_debug = False
 
 
 # ------------------------------------------------------------------------------
@@ -132,14 +128,13 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # for system with 8 cores & 1 gpu per node):
 #
 #     task = { ...
-#       'cpu_processes'   : 4,
-#       'cpu_process_type': 'mpi',
-#       'cpu_threads'     : 2,
-#       'gpu_processes    : 2,
+#       'ranks'         : 4,
+#       'cores_per_rank': 2,
+#       'gpus_per_rank  : 2,
 #       'slots' :
-#       {                 # [[node,   node_id,   [cpu map],        [gpu map]]]
-#         'ranks'         : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
-#                            [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
+#         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
+#                          [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -151,7 +146,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 # The respective launch method is expected to create processes on the set of
 # cpus and gpus thus specified, (node_1, cores 0 and 4; node_2, cores 1 and 5).
 # The other reserved cores are for the application to spawn threads on
-# (`cpu_threads=2`).
+# (`cores_per_rank=2`).
 #
 # A scheduler MAY attach other information to the `slots` structure, with the
 # intent to support the launch methods to enact the placement decision made by
@@ -238,7 +233,7 @@ class AgentSchedulingComponent(rpu.Component):
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
         self._queue_unsched = mp.Queue()
-        self._proc_term     = mp.Event()  # signal termination of scheduler proc
+        self._term          = mp.Event()  # reassign Event (multiprocessing)
 
         # initialize the node list to be used by the scheduler.  A scheduler
         # instance may decide to overwrite or extend this structure.
@@ -267,7 +262,6 @@ class AgentSchedulingComponent(rpu.Component):
     #
     def finalize(self):
 
-        self._proc_term.set()
         self._p.terminate()
 
 
@@ -458,10 +452,8 @@ class AgentSchedulingComponent(rpu.Component):
         Returns a multi-line string corresponding to the status of the node list
         '''
 
-        if not _debug:
-            return
-
-        if not self._log.isEnabledFor(logging.DEBUG):
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level < 5:
             return
 
         if not msg: msg = ''
@@ -538,7 +530,7 @@ class AgentSchedulingComponent(rpu.Component):
         While handled by this component, the tasks will be in `AGENT_SCHEDULING`
         state.
 
-        This methods takes care of initial state change to `AGENT_SCHEDULING`,
+        This method takes care of initial state change to `AGENT_SCHEDULING`,
         and then puts them forward onto the queue towards the actual scheduling
         process (self._schedule_tasks).
         '''
@@ -628,7 +620,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_publisher(rpc.STATE_PUBSUB)
 
         resources = True  # fresh start, all is free
-        while not self._proc_term.is_set():
+        while not self._term.is_set():
 
             self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
                     len(self._waitpool))
@@ -688,7 +680,7 @@ class AgentSchedulingComponent(rpu.Component):
         # with smaller tasks.  We only look at cores right now - this needs
         # fixing for GPU dominated loads.
         # We define `tuple_size` as
-        #     `(cpu_processes + gpu_processes) * cpu_threads`
+        #     `ranks * cores_per_rank * gpus_per_rank`
         #
         to_wait    = list()
         to_test    = list()
@@ -704,7 +696,7 @@ class AgentSchedulingComponent(rpu.Component):
                 to_test.append(task)
 
         to_test.sort(key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1],
+                x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
@@ -731,10 +723,10 @@ class AgentSchedulingComponent(rpu.Component):
         for task in scheduled:
             td = task['description']
             task['$set']      = ['resources']
-            task['resources'] = {'cpu': td['cpu_processes'] *
-                                        td['cpu_threads'],
-                                 'gpu': td['gpu_processes'] *
-                                        td['cpu_processes']}
+            task['resources'] = {'cpu': td['ranks'] *
+                                        td['cores_per_rank'],
+                                 'gpu': td['ranks'] *
+                                        td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -757,7 +749,7 @@ class AgentSchedulingComponent(rpu.Component):
         to_raptor   = dict()  # some tasks get forwared to raptor
         try:
 
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
 
                 data = self._queue_sched.get(timeout=0.001)
 
@@ -849,10 +841,10 @@ class AgentSchedulingComponent(rpu.Component):
                     # state change, and push it out toward the next component.
                     td = task['description']
                     task['$set']      = ['resources']
-                    task['resources'] = {'cpu': td['cpu_processes'] *
-                                                td['cpu_threads'],
-                                         'gpu': td['gpu_processes'] *
-                                                td['cpu_processes']}
+                    task['resources'] = {'cpu': td['ranks'] *
+                                                td['cores_per_rank'],
+                                         'gpu': td['ranks'] *
+                                                td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -907,7 +899,7 @@ class AgentSchedulingComponent(rpu.Component):
             # bulk optimization. For the 0.001 sleep, 128 as bulk size results
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
-            while not self._proc_term.is_set():
+            while not self._term.is_set():
                 task = self._queue_unsched.get(timeout=0.01)
                 to_unschedule.append(task)
                 if len(to_unschedule) > 512:
@@ -1046,10 +1038,9 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         d = task['description']
-        task['tuple_size'] = tuple([d.get('cpu_processes', 1),
-                                    d.get('cpu_threads',   1),
-                                    d.get('gpu_processes', 0),
-                                    d.get('cpu_process_type')])
+        task['tuple_size'] = tuple([d.get('ranks'         , 1),
+                                    d.get('cores_per_rank', 1),
+                                    d.get('gpus_per_rank' , 0)])
 
 
 # ------------------------------------------------------------------------------

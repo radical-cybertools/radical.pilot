@@ -12,7 +12,6 @@ import radical.utils       as ru
 from .worker            import Worker
 
 from ..pytask           import PythonTask
-from ..constants        import MPI as RP_MPI
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 
@@ -116,7 +115,7 @@ class _Resources(object):
         self._log.debug_5('alloc %s', uid)
         self._prof.prof('schedule_try', uid=uid)
 
-        cores = task['description'].get('cpu_processes', 1)
+        cores = task['description'].get('ranks', 1)
 
         if cores > self._ranks:
             raise ValueError('insufficient resources to run task (%d > %d'
@@ -171,8 +170,8 @@ class _Resources(object):
             self._prof.prof('unschedule_stop', uid=uid)
 
         # remove temporary information from task
-        del(task['rank'])
-        del(task['ranks'])
+        del task['rank']
+        del task['ranks']
 
 
 # ------------------------------------------------------------------------------
@@ -301,7 +300,7 @@ class _ResultPusher(mt.Thread):
         collected results
         '''
         uid   = task['uid']
-        ranks = task['description'].get('cpu_processes', 1)
+        ranks = task['description'].get('ranks', 1)
 
         if uid not in self._cache:
             self._cache[uid] = list()
@@ -517,7 +516,7 @@ class _Worker(mt.Thread):
         uid = task['uid']
         self._prof.prof('rp_exec_start', uid=uid)
         try:
-            if task['description'].get('cpu_process_type') == RP_MPI:
+            if task['description']['ranks'] > 1:
                 return self._dispatch_mpi(task)
             else:
                 return self._dispatch_non_mpi(task)
@@ -531,38 +530,31 @@ class _Worker(mt.Thread):
     #
     def _dispatch_mpi(self, task):
 
-        # NOTE: we cannot pass the new MPI communicator to shell, proc, exec or
-        #       eval tasks.  Nevertheless, we *can* run the requested number of
-        #       ranks.  So we only create and pass a communicator if explicitly
-        #       requested by `cpu_process_type`.
-
         comm  = None
         group = None
 
-        if task['description']['cpu_process_type'] == RP_MPI:
+        # create new communicator with all workers assigned to this task
+        group = self._group.Incl(task['ranks'])
+        comm  = self._world.Create_group(group)
+        if not comm:
+            out = None
+            err = 'MPI setup failed'
+            ret = 1
+            val = None
+            exc = None
+            return out, err, ret, val, exc
 
-            # create new communicator with all workers assigned to this task
-            group = self._group.Incl(task['ranks'])
-            comm  = self._world.Create_group(group)
-            if not comm:
-                out = None
-                err = 'MPI setup failed'
-                ret = 1
-                val = None
-                exc = None
-                return out, err, ret, val, exc
+        task['description']['environment']['RP_RANK']   = str(comm.rank)
+        task['description']['environment']['RP_RANKS']  = str(comm.size)
 
-            task['description']['environment']['RP_RANK']   = str(comm.rank)
-            task['description']['environment']['RP_RANKS']  = str(comm.size)
-
-            task['mpi_comm'] = comm
+        task['mpi_comm'] = comm
 
         try:
             return self._dispatch_non_mpi(task)
 
         finally:
             if 'mpi_comm' in task:
-                del(task['mpi_comm'])
+                del task['mpi_comm']
 
             # sub-communicator must always be destroyed
             if group: group.Free()
@@ -592,6 +584,17 @@ class _Worker(mt.Thread):
         unnamed parameters, and `kwargs`, and optional dictionary of named
         parameters.
 
+        *function* is resolved first against `locals()`, then `globals()`, then
+        attributes of the implementation class (member functions of *base*, as
+        provided to `_Worker()`). Finally, an attempt is made to deserialize a
+        PythonTask from *function*. The first non-null resolution of *function*
+        is used as the callable.
+
+        Raises
+        ------
+        ValueError
+            if *function* cannot be resolved.
+
         NOTE: MPI function tasks will get a private communicator passed as first
               unnamed argument.
         '''
@@ -618,9 +621,9 @@ class _Worker(mt.Thread):
         except:
             pass
 
+        # check if `func_name` is a global name
         if not to_call:
-            assert(func)
-            # check if `func_name` is a global name
+            assert func
             names   = dict(list(globals().items()) + list(locals().items()))
             to_call = names.get(func)
 
@@ -628,9 +631,28 @@ class _Worker(mt.Thread):
         if not to_call:
             to_call = getattr(self._base, func, None)
 
+        # check if we have a serialized object
+        if not to_call:
+            self._log.debug('func serialized: %d: %s', len(func), func)
+
+            try:
+                to_call, _args, _kwargs = PythonTask.get_func_attr(func)
+
+            except Exception:
+                self._log.exception('function is not a PythonTask [%s] ', uid)
+
+            else:
+                py_func = True
+                if args or kwargs:
+                    raise ValueError('`args` and `kwargs` must be empty for'
+                                     'PythonTask function [%s]' % uid)
+                else:
+                    args   = _args
+                    kwargs = _kwargs
+
         if not to_call:
             self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
-            raise ValueError('callable %s not found: %s' % (to_call, task))
+            raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
         if comm:
@@ -646,7 +668,7 @@ class _Worker(mt.Thread):
                 elif args and args[0] is None:
                     args[0] = comm
                 else:
-                    raise RuntimeError('can inject communicator for %s: %s: %s',
+                    raise RuntimeError("can't inject communicator for %s: %s: %s",
                                        task['uid'], args, kwargs)
             else:
                 args.insert(0, comm)
@@ -683,7 +705,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = [e.__class__.__qualname__, str(e)]
             ret = 1
 
         finally:
@@ -695,7 +717,7 @@ class _Worker(mt.Thread):
             if comm:
                 if py_func:
                     if 'comm' in kwargs:
-                        del(kwargs['comm'])
+                        del kwargs['comm']
                     elif args:
                         args[0] = None
                 else:
@@ -718,7 +740,7 @@ class _Worker(mt.Thread):
 
         uid  = task['uid']
         code = task['description']['code']
-        assert(code)
+        assert code
 
         bak_stdout = sys.stdout
         bak_stderr = sys.stderr
@@ -1138,3 +1160,4 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
+

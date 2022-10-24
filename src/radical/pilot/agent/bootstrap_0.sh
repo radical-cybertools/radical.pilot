@@ -2,6 +2,9 @@
 # combine stdout and stderr
 exec 2>&1
 
+# iexplicitly cd to sandbox it to shield against bashrc shenanigans
+test -z "$RP_PILOT_SANDBOX" || cd "$RP_PILOT_SANDBOX"
+
 # Unset functions/aliases of commands that will be used during bootstrap as
 # these custom functions can break assumed/expected behavior
 export PS1='#'
@@ -47,6 +50,7 @@ fi
 # trap 'echo TRAP EXIT' EXIT
 # trap 'echo TRAP KILL' KILL
 # trap 'echo TRAP TERM' TERM
+# trap 'echo TRAP INT'  INT
 
 # ------------------------------------------------------------------------------
 # Copyright 2013-2015, RADICAL @ Rutgers
@@ -212,7 +216,7 @@ create_gtod()
          | cut -f1 -d'/' \
          | tr '\n' ' ' \
          | cut -f1 -d' ')
-    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+    printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
         "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
@@ -261,10 +265,19 @@ profile_event()
     # STATE  = 5  # state of entity involved                    optional
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
-    printf "%.4f,%s,%s,%s,%s,%s,%s\n" \
+    printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
-        | tee -a "$PROFILE"
+        >> "$PROFILE"
 }
+
+last_event()
+{
+    profile_event 'bootstrap_0_stop'
+}
+
+# make sure we captur last event
+trap last_event INT TERM
+
 
 
 # ------------------------------------------------------------------------------
@@ -519,7 +532,7 @@ rehash()
 verify_install()
 {
     echo -n "verify python viability: $PYTHON ..."
-    if ! $PYTHON -c 'import sys; assert(sys.version_info >= (3,5))'
+    if ! $PYTHON -c 'import sys; assert sys.version_info >= (3,5)'
     then
         echo ' failed'
         echo "python installation ($PYTHON) is not usable - abort"
@@ -1931,7 +1944,7 @@ then
     echo "# -------------------------------------------------------------------"
     echo "#"
     echo "# Mark final profiling entry ..."
-    profile_event 'bootstrap_0_stop'
+    last_event
     profile_event 'END'
     echo "#"
     echo "# -------------------------------------------------------------------"

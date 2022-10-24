@@ -379,7 +379,7 @@ class PMGRLaunchingComponent(rpu.Component):
         #
         schema = pd.get('access_schema')
         for pilot in pilots[1:]:
-            assert(schema == pilot['description'].get('access_schema')), \
+            assert schema == pilot['description'].get('access_schema'), \
                     'inconsistent scheme on launch / staging'
 
         # get and expand sandboxes (this bulk uses the same schema toward the
@@ -605,17 +605,20 @@ class PMGRLaunchingComponent(rpu.Component):
                                  % (ma, resource))
 
         # get pilot and global sandbox
+        endpoint_fs      = self._session._get_endpoint_fs     (pilot)
         resource_sandbox = self._session._get_resource_sandbox(pilot)
         session_sandbox  = self._session._get_session_sandbox (pilot)
         pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         client_sandbox   = self._session._get_client_sandbox  ()
 
+        pilot['endpoint_fs']      = str(endpoint_fs)      % expand
         pilot['resource_sandbox'] = str(resource_sandbox) % expand
         pilot['session_sandbox']  = str(session_sandbox)  % expand
         pilot['pilot_sandbox']    = str(pilot_sandbox)    % expand
         pilot['client_sandbox']   = str(client_sandbox)
 
         # from here on we need only paths
+        endpoint_fs      = endpoint_fs     .path % expand
         resource_sandbox = resource_sandbox.path % expand
         session_sandbox  = session_sandbox .path % expand
         pilot_sandbox    = pilot_sandbox   .path % expand
@@ -764,10 +767,11 @@ class PMGRLaunchingComponent(rpu.Component):
                 cleanup = cleanup.replace('v', '')
 
         # estimate requested resources
-        smt = system_architecture.get('smt', 1)
+        smt = int(os.environ.get('RADICAL_SMT') or
+                  system_architecture.get('smt', 1))
 
         if cores_per_node and smt:
-            cores_per_node *= int(smt)
+            cores_per_node *= smt
 
         avail_cores_per_node = cores_per_node
         avail_gpus_per_node  = gpus_per_node
@@ -788,9 +792,6 @@ class PMGRLaunchingComponent(rpu.Component):
             if not avail_cores_per_node:
                 raise RuntimeError('use "cores" in PilotDescription')
 
-            requested_cores = requested_nodes * avail_cores_per_node
-            requested_gpus  = requested_nodes * avail_gpus_per_node
-
         else:
 
             if avail_cores_per_node:
@@ -802,17 +803,17 @@ class PMGRLaunchingComponent(rpu.Component):
 
             requested_nodes = math.ceil(requested_nodes)
 
-            # now that we know the number of nodes to request, derive
-            # the *actual* number of requested cores and gpus
-            requested_cores = requested_nodes * cores_per_node
-            requested_gpus  = requested_nodes * gpus_per_node
+        # now that we know the number of nodes to request, derive
+        # the *actual* number of cores and gpus we allocate
+        allocated_cores = requested_nodes * cores_per_node
+        allocated_gpus  = requested_nodes * gpus_per_node
 
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
-                        requested_cores, requested_gpus)
+                        allocated_cores, allocated_gpus)
 
         # set mandatory args
-        bs_args = ['-l', './bootstrap_0.sh']
+        bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
         # add dists to staging files, if needed:
         # don't stage on `rp_version==installed` or `virtenv_mode==local`
@@ -856,8 +857,8 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['owner']               = 'agent.0'
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
-        agent_cfg['cores']               = requested_cores
-        agent_cfg['gpus']                = requested_gpus
+        agent_cfg['cores']               = allocated_cores
+        agent_cfg['gpus']                = allocated_gpus
         agent_cfg['spawner']             = agent_spawner
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
@@ -887,8 +888,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
-        pilot['resources'] = {'cpu': requested_cores,
-                              'gpu': requested_gpus}
+        pilot['resources'] = {'cpu': allocated_cores,
+                              'gpu': allocated_gpus}
         pilot['$set']      = ['resources']
 
 
@@ -922,7 +923,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # always stage RU env helper
         env_helper = ru.which('radical-utils-env.sh')
-        assert(env_helper)
+        assert env_helper
         self._log.debug('env %s -> %s', env_helper, pilot_sandbox)
         pilot['sds'].append({'source': env_helper,
                              'target': '%s/%s' % (pilot['pilot_sandbox'],
@@ -990,7 +991,9 @@ class PMGRLaunchingComponent(rpu.Component):
         if self._prof.enabled:
             jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
 
-        jd_dict.environment['RADICAL_BASE'] = resource_sandbox
+        jd_dict.environment['RP_PILOT_SANDBOX'] = pilot_sandbox
+        jd_dict.environment['RADICAL_BASE']     = resource_sandbox
+        jd_dict.environment['RADICAL_SMT']      = smt
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
