@@ -199,7 +199,6 @@ indication on event ordering *within each individual component*.
     launch_post         : task launch script: post-submission        (uid: task)
     launch_stop         : task launch script: completes              (uid: task)
     task_run_stop       : exec layer passed back control             (uid: task)
-    task_stop           : task handling process finished             (uid: task)
 
     task_run_cancel_start: try to cancel task via exec layer (kill)  (uid: task, [API])
     task_run_cancel_stop : did cancel    task via exec layer (kill)  (uid: task, [API])
@@ -209,8 +208,13 @@ indication on event ordering *within each individual component*.
                           launch_start, launch_pre, launch_submit, exec_start,
                           exec_pre, rank_start, app_start, app_*, app_stop,
                           rank_stop, exec_post, exec_stop, launch_collect,
-                          launch_post, launch_stop, task_run_stop, task_stop
+                          launch_post, launch_stop, task_run_stop
     * per task          : task_run_cancel_start, task_run_cancel_stop
+
+    NOTE: raptor tasks will not log the complete set of events - they will miss
+    the launch_* events (raptor has not separate launcher), the exec_pre and
+    exec_post events (pre and post exec are not supported), and the task_mkdir_*
+    events (raptor tasks don't have individual sandboxes).
 
 
 ### AgentStagingOutputComponent (Component)
