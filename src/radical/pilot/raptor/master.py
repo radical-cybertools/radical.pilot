@@ -523,7 +523,7 @@ class Master(rpu.Component):
 
         if tasks:
 
-            self.advance(tasks, state=rps.AGENT_EXECUTING,
+            self.advance(tasks, state=rps.AGENT_SCHEDULING,
                                 publish=True, push=False)
 
             self._req_put.put(tasks)

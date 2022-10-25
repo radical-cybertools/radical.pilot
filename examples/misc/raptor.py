@@ -42,13 +42,11 @@ logger = ru.Logger('raptor')
 
 pytask = PythonTask.pythontask
 
-SLEEP = 5
-
 
 # ------------------------------------------------------------------------------
 #
 @pytask
-def func_mpi(comm, msg, sleep=SLEEP):
+def func_mpi(comm, msg, sleep):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
@@ -57,7 +55,7 @@ def func_mpi(comm, msg, sleep=SLEEP):
 # ------------------------------------------------------------------------------
 #
 @pytask
-def func_non_mpi(a, sleep=SLEEP):
+def func_non_mpi(a, sleep):
     import math
     import random
     import time
@@ -206,7 +204,7 @@ if __name__ == '__main__':
                 'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                              'sleep %d;' % SLEEP +
+                              'sleep %d;' % sleep +
                               'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
         report.info('Submit non-raptor task(s) %s \n'
                    % str([t.uid for t in tds]))
@@ -242,7 +240,7 @@ if __name__ == '__main__':
                 'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
                 'scheduler'       : master_ids[i % n_masters]}))
 
-            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=SLEEP)
+            bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=sleep)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
@@ -251,7 +249,7 @@ if __name__ == '__main__':
                 'function'        : bson,
                 'scheduler'       : master_ids[i % n_masters]}))
 
-            bson = func_non_mpi(i)
+            bson = func_non_mpi(i, sleep=sleep)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
@@ -268,7 +266,7 @@ if __name__ == '__main__':
                 'code'            :
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
-                    'time.sleep(%d)))' % SLEEP,
+                    'time.sleep(%d)))' % sleep,
                 'scheduler'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
@@ -277,7 +275,7 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_EXEC,
                 'ranks'           : 2,
                 'code'            :
-                    'import time\ntime.sleep(%d)\n' % SLEEP +
+                    'import time\ntime.sleep(%d)\n' % sleep +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
                 'scheduler'       : master_ids[i % n_masters]}))
@@ -289,7 +287,7 @@ if __name__ == '__main__':
                 'ranks'           : 2,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
-                                     'sleep %d; ' % SLEEP +
+                                     'sleep %d; ' % sleep +
                                      'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
                 'scheduler'       : master_ids[i % n_masters]}))
@@ -299,7 +297,7 @@ if __name__ == '__main__':
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
                 'ranks'           : 2,
-                'command'         : 'sleep %d; ' % SLEEP +
+                'command'         : 'sleep %d; ' % sleep +
                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : master_ids[i % n_masters]}))
 

@@ -88,9 +88,6 @@ class Sleep(AgentExecutingComponent) :
 
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
-            finally:
-                self._prof.prof('task_stop', uid=task['uid'])
-
         with self._tasks_lock:
             self._tasks.extend(tasks)
 

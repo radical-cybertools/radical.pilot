@@ -84,14 +84,6 @@ TASK_DURATIONS_DEFAULT = {
                          {ru.EVENT: 'task_run_stop'          }],
         'unschedule'  : [{ru.EVENT: 'task_run_stop'          },
                          {ru.EVENT: 'unschedule_stop'        }]
-
-      # if we have cmd_start / cmd_stop (exec_sh including all preparations):
-      # 'exec_sh'     : [{ru.EVENT: 'task_start'             },
-      #                  {ru.EVENT: 'cmd_start'              }],
-      # 'exec_cmd'    : [{ru.EVENT: 'cmd_start'              },
-      #                  {ru.EVENT: 'cmd_stop'               }],
-      # 'term_sh'     : [{ru.EVENT: 'cmd_stop'               },
-      #                  {ru.EVENT: 'task_stop'              }],
     }
 }
 

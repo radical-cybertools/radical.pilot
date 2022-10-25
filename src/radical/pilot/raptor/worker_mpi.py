@@ -14,6 +14,7 @@ from .worker            import Worker
 from ..pytask           import PythonTask
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
+from ..states           import AGENT_EXECUTING_PENDING, AGENT_EXECUTING
 
 
 # MPI message tags
@@ -59,7 +60,7 @@ class _Resources(object):
         #        worker to also assign GPUs to specific ranks.
         #
         self._res_evt   = mt.Event()  # signals free resources
-        self._res_lock  = mt.Lock()   # lock resource for alloc / deallock
+        self._res_lock  = mt.Lock()   # lock resource for alloc / dealloc
         self._resources = {
                 'cores': [0] * self._ranks
               # 'gpus' : [0] * self._n_gpus
@@ -158,8 +159,6 @@ class _Resources(object):
         uid   = task['uid']
         ranks = task['ranks']
 
-        self._prof.prof('unschedule_start', uid=uid)
-
         with self._res_lock:
 
             for rank in ranks:
@@ -252,6 +251,8 @@ class _TaskPuller(mt.Thread):
 
                     try:
                         task['ranks'] = self._resources._alloc(task)
+                        self._prof.prof('advance', uid=task['uid'],
+                                        state=AGENT_EXECUTING_PENDING)
                         for rank in task['ranks']:
                             task['rank'] = rank
                             self._log.debug('wtq %s 1 - task send to %d %s',
@@ -457,14 +458,19 @@ class _Worker(mt.Thread):
 
                 for task in tasks:
 
-                    # this should never happen
-                    if self._rank not in task['ranks']:
-                        raise RuntimeError('internal error: inconsistent rank info')
+                    uid = task['uid']
+                    self._prof.prof('advance', uid=task['uid'],
+                                    state=AGENT_EXECUTING)
+                    self._prof.prof('task_start', uid=uid)
 
-                    # FIXME: task_exec_start
                     try:
+                        # this should never happen
+                        if self._rank not in task['ranks']:
+                            raise RuntimeError('inconsistent rank info')
+
+                        self._prof.prof('exec_start', uid=uid)
                         out, err, ret, val, exc = self._dispatch(task)
-                        self._log.debug('dispatch result: %s: %s', task['uid'], out)
+                        self._prof.prof('exec_stop', uid=uid)
 
                         task['error']        = None
                         task['stdout']       = out
@@ -485,7 +491,9 @@ class _Worker(mt.Thread):
                     finally:
                         # send task back to rank 0
                         # FIXME: task_exec_stop
+                        self._prof.prof('unschedule_start', uid=uid)
                         rank_result_q.put(task)
+
 
         except:
             self._log.exception('work thread failed [%s]', self._rank)
@@ -512,17 +520,10 @@ class _Worker(mt.Thread):
                'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
                })
 
-
-        uid = task['uid']
-        self._prof.prof('rp_exec_start', uid=uid)
-        try:
-            if task['description']['ranks'] > 1:
-                return self._dispatch_mpi(task)
-            else:
-                return self._dispatch_non_mpi(task)
-
-        finally:
-            self._prof.prof('rp_exec_stop', uid=uid)
+        if task['description']['ranks'] > 1:
+            return self._dispatch_mpi(task)
+        else:
+            return self._dispatch_non_mpi(task)
 
 
 
