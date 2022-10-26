@@ -35,6 +35,10 @@
     # stall_hwm and batch_size is 1 (no stalling, no bulking).
     #
     "bridges" : {
+        "agent_resolving_queue"      : { "kind"      : "queue",
+                                         "log_level" : "error",
+                                         "stall_hwm" : 0,
+                                         "bulk_size" : 0},
         "agent_staging_input_queue"  : { "kind"      : "queue",
                                          "log_level" : "error",
                                          "stall_hwm" : 0,
@@ -83,6 +87,7 @@
         # the update worker must live in agent.0, since only that agent is
         # sure to have connectivity toward the DB.
         "update"               : {"count" : 1},
+        "agent_resolving"      : {"count" : 1},
         "agent_staging_input"  : {"count" : 1},
         "agent_scheduling"     : {"count" : 1},
       # "agent_executing"      : {"count" : 1},
@@ -98,3 +103,4 @@
         }
     }
 }
+

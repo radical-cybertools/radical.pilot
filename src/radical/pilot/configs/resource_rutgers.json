@@ -16,6 +16,7 @@
         },
         "default_queue"               : "main",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {

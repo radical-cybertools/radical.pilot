@@ -351,8 +351,12 @@ TASK_DURATIONS_DEBUG_SHORT = {
                                     {'STATE': s.TMGR_STAGING_INPUT          }],
     # wait in mongodb
     't_tmgr_stage_in'            : [{'STATE': s.TMGR_STAGING_INPUT          },
-                                    {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
+                                    {'STATE': s.AGENT_RESOLVING_PENDING }],
     # pull from mongodb
+    't_agent_resolve_in_queue'   : [{'STATE': s.AGENT_RESOLVING_PENDING     },
+                                    {'STATE': s.AGENT_RESOLVING             }],
+    't_agent_resolve'            : [{'STATE': s.AGENT_RESOLVING             },
+                                    {'STATE': s.AGENT_STAGING_INPUT_PENDING }],
     't_agent_stage_in_queue'     : [{'STATE': s.AGENT_STAGING_INPUT_PENDING },
                                     {'STATE': s.AGENT_STAGING_INPUT         }],
     't_agent_stage_in'           : [{'STATE': s.AGENT_STAGING_INPUT         },

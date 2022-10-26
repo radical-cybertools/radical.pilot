@@ -63,7 +63,7 @@ class Default(TMGRStagingInputComponent):
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
         # FIXME: this queue is inaccessible, needs routing via mongodb
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING, None)
+        self.register_output(rps.AGENT_RESOLVING_PENDING, None)
 
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
@@ -268,7 +268,7 @@ class Default(TMGRStagingInputComponent):
 
         if no_staging_tasks:
             # nothing to stage, push to the agent
-            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
+            self.advance(no_staging_tasks, rps.AGENT_RESOLVING_PENDING,
                          publish=True, push=True)
 
         for task,actionables in staging_tasks:
@@ -413,7 +413,7 @@ class Default(TMGRStagingInputComponent):
 
 
         # staging is done, we can advance the task at last
-        self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
+        self.advance(task, rps.AGENT_RESOLVING_PENDING,
                            publish=True, push=True)
 
 

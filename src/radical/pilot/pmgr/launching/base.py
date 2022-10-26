@@ -565,6 +565,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
         agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
+        agent_resolver          = rcfg.get('agent_resolver')
         agent_scheduler         = rcfg.get('agent_scheduler')
         tunnel_bind_device      = rcfg.get('tunnel_bind_device')
         default_queue           = rcfg.get('default_queue')
@@ -746,6 +747,7 @@ class PMGRLaunchingComponent(rpu.Component):
         if not python_dist     : raise RE("missing python distribution")
         if not virtenv_dist    : raise RE("missing virtualenv distribution")
         if not agent_spawner   : raise RE("missing agent spawner")
+        if not agent_resolver  : raise RE("missing agent resolver")
         if not agent_scheduler : raise RE("missing agent scheduler")
         if not resource_manager: raise RE("missing resource manager")
 
@@ -858,6 +860,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['cores']               = allocated_cores
         agent_cfg['gpus']                = allocated_gpus
         agent_cfg['spawner']             = agent_spawner
+        agent_cfg['resolver']            = agent_resolver
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
@@ -880,7 +883,8 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['log_lvl']             = self._log.level
+        agent_cfg['dbg_lvl']             = self._log.debug_level
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg

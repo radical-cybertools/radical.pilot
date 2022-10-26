@@ -125,10 +125,15 @@ class Session(rs.Session):
 
         self._uid  = self._cfg.sid
 
+        log_lvl = self._cfg.get('log_lvl')
+        if log_lvl == 'DEBUG':
+            debug_lvl = int(self._cfg.get('log_debug_lvl', 0))
+            if debug_lvl > 0:
+                log_lvl = 'DEBUG_%d' % debug_lvl
+
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid,
-                                       level=self._cfg.get('debug'))
+        self._log  = self._get_logger  (name=self._uid, level=log_lvl)
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s' % rp_version_detail)
@@ -446,13 +451,13 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_logger(self, name, level=None):
+    def _get_logger(self, name, level=None, debug=0):
         '''
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         '''
         return ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
-                         targets=['.'], level=level)
+                         targets=['.'], level=level, debug=debug)
 
 
     # --------------------------------------------------------------------------

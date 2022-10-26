@@ -429,7 +429,8 @@ class Component(object):
         assert self._uid, 'Component needs a uid (%s)' % type(self)
 
         # state we carry over the fork
-        self._debug      = cfg.get('debug')
+        self._log_lvl    = cfg.get('log_lvl')
+        self._dbg_lvl    = cfg.get('dbg_lvl')
         self._owner      = cfg.get('owner', self.uid)
         self._ctype      = "%s.%s" % (self.__class__.__module__,
                                       self.__class__.__name__)
@@ -457,7 +458,8 @@ class Component(object):
         self._prof = self._session._get_profiler(name=self.uid)
         self._rep  = self._session._get_reporter(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
-                                                 level=self._debug)
+                                                 level=self._log_lvl,
+                                                 debug=self._dbg_lvl)
         self._q    = None
         self._in   = None
         self._out  = None
@@ -541,6 +543,7 @@ class Component(object):
                 rpc.TMGR_SCHEDULING_COMPONENT      : rptm.Scheduler,
                 rpc.TMGR_STAGING_OUTPUT_COMPONENT  : rptm.Output,
 
+                rpc.AGENT_RESOLVING_COMPONENT      : rpa.Resolver,
                 rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
                 rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
                 rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,

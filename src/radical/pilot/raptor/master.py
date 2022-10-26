@@ -56,8 +56,8 @@ class Master(rpu.Component):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
 
         # send new worker tasks and agent input staging / agent scheduler
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE, self._psbox)
+        self.register_output(rps.AGENT_RESOLVING_PENDING,
+                             rpc.AGENT_RESOLVING_QUEUE, self._psbox)
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
@@ -326,7 +326,7 @@ class Master(rpu.Component):
                 task = dict()
 
                 task['description']       = TaskDescription(td).as_dict()
-                task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+                task['state']             = rps.AGENT_RESOLVING_PENDING
                 task['status']            = 'NEW'
                 task['type']              = 'task'
                 task['uid']               = uid
@@ -546,7 +546,7 @@ class Master(rpu.Component):
             sbox = '%s/%s' % (self._sbox, td['uid'])
 
           # task['uid']               = td.get('uid')
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['state']             = rps.AGENT_RESOLVING_PENDING
             task['task_sandbox_path'] = sbox
             task['task_sandbox']      = 'file://localhost/' + sbox
             task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
@@ -565,7 +565,7 @@ class Master(rpu.Component):
             self._log.debug('insert %s', td['uid'])
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
-        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+        self.advance(tasks, state=rps.AGENT_RESOLVING_PENDING,
                             publish=True, push=True)
 
 

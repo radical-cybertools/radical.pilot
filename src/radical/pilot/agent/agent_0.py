@@ -203,8 +203,8 @@ class Agent_0(rpu.Worker):
 
         # registers the staging_input_queue as this is what we want to push
         # tasks to
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
+        self.register_output(rps.AGENT_RESOLVING_PENDING,
+                             rpc.AGENT_RESOLVING_QUEUE)
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_command_cb,
@@ -773,7 +773,7 @@ class Agent_0(rpu.Worker):
             self._prof.prof('get', uid=task['uid'])
 
             # FIXME: raise or fail task!
-            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+            if task['state'] != rps.AGENT_RESOLVING_PENDING:
                 self._log.error('invalid state: %s', (pprint.pformat(task)))
 
             task['control'] = 'agent'

@@ -12,6 +12,7 @@
       # "forward_tunnel_endpoint"     : "`hostname -f`",
         "default_queue"               : "pbatch",
         "resource_manager"            : "LSF",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {

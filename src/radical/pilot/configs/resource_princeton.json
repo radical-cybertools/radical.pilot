@@ -15,6 +15,7 @@
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 32,
         "gpus_per_node"               : 4,
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -52,6 +53,7 @@
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 32,
         "gpus_per_node"               : 4,
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -92,6 +94,7 @@
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 40,
         "gpus_per_node"               : 0,
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -140,6 +143,7 @@
         "resource_manager"            : "SLURM",
         "cores_per_node"              : 28,
         "gpus_per_node"               : 4,
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
