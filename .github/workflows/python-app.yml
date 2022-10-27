@@ -87,7 +87,7 @@ jobs:
         NEW=`echo $LOG | cut -d ' ' -f2`
         OLD=`echo $LOG | cut -d ' ' -f3`
         DIFF=`git diff  --name-only --diff-filter=db $NEW..$OLD`
-        FILTERED=$(for f in $DIFF; do echo $f; done | grep -v '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
+        FILTERED=$(for f in $DIFF; do echo $f; done | grep -v -e '/architecture/' -e '/archive/' | grep -e '\.py$' |  sed "s|^|$PWD/|")
         test -z "$FILTERED" && echo 'nothing to flake8' || flake8 $FILTERED
         test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
 
