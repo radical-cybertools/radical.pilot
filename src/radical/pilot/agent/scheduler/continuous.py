@@ -94,6 +94,7 @@ class Continuous(AgentSchedulingComponent):
         #   scattered mode!  The default is 'False'.
         #
         self._scattered = self._cfg.get('scattered', True)
+        self._log.debug('scattered: %s', self._scattered)
 
 
     # --------------------------------------------------------------------------
@@ -441,7 +442,7 @@ class Continuous(AgentSchedulingComponent):
             self._log.debug_9('new slots %d: %s', len(new_slots),
                                                   pprint.pformat(new_slots))
             self._log.debug_3('req2: %s = %s + %s?', req_slots,
-                                                  len(alc_slots) + rem_slots)
+                                                  len(alc_slots), rem_slots)
 
             # we are young only once.  kinda...
             is_first = False
