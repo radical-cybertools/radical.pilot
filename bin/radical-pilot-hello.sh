@@ -106,6 +106,7 @@ if test -z "$STRESS"
 then
     sleep $SLEEP
 else
+    test "$SLEEP" = 0 && SLEEP=1
     $STRESS -c 1 -t ${SLEEP}s 2> /dev/null
 fi
 
