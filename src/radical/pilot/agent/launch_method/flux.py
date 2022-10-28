@@ -89,7 +89,7 @@ class Flux(LaunchMethod):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_rank_exec(self, task, rank_id, rank):
+    def get_exec(self, task):
         raise RuntimeError('method cannot be used on Flux LM')
 
 

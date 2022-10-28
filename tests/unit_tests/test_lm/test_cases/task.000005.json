@@ -55,6 +55,10 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
+                "launch_cmd" : "jsrun -b rs -n1 -a1 -c1 -g1 -r1 --smpiargs=\"off\"",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "jsrun_erf": {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000005 --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
@@ -68,10 +72,11 @@
             }
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0}}\n"]
+            "jsrun_erf" : ["cpu_index_using: logical\n",
+                           "rank: 0: { host: node1; cpu: {0}; gpu: {0} }\n"]
         },
         "resource_filename": {
-            "jsrun" : "rs_layout_task_000005"
+            "jsrun_erf" : "rs_layout_task_000005"
         }
     }
 }

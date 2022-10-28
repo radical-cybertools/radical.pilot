@@ -79,7 +79,7 @@ class TestCCMRun(TestCase):
             command = lm_ccmrun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
-            command = lm_ccmrun.get_rank_exec(task, None, None)
+            command = lm_ccmrun.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 # ------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 
 # pylint: disable=access-member-before-definition
-
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+#
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
@@ -58,8 +58,8 @@ MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
 
 # deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
-CPU_PROCESS_TYPE = 'cpu_process_type'         # disk space per rank
-CPU_THREADS      = 'cpu_threads'              # memory per rank
+CPU_PROCESS_TYPE = 'cpu_process_type'         # n/a
+CPU_THREADS      = 'cpu_threads'              # cores per rank
 CPU_THREAD_TYPE  = 'cpu_thread_type'          # OpenMP?
 
 GPU_PROCESSES    = 'gpu_processes'            # gpus per rank
@@ -76,10 +76,9 @@ OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
 PRE_LAUNCH       = 'pre_launch'
 PRE_EXEC         = 'pre_exec'
-PRE_RANK         = 'pre_rank'
+PRE_EXEC_SYNC    = 'pre_exec_sync'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
-POST_RANK        = 'post_rank'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 STDOUT           = 'stdout'
@@ -156,7 +155,6 @@ class TaskDescription(ru.TypedDict):
         specific functionality (pipes, I/O redirection) which cannot easily be
         mapped to other task attributes.
 
-
     .. data:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
@@ -212,8 +210,8 @@ class TaskDescription(ru.TypedDict):
     .. data:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
-       have available to start it's own threads or processes on.  By default,
-       `core` refers to an physical CPU core - but if the pilot has been
+       have available to start its own threads or processes on.  By default,
+       `core` refers to a physical CPU core - but if the pilot has been
        launched with SMT-settings > 1, `core` will refer to a virtual core or
        hyperthread instead (the name depends on the CPU vendor).
 
@@ -241,7 +239,6 @@ class TaskDescription(ru.TypedDict):
        the ranks (`<empty>`, `CUDA`, `ROCm`).
 
        `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
-
 
     .. data:: lfs_per_rank
 
@@ -302,53 +299,63 @@ class TaskDescription(ru.TypedDict):
        attempted either way. This may though lead to additional errors if the
        tasks did not manage to produce the expected output files to stage.
 
+    .. data:: pre_launch
+
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       before launching (i.e., before LaunchMethod is submitted), potentially
+       on a batch node which is different from the node the task is placed on.
+
+       Note that the set of shell commands given here are expected to load
+       environments, check for work directories and data, etc. They are not
+       expected to consume any significant amount of CPU time or other
+       resources! Deviating from that rule will likely result in reduced
+       overall throughput.
+
+    .. data:: post_launch
+
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       after launching (i.e., after LaunchMethod is executed).
+
+       Precautions are the same as for `pre_launch` actions.
+
     .. data:: pre_exec
 
-       [type: `list` | default: `[]`] Actions (shell commands) to perform before
-       this task starts. Note that the set of shell commands given here are
-       expected to load environments, check for work directories and data, etc.
-       They are not expected to consume any significant amount of CPU time or
-       other resources! Deviating from that rule will likely result in reduced
-       overall throughput.
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       before the task starts (LaunchMethod is submitted, but no actual task
+       running yet). Each item could be either a string (`str`), which
+       represents an action applied to all ranks, or a dictionary (`dict`),
+       which represents a list of actions applied to specified ranks (key is a
+       rankID and value is a list of actions to be performed for this rank).
+
+       The actions/commands are executed on the respective nodes where the
+       ranks are placed, and the actual rank startup will be delayed until
+       all `pre_exec` commands have completed.
+
+       Precautions are the same as for `pre_launch` actions.
 
        No assumption should be made as to where these commands are executed
        (although RP attempts to perform them in the task's execution
        environment).
 
        No assumption should be made on the specific shell environment the
-       commands are executed in.
+       commands are executed in other than a POSIX shell environment.
 
        Errors in executing these commands will result in the task to enter
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-    .. data:: pre_launch
+    .. data:: pre_exec_sync
 
-       [type: `list` | default: `[]`] Like `pre_exec`, but runs befor launching,
-       potentially on a batch node which is different from the node the task is
-       placed on.
-
-    .. data:: pre_rank
-
-       [type: `dict` | default: `{}`] A dictionary which maps a set of
-       `pre_exec` like commands to each rank.  The commands are executed on the
-       respective nodes where the ranks are places, and the actual rank startup
-       will be delayed until all `pre_rank` commands have completed.
+       [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
+       execution, which enforce to delay individual rank execution, until all
+       `pre_exec` actions for all ranks are completed.
 
     .. data:: post_exec
 
-       [type: `list` | default: `[]`] Actions (shell commands) to perform after
-       this task finishes. The same remarks as on `pre_exec` apply, inclusive
-       the point on error handling, which again will cause the task to fail,
-       even if the actual execution was successful.
-
-    .. data:: post_launch
-
-       ...
-
-    .. data:: post_rank
-
-       ...
+       [type: `list` | default: `[]`] Actions (shell commands) to perform
+       after the task finishes. The same remarks as on `pre_exec` apply,
+       inclusive the point on error handling, which again will cause the task
+       to fail, even if the actual execution was successful.
 
     .. data:: restartable
 
@@ -358,8 +365,8 @@ class TaskDescription(ru.TypedDict):
 
     .. data:: scheduler
 
-       Request the task to be handled by a specific agent scheduler
-
+       [type: `str` | default: `""`] Request the task to be handled by a
+       specific agent scheduler.
 
     .. data:: tags
 
@@ -404,7 +411,7 @@ class TaskDescription(ru.TypedDict):
 
       `source` and `target` locations can be given as strings or `ru.Url`
       instances.  Strings containing `://` are converted into URLs immediately.
-      Otherwise they are considered absolute or relative paths and are then
+      Otherwise, they are considered absolute or relative paths and are then
       interpreted in the context of the client's working directory.
 
       Special URL schemas:
@@ -475,20 +482,9 @@ class TaskDescription(ru.TypedDict):
 
         Use `pre_exec` directives for task environment setup such as `module
         load`, `virtualenv activate`, `export` whose effects are expected to be
-        applied to all task ranks.  Avoid file staging operations at this point
-        (files would be redundantly staged multiple times - once per rank).
-
-      - `pre_rank` directives are executed only for the specified rank.  Note
-        that environment settings specified in `pre_rank` will thus only apply
-        to that specific rank, not to other ranks.  All other ranks stall until
-        the last `pre_rank` directive has been completed -- only then is the
-        actual workload task being executed on all ranks.
-
-        Use `pre_rank` directives on rank 0 to prepare task input data: the
-        operations are performed once per task, and all ranks will stall until
-        the directives are completed, i.e., until input data are available.
-        Avoid using `pre_rank` directives for environment settings - `pre_exec`
-        will generally perform better in this case.
+        applied either to all task ranks or to specified ranks.  Avoid file
+        staging operations at this point (files would be redundantly staged
+        multiple times - once per rank).
 
     (*) The performance impact of repeated concurrent access to the system's
     shared file system can be significant and can pose a major bottleneck for
@@ -519,11 +515,10 @@ class TaskDescription(ru.TypedDict):
         ENVIRONMENT     : {str: str}  ,
         NAMED_ENV       : str         ,
         PRE_LAUNCH      : [str]       ,
-        PRE_EXEC        : [str]       ,
-        PRE_RANK        : {int: None} ,
+        PRE_EXEC        : [None]      ,
+        PRE_EXEC_SYNC   : bool        ,
         POST_LAUNCH     : [str]       ,
-        POST_EXEC       : [str]       ,
-        POST_RANK       : {int: None} ,
+        POST_EXEC       : [None]      ,
         STDOUT          : str         ,
         STDERR          : str         ,
         INPUT_STAGING   : [None]      ,
@@ -575,10 +570,9 @@ class TaskDescription(ru.TypedDict):
         NAMED_ENV       : ''          ,
         PRE_LAUNCH      : list()      ,
         PRE_EXEC        : list()      ,
-        PRE_RANK        : dict()      ,
+        PRE_EXEC_SYNC   : False       ,
         POST_LAUNCH     : list()      ,
         POST_EXEC       : list()      ,
-        POST_RANK       : dict()      ,
         STDOUT          : ''          ,
         STDERR          : ''          ,
         INPUT_STAGING   : list()      ,
@@ -671,7 +665,7 @@ class TaskDescription(ru.TypedDict):
 
         if self.gpu_process_type:
             self.gpu_type = self.gpu_process_type
-            self.gpu_process_type = 0
+            self.gpu_process_type = None
 
         if self.lfs_per_process:
             self.lfs_per_rank = self.lfs_per_process

@@ -248,7 +248,7 @@ class MyMaster(rp.raptor.Master):
             self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
-                            sorted(task['stdout']),
+                            task['stdout'],
                             task['return_value'])
 
             # Note that stdout is part of the master task result.

@@ -157,7 +157,7 @@ class TestSrun(TestCase):
                         self.assertFalse(os.path.isfile(nodefile))
                         lm_srun._vmajor = MIN_VSLURM_IN_LIST + 1
 
-                command = lm_srun.get_rank_exec(task, None, None)
+                command = lm_srun.get_exec(task)
                 self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 

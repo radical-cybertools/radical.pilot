@@ -187,13 +187,11 @@ indication on event ordering *within each individual component*.
     launch_submit       : task launch script: launch method starts   (uid: task)
     exec_start          : task exec script: starts [per rank]        (uid: task)
     exec_pre            : task exec script: pre-exec starts          (uid: task)
-    rank_pre            : task exec script: pre-rank starts          (uid: task)
     rank_start          : task exec script: executable started       (uid: task)
     app_start           : application executable started             (uid: task, [APP])
     app_*               : application specific events                (uid: task, [APP], optional)
     app_stop            : application executable stops               (uid: task, [APP])
     rank_stop           : task exec script: executable stopped       (uid: task)
-    rank_post           : task exec script: post-rank starts         (uid: task)
     exec_post           : task exec script: post-exec starts         (uid: task)
     exec_stop           : task exec script: stopped                  (uid: task)
     launch_collect      : task launch script: launch method returned (uid: task)
@@ -208,10 +206,9 @@ indication on event ordering *within each individual component*.
     partial orders
     * per task          : task_start, task_run_start, task_run_ok,
                           launch_start, launch_pre, launch_submit, exec_start, 
-                          exec_pre, rank_pre, rank_start, app_start, app_*, 
-                          app_stop, rank_stop, rank_post, exec_post, exec_stop,
-                          launch_collect, launch_post, launch_stop,
-                          task_run_stop, task_stop
+                          exec_pre, rank_start, app_start, app_*, app_stop, 
+                          rank_stop, exec_post, exec_stop, launch_collect, 
+                          launch_post, launch_stop, task_run_stop, task_stop
     * per task          : task_run_cancel_start, task_run_cancel_stop
 
 
