@@ -100,6 +100,8 @@ class TestLauncher(TestCase):
         self.assertEqual(pilot['jd_dict'].name, 'pilot.0001')
         self.assertEqual(pilot['jd_dict'].environment['RADICAL_BASE'],
                          str(session._get_resource_sandbox(pilot)))
+        # default SMT is set to "1"
+        self.assertEqual(pilot['jd_dict'].environment['RADICAL_SMT'], '1')
 
         pilot    = {
                         'uid'         : 'pilot.0000',
