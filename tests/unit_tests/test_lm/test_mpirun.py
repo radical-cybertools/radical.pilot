@@ -157,7 +157,7 @@ class TestMPIRun(TestCase):
             command = lm_mpirun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
-            command = lm_mpirun.get_rank_exec(task, None, None)
+            command = lm_mpirun.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 

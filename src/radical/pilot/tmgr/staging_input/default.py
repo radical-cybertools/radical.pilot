@@ -68,8 +68,10 @@ class Default(TMGRStagingInputComponent):
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+
         self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
                                              TASK_BULK_MKDIR_THRESHOLD)
+
 
     # --------------------------------------------------------------------------
     #
@@ -188,6 +190,7 @@ class Default(TMGRStagingInputComponent):
 
             session_sbox = self._session._get_session_sandbox(pilot)
             task_sboxes  = task_sboxes_by_pid[pid]
+
             if len(task_sboxes) >= self._mkdir_threshold:
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 
@@ -264,7 +267,6 @@ class Default(TMGRStagingInputComponent):
 
 
         if no_staging_tasks:
-
             # nothing to stage, push to the agent
             self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
                          publish=True, push=True)

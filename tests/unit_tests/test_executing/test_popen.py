@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -14,7 +14,7 @@ import radical.utils as ru
 from unittest import mock, TestCase
 
 from radical.pilot.agent.resource_manager.base import ResourceManager
-from radical.pilot.agent.launch_method.fork    import Fork
+from radical.pilot.agent.launch_method.aprun   import APRun
 from radical.pilot.agent.executing.popen       import Popen
 
 base = os.path.abspath(os.path.dirname(__file__))
@@ -30,7 +30,7 @@ class TestPopen(TestCase):
     def setUpClass(cls) -> None:
 
         cls._test_case = ru.read_json('%s/test_cases/test_base.json' % base)
-        assert(cls._test_case), 'how is this test supposed to work???'
+        assert cls._test_case, 'how is this test supposed to work???'
 
 
     # --------------------------------------------------------------------------
@@ -59,14 +59,15 @@ class TestPopen(TestCase):
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch.object(ResourceManager, 'find_launcher', return_value=None)
-    @mock.patch.object(Fork, '__init__', return_value=None)
+    @mock.patch.object(APRun, '__init__', return_value=None)
     @mock.patch('subprocess.Popen')
     def test_handle_task(self, mocked_sp_popen, mocked_lm_init,
                          mocked_find_launcher, mocked_init):
 
-        launcher = Fork(name=None, lm_cfg={}, rm_info={}, log=None, prof=None)
-        launcher.name    = 'FORK'
-        launcher._env_sh = 'env/lm_fork.sh'
+        launcher = APRun(name=None, lm_cfg={}, rm_info={}, log=None, prof=None)
+        launcher.name     = 'APRUN'
+        launcher._command = '/bin/aprun'
+        launcher._env_sh  = 'env/lm_aprun.sh'
         mocked_find_launcher.return_value = launcher
 
         task = dict(self._test_case['task'])
@@ -93,6 +94,27 @@ class TestPopen(TestCase):
         for prefix in ['.launch.sh', '.exec.sh', '.sl']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
             self.assertTrue(os.path.isfile(path))
+
+            with ru.ru_open(path) as fd:
+                content = fd.read()
+
+            if 'launch' in prefix:
+                self.assertIn('$RP_PROF launch_start', content)
+
+            elif 'exec' in prefix:
+                self.assertIn('$RP_PROF exec_start', content)
+                for pre_exec_cmd in task['description']['pre_exec']:
+
+                    if isinstance(pre_exec_cmd, str):
+                        self.assertIn('%s' % pre_exec_cmd, content)
+
+                    elif isinstance(pre_exec_cmd, dict):
+                        self.assertIn('case "$RP_RANK" in', content)
+                        for rank_id, cmds in pre_exec_cmd.items():
+                            self.assertIn('%s)\n' % rank_id, content)
+                            for cmd in ru.as_list(cmds):
+                                self.assertIn('%s' % cmd, content)
+
             try   : os.remove(path)
             except: pass
 

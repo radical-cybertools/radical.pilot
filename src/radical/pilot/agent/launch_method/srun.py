@@ -187,7 +187,7 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_rank_exec(self, task, rank_id, rank):
+    def get_exec(self, task):
 
         td          = task['description']
         task_exec   = td['executable']

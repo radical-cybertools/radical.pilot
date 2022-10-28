@@ -8,6 +8,7 @@
             "ranks"         : 1,
             "cores_per_rank": 1,
             "gpus_per_rank" : 2,
+            "gpu_type"      : "CUDA",
             "environment"   : {}
         },
         "task_sandbox_path": "/tmp"
@@ -17,7 +18,7 @@
         "lm": {
             "slots": {
                 "cores_per_node": 16,
-                "gpus_per_node" : 1,
+                "gpus_per_node" : 2,
                 "lfs_per_node"  : 0,
                 "ranks"         : [{"node_name" : "node1",
                                     "node_id"   : "node1",
@@ -50,15 +51,20 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"  : {
-                "launch_cmd" : "jsrun --erf_input rs_layout_task_000013",
+                "launch_cmd" : "jsrun -b rs -n1 -a1 -c1 -g2 -r1 --smpiargs=\"off\"",
+                "rank_exec"  : "/bin/sleep \"10\""
+            },
+            "jsrun_erf": {
+                "launch_cmd" : "jsrun --erf_input rs_layout_task_000013 --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             }
         },
         "resource_file": {
-            "jsrun" : ["cpu_index_using: logical\n","rank: 0: { host: node1; cpu: {0}; gpu: {0,1}}\n"]
+            "jsrun_erf" : ["cpu_index_using: logical\n",
+                           "rank: 0: { host: node1; cpu: {0}; gpu: {0,1} }\n"]
         },
         "resource_filename": {
-            "jsrun" : "rs_layout_task_000013"
+            "jsrun_erf" : "rs_layout_task_000013"
         }
     }
 }
