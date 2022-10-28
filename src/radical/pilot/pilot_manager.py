@@ -299,6 +299,7 @@ class PilotManager(rpu.Component):
         for pilot_dict in pilot_dicts:
             self._log.debug('state pulled: %s: %s', pilot_dict['uid'],
                                                     pilot_dict['state'])
+            self._log.debug('=== url (state pull): %s : %s', pilot_dict.get('rest_url'), pilot_dict['state'])
             if not self._update_pilot(pilot_dict, publish=True):
                 return False
 
@@ -311,7 +312,6 @@ class PilotManager(rpu.Component):
 
         if self._terminate.is_set():
             return False
-
 
         self._log.debug('state event: %s', msg)
 
@@ -334,6 +334,13 @@ class PilotManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
+
+                # NOTE: we ignore PMGR_ACTIVE updates from the launcher - only
+                #       the pilot itself can know when it is active.
+                if thing['state'] == rps.PMGR_ACTIVE:
+                    del thing['state']
+                self._log.debug('=== url (state sub ): %s : %s',
+                        thing.get('rest_url'), thing['state'])
                 if not self._update_pilot(thing, publish=False):
                     return False
 

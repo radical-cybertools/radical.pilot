@@ -197,6 +197,8 @@ class Pilot(object):
         '''
 
         self._log.debug('update %s', pilot_dict['uid'])
+        self._log.debug('=== url (p update  ): %s - %s',
+                pilot_dict.get('rest_url'), pilot_dict['state'])
 
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
@@ -206,7 +208,7 @@ class Pilot(object):
         # NOTE: this method relies on state updates to arrive in order and
         #       without gaps.
         current = self.state
-        target  = pilot_dict['state']
+        target  = pilot_dict.get('state', self.state)
 
         if target not in [rps.FAILED, rps.CANCELED]:
 
@@ -307,6 +309,17 @@ class Pilot(object):
         '''
 
         return self._pilot_dict.get('resource_details')
+
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def rest_url(self):
+        '''
+        Returns the agent's rest URL (only in `ACTIVE` state or later)
+        '''
+
+        return self._pilot_dict.get('rest_url')
 
 
     # --------------------------------------------------------------------------

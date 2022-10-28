@@ -221,6 +221,7 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.
+        self._log.debug('==== set url: %s', self._service.addr)
         pilot = {'type'             : 'pilot',
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
@@ -228,7 +229,8 @@ class Agent_0(rpu.Worker):
                      # 'lm_info'      : self._rm.lm_info.get('version_info'),
                      # 'lm_detail'    : self._rm.lm_info.get('lm_detail'),
                      'rm_info'      : self._rm.info},
-                 '$set'             : ['resource_details']}
+                 'rest_url'         : self._service.addr,
+                 '$set'             : ['resource_details', 'rest_url']}
         self.advance(pilot, publish=True, push=False)
 
 
@@ -919,9 +921,6 @@ class Agent_0(rpu.Worker):
 
         import pprint
         self._log.debug('update request: %s', pprint.pformat(request))
-
-
-
 
 
 # ------------------------------------------------------------------------------

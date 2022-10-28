@@ -989,7 +989,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         jd_dict.environment['RP_PILOT_SANDBOX'] = pilot_sandbox
         jd_dict.environment['RADICAL_BASE']     = resource_sandbox
-        jd_dict.environment['RADICAL_SMT']      = smt
+        jd_dict.environment['RADICAL_SMT']      = str(smt)
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the
