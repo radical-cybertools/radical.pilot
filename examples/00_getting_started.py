@@ -80,9 +80,10 @@ if __name__ == '__main__':
         for i in range(n):
 
             # create a new task description, and fill it.
-            # Here we don't use dict initialization.
             td = rp.TaskDescription()
-            td.executable = '/bin/date'
+            td.executable     = '/bin/date'
+            td.ranks          = 1
+            td.cores_per_rank = 1
 
             tds.append(td)
             report.progress()
