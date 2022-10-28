@@ -39,7 +39,7 @@
     },
 
     "stampede2_ssh": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "description"                 : "The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
@@ -87,7 +87,7 @@
     },
 
     "stampede2_mpirun": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "description"                 : "The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
@@ -131,7 +131,7 @@
     },
 
     "stampede2_ibrun_repex": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "description"                 : "The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
@@ -178,7 +178,7 @@
     },
 
     "stampede2_ibrun": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "description"                 : "The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
@@ -223,7 +223,7 @@
     },
 
     "stampede2_srun": {
-        "description"                 : "The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
+        "description"                 : "The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
         "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
@@ -303,7 +303,7 @@
     },
 
     "bridges2": {
-        "description"                 : "The XSEDE 'Bridges2' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
+        "description"                 : "The XSEDE/ACCESS 'Bridges2' cluster at PSC (https://portal.xsede.org/psc-bridges/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
         "schemas"                     : ["local", "interactive", "gsissh", "ssh"],
       # "mandatory_args"              : [],
