@@ -407,7 +407,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        if self._primary:
+        if self._role == self._PRIMARY:
             self._rep.info('closing session %s' % self._uid)
 
         self._log.debug("session %s closing", self._uid)
@@ -456,29 +456,18 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-<<<<<<< HEAD
             # FIXME: MongoDB
-          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
-=======
-            self.fetch_json    (tgt=tgt)
->>>>>>> devel
+          # self.fetch_json    (tgt=tgt)
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-<<<<<<< HEAD
         if self._primary:
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
                           % (self._t_stop - self._t_start))
             self._rep.ok('>>ok\n')
-=======
-        if self.closed and self.created:
-            self._rep.info('<<session lifetime: %.1fs' %
-                           (self.closed - self.created))
-        self._rep.ok('>>ok\n')
->>>>>>> devel
 
             # dump json
             json = {'session' : self.as_dict(),
@@ -591,39 +580,15 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def path(self):
         return self._cfg.path
-=======
-    def created(self):
-        '''Returns the UTC date and time the session was created.
-        '''
-        if self._dbs: ret = self._dbs.created
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def proxy_url(self):
         return self._cfg.proxy_url
-=======
-    def connected(self):
-        '''
-        Return time when the session connected to the DB
-        '''
-
-        if self._dbs: ret = self._dbs.connected
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
@@ -636,21 +601,9 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def cmgr(self):
         assert self._primary
         return self._cmgr
-=======
-    def closed(self):
-        '''
-        Returns the time of closing
-        '''
-        if self._dbs: ret = self._dbs.closed
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
@@ -716,16 +669,16 @@ class Session(rs.Session):
         self._pmgrs[pmgr.uid] = pmgr
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _reconnect_pmgr(self, pmgr):
-
-        if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
-            raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
-
-        self._pmgrs[pmgr.uid] = pmgr
-
-
+  # # --------------------------------------------------------------------------
+  # #
+  # def _reconnect_pmgr(self, pmgr):
+  #
+  #     if not self._dbs.get_pmgrs(pmgr_ids=pmgr.uid):
+  #         raise ValueError('could not reconnect to pmgr %s' % pmgr.uid)
+  #
+  #     self._pmgrs[pmgr.uid] = pmgr
+  #
+  #
     # --------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
@@ -775,16 +728,16 @@ class Session(rs.Session):
         self._tmgrs[tmgr.uid] = tmgr
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _reconnect_tmgr(self, tmgr):
-
-        if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
-            raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
-
-        self._tmgrs[tmgr.uid] = tmgr
-
-
+  # # --------------------------------------------------------------------------
+  # #
+  # def _reconnect_tmgr(self, tmgr):
+  #
+  #     if not self._dbs.get_tmgrs(tmgr_ids=tmgr.uid):
+  #         raise ValueError('could not reconnect to tmgr %s' % tmgr.uid)
+  #
+  #     self._tmgrs[tmgr.uid] = tmgr
+  #
+  #
     # --------------------------------------------------------------------------
     #
     def list_task_managers(self):
