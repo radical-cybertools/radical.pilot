@@ -149,9 +149,11 @@ class Srun(LaunchMethod):
                     + '--cpus-per-task=%d ' % n_task_threads \
                     + '--ntasks-per-core=1 --distribution="arbitrary"'
         else:
-            mapping = '--nodes %d '        % n_nodes \
-                    + '--ntasks %d '       % n_tasks \
-                    + '--cpus-per-task %d' % n_task_threads
+            mapping = '--nodes %d ' % n_nodes \
+                    + '--ntasks %d' % n_tasks
+
+            if n_task_threads:
+                mapping += ' --cpus-per-task %d' % n_task_threads
 
         if self._rm_info['threads_per_core'] > 1:
             mapping += ' --threads-per-core %d' % \
