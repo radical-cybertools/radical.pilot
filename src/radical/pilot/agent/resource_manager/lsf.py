@@ -72,11 +72,6 @@ class LSF(ResourceManager):
         # The current approach uses "logical" CPU indexing
         # FIXME: set cpu_indexing as a parameter in resource config
 
-        # node uids need to be indexes starting at 1 in order to be usable for
-        # jsrun ERF spec files
-        for idx, node in enumerate(rm_info.node_list):
-            node['node_id'] = str(idx + 1)
-
         return rm_info
 
 
