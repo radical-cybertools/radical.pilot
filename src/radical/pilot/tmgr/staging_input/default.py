@@ -123,7 +123,7 @@ class Default(TMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _advance_tasks(self, tasks, pid, state=None):
+    def _advance_tasks(self, tasks, pid=None, state=None, push=True):
 
         if not state:
             state = rps.AGENT_STAGING_INPUT_PENDING
@@ -131,7 +131,7 @@ class Default(TMGRStagingInputComponent):
         # perform and publish state update
         # push to the proxy queue
         self._log.debug('=== send to pq: %d', len(tasks))
-        self.advance(tasks, state, publish=True, push=True, qname=pid)
+        self.advance(tasks, state, publish=True, push=push, qname=pid)
 
 
     # --------------------------------------------------------------------------
@@ -284,27 +284,29 @@ class Default(TMGRStagingInputComponent):
                   #         j.exit_code)
 
 
-        for pid in no_staging_tasks:
+        if no_staging_tasks:
 
-            self._advance_tasks(no_staging_tasks[pid], pid)
+            for pid in no_staging_tasks:
+
+                self._advance_tasks(no_staging_tasks[pid], pid)
+
+                # nothing to stage, push to the agent
+                self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
+                             publish=True, push=True)
 
         for pid in staging_tasks:
 
             for task,actionables in staging_tasks[pid]:
+
                 try:
                     self._handle_task(task, actionables)
                     self._advance_tasks([task], pid=task['pilot'])
+
                 except Exception as e:
                     # FIXME: serialize exception
+                    # staging failed - do not pass task to agent
                     task['exception'] = str(e)
-                    self._advance_tasks([task], pid=task['pilot'],
-                                                state=rps.FAILED)
-
-        if no_staging_tasks:
-            # nothing to stage, push to the agent
-            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
-                         publish=True, push=True)
-
+                    self._advance_tasks([task], state=rps.FAILED, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -443,6 +445,13 @@ class Default(TMGRStagingInputComponent):
             task['description']['input_staging'].append(tar_sd)
             os.remove(tar_path)
 
+<<<<<<< HEAD
+=======
+        # staging is done, we can advance the task at last
+        self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
+                           publish=True, push=True)
+
+>>>>>>> devel
 
 # ------------------------------------------------------------------------------
 
