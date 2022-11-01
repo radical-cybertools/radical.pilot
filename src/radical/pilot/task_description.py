@@ -101,18 +101,18 @@ class TaskDescription(ru.TypedDict):
     .. note:: A TaskDescription **MUST** define at least an
               `executable` -- all other elements are optional.
 
-    .. data:: uid
+    .. py:attr:: uid
 
        [type: `str` | default: `""`] A unique ID for the task. This attribute
        is optional, a unique ID will be assigned by RP if the field is not set.
 
-    .. data:: name
+    .. py:attr:: name
 
        [type: `str` | default: `""`] A descriptive name for the task. This
        attribute can be used to map individual tasks back to application level
        workloads.
 
-    .. data:: mode
+    .. py:attr:: mode
 
        [type: `str` | default: `"executable"`] The execution mode to be used for
        this task.  The following modes are accepted:
@@ -155,24 +155,24 @@ class TaskDescription(ru.TypedDict):
         specific functionality (pipes, I/O redirection) which cannot easily be
         mapped to other task attributes.
 
-    .. data:: executable
+    .. py:attr:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
        is expected to be either available via `$PATH` on the target resource,
        or to be an absolute path.
 
-    .. data:: arguments
+    .. py:attr:: arguments
 
        [type: `list` | default: `[]`] The command line arguments for the given
        `executable` (`list` of `strings`).
 
-    .. data:: code
+    .. py:attr:: code
 
        [type: `str` | default: `""`] The code to run.  This field is expected to
        contain valid python code which is executed when the task mode is
        `TASK_EXEC` or `TASK_EVAL`.
 
-    .. data:: function
+    .. py:attr:: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
@@ -180,24 +180,24 @@ class TaskDescription(ru.TypedDict):
        there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
        `kwargs` are passed as function parameters.
 
-    .. data:: args
+    .. py:attr:: args
 
        [type: `list` | default: `[]`] Unnamed arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. data:: kwargs
+    .. py:attr:: kwargs
 
        [type: `dict` | default: `{}`] Named arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. data:: command
+    .. py:attr:: command
 
        [type: `str` | default: `""`] A shell command to be executed.  This
        attribute is used for the `TASK_SHELL` mode.
 
-    .. data:: ranks
+    .. py:attr:: ranks
 
        [type: `int` | default: `1`] The number of application processes to start
        on CPU cores.  For two ranks or more, an MPI communicator will be
@@ -207,7 +207,7 @@ class TaskDescription(ru.TypedDict):
        `cpu_process_type` was previously used to signal the need for an MPI
        communicator - that attribute is now also deprecated and will be ignored.
 
-    .. data:: cores_per_rank
+    .. py:attr:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
        have available to start its own threads or processes on.  By default,
@@ -217,14 +217,14 @@ class TaskDescription(ru.TypedDict):
 
        `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
-    .. data:: threading_type
+    .. py:attr:: threading_type
 
        [type: `str` | default: `""`] The thread type, influences startup and
        environment (`<empty>/POSIX`, `OpenMP`).
 
        `threading_type` replaces the deprecated attribute `cpu_thread_type`.
 
-    .. data:: gpus_per_rank
+    .. py:attr:: gpus_per_rank
 
        [type: `int` | default: `0`] The number of gpus made available to each
        rank.
@@ -233,73 +233,73 @@ class TaskDescription(ru.TypedDict):
        attributes `gpu_threads` and `gpu_process_type` are also deprecated and
        will be ignored.
 
-    .. data:: gpu_type
+    .. py:attr:: gpu_type
 
        [type: `str` | default: `""`] The type of GPU environment to provide to
        the ranks (`<empty>`, `CUDA`, `ROCm`).
 
        `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
 
-    .. data:: lfs_per_rank
+    .. py:attr:: lfs_per_rank
 
        [type: `int` | default: `0`] Local File Storage per rank - amount of
        data (MB) required on the local file system of the node.
 
        `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
 
-    .. data:: mem_per_rank
+    .. py:attr:: mem_per_rank
 
        [type: `int` | default: `0`] Amount of physical memory required per
        rank.
 
        `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
-    .. data:: environment
+    .. py:attr:: environment
 
        [type: `dict` | default: `{}`] Environment variables to set in the
        environment before the execution (launching picked `LaunchMethod`).
 
-    .. data:: named_env
+    .. py:attr:: named_env
 
        [type: `str` | default: `""`] A named virtual environment as prepared by
        the pilot. The task will remain in `AGENT_SCHEDULING` state until that
        environment gets created.
 
-    .. data:: sandbox
+    .. py:attr:: sandbox
 
        [type: `str` | default: `""`] This specifies the working directory of
        the task. That directory *MUST* be relative to the pilot sandbox. It
        will be created if it does not exist. By default, the sandbox has
        the name of the task's uid.
 
-    .. data:: stdout
+    .. py:attr:: stdout
 
        [type: `str` | default: `""`] The name of the file to store stdout. If
        not set then the name of the following format will be used: `<uid>.out`.
 
-    .. data:: stderr
+    .. py:attr:: stderr
 
        [type: `str` | default: `""`] The name of the file to store stderr. If
        not set then the name of the following format will be used: `<uid>.err`.
 
-    .. data:: input_staging
+    .. py:attr:: input_staging
 
        [type: `list` | default: `[]`] The files that need to be staged before
        the execution (`list` of `staging directives`, see below).
 
-    .. data:: output_staging
+    .. py:attr:: output_staging
 
        [type: `list` | default: `[]`] The files that need to be staged after
        the execution (`list` of `staging directives`, see below).
 
-    .. data:: stage_on_error
+    .. py:attr:: stage_on_error
 
        [type: `bool` | default: `False`] Output staging is normally skipped on
        `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
        attempted either way. This may though lead to additional errors if the
        tasks did not manage to produce the expected output files to stage.
 
-    .. data:: pre_launch
+    .. py:attr:: pre_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before launching (i.e., before LaunchMethod is submitted), potentially
@@ -311,14 +311,14 @@ class TaskDescription(ru.TypedDict):
        resources! Deviating from that rule will likely result in reduced
        overall throughput.
 
-    .. data:: post_launch
+    .. py:attr:: post_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after launching (i.e., after LaunchMethod is executed).
 
        Precautions are the same as for `pre_launch` actions.
 
-    .. data:: pre_exec
+    .. py:attr:: pre_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before the task starts (LaunchMethod is submitted, but no actual task
@@ -344,40 +344,40 @@ class TaskDescription(ru.TypedDict):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-    .. data:: pre_exec_sync
+    .. py:attr:: pre_exec_sync
 
        [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
        execution, which enforce to delay individual rank execution, until all
        `pre_exec` actions for all ranks are completed.
 
-    .. data:: post_exec
+    .. py:attr:: post_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after the task finishes. The same remarks as on `pre_exec` apply,
        inclusive the point on error handling, which again will cause the task
        to fail, even if the actual execution was successful.
 
-    .. data:: restartable
+    .. py:attr:: restartable
 
        [type: `bool` | default: `False`] If the task starts to execute on
        a pilot, but cannot finish because the pilot fails or is canceled,
        the task can be restarted.
 
-    .. data:: scheduler
+    .. py:attr:: scheduler
 
        [type: `str` | default: `""`] Request the task to be handled by a
        specific agent scheduler.
 
-    .. data:: tags
+    .. py:attr:: tags
 
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
 
-    .. data:: metadata
+    .. py:attr:: metadata
 
        [type: `ANY` | default: `None`] User defined metadata.
 
-    .. data:: cleanup
+    .. py:attr:: cleanup
 
        [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
        delete the entire task sandbox upon termination. This includes all
@@ -385,7 +385,7 @@ class TaskDescription(ru.TypedDict):
        before cleanup. Note that task sandboxes are also deleted if the pilot's
        own `cleanup` flag is set.
 
-    .. data:: pilot
+    .. py:attr:: pilot
 
        [type: `str` | default: `""`] Pilot `uid`, if specified, the task is
        submitted to the pilot with the given ID. If that pilot is not known to
