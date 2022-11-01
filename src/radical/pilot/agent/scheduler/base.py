@@ -384,7 +384,7 @@ class AgentSchedulingComponent(rpu.Component):
                 for uid in uids:
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
-                        del(self._waitpool[uid])
+                        del self._waitpool[uid]
 
             with self._raptor_lock:
                 for queue in self._raptor_tasks:

@@ -133,8 +133,8 @@ class DDMD(object):
         idle -= n
         self._rep.info('%s' % self._glyphs[self.TASK_AGENT] * n)
 
-        self._rep.plain('%s' % '-' * idle
-                      + '| %4d [%4d]' % (self._cores_used, self._cores))
+        self._rep.plain('%s' % '-' * idle +
+                        '| %4d [%4d]' % (self._cores_used, self._cores))
 
         if task and msg:
             self._rep.plain(' %-15s: %s\n' % (task.uid, msg))
@@ -186,7 +186,7 @@ class DDMD(object):
 
         ttype = uid.split('.')[0]
 
-        assert(ttype in self.TASK_TYPES), 'unknown task type: %s' % uid
+        assert ttype in self.TASK_TYPES, 'unknown task type: %s' % uid
         return ttype
 
 
@@ -275,7 +275,7 @@ class DDMD(object):
 
             # remove task from bookkeeping
             self._final_tasks.append(task.uid)
-            del(self._tasks[ttype][task.uid])
+            del self._tasks[ttype][task.uid]
 
 
     # --------------------------------------------------------------------------
