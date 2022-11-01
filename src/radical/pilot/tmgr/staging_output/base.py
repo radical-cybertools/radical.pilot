@@ -37,7 +37,7 @@ class TMGRStagingOutputComponent(rpu.Component):
 
         # Make sure that we are the base-class!
         if cls != TMGRStagingOutputComponent:
-            raise TypeError("Factory only available to base class!")
+            raise TypeError('Factory only available to base class!')
 
         from .default import Default
 
@@ -46,7 +46,7 @@ class TMGRStagingOutputComponent(rpu.Component):
         }
 
         if name not in impl:
-            raise ValueError('Scheduler %s unknown' % name)
+            raise ValueError('StagingOut %s unknown' % name)
 
         return impl[name](cfg, session)
 
