@@ -3,6 +3,12 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.18.1 Hotfix Release                                                 2022-11-01
+--------------------------------------------------------------------------------
+
+  - fix Amarel configuration
+
+
 1.18.0 Release                                                        2022-10-11
 --------------------------------------------------------------------------------
 
