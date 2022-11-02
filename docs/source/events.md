@@ -150,19 +150,6 @@ indication on event ordering *within each individual component*.
     * per instance      : dvm_start, dvm_uri, dvm_ready, (dvm_stop | dvm_fail)
 
 
-### AgentSchedulingComponent (Component)
-
-    schedule_try        : search for task resources starts           (uid: task)
-    schedule_fail       : search for task resources failed           (uid: task, [RUNTIME])
-    schedule_ok         : search for task resources succeeded        (uid: task)
-    unschedule_start    : task resource freeing starts               (uid: task)
-    unschedule_stop     : task resource freeing stops                (uid: task)
-
-    partial orders
-    * per task          : schedule_try, schedule_fail*, schedule_ok, \
-                          unschedule_start, unschedule_stop
-
-
 ### AgentStagingInputComponent (Component)
 
     staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS])
@@ -171,8 +158,22 @@ indication on event ordering *within each individual component*.
     staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS])
 
     partial orders
-    * per file          : staging_in_skip 
+    * per file          : staging_in_skip
                         | (staging_in_start, (staging_in_fail | staging_in_stop))
+
+
+### AgentSchedulingComponent (Component)
+
+    schedule_try        : search for task resources starts           (uid: task)
+    schedule_fail       : search for task resources failed           (uid: task, [RUNTIME])
+    schedule_ok         : search for task resources succeeded        (uid: task)
+
+    unschedule_start    : task resource freeing starts               (uid: task)
+    unschedule_stop     : task resource freeing stops                (uid: task)
+
+    partial orders
+    * per task          : schedule_try, schedule_fail*, schedule_ok, \
+                          unschedule_start, unschedule_stop
 
 
 ### AgentExecutingComponent: (Component)
@@ -198,18 +199,22 @@ indication on event ordering *within each individual component*.
     launch_post         : task launch script: post-submission        (uid: task)
     launch_stop         : task launch script: completes              (uid: task)
     task_run_stop       : exec layer passed back control             (uid: task)
-    task_stop           : task handling process finished             (uid: task)
 
     task_run_cancel_start: try to cancel task via exec layer (kill)  (uid: task, [API])
     task_run_cancel_stop : did cancel    task via exec layer (kill)  (uid: task, [API])
 
     partial orders
     * per task          : task_start, task_run_start, task_run_ok,
-                          launch_start, launch_pre, launch_submit, exec_start, 
-                          exec_pre, rank_start, app_start, app_*, app_stop, 
-                          rank_stop, exec_post, exec_stop, launch_collect, 
-                          launch_post, launch_stop, task_run_stop, task_stop
+                          launch_start, launch_pre, launch_submit, exec_start,
+                          exec_pre, rank_start, app_start, app_*, app_stop,
+                          rank_stop, exec_post, exec_stop, launch_collect,
+                          launch_post, launch_stop, task_run_stop
     * per task          : task_run_cancel_start, task_run_cancel_stop
+
+    NOTE: raptor tasks will not log the complete set of events - they will miss
+    the launch_* events (raptor has not separate launcher), the exec_pre and
+    exec_post events (pre and post exec are not supported), and the task_mkdir_*
+    events (raptor tasks don't have individual sandboxes).
 
 
 ### AgentStagingOutputComponent (Component)
@@ -225,7 +230,7 @@ indication on event ordering *within each individual component*.
     staging_out_fail    : staging request failed                     (uid: task, msg: did, [Task-DS])
     staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS])
 
-    partial orders 
+    partial orders
     * per task          : staging_stdout_start, staging_stdout_stop,
                           staging_stderr_start, staging_stderr_stop,
                           staging_uprof_start,  staging_uprof_stop,
