@@ -1,10 +1,9 @@
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import multiprocessing
-
 import math
+import multiprocessing
 
 from .base import RMInfo, ResourceManager
 
@@ -17,26 +16,36 @@ class Fork(ResourceManager):
     #
     def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        # check if the requested cores are available
         detected_cores = multiprocessing.cpu_count()
+        if not rm_info.cores_per_node:
+            rm_info.cores_per_node = detected_cores
 
-        if detected_cores != rm_info.requested_cores:
-            if self._cfg.resource_cfg.fake_resources:
-                self._log.info(
-                    'using %d requested cores instead of %d available cores',
-                    rm_info.requested_cores, detected_cores)
-            else:
-                if detected_cores < rm_info.requested_cores:
-                    raise RuntimeError('insufficient cores found (%d < %d)' %
-                                       (detected_cores, rm_info.requested_cores))
+        if self._cfg.resource_cfg.fake_resources:
+            self._log.info(
+                'virtual resource with %d cores per node (%d detected cores)' %
+                (rm_info.cores_per_node, detected_cores))
+        elif detected_cores >= rm_info.requested_cores:
+            if rm_info.cores_per_node > detected_cores:
+                self._log.warn(
+                    'defined %d cores per node > %d detected cores' %
+                    (rm_info.cores_per_node, detected_cores))
+            elif rm_info.cores_per_node < rm_info.requested_cores:
+                raise RuntimeError(
+                    'incorrectly defined %d cores per node for real resource,'
+                    'while requesting %d cores' %
+                    (rm_info.cores_per_node, rm_info.requested_cores))
+        else:
+            raise RuntimeError(
+                'insufficient cores found (%d < %d)' %
+                (detected_cores, rm_info.requested_cores))
 
+        # duplicates the code from the base class, but here it should be
+        # called first before determining `rm_info.node_list`
         if not rm_info.requested_nodes:
-            cores = rm_info.requested_cores
-            cpn   = rm_info.cores_per_node
-            rm_info.requested_nodes = math.ceil(cores / cpn)
-
-        # FIXME: number of GPUs should also be checked - how? Should we use
-        #        hwlock if available?
+            n_nodes = rm_info.requested_cores / rm_info.cores_per_node
+            rm_info.requested_nodes = math.ceil(n_nodes)
+            # FIXME: number of GPUs should also be checked - how?
+            #        Should we use hwlock if available?
 
         nodes = [('localhost', rm_info.cores_per_node)
                  for _ in range(rm_info.requested_nodes)]
