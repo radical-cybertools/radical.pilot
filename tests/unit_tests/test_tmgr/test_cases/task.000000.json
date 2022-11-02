@@ -1,0 +1,21 @@
+
+{
+    "task": {
+        "uid"               : "task.000000",
+        "description": {
+            "input_staging": [
+                {
+                    "source": "client:///file.000000.00",
+                    "target": "task:///file.000000.00",
+                    "action": "Transfer"
+                },
+                {
+                    "source": "client:///file.000000.01",
+                    "target": "pilot:///file.000000.01",
+                    "action": "Tarball"
+                }
+            ]
+        }
+    }
+}
+
