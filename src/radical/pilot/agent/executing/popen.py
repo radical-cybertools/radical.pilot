@@ -121,9 +121,6 @@ class Popen(AgentExecutingComponent):
                 task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
-            finally:
-                self._prof.prof('task_stop', uid=task['uid'])
-
 
     # --------------------------------------------------------------------------
     #
