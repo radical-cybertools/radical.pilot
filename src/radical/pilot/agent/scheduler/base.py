@@ -7,6 +7,8 @@ import time
 import queue
 import pprint
 
+from collections import defaultdict
+
 import threading          as mt
 import multiprocessing    as mp
 
@@ -18,7 +20,9 @@ from ... import constants as rpc
 
 from ..resource_manager import ResourceManager
 
-BATCHSIZE = 16
+# when pulling for tasks or resources, yield to other actions now and then as to
+# not starve other agent components
+_YIELD_THRESHOLD = 1024
 
 
 # ------------------------------------------------------------------------------
@@ -226,7 +230,7 @@ class AgentSchedulingComponent(rpu.Component):
         # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
         self._waitpool   = dict()  # map uid:task
-        self._ts_map     = dict()
+        self._ts_map     = defaultdict(set)
         self._ts_valid   = False   # set to False to trigger re-binning
         self._active_cnt = 0       # count of currently scheduled tasks
 
@@ -495,8 +499,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         for uid, task in self._waitpool.items():
             ts = task['tuple_size']
-            if ts not in self._ts_map:
-                self._ts_map[ts] = set()
             self._ts_map[ts].add(uid)
 
         self._ts_valid = True
@@ -711,8 +713,7 @@ class AgentSchedulingComponent(rpu.Component):
         #
         to_schedule = list(self._waitpool.values())
 
-        to_schedule.sort(key=lambda x:
-                   x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2])
+        to_schedule.sort(key=lambda task: task['tuple_size'])
 
         # cycle through waitpool, and see if we get anything placed now.
         self._log.debug_9('before bisec: %d', len(to_schedule))
@@ -794,8 +795,7 @@ class AgentSchedulingComponent(rpu.Component):
                         self._set_tuple_size(task)
                         to_schedule.append(task)
 
-                # schedule what we have - we'll pull again soon anyway
-                if len(to_schedule) >= BATCHSIZE:
+                if len(to_schedule) > _YIELD_THRESHOLD:
                     break
 
         except queue.Empty:
@@ -844,8 +844,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.slot_status("before schedule incoming [%d]" % len(to_schedule))
 
         self._log.debug('==== incoming:   %d', len(to_schedule))
-        to_schedule.sort(reverse=False, key=lambda x:
-                (x['tuple_size'][0] + x['tuple_size'][2]) * x['tuple_size'][1])
+        to_schedule.sort(reverse=False, key=lambda task: (task['tuple_size']))
 
         # cycle through task set, and see if we get anything placed
         scheduled, unscheduled, failed = ru.lazy_bisect(to_schedule,
@@ -887,6 +886,9 @@ class AgentSchedulingComponent(rpu.Component):
             while not self._term.is_set():
                 task = self._queue_unsched.get_nowait()
                 to_unschedule.append(task)
+
+                if len(to_unschedule) > _YIELD_THRESHOLD:
+                    break
 
         except queue.Empty:
             # no more unschedule requests
@@ -1022,9 +1024,9 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         d = task['description']
-        task['tuple_size'] = tuple([d.get('ranks'         , 1),
-                                    d.get('cores_per_rank', 1),
-                                    d.get('gpus_per_rank' , 0)])
+        task['tuple_size'] = d.get('ranks', 1) \
+                           * d.get('cores_per_rank', 1) \
+                           * d.get('gpus_per_rank' , 0)
 
 
 # ------------------------------------------------------------------------------
