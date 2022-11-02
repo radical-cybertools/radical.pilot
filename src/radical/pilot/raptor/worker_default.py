@@ -405,10 +405,13 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _alloc_task(self, task):
+    def _alloc(self, task):
         '''
         allocate task resources
         '''
+
+        uid = task['uid']
+        self._prof.prof('schedule_try', uid=uid)
 
         with self._mlock:
 
@@ -443,15 +446,20 @@ class DefaultWorker(Worker):
 
             task['slots'] = {'cores': alloc_cores,
                              'gpus' : alloc_gpus}
-            return True
+
+        self._prof.prof('schedule_ok', uid=uid)
+
+        return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _dealloc_task(self, task):
+    def _dealloc(self, task):
         '''
         deallocate task resources
         '''
+
+        self._prof.prof('unschedule_start', uid=task['uid'])
 
         with self._mlock:
 
@@ -467,8 +475,9 @@ class DefaultWorker(Worker):
 
             # signal available resources
             self._res_evt.set()
+            self._prof.prof('unschedule_stop', uid=task['uid'])
 
-            return True
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -511,7 +520,7 @@ class DefaultWorker(Worker):
 
                 # ok, we have work to do.  Check the requirements to see how
                 # many cpus and gpus we need to mark as busy
-                while not self._alloc_task(task):
+                while not self._alloc(task):
 
                     # no resource - wait for new resources
                     #
@@ -558,7 +567,7 @@ class DefaultWorker(Worker):
                 self._log.exception('request failed')
 
                 # free resources again for failed task
-                self._dealloc_task(task)
+                self._dealloc(task)
 
                 res = {'req': task['uid'],
                        'out': None,
@@ -696,7 +705,7 @@ class DefaultWorker(Worker):
                 del self._pool[pid]
 
             # free resources again for the task
-            self._dealloc_task(task)
+            self._dealloc(task)
 
             res = {'req': task['uid'],
                    'out': out,

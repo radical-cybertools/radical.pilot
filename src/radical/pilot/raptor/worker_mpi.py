@@ -14,6 +14,7 @@ from .worker            import Worker
 from ..pytask           import PythonTask
 from ..task_description import TASK_FUNCTION
 from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
+from ..states           import AGENT_EXECUTING_PENDING, AGENT_EXECUTING
 
 
 # MPI message tags
@@ -59,7 +60,7 @@ class _Resources(object):
         #        worker to also assign GPUs to specific ranks.
         #
         self._res_evt   = mt.Event()  # signals free resources
-        self._res_lock  = mt.Lock()   # lock resource for alloc / deallock
+        self._res_lock  = mt.Lock()   # lock resource for alloc / dealloc
         self._resources = {
                 'cores': [0] * self._ranks
               # 'gpus' : [0] * self._n_gpus
@@ -99,7 +100,7 @@ class _Resources(object):
 
     # --------------------------------------------------------------------------
     #
-    def alloc(self, task):
+    def _alloc(self, task):
         '''
         This call will search for free cores and gpus to run the task.  More
         precisely, the core will wait for a sufficient number of ranks to become
@@ -122,7 +123,6 @@ class _Resources(object):
                     % (cores, self._ranks))
 
         self._log.debug_5('alloc %s: %s', task['uid'], cores)
-        self._log.info('  alloc    %30s: %s', uid, self)
 
         while True:
 
@@ -144,7 +144,6 @@ class _Resources(object):
 
                             if len(ranks) == cores:
                                 self._prof.prof('schedule_ok', uid=uid)
-                                self._log.info('  alloc ok %30s: %s', uid, self)
                                 return ranks
             else:
                 self._res_evt.wait(timeout=0.1)
@@ -152,15 +151,13 @@ class _Resources(object):
 
     # --------------------------------------------------------------------------
     #
-    def dealloc(self, task):
+    def _dealloc(self, task):
         '''
         deallocate task ranks
         '''
 
         uid   = task['uid']
         ranks = task['ranks']
-        self._prof.prof('unschedule_start', uid=uid)
-        self._log.info('dealloc    %30s: %s', uid, self)
 
         with self._res_lock:
 
@@ -169,9 +166,7 @@ class _Resources(object):
 
             # signal available resources
             self._res_evt.set()
-
-        self._prof.prof('unschedule_stop', uid=uid)
-        self._log.info('dealloc ok %30s: %s', uid, self)
+            self._prof.prof('unschedule_stop', uid=uid)
 
         # remove temporary information from task
         del task['rank']
@@ -255,7 +250,9 @@ class _TaskPuller(mt.Thread):
                     self._log.debug('wtq %s 0 - task pulled', task['uid'])
 
                     try:
-                        task['ranks'] = self._resources.alloc(task)
+                        task['ranks'] = self._resources._alloc(task)
+                        self._prof.prof('advance', uid=task['uid'],
+                                        state=AGENT_EXECUTING_PENDING)
                         for rank in task['ranks']:
                             task['rank'] = rank
                             self._log.debug('wtq %s 1 - task send to %d %s',
@@ -313,13 +310,7 @@ class _ResultPusher(mt.Thread):
 
         # do we have all ranks?
         if len(self._cache[uid]) < ranks:
-            self._log.info('< results - recv: %s [%d < %d]', task['uid'],
-                    len(self._cache[uid]), ranks)
-
             return False
-
-        self._log.info('< results - recv: %s [%d = %d]', task['uid'],
-                        len(self._cache[uid]), ranks)
 
         task['stdout']       = [t['stdout']       for t in self._cache[uid]]
         task['stderr']       = [t['stderr']       for t in self._cache[uid]]
@@ -375,7 +366,7 @@ class _ResultPusher(mt.Thread):
 
                     # did all ranks complete?
                     if self._check_ranks(task):
-                        self._resources.dealloc(task)
+                        self._resources._dealloc(task)
                         worker_result_q.put(task)
 
 
@@ -467,14 +458,19 @@ class _Worker(mt.Thread):
 
                 for task in tasks:
 
-                    # this should never happen
-                    if self._rank not in task['ranks']:
-                        raise RuntimeError('internal error: inconsistent rank info')
+                    uid = task['uid']
+                    self._prof.prof('advance', uid=task['uid'],
+                                    state=AGENT_EXECUTING)
+                    self._prof.prof('task_start', uid=uid)
 
-                    # FIXME: task_exec_start
                     try:
+                        # this should never happen
+                        if self._rank not in task['ranks']:
+                            raise RuntimeError('inconsistent rank info')
+
+                        self._prof.prof('exec_start', uid=uid)
                         out, err, ret, val, exc = self._dispatch(task)
-                        self._log.debug('dispatch result: %s: %s', task['uid'], out)
+                        self._prof.prof('exec_stop', uid=uid)
 
                         task['error']        = None
                         task['stdout']       = out
@@ -495,7 +491,9 @@ class _Worker(mt.Thread):
                     finally:
                         # send task back to rank 0
                         # FIXME: task_exec_stop
+                        self._prof.prof('unschedule_start', uid=uid)
                         rank_result_q.put(task)
+
 
         except:
             self._log.exception('work thread failed [%s]', self._rank)
@@ -522,17 +520,10 @@ class _Worker(mt.Thread):
                'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
                })
 
-
-        uid = task['uid']
-        self._prof.prof('rp_exec_start', uid=uid)
-        try:
-            if task['description']['ranks'] > 1:
-                return self._dispatch_mpi(task)
-            else:
-                return self._dispatch_non_mpi(task)
-
-        finally:
-            self._prof.prof('rp_exec_stop', uid=uid)
+        if task['description']['ranks'] > 1:
+            return self._dispatch_mpi(task)
+        else:
+            return self._dispatch_non_mpi(task)
 
 
 
@@ -1016,7 +1007,6 @@ class MPIWorker(Worker):
         # all ranks run a worker thread
         # the worker should be started before the managers as the manager
         # contacts the workers with queue endpoint information
-        self._log.info('rank %s starts [%s]', self._rank, self._manager)
         worker_ok = mt.Event()
         self._work_thread = _Worker(rank_task_q_get   = self._rank_task_q_get,
                                     rank_result_q_put = self._rank_result_q_put,
@@ -1026,7 +1016,6 @@ class MPIWorker(Worker):
                                     base              = self)
         self._work_thread.start()
         worker_ok.wait(timeout=60)
-        self._log.info('rank %s starts worker [%s]', self._rank, self._manager)
 
         if not worker_ok.is_set():
             raise RuntimeError('failed to start worker thread')
@@ -1036,10 +1025,7 @@ class MPIWorker(Worker):
         # the master, one to push results back to the master
         if self._manager:
 
-            self._log.info('rank %s starts managers', self._rank)
-
             resources = _Resources(self._log,   self._prof, self._ranks)
-            self._log.info('resources: %s', resources)
 
             # rank 0 spawns manager threads
             pull_ok = mt.Event()
@@ -1076,8 +1062,6 @@ class MPIWorker(Worker):
 
             if not push_ok.is_set():
                 raise RuntimeError('failed to start push thread')
-
-        self._log.info('rank %s starts [%s] ok', self._rank, self._manager)
 
 
     # --------------------------------------------------------------------------
