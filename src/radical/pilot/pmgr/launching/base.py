@@ -803,8 +803,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # now that we know the number of nodes to request, derive
         # the *actual* number of cores and gpus we allocate
-        allocated_cores = requested_nodes * cores_per_node
-        allocated_gpus  = requested_nodes * gpus_per_node
+        allocated_cores = (requested_nodes * cores_per_node) or requested_cores
+        allocated_gpus  = (requested_nodes * gpus_per_node)  or requested_gpus
 
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
@@ -958,9 +958,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # ----------------------------------------------------------------------
         # Create Job description
 
-        total_cpu_count = (requested_nodes * cores_per_node) or requested_cores
-        total_gpu_count = (requested_nodes * gpus_per_node)  or requested_gpus
-
         jd_dict = ru.TypedDict()
 
         jd_dict.name                  = job_name
@@ -971,8 +968,8 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.output                = 'bootstrap_0.out'
         jd_dict.error                 = 'bootstrap_0.err'
         jd_dict.node_count            = requested_nodes
-        jd_dict.total_cpu_count       = total_cpu_count
-        jd_dict.total_gpu_count       = total_gpu_count
+        jd_dict.total_cpu_count       = allocated_cores
+        jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = avail_cores_per_node
         jd_dict.spmd_variation        = spmd_variation

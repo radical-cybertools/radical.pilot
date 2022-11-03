@@ -31,7 +31,6 @@
         "python_dist"                 : "default",
         "virtenv_dist"                : "default",
         "virtenv_mode"                : "create",
-        "rp_version"                  : "local",
-        "cores_per_node"              : 64
+        "rp_version"                  : "local"
     }
 }
