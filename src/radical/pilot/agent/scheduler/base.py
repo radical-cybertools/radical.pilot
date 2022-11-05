@@ -860,7 +860,7 @@ class AgentSchedulingComponent(rpu.Component):
 
                 task['control']          = 'tmgr_pending'
                 task['exception']        = repr(e)
-                task['exception_detail'] = ru.get_exception_trace()
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
                 task['target_state']     = 'FAILED'
                 task['$all']             = True
 
@@ -1005,7 +1005,9 @@ class AgentSchedulingComponent(rpu.Component):
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
                 if self._active_cnt == 0:
-                    raise RuntimeError('insufficient resources')
+                    raise RuntimeError('task can never be scheduled')
+
+                return False
 
             self._active_cnt += 1
 
@@ -1022,7 +1024,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         except Exception as e:
             task['exception']        = repr(e)
-            task['exception_detail'] = ru.get_exception_trace()
+            task['exception_detail'] = '\n'.join(ru.get_exception_trace())
             raise
 
         return True

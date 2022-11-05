@@ -1143,7 +1143,8 @@ class Component(object):
                     if state:
                         for thing in things:
                             thing['exception']        = repr(e)
-                            thing['exception_detail'] = ru.get_exception_trace()
+                            thing['exception_detail'] = \
+                                             '\n'.join(ru.get_exception_trace())
                         self.advance(things, rps.FAILED, publish=True,
                                                          push=False)
 

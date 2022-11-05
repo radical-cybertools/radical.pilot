@@ -262,7 +262,8 @@ class _TaskPuller(mt.Thread):
                     except Exception as e:
                         self._log.exception('failed to place task')
                         task['exception']        = repr(e)
-                        task['exception_detail'] = ru.get_exception_trace()
+                        task['exception_detail'] = \
+                                             '\n'.join(ru.get_exception_trace())
                         worker_result_q.put(task)
 
         except:
@@ -488,7 +489,8 @@ class _Worker(mt.Thread):
                         task['exit_code']        = -1
                         task['return_value']     = None
                         task['exception']        = repr(e)
-                        task['exception_detail'] = ru.get_exception_trace()
+                        task['exception_detail'] = \
+                                             '\n'.join(ru.get_exception_trace())
                         self._log.exception('recv err  %s  to  0' % (task['uid']))
 
                     finally:
@@ -709,7 +711,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -777,7 +779,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\neval failed: %s' % e)
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -844,7 +846,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\nexec failed: %s' % e)
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -890,7 +892,7 @@ class _Worker(mt.Thread):
             self._log.exception('proc failed: %s' % task['uid'])
             out = None
             err = 'exec failed: %s' % e
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         return out, err, ret, None, exc
@@ -918,7 +920,7 @@ class _Worker(mt.Thread):
             self._log.exception('_shell failed: %s' % task['uid'])
             out = None
             err = 'shell failed: %s' % e
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
       # os.environ = old_env
@@ -1134,7 +1136,7 @@ class MPIWorker(Worker):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = (repr(e), ru.get_exception_trace())
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:

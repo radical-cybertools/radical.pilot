@@ -571,7 +571,7 @@ class DefaultWorker(Worker):
                 self._dealloc(task)
 
                 task['exception']        = repr(e)
-                task['exception_detail'] = ru.get_exception_trace()
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
                 self._res_put.put(task)
 
@@ -615,7 +615,7 @@ class DefaultWorker(Worker):
             try:
                 out, err, ret, val = self._modes[mode](task.get('data'))
             except Exception as e:
-                exc = [repr(e), ru.get_exception_trace()]
+                exc = [repr(e), '\n'.join(ru.get_exception_trace())]
 
             res = [task, str(out), str(err), int(ret), val, exc]
 
@@ -660,7 +660,7 @@ class DefaultWorker(Worker):
             err = 'dispatch failed: %s' % e
             ret = 1
             val = None
-            exc = [repr(e), ru.get_exception_trace()]
+            exc = [repr(e), '\n'.join(ru.get_exception_trace())]
             res = [task, str(out), str(err), int(ret), val, exc]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)

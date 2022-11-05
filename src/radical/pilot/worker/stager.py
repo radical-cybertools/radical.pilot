@@ -78,7 +78,7 @@ class Stager(rpu.Worker):
         except Exception as e:
             for sd in sds:
                 sd['exception']        = repr(e)
-                sd['exception_detail'] = ru.get_exception_trace()
+                sd['exception_detail'] = '\n'.join(ru.get_exception_trace())
                 sd['state']            = rps.FAILED
                 self._log.exception('staging failed')
 

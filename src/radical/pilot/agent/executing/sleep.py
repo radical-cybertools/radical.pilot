@@ -74,7 +74,7 @@ class Sleep(AgentExecutingComponent) :
             except Exception as e:
                 self._log.exception("error running Task")
                 task['exception']        = repr(e)
-                task['exception_detail'] = ru.get_exception_trace()
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
                 # can't rely on the executor base to free the task resources
                 self._prof.prof('unschedule_start', uid=task['uid'])
