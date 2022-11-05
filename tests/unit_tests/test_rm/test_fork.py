@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2021-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
@@ -25,26 +25,47 @@ class ForkTestCase(TestCase):
     def test_init_from_scratch(self, mocked_logger, mocked_mp_cpu_count,
                                mocked_init):
 
-        rm_info = RMInfo({'requested_nodes': 1,
-                          'requested_cores': 16,
-                          'cores_per_node' : 16})
-
         rm_fork = Fork(cfg=None, log=None, prof=None)
-        rm_fork._cfg = ru.TypedDict({'resource_cfg': {'fake_resources': False}})
+        rm_fork._cfg = ru.TypedDict({'resource_cfg': {}})
         rm_fork._log = mocked_logger
 
-        rm_info = rm_fork._init_from_scratch(rm_info)
-        self.assertEqual(len(rm_info.node_list), 1)
+        rm_fork._cfg.resource_cfg.fake_resources = False
 
-        # not fake resource, but request more cores than available
-        rm_info.requested_cores = 36
+        rm_info = RMInfo({'requested_cores': 1,
+                          'cores_per_node' : 0})
+
+        # `rm_info.cores_per_node` will be set by detected cores
+        rm_info = rm_fork._init_from_scratch(rm_info)
+        self.assertEqual(rm_info.cores_per_node,  mocked_mp_cpu_count())
+        self.assertEqual(rm_info.requested_nodes, 1)
+
+        # request less cores than available/detected
+        rm_info.requested_cores = int(mocked_mp_cpu_count() / 2)
+
+        rm_info.cores_per_node  = mocked_mp_cpu_count() + 1
+        self.assertFalse(rm_fork._log.warn.called)
+        rm_info = rm_fork._init_from_scratch(rm_info)
+        self.assertTrue(rm_fork._log.warn.called)
+
+        rm_info.cores_per_node = rm_info.requested_cores - 1
+        with self.assertRaises(RuntimeError):
+            # inconsistency with defined (`cores_per_node`) and available cores
+            rm_fork._init_from_scratch(rm_info)
+
+        # real resource, request more cores than available/detected
+        rm_info.requested_cores = mocked_mp_cpu_count() * 10
         with self.assertRaises(RuntimeError):
             rm_fork._init_from_scratch(rm_info)
 
-        # fake resource, request more cores than available
+        # fake/virtual resource, request more cores than available/detected
         rm_fork._cfg.resource_cfg.fake_resources = True
+
+        rm_info.requested_nodes = 0  # will be calculated during init
+        rm_info.requested_cores = mocked_mp_cpu_count() * 10
         rm_info = rm_fork._init_from_scratch(rm_info)
         self.assertGreater(rm_info.requested_cores, mocked_mp_cpu_count())
+        self.assertGreater(rm_info.requested_nodes, 1)
+        self.assertEqual(len(rm_info.node_list), rm_info.requested_nodes)
 
 # ------------------------------------------------------------------------------
 
