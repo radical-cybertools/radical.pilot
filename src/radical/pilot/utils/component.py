@@ -1142,8 +1142,8 @@ class Component(object):
 
                     if state:
                         for thing in things:
-                            thing['error'].append('failed in %s.work_cb [%s]'
-                                    % (self._uid, repr(e)))
+                            thing['exception']        = repr(e)
+                            thing['exception_detail'] = ru.get_exception_trace()
                         self.advance(things, rps.FAILED, publish=True,
                                                          push=False)
 
