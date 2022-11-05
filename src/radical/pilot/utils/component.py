@@ -1134,13 +1134,16 @@ class Component(object):
                     with self._work_lock:
                         self._workers[state](things)
 
-                except Exception:
+                except Exception as e:
 
                     # this is not fatal -- only the 'things' fail, not
                     # the component
                     self._log.exception("work %s failed", self._workers[state])
 
                     if state:
+                        for thing in things:
+                            thing['error'].append('failed in %s.work_cb [%s]'
+                                    % (self._uid, repr(e)))
                         self.advance(things, rps.FAILED, publish=True,
                                                          push=False)
 

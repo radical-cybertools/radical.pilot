@@ -706,7 +706,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__qualname__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
         finally:
@@ -774,7 +774,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\neval failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
         finally:
@@ -841,7 +841,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\nexec failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
         finally:
@@ -887,7 +887,7 @@ class _Worker(mt.Thread):
             self._log.exception('proc failed: %s' % task['uid'])
             out = None
             err = 'exec failed: %s' % e
-            exc = [e.__class__.__name__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
         return out, err, ret, None, exc
@@ -915,7 +915,7 @@ class _Worker(mt.Thread):
             self._log.exception('_shell failed: %s' % task['uid'])
             out = None
             err = 'shell failed: %s' % e
-            exc = [e.__class__.__name__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
       # os.environ = old_env
@@ -1131,7 +1131,7 @@ class MPIWorker(Worker):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = ru.get_exception_trace()
             ret = 1
 
         finally:

@@ -83,6 +83,7 @@ class Task(object):
         self._stderr           = None
         self._return_value     = None
         self._exception        = None
+        self._exception_detail            = None
         self._pilot            = descr.get('pilot')
         self._endpoint_fs      = None
         self._resource_sandbox = None
@@ -196,6 +197,7 @@ class Task(object):
             'stderr':           self.stderr,
             'return_value':     self.return_value,
             'exception':        self.exception,
+            'exception_detail': self.exception_detail,
             'pilot':            self.pilot,
             'endpoint_fs':      self.endpoint_fs,
             'resource_sandbox': self.resource_sandbox,
@@ -399,6 +401,24 @@ class Task(object):
         '''
 
         return self._exception
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def exception_detail(self):
+        '''
+        Returns additional information about the exception which caused this
+        task to enter FAILED state.
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
+
+        **Returns:**
+            * str
+        '''
+
+        return self._exception_detail
 
 
     # --------------------------------------------------------------------------
