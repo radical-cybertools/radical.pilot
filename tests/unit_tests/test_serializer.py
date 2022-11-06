@@ -42,15 +42,17 @@ class TestSerializer(TestCase):
 
         # raise exception
 
+        with self.assertRaises(Exception):
+            serializer.deserialize_file('test')
+
         import dill
 
         def mock_dump(*args, **kwargs):
-            raise Exception
+            raise Exception('foo')
 
-        with mock.patch.object(dill, 'dump', mock_dump):
-            with self.assertRaises(Exception) as exc:
+        with mock.patch.object(dill, 'dumps', mock_dump):
+            with self.assertRaises(Exception):
                 serializer.serialize_file('test')
-            self.assertIn('object is not serializable', str(exc.exception))
             os.unlink(_obj_file_path)
 
 
