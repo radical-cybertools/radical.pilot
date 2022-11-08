@@ -4,6 +4,8 @@ import os
 import sys
 import time
 
+from collections import defaultdict
+
 import radical.utils as ru
 import radical.pilot as rp
 
@@ -63,22 +65,12 @@ class MyMaster(rp.raptor.Master):
     def __init__(self, cfg):
 
         self._cnt = 0
-        self._submitted = {rp.TASK_EXECUTABLE  : 0,
-                           rp.TASK_FUNCTION    : 0,
-                           rp.TASK_EVAL        : 0,
-                           rp.TASK_EXEC        : 0,
-                           rp.TASK_PROC        : 0,
-                           rp.TASK_SHELL       : 0}
-        self._collected = {rp.TASK_EXECUTABLE  : 0,
-                           rp.TASK_FUNCTION    : 0,
-                           rp.TASK_EVAL        : 0,
-                           rp.TASK_EXEC        : 0,
-                           rp.TASK_PROC        : 0,
-                           rp.TASK_SHELL       : 0}
+        self._submitted = defaultdict(int)
+        self._collected = defaultdict(int)
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.raptor.Master.__init__(self, cfg=cfg)
+        super().__init__(cfg=cfg)
 
         self._sleep = self._cfg.sleep
 

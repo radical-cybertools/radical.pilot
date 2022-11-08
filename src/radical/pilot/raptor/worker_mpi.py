@@ -376,7 +376,7 @@ class _ResultPusher(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class _Worker(mt.Thread):
+class RankWorker(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
@@ -587,9 +587,9 @@ class _Worker(mt.Thread):
 
         *function* is resolved first against `locals()`, then `globals()`, then
         attributes of the implementation class (member functions of *base*, as
-        provided to `_Worker()`). Finally, an attempt is made to deserialize a
-        PythonTask from *function*. The first non-null resolution of *function*
-        is used as the callable.
+        provided to `RankWorker()`). Finally, an attempt is made to deserialize
+        a PythonTask from *function*. The first non-null resolution of
+        *function* is used as the callable.
 
         Raises
         ------
@@ -1002,18 +1002,26 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_worker(self):
+
+        return RankWorker
+
+
+    # --------------------------------------------------------------------------
+    #
     def start(self):
 
         # all ranks run a worker thread
         # the worker should be started before the managers as the manager
         # contacts the workers with queue endpoint information
         worker_ok = mt.Event()
-        self._work_thread = _Worker(rank_task_q_get   = self._rank_task_q_get,
-                                    rank_result_q_put = self._rank_result_q_put,
-                                    event             = worker_ok,
-                                    log               = self._log,
-                                    prof              = self._prof,
-                                    base              = self)
+        worker    = self.get_rank_worker()
+        self._work_thread = worker(rank_task_q_get   = self._rank_task_q_get,
+                                   rank_result_q_put = self._rank_result_q_put,
+                                   event             = worker_ok,
+                                   log               = self._log,
+                                   prof              = self._prof,
+                                   base              = self)
         self._work_thread.start()
         worker_ok.wait(timeout=60)
 
