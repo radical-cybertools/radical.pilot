@@ -1,11 +1,11 @@
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-import os
 import glob
-
-from unittest import TestCase, mock
+import os
 
 import radical.utils as ru
+
+from unittest import TestCase, mock
 
 from radical.pilot.agent.staging_input.default import Default
 
@@ -14,28 +14,18 @@ base = os.path.abspath(os.path.dirname(__file__))
 
 # ------------------------------------------------------------------------------
 #
-class TestDefault(TestCase):
+class StageInTC(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def setUp(self):
-        ret = list()
-        for fin in glob.glob('%s/test_cases/task.*.json' % base):
-            tc     = ru.read_json(fin)
-            task   = tc['task'   ]
-            result = tc['results']
-            if result:
-                ret.append([task, result])
+    @classmethod
+    def setUpClass(cls) -> None:
 
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def tearDown(self):
-
-        pass
-
+        cls._test_cases = []
+        for f in glob.glob('%s/test_cases/task.*.json' % base):
+            c = ru.read_json(f)
+            if c.get('results'):
+                cls._test_cases.append([c['task'], c['results']])
 
     # --------------------------------------------------------------------------
     #
@@ -59,15 +49,13 @@ class TestDefault(TestCase):
         def _handle_task_side_effect(task, actionables):
             _advance_side_effect(task, actionables, False, False)
 
-
-        tests = self.setUp()
         component = Default(cfg=None, session=None)
         component._handle_task = mock.MagicMock(
                                        side_effect=_handle_task_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._log = ru.Logger('dummy')
 
-        for test in tests:
+        for test in self._test_cases:
             global_things = []
             global_state = []
             component._work([test[0]])
@@ -77,7 +65,7 @@ class TestDefault(TestCase):
 
 if __name__ == '__main__':
 
-    tc = TestDefault()
+    tc = StageInTC()
     tc.test_work()
 
 
