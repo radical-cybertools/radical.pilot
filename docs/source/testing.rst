@@ -50,14 +50,14 @@ testing can  be controlled via a set of environment variables:
 +-------------------------------------------+-------------------------------------+
 
 
-For example, if you want to run the unit tests on the XSEDE _Bridges_ cluster
+For example, if you want to run the unit tests on the XSEDE/ACCESS _Bridges_ cluster
 (https://portal.xsede.org/psc-bridges), run
 
 .. code-block:: bash
 
     RADICAL_PILOT_LOG_LVl=DEBUG \
     RADICAL_PILOT_TEST_REMOTE_SSH_USER_ID=<your_user_id> \ # optional
-    RADICAL_PILOT_TEST_REMOTE_RESOURCE=xsede.bridges \
+    RADICAL_PILOT_TEST_REMOTE_RESOURCE=access.bridges \
     RADICAL_PILOT_TEST_REMOTE_WORKDIR=<absolute_path> \
     RADICAL_PILOT_TEST_REMOTE_CORES=16 \
     RADICAL_PILOT_TEST_REMOTE_NUM_CUS=64 \

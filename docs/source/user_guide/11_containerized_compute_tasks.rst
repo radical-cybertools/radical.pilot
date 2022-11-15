@@ -252,7 +252,7 @@ Below is the RP python script to run our container on Bridges:
 And you can run it by typing the following command, where "x" is the
 number of MPI processes you would like to spawn:
 
-``python mpi_rp.py x xsede.bridges``
+``python mpi_rp.py x access.bridges``
 
 Results
 -------------------

@@ -89,7 +89,7 @@ if __name__ == "__main__":
 
         # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
         #
-        # If you want to run this example on XSEDE Gordon and Bridges2, you have
+        # If you want to run this example on XSEDE/ACCESS Gordon and Bridges2, you have
         # to add your allocation ID by setting the project attribute for each
         # pilot description ot it.
         #
@@ -105,7 +105,7 @@ if __name__ == "__main__":
 
         # Create the description of the first pilot and add it to the list
         pdesc = rp.PilotDescription ()
-        pdesc.resource = "xsede.gordon"
+        pdesc.resource = "access.gordon"
         pdesc.runtime  = 10
         pdesc.cores    = 1
         pdesc.cleanup  = True
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
         # Create the description of the secind pilot and add it to the list
         pdesc2 = rp.PilotDescription ()
-        pdesc2.resource = "xsede.bridges2"
+        pdesc2.resource = "access.bridges2"
         pdesc2.runtime  = 10
         pdesc2.cores    = 1
         pdesc2.cleanup  = True
