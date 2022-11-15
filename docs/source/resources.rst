@@ -350,16 +350,16 @@ radical server 2
 
 * **Available schemas** : ``ssh, local``
 
-RESOURCE_XSEDE
+RESOURCE_XSEDE/ACCESS
 ==============
 
 WRANGLER_SSH
 ************
 
-The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
+The XSEDE/ACCESS 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
-* **Resource label**    : ``xsede.wrangler_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.wrangler_ssh``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
 * **Default values** for PilotDescription attributes:
 
@@ -372,10 +372,10 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 WRANGLER_YARN
 *************
 
-The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
+The XSEDE/ACCESS 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
-* **Resource label**    : ``xsede.wrangler_yarn``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.wrangler_yarn``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
 * **Default values** for PilotDescription attributes:
 
@@ -388,10 +388,10 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 WRANGLER_SPARK
 **************
 
-The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
+The XSEDE/ACCESS 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 
-* **Resource label**    : ``xsede.wrangler_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.wrangler_spark``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
 * **Default values** for PilotDescription attributes:
 
@@ -404,8 +404,8 @@ The XSEDE 'Wrangler' cluster at TACC (https://www.tacc.utexas.edu/wrangler/).
 FRONTERA
 ********
 
-* **Resource label**    : ``xsede.frontera``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.frontera``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : 
 * **Default values** for PilotDescription attributes:
 
@@ -418,10 +418,10 @@ FRONTERA
 STAMPEDE2_SSH
 *************
 
-The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
+The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 
-* **Resource label**    : ``xsede.stampede2_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.stampede2_ssh``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
 * **Default values** for PilotDescription attributes:
 
@@ -434,10 +434,10 @@ The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 STAMPEDE2_SRUN
 **************
 
-The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
+The XSEDE/ACCESS 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 
-* **Resource label**    : ``xsede.stampede2_srun``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.stampede2_srun``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription or the pilot will fail.
 * **Default values** for PilotDescription attributes:
 
@@ -450,11 +450,11 @@ The XSEDE 'Stampede' cluster at TACC (https://www.tacc.utexas.edu/stampede/).
 SUPERMIC_SSH
 ************
 
-SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
+SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.access.org/lsu-supermic)
 
-* **Resource label**    : ``xsede.supermic_ssh``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Resource label**    : ``access.supermic_ssh``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
+* **Note**              : Partially allocated through XSEDE/ACCESS. Primary access through GSISSH. Allows SSH key authentication too.
 * **Default values** for PilotDescription attributes:
 
  * ``queue         :workq``
@@ -468,9 +468,9 @@ SUPERMIC_ORTE
 
 SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
 
-* **Resource label**    : ``xsede.supermic_orte``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Resource label**    : ``access.supermic_orte``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
+* **Note**              : Partially allocated through XSEDE/ACCESS. Primary access through GSISSH. Allows SSH key authentication too.
 * **Default values** for PilotDescription attributes:
 
  * ``queue         :workq``
@@ -484,9 +484,9 @@ SUPERMIC_ORTELIB
 
 SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
 
-* **Resource label**    : ``xsede.supermic_ortelib``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Resource label**    : ``access.supermic_ortelib``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
+* **Note**              : Partially allocated through XSEDE/ACCESS. Primary access through GSISSH. Allows SSH key authentication too.
 * **Default values** for PilotDescription attributes:
 
  * ``queue         :workq``
@@ -498,10 +498,10 @@ SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest 
 BRIDGES
 *******
 
-The XSEDE 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).
+The XSEDE/ACCESS 'Bridges' cluster at PSC (https://portal.xsede.org/psc-bridges/).
 
-* **Resource label**    : ``xsede.bridges``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
+* **Resource label**    : ``access.bridges``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
 * **Note**              : Always set the ``project`` attribute in the PilotDescription.
 * **Default values** for PilotDescription attributes:
 
@@ -516,9 +516,9 @@ SUPERMIC_SPARK
 
 SuperMIC (pronounced 'Super Mick') is Louisiana State University's (LSU) newest supercomputer funded by the National Science Foundation's (NSF) Major Research Instrumentation (MRI) award to the Center for Computation & Technology. (https://portal.xsede.org/lsu-supermic)
 
-* **Resource label**    : ``xsede.supermic_spark``
-* **Raw config**        : :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-* **Note**              : Partially allocated through XSEDE. Primary access through GSISSH. Allows SSH key authentication too.
+* **Resource label**    : ``access.supermic_spark``
+* **Raw config**        : :download:`resource_access.json <../../src/radical/pilot/configs/resource_access.json>`
+* **Note**              : Partially allocated through XSEDE/ACCESS. Primary access through GSISSH. Allows SSH key authentication too.
 * **Default values** for PilotDescription attributes:
 
  * ``queue         :workq``
