@@ -184,10 +184,10 @@ class TestUtils(TestCase):
         rfs_url = rpu_misc.get_resource_fs_url('local.localhost')
         self.assertEqual(str(rfs_url), rcfg_local.ssh.filesystem_endpoint)
 
-        rfs_url = rpu_misc.get_resource_fs_url(resource='xsede.bridges2',
+        rfs_url = rpu_misc.get_resource_fs_url(resource='access.bridges2',
                                                schema='gsissh')
         self.assertEqual(str(rfs_url),
-                         rcfgs.xsede.bridges2.gsissh.filesystem_endpoint)
+                         rcfgs.access.bridges2.gsissh.filesystem_endpoint)
 
         # test resource job URL
 
@@ -197,10 +197,10 @@ class TestUtils(TestCase):
         self.assertEqual(str(rj_url),
                          rcfg_local[schema_default].job_manager_endpoint)
 
-        rj_url = rpu_misc.get_resource_job_url(resource='xsede.bridges2',
+        rj_url = rpu_misc.get_resource_job_url(resource='access.bridges2',
                                                schema='gsissh')
         self.assertEqual(str(rj_url),
-                         rcfgs.xsede.bridges2.gsissh.job_manager_endpoint)
+                         rcfgs.access.bridges2.gsissh.job_manager_endpoint)
 
 
 # ------------------------------------------------------------------------------

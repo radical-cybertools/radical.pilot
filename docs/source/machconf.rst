@@ -67,10 +67,10 @@ your user-id on the remote resource, use the following construct:
           problems with RADICAL-Pilot.
 
 
-Configuring GSISSH Access for XSEDE resources
+Configuring GSISSH Access for XSEDE/ACCESS resources
 =============================================
 
-XSEDE resources require using gsissh instead of ssh. Once the gsissh and
+XSEDE/ACCESS resources require using gsissh instead of ssh. Once the gsissh and
 myproxy are successfully installed, one need to acquire a X509 certificate:
 
 .. code-block:: bash
@@ -122,7 +122,7 @@ provided resource configuration files, you can write your own, and save it in
           "resource\_", followed by the *site* name, and end with the ".json" suffix. Within each resource
           file, multiple resource *host*s can be listed. For example, the
           :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
-          file contains many different HPC resources from XSEDE.
+          file contains many different HPC resources from XSEDE/ACCESS.
 
 .. note:: Be advised that you may need specific knowledge about the target
           resource to do so.  Also, while RADICAL-Pilot can handle very
