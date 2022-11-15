@@ -85,7 +85,7 @@ You can describe a :class:`radical.pilot.Pilot` via a :class:`radical.pilot.Pilo
 .. code-block:: python
 
     pdesc = radical.pilot.PilotDescription()
-    pdesc.resource  = "xsede.bridges"
+    pdesc.resource  = "access.bridges"
     pdesc.runtime   = 15
     pdesc.cores     = 28
 

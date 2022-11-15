@@ -29,7 +29,7 @@ Running the Example
 
 The workload of our example has now changed to report the respectively used
 pilot on stdout, and the output shows that.  We here exemplarily start a pilot
-on `local.localhost`, and one on `xsede.stampede`:
+on `local.localhost`, and one on `access.stampede`:
 
 .. image:: 03_multiple_pilots.png
 
