@@ -35,14 +35,14 @@ You can describe multiple :class:`radical.pilot.Pilot` save them to a list and s
     pilot_list=list()
 
     pdesc = radical.pilot.PilotDescription()
-    pdesc.resource  = "xsede.bridges2"
+    pdesc.resource  = "access.bridges2"
     pdesc.runtime   = 10
     pdesc.cores     = 12
 
     pilot_list.append(pdesc)
 
     pdesc2 = radical.pilot.PilotDescription()
-    pdesc2.resource  = "xsede.gordon"
+    pdesc2.resource  = "access.gordon"
     pdesc2.runtime   = 10
     pdesc2.cores     = 16
 
