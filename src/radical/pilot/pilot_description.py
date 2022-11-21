@@ -8,6 +8,8 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
+from radical.pilot import TaskDescription
+
 UID               = 'uid'
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
@@ -184,9 +186,9 @@ class PilotDescription(ru.TypedDict):
        [type: `bool` | default: `True`] Flag to trigger app termination in case
        of the pilot failure.
 
-    .. py:attr:: services
+    .. py:attr:: TaskDescription
 
-       [Type: [`str`] | default: `[]`] [optional] A list of commands which get
+       [Type: [`TaskDescription`] | default: `[]`] [optional] A list of commands which get
        started on a separate service compute node right after bootstrapping, and
        before any RP task is launched.  That service compute node will not be
        used for any other tasks.
@@ -220,7 +222,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [str]      ,
+        SERVICES        : [TaskDescription]      ,
     }
 
     _defaults = {
