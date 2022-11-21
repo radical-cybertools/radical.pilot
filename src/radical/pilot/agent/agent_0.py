@@ -21,6 +21,9 @@ from .resource_manager import ResourceManager
 
 # ------------------------------------------------------------------------------
 #
+from ... import pilot
+
+
 class Agent_0(rpu.Worker):
 
     '''
@@ -83,7 +86,9 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_components()
 
         # start any services if they are requested
-        self._start_services()
+        # TODO: Remove this. do not start services from here
+        # self._start_services()
+
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -214,6 +219,8 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._check_tasks_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
+        self._start_services()
+
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.
         pilot = {'type'             : 'pilot',
@@ -340,6 +347,12 @@ class Agent_0(rpu.Worker):
         If a `./services` file exist, reserve a compute node and run that file
         there as bash script.
         '''
+        # TODO
+        #  there is no pilot description/pilot instance accessible here. how to get services list
+        agent_service_tasks = [how to get services TaskDescription]
+        self.advance(agent_service_tasks, publish=False, push=True)
+
+
 
         if not os.path.isfile('./services'):
             return
@@ -355,6 +368,7 @@ class Agent_0(rpu.Worker):
         service_task_uid = 'rp.services'
         service_task     = {
             'uid'               : service_task_uid,
+            'rank_per_node'     : 2,
             'task_sandbox_path' : self._pwd,
             'description'       : TaskDescription({
                 'uid'           : service_task_uid,
@@ -407,6 +421,10 @@ class Agent_0(rpu.Worker):
 
         self._log.info('create services: %s' % cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
+
+        while(all_services_not_started)
+            # WHERe to check state of executing
+            service.state == AGENT_EXECUTING
 
         self._log.debug('services started done')
 
