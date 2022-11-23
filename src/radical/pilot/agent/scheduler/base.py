@@ -714,7 +714,7 @@ class AgentSchedulingComponent(rpu.Component):
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
-            task['stderr']       = error
+            task['exception']    = 'RuntimeError(%s)' % error
             task['control']      = 'tmgr_pending'
             task['target_state'] = 'FAILED'
             task['$all']         = True

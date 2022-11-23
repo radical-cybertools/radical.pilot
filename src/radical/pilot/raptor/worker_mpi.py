@@ -474,7 +474,6 @@ class _Worker(mt.Thread):
                         out, err, ret, val, exc = self._dispatch(task)
                         self._prof.prof('exec_stop', uid=uid)
 
-                        task['error']            = None
                         task['stdout']           = out
                         task['stderr']           = err
                         task['exit_code']        = ret
@@ -483,7 +482,6 @@ class _Worker(mt.Thread):
                         task['exception_detail'] = exc[1]
 
                     except Exception as e:
-                        task['error']            = repr(e)
                         task['stdout']           = ''
                         task['stderr']           = str(e)
                         task['exit_code']        = -1

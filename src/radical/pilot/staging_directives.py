@@ -68,8 +68,7 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
 
             # FIXME: ns = session ID
             expanded = {
-                    'uid'             : ru.generate_id('sd.%(item_counter)06d',
-                                                       ru.ID_CUSTOM, ns='foo'),
+                    'uid'             : ru.generate_id('sd', ru.ID_SIMPLE),
                     'source'          : src.strip(),
                     'target'          : tgt.strip(),
                     'action'          : DEFAULT_ACTION,
