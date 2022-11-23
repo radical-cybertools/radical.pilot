@@ -4,7 +4,8 @@ import sys
 import copy
 import time
 
-from typing import Dict, Union
+from collections import defaultdict
+from typing      import Dict, Union
 
 import threading         as mt
 
@@ -370,17 +371,14 @@ class Master(rpu.Component):
         if count:
             self._log.debug('wait for %d workers', count)
             while True:
-                stats = {'NEW'    : 0,
-                         'ACTIVE' : 0,
-                         'DONE'   : 0,
-                         'FAILED' : 0}
-
+                stats = defaultdict(int)
                 with self._lock:
-                    for w in self._workers.values():
-                        stats[w['status']] += 1
+                    for uid in self._workers:
+                        stats[self._workers[uid]['status']] += 1
 
-                self._log.debug('stats: %s', stats)
-                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
+                n = sum([stats[state] for state in rps.FINAL])
+                self._log.debug('stats [%d]: %s', n, stats)
+
                 if n >= count:
                     self._log.debug('wait ok')
                     return
@@ -390,9 +388,13 @@ class Master(rpu.Component):
             self._log.debug('wait for workers: %s', uids)
             while True:
                 with self._lock:
-                    stats = [self._workers[uid]['status'] for uid in uids]
-                n = stats['ACTIVE'] + stats['DONE'] + stats['FAILED']
+                    stats = defaultdict(int)
+                    for uid in uids:
+                        stats[self._workers[uid]['status']] += 1
+
+                n = sum([stats[state] for state in rps.FINAL])
                 self._log.debug('stats [%d]: %s', n, stats)
+
                 if n == len(uids):
                     self._log.debug('wait ok')
                     return
