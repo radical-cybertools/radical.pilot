@@ -394,13 +394,11 @@ class AgentSchedulingComponent(rpu.Component):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-
             for task in to_cancel:
                 task['target_state'] = rps.CANCELED
                 task['control']      = 'tmgr_pending'
                 task['$all']         = True
             self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
-
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
