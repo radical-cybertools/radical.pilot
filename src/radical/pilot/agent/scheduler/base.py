@@ -5,7 +5,6 @@ __license__   = 'MIT'
 import copy
 import time
 import queue
-import pprint
 
 import threading          as mt
 import multiprocessing    as mp

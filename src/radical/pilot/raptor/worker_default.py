@@ -12,7 +12,6 @@ import multiprocessing   as mp
 import radical.utils     as ru
 
 from .worker  import Worker
-from ..states import FAILED
 
 
 # ------------------------------------------------------------------------------
