@@ -94,6 +94,13 @@ class Session(rs.Session):
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
         self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
 
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg['schemas']:
+                    while isinstance(rcfg[schema], str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
+
         if _primary:
 
             pwd = os.getcwd()

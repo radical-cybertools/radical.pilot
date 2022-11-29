@@ -1,11 +1,13 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import glob
 import os
 import shutil
+
+import radical.utils as ru
 
 from unittest import TestCase, mock
 
@@ -81,6 +83,53 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_get_logger')
+    @mock.patch.object(Session, '_get_profiler')
+    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch('radical.pilot.session.ru.Config')
+    def test_resource_schema_alias(self, mocked_config, *args, **kwargs):
+
+        mocked_config.return_value = ru.TypedDict({
+            'local': {
+                'test': {
+                    'schemas'           : ['schema_origin',
+                                           'schema_alias',
+                                           'schema_alias_alias'],
+                    'schema_origin'     : {'param_0': 'value_0'},
+                    'schema_alias'      : 'schema_origin',
+                    'schema_alias_alias': 'schema_alias'
+                }
+            }
+        })
+
+        s_alias = Session()
+
+        self.assertEqual(
+            s_alias._rcfgs.local.test.schema_origin,
+            s_alias._rcfgs.local.test.schema_alias)
+        self.assertEqual(
+            s_alias._rcfgs.local.test.schema_origin,
+            s_alias._rcfgs.local.test.schema_alias_alias)
+        self.assertEqual(
+            s_alias.get_resource_config('local.test', 'schema_origin'),
+            s_alias.get_resource_config('local.test', 'schema_alias_alias'))
+
+        self._cleanup_files.append(s_alias.uid)
+
+        with self.assertRaises(KeyError):
+            # schema alias refers to unknown schema
+            mocked_config.return_value = ru.TypedDict({
+                'local': {
+                    'test': {
+                        'schemas'           : ['schema_alias_error'],
+                        'schema_alias_error': 'unknown_schema'
+                    }
+                }
+            })
+            Session()
 
     # --------------------------------------------------------------------------
     #
@@ -119,6 +168,7 @@ if __name__ == '__main__':
     tc = TestSession()
     tc.test_list_resources()
     tc.test_get_resource_config()
+    tc.test_resource_schema_alias()
 
 
 # ------------------------------------------------------------------------------
