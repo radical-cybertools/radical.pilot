@@ -136,8 +136,16 @@ class Session(rs.Session):
         self._tmgrs = dict()  # map IDs to tmgr instances
         self._cmgr  = None    # only primary sessions have a cmgr
 
+
         if uid: self._uid = uid
         else  : self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg['schemas']:
+                    while isinstance(rcfg[schema], str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
 
         if self._role == self._PRIMARY:
             self._rep.info ('<<new session: ')
