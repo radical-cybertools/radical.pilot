@@ -376,7 +376,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
 
-        if cmd == 'cancel_tasks':
+        elif cmd == 'cancel_tasks':
 
             uids = arg['uids']
             to_cancel = list()
