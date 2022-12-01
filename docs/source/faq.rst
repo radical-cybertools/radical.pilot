@@ -25,9 +25,9 @@ Error "OperationFailure: too many namespaces/collections"
     Traceback (most recent call last):
       File "application.py", line 120, in __init__
         db_connection_info=session._connection_info)
-      File "/lib/python3.6/site-packages/radical/pilot/controller/pilot_manager_controller.py", line 88, in __init__
+      File "/lib/python3.7/site-packages/radical/pilot/controller/pilot_manager_controller.py", line 88, in __init__
         pilot_launcher_workers=pilot_launcher_workers
-      File "/lib/python3.6/site-packages/radical/pilot/db/database.py", line 253, in insert_pilot_manager
+      File "/lib/python3.7/site-packages/radical/pilot/db/database.py", line 253, in insert_pilot_manager
         result = self._pm.insert(pilot_manager_json)
       File "build/bdist.linux-x86_64/egg/pymongo/collection.py", line 412, in insert
       File "build/bdist.linux-x86_64/egg/pymongo/mongo_client.py", line 1121, in _send_message
