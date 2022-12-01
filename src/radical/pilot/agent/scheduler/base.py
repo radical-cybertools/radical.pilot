@@ -5,7 +5,6 @@ __license__   = 'MIT'
 import copy
 import time
 import queue
-import pprint
 
 import threading          as mt
 import multiprocessing    as mp
@@ -372,6 +371,11 @@ class AgentSchedulingComponent(rpu.Component):
                     del self._raptor_tasks[name]
 
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
+
+                    for task in tasks:
+                        task['exception']        = 'RuntimeError("raptor gone")'
+                        task['exception_detail'] = 'raptor queue disappeared'
+
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
 
@@ -709,7 +713,8 @@ class AgentSchedulingComponent(rpu.Component):
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
-            task['stderr']       = error
+            error                = error.replace('"', '\\"')
+            task['exception']    = 'RuntimeError("%s")' % error
             task['control']      = 'tmgr_pending'
             task['target_state'] = 'FAILED'
             task['$all']         = True
@@ -853,10 +858,11 @@ class AgentSchedulingComponent(rpu.Component):
 
             except Exception as e:
 
-                task['stderr']       = str(e)
-                task['control']      = 'tmgr_pending'
-                task['target_state'] = 'FAILED'
-                task['$all']         = True
+                task['control']          = 'tmgr_pending'
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                task['target_state']     = 'FAILED'
+                task['$all']             = True
 
                 self._log.exception('scheduling failed for %s', task['uid'])
 
@@ -985,37 +991,41 @@ class AgentSchedulingComponent(rpu.Component):
         attempt to allocate cores/gpus for a specific task.
         '''
 
-        uid = task['uid']
-      # td  = task['description']
+        try:
+            uid = task['uid']
+          # td  = task['description']
 
-      # self._prof.prof('schedule_try', uid=uid)
-        slots = self.schedule_task(task)
-        if not slots:
+          # self._prof.prof('schedule_try', uid=uid)
+            slots = self.schedule_task(task)
+            if not slots:
 
-            # schedule failure
-          # self._prof.prof('schedule_fail', uid=uid)
+                # schedule failure
+              # self._prof.prof('schedule_fail', uid=uid)
 
-            # if schedule fails while no other task is scheduled, then the
-            # `schedule_task` will never be able to succeed - fail that task
-            if self._active_cnt == 0:
-                self._log.error('task cannot be scheduled ever: %s',
-                        pprint.pformat(task['description']))
-                raise RuntimeError('insufficient resources')
+                # if schedule fails while no other task is scheduled, then the
+                # `schedule_task` will never be able to succeed - fail that task
+                if self._active_cnt == 0:
+                    raise RuntimeError('task can never be scheduled')
 
-            return False
+                return False
 
-        self._active_cnt += 1
+            self._active_cnt += 1
 
-        # the task was placed, we need to reflect the allocation in the
-        # nodelist state (BUSY) and pass placement to the task, to have
-        # it enacted by the executor
-        self._change_slot_states(slots, rpc.BUSY)
-        task['slots'] = slots
+            # the task was placed, we need to reflect the allocation in the
+            # nodelist state (BUSY) and pass placement to the task, to have
+            # it enacted by the executor
+            self._change_slot_states(slots, rpc.BUSY)
+            task['slots'] = slots
 
-        self.slot_status('after scheduled task', task['uid'])
+            self.slot_status('after scheduled task', task['uid'])
 
-        # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=uid)
+            # got an allocation, we can go off and launch the process
+            self._prof.prof('schedule_ok', uid=uid)
+
+        except Exception as e:
+            task['exception']        = repr(e)
+            task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+            raise
 
         return True
 
