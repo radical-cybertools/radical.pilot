@@ -67,13 +67,16 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
             else           : src, tgt = sd, os.path.basename(ru.Url(sd).path)
 
             # FIXME: ns = session ID
-            expanded = {'source':   src.strip(),
-                        'target':   tgt.strip(),
-                        'action':   DEFAULT_ACTION,
-                        'flags':    DEFAULT_FLAGS,
-                        'priority': DEFAULT_PRIORITY,
-                        'uid':      ru.generate_id('sd.%(item_counter)06d',
-                                                    ru.ID_CUSTOM, ns='foo')}
+            expanded = {
+                    'uid'             : ru.generate_id('sd', ru.ID_SIMPLE),
+                    'source'          : src.strip(),
+                    'target'          : tgt.strip(),
+                    'action'          : DEFAULT_ACTION,
+                    'flags'           : DEFAULT_FLAGS,
+                    'priority'        : DEFAULT_PRIORITY,
+                    'exception'       : None,
+                    'exception_detail': None
+            }
 
         elif isinstance(sd, dict):
 
@@ -108,12 +111,16 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
             elif isinstance(flags, str):
                 raise ValueError('use RP constants for staging flags!')
 
-            expanded = {'uid':      ru.generate_id('sd'),
-                        'source':   source,
-                        'target':   target,
-                        'action':   action,
-                        'flags':    flags,
-                        'priority': priority}
+            expanded = {
+                    'uid'             : ru.generate_id('sd'),
+                    'source'          : source,
+                    'target'          : target,
+                    'action'          : action,
+                    'flags'           : flags,
+                    'priority'        : priority,
+                    'exception'       : None,
+                    'exception_detail': None
+            }
 
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
