@@ -314,6 +314,7 @@ class TaskManager(rpu.Component):
 
         for pilot in pilots:
 
+            pid   = pilot.uid
             state = pilot.state
 
             if state in rps.FINAL:
@@ -349,7 +350,10 @@ class TaskManager(rpu.Component):
                 to_restart = list()
                 for task in tasks:
 
+                    task['exception']        = 'RuntimeError("pilot died")'
+                    task['exception_detail'] = 'pilot %s is final' % pid
                     task['state'] = rps.FAILED
+
                     if not task['description'].get('restartable'):
                         self._log.debug('task %s not restartable', task['uid'])
                         continue
