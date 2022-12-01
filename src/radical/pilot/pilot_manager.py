@@ -455,8 +455,8 @@ class PilotManager(rpu.Component):
         if rps.FAILED in sd_states:
             errs = list()
             for uid in self._active_sds:
-                if self._active_sds[uid].get('error'):
-                    errs.append(self._active_sds[uid]['error'])
+                if self._active_sds[uid].get('exception'):
+                    errs.append(self._active_sds[uid]['exception'])
 
             if errs:
                 raise RuntimeError('pilot staging failed: %s' % errs)
@@ -499,8 +499,8 @@ class PilotManager(rpu.Component):
         if rps.FAILED in sd_states:
             errs = list()
             for uid in self._active_sds:
-                if self._active_sds[uid].get('error'):
-                    errs.append(self._active_sds[uid]['error'])
+                if self._active_sds[uid].get('exception'):
+                    errs.append(self._active_sds[uid]['exception'])
 
             if errs:
                 raise RuntimeError('pilot staging failed: %s' % errs)
@@ -524,8 +524,10 @@ class PilotManager(rpu.Component):
                 for sd in arg['sds']:
                     uid = sd['uid']
                     if uid in self._active_sds:
-                        self._active_sds[uid]['state'] = sd['state']
-                        self._active_sds[uid]['error'] = sd['error']
+                        active_sd = self._active_sds[uid]
+                        active_sd['state']            = sd['state']
+                        active_sd['exception']        = sd['exception']
+                        active_sd['exception_detail'] = sd['exception_detail']
 
         return True
 

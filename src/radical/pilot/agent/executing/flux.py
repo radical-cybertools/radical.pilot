@@ -239,69 +239,77 @@ class Flux(AgentExecutingComponent) :
             while not self._term.is_set():
 
                 active = False
+                tasks  = list()
+                events = list()
+
 
                 try:
                     for task in self._task_q.get_nowait():
-
-                        active = True
-                        try:
-
-                            flux_id = task['flux_id']
-                            assert flux_id not in tasks
-                            tasks[flux_id] = task
-
-                            # handle and purge cached events for that task
-                            if flux_id in events:
-                                if self.handle_events(task, events[flux_id]):
-                                    # task completed - purge data
-                                    # NOTE: this assumes events are ordered
-                                    if flux_id in events: del events[flux_id]
-                                    if flux_id in tasks : del tasks[flux_id]
-
-                        except Exception:
-
-                            self._log.exception("error collecting Task")
-                            if task['stderr'] is None:
-                                task['stderr'] = ''
-                            task['stderr'] += '\nPilot cannot collect task:\n'
-                            task['stderr'] += '\n'.join(ru.get_exception_trace())
-
-                            # can't rely on the executor base to free the task resources
-                            self._prof.prof('unschedule_start', uid=task['uid'])
-                            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-                            self.advance(task, rps.FAILED, publish=True, push=False)
+                        tasks.append(task)
 
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some events
                     pass
 
-                try:
+                for task in tasks:
 
-                    for event in self._event_q.get_nowait():
+                    active = True
+                    try:
 
-                        flux_id = event[0]  # event: flux_id, flux_state
+                        flux_id = task['flux_id']
+                        assert flux_id not in tasks
+                        tasks[flux_id] = task
 
-                        if flux_id in tasks:
-
-                            # known task - handle events
-                            if self.handle_events(tasks[flux_id], [event]):
+                        # handle and purge cached events for that task
+                        if flux_id in events:
+                            if self.handle_events(task, events[flux_id]):
                                 # task completed - purge data
                                 # NOTE: this assumes events are ordered
                                 if flux_id in events: del events[flux_id]
                                 if flux_id in tasks : del tasks[flux_id]
 
-                        else:
-                            # unknown task, store events for later
-                            if flux_id not in events:
-                                events[flux_id] = list()
-                            events[flux_id].append(event)
+                    except Exception as e:
 
-                    active = True
+                        self._log.exception("error collecting Task")
+                        task['exception']        = repr(e)
+                        task['exception_detail'] = \
+                                         '\n'.join(ru.get_exception_trace())
 
+                        # can't rely on the executor base to free the
+                        # task resources
+                        self._prof.prof('unschedule_start', uid=task['uid'])
+                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+                        self.advance(task, rps.FAILED, publish=True, push=False)
+
+
+                try:
+                    for event in self._event_q.get_nowait():
+                        events.append(event)
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some tasks
                     pass
+
+                for event in events:
+
+                    active = True
+                    flux_id = event[0]  # event: flux_id, flux_state
+
+                    if flux_id in tasks:
+
+                        # known task - handle events
+                        if self.handle_events(tasks[flux_id], [event]):
+                            # task completed - purge data
+                            # NOTE: this assumes events are ordered
+                            if flux_id in events: del events[flux_id]
+                            if flux_id in tasks : del tasks[flux_id]
+
+                    else:
+                        # unknown task, store events for later
+                        if flux_id not in events:
+                            events[flux_id] = list()
+                        events[flux_id].append(event)
+
 
                 if not active:
                     time.sleep(0.01)
