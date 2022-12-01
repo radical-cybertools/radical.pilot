@@ -102,16 +102,10 @@ class Popen(AgentExecutingComponent):
                 self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
-            except Exception:
-                # append the startup error to the tasks stderr.  This is
-                # not completely correct (as this text is not produced
-                # by the task), but it seems the most intuitive way to
-                # communicate that error to the application/user.
+            except Exception as e:
                 self._log.exception("error running Task")
-                if task['stderr'] is None:
-                    task['stderr'] = ''
-                task['stderr'] += '\nPilot cannot start task:\n'
-                task['stderr'] += '\n'.join(ru.get_exception_trace())
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
                 # can't rely on the executor base to free the task resources
                 self._prof.prof('unschedule_start', uid=task['uid'])
@@ -489,7 +483,9 @@ class Popen(AgentExecutingComponent):
 
                 if exit_code != 0:
                     # The task failed - fail after staging output
-                    task['target_state'] = rps.FAILED
+                    task['exception']        = 'RuntimeError("non-zero exit code")'
+                    task['exception_detail'] = 'exit code: %s' % exit_code
+                    task['target_state'    ] = rps.FAILED
 
                 else:
                     # The task finished cleanly, see if we need to deal with
