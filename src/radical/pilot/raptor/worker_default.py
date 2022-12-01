@@ -11,7 +11,7 @@ import multiprocessing   as mp
 
 import radical.utils     as ru
 
-from .worker import Worker
+from .worker  import Worker
 
 
 # ------------------------------------------------------------------------------
@@ -569,12 +569,10 @@ class DefaultWorker(Worker):
                 # free resources again for failed task
                 self._dealloc(task)
 
-                res = {'req': task['uid'],
-                       'out': None,
-                       'err': 'req_cb error: %s' % e,
-                       'ret': 1}
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
-                self._res_put.put(res)
+                self._res_put.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -608,8 +606,17 @@ class DefaultWorker(Worker):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['slots']['gpus'])
 
-            out, err, ret, val = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret), val]
+            out = None
+            err = None
+            ret = 1
+            val = None
+            exc = [None, None]
+            try:
+                out, err, ret, val = self._modes[mode](task.get('data'))
+            except Exception as e:
+                exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+
+            res = [task, str(out), str(err), int(ret), val, exc]
 
             with res_lock:
                 self._result_queue.put(res)
@@ -625,13 +632,6 @@ class DefaultWorker(Worker):
             tout = task.get('timeout')
             self._log.debug('dispatch with tout %s', tout)
 
-          # result = self._modes[mode](task.get('data'))
-          # self._log.debug('got result: task %s: %s', task['uid'], result)
-          # out, err, ret, val = result
-          # # TODO: serialize `val`?
-          # res = [task, str(out), str(err), int(ret), val]
-          # self._result_queue.put(res)
-
             res_lock = mp.Lock()
             dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
             dispatcher.daemon = True
@@ -645,7 +645,9 @@ class DefaultWorker(Worker):
                     out = None
                     err = 'timeout (>%s)' % tout
                     ret = 1
-                    res = [task, str(out), str(err), int(ret), None]
+                    val = None
+                    exc = ['TimeoutError("task timed out")', None]
+                    res = [task, str(out), str(err), int(ret), val, exc]
                     self._log.debug('put 2 result: task %s', task['uid'])
                     self._result_queue.put(res)
                     self._log.debug('dispatcher killed: %s', task['uid'])
@@ -656,7 +658,9 @@ class DefaultWorker(Worker):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret), None]
+            val = None
+            exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+            res = [task, str(out), str(err), int(ret), val, exc]
             self._log.debug('put 3 result: task %s', task['uid'])
             self._result_queue.put(res)
 
@@ -696,31 +700,26 @@ class DefaultWorker(Worker):
     #
     def _result_cb(self, result):
 
-        try:
-            task, out, err, ret, val = result
-            self._log.debug('result cb: task %s', task['uid'])
+        task, out, err, ret, val, exc = result
+        self._log.debug('result cb: task %s', task['uid'])
 
-            with self._plock:
-                pid  = task['pid']
-                del self._pool[pid]
+        with self._plock:
+            pid  = task['pid']
+            del self._pool[pid]
 
-            # free resources again for the task
-            self._dealloc(task)
+        # free resources again for the task
+        self._dealloc(task)
 
-            res = {'req': task['uid'],
-                   'out': out,
-                   'err': err,
-                   'ret': ret,
-                   'val': val}
+        task['stdout']           = out
+        task['stderr']           = err
+        task['exit_code']        = ret
+        task['return_value']     = val
+        task['exception']        = exc[0]
+        task['exception_detail'] = exc[1]
 
-            self._res_put.put(res)
-            self.task_post_exec(task)
-            self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
-
-        except:
-            self._log.exception('result cb failed')
-            raise
-
+        self._res_put.put(task)
+        self.task_post_exec(task)
+        self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
 
 
     # --------------------------------------------------------------------------
