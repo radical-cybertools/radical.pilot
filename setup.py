@@ -47,6 +47,8 @@ mod_root = 'src/radical/pilot/'
 sdist_level = int(os.environ.get('SDIST_LEVEL', 0))
 os.environ['SDIST_LEVEL'] = str(sdist_level + 1)
 
+root = os.path.dirname(__file__) or '.'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -65,7 +67,7 @@ def sh_callout(cmd):
 #
 #   - version:          1.2.3            - is used for installation
 #   - version_detail:  v1.2.3-9-g0684b06 - is used for debugging
-#   - version is read from VERSION file in src_root, which then is copied to
+#   - version is read from VERSION file in root, which then is copied to
 #     module dir, and is getting installed from there.
 #   - version_detail is derived from the git tag, and only available when
 #     installed from git.  That is stored in mod_root/VERSION in the install
@@ -86,12 +88,8 @@ def get_version(_mod_root):
         _sdist_name     = None
 
         # get version from './VERSION'
-        src_root = os.path.dirname(__file__)
-        if not src_root:
-            src_root = '.'
-
-        with open(src_root + '/VERSION', 'r', encoding='utf-8') as f:
-            _version_base = f.readline().strip()
+        with open('%s/VERSION' % root, 'r', encoding='utf-8') as fin:
+            _version_base = fin.readline().strip()
 
         # attempt to get version detail information from git
         # We only do that though if we are in a repo root dir,
@@ -105,7 +103,7 @@ def get_version(_mod_root):
             'test -z `git rev-parse --show-prefix` || exit -1; '
             'tag=`git describe --tags --always` 2>/dev/null ; '
             'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '
-            'echo $tag@$branch' % src_root)
+            'echo $tag@$branch' % root)
         _version_detail = out.strip()
         _version_detail = _version_detail.decode()
         _version_detail = _version_detail.replace('detached from ', 'detached-')
@@ -127,10 +125,10 @@ def get_version(_mod_root):
             _version = _version_base
 
         # make sure the version files exist for the runtime version inspection
-        _path = '%s/%s' % (src_root, _mod_root)
-        with open(_path + '/VERSION', 'w', encoding='utf-8') as f:
-            f.write(_version_base + '\n')
-            f.write(_version      + '\n')
+        _path = '%s/%s' % (root, _mod_root)
+        with open(_path + '/VERSION', 'w', encoding='utf-8') as fout:
+            fout.write(_version_base + '\n')
+            fout.write(_version      + '\n')
 
         _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
       # _sdist_name = _sdist_name.replace('/', '-')
@@ -153,8 +151,8 @@ def get_version(_mod_root):
                         '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
             shutil.move('VERSION.bak', 'VERSION')              # restore version
 
-        with open(_path + '/SDIST', 'w', encoding='utf-8') as f:
-            f.write(_sdist_name + '\n')
+        with open(_path + '/SDIST', 'w', encoding='utf-8') as fout:
+            fout.write(_sdist_name + '\n')
 
         return _version_base, _version_detail, _sdist_name, _path
 
@@ -198,6 +196,12 @@ df = [('%s/'                      % base, ['docs/source/events.md']),
       ('%s/examples/misc'         % base, glob.glob('examples/misc/*.cfg')),
       ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*.py')),
 ]
+
+
+# ------------------------------------------------------------------------------
+#
+with open('%s/requirements.txt' % root, encoding='utf-8') as freq:
+    requirements = freq.readlines()
 
 
 # ------------------------------------------------------------------------------
@@ -259,34 +263,11 @@ setup_args = {
                             'bin/radical-pilot-worker',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
-                                 '*.md', 'VERSION', 'SDIST', sdist_name]},
+                                 'VERSION', 'CHANGES.md', 'SDIST', sdist_name]},
   # 'setup_requires'     : ['pytest-runner'],
-    'install_requires'   : ['radical.utils>=1.12',
-                            'radical.saga>=1.12',
-                            'radical.gtod',
-                            'pymongo<4',
-                            'setproctitle',
-                            'dill'
-                           ],
-    'tests_require'      : ['pytest',
-                            'pylint',
-                            'flake8',
-                            'coverage',
-                            'mock==2.0.0.',
-                           ],
+    'install_requires'   : requirements,
     'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
-  # 'build_sphinx'       : {
-  #     'source-dir'     : 'docs/',
-  #     'build-dir'      : 'docs/build',
-  #     'all_files'      : 1,
-  # },
-  # 'upload_sphinx'      : {
-  #     'upload-dir'     : 'docs/build/html',
-  # },
-    # This copies the contents of the examples/ dir under
-    # sys.prefix/share/$name
-    # It needs the MANIFEST.in entries to work.
     'data_files'         : df,
     'cmdclass'           : {'upload': RunTwine},
 }
