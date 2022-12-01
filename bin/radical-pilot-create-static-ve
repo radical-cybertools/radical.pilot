@@ -15,7 +15,7 @@ set -e  # exit on all errors
 
 SCRIPT="$0"
 PREFIX=       # full path or virtenv name
-VERSION=      # python version (e.g., 2.7, 3.6, etc.)
+VERSION=      # python version (e.g., 2.7, 3.7, etc.)
               # NOTE: for virtualenv corresponding version should be installed
 MODULES=      # alternative list of pre-installed modules/packages
 DEFAULTS=     # install default modules
