@@ -286,27 +286,23 @@ class Default(TMGRStagingInputComponent):
 
         if no_staging_tasks:
 
-            for pid in no_staging_tasks:
+            # nothing to stage, push to the agent
+            self._advance_tasks(no_staging_tasks[pid], pid)
 
-                self._advance_tasks(no_staging_tasks[pid], pid)
+        to_fail = list()
+        for task,actionables in staging_tasks:
+            try:
+                self._handle_task(task, actionables)
+                self._advance_tasks([task], pid)
 
-                # nothing to stage, push to the agent
-                self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
-                             publish=True, push=True)
+            except Exception as e:
+                # staging failed - do not pass task to agent
+                task['control']          = 'tmgr'
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                to_fail.append(task)
 
-        for pid in staging_tasks:
-
-            for task,actionables in staging_tasks[pid]:
-
-                try:
-                    self._handle_task(task, actionables)
-                    self._advance_tasks([task], pid=task['pilot'])
-
-                except Exception as e:
-                    # FIXME: serialize exception
-                    # staging failed - do not pass task to agent
-                    task['exception'] = str(e)
-                    self._advance_tasks([task], state=rps.FAILED, push=False)
+        self._advance_tasks(to_fail, state=rps.FAILED, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -358,6 +354,8 @@ class Default(TMGRStagingInputComponent):
         # create a new actionable list during the filtering
         new_actionables = list()
         tar_file        = None
+        tar_path        = None
+        tar_sd          = None
 
         for sd in actionables:
 
@@ -429,8 +427,8 @@ class Default(TMGRStagingInputComponent):
                 # Always set CREATE_PARENTS
                 flags |= rsfs.CREATE_PARENTS
 
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
+                src = complete_url(str(src), src_context, self._log)
+                tgt = complete_url(str(tgt), tgt_context, self._log)
 
                 self._prof.prof('staging_in_start', uid=uid, msg=did)
                 saga_dir.copy(src, tgt, flags=flags)
@@ -439,19 +437,15 @@ class Default(TMGRStagingInputComponent):
 
         if tar_file:
 
+            assert tar_path
+            assert tar_sd
+
             # some tarball staging was done.  Add a staging directive for the
             # agent to untar the tarball, and clean up.
             tar_sd['action'] = rpc.TARBALL
             task['description']['input_staging'].append(tar_sd)
             os.remove(tar_path)
 
-<<<<<<< HEAD
-=======
-        # staging is done, we can advance the task at last
-        self.advance(task, rps.AGENT_STAGING_INPUT_PENDING,
-                           publish=True, push=True)
-
->>>>>>> devel
 
 # ------------------------------------------------------------------------------
 
