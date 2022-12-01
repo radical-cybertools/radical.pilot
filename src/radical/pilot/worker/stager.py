@@ -77,8 +77,9 @@ class Stager(rpu.Worker):
 
         except Exception as e:
             for sd in sds:
-                sd['state'] = rps.FAILED
-                sd['error'] = str(e)
+                sd['exception']        = repr(e)
+                sd['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                sd['state']            = rps.FAILED
                 self._log.exception('staging failed')
 
         finally:
@@ -97,9 +98,6 @@ class Stager(rpu.Worker):
         for sd in sds:
 
             # TODO: respect flags in directive
-
-            # make sure that `error` field exists
-            sd['error'] = None
 
             action  = sd['action']
             flags   = sd['flags']

@@ -1104,8 +1104,12 @@ class PMGRLaunchingComponent(rpu.Component):
 
             with self._sds_lock:
                 for sd in arg['sds']:
-                    if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['state'] = sd['state']
+                    uid = sd['uid']
+                    if uid in self._active_sds:
+                        active_sd = self._active_sds[uid]
+                        active_sd['state']            = sd['state']
+                        active_sd['exception']        = sd['exception']
+                        active_sd['exception_detail'] = sd['exception_detail']
 
         return True
 

@@ -68,52 +68,67 @@ class Default(AgentStagingOutputComponent):
 
         for task in ru.as_list(tasks):
 
-            uid = task['uid']
+            try:
+                uid = task['uid']
 
-            # From here on, any state update will hand control over to the tmgr
-            # again.  The next task update should thus push *all* task details,
-            # not only state.
-            task['$all']    = True
-            task['control'] = 'tmgr_pending'
+                # From here on, any state update will hand control over to the tmgr
+                # again.  The next task update should thus push *all* task details,
+                # not only state.
+                task['$all']    = True
+                task['control'] = 'tmgr_pending'
 
-            # we always dig for stdout/stderr
-            self._handle_task_stdio(task)
+                # we always dig for stdout/stderr
+                self._handle_task_stdio(task)
 
-            # NOTE: all tasks get here after execution, even those which did not
-            #       finish successfully.  We do that so that we can make
-            #       stdout/stderr available for failed tasks (see
-            #       _handle_task_stdio above).  But we don't need to perform any
-            #       other staging for those tasks, and in fact can make them
-            #       final.
-            if task['target_state'] != rps.DONE \
-                    and not task['description'].get('stage_on_error'):
-                task['state'] = task['target_state']
-                self._log.debug('task %s skips staging: %s', uid, task['state'])
-                no_staging_tasks.append(task)
-                continue
+                # NOTE: all tasks get here after execution, even those which did not
+                #       finish successfully.  We do that so that we can make
+                #       stdout/stderr available for failed tasks (see
+                #       _handle_task_stdio above).  But we don't need to perform any
+                #       other staging for those tasks, and in fact can make them
+                #       final.
+                if task['target_state'] != rps.DONE \
+                        and not task['description'].get('stage_on_error'):
+                    task['state'] = task['target_state']
+                    self._log.debug('task %s skips staging: %s', uid, task['state'])
+                    no_staging_tasks.append(task)
+                    continue
 
-            # check if we have any staging directives to be enacted in this
-            # component
-            actionables = list()
-            for sd in task['description'].get('output_staging', []):
-                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
-                    actionables.append(sd)
+                # check if we have any staging directives to be enacted in this
+                # component
+                actionables = list()
+                for sd in task['description'].get('output_staging', []):
+                    if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE]:
+                        actionables.append(sd)
 
-            if actionables:
-                # this task needs some staging
-                staging_tasks.append([task, actionables])
-            else:
-                # this task does not need any staging at this point, and can be
-                # advanced
-                task['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
-                no_staging_tasks.append(task)
+                if actionables:
+                    # this task needs some staging
+                    staging_tasks.append([task, actionables])
+                else:
+                    # this task does not need any staging at this point, and can be
+                    # advanced
+                    task['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
+                    no_staging_tasks.append(task)
+
+            except Exception as e:
+                self._log.exception('staging prep error')
+                task['target_state']     = rps.FAILED
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
 
         if no_staging_tasks:
             self._advance_tasks(no_staging_tasks, rps.TMGR_STAGING_OUTPUT_PENDING,
                                 publish=True, push=True)
 
         for task, actionables in staging_tasks:
-            self._handle_task_staging(task, actionables)
+            try:
+                self._handle_task_staging(task, actionables)
+
+            except Exception as e:
+                self._log.exception('staging error')
+                task['target_state']     = rps.FAILED
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
 
     # --------------------------------------------------------------------------
