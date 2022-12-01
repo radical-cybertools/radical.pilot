@@ -275,9 +275,12 @@ class Default(TMGRStagingInputComponent):
         for task,actionables in staging_tasks:
             try:
                 self._handle_task(task, actionables)
-            except:
+
+            except Exception as e:
                 # staging failed - do not pass task to agent
-                task['control'] = 'tmgr'
+                task['control']          = 'tmgr'
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
                 to_fail.append(task)
 
         if to_fail:
