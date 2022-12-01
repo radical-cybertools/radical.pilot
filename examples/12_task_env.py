@@ -70,7 +70,7 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots(pdesc)
 
         pilot.prepare_env('numpy_env', {'type'   : 'virtualenv',
-                                        'version': '3.6',
+                                        'version': '3.7',
                                         'setup'  : ['numpy']})
 
 
