@@ -261,7 +261,9 @@ class _TaskPuller(mt.Thread):
 
                     except Exception as e:
                         self._log.exception('failed to place task')
-                        task['error'] = str(e)
+                        task['exception']        = repr(e)
+                        task['exception_detail'] = \
+                                             '\n'.join(ru.get_exception_trace())
                         worker_result_q.put(task)
 
         except:
@@ -472,20 +474,21 @@ class _Worker(mt.Thread):
                         out, err, ret, val, exc = self._dispatch(task)
                         self._prof.prof('exec_stop', uid=uid)
 
-                        task['error']        = None
-                        task['stdout']       = out
-                        task['stderr']       = err
-                        task['exit_code']    = ret
-                        task['return_value'] = val
-                        task['exception']    = exc
+                        task['stdout']           = out
+                        task['stderr']           = err
+                        task['exit_code']        = ret
+                        task['return_value']     = val
+                        task['exception']        = exc[0]
+                        task['exception_detail'] = exc[1]
 
                     except Exception as e:
-                        task['error']        = repr(e)
-                        task['stdout']       = ''
-                        task['stderr']       = str(e)
-                        task['exit_code']    = -1
-                        task['return_value'] = None
-                        task['exception']    = [e.__class__.__name__, str(e)]
+                        task['stdout']           = ''
+                        task['stderr']           = str(e)
+                        task['exit_code']        = -1
+                        task['return_value']     = None
+                        task['exception']        = repr(e)
+                        task['exception_detail'] = \
+                                             '\n'.join(ru.get_exception_trace())
                         self._log.exception('recv err  %s  to  0' % (task['uid']))
 
                     finally:
@@ -542,7 +545,7 @@ class _Worker(mt.Thread):
             err = 'MPI setup failed'
             ret = 1
             val = None
-            exc = None
+            exc = (None, None)
             return out, err, ret, val, exc
 
         task['description']['environment']['RP_RANK']   = str(comm.rank)
@@ -609,7 +612,7 @@ class _Worker(mt.Thread):
         kwargs  = task['description'].get('kwargs', {})
         py_func = False
 
-        self._log.debug('=== orig args: %s : %s', args, kwargs)
+        self._log.debug('orig args: %s : %s', args, kwargs)
 
         # check if we have a serialized object
         self._log.debug('func serialized: %d: %s', len(func), func)
@@ -693,12 +696,12 @@ class _Worker(mt.Thread):
             sys.stderr = strerr = io.StringIO()
 
             self._prof.prof('rank_start', uid=uid)
-            self._log.debug('=== to call %s: %s : %s', to_call, args, kwargs)
+            self._log.debug('to call %s: %s : %s', to_call, args, kwargs)
             val = to_call(*args, **kwargs)
             self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
-            exc = None
+            exc = (None, None)
             ret = 0
 
         except Exception as e:
@@ -706,7 +709,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__qualname__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -726,7 +729,7 @@ class _Worker(mt.Thread):
 
             os.environ = old_env
 
-        self._log.debug('=== %s: got %s', uid, out)
+        self._log.debug('%s: got %s', uid, out)
 
         return out, err, ret, val, exc
 
@@ -766,7 +769,7 @@ class _Worker(mt.Thread):
             self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
-            exc = None
+            exc = (None, None)
             ret = 0
 
         except Exception as e:
@@ -774,7 +777,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\neval failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -833,7 +836,7 @@ class _Worker(mt.Thread):
             val = loc['result']
             out = strout.getvalue()
             err = strerr.getvalue()
-            exc = None
+            exc = (None, None)
             ret = 0
 
         except Exception as e:
@@ -841,7 +844,7 @@ class _Worker(mt.Thread):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\nexec failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
@@ -880,14 +883,14 @@ class _Worker(mt.Thread):
                             close_fds=True, shell=True)
             out, err = proc.communicate()
             ret      = proc.returncode
-            exc      = None
+            exc      = (None, None)
             self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('proc failed: %s' % task['uid'])
             out = None
             err = 'exec failed: %s' % e
-            exc = [e.__class__.__name__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         return out, err, ret, None, exc
@@ -908,14 +911,14 @@ class _Worker(mt.Thread):
           # self._log.debug('shell: --%s--', cmd)
             self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
-            exc = None
+            exc = (None, None)
             self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
             self._log.exception('_shell failed: %s' % task['uid'])
             out = None
             err = 'shell failed: %s' % e
-            exc = [e.__class__.__name__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
       # os.environ = old_env
@@ -1123,7 +1126,7 @@ class MPIWorker(Worker):
             val = to_call(*args, **kwargs)
             out = strout.getvalue()
             err = strerr.getvalue()
-            exc = None
+            exc = (None, None)
             ret = 0
 
         except Exception as e:
@@ -1131,7 +1134,7 @@ class MPIWorker(Worker):
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = [e.__class__.__name__, str(e)]
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
             ret = 1
 
         finally:
