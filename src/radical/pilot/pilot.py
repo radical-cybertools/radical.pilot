@@ -609,7 +609,7 @@ class Pilot(object):
         env_spec: specification of the environment to prepare (dict), like:
 
             {'type'    : 'venv',
-             'version' : '3.6',
+             'version' : '3.7',
              'pre_exec': ['module load python'],
              'setup'   : ['radical.pilot==1.0', 'pandas']},
 
