@@ -2,7 +2,7 @@
 
 __author__    = 'RADICAL-Cybertools Team'
 __email__     = 'info@radical-cybertools.org'
-__copyright__ = 'Copyright 2013-22, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-23, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 
@@ -263,10 +263,8 @@ setup_args = {
                             'bin/radical-pilot-worker',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
-                                 'VERSION', 'CHANGES.md', 'SDIST', sdist_name]},
-  # 'setup_requires'     : ['pytest-runner'],
+                                 '*.md', 'VERSION', 'SDIST', sdist_name]},
     'install_requires'   : requirements,
-    'test_suite'         : '%s.tests' % name,
     'zip_safe'           : False,
     'data_files'         : df,
     'cmdclass'           : {'upload': RunTwine},
