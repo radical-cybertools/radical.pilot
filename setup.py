@@ -220,7 +220,7 @@ setup_args = {
     'project_urls'       : {
         'Documentation': 'https://radical%s.readthedocs.io/en/latest/' % base,
         'Source'       : 'https://github.com/radical-cybertools/%s/'   % name,
-        'Issues' : 'https://github.com/radical-cybertools/%s/issues'   % name'
+        'Issues' : 'https://github.com/radical-cybertools/%s/issues'   % name,
     },
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
