@@ -30,6 +30,17 @@ class PBSProTestCase(TestCase):
 
         rm_pbspro = PBSPro(cfg=None, log=None, prof=None)
         rm_pbspro._log = mock.Mock()
+
+        with mock.patch('radical.pilot.agent.resource_manager.pbspro.'
+                        'ru.sh_callout') as mocked_callout:
+            mocked_callout.return_value = [
+                'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)']
+
+            rm_info = rm_pbspro._init_from_scratch(RMInfo())
+
+            self.assertEqual(rm_info.cores_per_node, 10)
+            self.assertEqual(len(rm_info.node_list), 2)
+
         rm_pbspro._parse_pbspro_vnodes = mock.Mock(side_effect=IndexError)
 
         rm_info = rm_pbspro._init_from_scratch(RMInfo({'cores_per_node': 15}))
@@ -79,11 +90,13 @@ class PBSProTestCase(TestCase):
         with mock.patch('radical.pilot.agent.resource_manager.pbspro.'
                         'ru.sh_callout') as mocked_callout:
             mocked_callout.return_value = [
-                'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)']
+                'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)+\n'
+                '(vnode3:cpu=10)\n'
+                'other_attr = some_value']
 
             nodes, cores_per_node = rm_pbspro._parse_pbspro_vnodes()
 
-            self.assertEqual(nodes, ['vnode1', 'vnode2'])
+            self.assertEqual(nodes, ['vnode1', 'vnode2', 'vnode3'])
             self.assertEqual(cores_per_node, 10)
 
     # --------------------------------------------------------------------------
