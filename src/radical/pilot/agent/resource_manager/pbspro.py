@@ -23,11 +23,11 @@ class PBSPro(ResourceManager):
             vnodes, rm_info.cores_per_node = self._parse_pbspro_vnodes()
             nodes = [(node, rm_info.cores_per_node) for node in vnodes]
 
-        except (IndexError, ValueError):
+        except (IndexError, ValueError) as exc:
             self._log.debug_2('exec_vnodes not detected')
 
             if not rm_info.cores_per_node or 'PBS_NODEFILE' not in os.environ:
-                raise RuntimeError('resource configuration unknown')
+                raise RuntimeError('resource configuration unknown') from exc
 
             nodes = self._parse_nodefile(os.environ['PBS_NODEFILE'],
                                          cpn=rm_info.cores_per_node,
