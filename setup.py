@@ -20,8 +20,9 @@ from setuptools import setup, Command, find_namespace_packages
 
 
 # ------------------------------------------------------------------------------
-name     = 'radical.pilot'
-mod_root = 'src/radical/pilot/'
+base     = 'pilot'
+name     = 'radical.%s'      % base
+mod_root = 'src/radical/%s/' % base
 
 # ------------------------------------------------------------------------------
 #
@@ -215,7 +216,12 @@ setup_args = {
     'author_email'       : 'radical@rutgers.edu',
     'maintainer'         : 'The RADICAL Group',
     'maintainer_email'   : 'radical@rutgers.edu',
-    'url'                : 'https://www.github.com/radical-cybertools/radical.pilot/',
+    'url'                : 'http://radical-cybertools.github.io/%s/' % name,
+    'project_urls'       : {
+        'Documentation': 'https://radical%s.readthedocs.io/en/latest/' % base,
+        'Source'       : 'https://github.com/radical-cybertools/%s/'   % name,
+        'Issues' : 'https://github.com/radical-cybertools/%s/issues'   % name'
+    },
     'license'            : 'MIT',
     'keywords'           : 'radical pilot job saga',
     'python_requires'    : '>=3.6',
