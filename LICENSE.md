@@ -1,6 +1,6 @@
 
-radical.utils is licensed under the MIT License (MIT)
-----------------------------------------------------
+radical.pilot is licensed under the MIT License (MIT)
+-----------------------------------------------------
 
 Copyright (C) 2011-2023 by the RADICAL-Cybertools Team
 (info@radical-cybertools.org)
