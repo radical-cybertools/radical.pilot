@@ -6,6 +6,7 @@ __copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import queue
 import threading as mt
 
 import radical.pilot.states as rps
@@ -43,6 +44,7 @@ class TestPopen(TestCase):
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
         pex._tasks_to_cancel = []
+        pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
@@ -51,8 +53,11 @@ class TestPopen(TestCase):
 
         msg['cmd'] = 'cancel_tasks'
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were added to the list `_tasks_to_cancel`
-        self.assertEqual(pex._tasks_to_cancel, msg['arg']['uids'])
+        for uid in msg['arg']['uids']:
+            mode, tid = pex._watch_queue.get()
+            self.assertEqual(mode, pex.TO_CANCEL)
+            self.assertEqual(tid, uid)
+
 
 
     # --------------------------------------------------------------------------
