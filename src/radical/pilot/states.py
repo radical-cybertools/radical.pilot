@@ -211,7 +211,7 @@ def _task_state_progress(uid, current, target):
     # first handle final state corrections
     if current == CANCELED:
         if target in [DONE, FAILED, CANCELED]:
-            return[target, []]
+            return target, []
 
     if current in FINAL:
         if target in FINAL:
@@ -223,7 +223,7 @@ def _task_state_progress(uid, current, target):
 
     if cur >= tgt:
         # nothing to do, a similar or better progression happened earlier
-        return [current, []]
+        return current, []
 
     # dig out all intermediate states, skip current
     passed = list()

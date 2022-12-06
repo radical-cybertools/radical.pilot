@@ -3,6 +3,8 @@ __copyright__ = 'Copyright 2022-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 
+import collections
+
 import threading as mt
 
 from ... import states as rps
