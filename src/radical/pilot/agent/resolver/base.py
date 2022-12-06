@@ -50,6 +50,13 @@ class AgentResolvingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def work(self, tasks):
+
+        raise NotImplementedError('`work()` must be implemented in child class')
+
+
+    # --------------------------------------------------------------------------
+    #
     # This class-method creates the appropriate instance for the scheduler.
     #
     @classmethod

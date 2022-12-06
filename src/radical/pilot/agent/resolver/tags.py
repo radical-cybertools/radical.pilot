@@ -246,8 +246,6 @@ from .base import AgentResolvingComponent
 #       required resources to become available).
 #
 
-...
-
 # where one stage needs to be completed before tasks from the next stage can be
 # considered for scheduling.
 #
