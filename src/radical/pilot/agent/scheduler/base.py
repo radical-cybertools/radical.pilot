@@ -702,10 +702,11 @@ class AgentSchedulingComponent(rpu.Component):
 
         self._log.debug('-> schedule waitpool')
         self.slot_status("before schedule waitpool")
+
         for task in self._waitpool.values():
             td = task['description']
             self._log.debug('=== wait: %s %-3d', task['uid'],
-                    td['cpu_processes'] * td['cpu_threads'])
+                            td['ranks'] * td['cores_per_rank'])
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
