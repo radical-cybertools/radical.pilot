@@ -2,9 +2,6 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
-__license__   = 'MIT'
-
 import os
 
 from unittest import mock, TestCase
@@ -24,7 +21,7 @@ class TorqueTestCase(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
 
-        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.torque' % base
+        os.environ['PBS_NODEFILE'] = '%s/test_cases/nodelist.pbs' % base
 
     # --------------------------------------------------------------------------
     #
