@@ -101,6 +101,8 @@ class TestContinuous(TestCase):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
                     td = t['description']
+                    import pprint
+                    pprint.pprint(t)
                     self.assertEqual(
                         t['resources'], {'cpu': td['ranks'] *
                                                 td['cores_per_rank'],

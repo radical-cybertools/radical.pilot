@@ -459,8 +459,6 @@ class AgentSchedulingComponent(rpu.Component):
         if self._log.debug_level < 5:
             return
 
-        return
-
         if not msg: msg = ''
 
         glyphs = {rpc.FREE : '-',
@@ -859,6 +857,18 @@ class AgentSchedulingComponent(rpu.Component):
                                                 ratio=0.5)
         self._log.debug('==== incoming: -> %d %d %d', len(scheduled),
                 len(unscheduled), len(failed))
+
+        # update task resources
+        for task in scheduled:
+            td = task['description']
+            task['$set']      = ['resources']
+            task['resources'] = {'cpu': td['ranks'] *
+                                        td['cores_per_rank'],
+                                 'gpu': td['ranks'] *
+                                        td['gpus_per_rank']}
+            td = task['description']
+            self._log.debug('=== adv : %s %-3d', task['uid'],
+                    td['ranks'] * td['cores_per_rank'])
 
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING,
                                 publish=True, push=True)
