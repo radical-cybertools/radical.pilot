@@ -19,15 +19,26 @@ class PBSPro(ResourceManager):
     #
     def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
+        nodes = None
+
         try:
             vnodes, rm_info.cores_per_node = self._parse_pbspro_vnodes()
             nodes = [(node, rm_info.cores_per_node) for node in vnodes]
 
-        except (IndexError, ValueError) as exc:
+        except (IndexError, ValueError):
             self._log.debug_2('exec_vnodes not detected')
 
+        except RuntimeError as e:
+            err_message = str(e)
+            if not err_message.startswith('qstat failed'):
+                raise
+            self._log.debug_1(err_message)
+
+        if not nodes:
+
             if not rm_info.cores_per_node or 'PBS_NODEFILE' not in os.environ:
-                raise RuntimeError('resource configuration unknown') from exc
+                raise RuntimeError('resource configuration unknown, either '
+                                   'cores_per_node or $PBS_NODEFILE not set')
 
             nodes = self._parse_nodefile(os.environ['PBS_NODEFILE'],
                                          cpn=rm_info.cores_per_node,
@@ -47,7 +58,9 @@ class PBSPro(ResourceManager):
             raise RuntimeError('$PBS_JOBID not set')
 
         # Get the output of qstat -f for this job
-        output = ru.sh_callout(['qstat', '-f', jobid])[0]
+        output, error, ret = ru.sh_callout(['qstat', '-f', jobid])
+        if ret:
+            raise RuntimeError('qstat failed: %s' % error)
 
         # Get the (multiline) 'exec_vnode' entry
         vnodes_str = ''

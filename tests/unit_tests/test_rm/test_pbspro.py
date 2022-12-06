@@ -34,14 +34,15 @@ class PBSProTestCase(TestCase):
         with mock.patch('radical.pilot.agent.resource_manager.pbspro.'
                         'ru.sh_callout') as mocked_callout:
             mocked_callout.return_value = [
-                'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)']
+                'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)', '', 0]
 
             rm_info = rm_pbspro._init_from_scratch(RMInfo())
 
             self.assertEqual(rm_info.cores_per_node, 10)
             self.assertEqual(len(rm_info.node_list), 2)
 
-        rm_pbspro._parse_pbspro_vnodes = mock.Mock(side_effect=IndexError)
+        rm_pbspro._parse_pbspro_vnodes = mock.Mock(
+            side_effect=RuntimeError('qstat failed: exception message'))
 
         rm_info = rm_pbspro._init_from_scratch(RMInfo({'cores_per_node': 15}))
 
@@ -92,7 +93,7 @@ class PBSProTestCase(TestCase):
             mocked_callout.return_value = [
                 'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)+\n'
                 '(vnode3:cpu=10)\n'
-                'other_attr = some_value']
+                'other_attr = some_value', '', 0]
 
             nodes, cores_per_node = rm_pbspro._parse_pbspro_vnodes()
 
@@ -109,10 +110,18 @@ class PBSProTestCase(TestCase):
 
         with mock.patch('radical.pilot.agent.resource_manager.pbspro.'
                         'ru.sh_callout') as mocked_callout:
+
             mocked_callout.return_value = [
-                'exec_vnode = (vnode1:cpu=1)+(vnode2:cpu=10)']
+                'exec_vnode = (vnode1:cpu=1)+(vnode2:cpu=10)', '', 0]
 
             # different sizes of allocated nodes
+            with self.assertRaises(RuntimeError):
+                rm_pbspro._parse_pbspro_vnodes()
+
+            mocked_callout.return_value = [
+                'exec_vnode = (vnode1:cpu=1)', 'some error', 1]
+
+            # qstat failed (error comes from `ru.sh_callout`)
             with self.assertRaises(RuntimeError):
                 rm_pbspro._parse_pbspro_vnodes()
 
