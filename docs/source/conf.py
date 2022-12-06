@@ -19,7 +19,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'RADICAL-Pilot'
-copyright = '2021, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
+copyright = '2023, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
 author = 'RADICAL-Cybertools Team'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -27,10 +27,10 @@ author = 'RADICAL-Cybertools Team'
 # built documents.
 #
 # The short X.Y version.
-with open('../../VERSION', 'r') as f:
+with open('../../VERSION', 'r', encoding='utf-8') as f:
     version = str(f.readlines()[0])
 # The full version, including alpha/beta/rc tags.
-with open('../../VERSION', 'r') as f:
+with open('../../VERSION', 'r', encoding='utf-8') as f:
     release = str(f.readlines()[0])
 
 # -- General configuration ---------------------------------------------------
@@ -48,6 +48,7 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinxcontrib.napoleon',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -66,7 +67,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = 'python'
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -86,3 +87,4 @@ html_theme_path = ["_themes", ]
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
