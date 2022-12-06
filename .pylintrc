@@ -136,7 +136,8 @@ disable=raising-format-tuple,
         unnecessary-pass,
         protected-access,
         eval-used,
-        no-method-argument
+        no-method-argument,
+        useless-parent-delegation,
 
 #       long-suffix,
 #       old-ne-operator,
