@@ -584,7 +584,7 @@ class Master(rpu.Component):
             filtered = self.request_cb(tasks)
             if filtered:
                 for task in filtered:
-                    self._log.debug('REQ cb: %s' % task['uid'])
+                    self._log.debug('REQ cb: %s', task['uid'])
                 self.submit_tasks(filtered)
 
         except:
