@@ -74,6 +74,7 @@ class Popen(AgentExecutingComponent):
 
       # self._log.debug('popen initialize stop')
 
+
     # --------------------------------------------------------------------------
     #
     def command_cb(self, topic, msg):
@@ -87,9 +88,17 @@ class Popen(AgentExecutingComponent):
 
             self._log.info('cancel_tasks command (%s)' % arg)
             for tid in arg['uids']:
-                self._watch_queue.put([self.TO_CANCEL, tid])
+                self.cancel_task(tid)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        self._watch_queue.put([self.TO_CANCEL, uid])
+
 
     # --------------------------------------------------------------------------
     #

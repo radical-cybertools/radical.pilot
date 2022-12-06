@@ -130,6 +130,13 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def cancel_task(self, uid):
+
+        raise NotImplementedError('cancel_task is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
     def _to_watcher(self):
         '''
         watch the set of tasks for which timeouts are defined.  If the timeout
