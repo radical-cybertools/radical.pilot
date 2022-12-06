@@ -43,13 +43,10 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
-        pex._tasks_to_cancel = []
         pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were not added to the list `_tasks_to_cancel`
-        self.assertFalse(pex._tasks_to_cancel)
 
         msg['cmd'] = 'cancel_tasks'
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
