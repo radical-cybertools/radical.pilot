@@ -100,6 +100,8 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
+        # TODO do I need to pass pilot sandbox
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb_of_services)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
@@ -347,12 +349,18 @@ class Agent_0(rpu.Worker):
         If a `./services` file exist, reserve a compute node and run that file
         there as bash script.
         '''
-        # TODO
-        #  there is no pilot description/pilot instance accessible here. how to get services list
-        agent_service_tasks = [how to get services TaskDescription]
-        self.advance(agent_service_tasks, publish=False, push=True)
+        service_descriptions = self._cfg.services
+        services = list()
+        for service_desc in service_descriptions:
+            task = dict()
 
+            task['description'] = TaskDescription(service_desc).as_dict()
+            task['state'] = rps.AGENT_STAGING_INPUT_PENDING
+            task['status'] = 'NEW'
+            task['type'] = 'task'
+            services.append(task)
 
+        self.advance(services, publish=False, push=True)
 
         if not os.path.isfile('./services'):
             return
@@ -368,7 +376,7 @@ class Agent_0(rpu.Worker):
         service_task_uid = 'rp.services'
         service_task     = {
             'uid'               : service_task_uid,
-            'rank_per_node'     : 2,
+            # 'rank_per_node'     : 2,
             'task_sandbox_path' : self._pwd,
             'description'       : TaskDescription({
                 'uid'           : service_task_uid,
@@ -422,13 +430,44 @@ class Agent_0(rpu.Worker):
         self._log.info('create services: %s' % cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
-        while(all_services_not_started)
-            # WHERe to check state of executing
-            service.state == AGENT_EXECUTING
-
+        self.publish(rpc.STATE_PUBSUB, {'cmd': 'service_state_update',
+                                        'arg': services})
         self._log.debug('services started done')
 
+    def _state_cb_of_services(self, topic, msg):
+        cmd = msg['cmd']
+        arg = msg['arg']
 
+        if cmd == 'service_state_update':
+
+            tasks = ru.as_list(arg)
+
+            for task in tasks:
+                uid   = task['uid']
+                state = task['state']
+
+                if uid in self._task_service_data:
+                    # update task info and signal task service thread
+                    self._log.debug('unlock 2 %s', uid)
+                    self._task_service_data[uid][1] = task
+                    self._task_service_data[uid][0].set()
+
+
+        elif cmd == 'update':
+
+            for thing in ru.as_list(arg):
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid in self._workers:
+                    if state == rps.AGENT_STAGING_OUTPUT:
+                        with self._lock:
+                            self._workers[uid]['state'] = 'DONE'
+
+            self.state_cb(ru.as_list(arg))
+
+        return True
     # --------------------------------------------------------------------------
     #
     def _start_sub_agents(self):

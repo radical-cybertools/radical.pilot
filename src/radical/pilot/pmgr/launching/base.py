@@ -881,6 +881,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['services']            = services
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
