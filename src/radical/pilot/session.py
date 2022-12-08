@@ -97,7 +97,7 @@ class Session(rs.Session):
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
                 for schema in rcfg['schemas']:
-                    while isinstance(rcfg[schema], str):
+                    while isinstance(rcfg.get(schema), str):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
 
