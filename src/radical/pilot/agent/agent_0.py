@@ -6,6 +6,7 @@ import copy
 import os
 import pprint
 import stat
+import threading
 import time
 
 import radical.utils       as ru
@@ -429,15 +430,14 @@ class Agent_0(rpu.Worker):
 
         self._log.info('create services: %s' % cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
-
-        self.publish(rpc.STATE_PUBSUB, {'cmd': 'service_state_update',
-                                        'arg': services})
+        e = threading.Event()
+        self.publish(rpc.STATE_PUBSUB, {'cmd': 'service_state_update','arg': {services , e}})
+        e.set()
         self._log.debug('services started done')
 
     def _state_cb_of_services(self, topic, msg):
         cmd = msg['cmd']
-        arg = msg['arg']
-
+        arg, e = msg['arg']
         if cmd == 'service_state_update':
 
             tasks = ru.as_list(arg)
@@ -446,27 +446,33 @@ class Agent_0(rpu.Worker):
                 uid   = task['uid']
                 state = task['state']
 
-                if uid in self._task_service_data:
-                    # update task info and signal task service thread
-                    self._log.debug('unlock 2 %s', uid)
-                    self._task_service_data[uid][1] = task
-                    self._task_service_data[uid][0].set()
+                if state == rps.AGENT_EXECUTING:
+                    print("will remove this")
+                    self._log("Service x is started. please pass some ID.")
+                else:
+                    pass
+                    # TODO We should do something.
 
+                # if uid in self._task_service_data:
+                #     # update task info and signal task service thread
+                #     self._log.debug('unlock 2 %s', uid)
+                #     self._task_service_data[uid][1] = task
+                #     self._task_service_data[uid][0].set()
+        # Waiting for every callback from every service, and then notify the main thread.
+        e.wait()
+        # elif cmd == 'update':
+        #
+        #     for thing in ru.as_list(arg):
+        #
+        #         uid   = thing['uid']
+        #         state = thing['state']
+        #
+        #         if uid in self._workers:
+        #             if state == rps.AGENT_STAGING_OUTPUT:
+        #                 with self._lock:
+        #                     self._workers[uid]['state'] = 'DONE'
 
-        elif cmd == 'update':
-
-            for thing in ru.as_list(arg):
-
-                uid   = thing['uid']
-                state = thing['state']
-
-                if uid in self._workers:
-                    if state == rps.AGENT_STAGING_OUTPUT:
-                        with self._lock:
-                            self._workers[uid]['state'] = 'DONE'
-
-            self.state_cb(ru.as_list(arg))
-
+        # TODO: Why return true, how does it behave.
         return True
     # --------------------------------------------------------------------------
     #
