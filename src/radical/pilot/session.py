@@ -96,8 +96,8 @@ class Session(rs.Session):
 
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
-                for schema in rcfg['schemas']:
-                    while isinstance(rcfg[schema], str):
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
 
@@ -204,8 +204,7 @@ class Session(rs.Session):
                                           'py': py_version_detail}})
         except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]' %
-                    dburl_no_passwd)
+            self._log.exception('session create failed [%s]', dburl_no_passwd)
             raise RuntimeError ('session create failed [%s]' %
                     dburl_no_passwd) from e
 
