@@ -390,8 +390,8 @@ class Popen(AgentExecutingComponent):
     #
     def _watch(self):
 
-        to_watch  = list()  # list of task dicts
-        to_cancel = list()  # list of task IDs
+        to_watch  = set()  # list of task dicts
+        to_cancel = set()  # list of task IDs
 
         try:
             while not self._term.is_set():
@@ -413,8 +413,8 @@ class Popen(AgentExecutingComponent):
 
                         # NOTE: `thing` can be task id or task dict, depending
                         #       on the flag value
-                        if   flag == self.TO_WATCH : to_watch.append(thing)
-                        elif flag == self.TO_CANCEL: to_cancel.append(thing)
+                        if   flag == self.TO_WATCH : to_watch.add(thing)
+                        elif flag == self.TO_CANCEL: to_cancel.add(thing)
                         else: raise RuntimeError('unknown flag %s' % flag)
 
                 except queue.Empty:
@@ -439,8 +439,11 @@ class Popen(AgentExecutingComponent):
     # next step.  Also check for a requested cancellation for the tasks.
     def _check_running(self, to_watch, to_cancel):
 
+        #
         action = False
-        for task in to_watch:
+
+        # `to_watch.remove()` in the loop requires copy to iterate over the list
+        for task in set(to_watch):
 
             tid = task['uid']
 
