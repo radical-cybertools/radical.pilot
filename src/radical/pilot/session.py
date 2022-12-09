@@ -96,8 +96,8 @@ class Session(rs.Session):
 
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
-                for schema in rcfg['schemas']:
-                    while isinstance(rcfg[schema], str):
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
 
@@ -138,9 +138,9 @@ class Session(rs.Session):
                                        level=self._cfg.get('debug'))
 
         from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s' % rp_version_detail)
-        self._log.info('radical.saga  version: %s' % rs.version_detail)
-        self._log.info('radical.utils version: %s' % ru.version_detail)
+        self._log.info('radical.pilot version: %s', rp_version_detail)
+        self._log.info('radical.saga  version: %s', rs.version_detail)
+        self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
 
@@ -181,8 +181,8 @@ class Session(rs.Session):
             dburl_no_passwd.set_password('****')
 
         self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'    % dburl_no_passwd)
-        self._log.info('dburl %s' % dburl_no_passwd)
+        self._rep.plain('[%s]'   % dburl_no_passwd)
+        self._log.info('dburl %s', dburl_no_passwd)
 
         # create/connect database handle on primary sessions
         try:
@@ -199,8 +199,7 @@ class Session(rs.Session):
                                           'py': py_version_detail}})
         except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]' %
-                    dburl_no_passwd)
+            self._log.exception('session create failed [%s]', dburl_no_passwd)
             raise RuntimeError ('session create failed [%s]' %
                     dburl_no_passwd) from e
 
@@ -213,7 +212,7 @@ class Session(rs.Session):
         self._cmgr.start_components()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
 
         self._rec = False
         if self._cfg.record:
@@ -225,7 +224,7 @@ class Session(rs.Session):
             os.system('mkdir -p %s' % self._rec)
             ru.write_json({'dburl': str(self.dburl)},
                           "%s/session.json" % self._rec)
-            self._log.info("recording session in %s" % self._rec)
+            self._log.info("recording session in %s", self._rec)
 
         self._rep.ok('>>ok\n')
 
