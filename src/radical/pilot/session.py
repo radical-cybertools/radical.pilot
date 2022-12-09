@@ -142,8 +142,8 @@ class Session(rs.Session):
 
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
-                for schema in rcfg['schemas']:
-                    while isinstance(rcfg[schema], str):
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
 
@@ -198,6 +198,7 @@ class Session(rs.Session):
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
                                         level=self._cfg.get('debug'))
+
 
         self._prof.prof('session_start', uid=self._uid)
 
@@ -346,7 +347,7 @@ class Session(rs.Session):
         self._cmgr.start_components()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
 
         # make sure we send heartbeats to the proxy
         self._run_proxy_hb()
@@ -383,7 +384,6 @@ class Session(rs.Session):
         self._state_pub = ru.zmq.Publisher(rpc.STATE_PUBSUB, path=pwd)
         self._proxy_state_sub = ru.zmq.Subscriber(rpc.PROXY_STATE_PUBSUB, path=pwd)
         self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
-
 
 
     # --------------------------------------------------------------------------
@@ -464,29 +464,17 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-<<<<<<< HEAD
             # FIXME: MongoDB
           # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
-=======
-            self.fetch_json    (tgt=tgt)
->>>>>>> devel
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-<<<<<<< HEAD
-        if self._primary:
-            self._t_stop = time.time()
-            self._rep.info('<<session lifetime: %.1fs'
-                          % (self._t_stop - self._t_start))
-            self._rep.ok('>>ok\n')
-=======
         if self.closed and self.created:
             self._rep.info('<<session lifetime: %.1fs' %
                            (self.closed - self.created))
         self._rep.ok('>>ok\n')
->>>>>>> devel
 
             # dump json
             json = {'session' : self.as_dict(),
@@ -599,39 +587,15 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def path(self):
         return self._cfg.path
-=======
-    def created(self):
-        '''Returns the UTC date and time the session was created.
-        '''
-        if self._dbs: ret = self._dbs.created
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def proxy_url(self):
         return self._cfg.proxy_url
-=======
-    def connected(self):
-        '''
-        Return time when the session connected to the DB
-        '''
-
-        if self._dbs: ret = self._dbs.connected
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
@@ -644,21 +608,9 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
-<<<<<<< HEAD
     def cmgr(self):
         assert self._primary
         return self._cmgr
-=======
-    def closed(self):
-        '''
-        Returns the time of closing
-        '''
-        if self._dbs: ret = self._dbs.closed
-        else        : ret = None
-
-        if ret:
-            return float(ret)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
