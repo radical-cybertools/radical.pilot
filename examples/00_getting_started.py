@@ -84,7 +84,6 @@ if __name__ == '__main__':
             td.executable     = '/bin/date'
             td.ranks          = 1
             td.cores_per_rank = 1
-            td.stage_on_error = True
 
             tds.append(td)
             report.progress()
