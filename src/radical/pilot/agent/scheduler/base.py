@@ -222,11 +222,12 @@ class AgentSchedulingComponent(rpu.Component):
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool   = dict()  # map uid:task
+        self._lock       = mt.Lock()  # lock for waitpool
+        self._waitpool   = dict()     # map uid:task
         self._ts_map     = dict()
-        self._ts_valid   = False   # set to False to trigger re-binning
-        self._active_cnt = 0       # count of currently scheduled tasks
-        self._named_envs = list()  # record available named environments
+        self._ts_valid   = False      # set to False to trigger re-binning
+        self._active_cnt = 0          # count of currently scheduled tasks
+        self._named_envs = list()     # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -378,6 +379,30 @@ class AgentSchedulingComponent(rpu.Component):
 
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
+
+        elif cmd == 'cancel_tasks':
+
+            uids = arg['uids']
+            to_cancel = list()
+            with self._lock:
+                for uid in uids:
+                    if uid in self._waitpool:
+                        to_cancel.append(self._waitpool[uid])
+                        del self._waitpool[uid]
+
+            with self._raptor_lock:
+                for queue in self._raptor_tasks:
+                    matches = [t for t in self._raptor_tasks[queue]
+                                       if t['uid'] in uids]
+                    for task in matches:
+                        to_cancel.append(task)
+                        self._raptor_tasks[queue].remove(task)
+
+            for task in to_cancel:
+                task['target_state'] = rps.CANCELED
+                task['control']      = 'tmgr_pending'
+                task['$all']         = True
+            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -608,13 +633,13 @@ class AgentSchedulingComponent(rpu.Component):
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
 
-        #  subscribe to control messages, e.g., to register raptor queues
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
-        # also keep a backlog of raptor tasks until their queues are registered
+        # keep a backlog of raptor tasks until their queues are registered
         self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
+
+        #  subscribe to control messages, e.g., to register raptor queues
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
