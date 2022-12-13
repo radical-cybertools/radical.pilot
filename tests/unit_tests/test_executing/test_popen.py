@@ -6,6 +6,7 @@ __copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import queue
 import threading as mt
 
 import radical.pilot.states as rps
@@ -42,17 +43,18 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
-        pex._tasks_to_cancel = []
+        pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were not added to the list `_tasks_to_cancel`
-        self.assertFalse(pex._tasks_to_cancel)
 
         msg['cmd'] = 'cancel_tasks'
         self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were added to the list `_tasks_to_cancel`
-        self.assertEqual(pex._tasks_to_cancel, msg['arg']['uids'])
+        for uid in msg['arg']['uids']:
+            mode, tid = pex._watch_queue.get()
+            self.assertEqual(mode, pex.TO_CANCEL)
+            self.assertEqual(tid, uid)
+
 
 
     # --------------------------------------------------------------------------
@@ -129,32 +131,32 @@ class TestPopen(TestCase):
         task['target_state'] = None
 
         pex = Popen(cfg=None, session=None)
-        pex._tasks_to_watch  = []
-        pex._tasks_to_cancel = []
-        pex._cancel_lock     = mt.RLock()
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
+
+        to_watch  = list()
+        to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
-        pex._tasks_to_watch.append(task)
-        pex._tasks_to_cancel.append(task['uid'])
-        pex._check_running()
-        self.assertFalse(pex._tasks_to_cancel)
+        to_watch.append(task)
+        to_cancel.append(task['uid'])
+        pex._check_running(to_watch, to_cancel)
+        self.assertFalse(to_cancel)
 
         # case 2: exit_code == 0
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 0
-        pex._tasks_to_watch.append(task)
-        pex._check_running()
+        to_watch.append(task)
+        pex._check_running(to_watch, to_cancel)
         self.assertEqual(task['target_state'], rps.DONE)
 
         # case 3: exit_code == 1
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 1
-        pex._tasks_to_watch.append(task)
-        pex._check_running()
+        to_watch.append(task)
+        pex._check_running(to_watch, to_cancel)
         self.assertEqual(task['target_state'], rps.FAILED)
 
     # --------------------------------------------------------------------------
