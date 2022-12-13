@@ -3,6 +3,9 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import time
+
+import threading as mt
 
 from ... import states    as rps
 from ... import agent     as rpa
@@ -63,7 +66,6 @@ class AgentExecutingComponent(rpu.Component):
         return impl[name](cfg, session)
 
 
-
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -105,6 +107,12 @@ class AgentExecutingComponent(rpu.Component):
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
 
+        self._to_tasks  = list()
+        self._to_lock   = mt.Lock()
+        self._to_thread = mt.Thread(target=self._to_watcher)
+        self._to_thread.daemon = True
+        self._to_thread.start()
+
 
     # --------------------------------------------------------------------------
     #
@@ -117,7 +125,54 @@ class AgentExecutingComponent(rpu.Component):
     #
     def command_cb(self, topic, msg):
 
-        raise NotImplementedError('work is not implemented')
+        raise NotImplementedError('command_cb is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        raise NotImplementedError('cancel_task is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _to_watcher(self):
+        '''
+        watch the set of tasks for which timeouts are defined.  If the timeout
+        passes and the tasks are still active, kill the task via
+        `self._cancel_task(task)`.  That has to be implemented by al executors.
+        '''
+
+        while True:
+
+            # check once per second at most
+            time.sleep(1)
+
+            now = time.time()
+            with self._to_lock:
+
+                # running tasks for next check
+                to_list = list()
+                for to, start, task in self._to_tasks:
+                    if now - start > to:
+                        self._prof.prof('task_timeout', uid=task['uid'])
+                        self.cancel_task(task)
+                    else:
+                        to_list.append([to, start, task])
+
+                self._to_tasks = to_list
+
+
+    # --------------------------------------------------------------------------
+    #
+    def handle_timeout(self, task):
+
+        to = task['description'].get('timeout', 0.0)
+
+        if to > 0.0:
+            with self._to_lock:
+                self._to_tasks.append([to, time.time(), task])
 
 
 # ------------------------------------------------------------------------------
