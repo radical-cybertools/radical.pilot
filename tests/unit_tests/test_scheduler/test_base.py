@@ -4,7 +4,10 @@
 
 import os
 import pytest
-import radical.utils as ru
+
+import threading            as mt
+import radical.utils        as ru
+import radical.pilot.states as rps
 
 from unittest import mock, TestCase
 
@@ -135,6 +138,45 @@ class TestBaseScheduling(TestCase):
             component._try_allocation(task=task)
 
             self.assertEqual(task['slots'], c['slots'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    @mock.patch.object(AgentSchedulingComponent, 'advance', return_value=None)
+    def test_control_cb(self, mocked_advance, mocked_init):
+
+        log_messages = ''
+
+        def _log_debug(*args):
+            nonlocal log_messages
+            log_messages += args[0]
+            if len(args) > 1:
+                log_messages = log_messages % args[1:]
+
+        sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._log = mock.Mock()
+        sched._log.debug.side_effect = _log_debug
+
+        sched._lock         = mt.Lock()
+        sched._raptor_lock  = mt.Lock()
+
+        task0000            = {}
+        sched._waitpool     = {'task.0000': task0000}
+        sched._raptor_tasks = {}
+
+        msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
+        sched._control_cb(topic=None, msg=msg)
+
+        self.assertTrue(sched._log.debug.called)
+        self.assertIn('command ignored', log_messages)
+
+        msg['cmd'] = 'cancel_tasks'
+        sched._control_cb(topic=None, msg=msg)
+
+        # task from `waitpool` was cancelled
+        self.assertFalse(sched._waitpool)
+        self.assertEqual(task0000['target_state'], rps.CANCELED)
 
 
 # ------------------------------------------------------------------------------
