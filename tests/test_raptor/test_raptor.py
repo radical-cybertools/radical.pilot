@@ -29,6 +29,7 @@ class TestWorker(TestCase):
         ru.zmq.Getter = mock.Mock()
 
         os.environ['RP_TASK_ID']       = 'task.000000'
+        os.environ['RP_TASK_SANDBOX']  = '/tmp'
         os.environ['RP_PILOT_SANDBOX'] = '/tmp'
 
         with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
@@ -39,42 +40,42 @@ class TestWorker(TestCase):
 
         worker = rp.raptor.DefaultWorker(cfg, session=mock.Mock())
 
-        task_1 = {'cores': 1, 'gpus' : 1}
-        task_2 = {'cores': 2, 'gpus' : 1}
-        task_3 = {'cores': 3, 'gpus' : 1}
+        task_1 = {'uid': 'task.0000', 'cores': 1, 'gpus' : 1}
+        task_2 = {'uid': 'task.0001', 'cores': 2, 'gpus' : 1}
+        task_3 = {'uid': 'task.0002', 'cores': 3, 'gpus' : 1}
 
 
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
 
-        worker._alloc_task(task_1)
+        worker._alloc(task_1)
         self.assertEqual(worker._resources['cores'], [1, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 0])
         self.assertEqual(task_1['slots'], {'cores': [0], 'gpus': [0]})
 
-        worker._alloc_task(task_2)
+        worker._alloc(task_2)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 1])
         self.assertEqual(task_2['slots'], {'cores': [1, 2], 'gpus': [1]})
 
-        worker._alloc_task(task_3)
+        worker._alloc(task_3)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 1])
         self.assertEqual(task_3.get('slots'), None)
 
-        worker._dealloc_task(task_1)
+        worker._dealloc(task_1)
         self.assertEqual(worker._resources['cores'], [0, 1, 1, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 1])
 
-        worker._alloc_task(task_3)
+        worker._alloc(task_3)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 1, 1, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 1])
         self.assertEqual(task_3['slots'], {'cores': [0, 3, 4], 'gpus': [0]})
 
-        worker._dealloc_task(task_2)
+        worker._dealloc(task_2)
         self.assertEqual(worker._resources['cores'], [1, 0, 0, 1, 1, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 0])
 
-        worker._dealloc_task(task_3)
+        worker._dealloc(task_3)
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
 
