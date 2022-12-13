@@ -4,8 +4,6 @@ import time
 
 import threading as mt
 
-import radical.pilot.states as rps
-
 from unittest import mock, TestCase
 
 from radical.pilot.raptor.master import Master
@@ -35,8 +33,8 @@ class RaptorMasterTC(TestCase):
 
         raptor_master._lock    = mt.Lock()
         raptor_master._workers = {
-            'w.0000': {'status': rps.NEW},
-            'w.0001': {'status': rps.NEW}
+            'w.0000': {'status': Master.NEW},
+            'w.0001': {'status': Master.NEW}
         }
 
         def _set_workers_done(master_obj):
@@ -44,7 +42,7 @@ class RaptorMasterTC(TestCase):
                 time.sleep(3)
                 with master_obj._lock:
                     for uid in master_obj._workers:
-                        master_obj._workers[uid]['status'] = rps.DONE
+                        master_obj._workers[uid]['status'] = Master.DONE
                 break
 
         _thread = mt.Thread(target=_set_workers_done, args=(raptor_master,))
