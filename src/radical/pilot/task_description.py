@@ -102,18 +102,18 @@ class TaskDescription(ru.TypedDict):
     .. note:: A TaskDescription **MUST** define at least an
               `executable` -- all other elements are optional.
 
-    .. py:attr:: uid
+    .. py:attribute:: uid
 
        [type: `str` | default: `""`] A unique ID for the task. This attribute
        is optional, a unique ID will be assigned by RP if the field is not set.
 
-    .. py:attr:: name
+    .. py:attribute:: name
 
        [type: `str` | default: `""`] A descriptive name for the task. This
        attribute can be used to map individual tasks back to application level
        workloads.
 
-    .. py:attr:: mode
+    .. py:attribute:: mode
 
        [type: `str` | default: `"executable"`] The execution mode to be used for
        this task.  The following modes are accepted:
@@ -156,24 +156,24 @@ class TaskDescription(ru.TypedDict):
         specific functionality (pipes, I/O redirection) which cannot easily be
         mapped to other task attributes.
 
-    .. py:attr:: executable
+    .. py:attribute:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
        is expected to be either available via `$PATH` on the target resource,
        or to be an absolute path.
 
-    .. py:attr:: arguments
+    .. py:attribute:: arguments
 
        [type: `list` | default: `[]`] The command line arguments for the given
        `executable` (`list` of `strings`).
 
-    .. py:attr:: code
+    .. py:attribute:: code
 
        [type: `str` | default: `""`] The code to run.  This field is expected to
        contain valid python code which is executed when the task mode is
        `TASK_EXEC` or `TASK_EVAL`.
 
-    .. py:attr:: function
+    .. py:attribute:: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
@@ -181,24 +181,24 @@ class TaskDescription(ru.TypedDict):
        there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
        `kwargs` are passed as function parameters.
 
-    .. py:attr:: args
+    .. py:attribute:: args
 
        [type: `list` | default: `[]`] Unnamed arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. py:attr:: kwargs
+    .. py:attribute:: kwargs
 
        [type: `dict` | default: `{}`] Named arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. py:attr:: command
+    .. py:attribute:: command
 
        [type: `str` | default: `""`] A shell command to be executed.  This
        attribute is used for the `TASK_SHELL` mode.
 
-    .. py:attr:: ranks
+    .. py:attribute:: ranks
 
        [type: `int` | default: `1`] The number of application processes to start
        on CPU cores.  For two ranks or more, an MPI communicator will be
@@ -208,7 +208,7 @@ class TaskDescription(ru.TypedDict):
        `cpu_process_type` was previously used to signal the need for an MPI
        communicator - that attribute is now also deprecated and will be ignored.
 
-    .. py:attr:: cores_per_rank
+    .. py:attribute:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
        have available to start its own threads or processes on.  By default,
@@ -218,14 +218,14 @@ class TaskDescription(ru.TypedDict):
 
        `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
-    .. py:attr:: threading_type
+    .. py:attribute:: threading_type
 
        [type: `str` | default: `""`] The thread type, influences startup and
        environment (`<empty>/POSIX`, `OpenMP`).
 
        `threading_type` replaces the deprecated attribute `cpu_thread_type`.
 
-    .. py:attr:: gpus_per_rank
+    .. py:attribute:: gpus_per_rank
 
        [type: `int` | default: `0`] The number of gpus made available to each
        rank.
@@ -234,73 +234,73 @@ class TaskDescription(ru.TypedDict):
        attributes `gpu_threads` and `gpu_process_type` are also deprecated and
        will be ignored.
 
-    .. py:attr:: gpu_type
+    .. py:attribute:: gpu_type
 
        [type: `str` | default: `""`] The type of GPU environment to provide to
        the ranks (`<empty>`, `CUDA`, `ROCm`).
 
        `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
 
-    .. py:attr:: lfs_per_rank
+    .. py:attribute:: lfs_per_rank
 
        [type: `int` | default: `0`] Local File Storage per rank - amount of
        data (MB) required on the local file system of the node.
 
        `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
 
-    .. py:attr:: mem_per_rank
+    .. py:attribute:: mem_per_rank
 
        [type: `int` | default: `0`] Amount of physical memory required per
        rank.
 
        `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
-    .. py:attr:: environment
+    .. py:attribute:: environment
 
        [type: `dict` | default: `{}`] Environment variables to set in the
        environment before the execution (launching picked `LaunchMethod`).
 
-    .. py:attr:: named_env
+    .. py:attribute:: named_env
 
        [type: `str` | default: `""`] A named virtual environment as prepared by
        the pilot. The task will remain in `AGENT_SCHEDULING` state until that
        environment gets created.
 
-    .. py:attr:: sandbox
+    .. py:attribute:: sandbox
 
        [type: `str` | default: `""`] This specifies the working directory of
        the task. That directory *MUST* be relative to the pilot sandbox. It
        will be created if it does not exist. By default, the sandbox has
        the name of the task's uid.
 
-    .. py:attr:: stdout
+    .. py:attribute:: stdout
 
        [type: `str` | default: `""`] The name of the file to store stdout. If
        not set then the name of the following format will be used: `<uid>.out`.
 
-    .. py:attr:: stderr
+    .. py:attribute:: stderr
 
        [type: `str` | default: `""`] The name of the file to store stderr. If
        not set then the name of the following format will be used: `<uid>.err`.
 
-    .. py:attr:: input_staging
+    .. py:attribute:: input_staging
 
        [type: `list` | default: `[]`] The files that need to be staged before
        the execution (`list` of `staging directives`, see below).
 
-    .. py:attr:: output_staging
+    .. py:attribute:: output_staging
 
        [type: `list` | default: `[]`] The files that need to be staged after
        the execution (`list` of `staging directives`, see below).
 
-    .. py:attr:: stage_on_error
+    .. py:attribute:: stage_on_error
 
        [type: `bool` | default: `False`] Output staging is normally skipped on
        `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
        attempted either way. This may though lead to additional errors if the
        tasks did not manage to produce the expected output files to stage.
 
-    .. py:attr:: pre_launch
+    .. py:attribute:: pre_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before launching (i.e., before LaunchMethod is submitted), potentially
@@ -312,14 +312,14 @@ class TaskDescription(ru.TypedDict):
        resources! Deviating from that rule will likely result in reduced
        overall throughput.
 
-    .. py:attr:: post_launch
+    .. py:attribute:: post_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after launching (i.e., after LaunchMethod is executed).
 
        Precautions are the same as for `pre_launch` actions.
 
-    .. py:attr:: pre_exec
+    .. py:attribute:: pre_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before the task starts (LaunchMethod is submitted, but no actual task
@@ -345,46 +345,46 @@ class TaskDescription(ru.TypedDict):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-    .. py:attr:: pre_exec_sync
+    .. py:attribute:: pre_exec_sync
 
        [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
        execution, which enforce to delay individual rank execution, until all
        `pre_exec` actions for all ranks are completed.
 
-    .. py:attr:: post_exec
+    .. py:attribute:: post_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after the task finishes. The same remarks as on `pre_exec` apply,
        inclusive the point on error handling, which again will cause the task
        to fail, even if the actual execution was successful.
 
-    .. py:attr:: restartable
+    .. py:attribute:: restartable
 
        [type: `bool` | default: `False`] If the task starts to execute on
        a pilot, but cannot finish because the pilot fails or is canceled,
        the task can be restarted.
 
-    .. py:attr:: scheduler
+    .. py:attribute:: scheduler
 
        [type: `str` | default: `""`] Request the task to be handled by a
        specific agent scheduler.
 
-    .. py:attr:: tags
+    .. py:attribute:: tags
 
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
 
-    .. py:attr:: metadata
+    .. py:attribute:: metadata
 
        [type: `ANY` | default: `None`] User defined metadata.
 
-    .. py:attr:: timeout
+    .. py:attribute:: timeout
 
        [type: `float` | default: `0.0`] Any timeout larger than 0 will result in
        the task process to be killed after the specified amount of seconds.  The
        task will then end up in `CANCELED` state.
 
-    .. py:attr:: cleanup
+    .. py:attribute:: cleanup
 
        [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
        delete the entire task sandbox upon termination. This includes all
@@ -392,7 +392,7 @@ class TaskDescription(ru.TypedDict):
        before cleanup. Note that task sandboxes are also deleted if the pilot's
        own `cleanup` flag is set.
 
-    .. py:attr:: pilot
+    .. py:attribute:: pilot
 
        [type: `str` | default: `""`] Pilot `uid`, if specified, the task is
        submitted to the pilot with the given ID. If that pilot is not known to
