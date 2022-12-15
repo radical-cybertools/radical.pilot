@@ -605,31 +605,17 @@ class _Worker(mt.Thread):
 
         uid  = task['uid']
         func = task['description']['function']
+        assert func
 
-        to_call = ''
-        names   = ''
         args    = task['description'].get('args',   [])
         kwargs  = task['description'].get('kwargs', {})
         py_func = False
 
         self._log.debug('orig args: %s : %s', args, kwargs)
 
-        # check if we have a serialized object
-        self._log.debug('func serialized: %d: %s', len(func), func)
-        try:
-            # FIXME: can we have a better test than try/except?  This hides
-            #        potential errors...
-            # FIXME: ensure we did not get args and kwargs from above
-            to_call, args, kwargs = PythonTask.get_func_attr(func)
-            py_func = True
-        except:
-            pass
-
         # check if `func_name` is a global name
-        if not to_call:
-            assert func
-            names   = dict(list(globals().items()) + list(locals().items()))
-            to_call = names.get(func)
+        names   = dict(list(globals().items()) + list(locals().items()))
+        to_call = names.get(func)
 
         # if not, check if this is a class method of this worker implementation
         if not to_call:
@@ -1164,4 +1150,3 @@ class MPIWorker(Worker):
 
 
 # ------------------------------------------------------------------------------
-
