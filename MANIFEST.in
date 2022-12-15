@@ -1,5 +1,5 @@
 
-include *.py *.json *.md *.sh
+include *.py *.json *.md *.sh *.txt
 include MANIFEST.in README.md CHANGES.md LICENSE.md VERSION
 
 recursive-include docs     *.md
