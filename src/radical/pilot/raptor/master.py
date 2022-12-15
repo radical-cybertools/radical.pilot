@@ -55,10 +55,10 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self.register_publisher(rpc.STATE_PUBSUB, self._psbox)
+        self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
         self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
 
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb, self._psbox)
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb,   self._psbox)
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
 
         # send new worker tasks and agent input staging / agent scheduler
@@ -227,6 +227,7 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
+        # state update for tasks created by raptor
         if cmd == 'raptor_state_update':
 
             tasks = ru.as_list(arg)
@@ -242,6 +243,7 @@ class Master(rpu.Component):
                     self._task_service_data[uid][0].set()
 
 
+        # general task state updates -- check if our workers are affected
         elif cmd == 'update':
 
             for thing in ru.as_list(arg):
@@ -250,20 +252,23 @@ class Master(rpu.Component):
                 state = thing['state']
 
                 if uid in self._workers:
+
                     if state == rps.AGENT_STAGING_OUTPUT:
                         with self._lock:
                             self._workers[uid]['status'] = self.DONE
 
-            self.state_cb(ru.as_list(arg))
+                        self.worker_state_cb(self._workers[uid])
+
 
         return True
 
 
     # --------------------------------------------------------------------------
     #
-    def state_cb(self, tasks):
+    def worker_state_cb(self, worker):
 
-        pass
+        self._log.info('worker %s reached status %s (%s)', worker['uid'],
+                       worker['status'], worker['state'])
 
 
     # --------------------------------------------------------------------------
