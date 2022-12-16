@@ -3,7 +3,7 @@
     {
         "description"                 : "Heterogeneous community-model Linux cluster",
         "notes"                       : "Access from registered IP address",
-        "schemas"                     : ["local", "ssh"],
+        "schemas"                     : ["local", "ssh", "interactive"],
         "local"                       :
         {
             "job_manager_endpoint"    : "slurm://amarel.rutgers.edu/",
@@ -13,6 +13,11 @@
         {
             "job_manager_endpoint"    : "slurm+ssh://amarel.rutgers.edu/",
             "filesystem_endpoint"     : "sftp://amarel.rutgers.edu/"
+        },
+        "interactive"                 :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
         },
         "default_queue"               : "main",
         "resource_manager"            : "SLURM",
