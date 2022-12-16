@@ -3,9 +3,10 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
-1.19.0 Release                                                        2022-12-16
+1.20.0 Release                                                        2022-12-16
 --------------------------------------------------------------------------------
 
+  - interactive amarel cfg
   - add docstring for run_task, remove sort
   - add option `-r` (number of RS per node) is case of GPU tasks
   - add `TaskDescription` attribute `pre_exec_sync`
@@ -48,6 +49,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - update test for JSRun (w/o ERF)
   - update test for RM PBSPro
   - update profile events for raptor tasks
+  - interactive amarel cfg
   
 
 1.18.1 Hotfix Release                                                 2022-11-01
