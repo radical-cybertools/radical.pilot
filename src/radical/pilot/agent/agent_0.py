@@ -8,11 +8,10 @@ import pprint
 import stat
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 import radical.utils       as ru
 
-from .. import utils as rpu, session
+from .. import utils as rpupublish
 from ..   import states    as rps
 from ..   import constants as rpc
 from ..   import TaskDescription
@@ -23,8 +22,6 @@ from .resource_manager import ResourceManager
 
 # ------------------------------------------------------------------------------
 #
-from ... import pilot
-
 
 class Agent_0(rpu.Worker):
 
@@ -88,10 +85,10 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
-        # start any services if they are requested
-        # TODO: Remove this. do not start services from here
-        # self._start_services()
-
+        # uid of service tasks
+        self._service_task_ids = {}
+        # Event to handle for services started
+        self.services_event = threading.Event()
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -103,7 +100,6 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
-        # TODO do I need to pass pilot sandbox
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb_of_services)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
@@ -118,8 +114,7 @@ class Agent_0(rpu.Worker):
                                 term_cb=self._hb_term_cb,
                                 log=self._log)
         self._hb.start()
-        # Event to handle for services started
-        self.services_event = threading.Event()
+
         # register pmgr heartbeat
         self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
@@ -355,7 +350,7 @@ class Agent_0(rpu.Worker):
         '''
         service_descriptions = self._cfg.services
         services = list()
-        self._service_task_ids = {}
+
         for service_desc in service_descriptions:
             task = dict()
             task['origin'] = 'services'
@@ -385,89 +380,15 @@ class Agent_0(rpu.Worker):
         if not did_timed_out:
             raise Exception("Unable to start services") # #TODO custom exception
 
-        # if not os.path.isfile('./services'):
-        #     return
-
-        # launch the `./services` script on the service node reserved by the RM.
-        # nodes = self._rm.info.service_node_list
-        # assert nodes
-
-        # bs_name = "%s/bootstrap_2.sh"     % self._pwd
-        # ls_name = "%s/services_launch.sh" % self._pwd
-        # ex_name = "%s/services_exec.sh"   % self._pwd
-        #
-        # service_task_uid = 'rp.services'
-        # service_task     = {
-        #     'uid'               : service_task_uid,
-        #     'rank_per_node'     : 2,
-            # 'task_sandbox_path' : self._pwd,
-            # 'description'       : TaskDescription({
-            #     'uid'           : service_task_uid,
-            #     'ranks'         : 1,
-            #     'cores_per_rank': self._rm.info.cores_per_node,
-            #     'executable'    : '/bin/sh',
-            #     'arguments'     : [bs_name, 'services']
-            # }).as_dict(),
-            # 'slots': {'ranks'   : [{'node_name': nodes[0]['node_name'],
-            #                         'node_id'  : nodes[0]['node_id'],
-            #                         'core_map' : [[0]],
-            #                         'gpu_map'  : [],
-            #                         'lfs'      : 0,
-            #                         'mem'      : 0}]}
-        # }
-
-        # launcher = self._rm.find_launcher(service_task)
-        # if not launcher:
-        #     raise RuntimeError('no launch method found for sub agent')
-
-        # FIXME: set RP environment (as in Popen Executor)
-
-        # tmp  = '#!/bin/sh\n\n'
-        # tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
-        # cmds = launcher.get_launcher_env()
-        # for cmd in cmds:
-        #     tmp += '%s || exit 1\n' % cmd
-        # cmds = launcher.get_launch_cmd(service_task, ex_name)
-        # tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
-        #
-        # with ru.ru_open(ls_name, 'w') as fout:
-        #     fout.write(tmp)
-
-        # tmp  = '#!/bin/sh\n\n'
-        # tmp += '. ./env/service.env\n'
-        # tmp += '/bin/sh -l ./services\n\n'
-        #
-        # with ru.ru_open(ex_name, 'w') as fout:
-        #     fout.write(tmp)
-        #
-        #
-        # make sure scripts are executable
-        # st_l = os.stat(ls_name)
-        # st_e = os.stat(ex_name)
-        # os.chmod(ls_name, st_l.st_mode | stat.S_IEXEC)
-        # os.chmod(ex_name, st_e.st_mode | stat.S_IEXEC)
-        #
-        # spawn the sub-agent
-        # cmdline = './%s' % ls_name
-        #
-        # self._log.info('create services: %s' % cmdline)
-        # ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
-
-        # self.publish(rpc.STATE_PUBSUB, {'cmd': 'service_state_update','arg': services})
-
     def _state_cb_of_services(self, topic, msg):
         cmd = msg['cmd']
-        services = msg['arg']
+        tasks = msg['arg']
 
-        self._log.info('received services for launching: %s' % services)
-
-        self._log.debug('services started done')
-
+        self._log.info('received services for launching: %s' % tasks)
         running_services = []
 
         if cmd == 'update':
-
-            for service in ru.as_list(services):
+            for service in ru.as_list(tasks):
                 if "service" in service['uid']:
                     uid = service['uid']
                     state = service['state']
