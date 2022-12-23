@@ -118,7 +118,8 @@ class Agent_0(rpu.Worker):
                                 term_cb=self._hb_term_cb,
                                 log=self._log)
         self._hb.start()
-
+        # Event to handle for services started
+        self.services_event = threading.Event()
         # register pmgr heartbeat
         self._log.info('hb init for %s', self._pmgr)
         self._hb.beat(uid=self._pmgr)
@@ -354,6 +355,7 @@ class Agent_0(rpu.Worker):
         '''
         service_descriptions = self._cfg.services
         services = list()
+        self._service_task_ids = {}
         for service_desc in service_descriptions:
             task = dict()
             task['origin'] = 'services'
@@ -363,6 +365,7 @@ class Agent_0(rpu.Worker):
             task['type'] = 'task'
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
+            self._service_task_ids.add(task['uid'])
             task['task_sandbox_path'] = self._sbox
             task['task_sandbox'] = 'file://localhost/' + self._sbox
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
@@ -376,7 +379,11 @@ class Agent_0(rpu.Worker):
             services.append(task)
         self.number_of_services_to_launch = len(services)
         self.advance(services, publish=False, push=True)
-
+        # Waiting 2mins for all services to launch
+        
+        did_timed_out = self.services_event.wait(timeout=60*2)
+        if not did_timed_out:
+            raise Exception("Unable to start services") # #TODO custom exception
 
         # if not os.path.isfile('./services'):
         #     return
@@ -452,60 +459,23 @@ class Agent_0(rpu.Worker):
         cmd = msg['cmd']
         services = msg['arg']
 
+        self._log.info('received services for launching: %s' % services)
+
+        self._log.debug('services started done')
+
+        running_services = []
+
         if cmd == 'update':
-            self._log.info('received services for launching: %s' % services)
-            # e = threading.Event()
-            e.set()
 
-            self._log.debug('services started done')
-
-            running_services = []
-            yet_to_run = []
-            if cmd == 'update':
-
-                for service in ru.as_list(services):
-
+            for service in ru.as_list(services):
+                if "service" in service['uid']:
                     uid = service['uid']
                     state = service['state']
-                    if state == rps.AGENT_STAGING_OUTPUT:
+                    if uid in self._service_task_ids and state == rps.AGENT_EXECUTING:
                         running_services.append(uid)
-                    else:
-                        yet_to_run.append(uid)
+                        if len(running_services) == len(self._service_task_ids):
+                            self.services_event.set()
 
-            if number_of_services_to_launch == len(running_services):
-                # // everthing ran
-                self._log.info("")
-            else
-                # e.wait()
-                if number of task| uid &&  each state == rps.AGENT_EXECUTING:
-
-                    e.set()
-                    print("will remove this")
-                    self._log("Service x is started. please pass some ID.")
-                else:
-                    pass
-                    # TODO We should do something.
-                # start the thread pool
-               # if uid in self._task_service_data:
-                #     # update task info and signal task service thread
-                #     self._log.debug('unlock 2 %s', uid)
-                #     self._task_service_data[uid][1] = task
-                #     self._task_service_data[uid][0].set()
-        # Waiting for every callback from every service, and then notify the main thread.
-        e.wait()
-        # elif cmd == 'update':
-        #
-        #     for thing in ru.as_list(arg):
-        #
-        #         uid   = thing['uid']
-        #         state = thing['state']
-        #
-        #         if uid in self._workers:
-        #             if state == rps.AGENT_STAGING_OUTPUT:
-        #                 with self._lock:
-        #                     self._workers[uid]['state'] = 'DONE'
-
-        # TODO: Why return true, how does it behave.
         return True
     # --------------------------------------------------------------------------
     #
