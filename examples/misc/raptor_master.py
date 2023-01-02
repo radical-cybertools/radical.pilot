@@ -121,7 +121,6 @@ class MyMaster(rp.raptor.Master):
                 'ranks'     : 2,
                 'function'  : bson,
                 'scheduler' : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             bson = func_non_mpi(i + 1, sleep=self._sleep)
             tds.append(rp.TaskDescription({
@@ -131,7 +130,6 @@ class MyMaster(rp.raptor.Master):
                 'ranks'     : 1,
                 'function'  : bson,
                 'scheduler' : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.eval.m.%06d' % i,
@@ -234,10 +232,11 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
-        """Log results.
+        '''
+        Log results.
 
         Log file is named by the master tasks UID.
-        """
+        '''
         for task in tasks:
 
             mode = task['description']['mode']
