@@ -217,7 +217,7 @@ class MyMaster(rp.raptor.Master):
             # for each `function` mode task, submit one more `proc` mode request
             if mode == rp.TASK_FUNCTION:
                 self.submit_tasks(rp.TaskDescription(
-                    {'uid'       : uid.replace('call', 'extra'),
+                    {'uid'       : 'extra' + uid,
                    # 'timeout'   : 10,
                      'mode'      : rp.TASK_PROC,
                      'ranks'     : 2,
@@ -244,7 +244,6 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.info('=== out: %s', task['stdout'])
             self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
@@ -252,9 +251,9 @@ class MyMaster(rp.raptor.Master):
                             task['return_value'])
 
             # Note that stdout is part of the master task result.
-            print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
-                                              task['stdout'],
-                                              task['return_value']))
+            print('id: %s [%s]:\n    out: %s\n    ret: %s\n'
+                 % (task['uid'], task['state'], task['stdout'],
+                    task['return_value']))
 
 
     # --------------------------------------------------------------------------

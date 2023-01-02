@@ -167,9 +167,9 @@ class Task(object):
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
-                    'pilot_sandbox', 'task_sandbox', 'client_sandbox',
+                    'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
                     'exception', 'exception_detail']:
 
             val = task_dict.get(key, None)

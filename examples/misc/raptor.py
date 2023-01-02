@@ -50,6 +50,7 @@ def func_mpi(comm, msg, sleep):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
     time.sleep(sleep)
+    return 'func_mpi retval'
 
 
 # ------------------------------------------------------------------------------
@@ -63,7 +64,7 @@ def func_non_mpi(a, sleep):
     t = math.exp(a * b)
     print('func_non_mpi')
     time.sleep(sleep)
-    return t
+    return 'func_non_mpi retval'
 
 
 # ------------------------------------------------------------------------------
@@ -309,7 +310,8 @@ if __name__ == '__main__':
             tmgr.wait_tasks(uids=[t.uid for t in tasks])
 
             for task in tasks:
-                report.info('%s [%s]: %s' % (task.uid, task.state, task.stdout))
+                report.info('id: %s [%s]:\n    out: %s\n    ret: %s\n'
+                      % (task.uid, task.state, task.stdout, task.return_value))
 
     finally:
         session.close(download=True)
