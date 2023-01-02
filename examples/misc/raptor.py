@@ -62,7 +62,7 @@ def func_non_mpi(a, sleep):
     import time
     b = random.random()
     t = math.exp(a * b)
-    print('func_non_mpi')
+    print('func_non_mpi: %.1f' % t)
     time.sleep(sleep)
     return 'func_non_mpi retval'
 
