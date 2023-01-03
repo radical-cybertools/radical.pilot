@@ -121,7 +121,6 @@ class MyMaster(rp.raptor.Master):
                 'ranks'     : 2,
                 'function'  : bson,
                 'scheduler' : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             bson = func_non_mpi(i + 1, sleep=self._sleep)
             tds.append(rp.TaskDescription({
@@ -131,7 +130,6 @@ class MyMaster(rp.raptor.Master):
                 'ranks'     : 1,
                 'function'  : bson,
                 'scheduler' : 'master.000000'}))
-            self._log.info('bson %s : %s : %s' % (tds[-1]['uid'], len(bson), bson))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.eval.m.%06d' % i,
@@ -217,7 +215,7 @@ class MyMaster(rp.raptor.Master):
             # for each `function` mode task, submit one more `proc` mode request
             if mode == rp.TASK_FUNCTION:
                 self.submit_tasks(rp.TaskDescription(
-                    {'uid'       : uid.replace('call', 'extra'),
+                    {'uid'       : 'extra' + uid,
                    # 'timeout'   : 10,
                      'mode'      : rp.TASK_PROC,
                      'ranks'     : 2,
@@ -234,17 +232,17 @@ class MyMaster(rp.raptor.Master):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
-        """Log results.
+        '''
+        Log results.
 
         Log file is named by the master tasks UID.
-        """
+        '''
         for task in tasks:
 
             mode = task['description']['mode']
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.info('=== out: %s', task['stdout'])
             self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
@@ -252,9 +250,9 @@ class MyMaster(rp.raptor.Master):
                             task['return_value'])
 
             # Note that stdout is part of the master task result.
-            print('result_cb %s: %s %s %s' % (task['uid'], task['state'],
-                                              task['stdout'],
-                                              task['return_value']))
+            print('id: %s [%s]:\n    out: %s\n    ret: %s\n'
+                 % (task['uid'], task['state'], task['stdout'],
+                    task['return_value']))
 
 
     # --------------------------------------------------------------------------
