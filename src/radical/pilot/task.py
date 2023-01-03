@@ -162,8 +162,6 @@ class Task(object):
                     raise RuntimeError('invalid state transition %s: %s -> %s'
                             % (self.uid, current, target))
 
-        self._state = target
-
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
