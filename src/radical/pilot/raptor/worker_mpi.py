@@ -497,7 +497,6 @@ class _Worker(mt.Thread):
                         self._prof.prof('unschedule_start', uid=uid)
                         rank_result_q.put(task)
 
-
         except:
             self._log.exception('work thread failed [%s]', self._rank)
 
@@ -1153,6 +1152,7 @@ class MPIWorker(Worker):
 
         print('hello: %s' % msg)
         time.sleep(sleep)
+        return 'hello retval'
 
 
     # --------------------------------------------------------------------------
@@ -1161,6 +1161,7 @@ class MPIWorker(Worker):
 
         print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
         time.sleep(sleep)
+        return 'hello_mpi retval'
 
 
 # ------------------------------------------------------------------------------
