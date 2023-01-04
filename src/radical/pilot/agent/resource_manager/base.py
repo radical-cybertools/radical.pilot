@@ -335,7 +335,7 @@ class ResourceManager(object):
                     lm_name, lm_cfg, rm_info, self._log, self._prof)
 
             except:
-                self._log.exception('skip LM %s' % lm_name)
+                self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
 
         if not self._launchers:
