@@ -378,7 +378,7 @@ class _ResultPusher(mt.Thread):
 
 # ------------------------------------------------------------------------------
 #
-class RankWorker(mt.Thread):
+class MPIWorkerRank(mt.Thread):
 
     # --------------------------------------------------------------------------
     #
@@ -589,7 +589,7 @@ class RankWorker(mt.Thread):
 
         *function* is resolved first against `locals()`, then `globals()`, then
         attributes of the implementation class (member functions of *base*, as
-        provided to `RankWorker()`). Finally, an attempt is made to deserialize
+        provided to `MPIWorkerRank()`). Finally, an attempt is made to deserialize
         a PythonTask from *function*. The first non-null resolution of
         *function* is used as the callable.
 
@@ -1006,7 +1006,7 @@ class MPIWorker(Worker):
     #
     def get_rank_worker(self):
 
-        return RankWorker
+        return MPIWorkerRank
 
 
     # --------------------------------------------------------------------------
