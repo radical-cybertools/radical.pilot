@@ -215,9 +215,13 @@ class RMBaseTestCase(TestCase):
                                     'launch_methods': {'SRUN': {}}
                                 }})
 
+        # launching order not provided
+
         rm._prepare_launch_methods(None)
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
         self.assertEqual(rm._launch_order, ['SRUN'])
+
+        # launching order provided
 
         rm._cfg.resource_cfg.launch_methods = {'order': ['SSH'],
                                                'SRUN' : {},
@@ -225,20 +229,43 @@ class RMBaseTestCase(TestCase):
         rm._prepare_launch_methods(None)
         self.assertEqual(rm._launch_order, ['SSH'])
 
+        # launching methods not provided
+
         rm._cfg.resource_cfg.launch_methods = {}
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
 
-        def lm_raise_exception():
+        # raise exception for every launch method
+
+        def lm_raise_exception(*args, **kwargs):
             raise Exception('LM Error')
 
         rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
-        mocked_lm.create = lm_raise_exception
+        mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception)
         # all LMs will be skipped, thus RuntimeError raised
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
         # check that exception was logged (sign that LM exception was raised)
         self.assertTrue(rm._log.exception.called)
+
+        # raise exception for one method and adjust launching order accordingly
+
+        exception_raised = False
+
+        def lm_raise_exception_once(*args, **kwargs):
+            nonlocal exception_raised
+            if not exception_raised:
+                exception_raised = True
+                raise Exception('LM Error')
+            return mocked_lm
+
+        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception_once)
+        rm._prepare_launch_methods(None)
+        # only second LM is considered successful
+        self.assertEqual(rm._launch_order, ['SSH'])
+        self.assertEqual(len(rm._launchers), 1)
+        self.assertEqual(rm._launchers['SSH'], mocked_lm)
 
 
 # ------------------------------------------------------------------------------
