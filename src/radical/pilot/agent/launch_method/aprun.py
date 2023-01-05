@@ -132,10 +132,10 @@ class APRun(LaunchMethod):
         # # update `self._schema` first for attribute "nodelist"
         # #   options.nodelist = nodes -> "-L <node0>,<node1>"
 
-        # task_env = td['environment']
-        # cmd_options += ''.join([' -e %s=%s' % x for x in task_env.items()])
-        # if td['cores_per_rank'] > 1 and 'OMP_NUM_THREADS' not in task_env:
-        #     cmd_options += ' -e OMP_NUM_THREADS=%(cores_per_rank)s' % td
+        # if td['cores_per_rank'] > 1:
+        #     options.env = {'OMP_NUM_THREADS': td['cores_per_rank']}
+        #     # get environment variables provided through the config
+        #     options.env.update(cfg_options.get('env', {}))
 
         cmd = '%s %s %s' % (self._command, options, exec_path)
         return cmd.rstrip()

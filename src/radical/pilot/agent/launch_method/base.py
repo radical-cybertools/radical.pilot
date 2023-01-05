@@ -379,6 +379,9 @@ class LaunchMethodOptions(ru.TypedDict, metaclass=LMOptionsMeta):
                 continue
             elif v is True:
                 options.append('%s' % o)
+            elif isinstance(v, dict):
+                for _k, _v in v.items():
+                    options.append('%s %s=%s' % (o, _k, _v))
             else:
                 if isinstance(v, (list, tuple)):
                     v = ','.join(v)
