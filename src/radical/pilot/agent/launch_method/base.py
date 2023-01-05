@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access
 
-__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -305,6 +305,86 @@ class LaunchMethod(object):
         self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
+
+
+# ------------------------------------------------------------------------------
+#
+class LMOptionsBaseMeta(type):
+
+    # --------------------------------------------------------------------------
+    #
+    def __new__(mcs, name, bases, namespace):
+
+        if name != 'LMOptions':
+
+            base_schema = {}
+            for _cls in bases:
+                _cls_v = getattr(_cls, '_schema', None)
+                if _cls_v is not None:
+                    base_schema.update(_cls_v)
+
+            mapping = namespace.get('_mapping')
+            if not mapping:
+                raise Exception('mapping not provided')
+
+            namespace['_schema'].clear()
+            for k in list(mapping):
+                if k not in base_schema:
+                    del mapping[k]
+                namespace['_schema'][k] = base_schema[k]
+
+        return super().__new__(mcs, name, bases, namespace)
+
+
+# ------------------------------------------------------------------------------
+#
+class LMOptionsMeta(ru.TypedDictMeta, LMOptionsBaseMeta):
+    pass
+
+
+# ------------------------------------------------------------------------------
+#
+class LaunchMethodOptions(ru.TypedDict, metaclass=LMOptionsMeta):
+
+    _delimiter = ' '      # symbol between option name and its value (e.g., "=")
+    _mapping   = {}
+    _schema    = {        # provides all possible options
+        'ranks'           : int,
+        'ranks_per_node'  : int,
+        'cores_per_rank'  : int,
+        'threads_per_core': int,
+        'reserved_cores'  : int
+    }
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None, options=None):
+
+        self.__dict__['_valid_options'] = set(options or list(self._schema))
+
+        super().__init__(from_dict=from_dict)
+
+    # --------------------------------------------------------------------------
+    #
+    def __str__(self):
+
+        options = []
+        for k, o in self._mapping.items():
+
+            if k not in self._valid_options:
+                continue
+
+            v = getattr(self, k)
+            if v is None or v is False:
+                continue
+            elif v is True:
+                options.append('%s' % o)
+            else:
+                if isinstance(v, (list, tuple)):
+                    v = ','.join(v)
+                options.append('%s%s%s' % (o, self._delimiter, v))
+
+        return ' '.join(options)
 
 
 # ------------------------------------------------------------------------------

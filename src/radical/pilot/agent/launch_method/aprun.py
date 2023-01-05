@@ -1,104 +1,22 @@
 
-__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
 
 import radical.utils as ru
 
-from .base import LaunchMethod
-
-
-# ----- TO BE MOVED TO THE LM BASE MODULE vvv-----------------------------------
-#
-class LMOptionsBaseMeta(type):
-
-    # --------------------------------------------------------------------------
-    #
-    def __new__(mcs, name, bases, namespace):
-
-        if name != 'LMOptions':
-
-            base_schema = {}
-            for _cls in bases:
-                _cls_v = getattr(_cls, '_schema', None)
-                if _cls_v is not None:
-                    base_schema.update(_cls_v)
-
-            mapping = namespace.get('_mapping')
-            if not mapping:
-                raise Exception('mapping not provided')
-
-            namespace['_schema'].clear()
-            for k in list(mapping):
-                if k not in base_schema:
-                    del mapping[k]
-                namespace['_schema'][k] = base_schema[k]
-
-        return super().__new__(mcs, name, bases, namespace)
+from .base import LaunchMethod, LaunchMethodOptions
 
 
 # ------------------------------------------------------------------------------
 #
-class LMOptionsMeta(ru.TypedDictMeta, LMOptionsBaseMeta):
-    pass
-
-
-# ------------------------------------------------------------------------------
-#
-class LMOptions(ru.TypedDict, metaclass=LMOptionsMeta):
-
-    _delimiter = ' '      # could be set as '='
-    _mapping   = {}
-    _schema    = {        # provides all possible options
-        'ranks'           : int,
-        'ranks_per_node'  : int,
-        'threads_per_rank': int,
-        'threads_per_core': int,
-        'reserved_cores'  : int
-    }
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, from_dict=None, options=None):
-
-        self.__dict__['_valid_options'] = set(options or list(self._schema))
-
-        super().__init__(from_dict=from_dict)
-
-    # --------------------------------------------------------------------------
-    #
-    def __str__(self):
-
-        options = []
-        for k, o in self._mapping.items():
-
-            if k not in self._valid_options:
-                continue
-
-            v = getattr(self, k)
-            if v is None or v is False:
-                continue
-            elif v is True:
-                options.append('%s' % o)
-            else:
-                if isinstance(v, (list, tuple)):
-                    v = ','.join(v)
-                options.append('%s%s%s' % (o, self._delimiter, v))
-
-        return ' '.join(options)
-
-# ----- TO BE MOVED TO THE LM BASE MODULE ^^^-----------------------------------
-
-
-# ------------------------------------------------------------------------------
-#
-class APRunOptions(LMOptions):
+class APRunOptions(LaunchMethodOptions):
 
     _mapping = {
         'ranks_per_node'  : '-N',  # number of MPI ranks per node
         'ranks'           : '-n',  # total number of MPI ranks
-        'threads_per_rank': '-d',  # number of hyperthreads per MPI rank (depth)
+        'cores_per_rank'  : '-d',  # number of hyperthreads per MPI rank (depth)
         'threads_per_core': '–j',  # number of hyperthreads per core
         'reserved_cores'  : '-r'   # core specialization
     }
@@ -174,16 +92,16 @@ class APRun(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        td      = task['description']
-        n_ranks = td['ranks']
-        n_cores = td.get('cores_per_rank', 1)
+        td             = task['description']
+        ranks          = td['ranks']
+        cores_per_rank = td.get('cores_per_rank', 1)
 
-        ranks_per_node = os.environ.get('SAGA_PPN') or n_ranks
-        ranks_per_node = min(n_ranks, int(ranks_per_node))
+        ranks_per_node = os.environ.get('SAGA_PPN') or ranks
+        ranks_per_node = min(ranks, int(ranks_per_node))
 
-        options = APRunOptions({'ranks_per_node'  : ranks_per_node,
-                                'ranks'           : n_ranks,
-                                'threads_per_rank': n_cores})
+        options = APRunOptions({'ranks_per_node': ranks_per_node,
+                                'ranks'         : ranks,
+                                'cores_per_rank': cores_per_rank})
 
         # get configurable options
         cfg_options = self._lm_cfg.get('options', {})
@@ -195,10 +113,11 @@ class APRun(LaunchMethod):
         #   to specify affinity: --cc none -e KMP_AFFINITY=<affinity>
         #   (*) turn off thread affinity: export KMP_AFFINITY=none
         #
-        # saga_smt = os.environ.get('RADICAL_SAGA_SMT')
-        # if saga_smt:
-        #     cmd_options += ' -j %s' % saga_smt
-        #     cmd_options += ' --cc depth'
+        # smt = os.environ.get('RADICAL_SMT')
+        # if smt:
+        #     options.threads_per_core = int(smt)
+        #     # update `self._schema` first for attribute "depth"
+        #     #   options.depth = 'depth'
 
         # `share` mode access restricts the application specific cpuset
         # contents to only the application reserved cores and memory on NUMA
@@ -208,15 +127,17 @@ class APRun(LaunchMethod):
         # slots = task['slots']
         # nodes = set([rank['node_name'] for rank in slots['ranks']])
         # if len(nodes) < 2:
-        #     cmd_options += ' -F share'  # default is `exclusive`
-        # cmd_options += ' -L %s ' % ','.join(nodes)
+        #     # update `self._schema` first for attribute "share"
+        #     #   options.share = 'share' -> "-F share" (default is `exclusive`)
+        # # update `self._schema` first for attribute "nodelist"
+        # #   options.nodelist = nodes -> "-L <node0>,<node1>"
 
         # task_env = td['environment']
         # cmd_options += ''.join([' -e %s=%s' % x for x in task_env.items()])
         # if td['cores_per_rank'] > 1 and 'OMP_NUM_THREADS' not in task_env:
         #     cmd_options += ' -e OMP_NUM_THREADS=%(cores_per_rank)s' % td
 
-        cmd = '%s %s %s' % (self._command, str(options), exec_path)
+        cmd = '%s %s %s' % (self._command, options, exec_path)
         return cmd.rstrip()
 
 
