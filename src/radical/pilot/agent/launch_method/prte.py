@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2020-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import collections
@@ -13,12 +13,27 @@ import threading     as mt
 
 import radical.utils as ru
 
-from .base import LaunchMethod
+from .base import LaunchMethod, LaunchMethodOptions
 
 PTL_MAX_MSG_SIZE = 1024 * 1024 * 1024 * 1
 
 DVM_URI_FILE_TPL   = '%(base_path)s/prrte.%(dvm_id)04d.uri'
 DVM_HOSTS_FILE_TPL = '%(base_path)s/prrte.%(dvm_id)04d.hosts'
+
+
+# ------------------------------------------------------------------------------
+#
+class PRunOptions(LaunchMethodOptions):
+
+    _mapping = {
+        'service_uri': '--dvm-uri',
+        'ranks'      : '--np',
+        'mapping_cpu': '--map-by',
+        'binding_cpu': '--bind-to',
+        'nodes'      : '--host',
+        'mca'        : '--pmixmca',
+        'verbose'    : '--verbose'
+    }
 
 
 # ------------------------------------------------------------------------------
@@ -347,11 +362,8 @@ class PRTE(LaunchMethod):
         # of prun-commands, but in case errors will come out then the delay
         # should be set: `time.sleep(.1)`
 
-        slots     = task['slots']
-        td        = task['description']
-
-        n_procs   = td['ranks']
-        n_threads = td['cores_per_rank']
+        td    = task['description']
+        slots = task['slots']
 
         if not self._details.get('dvm_list'):
             raise RuntimeError('details with dvm_list not set (%s)' % self.name)
@@ -359,29 +371,33 @@ class PRTE(LaunchMethod):
         dvm_list  = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
         dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]
-        dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
-        flags  = '--np %d '                                   % n_procs
-        flags += '--map-by node:HWTCPUS:PE=%d:OVERSUBSCRIBE ' % n_threads
-        flags += '--bind-to hwthread:overload-allowed'
-
+        mapping_cpu = 'node:HWTCPUS:PE=%d:OVERSUBSCRIBE' % td['cores_per_rank']
+        binding_cpu = 'hwthread:overload-allowed'
         if self._verbose:
-            flags += ':REPORT'
+            binding_cpu += ':REPORT'
 
         if 'ranks' not in slots:
-            # this task is unscheduled - we leave it to PRRTE/PMI-X
+            # this task is unscheduled - we leave it to PRRTE/PMIx
             # to correctly place the task
-            pass
+            nodes = None
         else:
-            ranks = collections.defaultdict(int)
+            nodes = collections.defaultdict(int)
             for rank in slots['ranks']:
-                ranks[rank['node_name']] += 1
-            flags += ' --host ' + ','.join(['%s:%s' % x for x in ranks.items()])
+                nodes[rank['node_name']] += 1
+            nodes = ['%s:%s' % x for x in nodes.items()]
 
-        flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE
-        flags += ' --verbose'  # needed to get prte profile events
+        options = PRunOptions({'service_uri': dvm_list[dvm_id]['dvm_uri'],
+                               'ranks'      : td['ranks'],
+                               'mapping_cpu': mapping_cpu,
+                               'binding_cpu': binding_cpu,
+                               'nodes'      : nodes,
+                               'mca'        : {'ptl_base_max_msg_size':
+                                               PTL_MAX_MSG_SIZE},
+                               # needed to get prte profile events
+                               'verbose'    : True})
 
-        cmd = '%s %s %s %s' % (self._command, dvm_uri, flags, exec_path)
+        cmd = '%s %s %s' % (self._command, options, exec_path)
 
         return cmd.strip()
 
