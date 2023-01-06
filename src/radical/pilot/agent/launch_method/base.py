@@ -315,23 +315,25 @@ class LMOptionsBaseMeta(type):
     #
     def __new__(mcs, name, bases, namespace):
 
-        if name != 'LMOptions':
+        if name != 'LaunchMethodOptions':
 
-            base_schema = {}
+            data = {'_delimiters': {}, '_schema': {}}
             for _cls in bases:
-                _cls_v = getattr(_cls, '_schema', None)
-                if _cls_v is not None:
-                    base_schema.update(_cls_v)
+                data['_delimiters'].update(getattr(_cls, '_delimiters') or {})
+                data['_schema'].update(getattr(_cls, '_schema') or {})
 
             mapping = namespace.get('_mapping')
             if not mapping:
                 raise Exception('mapping not provided')
 
+            data['_delimiters'].update(namespace.get('_delimiters') or {})
+            namespace['_delimiters'] = data['_delimiters']
+
             namespace['_schema'].clear()
             for k in list(mapping):
-                if k not in base_schema:
+                if k not in data['_schema']:
                     del mapping[k]
-                namespace['_schema'][k] = base_schema[k]
+                namespace['_schema'][k] = data['_schema'][k]
 
         return super().__new__(mcs, name, bases, namespace)
 
@@ -346,14 +348,30 @@ class LMOptionsMeta(ru.TypedDictMeta, LMOptionsBaseMeta):
 #
 class LaunchMethodOptions(ru.TypedDict, metaclass=LMOptionsMeta):
 
-    _delimiter = ' '      # symbol between option name and its value (e.g., "=")
-    _mapping   = {}
-    _schema    = {        # provides all possible options
+    _delimiters = {
+        '_base'           : ' ',
+        '_list'           : ',',
+        '_dict'           : '=',
+        # if a particular option (list or dict types) requires
+        # a different delimiter, then provide it here
+        'mca'             : ' '
+    }
+    _mapping    = {}
+    _schema     = {       # provides all possible options
         'ranks'           : int,
         'ranks_per_node'  : int,
         'cores_per_rank'  : int,
+        'gpus_per_rank'   : int,
         'threads_per_core': int,
-        'reserved_cores'  : int
+        'reserved_cores'  : int,
+        'nodes'           : list,
+        'service_uri'     : str,
+        'binding_cpu'     : str,
+        'binding_gpu'     : str,
+        'mapping_cpu'     : str,
+        # Modular Component Architecture (MCA) parameters
+        'mca'             : dict,
+        'verbose'         : bool
     }
 
     # --------------------------------------------------------------------------
@@ -381,11 +399,15 @@ class LaunchMethodOptions(ru.TypedDict, metaclass=LMOptionsMeta):
                 options.append('%s' % o)
             elif isinstance(v, dict):
                 for _k, _v in v.items():
-                    options.append('%s %s=%s' % (o, _k, _v))
+                    _delimiter = self._delimiters.get(k) or \
+                                 self._delimiters['_dict']
+                    options.append('%s %s%s%s' % (o, _k, _delimiter, _v))
             else:
                 if isinstance(v, (list, tuple)):
-                    v = ','.join(v)
-                options.append('%s%s%s' % (o, self._delimiter, v))
+                    _delimiter = self._delimiters.get(k) or \
+                                 self._delimiters['_list']
+                    v = _delimiter.join(v)
+                options.append('%s%s%s' % (o, self._delimiters['_base'], v))
 
         return ' '.join(options)
 
