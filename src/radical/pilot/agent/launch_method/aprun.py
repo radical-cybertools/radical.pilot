@@ -104,8 +104,8 @@ class APRun(LaunchMethod):
                                 'cores_per_rank': cores_per_rank})
 
         # get configurable options
-        cfg_options = self._lm_cfg.get('options', {})
-        options.reserved_cores = cfg_options.get('reserved_cores')
+        # cfg_options = self._lm_cfg.get('options', {})
+        # options.reserved_cores = cfg_options.get('reserved_cores')
 
         # CPU affinity binding
         # - use –d and --cc depth to let ALPS control affinity
@@ -130,7 +130,7 @@ class APRun(LaunchMethod):
         #     # update `self._schema` first for attribute "share"
         #     #   options.share = 'share' -> "-F share" (default is `exclusive`)
         # # update `self._schema` first for attribute "nodelist"
-        # #   options.nodelist = nodes -> "-L <node0>,<node1>"
+        # #   options.nodes = nodes -> "-L <node0>,<node1>"
 
         # if td['cores_per_rank'] > 1:
         #     options.env = {'OMP_NUM_THREADS': td['cores_per_rank']}
