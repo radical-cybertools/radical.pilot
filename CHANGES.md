@@ -3,6 +3,12 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.20.1 Hotfix Release                                                 2023-01-07
+--------------------------------------------------------------------------------
+
+  - fix task cancellation call
+
+
 1.20.0 Release                                                        2022-12-16
 --------------------------------------------------------------------------------
 
