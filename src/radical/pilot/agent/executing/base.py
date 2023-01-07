@@ -157,7 +157,7 @@ class AgentExecutingComponent(rpu.Component):
                 for to, start, task in self._to_tasks:
                     if now - start > to:
                         self._prof.prof('task_timeout', uid=task['uid'])
-                        self.cancel_task(task)
+                        self.cancel_task(uid=task['uid'])
                     else:
                         to_list.append([to, start, task])
 
