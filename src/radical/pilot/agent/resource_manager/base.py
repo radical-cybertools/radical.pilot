@@ -320,30 +320,26 @@ class ResourceManager(object):
         launch_methods  = self._cfg.resource_cfg.launch_methods
 
         self._launchers    = {}
-        self._launch_order = None
+        self._launch_order = launch_methods.get('order') or list(launch_methods)
 
-        for name, lm_cfg in launch_methods.items():
+        for lm_name in list(self._launch_order):
 
-            if name == 'order':
-                self._launch_order = lm_cfg
-                continue
+            lm_cfg = launch_methods[lm_name]
 
             try:
-                self._log.debug('prepare lm %s', name)
+                self._log.debug('prepare lm %s', lm_name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
                 lm_cfg['resource']    = self._cfg.resource
-                self._launchers[name] = rpa.LaunchMethod.create(
-                    name, lm_cfg, rm_info, self._log, self._prof)
+                self._launchers[lm_name] = rpa.LaunchMethod.create(
+                    lm_name, lm_cfg, rm_info, self._log, self._prof)
 
             except:
-                self._log.exception('skip LM %s' % name)
+                self._log.exception('skip lm %s', lm_name)
+                self._launch_order.remove(lm_name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
-
-        if not self._launch_order:
-            self._launch_order = list(self._launchers.keys())
 
 
     # --------------------------------------------------------------------------

@@ -59,6 +59,8 @@ class MyWorker(rp.raptor.MPIWorker):
 
         print(task['stdout'])
 
+        return 'my_hello retval'
+
 
 # ------------------------------------------------------------------------------
 
