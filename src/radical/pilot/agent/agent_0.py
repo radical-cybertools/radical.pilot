@@ -43,7 +43,7 @@ class Agent_0(rpu.Worker):
     def __init__(self, cfg, session):
 
         self._uid     = 'agent.0'
-        self._cfg     = cfg
+        self._cfg: ru.Config = cfg
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
@@ -364,8 +364,8 @@ class Agent_0(rpu.Worker):
             task['task_sandbox_path'] = self._sbox
             task['task_sandbox'] = 'file://localhost/' + self._sbox
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
-            # task['session_sandbox'] = os.environ['RP_SESSION_SANDBOX']
-            # task['resource_sandbox'] = os.environ['RP_RESOURCE_SANDBOX']
+            task['session_sandbox'] = self._cfg.session_sandbox
+            task['resource_sandbox'] = self._cfg.resource_sandbox
             task['pilot'] = self._cfg.pid
             # task['resources'] = {'cpu': td['ranks'] *
             #                             td.get('cores_per_rank', 1),
