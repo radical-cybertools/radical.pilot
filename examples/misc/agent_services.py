@@ -55,7 +55,7 @@ if __name__ == '__main__':
     try:
         pd = rp.PilotDescription(cfg.pilot_descr)
 
-        pd.cores =
+        pd.cores = 2
         pd.gpus = 0
 
         pd.runtime = cfg.runtime
