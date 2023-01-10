@@ -13,12 +13,38 @@ class MyWorker(rp.raptor.MPIWorker):
     In this simple example, the worker only implements a single call: `hello`.
     '''
 
+    class MyMPIWorkerRank(rp.raptor.MPIWorkerRank):
+
+        def __init__(self, rank_task_q_get, rank_result_q_put, event,
+                           log, prof, base):
+            super().__init__(rank_task_q_get, rank_result_q_put, event,
+                             log, prof, base)
+
+            self.register_mode('foo', self._dispatch_foo)
+
+
+        def _dispatch_foo(self, task):
+
+            import pprint
+            self._log.debug('==== running foo\n%s',
+                    pprint.pformat(task['description']))
+
+            return 'out', 'err', 0, None, None
+
+
+
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
-        rp.raptor.MPIWorker.__init__(self, cfg)
+        super().__init__(cfg)
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rank_worker(self):
+
+        return self.MyMPIWorkerRank
 
 
     # --------------------------------------------------------------------------
