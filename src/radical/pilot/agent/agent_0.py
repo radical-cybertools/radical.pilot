@@ -50,7 +50,7 @@ class Agent_0(rpu.Worker):
 
         self._session = session
         self._log     = ru.Logger(self._uid, ns='radical.pilot')
-
+        self._log.info("LoggingConfig %s",self._cfg)
         self._starttime   = time.time()
         self._final_cause = None
 
@@ -86,7 +86,7 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_components()
 
         # uid of service tasks
-        self._service_task_ids = {}
+        self._service_task_ids = []
         # Event to handle for services started
         self.services_event = threading.Event()
 
@@ -100,6 +100,7 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
+        self._log.info("Registering the callback for agent services")
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb_of_services)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
@@ -348,6 +349,7 @@ class Agent_0(rpu.Worker):
         If a `./services` file exist, reserve a compute node and run that file
         there as bash script.
         '''
+        self._log.info("Starting the agent services")
         service_descriptions = self._cfg.services
         services = list()
 
@@ -375,11 +377,14 @@ class Agent_0(rpu.Worker):
         self.number_of_services_to_launch = len(services)
         self.advance(services, publish=False, push=True)
         # Waiting 2mins for all services to launch
+        self._log.info("Waiting for the agent services to get started")
         did_timed_out = self.services_event.wait(timeout=60 * 2)
+        self._log.info("All agent services started")
         if not did_timed_out:
             raise Exception("Unable to start services") #TODO custom exception
 
     def _state_cb_of_services(self, topic, msg):
+        self._log.info("Callback of services called")
         cmd = msg['cmd']
         tasks = msg['arg']
 
