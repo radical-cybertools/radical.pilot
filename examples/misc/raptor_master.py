@@ -70,7 +70,7 @@ class MyMaster(rp.raptor.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        rp.raptor.Master.__init__(self, cfg=cfg)
+        super().__init__(cfg=cfg)
 
         self._sleep = self._cfg.sleep
 
