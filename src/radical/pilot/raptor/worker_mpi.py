@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import shlex
+import signal
 
 import threading           as mt
 import radical.utils       as ru
@@ -425,7 +426,6 @@ class _Worker(mt.Thread):
         self._rank  = self._world.rank
         self._ranks = self._world.size
 
-
         try:
             self._log.debug('init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
@@ -497,8 +497,15 @@ class _Worker(mt.Thread):
                         self._prof.prof('unschedule_start', uid=uid)
                         rank_result_q.put(task)
 
+                        if task['uid'] == 'task.call_mpi.c.000000':
+                            raise RuntimeError('oops')
+
         except:
-            self._log.exception('work thread failed [%s]', self._rank)
+            self._log.exception('work thread failed')
+            self._base.stop(1)
+
+        else:
+            self._base.stop()
 
 
     # --------------------------------------------------------------------------
@@ -950,9 +957,10 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, session=None):
+    def __init__(self, cfg=None):
 
         self._my_term = mt.Event()
+        self._my_ret  = 0
 
         from mpi4py import MPI                                            # noqa
 
@@ -965,9 +973,9 @@ class MPIWorker(Worker):
         if self._rank == 0: self._manager = True
         else              : self._manager = False
 
-        # rank 0 will register the worker with the master and connect
-        # to the task and result queues
-        super().__init__(cfg=cfg, session=session, register=self._manager)
+        # rank 0 is the manager rank and will register the worker with the
+        # master and connect to the task and result queues
+        super().__init__(cfg=cfg, manager=self._manager, rank=self._rank)
 
 
         # rank 0 starts two ZMQ queues: one to send tasks to the worker ranks
@@ -1068,8 +1076,10 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
+    def stop(self, ret=0):
 
+        self._log.debug('stop: set term signal')
+        self._my_ret = ret
         self._my_term.set()
 
 
@@ -1078,9 +1088,14 @@ class MPIWorker(Worker):
     def join(self):
 
         # FIXME
-        while True:
+        while not self._my_term.is_set():
             if self._my_term.wait(1):
                 break
+
+        self._log.debug('stop: term signal set - joined: %s', self._my_ret)
+
+        if self._my_ret:
+            raise RuntimeError('MPI worker failed with non-zero exit code')
 
 
     # --------------------------------------------------------------------------

@@ -20,7 +20,7 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, session=None):
+    def __init__(self, cfg=None):
 
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
@@ -34,11 +34,11 @@ class DefaultWorker(Worker):
         if rank is None: rank = 0
         else           : rank = int(rank)
 
-        # only rank 0 registers with the master
-        if rank == 0: register = True
-        else        : register = False
+        # only rank 0 (the manager) registers with the master.
+        if rank == 0: manager = True
+        else        : manager = False
 
-        super().__init__(cfg=cfg, session=session, register=register)
+        super().__init__(cfg=cfg, manager=manager, rank=rank)
 
         # connect to the master queues
         self._res_put = ru.zmq.Putter('result',  self._cfg.info.res_addr_put)

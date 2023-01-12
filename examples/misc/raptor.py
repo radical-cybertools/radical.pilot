@@ -39,8 +39,9 @@ from radical.pilot import PythonTask
 # * https://radicalpilot.readthedocs.io/en/stable/developer.html#debugging
 # For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
 logger = ru.Logger('raptor')
-
 pytask = PythonTask.pythontask
+
+pwd = os.path.abspath(os.path.dirname(__file__))
 
 
 # ------------------------------------------------------------------------------
@@ -81,8 +82,8 @@ def task_state_cb(task, state):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        cfg_file = '%s/%s' % (os.path.dirname(os.path.abspath(__file__)),
-                              'raptor.cfg')
+        cfg_file = '%s/raptor.cfg' % pwd
+
     else:
         cfg_file = sys.argv[1]
 
@@ -165,11 +166,11 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
-            td.input_staging  = [{'source': 'raptor_master.py',
+            td.input_staging  = [{'source': '%s/raptor_master.py' % pwd,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': 'raptor_worker.py',
+                                 {'source': '%s/raptor_worker.py' % pwd,
                                   'target': 'raptor_worker.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},

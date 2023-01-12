@@ -3,6 +3,8 @@ import os
 import sys
 import time
 
+import threading         as mt
+
 import radical.utils     as ru
 
 from .. import constants as rpc
@@ -18,9 +20,7 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, register=True, session=None):
-
-        self._session = session
+    def __init__(self, cfg, manager, rank):
 
         if cfg is None:
             cfg = dict()
@@ -28,6 +28,7 @@ class Worker(object):
         if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
         else                   : self._cfg = ru.Config(cfg=cfg)
 
+        self._rank = rank
         self._sbox = os.environ['RP_TASK_SANDBOX']
         self._uid  = os.environ['RP_TASK_ID']
 
@@ -36,61 +37,56 @@ class Worker(object):
         self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',
                                  path=self._sbox)
 
-        if register:
+        # register for lifetime management messages on the control pubsub
+        psbox = os.environ['RP_PILOT_SANDBOX']
+        ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
-            psbox = os.environ['RP_PILOT_SANDBOX']
-            ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
-
-            self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
-                                                  url=ctrl_cfg['sub'],
-                                                  log=self._log,
-                                                  prof=self._prof,
-                                                  cb=self._control_cb)
-
-            self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
-                                              url=ctrl_cfg['pub'],
+        self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
+                                              url=ctrl_cfg['sub'],
                                               log=self._log,
-                                              prof=self._prof)
-            # let ZMQ settle
-            time.sleep(1)
+                                              prof=self._prof,
+                                              cb=self._control_cb)
 
-            # `info` is a placeholder for any additional meta data
+        # we push hertbeat and registration messages on that pubsub also
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
+                                          url=ctrl_cfg['pub'],
+                                          log=self._log,
+                                          prof=self._prof)
+        # let ZMQ settle
+        time.sleep(1)
+
+        # the manager (rank 0) registers the worker with the master
+        if manager:
+
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
-                                                    'arg': {'uid' : self._uid,
-                                                            'info': {}}})
+                                                    'arg': {'uid' : self._uid}})
+
 
           # # FIXME: we never unregister on termination
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})
 
+        # run heartbeat thread in all ranks (one hb msg every `n` seconds)
+        self._hb_delay  = 5
+        self._hb_thread = mt.Thread(target=self._hb_worker)
+        self._hb_thread.daemon = True
+        self._hb_thread.start()
+
+        self._log.debug('heartbeat thread started %s:%s', self._uid, self._rank)
+
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod
-    def run(fpath, cname, cfg):
+    def _hb_worker(self):
 
-        # load worker class from fname if that is a valid string
-        wclass = None
+        while True:
 
-        # Create the worker class and run it's work loop.
-        if fpath:
-            wclass = ru.load_class(fpath, cname, Worker)
+            self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
+                    {'cmd': 'worker_rank_heartbeat',
+                     'arg': {'uid' : self._uid,
+                             'rank': self._rank}})
 
-        else:
-            # import all known workers into the local name space so that
-            # `get_type` has a chance to find them
-
-            from .worker_default import DefaultWorker  # pylint: disable=W0611 # noqa
-            from .worker_mpi     import MPIWorker      # pylint: disable=W0611 # noqa
-
-            wclass = ru.get_type(cname)
-
-        if not wclass:
-            raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))
-
-        worker = wclass(cfg)
-        worker.start()
-        worker.join()
+            time.sleep(self._hb_delay)
 
 
     # --------------------------------------------------------------------------
@@ -104,6 +100,7 @@ class Worker(object):
 
         elif msg['cmd'] == 'worker_terminate':
             self._log.debug('worker_terminate signal')
+
             if msg['arg']['uid'] == self._uid:
                 self.stop()
                 self.join()

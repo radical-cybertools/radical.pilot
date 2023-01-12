@@ -87,7 +87,7 @@ class Flux(AgentExecutingComponent) :
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
         # also listen on the command channel for task cancellation requests
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.control_cb)
 
         # wait for some time to get watcher and listener initialized
         start = time.time()

@@ -207,7 +207,7 @@ class Agent_0(rpu.Worker):
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # register the command callback which pulls the DB for commands
-        self.register_timed_cb(self._agent_command_cb,
+        self.register_timed_cb(self._agent_control_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # register idle callback to pull for tasks
@@ -534,7 +534,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _agent_command_cb(self):
+    def _agent_control_cb(self):
 
         if not self._check_commands(): return False
         if not self._check_rpc     (): return False

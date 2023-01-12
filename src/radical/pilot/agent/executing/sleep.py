@@ -132,9 +132,9 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
 

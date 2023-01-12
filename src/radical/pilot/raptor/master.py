@@ -38,20 +38,22 @@ class Master(rpu.Component):
     #
     def __init__(self, cfg=None):
 
-        self._uid      = os.environ['RP_TASK_ID']
-        self._sid      = os.environ['RP_SESSION_ID']
-        self._name     = os.environ['RP_TASK_NAME']
-        self._sbox     = os.environ['RP_TASK_SANDBOX']
-        self._psbox    = os.environ['RP_PILOT_SANDBOX']
+        self._uid        = os.environ['RP_TASK_ID']
+        self._sid        = os.environ['RP_SESSION_ID']
+        self._name       = os.environ['RP_TASK_NAME']
+        self._sbox       = os.environ['RP_TASK_SANDBOX']
+        self._psbox      = os.environ['RP_PILOT_SANDBOX']
 
-        self._workers  = dict()      # wid: worker
-        self._tasks    = dict()      # bookkeeping of submitted requests
-        self._lock     = mt.Lock()   # lock the request dist on updates
-        self._term     = mt.Event()  # termination signal
-        self._thread   = None        # run loop
+        self._workers    = dict()      # wid: worker
+        self._tasks      = dict()      # bookkeeping of submitted requests
+        self._term       = mt.Event()  # termination signal
+        self._thread     = None        # run loop
 
-        cfg            = self._get_config(cfg)
-        self._session  = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+        self._hb_freq    = 10          # check worker heartbetas every n seconds
+        self._hb_timeout = 15          # consider worker dead after 15 seconds
+
+        cfg              = self._get_config(cfg)
+        self._session    = Session(cfg=cfg, uid=cfg.sid, _primary=False)
 
         rpu.Component.__init__(self, cfg, self._session)
 
@@ -195,18 +197,26 @@ class Master(rpu.Component):
 
         if cmd == 'worker_register':
 
-            uid  = arg['uid']
-            info = arg['info']
+            uid = arg['uid']
 
             self._log.debug('register %s', uid)
 
-            with self._lock:
-                if uid not in self._workers:
-                    return
-                self._workers[uid]['info']   = info
-                self._workers[uid]['status'] = self.ACTIVE
+            if uid not in self._workers:
+                return
+            self._workers[uid]['status'] = self.ACTIVE
 
-            self._log.debug('info: %s', info)
+
+        elif cmd == 'worker_rank_heartbeat':
+
+            uid  = arg['uid']
+            rank = arg['rank']
+
+            self._log.debug('=== recv rank heartbeat %s:%s', uid, rank)
+
+            if uid not in self._workers:
+                return
+
+            self._workers[uid]['heartbeats'][rank] = time.time()
 
 
         elif cmd == 'worker_unregister':
@@ -214,10 +224,10 @@ class Master(rpu.Component):
             uid = arg['uid']
             self._log.debug('unregister %s', uid)
 
-            with self._lock:
-                if uid not in self._workers:
-                    return
-                self._workers[uid]['status'] = self.DONE
+            if uid not in self._workers:
+                return
+
+            self._workers[uid]['status'] = self.DONE
 
 
     # --------------------------------------------------------------------------
@@ -254,9 +264,7 @@ class Master(rpu.Component):
                 if uid in self._workers:
 
                     if state == rps.AGENT_STAGING_OUTPUT:
-                        with self._lock:
-                            self._workers[uid]['status'] = self.DONE
-
+                        self._workers[uid]['status'] = self.DONE
                         self.worker_state_cb(self._workers[uid])
 
 
@@ -293,78 +301,79 @@ class Master(rpu.Component):
         master - the worker ranks are expected to syncronize their ranks as
         needed.
         '''
-        with self._lock:
+        tasks = list()
+        base  = self._uid
 
-            tasks = list()
-            base  = self._uid
+        cfg            = copy.deepcopy(self._cfg)
+        cfg['descr']   = descr
+        cfg['info']    = self._info
+        cfg['ts_addr'] = self._task_service.addr
 
-            cfg            = copy.deepcopy(self._cfg)
-            cfg['descr']   = descr
-            cfg['info']    = self._info
-            cfg['ts_addr'] = self._task_service.addr
+        for i in range(count):
 
-            for i in range(count):
+            uid        = '%s.worker.%04d' % (base, i)
+            cfg['uid'] = uid
 
-                uid        = '%s.worker.%04d' % (base, i)
-                cfg['uid'] = uid
+            ranks = descr['ranks']
+            now   = time.time()
 
-                fname = './%s.json' % uid
-                ru.write_json(cfg, fname)
+            fname = './%s.json' % uid
+            ru.write_json(cfg, fname)
 
-                td = dict()
-                td['mode']           = RAPTOR_WORKER
-                td['named_env']      = descr.get('named_env')
-                td['ranks']          = descr['ranks']
-                td['threading_type'] = rpc.POSIX
-                td['cores_per_rank'] = descr.get('cores_per_rank', 1)
-                td['gpus_per_rank']  = descr.get('gpus_per_rank', 0)
-                td['environment']    = descr.get('environment', {})
+            td = dict()
+            td['mode']           = RAPTOR_WORKER
+            td['named_env']      = descr.get('named_env')
+            td['ranks']          = ranks
+            td['threading_type'] = rpc.POSIX
+            td['cores_per_rank'] = descr.get('cores_per_rank', 1)
+            td['gpus_per_rank']  = descr.get('gpus_per_rank', 0)
+            td['environment']    = descr.get('environment', {})
 
-                # this master is obviously running in a suitable python3 env,
-                # so we expect that the same env is also suitable for the worker
-                # NOTE: shell escaping is a bit tricky here - careful on change!
-                td['pre_exec']   = descr.get('pre_exec', [])
-                td['executable'] = 'python3'
-                td['arguments']  = [
-                        '-c',
-                        'import radical.pilot as rp; '
-                        "rp.raptor.Worker.run('%s', '%s', '%s')"
-                            % (descr.get('worker_file', ''),
-                               descr.get('worker_class', 'DefaultWorker'),
-                               fname)]
+            # this master is obviously running in a suitable python3 env,
+            # so we expect that the same env is also suitable for the worker
+            # NOTE: shell escaping is a bit tricky here - careful on change!
+            td['pre_exec']   = descr.get('pre_exec', [])
+          # td['executable'] = '/tmp/mpi/t.py'
+            td['executable'] = 'radical-pilot-raptor-worker'
+            td['arguments']  = [descr.get('worker_file', ''),
+                                descr.get('worker_class', 'DefaultWorker'),
+                                fname]
 
-                # all workers run in the same sandbox as the master
-                task = dict()
+            # all workers run in the same sandbox as the master
+            task = dict()
 
-                task['origin']            = 'raptor'
-                task['description']       = TaskDescription(td).as_dict()
-                task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-                task['status']            = self.NEW
-                task['type']              = 'task'
-                task['uid']               = uid
-                task['task_sandbox_path'] = self._sbox
-                task['task_sandbox']      = 'file://localhost/' + self._sbox
-                task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
-                task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
-                task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
-                task['pilot']             = os.environ['RP_PILOT_ID']
-                task['resources']         = {'cpu': td['ranks'] *
-                                                    td.get('cores_per_rank', 1),
-                                             'gpu': td['ranks'] *
-                                                    td.get('gpus_per_rank', 1)}
-                tasks.append(task)
+            task['origin']            = 'raptor'
+            task['description']       = TaskDescription(td).as_dict()
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['status']            = self.NEW
+            task['type']              = 'task'
+            task['uid']               = uid
+            task['task_sandbox_path'] = self._sbox
+            task['task_sandbox']      = 'file://localhost/' + self._sbox
+            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
+            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
+            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
+            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['resources']         = {'cpu': td['ranks'] *
+                                                td.get('cores_per_rank', 1),
+                                         'gpu': td['ranks'] *
+                                                td.get('gpus_per_rank', 1)}
+            tasks.append(task)
 
-                # NOTE: the order of insert / state update relies on that order
-                #       being maintained through the component's message push,
-                #       the update worker's message receive up to the insertion
-                #       order into the update worker's DB bulk op.
-                self._log.debug('insert %s', uid)
-                self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
+            # NOTE: the order of insert / state update relies on that order
+            #       being maintained through the component's message push,
+            #       the update worker's message receive up to the insertion
+            #       order into the update worker's DB bulk op.
+            self._log.debug('insert %s', uid)
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
-                self._workers[uid] = dict()
-                self._workers[uid]['status'] = self.NEW
+            self._workers[uid] = {
+                    'status'     : self.NEW,
+                    'heartbeats' : {r: now for r in range(ranks)},
+                    'description': task['description']
+            }
 
-            self.advance(tasks, publish=True, push=True)
+        self.advance(tasks, publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -389,9 +398,8 @@ class Master(rpu.Component):
         while True:
 
             stats = defaultdict(int)
-            with self._lock:
-                for uid in uids:
-                    stats[self._workers[uid]['status']] += 1
+            for uid in uids:
+                stats[self._workers[uid]['status']] += 1
 
             n_done = stats[self.DONE]
             self._log.debug('stats [%d]: %s', n_done, stats)
@@ -446,11 +454,30 @@ class Master(rpu.Component):
     def _run(self):
 
         # wait for the submitted requests to complete
-        while not self._term.wait(timeout=60):
+        while True:
+
+            if self._term.is_set():
+                break
 
             self._log.debug('still alive')
 
-        self._log.debug('terminate')
+            # check worker heartbeats
+            now  = time.time()
+            lost = set()
+            for uid in self._workers:
+                for rank, hb in self._workers[uid]['heartbeats'].items():
+                    if hb < now - self._hb_timeout:
+                        self._log.warn('lost rank %d on worker %s', rank, uid)
+                        lost.add(uid)
+
+            time.sleep(self._hb_freq)
+
+            for uid in lost:
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_terminate',
+                                                  'arg': {'uid': uid}})
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'cancel_tasks',
+                                                  'arg': {'uids': [uid]}})
+        self._log.debug('terminate run loop')
 
 
     # --------------------------------------------------------------------------
