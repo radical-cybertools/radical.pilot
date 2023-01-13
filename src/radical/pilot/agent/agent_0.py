@@ -523,7 +523,7 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
-            self._log.info ('create sub-agent %s: %s', (sa, cmdline))
+            self._log.info ('create sub-agent %s: %s', sa, cmdline)
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
                                       stderr='%s.err' % sa)
 
