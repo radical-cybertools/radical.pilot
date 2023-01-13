@@ -295,7 +295,6 @@ class Master(rpu.Component):
             base  = self._uid
 
             cfg            = copy.deepcopy(self._cfg)
-            cfg['descr']   = descr
             cfg['info']    = self._info
             cfg['ts_addr'] = self._task_service.addr
 
@@ -307,33 +306,32 @@ class Master(rpu.Component):
                 fname = './%s.json' % uid
                 ru.write_json(cfg, fname)
 
-                td = dict()
-                td['mode']           = RAPTOR_WORKER
-                td['named_env']      = descr.get('named_env')
-                td['ranks']          = descr['ranks']
-                td['threading_type'] = rpc.POSIX
-                td['cores_per_rank'] = descr.get('cores_per_rank', 1)
-                td['gpus_per_rank']  = descr.get('gpus_per_rank', 0)
-                td['environment']    = descr.get('environment', {})
+                worker_file  = descr.get('worker_file', '')
+                worker_class = descr.get('worker_class', 'DefaultWorker')
+
+                del descr['worker_file']
+                del descr['worker_class']
+
+                td = TaskDescription(descr)
+                td.mode = RAPTOR_WORKER
 
                 # this master is obviously running in a suitable python3 env,
                 # so we expect that the same env is also suitable for the worker
                 # NOTE: shell escaping is a bit tricky here - careful on change!
-                td['pre_exec']   = descr.get('pre_exec', [])
-                td['executable'] = 'python3'
-                td['arguments']  = [
-                        '-c',
-                        'import radical.pilot as rp; '
-                        "rp.raptor.Worker.run('%s', '%s', '%s')"
-                            % (descr.get('worker_file', ''),
-                               descr.get('worker_class', 'DefaultWorker'),
-                               fname)]
+                td.executable = 'python3'
+                td.arguments  = ['-c',
+                                 'import radical.pilot as rp; '
+                                 "rp.raptor.Worker.run('%s', '%s', '%s')"
+                                           % (worker_file, worker_class, fname)]
+
+                # ensure that defaults and backward compatibility kick in
+                td.verify()
 
                 # all workers run in the same sandbox as the master
                 task = dict()
 
                 task['origin']            = 'raptor'
-                task['description']       = TaskDescription(td).as_dict()
+                task['description']       = td.as_dict()
                 task['state']             = rps.AGENT_STAGING_INPUT_PENDING
                 task['status']            = self.NEW
                 task['type']              = 'task'
@@ -348,6 +346,7 @@ class Master(rpu.Component):
                                                     td.get('cores_per_rank', 1),
                                              'gpu': td['ranks'] *
                                                     td.get('gpus_per_rank', 1)}
+
                 tasks.append(task)
 
                 # NOTE: the order of insert / state update relies on that order
