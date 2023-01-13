@@ -102,9 +102,9 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
       # arg = msg['arg']
@@ -180,6 +180,13 @@ class Flux(AgentExecutingComponent) :
 
             self._log.exception('Error in listener loop')
             self._term.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        raise NotImplementedError('no cancellation support in sleep executor')
 
 
     # --------------------------------------------------------------------------
