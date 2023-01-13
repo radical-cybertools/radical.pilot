@@ -293,6 +293,7 @@ class Master(rpu.Component):
 
             tasks = list()
             base  = self._uid
+            descr = TaskDescription(descr).as_dict()           # ensure defaults
 
             cfg            = copy.deepcopy(self._cfg)
             cfg['descr']   = descr
