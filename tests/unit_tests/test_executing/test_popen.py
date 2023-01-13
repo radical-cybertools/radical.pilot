@@ -134,12 +134,16 @@ class TestPopen(TestCase):
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
 
+        os.getpgid = mock.Mock()
+        os.killpg  = mock.Mock()
+
         to_watch  = list()
         to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
+        task['proc'].pid = os.getpid()
         to_watch.append(task)
         to_cancel.append(task['uid'])
         pex._check_running(to_watch, to_cancel)
