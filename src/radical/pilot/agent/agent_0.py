@@ -362,9 +362,9 @@ class Agent_0(rpu.Worker):
             task['type'] = 'task'
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
-            self._service_task_ids.add(task['uid'])
-            task['task_sandbox_path'] = self._sbox
-            task['task_sandbox'] = 'file://localhost/' + self._sbox
+            self._service_task_ids.append(task['uid'])
+            # task['task_sandbox_path'] = os.environ['RP_TASK_SANDBOX']
+            # task['task_sandbox'] = 'file://localhost/' + os.environ['RP_TASK_SANDBOX']
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
             task['session_sandbox'] = self._cfg.session_sandbox
             task['resource_sandbox'] = self._cfg.resource_sandbox
