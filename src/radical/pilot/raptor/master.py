@@ -369,7 +369,7 @@ class Master(rpu.Component):
 
             self._workers[uid] = {
                     'status'     : self.NEW,
-                    'heartbeats' : {r: now for r in range(ranks)},
+                    'heartbeats' : {r: now for r in range(td.ranks)},
                     'description': task['description']
             }
 

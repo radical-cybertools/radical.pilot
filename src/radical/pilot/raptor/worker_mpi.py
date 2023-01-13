@@ -5,7 +5,6 @@ import os
 import sys
 import time
 import shlex
-import signal
 
 import threading           as mt
 import radical.utils       as ru
