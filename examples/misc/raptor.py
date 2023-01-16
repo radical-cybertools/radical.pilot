@@ -31,7 +31,6 @@ import sys
 import radical.utils as ru
 import radical.pilot as rp
 
-from radical.pilot import PythonTask
 
 # To enable logging, some environment variables need to be set.
 # Ref
@@ -39,14 +38,13 @@ from radical.pilot import PythonTask
 # * https://radicalpilot.readthedocs.io/en/stable/developer.html#debugging
 # For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
 logger = ru.Logger('raptor')
-pytask = PythonTask.pythontask
-
-pwd = os.path.abspath(os.path.dirname(__file__))
+PWD    = os.path.abspath(os.path.dirname(__file__))
+RANKS  = 1
 
 
 # ------------------------------------------------------------------------------
 #
-@pytask
+@rp.pythontask
 def func_mpi(comm, msg, sleep):
     import time
     print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
@@ -56,7 +54,7 @@ def func_mpi(comm, msg, sleep):
 
 # ------------------------------------------------------------------------------
 #
-@pytask
+@rp.pythontask
 def func_non_mpi(a, sleep):
     import math
     import random
@@ -82,7 +80,7 @@ def task_state_cb(task, state):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        cfg_file = '%s/raptor.cfg' % pwd
+        cfg_file = '%s/raptor.cfg' % PWD
 
     else:
         cfg_file = sys.argv[1]
@@ -146,6 +144,7 @@ if __name__ == '__main__':
         report.info('Call pilot.prepare_env()... ')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type' : 'venv',
+                                    'path' : '/home/merzky/radical/radical.pilot.work/ve3',
                                     'setup': [rp.sdist_path,
                                               ru.sdist_path,
                                               'mpi4py']})
@@ -166,11 +165,11 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
-            td.input_staging  = [{'source': '%s/raptor_master.py' % pwd,
+            td.input_staging  = [{'source': '%s/raptor_master.py' % PWD,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
-                                 {'source': '%s/raptor_worker.py' % pwd,
+                                 {'source': '%s/raptor_worker.py' % PWD,
                                   'target': 'raptor_worker.py',
                                   'action': rp.TRANSFER,
                                   'flags' : rp.DEFAULT_FLAGS},
@@ -203,7 +202,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.exe.c.%06d' % i,
                 'mode'            : rp.TASK_EXECUTABLE,
                 'scheduler'       : None,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
                               'sleep %d;' % sleep +
@@ -229,7 +228,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.call_mpi.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
                 'scheduler'       : master_ids[i % n_masters]}))
@@ -247,7 +246,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_FUNCTION,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'function'        : bson,
                 'scheduler'       : master_ids[i % n_masters]}))
 
@@ -264,7 +263,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.eval.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EVAL,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'code'            :
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
@@ -275,7 +274,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.exec.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXEC,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'code'            :
                     'import time\ntime.sleep(%d)\n' % sleep +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
@@ -286,7 +285,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.proc.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_PROC,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
                                      'sleep %d; ' % sleep +
@@ -298,7 +297,7 @@ if __name__ == '__main__':
                 'uid'             : 'task.shell.c.%06d' % i,
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_SHELL,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'command'         : 'sleep %d; ' % sleep +
                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler'       : master_ids[i % n_masters]}))
