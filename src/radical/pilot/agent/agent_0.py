@@ -367,7 +367,8 @@ class Agent_0(rpu.Worker):
             self._service_task_ids.append(task['uid'])
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
             task['task_sandbox'] = self._cfg.pilot_sandbox + task['uid'] + '/'
-            task['task_sandbox_path'] = 'file://localhost/' + self._cfg.pilot_sandbox + task['uid'] + '/'
+            task['task_sandbox_path'] = self._cfg.pilot_sandbox + task['uid'] + '/'
+            # task['task_sandbox_path'] = 'file://localhost/' + self._cfg.pilot_sandbox + task['uid'] + '/'
             task['session_sandbox'] = self._cfg.session_sandbox
             task['resource_sandbox'] = self._cfg.resource_sandbox
             task['pilot'] = self._cfg.pid
