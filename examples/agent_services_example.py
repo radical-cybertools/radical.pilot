@@ -52,7 +52,7 @@ if __name__ == '__main__':
                    'cores'         : config.get('cores', 1),
                    'gpus'          : config.get('gpus',  0),
                    # TODO create shell script
-                   'services'       :[rp.TaskDescription({'executable':'free -h'})]
+                   'services'       :[rp.TaskDescription({'executable':'free -h'}),rp.TaskDescription({'executable':'free -h'}) ]
                   }
         pdesc = rp.PilotDescription(pd_init)
 

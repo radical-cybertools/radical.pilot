@@ -89,6 +89,8 @@ class Agent_0(rpu.Worker):
         self._service_task_ids = []
         # Event to handle for services started
         self.services_event = threading.Event()
+        # currently running services
+        self.running_services = []
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -363,9 +365,9 @@ class Agent_0(rpu.Worker):
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
             self._service_task_ids.append(task['uid'])
-            # task['task_sandbox_path'] = os.environ['RP_TASK_SANDBOX']
-            # task['task_sandbox'] = 'file://localhost/' + os.environ['RP_TASK_SANDBOX']
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
+            task['task_sandbox'] = self._cfg.pilot_sandbox + task['uid'] + '/'
+            task['task_sandbox_path'] = 'file://localhost/' + self._cfg.pilot_sandbox + task['uid'] + '/'
             task['session_sandbox'] = self._cfg.session_sandbox
             task['resource_sandbox'] = self._cfg.resource_sandbox
             task['pilot'] = self._cfg.pid
@@ -389,16 +391,18 @@ class Agent_0(rpu.Worker):
         tasks = msg['arg']
 
         self._log.info('received services for launching: %s' % tasks)
-        running_services = []
 
         if cmd == 'update':
             for service in ru.as_list(tasks):
                 if "service" in service['uid']:
+                    self._log.info('service task has come up %s' % service)
                     uid = service['uid']
                     state = service['state']
                     if uid in self._service_task_ids and state == rps.AGENT_EXECUTING:
-                        running_services.append(uid)
-                        if len(running_services) == len(self._service_task_ids):
+                        self.running_services.append(uid)
+                        self._log.info('Number of running services %s %s',len(self.running_services),
+                                       len(self._service_task_ids))
+                        if len(self.running_services) == len(self._service_task_ids):
                             self.services_event.set()
 
         return True
