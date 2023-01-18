@@ -52,6 +52,10 @@ class Popen(AgentExecutingComponent):
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
 
+    # flags for the watcher queue
+    TO_WATCH  = 0
+    TO_CANCEL = 1
+
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -59,10 +63,7 @@ class Popen(AgentExecutingComponent):
       # self._log.debug('popen initialize start')
         AgentExecutingComponent.initialize(self)
 
-        self._cancel_lock     = mt.RLock()
-        self._tasks_to_cancel = list()
-        self._tasks_to_watch  = list()
-        self._watch_queue     = queue.Queue()
+        self._watch_queue = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -72,6 +73,7 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
+
 
     # --------------------------------------------------------------------------
     #
@@ -85,10 +87,18 @@ class Popen(AgentExecutingComponent):
         if cmd == 'cancel_tasks':
 
             self._log.info('cancel_tasks command (%s)' % arg)
-            with self._cancel_lock:
-                self._tasks_to_cancel.extend(arg['uids'])
+            for tid in arg['uids']:
+                self.cancel_task(tid)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        self._watch_queue.put([self.TO_CANCEL, uid])
+
 
     # --------------------------------------------------------------------------
     #
@@ -159,7 +169,7 @@ class Popen(AgentExecutingComponent):
         # defined) are executed, and then, after all ranks are synchronized,
         # finally the task ranks begin to run.
         #
-        # The scripts thus show the following structure:
+        # The scripts thus show the following approximate structure:
         #
         # Launcher Script (`task.000000.launch.sh`):
         # ----------------------------------------------------------------------
@@ -369,42 +379,52 @@ class Popen(AgentExecutingComponent):
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
 
-        self._watch_queue.put(task)
+        # handle task timeout if needed
+        self.handle_timeout(task)
+
+        # watch task for completion
+        self._watch_queue.put([self.TO_WATCH, task])
 
 
     # --------------------------------------------------------------------------
     #
     def _watch(self):
 
+        to_watch  = list()  # contains task dicts
+        to_cancel = set()   # contains task IDs
+
         try:
             while not self._term.is_set():
 
-                tasks = list()
+                # FIXME: we don't want to only wait for one Task -- then we
+                #        would pull Task state too frequently.  OTOH, we
+                #        also don't want to learn about tasks until all
+                #        slots are filled, because then we may not be able
+                #        to catch finishing tasks in time -- so there is
+                #        a fine balance here.  Balance means 100.
+                MAX_QUEUE_BULKSIZE = 100
+                count = 0
+
                 try:
+                    while count < MAX_QUEUE_BULKSIZE:
 
-                    # FIXME: we don't want to only wait for one Task -- then we
-                    #        would pull Task state too frequently.  OTOH, we
-                    #        also don't want to learn about tasks until all
-                    #        slots are filled, because then we may not be able
-                    #        to catch finishing tasks in time -- so there is
-                    #        a fine balance here.  Balance means 100.
-                    MAX_QUEUE_BULKSIZE = 100
+                        flag, thing = self._watch_queue.get_nowait()
+                        count += 1
 
-                    while len(tasks) < MAX_QUEUE_BULKSIZE :
-                        tasks.append (self._watch_queue.get_nowait())
+                        # NOTE: `thing` can be task id or task dict, depending
+                        #       on the flag value
+                        if   flag == self.TO_WATCH : to_watch.append(thing)
+                        elif flag == self.TO_CANCEL: to_cancel.add(thing)
+                        else: raise RuntimeError('unknown flag %s' % flag)
 
                 except queue.Empty:
                     # nothing found -- no problem, see if any tasks finished
                     pass
 
-                # add all tasks we found to the watchlist
-                for task in tasks :
-                    self._tasks_to_watch.append (task)
-
                 # check on the known tasks.
-                action = self._check_running()
+                action = self._check_running(to_watch, to_cancel)
 
-                if not action and not tasks :
+                if not action and not count:
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
                     time.sleep(0.1)
@@ -417,73 +437,74 @@ class Popen(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the
     # next step.  Also check for a requested cancellation for the tasks.
-    def _check_running(self):
+    def _check_running(self, to_watch, to_cancel):
 
-        action = 0
-        for task in self._tasks_to_watch:
+        #
+        action = False
+
+        # `to_watch.remove()` in the loop requires copy to iterate over the list
+        for task in list(to_watch):
+
+            tid = task['uid']
 
             # poll subprocess object
             exit_code = task['proc'].poll()
-            tid       = task['uid']
 
             if exit_code is None:
-                # Process is still running
 
-                if tid in self._tasks_to_cancel:
+                # process is still running - cancel if needed
+                if tid in to_cancel:
 
-                    # FIXME: there is a race condition between the state poll
-                    # above and the kill command below.  We probably should pull
-                    # state after kill again?
-
+                    action = True
                     self._prof.prof('task_run_cancel_start', uid=tid)
 
-                    # We got a request to cancel this task - send SIGTERM to the
+                    # got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
                     # method)
-                  # task['proc'].kill()
-                    action += 1
+                    task['proc'].kill()
                     try:
                         os.killpg(task['proc'].pid, signal.SIGTERM)
                     except OSError:
                         # task is already gone, we ignore this
                         pass
+
                     task['proc'].wait()  # make sure proc is collected
 
-                    with self._cancel_lock:
-                        self._tasks_to_cancel.remove(tid)
+                    to_cancel.remove(tid)
+                    to_watch.remove(task)
+                    del task['proc']  # proc is not json serializable
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
                     self.advance(task, rps.CANCELED, publish=True, push=False)
 
-                    # we don't need to watch canceled tasks
-                    self._tasks_to_watch.remove(task)
-
             else:
 
+                action = True
                 self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
                 task['proc'].wait()
 
                 # we have a valid return code -- task is final
-                action += 1
                 self._log.info("Task %s has return code %s.", tid, exit_code)
 
                 task['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
-                self._tasks_to_watch.remove(task)
+                to_watch.remove(task)
+                if tid in to_cancel:
+                    to_cancel.remove(tid)
                 del task['proc']  # proc is not json serializable
+
                 self._prof.prof('unschedule_start', uid=tid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
                 if exit_code != 0:
-                    # The task failed - fail after staging output
-                    task['exception']        = 'RuntimeError("non-zero exit code")'
+                    # task failed - fail after staging output
+                    task['exception']        = 'RuntimeError("task failed")'
                     task['exception_detail'] = 'exit code: %s' % exit_code
                     task['target_state'    ] = rps.FAILED
 
@@ -502,6 +523,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
+    # pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
