@@ -329,7 +329,7 @@ class Worker(object):
             ret = 0
 
         except Exception as e:
-            self._log.exception('_call failed: %s' % task['uid'])
+            self._log.exception('_call failed: %s', task['uid'])
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\ncall failed: %s' % e)
@@ -386,7 +386,7 @@ class Worker(object):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            self._log.debug('eval [%s] [%s]' % (code, task['uid']))
+            self._log.debug('eval [%s] [%s]', code, task['uid'])
 
             self._prof.prof('rank_start', uid=uid)
             val = eval(code)
@@ -397,7 +397,7 @@ class Worker(object):
             ret = 0
 
         except Exception as e:
-            self._log.exception('_eval failed: %s' % task['uid'])
+            self._log.exception('_eval failed: %s', task['uid'])
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\neval failed: %s' % e)
@@ -465,7 +465,7 @@ class Worker(object):
             ret = 0
 
         except Exception as e:
-            self._log.exception('_exec failed: %s' % task['uid'])
+            self._log.exception('_exec failed: %s', task['uid'])
             val = None
             out = strout.getvalue()
             err = strerr.getvalue() + ('\nexec failed: %s' % e)
@@ -512,7 +512,7 @@ class Worker(object):
             self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
-            self._log.exception('proc failed: %s' % task['uid'])
+            self._log.exception('proc failed: %s', task['uid'])
             out = None
             err = 'exec failed: %s' % e
             exc = (repr(e), '\n'.join(ru.get_exception_trace()))
@@ -540,7 +540,7 @@ class Worker(object):
             self._prof.prof('rank_stop', uid=uid)
 
         except Exception as e:
-            self._log.exception('_shell failed: %s' % task['uid'])
+            self._log.exception('_shell failed: %s', task['uid'])
             out = None
             err = 'shell failed: %s' % e
             exc = (repr(e), '\n'.join(ru.get_exception_trace()))
