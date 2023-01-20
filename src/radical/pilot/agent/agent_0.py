@@ -58,8 +58,7 @@ class Agent_0(rpu.Worker):
         self._prof = ru.Profiler(ns='radical.pilot', name=self._uid)
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
-        # run an inline registry service to share runtime config with other
-        # agents and components
+        # run an inline registry service to share runtime config with other agents and components
         reg_uid = 'radical.pilot.reg.%s' % self._uid
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()
@@ -368,7 +367,6 @@ class Agent_0(rpu.Worker):
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
             task['task_sandbox'] = self._cfg.pilot_sandbox + task['uid'] + '/'
             task['task_sandbox_path'] = self._cfg.pilot_sandbox + task['uid'] + '/'
-            # task['task_sandbox_path'] = 'file://localhost/' + self._cfg.pilot_sandbox + task['uid'] + '/'
             task['session_sandbox'] = self._cfg.session_sandbox
             task['resource_sandbox'] = self._cfg.resource_sandbox
             task['pilot'] = self._cfg.pid
@@ -395,12 +393,10 @@ class Agent_0(rpu.Worker):
 
         if cmd == 'update':
             for service in ru.as_list(tasks):
-                if "service" in service['uid']:
+                if service['uid'] in self._service_task_ids:
                     self._log.info('service task has come up %s' % service)
-                    uid = service['uid']
-                    state = service['state']
-                    if uid in self._service_task_ids and state == rps.AGENT_EXECUTING:
-                        self.running_services.append(uid)
+                    if service['state'] == rps.AGENT_EXECUTING:
+                        self.running_services.append(service['uid'])
                         self._log.info('Number of running services %s %s',len(self.running_services),
                                        len(self._service_task_ids))
                         if len(self.running_services) == len(self._service_task_ids):

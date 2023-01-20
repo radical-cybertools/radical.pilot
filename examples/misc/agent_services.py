@@ -9,10 +9,15 @@ import sys
 
 import radical.utils as ru
 import radical.pilot as rp
+import platform
+import socket
+import re
+import uuid
+import logging
+
 
 logger = ru.Logger('agent_services')
 
-import platform, socket, re, uuid, json, logging
 
 
 def get_system_info():
@@ -62,7 +67,7 @@ if __name__ == '__main__':
 
         pmgr = rp.PilotManager(session=session)
         tmgr = rp.TaskManager(session=session)
-        tmgr.register_callback(task_state_cb)
+        # tmgr.register_callback(task_state_cb)
 
         pilot = pmgr.submit_pilots(pd)
         tmgr.add_pilots(pilot)
@@ -71,12 +76,12 @@ if __name__ == '__main__':
 
         td = rp.TaskDescription(cfg.master_descr)
         td.mode = rp.AGENT_EXECUTING
-        td.arguments = [cfg_file, i]
+        # td.arguments = [cfg_file, i]
         td.cpu_processes = 1
 
         tds = list()
         tds.append(rp.TaskDescription({
-            'uid': 'task.exe.c.%06d' % i,
+            # 'uid': 'task.exe.c.%06d' % i,
             'mode': rp.TASK_EXECUTABLE,
             'scheduler': None,
             'ranks': 2,
