@@ -360,7 +360,7 @@ class Agent_0(rpu.Worker):
             task['description'] = TaskDescription(service_desc).as_dict()
             task['state'] = rps.AGENT_STAGING_INPUT_PENDING
             task['status'] = 'NEW'
-            task['type'] = 'services_task'
+            task['type'] = 'service_task'
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
             self._service_task_ids.append(task['uid'])
