@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
+__copyright__ = 'Copyright 2021-2022, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import os
@@ -52,7 +52,8 @@ if __name__ == '__main__':
                    'cores'         : config.get('cores', 1),
                    'gpus'          : config.get('gpus',  0),
                    # TODO create shell script
-                   'services'       :[rp.TaskDescription({'executable':'free -h'}),rp.TaskDescription({'executable':'free -h'}) ]
+                   'services'       :[rp.TaskDescription({'executable':'free -h'}),
+                                      rp.TaskDescription({'executable':'free -h'}) ]
                   }
         pdesc = rp.PilotDescription(pd_init)
 

@@ -222,7 +222,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [TaskDescription]      ,
+        SERVICES        : [TaskDescription],
     }
 
     _defaults = {

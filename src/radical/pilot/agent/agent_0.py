@@ -11,7 +11,7 @@ import time
 
 import radical.utils       as ru
 
-from .. import utils as rpu
+from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
 from ..   import TaskDescription
@@ -22,7 +22,6 @@ from .resource_manager import ResourceManager
 
 # ------------------------------------------------------------------------------
 #
-
 class Agent_0(rpu.Worker):
 
     '''
@@ -356,11 +355,11 @@ class Agent_0(rpu.Worker):
 
         for service_desc in service_descriptions:
             task = dict()
-            task['origin'] = 'services'
+            task['origin'] = 'agent'
             task['description'] = TaskDescription(service_desc).as_dict()
             task['state'] = rps.AGENT_STAGING_INPUT_PENDING
             task['status'] = 'NEW'
-            task['type'] = 'task'
+            task['type'] = 'services_task'
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
             self._service_task_ids.append(task['uid'])
