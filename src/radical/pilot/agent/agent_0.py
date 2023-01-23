@@ -362,7 +362,7 @@ class Agent_0(rpu.Worker):
             task['status'] = 'NEW'
             task['type'] = 'service_task'
             task['uid'] = ru.generate_id('services.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns="TODO_WHATTOUSE")
+                                             ru.ID_CUSTOM, ns=self._cfg.sid)
             self._service_task_ids.append(task['uid'])
             task['pilot_sandbox'] = self._cfg.pilot_sandbox
             task['task_sandbox'] = self._cfg.pilot_sandbox + task['uid'] + '/'
