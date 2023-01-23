@@ -88,7 +88,8 @@ class Agent_0(rpu.Worker):
         self._service_task_ids = list()
         # Event to handle for services started
         self.services_event = threading.Event()
-        # currently running services
+        # A lis of currently running services used to check whether
+        # all desired services are running
         self._running_services = list()
 
         # create the sub-agent configs and start the sub agents
