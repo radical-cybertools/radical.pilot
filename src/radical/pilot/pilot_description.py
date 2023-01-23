@@ -8,7 +8,7 @@ import radical.utils as ru
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
-from radical.pilot import TaskDescription
+import radical.pilot as rp
 
 UID               = 'uid'
 RESOURCE          = 'resource'
@@ -222,7 +222,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [TaskDescription],
+        SERVICES        : [rp.TaskDescription],
     }
 
     _defaults = {
