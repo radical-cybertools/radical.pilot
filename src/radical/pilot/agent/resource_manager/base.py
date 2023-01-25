@@ -247,8 +247,8 @@ class ResourceManager(object):
 
         # however, the config can override core and gpu detection,
         # and decide to block some resources (part of the core specialization)
-        blocked_cores = system_architecture.blocked_cores or []
-        blocked_gpus  = system_architecture.blocked_gpus  or []
+        blocked_cores = system_architecture.get('blocked_cores', [])
+        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
