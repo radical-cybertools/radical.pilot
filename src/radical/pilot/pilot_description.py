@@ -3,12 +3,11 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
-
+from .task_description import TaskDescription
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
-import radical.pilot as rp
 
 UID               = 'uid'
 RESOURCE          = 'resource'
@@ -222,7 +221,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [rp.TaskDescription],
+        SERVICES        : [TaskDescription],
     }
 
     _defaults = {

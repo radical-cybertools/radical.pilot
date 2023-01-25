@@ -357,24 +357,24 @@ class Agent_0(rpu.Worker):
 
         for service_desc in service_descriptions:
             task = dict()
-            task['origin'] = 'agent'
-            task['description'] = TaskDescription(service_desc).as_dict()
-            task['state'] = rps.AGENT_STAGING_INPUT_PENDING
-            task['status'] = 'NEW'
-            task['type'] = 'service_task'
-            task['uid'] = ru.generate_id('services.%(item_counter)04d',
+            task['origin']            = 'agent'
+            task['description']       = TaskDescription(service_desc).as_dict()
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['status']            = 'NEW'
+            task['type']              = 'service_task'
+            task['uid']               = ru.generate_id('services.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns=self._cfg.sid)
-            self._service_task_ids.append(task['uid'])
-            task['pilot_sandbox'] = self._cfg.pilot_sandbox
-            task['task_sandbox'] = self._cfg.pilot_sandbox + task['uid'] + '/'
+            task['pilot_sandbox']     = self._cfg.pilot_sandbox
+            task['task_sandbox']      = self._cfg.pilot_sandbox + task['uid'] + '/'
             task['task_sandbox_path'] = self._cfg.pilot_sandbox + task['uid'] + '/'
-            task['session_sandbox'] = self._cfg.session_sandbox
-            task['resource_sandbox'] = self._cfg.resource_sandbox
-            task['pilot'] = self._cfg.pid
+            task['session_sandbox']   = self._cfg.session_sandbox
+            task['resource_sandbox']  = self._cfg.resource_sandbox
+            task['pilot']             = self._cfg.pid
             # task['resources'] = {'cpu': td['ranks'] *
             #                             td.get('cores_per_rank', 1),
             #                      'gpu': td['ranks'] *
             #                             td.get('gpus_per_rank', 1)}
+            self._service_task_ids.append(task['uid'])
             services.append(task)
         self.number_of_services_to_launch = len(services)
         self.advance(services, publish=False, push=True)
