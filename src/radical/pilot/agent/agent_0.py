@@ -383,7 +383,7 @@ class Agent_0(rpu.Worker):
         did_timed_out = self.services_event.wait(timeout=60 * 2)
         self._log.info("All agent services started")
         if not did_timed_out:
-            raise Exception("Unable to start services") #TODO custom exception
+            raise Exception("Unable to start services")
 
     def _state_cb_of_services(self, topic, msg):
         self._log.info("Callback of services called")
