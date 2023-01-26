@@ -144,7 +144,6 @@ if __name__ == '__main__':
         report.info('Call pilot.prepare_env()... ')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type' : 'venv',
-                                    'path' : '/home/merzky/radical/radical.pilot.work/ve3',
                                     'setup': [rp.sdist_path,
                                               ru.sdist_path,
                                               'mpi4py']})

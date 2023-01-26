@@ -634,13 +634,20 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
+    def get_rank_worker(self):
+
+        return MPIWorkerRank
+
+
+    # --------------------------------------------------------------------------
+    #
     def start(self):
 
         # all ranks run a worker thread
         # the worker should be started before the managers as the manager
         # contacts the workers with queue endpoint information
         worker_ok = mt.Event()
-        worker    = MPIWorkerRank
+        worker    = self.get_rank_worker()
         self._work_thread = worker(rank_task_q_get   = self._rank_task_q_get,
                                    rank_result_q_put = self._rank_result_q_put,
                                    event             = worker_ok,

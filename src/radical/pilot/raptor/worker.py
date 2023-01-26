@@ -47,11 +47,8 @@ class Worker(object):
         psbox = os.environ['RP_PILOT_SANDBOX']
         ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
-        self._control_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB,
-                                              url=ctrl_cfg['sub'],
-                                              log=self._log,
-                                              prof=self._prof,
-                                              cb=self._control_cb)
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
+                          log=self._log, prof=self._prof, cb=self._control_cb)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,

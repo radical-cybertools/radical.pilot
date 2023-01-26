@@ -267,7 +267,6 @@ setup_args = {
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-ve',
                             'bin/radical-pilot-version',
-                            'bin/radical-pilot-worker',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
                                  '*.md', 'VERSION', 'SDIST', sdist_name]},

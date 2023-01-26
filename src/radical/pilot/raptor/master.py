@@ -296,11 +296,8 @@ class Master(rpu.Component):
         tasks = list()
         base  = self._uid
 
-        worker_file  = descr.get('worker_file', '')
-        worker_class = descr.get('worker_class', 'DefaultWorker')
-
-        del descr['worker_file']
-        del descr['worker_class']
+        worker_file  = descr.pop('worker_file', '')
+        worker_class = descr.pop('worker_class', 'DefaultWorker')
 
         td = TaskDescription(descr)
         td.mode       = RAPTOR_WORKER
@@ -334,7 +331,7 @@ class Master(rpu.Component):
             task = dict()
 
             task['origin']            = 'raptor'
-            task['description']       = TaskDescription(td).as_dict()
+            task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['status']            = self.NEW
             task['type']              = 'task'
