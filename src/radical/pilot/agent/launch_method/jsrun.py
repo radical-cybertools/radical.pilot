@@ -3,7 +3,6 @@ __copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import math
-import os
 
 import radical.utils as ru
 
