@@ -165,8 +165,8 @@ class JSRUN(LaunchMethod):
             # for OpenMP threads a corresponding parameter should be provided
             # in task description - `td.threading_type = rp.OpenMP`,
             # and RP will set `export OMP_NUM_THREADS=<cores_per_rank>`
-            smt          = int(os.environ.get('RADICAL_SMT', 1))
-            cores_per_rs = math.ceil(td['cores_per_rank'] / smt)
+            cores_per_rs = math.ceil(
+                td['cores_per_rank'] / self._rm_info['threads_per_core'])
             # -b: bind to RS
             # -n: number of RS
             # -a: number of MPI tasks (ranks) per RS
