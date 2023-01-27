@@ -1,7 +1,9 @@
 
-__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import math
+import os
 
 import radical.utils as ru
 
@@ -160,12 +162,16 @@ class JSRUN(LaunchMethod):
                 self._create_resource_set_file(slots, uid, sbox)
 
         else:
+            # for OpenMP threads a corresponding parameter should be provided
+            # in task description - `td.threading_type = rp.OpenMP`,
+            # and RP will set `export OMP_NUM_THREADS=<cores_per_rank>`
+            smt          = int(os.environ.get('RADICAL_SMT', 1))
+            cores_per_rs = math.ceil(td['cores_per_rank'] / smt)
             # -b: bind to RS
             # -n: number of RS
             # -a: number of MPI tasks (ranks) per RS
             # -c: number of CPUs (physical cores) per RS
-            cmd_options = '-b rs -n%(ranks)d -a1 '  \
-                          '-c%(cores_per_rank)d' % td
+            cmd_options = '-b rs -n%d -a1 -c%d' % (td['ranks'], cores_per_rs)
 
         if td['gpus_per_rank']:
 
