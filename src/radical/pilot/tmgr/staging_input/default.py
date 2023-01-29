@@ -67,7 +67,7 @@ class Default(TMGRStagingInputComponent):
 
         # we subscribe to the command channel to learn about pilots being added
         # to this task manager.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_control_cb)
 
         self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
                                              TASK_BULK_MKDIR_THRESHOLD)
@@ -83,7 +83,7 @@ class Default(TMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _base_command_cb(self, topic, msg):
+    def _base_control_cb(self, topic, msg):
 
         # keep track of `add_pilots` commands and updates self._pilots
         # accordingly.
