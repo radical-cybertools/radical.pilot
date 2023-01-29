@@ -72,7 +72,7 @@ class TMGRSchedulingComponent(rpu.Component):
 
         # Schedulers use that command channel to get information about
         # pilots being added or removed.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_control_cb)
 
         # cache the local client sandbox to avoid repeated os calls
         self._client_sandbox = os.getcwd()
@@ -199,7 +199,7 @@ class TMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _base_command_cb(self, topic, msg):
+    def _base_control_cb(self, topic, msg):
 
         # we'll wait for commands from the tmgr, to learn about pilots we can
         # use or we should stop using. We also track task cancelation, as all
