@@ -16,11 +16,11 @@ class TestWorker(TestCase):
 
     def test_alloc(self):
 
-        cfg = ru.Config(cfg={'uid'         : 'worker.0000',
-                             'sid'         : str(time.time()),
-                             'info'        : {},
-                             'worker_descr': {'cores_per_rank': 8,
-                                              'gpus_per_rank' : 2}})
+        cfg = ru.Config(cfg={'uid'           : 'worker.0000',
+                             'sid'           : str(time.time()),
+                             'info'          : {},
+                             'cores_per_rank': 8,
+                             'gpus_per_rank' : 2})
 
         rp.utils.Component.register_subscriber = mock.Mock()
         rp.utils.Component.register_publisher  = mock.Mock()
@@ -38,7 +38,7 @@ class TestWorker(TestCase):
 
         rp.raptor.Worker.publish = mock.Mock()
 
-        worker = rp.raptor.DefaultWorker(cfg, session=mock.Mock())
+        worker = rp.raptor.DefaultWorker(cfg)
 
         task_1 = {'uid': 'task.0000', 'cores': 1, 'gpus' : 1}
         task_2 = {'uid': 'task.0001', 'cores': 2, 'gpus' : 1}

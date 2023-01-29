@@ -207,7 +207,7 @@ class Agent_0(rpu.Worker):
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # register the command callback which pulls the DB for commands
-        self.register_timed_cb(self._agent_command_cb,
+        self.register_timed_cb(self._agent_control_cb,
                                timer=self._cfg['db_poll_sleeptime'])
 
         # register idle callback to pull for tasks
@@ -405,7 +405,7 @@ class Agent_0(rpu.Worker):
         # spawn the sub-agent
         cmdline = './%s' % ls_name
 
-        self._log.info('create services: %s' % cmdline)
+        self._log.info('create services: %s', cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
         self._log.debug('services started done')
@@ -523,7 +523,7 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
-            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+            self._log.info ('create sub-agent %s: %s', sa, cmdline)
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
                                       stderr='%s.err' % sa)
 
@@ -534,7 +534,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _agent_command_cb(self):
+    def _agent_control_cb(self):
 
         if not self._check_commands(): return False
         if not self._check_rpc     (): return False
