@@ -4,16 +4,12 @@ import io
 import os
 import sys
 import time
-import shlex
 
 import threading           as mt
 import radical.utils       as ru
 
 from .worker            import Worker
 
-from ..pytask           import PythonTask
-from ..task_description import TASK_FUNCTION
-from ..task_description import TASK_EXEC, TASK_PROC, TASK_SHELL, TASK_EVAL
 from ..states           import AGENT_EXECUTING_PENDING, AGENT_EXECUTING
 
 
@@ -395,24 +391,6 @@ class MPIWorkerRank(mt.Thread):
         self._prof              = prof
         self._base              = base
 
-        self._modes = dict()
-
-        self.register_mode(TASK_FUNCTION, self._dispatch_function)
-        self.register_mode(TASK_EVAL,     self._dispatch_eval)
-        self.register_mode(TASK_EXEC,     self._dispatch_exec)
-        self.register_mode(TASK_PROC,     self._dispatch_proc)
-        self.register_mode(TASK_SHELL,    self._dispatch_shell)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def register_mode(self, name, dispatcher):
-
-        if name in self._modes:
-            raise ValueError('mode %s already registered' % name)
-
-        self._modes[name] = dispatcher
-
 
     # --------------------------------------------------------------------------
     #
@@ -424,7 +402,6 @@ class MPIWorkerRank(mt.Thread):
         self._group = self._world.Get_group()
         self._rank  = self._world.rank
         self._ranks = self._world.size
-
 
         try:
             self._log.debug('init worker [%d] [%d] rtq_get:%s rrq_put:%s',
@@ -442,63 +419,62 @@ class MPIWorkerRank(mt.Thread):
             # signal success
             self._event.set()
 
-            # get tasks, do them, push results back
+            # get task, run it, push results back
             while True:
 
-                # FIXME: use poller of callback
-                # FIXME: avoid interrupts
                 tasks = rank_task_q.get_nowait(qname=str(self._rank), timeout=100)
 
                 if not tasks:
                     continue
 
-                # FIXME: this worker should be scheduled for one task at
-                #        a time - so why do we get more than one sometimes?
-                if len(tasks) != 1:
-                    self._log.error('more than one task for rank %s: %s',
-                            self._rank, [t['uid'] for t in tasks])
+                assert len(tasks) == 1
 
-                for task in tasks:
+                task = tasks[0]
+                uid  = task['uid']
+                self._prof.prof('advance',    uid=uid, state=AGENT_EXECUTING)
+                self._prof.prof('task_start', uid=uid)
 
-                    uid = task['uid']
-                    self._prof.prof('advance', uid=task['uid'],
-                                    state=AGENT_EXECUTING)
-                    self._prof.prof('task_start', uid=uid)
+                try:
+                    # this should never happen
+                    if self._rank not in task['ranks']:
+                        raise RuntimeError('inconsistent rank info')
 
-                    try:
-                        # this should never happen
-                        if self._rank not in task['ranks']:
-                            raise RuntimeError('inconsistent rank info')
+                    self._prof.prof('exec_start', uid=uid)
+                    out, err, ret, val, exc = self._dispatch(task)
+                    self._prof.prof('exec_stop', uid=uid)
 
-                        self._prof.prof('exec_start', uid=uid)
-                        out, err, ret, val, exc = self._dispatch(task)
-                        self._prof.prof('exec_stop', uid=uid)
+                    task['stdout']           = out
+                    task['stderr']           = err
+                    task['exit_code']        = ret
+                    task['return_value']     = val
+                    task['exception']        = exc[0]
+                    task['exception_detail'] = exc[1]
 
-                        task['stdout']           = out
-                        task['stderr']           = err
-                        task['exit_code']        = ret
-                        task['return_value']     = val
-                        task['exception']        = exc[0]
-                        task['exception_detail'] = exc[1]
+                except Exception as e:
+                    task['stdout']           = ''
+                    task['stderr']           = str(e)
+                    task['exit_code']        = -1
+                    task['return_value']     = None
+                    task['exception']        = repr(e)
+                    task['exception_detail'] = \
+                                         '\n'.join(ru.get_exception_trace())
+                    self._log.exception('recv err  %s  to  0' % (task['uid']))
 
-                    except Exception as e:
-                        task['stdout']           = ''
-                        task['stderr']           = str(e)
-                        task['exit_code']        = -1
-                        task['return_value']     = None
-                        task['exception']        = repr(e)
-                        task['exception_detail'] = \
-                                             '\n'.join(ru.get_exception_trace())
-                        self._log.exception('recv err  %s  to  0' % (task['uid']))
+                finally:
+                    # send task back to rank 0
+                    # FIXME: task_exec_stop
+                    self._prof.prof('unschedule_start', uid=uid)
+                    rank_result_q.put(task)
 
-                    finally:
-                        # send task back to rank 0
-                        # FIXME: task_exec_stop
-                        self._prof.prof('unschedule_start', uid=uid)
-                        rank_result_q.put(task)
+                  # if task['uid'] == 'task.call_mpi.c.000000':
+                  #     raise RuntimeError('oops')
 
         except:
-            self._log.exception('work thread failed [%s]', self._rank)
+            self._log.exception('work thread failed')
+            self._base.stop(1)
+
+        else:
+            self._base.stop()
 
 
     # --------------------------------------------------------------------------
@@ -570,359 +546,12 @@ class MPIWorkerRank(mt.Thread):
 
         # work on task
         mode       = task['description']['mode']
-        dispatcher = self._modes.get(mode)
+        dispatcher = self._base.get_dispatcher(mode)
 
         if not dispatcher:
             raise ValueError('no execution mode defined for %s' % mode)
 
         return dispatcher(task)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_function(self, task):
-        '''
-        We expect three attributes: 'function', containing the name of the
-        member method or free function to call, `args`, an optional list of
-        unnamed parameters, and `kwargs`, and optional dictionary of named
-        parameters.
-
-        *function* is resolved first against `locals()`, then `globals()`, then
-        attributes of the implementation class (member functions of *base*, as
-        provided to `MPIWorkerRank()`). Finally, an attempt is made to deserialize
-        a PythonTask from *function*. The first non-null resolution of
-        *function* is used as the callable.
-
-        Raises
-        ------
-        ValueError
-            if *function* cannot be resolved.
-
-        NOTE: MPI function tasks will get a private communicator passed as first
-              unnamed argument.
-        '''
-
-        uid  = task['uid']
-        func = task['description']['function']
-
-        to_call = ''
-        names   = ''
-        args    = task['description'].get('args',   [])
-        kwargs  = task['description'].get('kwargs', {})
-        py_func = False
-
-        self._log.debug('orig args: %s : %s', args, kwargs)
-
-        # check if we have a serialized object
-        self._log.debug('func serialized: %d: %s', len(func), func)
-        try:
-            # FIXME: can we have a better test than try/except?  This hides
-            #        potential errors...
-            # FIXME: ensure we did not get args and kwargs from above
-            to_call, args, kwargs = PythonTask.get_func_attr(func)
-            py_func = True
-        except:
-            pass
-
-        # check if `func_name` is a global name
-        if not to_call:
-            assert func
-            names   = dict(list(globals().items()) + list(locals().items()))
-            to_call = names.get(func)
-
-        # if not, check if this is a class method of this worker implementation
-        if not to_call:
-            to_call = getattr(self._base, func, None)
-
-        # check if we have a serialized object
-        if not to_call:
-            self._log.debug('func serialized: %d: %s', len(func), func)
-
-            try:
-                to_call, _args, _kwargs = PythonTask.get_func_attr(func)
-
-            except Exception:
-                self._log.exception('function is not a PythonTask [%s] ', uid)
-
-            else:
-                py_func = True
-                if args or kwargs:
-                    raise ValueError('`args` and `kwargs` must be empty for'
-                                     'PythonTask function [%s]' % uid)
-                else:
-                    args   = _args
-                    kwargs = _kwargs
-
-        if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self._base))
-            raise ValueError('%s callable %s not found: %s' % (uid, func, task))
-
-        comm = task.get('mpi_comm')
-        if comm:
-            # we have an MPI communicator we need to inject into the function's
-            # arguments.
-            if py_func:
-                # For a `py_func` we add the communicator as `comm` kwarg if
-                # that is set to None, and otherwise as first `arg` if that is
-                # None.  If neither is true we'll error out.
-                # NOTE that we don't change the number of arguments either way.
-                if 'comm' in kwargs and kwargs['comm'] is None:
-                    kwargs['comm'] = comm
-                elif args and args[0] is None:
-                    args[0] = comm
-                else:
-                    raise RuntimeError("can't inject communicator for %s: %s: %s",
-                                       task['uid'], args, kwargs)
-            else:
-                args.insert(0, comm)
-
-        # make sure we capture stdout / stderr
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        # set the task environment
-        old_env = os.environ.copy()
-
-        for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = str(v)
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            self._prof.prof('rank_start', uid=uid)
-            self._log.debug('to call %s: %s : %s', to_call, args, kwargs)
-            val = to_call(*args, **kwargs)
-            self._prof.prof('rank_stop', uid=uid)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            exc = (None, None)
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_call failed: %s' % task['uid'])
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-            # remove communicator from args again
-            if comm:
-                if py_func:
-                    if 'comm' in kwargs:
-                        del kwargs['comm']
-                    elif args:
-                        args[0] = None
-                else:
-                    args.pop(0)
-
-            os.environ = old_env
-
-        self._log.debug('%s: got %s', uid, out)
-
-        return out, err, ret, val, exc
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_eval(self, task):
-        '''
-        We expect a single attribute: 'code', containing the Python
-        code to be eval'ed
-        '''
-
-        uid  = task['uid']
-        code = task['description']['code']
-        assert code
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        old_env = os.environ.copy()
-
-        for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = str(v)
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            self._log.debug('eval [%s] [%s]' % (code, task['uid']))
-
-            self._prof.prof('rank_start', uid=uid)
-            val = eval(code)
-            self._prof.prof('rank_stop', uid=uid)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            exc = (None, None)
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_eval failed: %s' % task['uid'])
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\neval failed: %s' % e)
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-            os.environ = old_env
-
-        return out, err, ret, val, exc
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_exec(self, task):
-        '''
-        We expect a single attribute: 'code', containing the Python code to be
-        exec'ed.  The optional attribute `pre_exec` can be used for any import
-        statements and the like which need to run before the executed code.
-        '''
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        old_env = os.environ.copy()
-
-        for k, v in task['description'].get('environment', {}).items():
-            os.environ[k] = str(v)
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            uid  = task['uid']
-            pre  = task['description'].get('pre_exec', [])
-            code = task['description']['code']
-
-            # create a wrapper function around the given code
-            lines = code.split('\n')
-            outer = 'def _my_exec():\n'
-            for line in lines:
-                outer += '    ' + line + '\n'
-
-            # call that wrapper function via exec, and keep the return value
-            src = '%s\n\n%s\n\nresult=_my_exec()' % ('\n'.join(pre), outer)
-
-            # assign a local variable to capture the code's return value.
-            loc = dict()
-            self._prof.prof('rank_start', uid=uid)
-            exec(src, {}, loc)                # pylint: disable=exec-used # noqa
-            self._prof.prof('rank_stop', uid=uid)
-            val = loc['result']
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            exc = (None, None)
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_exec failed: %s' % task['uid'])
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\nexec failed: %s' % e)
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-            os.environ = old_env
-
-        return out, err, ret, val, exc
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_proc(self, task):
-        '''
-        We expect two attributes: 'executable', containing the executabele to
-        run, and `arguments` containing a list of arguments (strings) to pass as
-        command line arguments.  We use `sp.Popen` to run the fork/exec, and to
-        collect stdout, stderr and return code
-        '''
-
-        try:
-            import subprocess as sp
-
-            uid  = task['uid']
-            exe  = task['description']['executable']
-            args = task['description'].get('arguments', list())
-            tenv = task['description'].get('environment', dict())
-
-            cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
-          # self._log.debug('proc: --%s--', args)
-            self._prof.prof('rank_start', uid=uid)
-            proc = sp.Popen(cmd, env=tenv,  stdin=None,
-                            stdout=sp.PIPE, stderr=sp.PIPE,
-                            close_fds=True, shell=True)
-            out, err = proc.communicate()
-            ret      = proc.returncode
-            exc      = (None, None)
-            self._prof.prof('rank_stop', uid=uid)
-
-        except Exception as e:
-            self._log.exception('proc failed: %s' % task['uid'])
-            out = None
-            err = 'exec failed: %s' % e
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-            ret = 1
-
-        return out, err, ret, None, exc
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _dispatch_shell(self, task):
-        '''
-        We expect a single attribute: 'command', containing the command
-        line to be called as string.
-        '''
-
-        try:
-            uid = task['uid']
-            cmd = task['description']['command']
-            env = task['description']['environment']
-          # self._log.debug('shell: --%s--', cmd)
-            self._prof.prof('rank_start', uid=uid)
-            out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
-            exc = (None, None)
-            self._prof.prof('rank_stop', uid=uid)
-
-        except Exception as e:
-            self._log.exception('_shell failed: %s' % task['uid'])
-            out = None
-            err = 'shell failed: %s' % e
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-            ret = 1
-
-      # os.environ = old_env
-
-        return out, err, ret, None, exc
 
 
 # ------------------------------------------------------------------------------
@@ -950,9 +579,10 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, session=None):
+    def __init__(self, cfg=None):
 
         self._my_term = mt.Event()
+        self._my_ret  = 0
 
         from mpi4py import MPI                                            # noqa
 
@@ -965,9 +595,9 @@ class MPIWorker(Worker):
         if self._rank == 0: self._manager = True
         else              : self._manager = False
 
-        # rank 0 will register the worker with the master and connect
-        # to the task and result queues
-        super().__init__(cfg=cfg, session=session, register=self._manager)
+        # rank 0 is the manager rank and will register the worker with the
+        # master and connect to the task and result queues
+        super().__init__(cfg=cfg, manager=self._manager, rank=self._rank)
 
 
         # rank 0 starts two ZMQ queues: one to send tasks to the worker ranks
@@ -1076,8 +706,10 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def stop(self):
+    def stop(self, ret=0):
 
+        self._log.debug('stop: set term signal')
+        self._my_ret = ret
         self._my_term.set()
 
 
@@ -1086,9 +718,14 @@ class MPIWorker(Worker):
     def join(self):
 
         # FIXME
-        while True:
+        while not self._my_term.is_set():
             if self._my_term.wait(1):
                 break
+
+        self._log.debug('stop: term signal set - joined: %s', self._my_ret)
+
+        if self._my_ret:
+            raise RuntimeError('MPI worker failed with non-zero exit code')
 
 
     # --------------------------------------------------------------------------
