@@ -217,14 +217,15 @@ class ResourceManager(object):
         rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
         rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
-        rcfg = self._cfg.resource_cfg
-        rm_info.mem_per_node     = rcfg.mem_per_node or 0
-        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
-                                       rcfg.get('system_architecture', {}).
-                                            get('smt', 1))
-
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
+
+        rcfg                     = self._cfg.resource_cfg
+        rm_info.mem_per_node     = rcfg.mem_per_node or 0
+
+        system_architecture      = rcfg.get('system_architecture', {})
+        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
+                                       system_architecture.get('smt', 1))
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)
@@ -245,9 +246,9 @@ class ResourceManager(object):
         assert alloc_nodes >= rm_info.requested_nodes
 
         # however, the config can override core and gpu detection,
-        # and decide to block some resources
-        blocked_cores = self._cfg.resource_cfg.blocked_cores or []
-        blocked_gpus  = self._cfg.resource_cfg.blocked_gpus  or []
+        # and decide to block some resources (part of the core specialization)
+        blocked_cores = system_architecture.get('blocked_cores', [])
+        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
