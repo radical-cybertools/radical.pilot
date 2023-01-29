@@ -67,12 +67,10 @@
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
                                          "order": ["SRUN"],
-                                         "SRUN" : {
-                                             "pre_exec_cached": [
-                                             ]
-                                         }
+                                         "SRUN" : {}
                                         },
-        "pre_bootstrap_0"             : ["module load cray-python"
+        "pre_bootstrap_0"             : [
+                                         "module load cray-python"
                                         ],
         "pre_bootstrap_1"             : [
                                         ],
@@ -82,8 +80,12 @@
         "gpus_per_node"               : 8,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
-        "system_architecture"         : {"smt": 2}
-      # Possible options within "system_architecture" - "options": ["nvme"]
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
     },
 
     "spock": {
@@ -101,10 +103,7 @@
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
                                          "order": ["SRUN"],
-                                         "SRUN" : {
-                                             "pre_exec_cached": [
-                                             ]
-                                         }
+                                         "SRUN" : {}
                                         },
         "pre_bootstrap_0"             : [
                                          "module load cray-python"
@@ -117,8 +116,12 @@
         "gpus_per_node"               : 4,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
-        "system_architecture"         : {"smt": 2}
-      # Possible options within "system_architecture" - "options": ["nvme"]
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
     },
 
     "summit": {
@@ -140,18 +143,13 @@
                                          "MPIRUN": {}
                                         },
         "pre_bootstrap_0"             : [
-                                         "module unload py-pip",
-                                         "module unload py-virtualenv",
-                                         "module unload py-setuptools",
-                                         "module unload xl",
-                                         "module unload xalt",
-                                         "module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3"
+                                         "module unload xl xalt",
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3"
                                         ],
-        "pre_bootstrap_1"             : ["module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3",
+        "pre_bootstrap_1"             : [
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3",
                                          "ulimit -u 65536"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -161,12 +159,14 @@
         "rp_version"                  : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "blocked_cores"               : [],
-        "blocked_gpus"                : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
-        "system_architecture"         : {"smt": 1,
-                                         "options": ["gpumps", "nvme"]}
+        "system_architecture"         : {
+                                         "smt"           : 1,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
     },
 
     "summit_jsrun": {
@@ -187,24 +187,18 @@
                                          "order" : ["JSRUN"],
                                          "JSRUN" : {
                                              "pre_exec_cached": [
-                                               # "module unload xl",
-                                               # "module unload xalt"
+                                               # "module unload xl xalt"
                                              ]
                                          }
                                         },
         "pre_bootstrap_0"             : [
-                                         "module unload py-pip",
-                                         "module unload py-virtualenv",
-                                         "module unload py-setuptools",
-                                         "module unload xl",
-                                         "module unload xalt",
-                                         "module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3"
+                                         "module unload xl xalt",
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3"
                                         ],
-        "pre_bootstrap_1"             : ["module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3",
+        "pre_bootstrap_1"             : [
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3",
                                          "ulimit -u 65536"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -214,12 +208,14 @@
         "rp_version"                  : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "blocked_cores"               : [],
-        "blocked_gpus"                : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
-        "system_architecture"         : {"smt": 4,
-                                         "options": ["gpumps", "nvme"]}
+        "system_architecture"         : {
+                                         "smt"           : 4,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
     },
 
     "summit_interactive": {
@@ -245,26 +241,19 @@
                                          }
                                         },
         "pre_bootstrap_0"             : [
-                                         "module unload py-pip",
-                                         "module unload py-virtualenv",
-                                         "module unload py-setuptools",
-                                         "module unload xl",
-                                         "module unload xalt",
-                                         "module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3"
+                                         "module unload xl xalt",
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3"
                                         ],
-        "pre_bootstrap_1"             : ["module load   gcc/9.1.0",
-                                         "module load   libzmq/4.3.3",
-                                         "module load   python/3.7-anaconda3",
+        "pre_bootstrap_1"             : [
+                                         "module load   gcc/9.1.0 libzmq/4.3.3",
+                                         "module load   python/3.8-anaconda3",
                                          "ulimit -u 65536"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/${LSB_PROJECT_NAME,,}",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "blocked_cores"               : [],
-        "blocked_gpus"                : [],
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0
     },
@@ -291,7 +280,7 @@
                                              "pre_exec_cached": [
                                                  "module unload xl xalt spectrum-mpi",
                                                  "module load   gcc/9.1.0",
-                                                 "module load   python/3.7-anaconda3",
+                                                 "module load   python/3.8-anaconda3",
                                                  "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
                                                # "module use    /sw/summit/ums/ompix/DEVELOP/gcc/9.1.0/modules",
                                                # "module load   prrte/master"
@@ -301,28 +290,32 @@
                                          }
                                         },
         "pre_bootstrap_0"             : [
-            "module unload xl xalt spectrum-mpi",
-            "module load   gcc/9.1.0",
-            "module load   python/3.7-anaconda3",
-            "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-            "module load   prrte/2.0.2"
-        ],
+                                         "module unload xl xalt spectrum-mpi",
+                                         "module load   gcc/9.1.0",
+                                         "module load   python/3.8-anaconda3",
+                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                         "module load   prrte/2.0.2"
+                                        ],
         "pre_bootstrap_1"             : [
-            "module unload xl xalt spectrum-mpi",
-            "module load   gcc/9.1.0",
-            "module load   python/3.7-anaconda3",
-            "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
-            "module load   prrte/2.0.2",
-            "ulimit -u 65536"
-        ],
+                                         "module unload xl xalt spectrum-mpi",
+                                         "module load   gcc/9.1.0",
+                                         "module load   python/3.8-anaconda3",
+                                         "module use    /sw/summit/ums/ompix/gcc/9.1.0/modules",
+                                         "module load   prrte/2.0.2",
+                                         "ulimit -u 65536"
+                                        ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
-        "system_architecture"         : {"smt": 4,
-                                         "options": ["gpumps", "nvme"]}
+        "system_architecture"         : {
+                                         "smt"           : 4,
+                                         "options"       : ["gpumps", "nvme"],
+                                         "blocked_cores" : [],
+                                         "blocked_gpus"  : []
+                                        }
     }
 }
 
