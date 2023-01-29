@@ -30,7 +30,7 @@ class TestRaptorWorker(TestCase):
 
         self.assertEqual(component._modes, {'test': 'test_call'})
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             component.register_mode('test', 'test_call')
 
     # --------------------------------------------------------------------------
@@ -40,17 +40,21 @@ class TestRaptorWorker(TestCase):
     def test_eval(self, mocked_init, mocked_Logger):
 
         component = DefaultWorker()
-        component._log = mocked_Logger
-        data = {'code': '2 + 5'}
-        out, err, ret, val = component._eval(data)
+        component._log  = mocked_Logger
+        component._prof = mock.Mock()
+        task = {'uid'        : 'task.0000',
+                'description': {'code': '2 + 5'}}
+        out, err, ret, val, exc = component._dispatch_eval(task)
+        print(out, err, ret, val, exc)
 
         self.assertEqual(ret, 0)
         self.assertEqual(val, 7)
         self.assertEqual(out, '')
         self.assertEqual(err, '')
 
-        data = {'code': 'math.add(2,5)'}
-        out, err, ret, _ = component._eval(data)
+        task = {'uid'        : 'task.0001',
+                'description': {'code': 'math.add(2, 5)'}}
+        out, err, ret, _, _ = component._dispatch_eval(task)
         self.assertEqual(out, '')
         self.assertEqual(err, "\neval failed: name 'math' is not defined")
         self.assertEqual(ret, 1)
@@ -91,15 +95,20 @@ class TestRaptorWorker(TestCase):
 
         component = DefaultWorker()
         component.calculate_area = calculate_area
-        component._log = mocked_Logger
-        data = {'method': 'calculate_area',
-                'args': [2]}
-        out, err, ret, val = component._call(data)
+        component._prof = mock.Mock()
+        component._log  = mocked_Logger
+        task = {'uid'        : 'task.0000',
+                'description': {
+                        'function': 'calculate_area',
+                        'args'    : [2],
+                        'kwargs'  : {}}}
+        out, err, ret, val, exc = component._dispatch_func(task)
 
         self.assertEqual(ret, 0)
         self.assertEqual(val, 4)
         self.assertEqual(out, '4\n')
         self.assertEqual(err, '')
+        self.assertEqual(exc, (None, None))
 
 
 # ------------------------------------------------------------------------------
