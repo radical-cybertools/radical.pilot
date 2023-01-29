@@ -65,8 +65,11 @@
             "cores_per_node"    : 8,
             "gpus_per_node"     : 2,
             "lfs_size_per_node" : 0,
-            "resource_cfg"      : {"mem_per_node"  : 128,
-                                   "blocked_cores" : []}
+            "resource_cfg"      : {
+                                   "mem_per_node"       : 128,
+                                   "system_architecture": {
+                                       "blocked_cores"  : []
+                                   }}
         },
         {
             "nodes"             : 1,
@@ -75,9 +78,12 @@
             "cores_per_node"    : 12,
             "gpus_per_node"     : 2,
             "lfs_size_per_node" : 0,
-            "resource_cfg"      : {"mem_per_node"  : 128,
-                                   "blocked_cores" : [0, 2],
-                                   "blocked_gpus"  : [1]}
+            "resource_cfg"      : {
+                                   "mem_per_node"       : 128,
+                                   "system_architecture": {
+                                       "blocked_cores"  : [0, 2],
+                                       "blocked_gpus"   : [1]
+                                   }}
         },
         {
             # requested more NODES than allocated
@@ -87,9 +93,12 @@
             "cores_per_node"    : 12,
             "gpus_per_node"     : 2,
             "lfs_size_per_node" : 0,
-            "resource_cfg"      : {"mem_per_node"  : 128,
-                                   "blocked_cores" : [0, 2],
-                                   "blocked_gpus"  : [1]}
+            "resource_cfg"      : {
+                                   "mem_per_node"       : 128,
+                                   "system_architecture": {
+                                       "blocked_cores"  : [0, 2],
+                                       "blocked_gpus"   : [1]
+                                   }}
         },
         {
             # requested more CORES than allocated
@@ -99,9 +108,12 @@
             "cores_per_node"    : 12,
             "gpus_per_node"     : 2,
             "lfs_size_per_node" : 0,
-            "resource_cfg"      : {"mem_per_node"  : 128,
-                                   "blocked_cores" : [0, 2],
-                                   "blocked_gpus"  : [1]}
+            "resource_cfg"      : {
+                                   "mem_per_node"       : 128,
+                                   "system_architecture": {
+                                       "blocked_cores"  : [0, 2],
+                                       "blocked_gpus"   : [1]
+                                   }}
         }
     ],
     "result": [
