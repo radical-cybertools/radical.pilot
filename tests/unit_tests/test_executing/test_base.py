@@ -25,7 +25,10 @@ class TestBaseExecuting(TestCase):
 
         class NewExecuting(AgentExecutingComponent):
 
-            def command_cb(self, topic, msg):
+            def control_cb(self, topic, msg):
+                pass
+
+            def cancel_task(self, uid):
                 pass
 
             def work(self, tasks):
@@ -70,7 +73,7 @@ class TestBaseExecuting(TestCase):
                                  'launch_methods': {'SRUN': {}}}
         })
         ec._log               = ec._prof               = mock.Mock()
-        ec.work               = ec.command_cb          = mock.Mock()
+        ec.work               = ec.control_cb          = mock.Mock()
         ec.register_input     = ec.register_output     = mock.Mock()
         ec.register_publisher = ec.register_subscriber = mock.Mock()
 
