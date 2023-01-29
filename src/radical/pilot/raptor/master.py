@@ -266,18 +266,9 @@ class Master(rpu.Component):
 
                     if state == rps.AGENT_STAGING_OUTPUT:
                         self._workers[uid]['status'] = self.DONE
-                        self.worker_state_cb(self._workers[uid])
-
+                        self._log.info('worker %s final: %s', uid, state)
 
         return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def worker_state_cb(self, worker):
-
-        self._log.info('worker %s reached status %s (%s)', worker['uid'],
-                       worker['status'], worker['state'])
 
 
     # --------------------------------------------------------------------------
@@ -305,9 +296,22 @@ class Master(rpu.Component):
         tasks = list()
         base  = self._uid
 
-        cfg            = copy.deepcopy(self._cfg)
-        cfg['info']    = self._info
-        cfg['ts_addr'] = self._task_service.addr
+        worker_file  = descr.pop('worker_file', '')
+        worker_class = descr.pop('worker_class', 'DefaultWorker')
+
+        td = TaskDescription(descr)
+        td.mode       = RAPTOR_WORKER
+        td.executable = 'radical-pilot-raptor-worker'
+
+        # ensure that defaults and backward compatibility kick in
+        td.verify()
+
+        cfg                   = copy.deepcopy(self._cfg)
+        cfg['info']           = self._info
+        cfg['ts_addr']        = self._task_service.addr
+        cfg['cores_per_rank'] = td.cores_per_rank
+        cfg['gpus_per_rank']  = td.gpus_per_rank
+        cfg['ranks']          = td.ranks
 
         for i in range(count):
 
@@ -318,32 +322,16 @@ class Master(rpu.Component):
             fname = './%s.json' % uid
             ru.write_json(cfg, fname)
 
-            worker_file  = descr.get('worker_file', '')
-            worker_class = descr.get('worker_class', 'DefaultWorker')
-
-            del descr['worker_file']
-            del descr['worker_class']
-
-            td = TaskDescription(descr)
-            td.mode = RAPTOR_WORKER
-
             # this master is obviously running in a suitable python3 env,
             # so we expect that the same env is also suitable for the worker
             # NOTE: shell escaping is a bit tricky here - careful on change!
-            td.executable = 'python3'
-            td.arguments  = ['-c',
-                             'import radical.pilot as rp; '
-                             "rp.raptor.Worker.run('%s', '%s', '%s')"
-                                       % (worker_file, worker_class, fname)]
-
-            # ensure that defaults and backward compatibility kick in
-            td.verify()
+            td.arguments  = [worker_file, worker_class, fname]
 
             # all workers run in the same sandbox as the master
             task = dict()
 
             task['origin']            = 'raptor'
-            task['description']       = TaskDescription(td).as_dict()
+            task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['status']            = self.NEW
             task['type']              = 'task'
@@ -354,10 +342,8 @@ class Master(rpu.Component):
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
             task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
             task['pilot']             = os.environ['RP_PILOT_ID']
-            task['resources']         = {'cpu': td['ranks'] *
-                                                td.get('cores_per_rank', 1),
-                                         'gpu': td['ranks'] *
-                                                td.get('gpus_per_rank', 1)}
+            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                         'gpu': td.ranks * td.gpus_per_rank}
             tasks.append(task)
 
             # NOTE: the order of insert / state update relies on that order
@@ -368,6 +354,7 @@ class Master(rpu.Component):
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
             self._workers[uid] = {
+                    'uid'        : uid,
                     'status'     : self.NEW,
                     'heartbeats' : {r: now for r in range(td.ranks)},
                     'description': task['description']

@@ -476,7 +476,6 @@ class Popen(AgentExecutingComponent):
                         pass
 
                     task['proc'].wait()  # make sure proc is collected
-                    self._prof.prof('task_run_cancel_pass', uid=tid)
 
                     to_cancel.remove(tid)
                     to_watch.remove(task)
