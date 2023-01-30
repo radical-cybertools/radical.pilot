@@ -9,8 +9,6 @@ from collections import defaultdict
 import radical.utils as ru
 import radical.pilot as rp
 
-from radical.pilot import PythonTask
-
 
 # This script has to run as a task within a pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework. It is expected
@@ -26,10 +24,10 @@ from radical.pilot import PythonTask
 #
 # The worker itself is an external program which is not covered in this code.
 
-pytask = PythonTask.pythontask
+RANKS  = 1
 
 
-@pytask
+@rp.pythontask
 def func_mpi(comm, msg, sleep):
     # pylint: disable=reimported
     import time
@@ -38,7 +36,7 @@ def func_mpi(comm, msg, sleep):
 
 
 
-@pytask
+@rp.pythontask
 def func_non_mpi(a, sleep):
     # pylint: disable=reimported
     import math
@@ -90,7 +88,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'        : 'task.exe.m.%06d' % i,
                 'mode'       : rp.TASK_EXECUTABLE,
                 'scheduler'  : None,
-                'ranks'      : 2,
+                'ranks'      : RANKS,
                 'executable' : '/bin/sh',
                 'arguments'  : ['-c', 'sleep %d;' % self._sleep +
                              'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']}))
@@ -99,7 +97,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.call.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_FUNCTION,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'function'  : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i,
                                      'sleep': self._sleep},
@@ -110,7 +108,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.mpi_ser_func.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_FUNCTION,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'function'  : bson,
                 'scheduler' : 'master.000000'}))
 
@@ -127,7 +125,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.eval.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_EVAL,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'code'      :
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
@@ -138,7 +136,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.exec.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_EXEC,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'code'      :
                     'import time\ntime.sleep(%d)\n' % self._sleep +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
@@ -149,7 +147,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.proc.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_PROC,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'executable': '/bin/sh',
                 'arguments' : ['-c',
                                'sleep %d; ' % self._sleep +
@@ -161,7 +159,7 @@ class MyMaster(rp.raptor.Master):
                 'uid'       : 'task.shell.m.%06d' % i,
               # 'timeout'   : 10,
                 'mode'      : rp.TASK_SHELL,
-                'ranks'     : 2,
+                'ranks'     : RANKS,
                 'command'   : 'sleep %d; ' % self._sleep +
                               'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
                 'scheduler' : 'master.000000'}))
@@ -210,7 +208,7 @@ class MyMaster(rp.raptor.Master):
                     {'uid'       : 'extra' + uid,
                    # 'timeout'   : 10,
                      'mode'      : rp.TASK_PROC,
-                     'ranks'     : 2,
+                     'ranks'     : RANKS,
                      'executable': '/bin/sh',
                      'arguments' : ['-c',
                                     'sleep %d; ' % self._sleep +
@@ -245,17 +243,6 @@ class MyMaster(rp.raptor.Master):
             print('id: %s [%s]:\n    out: %s\n    ret: %s\n'
                  % (task['uid'], task['state'], task['stdout'],
                     task['return_value']))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def state_cb(self, tasks):
-
-        for task in tasks:
-            uid = task['uid']
-
-            if uid.startswith(self._uid + '.task.m.'):
-                self._collected[rp.TASK_EXECUTABLE] += 1
 
 
 # ------------------------------------------------------------------------------

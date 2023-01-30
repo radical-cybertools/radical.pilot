@@ -164,8 +164,6 @@
                                              ]
                                          }
                                         },
-      # "blocked_cores"               : [64, 65, 66, 67],
-      # "blocked_gpus"                : [0],
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
                                          "module load python3/3.7.0"
@@ -174,7 +172,10 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
-        "task_pre_exec"               : []
+        "system_architecture"         : {
+                                       # "blocked_cores" : [64, 65, 66, 67],
+                                       # "blocked_gpus"  : [0]
+                                        }
     },
 
     "stampede2_ibrun": {
