@@ -579,8 +579,6 @@ class PMGRLaunchingComponent(rpu.Component):
         virtenv                 = rcfg.get('virtenv',      default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        blocked_cores           = rcfg.get('blocked_cores', [])
-        blocked_gpus            = rcfg.get('blocked_gpus',  [])
         lfs_path_per_node       = rcfg.get('lfs_path_per_node')
         lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
@@ -593,6 +591,10 @@ class PMGRLaunchingComponent(rpu.Component):
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         services               += rcfg.get('services', [])
+
+        # part of the core specialization settings
+        blocked_cores           = system_architecture.get('blocked_cores', [])
+        blocked_gpus            = system_architecture.get('blocked_gpus',  [])
 
         self._log.debug(pprint.pformat(rcfg))
 

@@ -1,0 +1,62 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+
+import radical.utils as ru
+import radical.pilot as rp
+
+
+# ------------------------------------------------------------------------------
+#
+def run(fpath, cname, cfg):
+
+    # load worker class from fname if that is a valid string
+    wclass = None
+
+    # Create the worker class and run it's work loop.
+    if fpath:
+        wclass = ru.load_class(fpath, cname, rp.raptor.Worker)
+
+    else:
+        # import all known workers into the local name space so that
+        # `get_type` has a chance to find them
+
+        from rp.raptor import DefaultWorker       # pylint: disable=W0611 # noqa
+        from rp.raptor import MPIWorker           # pylint: disable=W0611 # noqa
+
+        wclass = ru.get_type(cname)
+
+    if not wclass:
+        raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))
+
+    worker = wclass(cfg)
+    worker.start()
+
+    ret = worker.join()
+    sys.exit(ret)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    # FIXME: daemonization a'la component
+
+    if len(sys.argv) < 2:
+        raise ValueError('missing parameter: worker file path')
+
+    if len(sys.argv) < 3:
+        raise ValueError('missing parameter: worker class name')
+
+    if len(sys.argv) < 4:
+        raise ValueError('missing parameter: worker config file')
+
+    run(sys.argv[1], sys.argv[2], sys.argv[3])
+
+
+# ------------------------------------------------------------------------------
+
