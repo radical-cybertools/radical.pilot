@@ -10,8 +10,8 @@ import queue
 import atexit
 import pprint
 import signal
-import threading as mt
-import subprocess
+import threading  as mt
+import subprocess as sp
 
 import radical.utils as ru
 
@@ -77,9 +77,9 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -356,21 +356,22 @@ class Popen(AgentExecutingComponent):
         self._prof.prof('task_mkdir_done', uid=tid)
 
         # launch and exec script are done, get ready for execution.
-        cmdline = '/bin/sh %s' % launch_script
+        cmdline = '%s/%s' % (sbox, launch_script)
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
         self._prof.prof('task_run_start', uid=tid)
-        task['proc'] = subprocess.Popen(args       = cmdline,
-                                        executable = None,
-                                        stdin      = None,
-                                        stdout     = _launch_out_h,
-                                        stderr     = subprocess.STDOUT,
-                                        close_fds  = True,
-                                        shell      = True,
-                                        cwd        = sbox)
+        task['proc'] = sp.Popen(args              = cmdline,
+                                executable        = None,
+                                shell             = False,
+                                stdin             = None,
+                                stdout            = _launch_out_h,
+                                stderr            = sp.STDOUT,
+                                start_new_session = True,
+                                close_fds         = True,
+                                cwd               = sbox)
         # decoupling from parent process group is disabled,
         # in case of enabling it, one of the following options should be added:
         #    `preexec_fn=os.setsid` OR `start_new_session=True`
@@ -424,6 +425,8 @@ class Popen(AgentExecutingComponent):
                 # check on the known tasks.
                 action = self._check_running(to_watch, to_cancel)
 
+                # FIXME: remove uids from lists after completion
+
                 if not action and not count:
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
@@ -455,17 +458,21 @@ class Popen(AgentExecutingComponent):
                 # process is still running - cancel if needed
                 if tid in to_cancel:
 
+                    self._log.debug('cancel %s', tid)
+
                     action = True
                     self._prof.prof('task_run_cancel_start', uid=tid)
 
                     # got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
                     # method)
-                    task['proc'].kill()
                     try:
-                        os.killpg(task['proc'].pid, signal.SIGTERM)
+                        # kill the whole process group
+                        pgrp = os.getpgid(task['proc'].pid)
+                        os.killpg(pgrp, signal.SIGKILL)
                     except OSError:
-                        # task is already gone, we ignore this
+                        # lost race: task is already gone, we ignore this
+                        # FIXME: collect and move to DONE/FAILED
                         pass
 
                     task['proc'].wait()  # make sure proc is collected
