@@ -5,7 +5,6 @@ __license__   = 'MIT'
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
-import sys
 import copy
 import time
 
@@ -18,12 +17,9 @@ from ..          import states         as rps
 
 # ------------------------------------------------------------------------------
 #
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
-
-# ------------------------------------------------------------------------------
+# ZMQ subscriber threads will not survive a `fork`.  We register all components
+# for an at-fork hook to reset the list of subscribers, so that the subscriber
+# threads get re-created as needed in the new process.
 #
 _components = list()
 
@@ -54,19 +50,24 @@ class ComponentManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, sid, reg_addr):
 
+        # register for at-fork hooks
         _components.append(self)
 
-        self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
-        self._sid  = self._cfg.sid
+        # create a registry client to obtain the session config and to store
+        # component and bridge configs
+
+        self._sid  = sid
+        self._reg  = ru.zmq.RegistryClient(url=reg_addr, pwd=sid)
+        self._cfg  = ru.Config(from_dict=self._reg['cfg'])
 
         self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
                                     ru.ID_CUSTOM, ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
 
         self._prof = ru.Profiler(self._uid, ns='radical.pilot',
-                               path=self._cfg.path)
+                                 path=self._cfg.path)
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
 
@@ -158,47 +159,33 @@ class ComponentManager(object):
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def cfg(self):
-        return self._cfg
-
-
-    # --------------------------------------------------------------------------
-    #
-    def start_bridges(self, cfg=None):
-        '''
-        check if any bridges are defined under `cfg['bridges']` and start them
-        '''
+    def start_bridges(self, bridges):
 
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
 
-        if cfg is None:
-            cfg = self._cfg
+        for bname, bcfg in bridges.items():
 
-        for bname, bcfg in cfg.get('bridges', {}).items():
+            bcfg.channel = bname
+            bcfg.cmgr    = self.uid
 
-            bcfg.uid         = bname
-            bcfg.channel     = bname
-            bcfg.cmgr        = self.uid
-            bcfg.sid         = cfg.sid
-            bcfg.path        = cfg.path
-            bcfg.heartbeat   = cfg.heartbeat
-
-            fname = '%s/%s.json' % (cfg.path, bcfg.uid)
-            bcfg.write(fname)
+            self._reg['bridges.%s' % bname] = bcfg
 
             self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
 
-            out, err, ret = ru.sh_callout('radical-pilot-bridge %s' % fname)
+            cmd = 'radical-pilot-bridge %s %s %s' \
+                % (self._sid, self._reg.url, bname)
+            out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
+
             self._log.debug('bridge startup out: %s', out)
             self._log.debug('bridge startup err: %s', err)
+
             if ret:
                 raise RuntimeError('bridge startup failed')
 
-            self._uids.append(bcfg.uid)
-            self._log.info('created bridge %s [%s]', bname, bcfg.uid)
+            self._uids.append(bname)
+            self._log.info('created bridge %s [%s]', bname, bname)
 
         # all bridges should start now, for their heartbeats
         # to appear.
@@ -213,56 +200,37 @@ class ComponentManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def start_components(self, cfg=None):
-        '''
-        check if any components are defined under `cfg['components']`
-        and start them
-        '''
+    def start_components(self, components):
 
         self._prof.prof('start_components_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
 
-        if cfg is None:
-            cfg = self._cfg
-
-        # we pass a copy of the complete session config to all components, but
-        # merge it into the component specific config settings (no overwrite),
-        # and then remove the `bridges` and `components` sections
-        #
-        scfg = ru.Config(cfg=cfg)
-        if 'bridges'    in scfg: del scfg['bridges']
-        if 'components' in scfg: del scfg['components']
-        ru.expand_env(scfg)
-
-        for cname, ccfg in cfg.get('components', {}).items():
+        for cname, ccfg in components.items():
 
             for _ in range(ccfg.get('count', 1)):
 
-                ccfg.uid         = ru.generate_id(cname + '.%(item_counter)04d',
-                                                  ru.ID_CUSTOM, ns=self._sid)
-                ccfg.cmgr        = self.uid
-                ccfg.kind        = cname
-                ccfg.sid         = cfg.sid
-                ccfg.base        = cfg.base
-                ccfg.path        = cfg.path
-                ccfg.heartbeat   = cfg.heartbeat
+                uid = ru.generate_id(cname + '.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self._sid)
+                ccfg.cmgr = self.uid
+                ccfg.kind = cname
 
-                ru.dict_merge(ccfg, scfg, policy=ru.PRESERVE, log=self._log)
+                self._reg['components.%s' % uid] = ccfg
 
-                fname = '%s/%s.json' % (cfg.path, ccfg.uid)
-                ccfg.write(fname)
+                self._log.info('create  component %s [%s]', cname, uid)
 
-                self._log.info('create  component %s [%s]', cname, ccfg.uid)
+                cmd = 'radical-pilot-component %s %s %s' \
+                    % (self._sid, self._reg.url, uid)
+                out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
 
-                out, err, ret = ru.sh_callout('radical-pilot-component %s' % fname)
                 self._log.debug('out: %s' , out)
                 self._log.debug('err: %s' , err)
+
                 if ret:
                     raise RuntimeError('bridge startup failed')
 
-                self._uids.append(ccfg.uid)
-                self._log.info('created component %s [%s]', cname, ccfg.uid)
+                self._uids.append(uid)
+                self._log.info('created component %s [%s]', cname, uid)
 
         # all components should start now, for their heartbeats
         # to appear.

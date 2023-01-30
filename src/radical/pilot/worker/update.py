@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import sys
 import time
 import pymongo
 
@@ -13,12 +12,6 @@ from ..   import utils     as rpu
 from ..   import constants as rpc
 
 from ..db import DBSession
-
-
-
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -53,7 +46,7 @@ class Update(rpu.Worker):
         self._dburl      = self._cfg['dburl']
 
         # get db handle from a connected, non-primary session
-        self._dbs   = DBSession(self._sid, self._dburl, {}, self._log, connect=True)
+        self._dbs   = DBSession(self._sid, self._dburl, self._log, connect=True)
         self._coll  = self._dbs._c
         self._bulk  = self._coll.initialize_ordered_bulk_op()
         self._last  = time.time()        # time of last bulk push

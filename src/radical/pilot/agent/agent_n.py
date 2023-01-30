@@ -20,10 +20,12 @@ class Agent_n(rpu.Worker):
     #
     def __init__(self, cfg, session):
 
-        self._cfg     = cfg
-        self._pid     = cfg.pid
-        self._pmgr    = cfg.pmgr
-        self._pwd     = cfg.pilot_sandbox
+        self._cfg      = cfg
+        self._pid      = cfg.pid
+        self._pmgr     = cfg.pmgr
+        self._pwd      = cfg.pilot_sandbox
+        self._sid      = cfg.sid
+        self._reg_addr = cfg.reg_addr
 
         # log / profile via session until component manager is initialized
         self._session = session
@@ -39,7 +41,7 @@ class Agent_n(rpu.Worker):
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those
-        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr = rpu.ComponentManager(self._reg_addr)
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat
 
         self._cmgr.start_bridges()

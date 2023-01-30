@@ -15,7 +15,7 @@ import radical.utils as ru
 
 # ------------------------------------------------------------------------------
 #
-def main(cfg):
+def main(sid, reg_addr, uid):
     '''
     This thin wrapper starts a ZMQ bridge.  It expects a single argument:
     a config to use for the bridge's configuration.  The config must contain:
@@ -53,8 +53,9 @@ def main(cfg):
     The config file may contain other entries which are passed to the bridge
     and are interpreted by the bridge implementation.
 
-    After startup, the bridge's communication endpoint URLs are stored in a
-    file `$uid.cfg`, in the form (shown for pubsub and queue type bridges):
+    After startup, the bridge's communication endpoint URLs are stored in the
+    sessions registry under `bridges.<bridge_uid>`, in the form (shown for
+    pubsub and queue type bridges):
 
         {
           'uid': '$bridge.uid',
@@ -72,9 +73,9 @@ def main(cfg):
     can obtain the respective bridge addresses automatically.  This also holds
     for command line tools like:
 
-        > radical-pilot-bridge command.cfg                [1]
-        > radical-pilot-sub    command foo &              [2]
-        > radical-pilot-pub    command foo bar            [3]
+        > radical-pilot-bridge sid reg_addr test_pubsub.0000                 [1]
+        > radical-pilot-sub    sid reg_addr test_pubsub.0000 foo &           [2]
+        > radical-pilot-pub    sid reg_addr test_pubsub.0000 foo bar         [3]
 
     [1] establishes the pubsub channel 'command'
     [2] connect to the command channel, subscribe for topic `foo`
@@ -82,31 +83,32 @@ def main(cfg):
     '''
 
     # basic setup: cfg, logger and profiler
-    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
-    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    log  = ru.Logger(name=uid, ns='radical.pilot')
+    prof = ru.Profiler(name=uid, ns='radical.pilot')
 
     try:
-        prof.prof('bridge_start', uid=cfg.uid)
+        prof.prof('bridge_start', uid=uid)
         prof.disable()
-        wrapped_main(cfg, log, prof)
+        wrapped_main(sid, reg_addr, uid, log, prof)
     finally:
         prof.enable()
-        prof.prof('bridge_stop', uid=cfg.uid)
+        prof.prof('bridge_stop', uid=uid)
 
 
-def wrapped_main(cfg, log, prof):
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof):
 
     term = mt.Event()
+    reg  = ru.zmq.RegistryClient(url=reg_addr, pwd=sid)
 
-    spt.setproctitle('rp.%s' % cfg.uid)
+    spt.setproctitle('rp.%s' % uid)
 
     # create the bridge, store connection addresses in FS, and begin to work
-    bridge = ru.zmq.Bridge.create(cfg)
+    bridge = ru.zmq.Bridge.create(sid, reg_addr, uid)
 
-    ru.write_json('%s/%s.cfg' % (cfg.path, cfg.uid),
-                  {'uid'          : cfg.uid,
-                   bridge.type_in : str(bridge.addr_in),
-                   bridge.type_out: str(bridge.addr_out)})
+    reg['bridges.%s' % uid] = {bridge.type_in : str(bridge.addr_in),
+                               bridge.type_out: str(bridge.addr_out)}
 
     bridge.start()
 
@@ -151,17 +153,17 @@ def wrapped_main(cfg, log, prof):
 #
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 4:
         sys.stderr.write('error: invalid arguments\n'
-                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+                         'usage: %s <sid> <reg_addr> <uid>\n'  % sys.argv[0])
         raise RuntimeError('invalid arguments: %s' % sys.argv)
 
-    fname = sys.argv[1]
-    cfg   = ru.Config(path=fname)
-    path  = '%s/%s' % (cfg.path, cfg.uid)
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
 
-    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
-                                        stderr='%s.err' % path)
+    ru.daemonize(main=main, args=[sid, reg_addr, uid],
+                 stdout='%s.out' % uid, stderr='%s.err' % uid)
     sys.exit(0)
 
 

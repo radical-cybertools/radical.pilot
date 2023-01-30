@@ -567,6 +567,7 @@ class Popen(AgentExecutingComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_REGISTRY_URL="%s"\n'     % self.cfg.reg_addr
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)

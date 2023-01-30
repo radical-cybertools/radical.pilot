@@ -18,7 +18,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, log, connect=True):
+    def __init__(self, sid, dburl, log, connect=True):
         '''
         Creates a new session
 
@@ -72,7 +72,6 @@ class DBSession(object):
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
-                            'cfg'       : cfg.as_dict(),
                             'created'   : self._created,
                             'connected' : self._connected})
             self._can_remove = True

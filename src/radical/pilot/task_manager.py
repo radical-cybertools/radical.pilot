@@ -154,7 +154,7 @@ class TaskManager(rpu.Component):
         self._rep.info('<<create task manager')
 
         # create pmgr bridges and components, use session cmgr for that
-        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr = rpu.ComponentManager(cfg.reg_addr)
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 

@@ -43,7 +43,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def __init__(self, dburl=None, uid=None, cfg=None, _primary=True,
-                 **close_options):
+                       _reg_addr=None,  **close_options):
         '''
         Creates a new session.  A new Session instance is created and
         stored in the database.
@@ -69,6 +69,12 @@ class Session(rs.Session):
               a new DB collection - if such a DB connection is needed, the
               component needs to establish that on its own.
 
+            * **_reg_addr** (`bool`): primary sessions will always run
+              a registry service, and the registry's address will be passed to
+              non-primary sessions.  If no such address is passed, a registry
+              will be started even if the session is not a primary one.  That
+              will, for example, happen on the root session of `agent.0`.
+
         If additional key word arguments are provided, they will be used as the
         default arguments to Session.close(). (This can be useful when the
         Session is used as a Python context manager, such that close() is called
@@ -83,16 +89,20 @@ class Session(rs.Session):
             name = cfg
             cfg  = None
 
-        self._dbs     = None
-        self._closed  = False
-        self._primary = _primary
+        self._dbs      = None
+        self._closed   = False
+        self._primary  = _primary
+        self._reg_addr = _reg_addr
 
-        self._pmgrs   = dict()  # map IDs to pmgr instances
-        self._tmgrs   = dict()  # map IDs to tmgr instances
-        self._cmgr    = None    # only primary sessions have a cmgr
+        self._pmgrs = dict()  # map IDs to pmgr instances
+        self._tmgrs = dict()  # map IDs to tmgr instances
+        self._cmgr  = None    # only primary sessions have a cmgr
 
-        self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
-        self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
+        # path, client_sandbox, dburl
+        # bridges, components
+        # FIXME REG: if reg_addr, pull config, otherwise load config
+        self._cfg   = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
 
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
@@ -130,12 +140,28 @@ class Session(rs.Session):
         def_cfg.report_dir  = self._cfg.path
         def_cfg.profile_dir = self._cfg.path
 
-        self._uid  = self._cfg.sid
+        self._uid = self._cfg.sid
+
+        # cfg setup is complete
+        if not self._cfg.reg_addr:
+
+            self._reg_service = ru.zmq.Registry(uid=self._uid + '.reg',
+                                                path=self.path)
+            self._reg_service.start()
+
+            self._cfg.reg_addr = self._reg_service.addr
+
+        # always create a registry client
+        assert self._cfg.reg_addr
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._uid)
+
+        # store session and resource configs in the registry
+        self._reg['cfg']           = self._cfg
+        self._reg['cfg.resources'] = self._rcfgs
 
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid,
-                                       level=self._cfg.get('debug'))
+        self._log  = self._get_logger  (name=self._uid)
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -186,8 +212,7 @@ class Session(rs.Session):
 
         # create/connect database handle on primary sessions
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=dburl,
-                                  cfg=self._cfg, log=self._log)
+            self._dbs = DBSession(sid=self.uid, dburl=dburl, log=self._log)
 
             py_version_detail = sys.version.replace("\n", " ")
             from . import version_detail as rp_version_detail
@@ -205,11 +230,10 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
-        import pprint
-        self._log.debug('cmgr cfg: %s', pprint.pformat(self._cfg))
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
+        self._reg_service.dump()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
@@ -329,7 +353,7 @@ class Session(rs.Session):
             "connected" : self.connected,
             "closed"    : self.closed,
             "dburl"     : str(self.dburl),
-            "cfg"       : copy.deepcopy(self._cfg)
+            "reg_addr"  : self.reg_addr
         }
         return object_dict
 
@@ -368,6 +392,13 @@ class Session(rs.Session):
     @property
     def dburl(self):
         return self._cfg.dburl
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def reg_addr(self):
+        return self._cfg.reg_addr
 
 
     # --------------------------------------------------------------------------

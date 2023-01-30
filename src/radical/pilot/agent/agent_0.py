@@ -43,6 +43,7 @@ class Agent_0(rpu.Worker):
         self._uid     = 'agent.0'
         self._cfg     = cfg
         self._pid     = cfg.pid
+        self._sid     = cfg.sid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
         self._session = session
@@ -60,9 +61,10 @@ class Agent_0(rpu.Worker):
         reg_uid = 'radical.pilot.reg.%s' % self._uid
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()
+        self._reg_addr = self._reg_service.addr
 
         # let all components know where to look for the registry
-        self._cfg['reg_addr'] = self._reg_service.addr
+        self._cfg['reg_addr'] = self._reg_addr
 
         # connect to MongoDB for state push/pull
         self._connect_db()
@@ -76,7 +78,7 @@ class Agent_0(rpu.Worker):
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those
-        self._cmgr = rpu.ComponentManager(self._cfg)
+        self._cmgr = rpu.ComponentManager(self._reg_addr)
         self._cfg.heartbeat = self._cmgr.cfg.heartbeat
 
         self._cmgr.start_bridges()
@@ -147,7 +149,7 @@ class Agent_0(rpu.Worker):
             self._cfg.dburl = str(dburl)
 
         self._dbs = DBSession(sid=self._cfg.sid, dburl=self._cfg.dburl,
-                              cfg=self._cfg, log=self._log)
+                              log=self._log)
 
     # --------------------------------------------------------------------------
     #
@@ -405,7 +407,7 @@ class Agent_0(rpu.Worker):
         # spawn the sub-agent
         cmdline = './%s' % ls_name
 
-        self._log.info('create services: %s' % cmdline)
+        self._log.info('create services: %s', cmdline)
         ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
 
         self._log.debug('services started done')
@@ -523,7 +525,7 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
-            self._log.info ('create sub-agent %s: %s' % (sa, cmdline))
+            self._log.info ('create sub-agent %s: %s', sa, cmdline)
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
                                       stderr='%s.err' % sa)
 
