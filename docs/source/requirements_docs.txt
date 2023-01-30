@@ -5,3 +5,4 @@ python-dotenv[cli]
 sphinx_copybutton
 sphinx_rtd_theme
 radical.pilot>=1.14
+sphinxcontrib.napoleon

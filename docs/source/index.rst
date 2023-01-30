@@ -22,7 +22,8 @@ Brief description.
    :numbered:
    :maxdepth: 2
 
-   3/index.rst
+    merged/3-getting-started.ipynb
+    merged/data-staging.ipynb
 
 .. Indices and tables
 .. ------------------
