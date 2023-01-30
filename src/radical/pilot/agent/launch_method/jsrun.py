@@ -166,6 +166,9 @@ class JSRUN(LaunchMethod):
             # and RP will set `export OMP_NUM_THREADS=<cores_per_rank>`
             cores_per_rs = math.ceil(
                 td['cores_per_rank'] / self._rm_info['threads_per_core'])
+            # JSRun uses resource sets (RS) to configure a node representation
+            # for a job/task: https://docs.olcf.ornl.gov/systems/\
+            #                 summit_user_guide.html#resource-sets
             # -b: bind to RS
             # -n: number of RS
             # -a: number of MPI tasks (ranks) per RS
