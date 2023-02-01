@@ -3,6 +3,20 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.21.0 Release                                                        2023-02-01
+--------------------------------------------------------------------------------
+  
+  - add worker rank heartbeats to raptor
+  - ensure descr defaults for raptor worker submission
+  - move `blocked_cores/gpus` under `system_architecture` in resource config
+  - fix `blocked_cores/gpus` parameters in configs for ACCESS and ORNL resources
+  - fix core-option in JSRun LM
+  - fix inconsistency in launching order if some LMs failed to be created
+  - fix thread-safety of PilotManager staging operations.
+  - add ANL's polaris and polaris_interactive support
+  - refactor raptor dispatchers to worker base class
+  
+
 1.20.1 Hotfix Release                                                 2023-01-07
 --------------------------------------------------------------------------------
 
