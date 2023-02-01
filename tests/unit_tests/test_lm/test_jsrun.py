@@ -153,7 +153,8 @@ class TestJSRun(TestCase):
                 result = test_case[1]
 
                 lm_jsrun._rm_info = {
-                    'gpus_per_node': task['slots']['gpus_per_node']
+                    'gpus_per_node'   : task['slots']['gpus_per_node'],
+                    'threads_per_core': 1
                 }
 
                 if result == 'AssertionError':
