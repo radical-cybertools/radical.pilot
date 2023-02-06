@@ -386,16 +386,16 @@ class Agent_0(rpu.Worker):
             raise Exception("Unable to start services")
 
     def _state_cb_of_services(self, topic, msg):
-        self._log.info("Callback of services called")
+        self._log.info("Callback of services called with topic %s",topic)
         cmd = msg['cmd']
         tasks = msg['arg']
 
-        self._log.info('received services for launching: %s' % tasks)
+        self._log.info('received services for launching: %s', tasks)
 
         if cmd == 'update':
             for service in ru.as_list(tasks):
                 if service['uid'] in self._service_task_ids:
-                    self._log.info('service task has come up %s' % service)
+                    self._log.info('service task has come up %s', service)
                     if service['state'] == rps.AGENT_EXECUTING:
                         self._running_services.append(service['uid'])
                         self._log.info('Number of running services %s %s', len(self._running_services),
