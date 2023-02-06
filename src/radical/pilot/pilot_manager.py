@@ -434,7 +434,6 @@ class PilotManager(rpu.Component):
         # prepare to wait for completion
         with self._sds_lock:
 
-            self._active_sds = dict()
             for sd in sds:
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
@@ -451,17 +450,21 @@ class PilotManager(rpu.Component):
                 sd_states = [sd['state'] for sd
                                          in  self._active_sds.values()
                                          if  sd['uid'] in uids]
+        try:
+            if rps.FAILED in sd_states:
+                errs = list()
+                for uid in uids:
+                    if self._active_sds[uid].get('exception'):
+                        errs.append(self._active_sds[uid]['exception'])
 
-        if rps.FAILED in sd_states:
-            errs = list()
-            for uid in self._active_sds:
-                if self._active_sds[uid].get('exception'):
-                    errs.append(self._active_sds[uid]['exception'])
-
-            if errs:
-                raise RuntimeError('pilot staging failed: %s' % errs)
-            else:
-                raise RuntimeError('pilot staging failed')
+                if errs:
+                    raise RuntimeError('pilot staging failed: %s' % errs)
+                else:
+                    raise RuntimeError('pilot staging failed')
+        finally:
+            with self._sds_lock:
+                for uid in uids:
+                    del self._active_sds[uid]
 
 
     # --------------------------------------------------------------------------
@@ -478,7 +481,6 @@ class PilotManager(rpu.Component):
         # prepare to wait for completion
         with self._sds_lock:
 
-            self._active_sds = dict()
             for sd in sds:
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
@@ -496,17 +498,21 @@ class PilotManager(rpu.Component):
                 sd_states = [sd['state'] for sd in self._active_sds.values()
                                                 if sd['uid'] in uids]
 
-        if rps.FAILED in sd_states:
-            errs = list()
-            for uid in self._active_sds:
-                if self._active_sds[uid].get('exception'):
-                    errs.append(self._active_sds[uid]['exception'])
+        try:
+            if rps.FAILED in sd_states:
+                errs = list()
+                for uid in uids:
+                    if self._active_sds[uid].get('exception'):
+                        errs.append(self._active_sds[uid]['exception'])
 
-            if errs:
-                raise RuntimeError('pilot staging failed: %s' % errs)
-            else:
-                raise RuntimeError('pilot staging failed')
-
+                if errs:
+                    raise RuntimeError('pilot staging failed: %s' % errs)
+                else:
+                    raise RuntimeError('pilot staging failed')
+        finally:
+            with self._sds_lock:
+                for uid in uids:
+                    del self._active_sds[uid]
 
     # --------------------------------------------------------------------------
     #
