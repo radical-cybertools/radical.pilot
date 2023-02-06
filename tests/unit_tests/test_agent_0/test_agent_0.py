@@ -165,6 +165,26 @@ class TestComponent(TestCase):
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
+    @mock.patch.object(Agent_0, return_value=None)
+    def test_start_services(self):
+
+        agent_0 = Agent_0(None, None)
+        agent_0._pwd = tempfile.gettempdir()
+        agent_0._log = mock.Mock()
+        agent_0._cfg = {'services': [
+            {'args': [], 'arguments': [], 'cleanup': False, 'code': '', 'command': '', 'cores_per_rank': 1,
+             'cpu_process_type': '', 'cpu_processes': 0, 'cpu_thread_type': '', 'cpu_threads': 0, 'environment': {},
+             'executable': 'free -h', 'function': '', 'gpu_process_type': '', 'gpu_processes': 0, 'gpu_thread_type': '',
+             'gpu_threads': 0, 'gpu_type': '', 'gpus_per_rank': 0, 'input_staging': [], 'kwargs': {},
+             'lfs_per_process': 0, 'lfs_per_rank': 0, 'mem_per_process': 0, 'mem_per_rank': 0, 'metadata': None,
+             'mode': None, 'name': '', 'named_env': '', 'output_staging': [], 'pilot': '', 'post_exec': [],
+             'post_launch': [], 'pre_exec': [], 'pre_exec_sync': False, 'pre_launch': [], 'ranks': 1,
+             'restartable': False, 'sandbox': '', 'scheduler': '', 'stage_on_error': False, 'stderr': '', 'stdout': '',
+             'tags': {}, 'threading_type': '', 'timeout': 0.0,
+             'uid': ''}]}
+
+        self.assertTrue(agent_0._start_services())
+
 # ------------------------------------------------------------------------------
 
 
@@ -173,6 +193,7 @@ if __name__ == '__main__':
     tc = TestComponent()
     tc.test_check_control()
     tc.test_start_sub_agents()
+    tc.test_start_services()
 
 
 # ------------------------------------------------------------------------------
