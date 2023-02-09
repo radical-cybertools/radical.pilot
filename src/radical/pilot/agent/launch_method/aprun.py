@@ -77,8 +77,9 @@ class APRun(LaunchMethod):
 
         td             = task['description']
 
-        n_tasks        = td['ranks']
-        n_task_threads = td.get('cores_per_rank', 1)
+        ranks          = td['ranks']
+        cores_per_rank = td.get('cores_per_rank', 1)
+        total_cores    = ranks * cores_per_rank
 
         # aprun options
         # –  Number of MPI ranks per node:                –N <n_ranks_per_node>
@@ -89,12 +90,18 @@ class APRun(LaunchMethod):
         # –  Environment variables:                       -e <env_var>
         # –  Core specialization:                         -r <n_threads>
 
-        rpn = os.environ.get('SAGA_PPN') or n_tasks
-        rpn = min(n_tasks, int(rpn))
+        if 'SAGA_PPN' in os.environ:
+            max_ranks_per_node = int(os.environ['SAGA_PPN'])
+            if total_cores <= max_ranks_per_node:
+                ranks_per_node = ranks
+            else:
+                ranks_per_node = max_ranks_per_node // cores_per_rank
+        else:
+            ranks_per_node = 1
 
-        cmd_options = '-N %s ' % rpn + \
-                      '-n %s ' % n_tasks + \
-                      '-d %s'  % n_task_threads
+        cmd_options = '-N %s ' % ranks_per_node + \
+                      '-n %s ' % ranks + \
+                      '-d %s'  % cores_per_rank
 
         # CPU affinity binding
         # - use –d and --cc depth to let ALPS control affinity

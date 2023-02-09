@@ -5,7 +5,7 @@
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : null,
-            "ranks"         : 1,
+            "ranks"         : 2,
             "cores_per_rank": 4,
             "gpus_per_rank" : 0,
             "environment"   : {"test_env": "test_val"}
@@ -21,8 +21,12 @@
 
     "results": {
         "lm": {
-            "srun": {
-                "launch_cmd" : "srun --nodes 1 --ntasks 1 --cpus-per-task 4",
+            "srun" : {
+                "launch_cmd" : "srun --nodes 2 --ntasks 2 --cpus-per-task 4",
+                "rank_exec"  : "/bin/sleep"
+            },
+            "aprun": {
+                "launch_cmd" : "aprun -N 1 -n 2 -d 4",
                 "rank_exec"  : "/bin/sleep"
             }
         }
