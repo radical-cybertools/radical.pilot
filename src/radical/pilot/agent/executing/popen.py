@@ -363,7 +363,8 @@ class Popen(AgentExecutingComponent):
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
-        _start_new_session = self._cfg.get('new_session_per_task', True)
+        _start_new_session = self._cfg['resource_cfg'].\
+            get('new_session_per_task', True)
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,

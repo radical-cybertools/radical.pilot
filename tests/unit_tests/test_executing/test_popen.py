@@ -79,7 +79,7 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
-        pex._cfg     = {'new_session_per_task': False}
+        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
