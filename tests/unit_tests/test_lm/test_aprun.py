@@ -1,5 +1,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import os
+
 from unittest import mock, TestCase
 
 from .test_common import setUp
@@ -78,11 +80,16 @@ class TestAPRun(TestCase):
         test_cases = setUp('lm', 'aprun')
         for task, result in test_cases:
 
+            if 'cores_per_node' in task.get('slots', {}):
+                os.environ['SAGA_PPN'] = str(task['slots']['cores_per_node'])
+
             command = lm_aprun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
             command = lm_aprun.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+            os.environ.pop('SAGA_PPN', None)
 
     # --------------------------------------------------------------------------
     #
