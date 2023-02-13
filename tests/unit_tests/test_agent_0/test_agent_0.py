@@ -165,25 +165,41 @@ class TestComponent(TestCase):
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
-    @mock.patch.object(Agent_0, return_value=None)
+    @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_start_services(self):
 
-        agent_0 = Agent_0(None, None)
-        agent_0._pwd = tempfile.gettempdir()
-        agent_0._log = mock.Mock()
-        agent_0._cfg = {'services': [
-            {'args': [], 'arguments': [], 'cleanup': False, 'code': '', 'command': '', 'cores_per_rank': 1,
-             'cpu_process_type': '', 'cpu_processes': 0, 'cpu_thread_type': '', 'cpu_threads': 0, 'environment': {},
-             'executable': 'free -h', 'function': '', 'gpu_process_type': '', 'gpu_processes': 0, 'gpu_thread_type': '',
-             'gpu_threads': 0, 'gpu_type': '', 'gpus_per_rank': 0, 'input_staging': [], 'kwargs': {},
-             'lfs_per_process': 0, 'lfs_per_rank': 0, 'mem_per_process': 0, 'mem_per_rank': 0, 'metadata': None,
-             'mode': None, 'name': '', 'named_env': '', 'output_staging': [], 'pilot': '', 'post_exec': [],
-             'post_launch': [], 'pre_exec': [], 'pre_exec_sync': False, 'pre_launch': [], 'ranks': 1,
-             'restartable': False, 'sandbox': '', 'scheduler': '', 'stage_on_error': False, 'stderr': '', 'stdout': '',
-             'tags': {}, 'threading_type': '', 'timeout': 0.0,
-             'uid': ''}]}
+        expectedoutput = dict()
+        def local_advance(*args):
+            nonlocal expectedoutput = args
 
-        self.assertTrue(agent_0._start_services())
+        agent_0 = Agent_0()
+        agent_0.advance = local_advance
+        agent_0.services_event = mock.Mock()
+        agent_0.services_event.wait = mock.Mock(return_value=False)
+
+        agent_0._cfg = mock.Mock()
+        test_data = dict({'test': 'rd'})
+        agent_0._cfg.assertTrue = mock.Mock(return_value=test_data)
+
+        with self.assertRaises(RuntimeError):
+            agent_0._start_services()
+
+        self.assertEqual(test_data,expectedoutput)
+
+    @mock.patch.object(Agent_0, '__init__', return_value=None)
+    def test_state_cb_of_services(self):
+        agent_0 = Agent_0()
+        agent_0._service_task_ids = ['101','102']
+        agent_0._running_services = ['101', '102']
+        agent_0.services_event = mock.Mock()
+        agent_0.services_event.set = mock.Mock(return_value=False)
+
+        topic = 'test_topic'
+        msg = {'cmd':'update','tasks':[{'uid':'101','state': 'AGENT_EXECUTING'}]}
+
+        agent_0._state_cb_of_services(topic,msg)
+
+
 
 # ------------------------------------------------------------------------------
 
