@@ -161,29 +161,54 @@ class JSRUN(LaunchMethod):
                 self._create_resource_set_file(slots, uid, sbox)
 
         else:
-            # for OpenMP threads a corresponding parameter should be provided
-            # in task description - `td.threading_type = rp.OpenMP`,
-            # and RP will set `export OMP_NUM_THREADS=<cores_per_rank>`
-            cores_per_rs = math.ceil(
-                td['cores_per_rank'] / self._rm_info['threads_per_core'])
+
             # JSRun uses resource sets (RS) to configure a node representation
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
+            rs           = 1
+            tasks_per_rs = td['ranks']
+            gpus_per_rs  = 0
+
+            if td['gpus_per_rank']:
+                gpus           = td['ranks'] * td['gpus_per_rank']
+                rs             = math.ceil(
+                                 gpus / self._rm_info['gpus_per_node'])
+                gpus_per_rs    = gpus // rs
+                tasks_per_rs //= rs
+
+                # find the greatest common divisor
+                di = math.gcd(gpus_per_rs, tasks_per_rs)
+                rs            *= di
+                gpus_per_rs  //= di
+                tasks_per_rs //= di
+
+            # for OpenMP threads a corresponding parameter should be provided
+            # in task description - `td.threading_type = rp.OpenMP`, and RP
+            # will set `export OMP_NUM_THREADS=<cores_per_rank>`
+            cores_per_rs  = math.ceil(
+                td['cores_per_rank'] / self._rm_info['threads_per_core'])
+            cores_per_rs *= tasks_per_rs
+
             # -b: bind to RS
             # -n: number of RS
-            # -a: number of MPI tasks (ranks) per RS
+            # -a: number of MPI tasks (ranks)     per RS
             # -c: number of CPUs (physical cores) per RS
-            cmd_options = '-b rs -n%d -a1 -c%d' % (td['ranks'], cores_per_rs)
+            # -g: number of GPUs                  per RS
+            cmd_options = '-b rs -n%d -a%d -c%d -g%d' % (
+                rs, tasks_per_rs, cores_per_rs, gpus_per_rs)
 
-        if td['gpus_per_rank']:
-
-            if not self._erf:
-                # -g: number of GPUs per RS
+            if gpus_per_rs:
                 # -r: number of RS per host (node)
-                cmd_options += ' -g%d -r%d' % (
-                    td['gpus_per_rank'],
-                    self._rm_info['gpus_per_node'] // td['gpus_per_rank'])
+                max_rs_per_node = self._rm_info['gpus_per_node'] // gpus_per_rs
+                if rs > max_rs_per_node:
+                    # number of nodes that specified must evenly divide the
+                    # number of resource sets, otherwise an error is returned
+                    max_rs_per_node = math.gcd(rs, max_rs_per_node)
+                else:
+                    max_rs_per_node = min(rs, max_rs_per_node)
+                cmd_options += ' -r%d' % max_rs_per_node
 
+        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
             # from https://www.olcf.ornl.gov/ \
             #             wp-content/uploads/2018/11/multi-gpu-workshop.pdf
             #
@@ -191,12 +216,11 @@ class JSRUN(LaunchMethod):
             # CUDA without MPI, use jsrun --smpiargs="off"
             #
             # This is set for CUDA tasks only
-            if td['gpu_type'] == rpc.CUDA:
-                if td['ranks'] > 1:
-                    # MPI is enabled
-                    cmd_options += ' --smpiargs="-gpu"'
-                else:
-                    cmd_options += ' --smpiargs="off"'
+            if td['ranks'] > 1:
+                # MPI is enabled
+                cmd_options += ' --smpiargs="-gpu"'
+            else:
+                cmd_options += ' --smpiargs="off"'
 
         cmd = '%s %s %s' % (self._command, cmd_options, exec_path)
         return cmd.rstrip()
@@ -206,9 +230,7 @@ class JSRUN(LaunchMethod):
     #
     def get_rank_cmd(self):
 
-        # FIXME: does JSRUN set a rank env?
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+        ret = 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
 
         return ret
 
