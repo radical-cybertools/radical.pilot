@@ -5,6 +5,7 @@ import os
 import tempfile
 
 from unittest import mock, TestCase
+from unittest.mock import DEFAULT
 
 from radical.pilot                        import TaskDescription
 from radical.pilot.agent.resource_manager import RMInfo
@@ -188,11 +189,15 @@ class TestComponent(TestCase):
 
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_state_cb_of_services(self):
+        def side_effect(*args, **kwargs):
+            return 'DEFAULT'
+
         agent_0 = Agent_0()
         agent_0._service_task_ids = ['101','102']
         agent_0._running_services = ['101', '102']
         agent_0.services_event = mock.Mock()
-        agent_0.services_event.set = mock.Mock(return_value=False)
+        agent_0.services_event.set = mock.Mock(return_value=True)
+        agent_0.services_event.set.side_effect = side_effect
 
         topic = 'test_topic'
         msg = {'cmd':'update','tasks':[{'uid':'101','state': 'AGENT_EXECUTING'}]}

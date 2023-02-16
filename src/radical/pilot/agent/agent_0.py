@@ -402,8 +402,9 @@ class Agent_0(rpu.Worker):
                                        len(self._service_task_ids))
                         if len(self._running_services) == len(self._service_task_ids):
                             self.services_event.set()
+                            return True
 
-        return True
+        return False
     # --------------------------------------------------------------------------
     #
     def _start_sub_agents(self):
