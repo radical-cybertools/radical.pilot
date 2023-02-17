@@ -49,6 +49,7 @@ class TestContinuous(TestCase):
             alc_slots = component._find_resources(
                 node=test_case['setup']['nodes'][0],
                 find_slots=td['ranks'],
+                ranks_per_slot=1,
                 cores_per_slot=td['cores_per_rank'],
                 gpus_per_slot=td['gpus_per_rank'],
                 lfs_per_slot=td['lfs_per_rank'   ],
