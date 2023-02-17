@@ -116,7 +116,7 @@ class Srun(LaunchMethod):
         n_task_threads = td.get('cores_per_rank', 1)
         n_task_gpus    = td.get('gpus_per_rank', 0.)
         # sharing GPUs among multiple ranks not supported
-        if not n_task_gpus.is_integer():
+        if n_task_gpus and not n_task_gpus.is_integer():
             raise RuntimeError('GPU sharing in SRun LM is not supported')
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when

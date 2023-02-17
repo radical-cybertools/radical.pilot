@@ -312,7 +312,7 @@ class Master(rpu.Component):
         cfg['ranks']          = td.ranks
         cfg['cores_per_rank'] = td.cores_per_rank
         # sharing GPUs among multiple ranks not supported
-        if not td.gpus_per_rank.is_integer():
+        if td.cores_per_rank and not td.gpus_per_rank.is_integer():
             raise RuntimeError('GPU sharing for workers is not supported')
         cfg['gpus_per_rank']  = int(td.gpus_per_rank)
 

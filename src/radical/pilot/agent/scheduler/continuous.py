@@ -275,7 +275,7 @@ class Continuous(AgentSchedulingComponent):
             cores_per_slot = 1
 
         # check if there is a GPU sharing
-        if not gpus_per_slot.is_integer():
+        if gpus_per_slot and not gpus_per_slot.is_integer():
             gpus           = td['ranks'] * gpus_per_slot
             req_slots      = m.ceil(gpus / gpus_per_node)
             gpus_per_slot  = int(gpus // req_slots)
