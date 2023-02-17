@@ -172,9 +172,9 @@ class JSRUN(LaunchMethod):
 
             rs            = len(slots['ranks'])
             tasks_per_rs  = len(slots['ranks'][0]['core_map'])
-            cores_per_rs  = math.ceil(len(slots['ranks'][0]['core_map'][0])
-                                      / self._rm_info['threads_per_core']) * \
-                            tasks_per_rs
+            cores_per_rs  = (math.ceil(len(slots['ranks'][0]['core_map'][0]) /
+                                       self._rm_info['threads_per_core']) *
+                             tasks_per_rs)
             gpus_per_rs   = len(slots['ranks'][0]['gpu_map'])
 
             # -n: number of RS
