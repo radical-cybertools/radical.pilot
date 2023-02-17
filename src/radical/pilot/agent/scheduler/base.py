@@ -448,15 +448,13 @@ class AgentSchedulingComponent(rpu.Component):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = rank['core_map']
-            for cslot in cores:
-                for core in cslot:
+            slot_ranks = rank['core_map']
+            for cores in slot_ranks:
+                for core in cores:
                     node['cores'][core] = new_state
 
-            gpus = rank['gpu_map']
-            for gslot in gpus:
-                for gpu in gslot:
-                    node['gpus'][gpu] = new_state
+            for gpu in rank['gpu_map']:
+                node['gpus'][gpu] = new_state
 
             if rank['lfs']:
                 if new_state == rpc.BUSY:

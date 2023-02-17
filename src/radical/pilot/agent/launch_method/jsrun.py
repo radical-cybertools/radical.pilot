@@ -194,11 +194,11 @@ class JSRUN(LaunchMethod):
                     max_rs_per_node = min(rs, max_rs_per_node)
                 cmd_options += ' -r%d' % max_rs_per_node
 
-            # -b: bind to RS
+            # -b: binding of tasks within a resource set (none, rs, or packed:N)
             if td['threading_type'] == rpc.OpenMP:
                 # for OpenMP threads RP will set:
                 #    export OMP_NUM_THREADS=<cores_per_rank>
-                cmd_options += ' -b packed:%d' % td['cores_per_rank']
+                cmd_options += ' -b packed:%d' % cores_per_rs
             else:
                 cmd_options += ' -b rs'
 
