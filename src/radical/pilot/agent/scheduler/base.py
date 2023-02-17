@@ -129,7 +129,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     task = { ...
 #       'ranks'         : 4,
 #       'cores_per_rank': 2,
-#       'gpus_per_rank  : 2,
+#       'gpus_per_rank  : 2.,
 #       'slots' :
 #       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
 #         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
@@ -428,7 +428,7 @@ class AgentSchedulingComponent(rpu.Component):
         # for node_name, node_id, cores, gpus in slots['ranks']:
         for rank in slots['ranks']:
 
-            # Find the entry in the the slots list
+            # Find the entry in the slots list
 
             # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
@@ -753,10 +753,8 @@ class AgentSchedulingComponent(rpu.Component):
         for task in scheduled:
             td = task['description']
             task['$set']      = ['resources']
-            task['resources'] = {'cpu': td['ranks'] *
-                                        td['cores_per_rank'],
-                                 'gpu': td['ranks'] *
-                                        td['gpus_per_rank']}
+            task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
+                                 'gpu': int(td['ranks'] * td['gpus_per_rank'])}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -873,8 +871,8 @@ class AgentSchedulingComponent(rpu.Component):
                     task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['ranks'] *
                                                 td['cores_per_rank'],
-                                         'gpu': td['ranks'] *
-                                                td['gpus_per_rank']}
+                                         'gpu': int(td['ranks'] *
+                                                    td['gpus_per_rank'])}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 
@@ -1075,7 +1073,7 @@ class AgentSchedulingComponent(rpu.Component):
         d = task['description']
         task['tuple_size'] = tuple([d.get('ranks'         , 1),
                                     d.get('cores_per_rank', 1),
-                                    d.get('gpus_per_rank' , 0)])
+                                    d.get('gpus_per_rank' , 0.)])
 
 
 # ------------------------------------------------------------------------------

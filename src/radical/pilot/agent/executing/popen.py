@@ -701,10 +701,14 @@ class Popen(AgentExecutingComponent):
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            td['pre_exec'].append(
-                {str(rank_id): 'export CUDA_VISIBLE_DEVICES=%s' %
-                               ','.join([str(gm[0]) for gm in rank['gpu_map']])
-                 for rank_id, rank in enumerate(ranks)})
+            rank_id  = 0
+            rank_env = {}
+            for ranks_per_slot in ranks:
+                gpu_ids = [str(gid) for gid in ranks_per_slot['gpu_map']]
+                for _ in range(len(ranks_per_slot['core_map'])):
+                    rank_env[str(rank_id)] = \
+                        'export CUDA_VISIBLE_DEVICES=%s' % ','.join(gpu_ids)
+                    rank_id += 1
 
 
     # --------------------------------------------------------------------------

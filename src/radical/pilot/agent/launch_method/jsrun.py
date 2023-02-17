@@ -88,13 +88,13 @@ class JSRUN(LaunchMethod):
 
         * Task 1: 2 MPI procs, 2 threads per process and 2 gpus per process*
 
-            rank 0 : {host: 1; cpu:  {0, 1}; gpu: {0,1}}
-            rank 1 : {host: 1; cpu: {22,23}; gpu: {3,4}}
+            rank 0 : { host: 1; cpu:  {0, 1}; gpu: {0,1} }
+            rank 1 : { host: 1; cpu: {22,23}; gpu: {3,4} }
 
         * Task 2: 2 MPI procs, 1 thread per process and 1 gpus per process*
 
-            rank 0 : {host: 2; cpu:  7; gpu: 2}
-            rank 1 : {host: 2; cpu: 30; gpu: 5}
+            rank 0 : { host: 2; cpu:  {7}; gpu: {2} }
+            rank 1 : { host: 2; cpu: {30}; gpu: {5} }
 
         Parameters
         ----------
@@ -104,7 +104,7 @@ class JSRUN(LaunchMethod):
             format:
 
             {"ranks"         : [{"node_name" : "a",
-                                 "node_id"   : 1,
+                                 "node_id"   : "1",
                                  "core_map"  : [[0]],
                                  "gpu_map"   : [],
                                  "lfs"       : 0,
@@ -121,20 +121,26 @@ class JSRUN(LaunchMethod):
         # "error in ptssup_mkcltsock_afunix()"
         rs_str  = 'cpu_index_using: logical\n'
 
-        rank_id = 0
-        for rank in slots['ranks']:
+        base_id = 0
+        for ranks_per_slot in slots['ranks']:
 
-            gpu_maps = list(rank['gpu_map'])
-            for map_set in rank['core_map']:
-                cores = ','.join(str(core) for core in map_set)
-                rs_str += 'rank: %d: {' % rank_id
-                rs_str += ' host: %s;'  % str(rank['node_id'])
-                rs_str += ' cpu: {%s}'  % cores
-                if gpu_maps:
-                    gpus = [str(gpu_map[0]) for gpu_map in gpu_maps]
-                    rs_str += '; gpu: {%s}' % ','.join(gpus)
-                rs_str  += ' }\n'
-                rank_id += 1
+            n_ranks  = len(ranks_per_slot['core_map'])
+            rank_ids = [str(rid + base_id) for rid in range(n_ranks)]
+            base_id += n_ranks
+
+            core_id_sets = []
+            for core_map in ranks_per_slot['core_map']:
+                core_ids = [str(cid) for cid in core_map]
+                core_id_sets.append('{%s}' % ','.join(core_ids))
+
+            gpu_ids = [str(gid) for gid in ranks_per_slot['gpu_map']]
+
+            rs_str += 'rank: %s : {'    % ','.join(rank_ids)
+            rs_str += ' host: %s;'      % str(ranks_per_slot['node_id'])
+            rs_str += ' cpu: %s'        % ','.join(core_id_sets)
+            if gpu_ids:
+                rs_str += '; gpu: {%s}' % ','.join(gpu_ids)
+            rs_str += ' }\n'
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
         with ru.ru_open(rs_name, 'w') as fout:

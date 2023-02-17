@@ -633,7 +633,7 @@ def get_session_description(sid, src=None, dburl=None):
         if 'resources' not in task:
             td = task['description']
             task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
-                                 'gpu': td['ranks'] * td['gpus_per_rank']}
+                                 'gpu': int(td['ranks'] * td['gpus_per_rank'])}
 
         # we determine the entity type by the task mode
         etype = task.get('etype')
