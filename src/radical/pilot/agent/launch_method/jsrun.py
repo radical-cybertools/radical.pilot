@@ -170,11 +170,12 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs           = len(slots['ranks'])
-            tasks_per_rs = len(slots['ranks'][0]['core_map'])
-            cores_per_rs = math.ceil(len(slots['ranks'][0]['core_map'][0]) /
-                                     self._rm_info['threads_per_core'])
-            gpus_per_rs  = len(slots['ranks'][0]['gpu_map'])
+            rs            = len(slots['ranks'])
+            tasks_per_rs  = len(slots['ranks'][0]['core_map'])
+            cores_per_rs  = math.ceil(len(slots['ranks'][0]['core_map'][0])
+                                      / self._rm_info['threads_per_core']) \
+                            * tasks_per_rs
+            gpus_per_rs   = len(slots['ranks'][0]['gpu_map'])
 
             # -n: number of RS
             # -a: number of MPI tasks (ranks)     per RS

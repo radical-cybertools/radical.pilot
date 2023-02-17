@@ -278,7 +278,7 @@ class Continuous(AgentSchedulingComponent):
         if not gpus_per_slot.is_integer():
             gpus           = td['ranks'] * gpus_per_slot
             req_slots      = m.ceil(gpus / gpus_per_node)
-            gpus_per_slot  = gpus // req_slots
+            gpus_per_slot  = int(gpus // req_slots)
             ranks_per_slot = td['ranks'] // req_slots
 
             # find the greatest common divisor
@@ -294,6 +294,7 @@ class Continuous(AgentSchedulingComponent):
         else:
             req_slots      = td['ranks']
             ranks_per_slot = 1
+            gpus_per_slot  = int(gpus_per_slot)
 
         self._log.debug_3('req : %s %s %s %s %s %s',
                           req_slots, ranks_per_slot, cores_per_slot,
