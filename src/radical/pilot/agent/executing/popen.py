@@ -709,6 +709,7 @@ class Popen(AgentExecutingComponent):
                     rank_env[str(rank_id)] = \
                         'export CUDA_VISIBLE_DEVICES=%s' % ','.join(gpu_ids)
                     rank_id += 1
+            td['pre_exec'].append(rank_env)
 
 
     # --------------------------------------------------------------------------
