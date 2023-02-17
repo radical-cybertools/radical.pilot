@@ -153,54 +153,34 @@ class JSRUN(LaunchMethod):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        uid = task['uid']
-        td  = task['description']
+        uid   = task['uid']
+        td    = task['description']
+        slots = task['slots']
+
+        assert slots['ranks'], 'task.slots.ranks not defined'
 
         if self._erf:
 
-            sbox  = task['task_sandbox_path']
-            slots = task['slots']
-
-            assert slots['ranks'], 'task.slots.ranks not defined'
-
-            cmd_options = '--erf_input %s' % \
-                self._create_resource_set_file(slots, uid, sbox)
+            cmd_options = '--erf_input %s' % self._create_resource_set_file(
+                slots, uid, task['task_sandbox_path'])
 
         else:
 
             # JSRun uses resource sets (RS) to configure a node representation
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
-            rs           = 1
-            tasks_per_rs = td['ranks']
-            gpus_per_rs  = 0
 
-            if td['gpus_per_rank']:
-                gpus           = td['ranks'] * td['gpus_per_rank']
-                rs             = math.ceil(
-                                 gpus / self._rm_info['gpus_per_node'])
-                gpus_per_rs    = gpus // rs
-                tasks_per_rs //= rs
+            rs           = len(slots['ranks'])
+            tasks_per_rs = len(slots['ranks'][0]['core_map'])
+            cores_per_rs = math.ceil(len(slots['ranks'][0]['core_map'][0]) /
+                                     self._rm_info['threads_per_core'])
+            gpus_per_rs  = len(slots['ranks'][0]['gpu_map'])
 
-                # find the greatest common divisor
-                di = math.gcd(gpus_per_rs, tasks_per_rs)
-                rs            *= di
-                gpus_per_rs  //= di
-                tasks_per_rs //= di
-
-            # for OpenMP threads a corresponding parameter should be provided
-            # in task description - `td.threading_type = rp.OpenMP`, and RP
-            # will set `export OMP_NUM_THREADS=<cores_per_rank>`
-            cores_per_rs  = math.ceil(
-                td['cores_per_rank'] / self._rm_info['threads_per_core'])
-            cores_per_rs *= tasks_per_rs
-
-            # -b: bind to RS
             # -n: number of RS
             # -a: number of MPI tasks (ranks)     per RS
             # -c: number of CPUs (physical cores) per RS
             # -g: number of GPUs                  per RS
-            cmd_options = '-b rs -n%d -a%d -c%d -g%d' % (
+            cmd_options = '-n%d -a%d -c%d -g%d' % (
                 rs, tasks_per_rs, cores_per_rs, gpus_per_rs)
 
             if gpus_per_rs:
@@ -213,6 +193,14 @@ class JSRUN(LaunchMethod):
                 else:
                     max_rs_per_node = min(rs, max_rs_per_node)
                 cmd_options += ' -r%d' % max_rs_per_node
+
+            # -b: bind to RS
+            if td['threading_type'] == rpc.OpenMP:
+                # for OpenMP threads RP will set:
+                #    export OMP_NUM_THREADS=<cores_per_rank>
+                cmd_options += ' -b packed:%d' % td['cores_per_rank']
+            else:
+                cmd_options += ' -b rs'
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
             # from https://www.olcf.ornl.gov/ \
