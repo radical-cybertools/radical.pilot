@@ -196,7 +196,6 @@ class TestComponent(TestCase):
         with self.assertRaises(RuntimeError):
             agent_0._start_services()
 
-
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_state_cb_of_services(self, mocked_init):
 
@@ -208,7 +207,7 @@ class TestComponent(TestCase):
         agent_0.services_event = threading.Event()
 
         topic = 'test_topic'
-        msg = {'cmd': 'update', 'arg': [{'uid':'101','state': 'AGENT_EXECUTING'}]}
+        msg = {'cmd': 'update', 'arg': [{'uid': '101', 'state': 'AGENT_EXECUTING'}]}
 
         agent_0._state_cb_of_services(topic, msg)
         agent_0._running_services.append('102')
