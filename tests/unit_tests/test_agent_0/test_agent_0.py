@@ -171,6 +171,7 @@ class TestComponent(TestCase):
     def test_start_services(self, mocked_init):
 
         advanced_descriptions = None
+
         def local_advance(services, publish, push):
 
             nonlocal advanced_descriptions

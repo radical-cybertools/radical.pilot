@@ -49,7 +49,6 @@ class Agent_0(rpu.Worker):
 
         self._session = session
         self._log     = ru.Logger(self._uid, ns='radical.pilot')
-        self._log.debug("LoggingConfig %s",self._cfg)
         self._starttime   = time.time()
         self._final_cause = None
 
