@@ -361,6 +361,10 @@ class Popen(AgentExecutingComponent):
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+        # `start_new_session=True` is default, which enables decoupling
+        # from the parent process group (part of the task cancellation)
+        _start_new_session = self._cfg['resource_cfg'].\
+            get('new_session_per_task', True)
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -369,12 +373,9 @@ class Popen(AgentExecutingComponent):
                                 stdin             = None,
                                 stdout            = _launch_out_h,
                                 stderr            = sp.STDOUT,
-                                start_new_session = True,
+                                start_new_session = _start_new_session,
                                 close_fds         = True,
                                 cwd               = sbox)
-        # decoupling from parent process group is disabled,
-        # in case of enabling it, one of the following options should be added:
-        #    `preexec_fn=os.setsid` OR `start_new_session=True`
         self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination
