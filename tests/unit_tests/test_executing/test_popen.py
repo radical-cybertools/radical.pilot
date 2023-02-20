@@ -7,10 +7,11 @@ __license__   = 'MIT'
 
 import os
 import queue
+
 import threading as mt
 
 import radical.pilot.states as rps
-import radical.utils as ru
+import radical.utils        as ru
 
 from unittest import mock, TestCase
 
@@ -78,6 +79,7 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
@@ -92,6 +94,9 @@ class TestPopen(TestCase):
         pex._rm.find_launcher = mocked_find_launcher
 
         pex._handle_task(task)
+
+        popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
+        self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh', '.sl']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
