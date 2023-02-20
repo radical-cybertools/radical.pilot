@@ -170,12 +170,12 @@ class TestComponent(TestCase):
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_start_services(self, mocked_init):
 
-        advanced_descriptions = list()
+        advanced_services = list()
 
         def local_advance(services, publish, push):
 
-            nonlocal advanced_descriptions
-            advanced_descriptions = services
+            nonlocal advanced_services
+            advanced_services = services
 
         agent_0 = Agent_0()
         agent_0.advance = local_advance
@@ -183,13 +183,14 @@ class TestComponent(TestCase):
         agent_0._service_task_ids = list()
 
         agent_0.services_event = mock.Mock()
-        test_data = [dict({'core_per_rank': '1', 'executable':'/bin/date'})]
+        test_data = [dict({'cores_per_rank': '3', 'executable':'/bin/ls'})]
         agent_0._cfg = ru.Config(from_dict={'pid':12, 'pilot_sandbox':'/'})
         agent_0._cfg.services = test_data
 
         agent_0.services_event.wait = mock.Mock(return_value=True)
         agent_0._start_services()
-        self.assertTrue(advanced_descriptions[0]['uid'].startswith('service.'))
+        self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
+        self.assertTrue(test_data[0].items() <= advanced_services[0]['description'].items())
 
         agent_0.services_event.wait = mock.Mock(return_value=False)
         with self.assertRaises(RuntimeError):
