@@ -360,18 +360,22 @@ class Agent_0(rpu.Worker):
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['status']            = 'NEW'
             task['type']              = 'service_task'
-            task['uid']               = ru.generate_id('service.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=self._cfg.sid)
+            task['uid']               = ru.generate_id(
+                'service.%(item_counter)04d', ru.ID_CUSTOM, ns=self._cfg.sid)
             task['pilot_sandbox']     = self._cfg.pilot_sandbox
-            task['task_sandbox']      = self._cfg.pilot_sandbox + task['uid'] + '/'
-            task['task_sandbox_path'] = self._cfg.pilot_sandbox + task['uid'] + '/'
+            task['task_sandbox']      = self._cfg.pilot_sandbox \
+                                        + task['uid'] + '/'
+            task['task_sandbox_path'] = self._cfg.pilot_sandbox \
+                                        + task['uid'] + '/'
             task['session_sandbox']   = self._cfg.session_sandbox
             task['resource_sandbox']  = self._cfg.resource_sandbox
             task['pilot']             = self._cfg.pid
             task['resources']         = {'cpu': service_desc['ranks'] *
-                                                service_desc.get('cores_per_rank', 1),
+                                                service_desc.get(
+                                                    'cores_per_rank', 1),
                                          'gpu': service_desc['ranks'] *
-                                                service_desc.get('gpus_per_rank', 1)}
+                                                service_desc.get(
+                                                    'gpus_per_rank', 1)}
 
             self._service_task_ids.append(task['uid'])
             services.append(task)
@@ -397,9 +401,12 @@ class Agent_0(rpu.Worker):
                     self._log.info('service task has come up %s', service)
                     if service['state'] == rps.AGENT_EXECUTING:
                         self._running_services.append(service['uid'])
-                        self._log.info('Service task %s topic %s has started ( %s / %s)', service['uid'],
-                                       topic, len(self._running_services), len(self._service_task_ids))
-                        if len(self._running_services) == len(self._service_task_ids):
+                        self._log.info('Service task %s topic %s has started'
+                                       ' ( %s / %s)', service['uid'],
+                                       topic, len(self._running_services),
+                                       len(self._service_task_ids))
+                        if len(self._running_services) == \
+                                len(self._service_task_ids):
                             self.services_event.set()
 
     # --------------------------------------------------------------------------
