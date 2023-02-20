@@ -6,7 +6,6 @@ import tempfile
 import threading
 
 from unittest import mock, TestCase
-from unittest.mock import DEFAULT
 
 from radical.pilot                        import TaskDescription
 from radical.pilot.agent.resource_manager import RMInfo
@@ -173,6 +172,7 @@ class TestComponent(TestCase):
 
         advanced_descriptions = None
         def local_advance(services, publish, push):
+
             nonlocal advanced_descriptions
             advanced_descriptions = services
 
@@ -206,13 +206,12 @@ class TestComponent(TestCase):
         agent_0.services_event = threading.Event()
 
         topic = 'test_topic'
-        msg = {'cmd':'update','arg':[{'uid':'101','state': 'AGENT_EXECUTING'}]}
+        msg = {'cmd':'update', 'arg': [{'uid':'101','state': 'AGENT_EXECUTING'}]}
 
-        agent_0._state_cb_of_services(topic,msg)
-        assert (agent_0.services_event.isSet(), False)
+        agent_0._state_cb_of_services(topic, msg)
         agent_0._running_services.append('102')
         agent_0._state_cb_of_services(topic, msg)
-        assert(agent_0.services_event.isSet(), True)
+        self.assertTrue(agent_0.services_event.isSet())
 
 
 # ------------------------------------------------------------------------------
