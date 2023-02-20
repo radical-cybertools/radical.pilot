@@ -105,7 +105,7 @@ class AgentExecutingComponent(rpu.Component):
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.command_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self.control_cb)
 
         self._to_tasks  = list()
         self._to_lock   = mt.Lock()
@@ -123,9 +123,9 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        raise NotImplementedError('command_cb is not implemented')
+        raise NotImplementedError('control_cb is not implemented')
 
 
     # --------------------------------------------------------------------------

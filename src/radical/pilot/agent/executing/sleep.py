@@ -88,6 +88,13 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
+    def cancel_task(self, uid):
+
+        raise NotImplementedError('no cancellation support in sleep executor')
+
+
+    # --------------------------------------------------------------------------
+    #
     def _handle_task(self, task):
 
         now = time.time()
@@ -132,9 +139,9 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
 

@@ -1,0 +1,35 @@
+
+{
+    "task": {
+        "uid"                  : "task.000016",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["25"],
+            "ranks"            : 4,
+            "cores_per_rank"   : 15,
+            "gpus_per_rank"    : 0,
+            "environment"      : {}
+        },
+        "task_sandbox_path"    : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "cores_per_node": 40,
+                "gpus_per_node" : 4
+            },
+            "task_sandbox": "./"
+        }
+    },
+
+    "results": {
+        "lm": {
+            "aprun" : {
+                "launch_cmd" : "aprun -N 2 -n 4 -d 15",
+                "rank_exec"  : "/bin/sleep \"25\""
+            }
+        }
+    }
+}
+

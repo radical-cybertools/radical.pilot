@@ -7,10 +7,11 @@ __license__   = 'MIT'
 
 import os
 import queue
+
 import threading as mt
 
 import radical.pilot.states as rps
-import radical.utils as ru
+import radical.utils        as ru
 
 from unittest import mock, TestCase
 
@@ -38,7 +39,7 @@ class TestPopen(TestCase):
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_command_cb(self, mocked_logger, mocked_init):
+    def test_control_cb(self, mocked_logger, mocked_init):
 
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
@@ -46,10 +47,10 @@ class TestPopen(TestCase):
         pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
-        self.assertTrue(pex.command_cb(topic=None, msg=msg))
+        self.assertTrue(pex.control_cb(topic=None, msg=msg))
 
         msg['cmd'] = 'cancel_tasks'
-        self.assertTrue(pex.command_cb(topic=None, msg=msg))
+        self.assertTrue(pex.control_cb(topic=None, msg=msg))
         for uid in msg['arg']['uids']:
             mode, tid = pex._watch_queue.get()
             self.assertEqual(mode, pex.TO_CANCEL)
@@ -78,6 +79,7 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
@@ -92,6 +94,9 @@ class TestPopen(TestCase):
         pex._rm.find_launcher = mocked_find_launcher
 
         pex._handle_task(task)
+
+        popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
+        self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh', '.sl']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
@@ -134,12 +139,16 @@ class TestPopen(TestCase):
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
 
+        os.getpgid = mock.Mock()
+        os.killpg  = mock.Mock()
+
         to_watch  = list()
         to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
+        task['proc'].pid = os.getpid()
         to_watch.append(task)
         to_cancel.append(task['uid'])
         pex._check_running(to_watch, to_cancel)
@@ -185,7 +194,7 @@ if __name__ == '__main__':
 
     tc = TestPopen()
     tc.setUpClass()
-    tc.test_command_cb()
+    tc.test_control_cb()
     tc.test_check_running()
     tc.test_handle_task()
 
