@@ -16,6 +16,7 @@
         "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
+        "new_session_per_task"        : false,
         "launch_methods"              : {
                                          "order": ["APRUN"],
                                          "APRUN": {}
