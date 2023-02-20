@@ -368,8 +368,10 @@ class Agent_0(rpu.Worker):
             task['session_sandbox']   = self._cfg.session_sandbox
             task['resource_sandbox']  = self._cfg.resource_sandbox
             task['pilot']             = self._cfg.pid
-            task['resources'] = {'cpu': service_desc['ranks'] * service_desc.get('cores_per_rank', 1),
-                                 'gpu': service_desc['ranks'] * service_desc.get('gpus_per_rank', 1)}
+            task['resources']         = {'cpu': service_desc['ranks'] *
+                                                service_desc.get('cores_per_rank', 1),
+                                         'gpu': service_desc['ranks'] *
+                                                service_desc.get('gpus_per_rank', 1)}
 
             self._service_task_ids.append(task['uid'])
             services.append(task)
