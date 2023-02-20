@@ -3,6 +3,7 @@
 import glob
 import os
 import tempfile
+import threading
 
 from unittest import mock, TestCase
 from unittest.mock import DEFAULT
@@ -11,6 +12,7 @@ from radical.pilot                        import TaskDescription
 from radical.pilot.agent.resource_manager import RMInfo
 
 from radical.pilot.agent                  import Agent_0
+import radical.utils       as ru
 
 
 # ------------------------------------------------------------------------------
@@ -167,43 +169,50 @@ class TestComponent(TestCase):
             agent_0._start_sub_agents()
 
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_start_services(self):
+    def test_start_services(self, mocked_init):
 
-        expectedoutput = dict()
-        def local_advance(*args):
-            nonlocal expectedoutput = args
+        advanced_descriptions = None
+        def local_advance(services, publish, push):
+            nonlocal advanced_descriptions
+            advanced_descriptions = services
 
         agent_0 = Agent_0()
         agent_0.advance = local_advance
+        agent_0._log = mock.Mock()
+        agent_0._service_task_ids = list()
+
         agent_0.services_event = mock.Mock()
+        test_data = [dict({'core_per_rank': '1', 'executable':'/bin/date'})]
+        agent_0._cfg = ru.Config(from_dict={'pid':12, 'pilot_sandbox':'/'})
+        agent_0._cfg.services = test_data
+
+        agent_0.services_event.wait = mock.Mock(return_value=True)
+        agent_0._start_services()
+        self.assertTrue(advanced_descriptions[0]['uid'].startswith('service.'))
+
         agent_0.services_event.wait = mock.Mock(return_value=False)
-
-        agent_0._cfg = mock.Mock()
-        test_data = dict({'test': 'rd'})
-        agent_0._cfg.assertTrue = mock.Mock(return_value=test_data)
-
         with self.assertRaises(RuntimeError):
             agent_0._start_services()
 
-        self.assertEqual(test_data,expectedoutput)
 
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_state_cb_of_services(self):
-        def side_effect(*args, **kwargs):
-            return 'DEFAULT'
+    def test_state_cb_of_services(self, mocked_init):
 
         agent_0 = Agent_0()
         agent_0._service_task_ids = ['101','102']
-        agent_0._running_services = ['101', '102']
-        agent_0.services_event = mock.Mock()
-        agent_0.services_event.set = mock.Mock(return_value=True)
-        agent_0.services_event.set.side_effect = side_effect
+        agent_0._running_services = ['101']
+        agent_0._log = mock.Mock()
+
+        agent_0.services_event = threading.Event()
 
         topic = 'test_topic'
-        msg = {'cmd':'update','tasks':[{'uid':'101','state': 'AGENT_EXECUTING'}]}
+        msg = {'cmd':'update','arg':[{'uid':'101','state': 'AGENT_EXECUTING'}]}
 
         agent_0._state_cb_of_services(topic,msg)
-
+        assert (agent_0.services_event.isSet(), False)
+        agent_0._running_services.append('102')
+        agent_0._state_cb_of_services(topic, msg)
+        assert(agent_0.services_event.isSet(), True)
 
 
 # ------------------------------------------------------------------------------
