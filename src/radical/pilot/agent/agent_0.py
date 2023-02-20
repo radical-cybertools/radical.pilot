@@ -39,10 +39,10 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg: ru.Config, session):
 
         self._uid     = 'agent.0'
-        self._cfg: ru.Config = cfg
+        self._cfg     = cfg
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
@@ -102,7 +102,6 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
-        self._log.info("Registering the callback for agent services")
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb_of_services)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
@@ -351,7 +350,7 @@ class Agent_0(rpu.Worker):
         If a `./services` file exist, reserve a compute node and run that file
         there as bash script.
         '''
-        self._log.info("Starting the agent services")
+        self._log.info('Starting the agent services')
         service_descriptions = self._cfg.services
         services = list()
 
@@ -370,10 +369,6 @@ class Agent_0(rpu.Worker):
             task['session_sandbox']   = self._cfg.session_sandbox
             task['resource_sandbox']  = self._cfg.resource_sandbox
             task['pilot']             = self._cfg.pid
-            # task['resources'] = {'cpu': td['ranks'] *
-            #                             td.get('cores_per_rank', 1),
-            #                      'gpu': td['ranks'] *
-            #                             td.get('gpus_per_rank', 1)}
             self._service_task_ids.append(task['uid'])
             services.append(task)
         self.number_of_services_to_launch = len(services)
@@ -381,12 +376,12 @@ class Agent_0(rpu.Worker):
         # Waiting 2mins for all services to launch
         self._log.info("Waiting for the agent services to get started")
         did_timed_out = self.services_event.wait(timeout=60 * 2)
-        self._log.info("All agent services started")
         if not did_timed_out:
-            raise RuntimeError("Unable to start services")
+            raise RuntimeError('Unable to start services')
+        self._log.info("All agent services started")
+
 
     def _state_cb_of_services(self, topic, msg):
-        self._log.info("Callback of services called with topic %s",topic)
         cmd = msg['cmd']
         tasks = msg['arg']
 
@@ -398,8 +393,8 @@ class Agent_0(rpu.Worker):
                     self._log.info('service task has come up %s', service)
                     if service['state'] == rps.AGENT_EXECUTING:
                         self._running_services.append(service['uid'])
-                        self._log.info('Number of running services %s %s', len(self._running_services),
-                                       len(self._service_task_ids))
+                        self._log.info('Service task %s has started ( %s / %s)', service['uid'],
+                                       len(self._running_services), len(self._service_task_ids))
                         if len(self._running_services) == len(self._service_task_ids):
                             self.services_event.set()
 
