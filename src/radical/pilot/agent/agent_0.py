@@ -392,8 +392,8 @@ class Agent_0(rpu.Worker):
                     self._log.info('service task has come up %s', service)
                     if service['state'] == rps.AGENT_EXECUTING:
                         self._running_services.append(service['uid'])
-                        self._log.info('Service task %s has started ( %s / %s)', service['uid'],
-                                       len(self._running_services), len(self._service_task_ids))
+                        self._log.info('Service task %s topic %s has started ( %s / %s)', service['uid'],
+                                       topic, len(self._running_services), len(self._service_task_ids))
                         if len(self._running_services) == len(self._service_task_ids):
                             self.services_event.set()
 
