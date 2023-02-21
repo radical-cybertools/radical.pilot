@@ -379,7 +379,6 @@ class Agent_0(rpu.Worker):
             self._service_task_ids.append(tid)
             services.append(task)
 
-        self.number_of_services_to_launch = len(services)
         self.advance(services, publish=False, push=True)
 
         # Waiting 2mins for all services to launch

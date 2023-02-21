@@ -209,19 +209,24 @@ class TestComponent(TestCase):
 
         agent_0 = Agent_0(ru.Config(), None)
         agent_0._service_task_ids = ['101','102']
-        agent_0._running_services = ['101']
+        agent_0._running_services = []
+
         agent_0._log = mock.Mock()
 
         agent_0.services_event = threading.Event()
 
         topic = 'test_topic'
         msg   = {'cmd': 'update',
-                 'arg': [{'uid'  : '101',
-                          'state': 'AGENT_EXECUTING'}]}
+                 'arg': []}
 
         agent_0._state_cb_of_services(topic, msg)
-        agent_0._running_services.append('102')
+        msg['arg'].append({'uid'  : '101',
+                          'state': 'AGENT_EXECUTING'})
+        agent_0._state_cb_of_services(topic, msg)
 
+        msg['arg'].append({'uid': '102',
+                            'state': 'AGENT_EXECUTING'})
+        agent_0._state_cb_of_services(topic, msg)
         self.assertTrue(agent_0.services_event.is_set())
 
 
