@@ -195,6 +195,7 @@ if __name__ == '__main__':
     tc.test_get_launcher_env()
     tc.test_create_resource_set_file()
     tc.test_get_launch_rank_cmds()
+    tc.test_get_rank_cmd()
 
 
 # ------------------------------------------------------------------------------
