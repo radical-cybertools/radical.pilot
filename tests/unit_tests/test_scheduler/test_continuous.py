@@ -46,15 +46,19 @@ class TestContinuous(TestCase):
         for test_case in self._test_cases:
 
             td = test_case['task']['description']
+            sd_options = test_case['setup'].get('slots_description') or \
+                         {'find_slots'    : td['ranks'],
+                          'ranks_per_slot': 1,
+                          'cores_per_slot': td['cores_per_rank'],
+                          'gpus_per_slot' : td['gpus_per_rank'],
+                          'lfs_per_slot'  : td['lfs_per_rank'],
+                          'mem_per_slot'  : td['mem_per_rank']}
+
             alc_slots = component._find_resources(
                 node=test_case['setup']['nodes'][0],
-                find_slots=td['ranks'],
-                ranks_per_slot=1,
-                cores_per_slot=td['cores_per_rank'],
-                gpus_per_slot=td['gpus_per_rank'],
-                lfs_per_slot=td['lfs_per_rank'   ],
-                mem_per_slot=td['mem_per_rank'   ],
-                partial=False)
+                partial=False,
+                **sd_options
+            )
 
             if alc_slots is None:
                 # tests should be defined in a way, so task would fit 1 node
