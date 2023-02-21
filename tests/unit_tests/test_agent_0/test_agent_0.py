@@ -7,11 +7,11 @@ import threading
 
 from unittest import mock, TestCase
 
-from radical.pilot                        import TaskDescription
-from radical.pilot.agent.resource_manager import RMInfo
+import radical.utils as ru
 
+from radical.pilot                        import TaskDescription
 from radical.pilot.agent                  import Agent_0
-import radical.utils       as ru
+from radical.pilot.agent.resource_manager import RMInfo
 
 
 # ------------------------------------------------------------------------------
@@ -25,18 +25,18 @@ class TestComponent(TestCase):
 
         global_control = []
 
-        def _publish_side_effect(publish_type, cmd):
+        def _publish_effect(publish_type, cmd):
             nonlocal global_control
             global_control.append((publish_type, cmd))
 
-        def _prepare_env_side_effect(env_id, spec):
+        def _prepenv_effect(env_id, spec):
             return (env_id, spec)
 
-        agent_cmp = Agent_0(None, None)
-        agent_cmp._log = mock.Mock()
-        agent_cmp.publish = mock.MagicMock(side_effect=_publish_side_effect)
-        agent_cmp._prepare_env = mock.MagicMock(
-                                           side_effect=_prepare_env_side_effect)
+        agent_cmp = Agent_0(ru.Config(), None)
+
+        agent_cmp._log         = mock.Mock()
+        agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
+        agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepenv_effect)
 
         msg = {'cmd': 'test',
                'arg': {'uid': 'rpc.0000',
@@ -46,48 +46,48 @@ class TestComponent(TestCase):
         self.assertEqual(global_control, [])
 
         msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0000',
+               'arg': {'uid': 'rpc.0001',
                        'rpc': 'bye'}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
         self.assertEqual(global_control, [])
 
         msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0000',
+               'arg': {'uid': 'rpc.0002',
                        'rpc': 'hello'}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
         self.assertIn(global_control[0], [('control_pubsub',
                                            {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0000',
+                                            'arg': {'uid': 'rpc.0002',
                                                     'err': "KeyError('arg')",
                                                     'out': None,
                                                     'ret': 1}
                                            }),
                                           ('control_pubsub',
                                            {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0000',
+                                            'arg': {'uid': 'rpc.0002',
                                                     'err': "KeyError('arg',)",
                                                     'out': None,
                                                     'ret': 1}
                                            })])
 
         msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0000',
+               'arg': {'uid': 'rpc.0003',
                        'rpc': 'hello',
                        'arg': ['World']}
               }
         self.assertTrue(agent_cmp._check_control(None, msg))
         self.assertEqual(global_control[1], ('control_pubsub',
                                              {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0000',
+                                              'arg': {'uid': 'rpc.0003',
                                                       'err': None,
                                                       'out': 'hello World',
                                                       'ret': 0}
                                              }))
 
         msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0000',
+               'arg': {'uid': 'rpc.0004',
                        'rpc': 'prepare_env',
                        'arg': {'env_name': 'radical',
                                'env_spec': 'spec'}
@@ -96,12 +96,13 @@ class TestComponent(TestCase):
         self.assertTrue(agent_cmp._check_control(None, msg))
         self.assertEqual(global_control[2], ('control_pubsub',
                                              {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0000',
+                                              'arg': {'uid': 'rpc.0004',
                                                       'err': None,
                                                       'out': ('radical',
                                                               'spec'),
                                                       'ret': 0}
                                              }))
+
 
     # --------------------------------------------------------------------------
     #
@@ -111,15 +112,15 @@ class TestComponent(TestCase):
     def test_start_sub_agents(self, mocked_run_sh_callout, mocked_ru_env_prep,
                               mocked_init):
 
-        agent_0 = Agent_0(None, None)
+        agent_0 = Agent_0(ru.Config(), None)
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
-        agent_0._cfg = {
+        agent_0._cfg = ru.Config(from_dict={
             'agents': {
                 'agent_1': {'target'    : 'node',
                             'components': {'agent_executing': {'count': 1}}}
             }
-        }
+        })
 
         agent_0._rm = mock.Mock()
 
@@ -167,6 +168,9 @@ class TestComponent(TestCase):
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_start_services(self, mocked_init):
 
@@ -190,16 +194,20 @@ class TestComponent(TestCase):
         agent_0.services_event.wait = mock.Mock(return_value=True)
         agent_0._start_services()
         self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
-        self.assertTrue(test_data[0].items() <= advanced_services[0]['description'].items())
+        self.assertTrue(test_data[0].items() <=
+                        advanced_services[0]['description'].items())
 
         agent_0.services_event.wait = mock.Mock(return_value=False)
         with self.assertRaises(RuntimeError):
             agent_0._start_services()
 
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_state_cb_of_services(self, mocked_init):
 
-        agent_0 = Agent_0()
+        agent_0 = Agent_0(ru.Config(), None)
         agent_0._service_task_ids = ['101','102']
         agent_0._running_services = ['101']
         agent_0._log = mock.Mock()
@@ -207,17 +215,18 @@ class TestComponent(TestCase):
         agent_0.services_event = threading.Event()
 
         topic = 'test_topic'
-        msg = {'cmd': 'update', 'arg': [{'uid': '101', 'state': 'AGENT_EXECUTING'}]}
+        msg   = {'cmd': 'update',
+                 'arg': [{'uid'  : '101',
+                          'state': 'AGENT_EXECUTING'}]}
 
         agent_0._state_cb_of_services(topic, msg)
         agent_0._running_services.append('102')
-        agent_0._state_cb_of_services(topic, msg)
-        self.assertTrue(agent_0.services_event.isSet())
+
+        self.assertTrue(agent_0.services_event.is_set())
 
 
 # ------------------------------------------------------------------------------
-
-
+#
 if __name__ == '__main__':
 
     tc = TestComponent()

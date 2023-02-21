@@ -354,60 +354,70 @@ class Agent_0(rpu.Worker):
         services = list()
 
         for service_desc in service_descriptions:
+
+            td   = TaskDescription(service_desc)
+            cfg  = self._cfg
             task = dict()
+            tid  = ru.generate_id('service.%(item_counter)04d',
+                                  ru.ID_CUSTOM, ns=self._cfg.sid)
+
             task['origin']            = 'agent'
-            task['description']       = TaskDescription(service_desc).as_dict()
+            task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['status']            = 'NEW'
             task['type']              = 'service_task'
-            task['uid']               = ru.generate_id(
-                'service.%(item_counter)04d', ru.ID_CUSTOM, ns=self._cfg.sid)
-            task['pilot_sandbox']     = self._cfg.pilot_sandbox
-            task['task_sandbox']      = self._cfg.pilot_sandbox \
-                                        + task['uid'] + '/'
-            task['task_sandbox_path'] = self._cfg.pilot_sandbox \
-                                        + task['uid'] + '/'
-            task['session_sandbox']   = self._cfg.session_sandbox
-            task['resource_sandbox']  = self._cfg.resource_sandbox
-            task['pilot']             = self._cfg.pid
-            task['resources']         = {
-                'cpu': task['description']['ranks'] * task['description'].get(
-                    'cores_per_rank', 1),
-                'gpu': task['description']['ranks'] * task['description'].get(
-                    'gpus_per_rank', 1)
-            }
+            task['uid']               = tid
+            task['pilot_sandbox']     = cfg.pilot_sandbox
+            task['task_sandbox']      = cfg.pilot_sandbox + task['uid'] + '/'
+            task['task_sandbox_path'] = cfg.pilot_sandbox + task['uid'] + '/'
+            task['session_sandbox']   = cfg.session_sandbox
+            task['resource_sandbox']  = cfg.resource_sandbox
+            task['pilot']             = cfg.pid
+            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                         'gpu': td.ranks * td.gpus_per_rank}
 
-            self._service_task_ids.append(task['uid'])
+            self._service_task_ids.append(tid)
             services.append(task)
+
         self.number_of_services_to_launch = len(services)
         self.advance(services, publish=False, push=True)
+
         # Waiting 2mins for all services to launch
-        self._log.info("Waiting for the agent services to get started")
-        did_timed_out = self.services_event.wait(timeout=60 * 2)
-        if not did_timed_out:
+        if not self.services_event.wait(timeout=60 * 2):
             raise RuntimeError('Unable to start services')
+
         self._log.info("All agent services started")
 
 
-    def _state_cb_of_services(self, topic, msg):
-        cmd = msg['cmd']
+    # --------------------------------------------------------------------------
+    #
+    def _state_cb_of_services(self, topic, msg):  # pylint: disable=unused-argument
+
+        cmd   = msg['cmd']
         tasks = msg['arg']
 
-        self._log.info('received services for launching: %s', tasks)
+        if cmd != 'update':
+            return
 
-        if cmd == 'update':
-            for service in ru.as_list(tasks):
-                if service['uid'] in self._service_task_ids:
-                    self._log.info('service task has come up %s', service)
-                    if service['state'] == rps.AGENT_EXECUTING:
-                        self._running_services.append(service['uid'])
-                        self._log.info('Service task %s topic %s has started'
-                                       ' ( %s / %s)', service['uid'],
-                                       topic, len(self._running_services),
-                                       len(self._service_task_ids))
-                        if len(self._running_services) == \
-                                len(self._service_task_ids):
-                            self.services_event.set()
+        for service in ru.as_list(tasks):
+
+            if service['uid'] not in self._service_task_ids:
+                continue
+
+            self._log.debug('service state update %s: %s',
+                            service['uid'], service['state'])
+
+            if service['state'] != rps.AGENT_EXECUTING:
+                continue
+
+            self._running_services.append(service['uid'])
+            self._log.debug('service %s started ( %s / %s)', service['uid'],
+                            len(self._running_services),
+                            len(self._service_task_ids))
+
+            if len(self._running_services) == len(self._service_task_ids):
+                self.services_event.set()
+
 
     # --------------------------------------------------------------------------
     #
