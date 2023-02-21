@@ -351,6 +351,9 @@ class Agent_0(rpu.Worker):
         '''
         self._log.info('Starting the agent services')
         service_descriptions = self._cfg.services
+        if not service_descriptions:
+            return
+
         services = list()
 
         for service_desc in service_descriptions:
