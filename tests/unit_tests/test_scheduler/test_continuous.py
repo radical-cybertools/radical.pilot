@@ -160,9 +160,9 @@ class TestContinuous(TestCase):
 
             task['description'].update({'tags': {'colocate' : 'exclusive_tag',
                                                  'exclusive': True},
-                                        'ranks': 1,
+                                        'ranks'         : 1,
                                         'cores_per_rank': 1,
-                                        'gpus_per_rank': 0})
+                                        'gpus_per_rank' : 0})
 
             pre_sched_n_tagged_nodes = len(component._tagged_nodes)
             component.schedule_task(task)
