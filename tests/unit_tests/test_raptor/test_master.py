@@ -53,6 +53,21 @@ class RaptorMasterTC(TestCase):
 
         _thread.join()
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Master, '__init__', return_value=None)
+    def test_submit_workers_err(self, mocked_init):
+
+        raptor_master = Master(cfg=None)
+        raptor_master._uid          = 'master.0000'
+        raptor_master._cfg          = {}
+        raptor_master._info         = mock.Mock()
+        raptor_master._task_service = mock.Mock()
+
+        with self.assertRaises(RuntimeError):
+            # raise an exception in case of shared GPU(s)
+            raptor_master.submit_workers({'gpus_per_rank': 1.5, }, 1)
+
 
 # ------------------------------------------------------------------------------
 
@@ -60,5 +75,6 @@ if __name__ == '__main__':
 
     tc = RaptorMasterTC()
     tc.test_wait()
+    tc.test_submit_workers_err()
 
 # ------------------------------------------------------------------------------
