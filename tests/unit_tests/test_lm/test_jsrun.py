@@ -172,6 +172,17 @@ class TestJSRun(TestCase):
                     command = lm_jsrun.get_exec(task)
                     self.assertEqual(command, result['rank_exec'], task['uid'])
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(JSRUN, '__init__', return_value=None)
+    def test_get_rank_cmd(self, mocked_init):
+
+        lm_jsrun = JSRUN('', {}, None, None, None)
+
+        command = lm_jsrun.get_rank_cmd()
+        self.assertIn('$PMIX_RANK', command)
+
+
 # ------------------------------------------------------------------------------
 
 
