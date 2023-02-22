@@ -345,14 +345,11 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _start_services(self):
-        '''
-        If a `./services` file exist, reserve a compute node and run that file
-        there as bash script.
-        '''
-        self._log.info('Starting the agent services')
+
         service_descriptions = self._cfg.services
         if not service_descriptions:
             return
+        self._log.info('Starting the agent services')
 
         services = list()
 
