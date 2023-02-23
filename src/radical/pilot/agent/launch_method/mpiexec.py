@@ -218,6 +218,7 @@ class MPIExec(LaunchMethod):
         # FIXME: we know the MPI flavor, so make this less guesswork
 
         ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMI_RANK"  || export RP_RANK=$PMI_RANK\n'
         ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
 
         if self._mpt:
