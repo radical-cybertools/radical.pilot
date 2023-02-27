@@ -159,6 +159,12 @@ class Srun(LaunchMethod):
             mapping += ' --threads-per-core %d' % \
                        self._rm_info['threads_per_core']
 
+        if td.get('mem_per_rank'):
+            mapping += ' --mem %s' % td.get('mem_per_rank')
+        else:
+            # allow access to full node memory by default
+            mapping += ' --mem 0'
+
         # check that gpus were requested to be allocated
         if self._rm_info.get('requested_gpus') and n_task_gpus:
             if self._traverse:
