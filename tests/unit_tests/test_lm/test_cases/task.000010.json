@@ -22,7 +22,7 @@
     "results": {
         "lm": {
             "srun" : {
-                "launch_cmd" : "srun --nodes 2 --ntasks 2 --cpus-per-task 4",
+                "launch_cmd" : "srun --nodes 2 --ntasks 2 --cpus-per-task 4 --mem 0",
                 "rank_exec"  : "/bin/sleep"
             },
             "aprun": {
