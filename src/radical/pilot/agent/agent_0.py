@@ -357,9 +357,12 @@ class Agent_0(rpu.Worker):
 
             td      = TaskDescription(service_desc)
             td.mode = AGENT_SERVICE
-            cfg     = self._cfg
-            tid     = ru.generate_id('service.%(item_counter)04d',
-                                     ru.ID_CUSTOM, ns=self._cfg.sid)
+            # ensure that the description is viable
+            td.verify()
+
+            cfg = self._cfg
+            tid = ru.generate_id('service.%(item_counter)04d',
+                                 ru.ID_CUSTOM, ns=self._cfg.sid)
 
             task = dict()
             task['origin']            = 'agent'

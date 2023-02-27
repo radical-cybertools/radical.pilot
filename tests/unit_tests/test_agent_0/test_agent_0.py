@@ -217,11 +217,23 @@ class TestComponent(TestCase):
         agent_0._service_uids_launched = list()
         agent_0._services_setup        = mock.Mock()
 
-        services = [{'executable'    : '/bin/ls',
-                     'cores_per_rank': '3'}]
         agent_0._cfg = ru.Config(from_dict={'pid'          : 12,
                                             'pilot_sandbox': '/',
-                                            'services'     : services})
+                                            'services'     : []})
+
+        agent_0._cfg.services = [{}]
+        with self.assertRaises(ValueError):
+            # no executable provided
+            agent_0._start_services()
+
+        agent_0._cfg.services = [{'executable': 'test', 'ranks': 'zero'}]
+        with self.assertRaises(TypeError):
+            # type mismatch
+            agent_0._start_services()
+
+        services = [{'executable': '/bin/ls',
+                     'cores_per_rank': '3'}]
+        agent_0._cfg.services = services
 
         agent_0._services_setup.wait = mock.Mock(return_value=True)
         agent_0._start_services()
