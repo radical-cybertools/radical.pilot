@@ -7,6 +7,7 @@
             "arguments"     : ["15"],
             "ranks"         : 2,
             "cores_per_rank": 2,
+            "mem_per_rank"  : 1024,
             "gpus_per_rank" : 2,
             "gpu_type"      : "CUDA",
             "environment"   : {"test_env": "test_val"}
@@ -54,7 +55,7 @@
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "srun": {
-                "launch_cmd" : "srun --nodes 1 --ntasks 2 --cpus-per-task 2 --threads-per-core 2 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
+                "launch_cmd" : "srun --nodes 1 --ntasks 2 --cpus-per-task 2 --threads-per-core 2 --mem 1024 --gpus-per-task 2 --gpu-bind closest --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"15\""
             }
         }
