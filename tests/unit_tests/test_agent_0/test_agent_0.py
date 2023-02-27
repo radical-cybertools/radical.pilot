@@ -10,8 +10,8 @@ import threading as mt
 from unittest import mock, TestCase
 
 import radical.utils as ru
+import radical.pilot as rp
 
-from radical.pilot                        import Session, TaskDescription
 from radical.pilot.agent                  import Agent_0
 from radical.pilot.agent.resource_manager import RMInfo
 
@@ -25,13 +25,13 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
-    @mock.patch.object(Session, '_get_logger')
-    @mock.patch.object(Session, '_get_profiler')
-    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(rp.Session, '_get_logger')
+    @mock.patch.object(rp.Session, '_get_profiler')
+    @mock.patch.object(rp.Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs) -> None:
 
-        cls._session = Session()
+        cls._session = rp.Session()
         cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
@@ -171,7 +171,7 @@ class TestComponent(TestCase):
             agent_0._start_sub_agents()
 
         def check_agent_task(agent_task, *args, **kwargs):
-            agent_td = TaskDescription(agent_task['description'])
+            agent_td = rp.TaskDescription(agent_task['description'])
             # ensure that task description is correct
             agent_td.verify()
             # check "cores_per_rank" attribute
@@ -232,6 +232,7 @@ class TestComponent(TestCase):
         service_td = advanced_services[0]['description']
         self.assertEqual(service_td['executable'], services[0]['executable'])
         self.assertEqual(service_td['ranks'], 1)
+        self.assertEqual(service_td['mode'], rp.AGENT_SERVICE)
 
         agent_0._services_setup.wait = mock.Mock(return_value=False)
         with self.assertRaises(RuntimeError):

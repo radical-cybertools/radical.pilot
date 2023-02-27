@@ -16,7 +16,7 @@ from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
 from ..   import Session
-from ..   import TaskDescription
+from ..   import TaskDescription, AGENT_SERVICE
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
@@ -355,12 +355,13 @@ class Agent_0(rpu.Worker):
         services = list()
         for service_desc in service_descriptions:
 
-            td   = TaskDescription(service_desc)
-            cfg  = self._cfg
-            task = dict()
-            tid  = ru.generate_id('service.%(item_counter)04d',
-                                  ru.ID_CUSTOM, ns=self._cfg.sid)
+            td      = TaskDescription(service_desc)
+            td.mode = AGENT_SERVICE
+            cfg     = self._cfg
+            tid     = ru.generate_id('service.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self._cfg.sid)
 
+            task = dict()
             task['origin']            = 'agent'
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
