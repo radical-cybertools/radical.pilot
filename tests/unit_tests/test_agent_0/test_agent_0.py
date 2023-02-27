@@ -2,14 +2,16 @@
 
 import glob
 import os
+import shutil
 import tempfile
-import threading
+
+import threading as mt
 
 from unittest import mock, TestCase
 
 import radical.utils as ru
 
-from radical.pilot                        import TaskDescription
+from radical.pilot                        import Session, TaskDescription
 from radical.pilot.agent                  import Agent_0
 from radical.pilot.agent.resource_manager import RMInfo
 
@@ -17,6 +19,35 @@ from radical.pilot.agent.resource_manager import RMInfo
 # ------------------------------------------------------------------------------
 #
 class TestComponent(TestCase):
+
+    _cleanup_files = []
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_get_logger')
+    @mock.patch.object(Session, '_get_profiler')
+    @mock.patch.object(Session, '_get_reporter')
+    def setUpClass(cls, *args, **kwargs) -> None:
+
+        cls._session = Session()
+        cls._cleanup_files.append(cls._session.uid)
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def tearDownClass(cls) -> None:
+
+        for p in cls._cleanup_files:
+            for f in glob.glob(p):
+                if os.path.isdir(f):
+                    try:
+                        shutil.rmtree(f)
+                    except OSError as e:
+                        print('[ERROR] %s - %s' % (e.filename, e.strerror))
+                else:
+                    os.unlink(f)
 
     # --------------------------------------------------------------------------
     #
@@ -32,7 +63,7 @@ class TestComponent(TestCase):
         def _prepenv_effect(env_id, spec):
             return (env_id, spec)
 
-        agent_cmp = Agent_0(ru.Config(), None)
+        agent_cmp = Agent_0(ru.Config(), self._session)
 
         agent_cmp._log         = mock.Mock()
         agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
@@ -112,7 +143,7 @@ class TestComponent(TestCase):
     def test_start_sub_agents(self, mocked_run_sh_callout, mocked_ru_env_prep,
                               mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), None)
+        agent_0 = Agent_0(ru.Config(), self._session)
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
         agent_0._cfg = ru.Config(from_dict={
@@ -176,28 +207,33 @@ class TestComponent(TestCase):
 
         advanced_services = list()
 
-        def local_advance(services, publish, push):
-
+        def local_advance(things, publish, push):
             nonlocal advanced_services
-            advanced_services = services
+            advanced_services = things
 
-        agent_0 = Agent_0()
-        agent_0.advance = local_advance
-        agent_0._log = mock.Mock()
-        agent_0._service_task_ids = list()
+        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0.advance                = local_advance
+        agent_0._log                   = mock.Mock()
+        agent_0._service_uids_launched = list()
+        agent_0._services_setup        = mock.Mock()
 
-        agent_0.services_event = mock.Mock()
-        test_data = [dict({'cores_per_rank': '3', 'executable':'/bin/ls'})]
-        agent_0._cfg = ru.Config(from_dict={'pid':12, 'pilot_sandbox':'/'})
-        agent_0._cfg.services = test_data
+        services = [{'executable'    : '/bin/ls',
+                     'cores_per_rank': '3'}]
+        agent_0._cfg = ru.Config(from_dict={'pid'          : 12,
+                                            'pilot_sandbox': '/',
+                                            'services'     : services})
 
-        agent_0.services_event.wait = mock.Mock(return_value=True)
+        agent_0._services_setup.wait = mock.Mock(return_value=True)
         agent_0._start_services()
-        self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
-        self.assertTrue(test_data[0].items() <=
-                        advanced_services[0]['description'].items())
 
-        agent_0.services_event.wait = mock.Mock(return_value=False)
+        self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
+        self.assertEqual(advanced_services[0]['type'], 'service_task')
+
+        service_td = advanced_services[0]['description']
+        self.assertEqual(service_td['executable'], services[0]['executable'])
+        self.assertEqual(service_td['ranks'], 1)
+
+        agent_0._services_setup.wait = mock.Mock(return_value=False)
         with self.assertRaises(RuntimeError):
             agent_0._start_services()
 
@@ -205,29 +241,29 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_state_cb_of_services(self, mocked_init):
+    def test_service_state_cb(self, mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), None)
-        agent_0._service_task_ids = ['101','102']
-        agent_0._running_services = []
+        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0._service_uids_launched = ['101', '102']
+        agent_0._service_uids_running  = []
 
         agent_0._log = mock.Mock()
 
-        agent_0.services_event = threading.Event()
+        agent_0._services_setup = mt.Event()
 
         topic = 'test_topic'
         msg   = {'cmd': 'update',
                  'arg': []}
 
-        agent_0._state_cb_of_services(topic, msg)
         msg['arg'].append({'uid'  : '101',
-                          'state': 'AGENT_EXECUTING'})
-        agent_0._state_cb_of_services(topic, msg)
+                           'state': 'AGENT_EXECUTING'})
+        agent_0._service_state_cb(topic, msg)
+        self.assertFalse(agent_0._services_setup.is_set())
 
-        msg['arg'].append({'uid': '102',
-                            'state': 'AGENT_EXECUTING'})
-        agent_0._state_cb_of_services(topic, msg)
-        self.assertTrue(agent_0.services_event.is_set())
+        msg['arg'].append({'uid'  : '102',
+                           'state': 'AGENT_EXECUTING'})
+        agent_0._service_state_cb(topic, msg)
+        self.assertTrue(agent_0._services_setup.is_set())
 
 
 # ------------------------------------------------------------------------------
@@ -238,6 +274,7 @@ if __name__ == '__main__':
     tc.test_check_control()
     tc.test_start_sub_agents()
     tc.test_start_services()
+    tc.test_service_state_cb()
 
 
 # ------------------------------------------------------------------------------

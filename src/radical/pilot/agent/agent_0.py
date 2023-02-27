@@ -6,14 +6,16 @@ import copy
 import os
 import pprint
 import stat
-import threading
 import time
+
+import threading           as mt
 
 import radical.utils       as ru
 
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
+from ..   import Session
 from ..   import TaskDescription
 from ..db import DBSession
 
@@ -39,7 +41,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg: ru.Config, session):
+    def __init__(self, cfg: ru.Config, session: Session):
 
         self._uid     = 'agent.0'
         self._cfg     = cfg
@@ -83,13 +85,12 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
-        # uid of service tasks
-        self._service_task_ids = list()
-        # Event to handle for services started
-        self.services_event = threading.Event()
-        # A lis of currently running services used to check whether
-        # all desired services are running
-        self._running_services = list()
+        # service tasks uids, which were launched
+        self._service_uids_launched = list()
+        # service tasks uids, which were confirmed to be started
+        self._service_uids_running  = list()
+        # set flag when all services are running
+        self._services_setup = mt.Event()
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -101,7 +102,7 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb_of_services)
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._service_state_cb)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
@@ -349,10 +350,9 @@ class Agent_0(rpu.Worker):
         service_descriptions = self._cfg.services
         if not service_descriptions:
             return
-        self._log.info('Starting the agent services')
+        self._log.info('starting agent services')
 
         services = list()
-
         for service_desc in service_descriptions:
 
             td   = TaskDescription(service_desc)
@@ -376,21 +376,21 @@ class Agent_0(rpu.Worker):
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
 
-            self._service_task_ids.append(tid)
+            self._service_uids_launched.append(tid)
             services.append(task)
 
         self.advance(services, publish=False, push=True)
 
         # Waiting 2mins for all services to launch
-        if not self.services_event.wait(timeout=60 * 2):
+        if not self._services_setup.wait(timeout=60 * 2):
             raise RuntimeError('Unable to start services')
 
-        self._log.info("All agent services started")
+        self._log.info('all agent services started')
 
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb_of_services(self, topic, msg):  # pylint: disable=unused-argument
+    def _service_state_cb(self, topic, msg):  # pylint: disable=unused-argument
 
         cmd   = msg['cmd']
         tasks = msg['arg']
@@ -400,7 +400,8 @@ class Agent_0(rpu.Worker):
 
         for service in ru.as_list(tasks):
 
-            if service['uid'] not in self._service_task_ids:
+            if service['uid'] not in self._service_uids_launched or \
+                    service['uid'] in self._service_uids_running:
                 continue
 
             self._log.debug('service state update %s: %s',
@@ -409,13 +410,14 @@ class Agent_0(rpu.Worker):
             if service['state'] != rps.AGENT_EXECUTING:
                 continue
 
-            self._running_services.append(service['uid'])
-            self._log.debug('service %s started ( %s / %s)', service['uid'],
-                            len(self._running_services),
-                            len(self._service_task_ids))
+            self._service_uids_running.append(service['uid'])
+            self._log.debug('service %s started (%s / %s)', service['uid'],
+                            len(self._service_uids_running),
+                            len(self._service_uids_launched))
 
-            if len(self._running_services) == len(self._service_task_ids):
-                self.services_event.set()
+            if len(self._service_uids_launched) == \
+                    len(self._service_uids_running):
+                self._services_setup.set()
 
 
     # --------------------------------------------------------------------------
@@ -580,7 +582,7 @@ class Agent_0(rpu.Worker):
                 self._hb.beat(uid=self._pmgr)
 
             elif cmd == 'cancel_pilot':
-                self._log.info('cancel pilot cmd')
+                self._log.info('cancel_pilot cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'

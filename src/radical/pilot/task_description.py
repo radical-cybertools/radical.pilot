@@ -16,7 +16,7 @@ TASK_PROC        = 'task.proc'
 TASK_SHELL       = 'task.shell'
 RAPTOR_MASTER    = 'raptor.master'
 RAPTOR_WORKER    = 'raptor.worker'
-AGENT_SERVICES    = 'agent.service'
+AGENT_SERVICES   = 'agent.service'
 
 # task description attributes
 UID              = 'uid'
