@@ -408,7 +408,7 @@ class TaskDescription(ru.TypedDict):
     These processes will be near-exact copies of each other: they run in the
     same workdir and the same `environment`, are defined by the same
     `executable` and `arguments`, get the same amount of resources allocated,
-    etc.  Notable exeptions are:
+    etc.  Notable exceptions are:
 
       - rank processes may run on different nodes;
       - rank processes can communicate via MPI;
@@ -476,6 +476,8 @@ class TaskDescription(ru.TypedDict):
     and will cache the resulting environment settings - those cached settings
     are then applied to all other tasks with the same directives, without
     executing the directives again.
+
+
     Staging Directives
     ==================
 
