@@ -349,7 +349,6 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "anaconda",
         "task_pre_exec"               : [],
-        "gpus_per_node"               : 8,
         "system_architecture"         : {"gpu": "v100"}
     }
 }
