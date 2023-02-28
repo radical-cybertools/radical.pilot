@@ -39,8 +39,10 @@ _pilot_state_values = {
         DONE                   :  5,
         FAILED                 :  5,
         CANCELED               :  5}
+
 _pilot_state_inv   = {_v: _k for _k, _v in _pilot_state_values.items()}
 _pilot_state_inv_full = dict()
+
 for _st,_v in _pilot_state_values.items():
     if _v in _pilot_state_inv_full:
         if not isinstance(_pilot_state_inv_full[_v], list):
@@ -50,29 +52,34 @@ for _st,_v in _pilot_state_values.items():
         _pilot_state_inv_full[_v] = _st
 
 
+# ------------------------------------------------------------------------------
+#
 def _pilot_state_value(s):
     return _pilot_state_values[s]
 
 
+# ------------------------------------------------------------------------------
+#
 def _pilot_state_progress(pid, current, target):
-    """
+    '''
     See documentation of 'task_state_progress' below.
-    """
+    '''
 
     # first handle final state corrections
     if current == CANCELED:
         if target in [DONE, FAILED, CANCELED]:
-            return[target, []]
+            return [target, []]
 
     # allow to transition from FAILED to DONE (done gets picked up from DB,
     # sometimes after pilot watcher detects demise)
     if current == FAILED:
         if target in [DONE, FAILED]:
-            return[target, []]
+            return [target, []]
 
     if current in FINAL and target != current:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (pid, current, target))
+            raise ValueError('invalid transition for %s: %s -> %s'
+                            % (pid, current, target))
 
     cur = _pilot_state_values[current]
     tgt = _pilot_state_values[target]
@@ -89,23 +96,28 @@ def _pilot_state_progress(pid, current, target):
     # append target state to trigger notification of transition
     passed.append(target)
 
-    return(target, passed)
+    return target, passed
 
 
+# ------------------------------------------------------------------------------
+#
 def _pilot_state_collapse(states):
-    """
-    This method takes a list of pilot states and selects the one with the highest
-    state value.
-    """
+    '''
+    This method takes a list of pilot states and selects the one with the
+    highest state value.
+    '''
+
     # we first check the final states, as we want to express a preference there.
     # Then we start comparing actual values.
     if DONE     in states: return DONE
     if FAILED   in states: return FAILED
     if CANCELED in states: return CANCELED
+
     ret = None
     for state in states:
         if _pilot_state_values[state] > _pilot_state_values[ret]:
             ret = state
+
     return ret
 
 
@@ -206,11 +218,12 @@ def _task_state_progress(uid, current, target):
     # first handle final state corrections
     if current == CANCELED:
         if target in [DONE, FAILED, CANCELED]:
-            return[target, []]
+            return [target, []]
 
     if current in FINAL:
         if target in FINAL:
-            raise ValueError('invalid transition for %s: %s -> %s' % (uid, current, target))
+            raise ValueError('invalid transition for %s: %s -> %s'
+                             % (uid, current, target))
 
     cur = _task_state_values[current]
     tgt = _task_state_values[target]
@@ -227,14 +240,17 @@ def _task_state_progress(uid, current, target):
     # append target state to trigger notification of transition
     passed.append(target)
 
-    return(target, passed)
+    return target, passed
 
 
+# ------------------------------------------------------------------------------
+#
 def _task_state_collapse(states):
     """
     This method takes a list of task states and selects the one with the highest
     state value.
     """
+
     # we first check the final states, as we want to express a preference there.
     # Then we start comparing actual values.
     if DONE     in states: return DONE

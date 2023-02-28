@@ -8,12 +8,15 @@ import pprint
 import stat
 import time
 
+import threading           as mt
+
 import radical.utils       as ru
 
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
-from ..   import TaskDescription
+from ..   import Session
+from ..   import TaskDescription, AGENT_SERVICE
 from ..db import DBSession
 
 from .resource_manager import ResourceManager
@@ -38,16 +41,16 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg: ru.Config, session: Session):
 
         self._uid     = 'agent.0'
         self._cfg     = cfg
         self._pid     = cfg.pid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
+
         self._session = session
         self._log     = ru.Logger(self._uid, ns='radical.pilot')
-
         self._starttime   = time.time()
         self._final_cause = None
 
@@ -82,8 +85,12 @@ class Agent_0(rpu.Worker):
         self._cmgr.start_bridges()
         self._cmgr.start_components()
 
-        # start any services if they are requested
-        self._start_services()
+        # service tasks uids, which were launched
+        self._service_uids_launched = list()
+        # service tasks uids, which were confirmed to be started
+        self._service_uids_running  = list()
+        # set flag when all services are running
+        self._services_setup = mt.Event()
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
@@ -95,6 +102,7 @@ class Agent_0(rpu.Worker):
         rpu.Worker.__init__(self, self._cfg, session)
 
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._service_state_cb)
 
         # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
         # FIXME: we need to get pmgr freq
@@ -213,6 +221,8 @@ class Agent_0(rpu.Worker):
         # register idle callback to pull for tasks
         self.register_timed_cb(self._check_tasks_cb,
                                timer=self._cfg['db_poll_sleeptime'])
+
+        self._start_services()
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.
@@ -336,79 +346,82 @@ class Agent_0(rpu.Worker):
     # --------------------------------------------------------------------------
     #
     def _start_services(self):
-        '''
-        If a `./services` file exist, reserve a compute node and run that file
-        there as bash script.
-        '''
 
-        if not os.path.isfile('./services'):
+        service_descriptions = self._cfg.services
+        if not service_descriptions:
+            return
+        self._log.info('starting agent services')
+
+        services = list()
+        for service_desc in service_descriptions:
+
+            td      = TaskDescription(service_desc)
+            td.mode = AGENT_SERVICE
+            # ensure that the description is viable
+            td.verify()
+
+            cfg = self._cfg
+            tid = ru.generate_id('service.%(item_counter)04d',
+                                 ru.ID_CUSTOM, ns=self._cfg.sid)
+
+            task = dict()
+            task['origin']            = 'agent'
+            task['description']       = td.as_dict()
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['status']            = 'NEW'
+            task['type']              = 'service_task'
+            task['uid']               = tid
+            task['pilot_sandbox']     = cfg.pilot_sandbox
+            task['task_sandbox']      = cfg.pilot_sandbox + task['uid'] + '/'
+            task['task_sandbox_path'] = cfg.pilot_sandbox + task['uid'] + '/'
+            task['session_sandbox']   = cfg.session_sandbox
+            task['resource_sandbox']  = cfg.resource_sandbox
+            task['pilot']             = cfg.pid
+            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                         'gpu': td.ranks * td.gpus_per_rank}
+
+            self._service_uids_launched.append(tid)
+            services.append(task)
+
+        self.advance(services, publish=False, push=True)
+
+        # Waiting 2mins for all services to launch
+        if not self._services_setup.wait(timeout=60 * 2):
+            raise RuntimeError('Unable to start services')
+
+        self._log.info('all agent services started')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _service_state_cb(self, topic, msg):  # pylint: disable=unused-argument
+
+        cmd   = msg['cmd']
+        tasks = msg['arg']
+
+        if cmd != 'update':
             return
 
-        # launch the `./services` script on the service node reserved by the RM.
-        nodes = self._rm.info.service_node_list
-        assert nodes
+        for service in ru.as_list(tasks):
 
-        bs_name = "%s/bootstrap_2.sh"     % self._pwd
-        ls_name = "%s/services_launch.sh" % self._pwd
-        ex_name = "%s/services_exec.sh"   % self._pwd
+            if service['uid'] not in self._service_uids_launched or \
+                    service['uid'] in self._service_uids_running:
+                continue
 
-        service_task_uid = 'rp.services'
-        service_task     = {
-            'uid'               : service_task_uid,
-            'task_sandbox_path' : self._pwd,
-            'description'       : TaskDescription({
-                'uid'           : service_task_uid,
-                'ranks'         : 1,
-                'cores_per_rank': self._rm.info.cores_per_node,
-                'executable'    : '/bin/sh',
-                'arguments'     : [bs_name, 'services']
-            }).as_dict(),
-            'slots': {'ranks'   : [{'node_name': nodes[0]['node_name'],
-                                    'node_id'  : nodes[0]['node_id'],
-                                    'core_map' : [[0]],
-                                    'gpu_map'  : [],
-                                    'lfs'      : 0,
-                                    'mem'      : 0}]}
-        }
+            self._log.debug('service state update %s: %s',
+                            service['uid'], service['state'])
 
-        launcher = self._rm.find_launcher(service_task)
-        if not launcher:
-            raise RuntimeError('no launch method found for sub agent')
+            if service['state'] != rps.AGENT_EXECUTING:
+                continue
 
-        # FIXME: set RP environment (as in Popen Executor)
+            self._service_uids_running.append(service['uid'])
+            self._log.debug('service %s started (%s / %s)', service['uid'],
+                            len(self._service_uids_running),
+                            len(self._service_uids_launched))
 
-        tmp  = '#!/bin/sh\n\n'
-        tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
-        cmds = launcher.get_launcher_env()
-        for cmd in cmds:
-            tmp += '%s || exit 1\n' % cmd
-        cmds = launcher.get_launch_cmd(service_task, ex_name)
-        tmp += '%s\nexit $?\n\n' % '\n'.join(cmds)
-
-        with ru.ru_open(ls_name, 'w') as fout:
-            fout.write(tmp)
-
-        tmp  = '#!/bin/sh\n\n'
-        tmp += '. ./env/service.env\n'
-        tmp += '/bin/sh -l ./services\n\n'
-
-        with ru.ru_open(ex_name, 'w') as fout:
-            fout.write(tmp)
-
-
-        # make sure scripts are executable
-        st_l = os.stat(ls_name)
-        st_e = os.stat(ex_name)
-        os.chmod(ls_name, st_l.st_mode | stat.S_IEXEC)
-        os.chmod(ex_name, st_e.st_mode | stat.S_IEXEC)
-
-        # spawn the sub-agent
-        cmdline = './%s' % ls_name
-
-        self._log.info('create services: %s', cmdline)
-        ru.sh_callout_bg(cmdline, stdout='services.out', stderr='services.err')
-
-        self._log.debug('services started done')
+            if len(self._service_uids_launched) == \
+                    len(self._service_uids_running):
+                self._services_setup.set()
 
 
     # --------------------------------------------------------------------------
@@ -573,7 +586,7 @@ class Agent_0(rpu.Worker):
                 self._hb.beat(uid=self._pmgr)
 
             elif cmd == 'cancel_pilot':
-                self._log.info('cancel pilot cmd')
+                self._log.info('cancel_pilot cmd')
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                                   'arg' : None})
                 self._final_cause = 'cancel'
