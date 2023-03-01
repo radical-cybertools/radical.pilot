@@ -850,7 +850,6 @@ class PMGRLaunchingComponent(rpu.Component):
         if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
 
-        for arg in services       :   bs_args.extend(['-j', arg])
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
@@ -883,6 +882,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['services']            = services
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
