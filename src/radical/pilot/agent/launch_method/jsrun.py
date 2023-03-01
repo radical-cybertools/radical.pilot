@@ -105,8 +105,8 @@ class JSRUN(LaunchMethod):
 
             {"ranks"         : [{"node_name" : "a",
                                  "node_id"   : "1",
-                                 "core_map"  : [[0]],
-                                 "gpu_map"   : [],
+                                 "core_map"  : [[0, 1]],
+                                 "gpu_map"   : [[0]],
                                  "lfs"       : 0,
                                  "mem"       : 0
                                 }]
@@ -122,24 +122,24 @@ class JSRUN(LaunchMethod):
         rs_str  = 'cpu_index_using: logical\n'
 
         base_id = 0
-        for ranks_per_slot in slots['ranks']:
+        for slot_ranks in slots['ranks']:
 
-            n_ranks  = len(ranks_per_slot['core_map'])
-            rank_ids = [str(rid + base_id) for rid in range(n_ranks)]
-            base_id += n_ranks
+            ranks_per_rs  = len(slot_ranks['core_map'])
+            rank_ids      = [str(r + base_id) for r in range(ranks_per_rs)]
+            base_id      += ranks_per_rs
 
             core_id_sets = []
-            for core_map in ranks_per_slot['core_map']:
+            for core_map in slot_ranks['core_map']:
                 core_ids = [str(cid) for cid in core_map]
                 core_id_sets.append('{%s}' % ','.join(core_ids))
 
-            gpu_ids = [str(gid) for gid in ranks_per_slot['gpu_map']]
-
             rs_str += 'rank: %s : {'    % ','.join(rank_ids)
-            rs_str += ' host: %s;'      % str(ranks_per_slot['node_id'])
+            rs_str += ' host: %s;'      % str(slot_ranks['node_id'])
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
-            if gpu_ids:
-                rs_str += '; gpu: {%s}' % ','.join(gpu_ids)
+            if slot_ranks['gpu_map']:
+                slot_gpus = slot_ranks['gpu_map'][0]
+                assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
+                rs_str += '; gpu: {%s}' % ','.join([str(g) for g in slot_gpus])
             rs_str += ' }\n'
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
@@ -171,18 +171,24 @@ class JSRUN(LaunchMethod):
             #                 summit_user_guide.html#resource-sets
 
             rs            = len(slots['ranks'])
-            tasks_per_rs  = len(slots['ranks'][0]['core_map'])
-            cores_per_rs  = (math.ceil(len(slots['ranks'][0]['core_map'][0]) /
+            slot_ranks    = slots['ranks'][0]
+            ranks_per_rs  = len(slot_ranks['core_map'])
+            cores_per_rs  = (math.ceil(len(slot_ranks['core_map'][0]) /
                                        self._rm_info['threads_per_core']) *
-                             tasks_per_rs)
-            gpus_per_rs   = len(slots['ranks'][0]['gpu_map'])
+                             ranks_per_rs)
+
+            gpus_per_rs = 0
+            if slot_ranks['gpu_map']:
+                slot_gpus = slot_ranks['gpu_map'][0]
+                assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
+                gpus_per_rs = len(slot_gpus)
 
             # -n: number of RS
             # -a: number of MPI tasks (ranks)     per RS
             # -c: number of CPUs (physical cores) per RS
             # -g: number of GPUs                  per RS
             cmd_options = '-n%d -a%d -c%d -g%d' % (
-                rs, tasks_per_rs, cores_per_rs, gpus_per_rs)
+                rs, ranks_per_rs, cores_per_rs, gpus_per_rs)
 
             if gpus_per_rs:
                 # -r: number of RS per host (node)

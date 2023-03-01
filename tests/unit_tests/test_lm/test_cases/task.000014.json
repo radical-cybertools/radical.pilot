@@ -24,7 +24,7 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[0, 1]],
-                        "gpu_map"   : [0, 1],
+                        "gpu_map"   : [[0, 1]],
                         "lfs"       : 0,
                         "mem"       : 128
                     },
@@ -32,7 +32,7 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[2, 3]],
-                        "gpu_map"   : [2, 3],
+                        "gpu_map"   : [[2, 3]],
                         "lfs"       : 0,
                         "mem"       : 128
                     }

@@ -136,7 +136,7 @@ class TestPopen(TestCase):
                  'gpu_type'      : '',
                  'pre_exec'      : []}
         ranks = [{'core_map': [[0, 1]],
-                  'gpu_map' : [5]}]
+                  'gpu_map' : [[5]]}]
 
         pex._extend_pre_exec(td, ranks)
         self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])

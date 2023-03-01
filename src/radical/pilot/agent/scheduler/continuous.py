@@ -135,9 +135,9 @@ class Continuous(AgentSchedulingComponent):
 
             {
                 'node_name': 'node_name',
-                'node_id'  : 'node.0001',
+                'node_id'  : '1',
                 'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                'gpu_map'  : [1, 3],
+                'gpu_map'  : [[1, 3], [1, 3]],
                 'lfs'      : 1234,
                 'mem'      : 4321
             }
@@ -218,11 +218,12 @@ class Continuous(AgentSchedulingComponent):
             cores_per_rank = cores_per_slot // ranks_per_slot
             core_map = [cores[i:i + cores_per_rank]
                         for i in range(0, len(cores), cores_per_rank)]
+            gpu_map  = [gpus] * len(core_map)
 
             slots.append({'node_name': node_name,
                           'node_id'  : node_id,
                           'core_map' : core_map,
-                          'gpu_map'  : gpus,
+                          'gpu_map'  : gpu_map,
                           'lfs'      : lfs_per_slot,
                           'mem'      : mem_per_slot})
 

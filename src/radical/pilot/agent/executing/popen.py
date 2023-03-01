@@ -703,11 +703,11 @@ class Popen(AgentExecutingComponent):
             # equivalent to the 'physical' value for original `cvd_id_mode`
             rank_id  = 0
             rank_env = {}
-            for ranks_per_slot in ranks:
-                gpu_ids = [str(gid) for gid in ranks_per_slot['gpu_map']]
-                for _ in range(len(ranks_per_slot['core_map'])):
+            for slot_ranks in ranks:
+                for gpu_map in slot_ranks['gpu_map']:
                     rank_env[str(rank_id)] = \
-                        'export CUDA_VISIBLE_DEVICES=%s' % ','.join(gpu_ids)
+                        'export CUDA_VISIBLE_DEVICES=%s' % \
+                        ','.join([str(g) for g in gpu_map])
                     rank_id += 1
             td['pre_exec'].append(rank_env)
 

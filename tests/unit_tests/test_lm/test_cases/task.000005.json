@@ -25,7 +25,7 @@
                 "ranks"         : [{"node_name" : "node1",
                                     "node_id"   : "node1",
                                     "core_map"  : [[0]],
-                                    "gpu_map"   : [0],
+                                    "gpu_map"   : [[0]],
                                     "lfs"       : 0}]
             },
             "dvm_list"          : {"0": {"dvm_uri": "dvm_uri",
