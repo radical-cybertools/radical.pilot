@@ -116,17 +116,22 @@ class TestJSRun(TestCase):
         test_cases = setUp('lm', 'jsrun_erf')
         for test_case in test_cases:
 
-            if test_case[1] in ['AssertionError']:
-                continue
+            uid    = test_case[0]['uid']
+            slots  = test_case[0]['slots']
+            result = test_case[1]
 
-            uid       = test_case[0]['uid']
-            slots     = test_case[0]['slots']
-            rs_layout = test_case[2]
+            if result == 'AssertionError':
+                with self.assertRaises(AssertionError):
+                    lm_jsrun._create_resource_set_file(
+                        slots=slots, uid=uid, sandbox=self._sbox)
 
-            rs_file = lm_jsrun._create_resource_set_file(
-                slots=slots, uid=uid, sandbox=self._sbox)
-            with ru.ru_open(rs_file) as rs_layout_file:
-                self.assertEqual(rs_layout_file.readlines(), rs_layout)
+            else:
+                rs_layout = test_case[2]
+
+                rs_file = lm_jsrun._create_resource_set_file(
+                    slots=slots, uid=uid, sandbox=self._sbox)
+                with ru.ru_open(rs_file) as rs_layout_file:
+                    self.assertEqual(rs_layout_file.readlines(), rs_layout)
 
     # --------------------------------------------------------------------------
     #
@@ -158,8 +163,9 @@ class TestJSRun(TestCase):
                 }
 
                 if result == 'AssertionError':
-                    with self.assertRaises(AssertionError):
-                        lm_jsrun.get_launch_cmds(task, '')
+                    if not lm_jsrun._erf:
+                        with self.assertRaises(AssertionError):
+                            lm_jsrun.get_launch_cmds(task, '')
 
                 else:
                     if len(test_case) > 2:

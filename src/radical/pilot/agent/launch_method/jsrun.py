@@ -174,8 +174,8 @@ class JSRUN(LaunchMethod):
             slot_ranks   = slots['ranks'][0]
             ranks_per_rs = len(slot_ranks['core_map'])
             cores_per_rs = (math.ceil(len(slot_ranks['core_map'][0]) /
-                                       self._rm_info['threads_per_core']) *
-                             ranks_per_rs)
+                                      self._rm_info['threads_per_core']) *
+                            ranks_per_rs)
 
             gpus_per_rs  = 0
             if slot_ranks['gpu_map']:
