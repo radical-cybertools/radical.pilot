@@ -752,7 +752,7 @@ class AgentSchedulingComponent(rpu.Component):
             td = task['description']
             task['$set']      = ['resources']
             task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
-                                 'gpu': int(td['ranks'] * td['gpus_per_rank'])}
+                                 'gpu': td['ranks'] * td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -869,8 +869,8 @@ class AgentSchedulingComponent(rpu.Component):
                     task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['ranks'] *
                                                 td['cores_per_rank'],
-                                         'gpu': int(td['ranks'] *
-                                                    td['gpus_per_rank'])}
+                                         'gpu': td['ranks'] *
+                                                td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
                                  publish=True, push=True)
 

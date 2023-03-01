@@ -346,8 +346,7 @@ class Master(rpu.Component):
             task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
             task['pilot']             = os.environ['RP_PILOT_ID']
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
-                                         'gpu': int(td.ranks *
-                                                    td.gpus_per_rank)}
+                                         'gpu': td.ranks * td.gpus_per_rank}
             tasks.append(task)
 
             # NOTE: the order of insert / state update relies on that order
@@ -578,8 +577,8 @@ class Master(rpu.Component):
             task['pilot']             = os.environ['RP_PILOT_ID']
             task['resources']         = {'cpu': td['ranks'] *
                                                 td.get('cores_per_rank', 1),
-                                         'gpu': int(td['ranks'] *
-                                                    td.get('gpus_per_rank', 0))}
+                                         'gpu': td['ranks'] *
+                                                td.get('gpus_per_rank', 0.)}
 
             # NOTE: the order of insert / state update relies on that order
             #       being maintained through the component's message push,
