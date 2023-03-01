@@ -130,7 +130,7 @@ def fetch_filetype(ext, name, sid, dburl=None, src=None, tgt=None, access=None,
                              and os.path.getsize(ftgt.path):
                 pass
             else:
-                log.debug('fetch client file %s' % client_file)
+                log.debug('fetch client file %s', client_file)
                 rs_file = rs_fs.File(client_file, session=session)
                 rs_file.copy(ftgt, flags=rs_fs.CREATE_PARENTS)
                 rs_file.close()
