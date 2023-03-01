@@ -46,9 +46,7 @@
             "jsrun_erf": {
                 "launch_cmd" : "jsrun --erf_input rs_layout_task_000017 --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
-            },
-            "srun"  : "RuntimeError",
-            "mpirun": "RuntimeError"
+            }
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
