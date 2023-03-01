@@ -3,11 +3,12 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
-
+from .task_description import TaskDescription
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
+
 UID               = 'uid'
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
@@ -186,10 +187,10 @@ class PilotDescription(ru.TypedDict):
 
     .. py:attribute:: services
 
-       [Type: [`str`] | default: `[]`] [optional] A list of commands which get
-       started on a separate service compute node right after bootstrapping, and
-       before any RP task is launched.  That service compute node will not be
-       used for any other tasks.
+       [Type: [`TaskDescription`] | default: `[]`] [optional] A list of
+       commands which get started on a separate service compute node right after
+       bootstrapping, and before any RP task is launched.  That service compute
+       node will not be used for any other tasks.
 
     .. py:attribute:: layout
 
@@ -220,7 +221,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [str]      ,
+        SERVICES        : [TaskDescription],
     }
 
     _defaults = {
