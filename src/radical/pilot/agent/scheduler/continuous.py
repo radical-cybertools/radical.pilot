@@ -216,8 +216,11 @@ class Continuous(AgentSchedulingComponent):
                 gpu_idx += 1
 
             cores_per_rank = cores_per_slot // ranks_per_slot
+            # create number of lists (equal to `ranks_per_slot`) with
+            # cores indices (i.e., cores per rank)
             core_map = [cores[i:i + cores_per_rank]
                         for i in range(0, len(cores), cores_per_rank)]
+            # gpus per rank are the same within the slot
             gpu_map  = [gpus] * len(core_map)
 
             slots.append({'node_name': node_name,

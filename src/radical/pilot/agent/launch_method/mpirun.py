@@ -153,9 +153,6 @@ class MPIRun(LaunchMethod):
         sandbox    = task['task_sandbox_path']
         task_cores = td.get('cores_per_rank', 1)
         task_gpus  = td.get('gpus_per_rank', 0.)
-        # sharing GPUs among multiple ranks not supported
-        if task_gpus and not task_gpus.is_integer():
-            raise RuntimeError('GPU sharing in MPIRun LM is not supported')
 
         if '_dplace' in self.name and task_cores > 1:
             # dplace pinning would disallow threads to map to other cores

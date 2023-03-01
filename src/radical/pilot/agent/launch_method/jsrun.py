@@ -170,14 +170,14 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs            = len(slots['ranks'])
-            slot_ranks    = slots['ranks'][0]
-            ranks_per_rs  = len(slot_ranks['core_map'])
-            cores_per_rs  = (math.ceil(len(slot_ranks['core_map'][0]) /
+            rs           = len(slots['ranks'])
+            slot_ranks   = slots['ranks'][0]
+            ranks_per_rs = len(slot_ranks['core_map'])
+            cores_per_rs = (math.ceil(len(slot_ranks['core_map'][0]) /
                                        self._rm_info['threads_per_core']) *
                              ranks_per_rs)
 
-            gpus_per_rs = 0
+            gpus_per_rs  = 0
             if slot_ranks['gpu_map']:
                 slot_gpus = slot_ranks['gpu_map'][0]
                 assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
