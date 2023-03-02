@@ -56,16 +56,14 @@ class TestContinuous(TestCase):
 
             alc_slots = component._find_resources(
                 node=test_case['setup']['nodes'][0],
-                partial=False,
+                partial=True,
                 **sd_options
             )
 
-            if alc_slots is None:
-                # tests should be defined in a way, so task would fit 1 node
-                raise AssertionError('Test should be redefined (%s)' %
-                                     test_case['task']['uid'])
-
-            self.assertEqual(alc_slots, test_case['result']['slots']['ranks'])
+            # number of ranks to run on a single node
+            ranks = len(alc_slots)
+            self.assertEqual(alc_slots,
+                             test_case['result']['slots']['ranks'][:ranks])
 
     # --------------------------------------------------------------------------
     #
@@ -97,6 +95,7 @@ class TestContinuous(TestCase):
             component._colo_history = {}
             component._tagged_nodes = set()
             component._node_offset  = 0
+            component._scattered    = None
             component._partitions   = {}
             component._term         = mp.Event()
             component._queue_sched  = mp.Queue()

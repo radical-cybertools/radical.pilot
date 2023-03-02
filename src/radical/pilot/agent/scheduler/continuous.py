@@ -280,20 +280,17 @@ class Continuous(AgentSchedulingComponent):
 
         # check if there is a GPU sharing
         if gpus_per_slot and not gpus_per_slot.is_integer():
-            gpus           = td['ranks'] * gpus_per_slot
-            req_slots      = m.ceil(gpus / gpus_per_node)
-            gpus_per_slot  = int(gpus // req_slots)
-            ranks_per_slot = td['ranks'] // req_slots
-
+            gpus           = m.ceil(td['ranks'] * gpus_per_slot)
             # find the greatest common divisor
-            di = m.gcd(gpus_per_slot, ranks_per_slot)
-            req_slots       *= di
-            gpus_per_slot  //= di
-            ranks_per_slot //= di
+            req_slots      = m.gcd(td['ranks'], gpus)
+            ranks_per_slot = td['ranks'] // req_slots
+            gpus_per_slot  = gpus        // req_slots
 
-            cores_per_slot  *= ranks_per_slot
-            lfs_per_slot    *= ranks_per_slot
-            mem_per_slot    *= ranks_per_slot
+            assert gpus_per_slot <= gpus_per_node
+
+            cores_per_slot *= ranks_per_slot
+            lfs_per_slot   *= ranks_per_slot
+            mem_per_slot   *= ranks_per_slot
 
         else:
             req_slots      = td['ranks']
