@@ -286,8 +286,6 @@ class Continuous(AgentSchedulingComponent):
             ranks_per_slot = td['ranks'] // req_slots
             gpus_per_slot  = gpus        // req_slots
 
-            assert gpus_per_slot <= gpus_per_node
-
             cores_per_slot *= ranks_per_slot
             lfs_per_slot   *= ranks_per_slot
             mem_per_slot   *= ranks_per_slot
