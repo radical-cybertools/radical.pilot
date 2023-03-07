@@ -425,9 +425,9 @@ class TaskDescription(ru.TypedDict):
     wasting resources for all ranks but one.  Worse: I/O-routines of these
     non-MPI ranks can interfere with each other and invalidate those results.
 
-    Also: applications with a single rank cannot make effective use of MPI - RP
-    may launch those tasks without providing an MPI communicator.
-
+    Also: applications with a single rank cannot make effective use of MPI
+    - depending on the specific resource configuration, RP may launch those
+      tasks without providing an MPI communicator.
 
     Task Environment
     ================
