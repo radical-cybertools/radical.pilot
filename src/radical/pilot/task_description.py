@@ -16,6 +16,7 @@ TASK_PROC        = 'task.proc'
 TASK_SHELL       = 'task.shell'
 RAPTOR_MASTER    = 'raptor.master'
 RAPTOR_WORKER    = 'raptor.worker'
+AGENT_SERVICE    = 'agent.service'
 
 # task description attributes
 UID              = 'uid'
@@ -631,7 +632,8 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER]:
+        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER,
+                         AGENT_SERVICE]:
             if not self.get('executable'):
                 raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
 

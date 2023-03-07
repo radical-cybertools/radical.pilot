@@ -183,8 +183,10 @@ class TestMPIExec(TestCase):
         lm_mpiexec._mpt = False
 
         command = lm_mpiexec.get_rank_cmd()
-        self.assertIn('$MPI_RANK', command)
+        self.assertIn('$MPI_RANK',  command)
         self.assertIn('$PMIX_RANK', command)
+        self.assertIn('$PMI_ID',    command)
+        self.assertIn('$PMI_RANK',  command)
         self.assertNotIn('$MPT_MPI_RANK', command)
 
         # special case - MPT
