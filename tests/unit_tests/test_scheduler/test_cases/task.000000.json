@@ -8,7 +8,7 @@
             "environment"      : {},
             "ranks"            : 2,
             "cores_per_rank"   : 1,
-            "gpus_per_rank"    : 1,
+            "gpus_per_rank"    : 1.0,
             "gpu_type"         : "",
             "mem_per_rank"     : 128,
             "lfs_per_rank"     : 0,
