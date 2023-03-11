@@ -39,7 +39,7 @@ jobs:
           test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
 
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     services:
       mongodb:
         image: mongo
@@ -47,7 +47,11 @@ jobs:
         - 27017/tcp
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.6'
     steps:
     - uses: actions/checkout@v3
       with:
@@ -76,7 +80,7 @@ jobs:
         files: ./coverage.xml
 
   analytics:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     services:
       mongodb:
         image: mongo
@@ -84,7 +88,11 @@ jobs:
         - 27017/tcp
     strategy:
       matrix:
-        python-version: [ '3.6', '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.6'
     steps:
     - uses: actions/checkout@v3
       with:
