@@ -117,12 +117,6 @@ PREBOOTSTRAP2=""
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600 # 10 min
 
-VIRTENV_VER="virtualenv-16.7.5"
-VIRTENV_DIR="$VIRTENV_VER"
-VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
-VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
-VIRTENV_IS_ACTIVATED=FALSE
-
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex dill"
 
@@ -1006,71 +1000,15 @@ virtenv_create()
     if test "$python_dist" = "default"
     then
 
-        # by default, we download an older 1.9.x version of virtualenv as this
-        # seems to work more reliable than newer versions, on some machines.
-        # Only on machines where the system virtenv seems to be more stable or
-        # where 1.9 is known to fail, we use the system ve.
-        if test "$virtenv_dist" = "default"
-        then
-            virtenv_dist="1.9"
-        fi
-
-        if test "$virtenv_dist" = "1.9"
-        then
-            flags='-1 -k -L -O'
-            if (hostname -f | grep -e '^smic' > /dev/null)
-            then
-                flags='-k -L -O'
-            fi
-
-            run_cmd "Download virtualenv tgz" \
-                    "curl $flags '$VIRTENV_TGZ_URL'"
-
-            if ! test "$?" = 0
-            then
-                echo "WARNING: couldn't download virtualenv via curl! Using system version"
-                virtenv_dist="system"
-
-            else :
-                run_cmd "unpacking virtualenv tgz" \
-                        "tar zxmf '$VIRTENV_TGZ'"
-
-                if test $? -ne 0
-                then
-                    echo "Couldn't unpack virtualenv! Using system version"
-                    virtenv_dist="system"
-                else
-                    VIRTENV_CMD="$PYTHON $VIRTENV_DIR/virtualenv.py"
-                fi
-
-            fi
-        fi
-
-        # don't use `elif` here - above falls back to 'system' virtenv on errors
-        if test "$virtenv_dist" = "system"
-        then
-            VIRTENV_CMD="virtualenv"
-        fi
-
-        if test "$VIRTENV_CMD" = ""
-        then
-            echo "ERROR: invalid or unusable virtenv_dist option"
-            return 1
-        fi
+        VIRTENV_CMD="$PYTHON -m venv"
 
         run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD -p python3 $virtenv"
+                "$VIRTENV_CMD $virtenv"
 
         if test $? -ne 0
         then
             echo "ERROR: couldn't create virtualenv"
             return 1
-        fi
-
-        # clean out virtenv sources
-        if test -d "$VIRTENV_DIR"
-        then
-            rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
         fi
 
     elif test "$python_dist" = "anaconda"
@@ -1103,6 +1041,12 @@ virtenv_create()
 
     # make sure the new pip version is used (but keep the python executable)
     rehash "$PYTHON"
+
+    # update required base modules
+    # of the RADICAL stack
+    run_cmd "update  venv" \
+            "$PIP --no-cache-dir install --upgrade pip setuptools wheel" \
+         || echo "Couldn't update venv! Lets see how far we get ..."
 
     # now that the virtenv is set up, we install all dependencies
     # of the RADICAL stack
