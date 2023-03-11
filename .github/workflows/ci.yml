@@ -33,12 +33,14 @@ jobs:
           LOG=`git log -n 1 | grep Merge`
           NEW=`echo $LOG | cut -d ' ' -f2`
           OLD=`echo $LOG | cut -d ' ' -f3`
-          DIFF=`git diff --name-only --diff-filter=db $NEW..$OLD` || DIFF=''
+          (test -z "$NEW" || test -z "$OLD") && echo 'nothing to lint' && exit 0
+          DIFF=`git diff --name-only --diff-filter=db $NEW..$OLD`
           FILTERED=$(for f in $DIFF; do echo $f; done | \
                      grep -v -e '/architecture/' -e '/archive/' | \
                      grep -e '\.py$' |  sed "s|^|$PWD/|")
-          test -z "$FILTERED" && echo 'nothing to flake8' || flake8 $FILTERED
-          test -z "$FILTERED" && echo 'nothing to pylint' || pylint $FILTERED
+          test -z "$FILTERED" && echo 'nothing to lint' && exit 0
+          flake8 $FILTERED
+          pylint $FILTERED
 
   tests:
     runs-on: ${{ matrix.os }}
