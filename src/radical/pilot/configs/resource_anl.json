@@ -56,7 +56,6 @@
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "python_dist"                 : "default",
-        "virtenv_dist"                : "default",
         "cores_per_node"              : 128,
         "gpus_per_node"               : 8,
         "system_architecture"         : {"options": ["mig-mode=True"]},
@@ -69,7 +68,7 @@
         "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["local"],
         "local"                       :
-        {	
+        {
             "job_manager_endpoint"    : "pbspro://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
@@ -83,7 +82,7 @@
                                          "MPIEXEC": {}
                                         },
 	"pre_bootstrap_0"             : ["module load conda"
-					],					
+					],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 64,
@@ -98,7 +97,7 @@
         "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "schemas"                     : ["interactive"],
         "interactive"                 :
-        {	
+        {
             "job_manager_endpoint"    : "fork://localhost/",
             "filesystem_endpoint"     : "file://localhost/"
         },
@@ -111,7 +110,7 @@
                                          "MPIEXEC": {}
                                         },
 	"pre_bootstrap_0"             : ["module load conda"
-					],					
+					],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 64,

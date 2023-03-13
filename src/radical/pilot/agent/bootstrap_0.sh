@@ -94,7 +94,6 @@ PILOT_ID=
 RP_VERSION=
 PYTHON=
 PYTHON_DIST=
-VIRTENV_DIST=
 SESSION_ID=
 SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
@@ -654,7 +653,6 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
     python_dist="$4"
-    virtenv_dist="$5"
 
     ve_create=UNDEFINED
     ve_update=UNDEFINED
@@ -819,7 +817,7 @@ virtenv_setup()
         then
             echo 'rp lock for virtenv create'
             lock "$pid" "$virtenv" # use default timeout
-            virtenv_create "$virtenv" "$python_dist" "$virtenv_dist"
+            virtenv_create "$virtenv" "$python_dist"
             if ! test "$?" = 0
             then
                 echo "ERROR: couldn't create virtenv - abort"
@@ -995,7 +993,6 @@ virtenv_create()
 
     virtenv="$1"
     python_dist="$2"
-    virtenv_dist="$3"
 
     if test "$python_dist" = "default"
     then
@@ -1445,7 +1442,6 @@ while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         d)  SDISTS="$OPTARG"                  ;;
         e)  pre_bootstrap_0 "$OPTARG"         ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
-        g)  VIRTENV_DIST="$OPTARG"            ;;
         h)  HOSTPORT="$OPTARG"                ;;
         i)  PYTHON="$OPTARG"                  ;;
         j)  add_services "$OPTARG"            ;;
@@ -1658,8 +1654,7 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
-                 "$PYTHON_DIST" "$VIRTENV_DIST"
+virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 create_deactivate
 
