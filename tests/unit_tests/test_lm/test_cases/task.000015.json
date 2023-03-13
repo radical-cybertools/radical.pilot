@@ -7,7 +7,7 @@
             "arguments"        : ["15"],
             "ranks"            : 2,
             "cores_per_rank"   : 2,
-            "gpus_per_rank"    : 1,
+            "gpus_per_rank"    : 1.0,
             "environment"      : {}
         },
         "task_sandbox_path"    : "/tmp"
@@ -22,7 +22,7 @@
                 "ranks"         : [{"node_name" : "node1",
                                     "node_id"   : "node1",
                                     "core_map"  : [[0, 1], [2, 3]],
-                                    "gpu_map"   : [[0], [1]],
+                                    "gpu_map"   : [[0, 1], [0, 1]],
                                     "lfs"       : 0}]
             },
             "task_sandbox": "./",

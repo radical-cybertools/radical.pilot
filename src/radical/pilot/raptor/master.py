@@ -309,9 +309,12 @@ class Master(rpu.Component):
         cfg                   = copy.deepcopy(self._cfg)
         cfg['info']           = self._info
         cfg['ts_addr']        = self._task_service.addr
-        cfg['cores_per_rank'] = td.cores_per_rank
-        cfg['gpus_per_rank']  = td.gpus_per_rank
         cfg['ranks']          = td.ranks
+        cfg['cores_per_rank'] = td.cores_per_rank
+        # sharing GPUs among multiple ranks not supported
+        if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
+            raise RuntimeError('GPU sharing for workers is not supported')
+        cfg['gpus_per_rank']  = int(td.gpus_per_rank)
 
         for i in range(count):
 
@@ -575,7 +578,7 @@ class Master(rpu.Component):
             task['resources']         = {'cpu': td['ranks'] *
                                                 td.get('cores_per_rank', 1),
                                          'gpu': td['ranks'] *
-                                                td.get('gpus_per_rank', 0)}
+                                                td.get('gpus_per_rank', 0.)}
 
             # NOTE: the order of insert / state update relies on that order
             #       being maintained through the component's message push,

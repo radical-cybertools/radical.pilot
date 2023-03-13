@@ -94,7 +94,7 @@ METADATA         = 'metadata'
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.TypedDict):
-    """
+    '''
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
@@ -228,8 +228,9 @@ class TaskDescription(ru.TypedDict):
 
     .. py:attribute:: gpus_per_rank
 
-       [type: `int` | default: `0`] The number of gpus made available to each
-       rank.
+       [type: `float` | default: `0.`] The number of gpus made available to
+       each rank. If gpu is shared among several ranks, then a fraction of gpu
+       should be provided (e.g., 2 ranks share a GPU, then `gpus_per_rank=.5`).
 
        `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
        attributes `gpu_threads` and `gpu_process_type` are also deprecated and
@@ -429,6 +430,7 @@ class TaskDescription(ru.TypedDict):
     - depending on the specific resource configuration, RP may launch those
       tasks without providing an MPI communicator.
 
+
     Task Environment
     ================
 
@@ -533,7 +535,7 @@ class TaskDescription(ru.TypedDict):
         * rp.CREATE_PARENTS : create the directory hierarchy for targets on
           the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
-    """
+    '''
 
     _schema = {
         UID             : str         ,
@@ -564,7 +566,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : int         ,
         CORES_PER_RANK  : int         ,
-        GPUS_PER_RANK   : int         ,
+        GPUS_PER_RANK   : float       ,
         THREADING_TYPE  : str         ,
         GPU_TYPE        : str         ,
         LFS_PER_RANK    : int         ,
@@ -619,7 +621,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : 1           ,
         CORES_PER_RANK  : 1           ,
-        GPUS_PER_RANK   : 0           ,
+        GPUS_PER_RANK   : 0.          ,
         THREADING_TYPE  : ''          ,
         GPU_TYPE        : ''          ,
         LFS_PER_RANK    : 0           ,
@@ -700,7 +702,7 @@ class TaskDescription(ru.TypedDict):
             self.cpu_thread_type = None
 
         if self.gpu_processes:
-            self.gpus_per_rank = self.gpu_processes
+            self.gpus_per_rank = float(self.gpu_processes)
             self.gpu_processes = 0
 
         if self.gpu_process_type:
