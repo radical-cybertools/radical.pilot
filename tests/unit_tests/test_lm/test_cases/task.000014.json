@@ -8,7 +8,8 @@
             "ranks"         : 2,
             "cores_per_rank": 2,
             "mem_per_rank"  : 1024,
-            "gpus_per_rank" : 2,
+            "gpus_per_rank" : 2.0,
+            "threading_type": "",
             "gpu_type"      : "CUDA",
             "environment"   : {"test_env": "test_val"}
         },
@@ -23,7 +24,7 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[0, 1]],
-                        "gpu_map"   : [[0], [1]],
+                        "gpu_map"   : [[0, 1]],
                         "lfs"       : 0,
                         "mem"       : 128
                     },
@@ -31,7 +32,7 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[2, 3]],
-                        "gpu_map"   : [[2], [3]],
+                        "gpu_map"   : [[2, 3]],
                         "lfs"       : 0,
                         "mem"       : 128
                     }
@@ -51,7 +52,7 @@
     "results": {
         "lm": {
             "jsrun": {
-                "launch_cmd" : "jsrun -b rs -n2 -a1 -c2 -g2 -r3 --smpiargs=\"-gpu\"",
+                "launch_cmd" : "jsrun -n2 -a1 -c2 -g2 -r2 -b rs --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "srun": {

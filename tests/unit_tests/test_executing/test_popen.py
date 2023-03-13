@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -10,8 +10,9 @@ import queue
 
 import threading as mt
 
-import radical.pilot.states as rps
-import radical.utils        as ru
+import radical.pilot.constants as rpc
+import radical.pilot.states    as rps
+import radical.utils           as ru
 
 from unittest import mock, TestCase
 
@@ -34,7 +35,6 @@ class TestPopen(TestCase):
         cls._test_case = ru.read_json('%s/test_cases/test_base.json' % base)
         assert cls._test_case, 'how is this test supposed to work???'
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
@@ -55,8 +55,6 @@ class TestPopen(TestCase):
             mode, tid = pex._watch_queue.get()
             self.assertEqual(mode, pex.TO_CANCEL)
             self.assertEqual(tid, uid)
-
-
 
     # --------------------------------------------------------------------------
     #
@@ -125,6 +123,30 @@ class TestPopen(TestCase):
             try   : os.remove(path)
             except: pass
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Popen, '__init__', return_value=None)
+    def test_extend_pre_exec(self, mocked_init):
+
+        pex = Popen(cfg=None, session=None)
+
+        td    = {'cores_per_rank': 2,
+                 'threading_type': '',
+                 'gpus_per_rank' : 1,
+                 'gpu_type'      : '',
+                 'pre_exec'      : []}
+        ranks = [{'core_map': [[0, 1]],
+                  'gpu_map' : [[5]]}]
+
+        pex._extend_pre_exec(td, ranks)
+        self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])
+
+        td.update({'threading_type': rpc.OpenMP,
+                   'gpu_type'      : rpc.CUDA})
+
+        pex._extend_pre_exec(td, ranks)
+        self.assertIn('export OMP_NUM_THREADS=2',             td['pre_exec'])
+        self.assertIn({'0': 'export CUDA_VISIBLE_DEVICES=5'}, td['pre_exec'])
 
     # --------------------------------------------------------------------------
     #
@@ -197,6 +219,7 @@ if __name__ == '__main__':
     tc.test_control_cb()
     tc.test_check_running()
     tc.test_handle_task()
+    tc.test_extend_pre_exec()
 
 
 # ------------------------------------------------------------------------------
