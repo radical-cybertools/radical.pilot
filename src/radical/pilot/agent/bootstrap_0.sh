@@ -1417,7 +1417,6 @@ untar()
 #    -d   distribution source tarballs for radical stack install
 #    -e   execute commands before bootstrapping phase 1: the main agent
 #    -f   tunnel forward endpoint (MongoDB host:port)
-#    -g   virtualenv distribution (default, 1.9, system)
 #    -h   hostport to create tunnel to
 #    -i   python Interpreter to use, e.g., python2.7
 #    -j   add a command for the service node
@@ -1434,7 +1433,7 @@ untar()
 #
 # NOTE: -z makes some assumptions on sandbox and tarball location
 #
-while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"         ;;
         b)  PYTHON_DIST="$OPTARG"             ;;
