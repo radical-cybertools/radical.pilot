@@ -1,0 +1,139 @@
+
+name: CI
+
+on:
+  push:
+    branches: [ devel ]
+  pull_request:
+    branches: [ devel ]
+
+jobs:
+
+  linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: 3.7
+      - name: Install dependencies
+        run: |
+          python -m venv testenv
+          . testenv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+          python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
+          python -m pip install --upgrade .
+          python -m pip install -r requirements-tests.txt
+      - name: Lint with flake8 and pylint
+        run: |
+          . testenv/bin/activate
+          LOG=`git log -n 1 | grep Merge`
+          NEW=`echo $LOG | cut -d ' ' -f2`
+          OLD=`echo $LOG | cut -d ' ' -f3`
+          (test -z "$NEW" || test -z "$OLD") && echo 'nothing to lint' && exit 0
+          DIFF=`git diff --name-only --diff-filter=db $NEW..$OLD`
+          FILTERED=$(for f in $DIFF; do echo $f; done | \
+                     grep -v -e '/architecture/' -e '/archive/' | \
+                     grep -e '\.py$' |  sed "s|^|$PWD/|")
+          test -z "$FILTERED" && echo 'nothing to lint' && exit 0
+          flake8 $FILTERED
+          pylint $FILTERED
+
+  tests:
+    runs-on: ${{ matrix.os }}
+    services:
+      mongodb:
+        image: mongo
+        ports:
+        - 27017/tcp
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.6'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+        python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
+        python -m pip install --upgrade .
+        python -m pip install -r requirements-tests.txt
+    - name: Test with pytest
+      env:
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+      run: |
+        . testenv/bin/activate
+        coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
+        coverage xml
+    - uses: codecov/codecov-action@v3
+      if: ${{ matrix.python-version == '3.7' }}
+      with:
+        files: ./coverage.xml
+
+  analytics:
+    runs-on: ${{ matrix.os }}
+    services:
+      mongodb:
+        image: mongo
+        ports:
+        - 27017/tcp
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.6'
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 2
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y texlive cm-super
+        sudo apt install -y texlive-fonts-extra texlive-extra-utils dvipng
+        sudo apt install -y texlive-fonts-recommended texlive-latex-extra
+        python -m venv testenv
+        . testenv/bin/activate
+        python -m pip install --upgrade pip setuptools wheel
+        python -m pip install git+https://github.com/radical-cybertools/radical.utils.git@devel
+        python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
+        python -m pip install --upgrade .
+        python -m pip install git+https://github.com/radical-cybertools/radical.analytics.git@devel
+    - name: analyze example session
+      timeout-minutes: 5
+      env:
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+      run: |
+        . testenv/bin/activate
+        ./examples/00_getting_started.py local.localhost
+        SID=$(ls -rt | grep rp.session)
+        echo "$SID: $SID"
+        radical-analytics-inspect "$SID"
+        mkdir artifacts
+        ls -la
+        cp -R *.png *.stats artifacts
+    - name: upload artifacts
+      uses: actions/upload-artifact@v2
+      with:
+          name: artifacts
+          path: artifacts
+
