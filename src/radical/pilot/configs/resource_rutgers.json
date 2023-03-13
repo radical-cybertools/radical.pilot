@@ -34,7 +34,6 @@
                                         ],
         "default_remote_workdir"      : "/scratch/$USER",
         "python_dist"                 : "default",
-        "virtenv_dist"                : "default",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local"
     }

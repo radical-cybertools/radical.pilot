@@ -361,6 +361,10 @@ class Popen(AgentExecutingComponent):
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+        # `start_new_session=True` is default, which enables decoupling
+        # from the parent process group (part of the task cancellation)
+        _start_new_session = self._cfg['resource_cfg'].\
+            get('new_session_per_task', True)
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -369,12 +373,9 @@ class Popen(AgentExecutingComponent):
                                 stdin             = None,
                                 stdout            = _launch_out_h,
                                 stderr            = sp.STDOUT,
-                                start_new_session = True,
+                                start_new_session = _start_new_session,
                                 close_fds         = True,
                                 cwd               = sbox)
-        # decoupling from parent process group is disabled,
-        # in case of enabling it, one of the following options should be added:
-        #    `preexec_fn=os.setsid` OR `start_new_session=True`
         self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination
@@ -701,10 +702,15 @@ class Popen(AgentExecutingComponent):
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            td['pre_exec'].append(
-                {str(rank_id): 'export CUDA_VISIBLE_DEVICES=%s' %
-                               ','.join([str(gm[0]) for gm in rank['gpu_map']])
-                 for rank_id, rank in enumerate(ranks)})
+            rank_id  = 0
+            rank_env = {}
+            for slot_ranks in ranks:
+                for gpu_map in slot_ranks['gpu_map']:
+                    rank_env[str(rank_id)] = \
+                        'export CUDA_VISIBLE_DEVICES=%s' % \
+                        ','.join([str(g) for g in gpu_map])
+                    rank_id += 1
+            td['pre_exec'].append(rank_env)
 
 
     # --------------------------------------------------------------------------

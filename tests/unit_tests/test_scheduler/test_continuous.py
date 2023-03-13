@@ -46,21 +46,24 @@ class TestContinuous(TestCase):
         for test_case in self._test_cases:
 
             td = test_case['task']['description']
+            sd_options = test_case['setup'].get('slots_description') or \
+                         {'find_slots'    : td['ranks'],
+                          'ranks_per_slot': 1,
+                          'cores_per_slot': td['cores_per_rank'],
+                          'gpus_per_slot' : td['gpus_per_rank'],
+                          'lfs_per_slot'  : td['lfs_per_rank'],
+                          'mem_per_slot'  : td['mem_per_rank']}
+
             alc_slots = component._find_resources(
                 node=test_case['setup']['nodes'][0],
-                find_slots=td['ranks'],
-                cores_per_slot=td['cores_per_rank'],
-                gpus_per_slot=td['gpus_per_rank'],
-                lfs_per_slot=td['lfs_per_rank'   ],
-                mem_per_slot=td['mem_per_rank'   ],
-                partial=False)
+                partial=True,
+                **sd_options
+            )
 
-            if alc_slots is None:
-                # tests should be defined in a way, so task would fit 1 node
-                raise AssertionError('Test should be redefined (%s)' %
-                                     test_case['task']['uid'])
-
-            self.assertEqual(alc_slots, test_case['result']['slots']['ranks'])
+            # number of ranks to run on a single node
+            ranks = len(alc_slots)
+            self.assertEqual(alc_slots,
+                             test_case['result']['slots']['ranks'][:ranks])
 
     # --------------------------------------------------------------------------
     #
@@ -92,6 +95,7 @@ class TestContinuous(TestCase):
             component._colo_history = {}
             component._tagged_nodes = set()
             component._node_offset  = 0
+            component._scattered    = None
             component._partitions   = {}
             component._term         = mp.Event()
             component._queue_sched  = mp.Queue()
@@ -159,9 +163,9 @@ class TestContinuous(TestCase):
 
             task['description'].update({'tags': {'colocate' : 'exclusive_tag',
                                                  'exclusive': True},
-                                        'ranks': 1,
+                                        'ranks'         : 1,
                                         'cores_per_rank': 1,
-                                        'gpus_per_rank': 0})
+                                        'gpus_per_rank' : 0})
 
             pre_sched_n_tagged_nodes = len(component._tagged_nodes)
             component.schedule_task(task)
