@@ -44,8 +44,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
       # "virtenv"                     : "/glade/scratch/wuh20/tmp/radical.pilot.sandbox/ve.pilot",
-        "python_dist"                 : "default",
-        "virtenv_dist"                : "system"
+        "python_dist"                 : "default"
     },
 
     "cheyenne_mpt": {
@@ -90,8 +89,7 @@
         "rp_version"                  : "local",
         "virtenv_mode"                : "create",
       # "virtenv"                     : "/glade/scratch/wuh20/tmp/radical.pilot.sandbox/ve.pilot",
-        "python_dist"                 : "default",
-        "virtenv_dist"                : "system"
+        "python_dist"                 : "default"
     }
 }
 
