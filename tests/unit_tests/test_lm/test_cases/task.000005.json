@@ -7,7 +7,8 @@
             "arguments"        : ["10"],
             "ranks"            : 1,
             "cores_per_rank"   : 1,
-            "gpus_per_rank"    : 1,
+            "threading_type"   : "",
+            "gpus_per_rank"    : 1.0,
             "gpu_type"         : "CUDA",
             "environment"      : {"CUDA_VISIBLE_DEVICES": 0}
         },
@@ -55,7 +56,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun -b rs -n1 -a1 -c1 -g1 -r1 --smpiargs=\"off\"",
+                "launch_cmd" : "jsrun -n1 -a1 -c1 -g1 -r1 -b rs --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf": {
@@ -73,7 +74,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0: { host: node1; cpu: {0}; gpu: {0} }\n"]
+                           "rank: 0 : { host: node1; cpu: {0}; gpu: {0} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000005"
