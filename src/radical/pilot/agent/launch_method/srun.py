@@ -114,7 +114,7 @@ class Srun(LaunchMethod):
 
         n_tasks        = td['ranks']
         n_task_threads = td.get('cores_per_rank', 1)
-        n_task_gpus    = td.get('gpus_per_rank', 0)
+        gpus_per_task  = td.get('gpus_per_rank', 0.)
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -127,8 +127,8 @@ class Srun(LaunchMethod):
         nodelist = list()
 
         if not slots:
-            n_nodes  = int(math.ceil(float(n_tasks) /
-                                     self._rm_info.get('cores_per_node', 1)))
+            n_nodes = int(math.ceil(float(n_tasks) /
+                                    self._rm_info.get('cores_per_node', 1)))
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
@@ -143,6 +143,9 @@ class Srun(LaunchMethod):
                     nodefile = '%s/%s.nodes' % (sbox, uid)
                     with ru.ru_open(nodefile, 'w') as fout:
                         fout.write(','.join(nodelist) + '\n')
+
+            if slots['ranks'][0]['gpu_map']:
+                gpus_per_task = len(slots['ranks'][0]['gpu_map'][0])
 
         if self._traverse:
             mapping = '--ntasks=%d '        % n_tasks \
@@ -166,11 +169,12 @@ class Srun(LaunchMethod):
             mapping += ' --mem 0'
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('requested_gpus') and n_task_gpus:
+        if self._rm_info.get('requested_gpus') and gpus_per_task:
             if self._traverse:
-                mapping += ' --gpus-per-task=%d' % n_task_gpus
+                mapping += ' --gpus-per-task=%d' % gpus_per_task
             else:
-                mapping += ' --gpus-per-task %d --gpu-bind closest' % n_task_gpus
+                mapping += ' --gpus-per-task %d' % gpus_per_task + \
+                           ' --gpu-bind closest'
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile

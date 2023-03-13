@@ -2,9 +2,12 @@
 -r requirements.txt
 
 pytest
+pytest-timeout
 pylint
 flake8
+flake8-per-file-ignores
+codecov
 coverage
-mock==2.0.0.
+psutil
 pudb
 
