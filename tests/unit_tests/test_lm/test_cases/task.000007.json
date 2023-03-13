@@ -21,13 +21,13 @@
                 "gpus_per_node" : 1,
                 "lfs_per_node"  : 0,
                 "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "node1",
+                                    "node_id"   : "1",
                                     "core_map"  : [[0, 1]],
                                     "gpu_map"   : [],
                                     "lfs"       : 0
                                     },
                                    {"node_name" : "node2",
-                                    "node_id"   : "node2",
+                                    "node_id"   : "2",
                                     "core_map"  : [[0, 1]],
                                     "gpu_map"   : [],
                                     "lfs"       : 0
@@ -52,8 +52,8 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0: { host: node1; cpu: {0,1} }\n",
-                           "rank: 1: { host: node2; cpu: {0,1} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0,1} }\n",
+                           "rank: 1 : { host: 2; cpu: {0,1} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000007"

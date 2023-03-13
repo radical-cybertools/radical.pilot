@@ -1,0 +1,74 @@
+
+{
+    "task": {
+        "uid"                  : "task.000001",
+        "description": {
+            "executable"       : "/bin/sleep",
+            "arguments"        : ["5"],
+            "environment"      : {},
+            "ranks"            : 12,
+            "cores_per_rank"   : 1,
+            "gpus_per_rank"    : 0.25,
+            "gpu_type"         : "",
+            "mem_per_rank"     : 0,
+            "lfs_per_rank"     : 0,
+            "tags"             : {}
+        },
+        "task_sandbox_path"    : "/tmp"
+    },
+
+    "setup": {
+        "nodes": [
+            {
+                "node_name"  : "a",
+                "node_id"    : "1",
+                "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 0, 0, 0],
+                "lfs"        : 0,
+                "mem"        : 0
+            },
+            {
+                "node_name"  : "b",
+                "node_id"    : "2",
+                "cores"      : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, 0, 0, 0],
+                "lfs"        : 0,
+                "mem"        : 0
+            }
+        ],
+        "slots_description"  : {
+            "find_slots"     : 3,
+            "ranks_per_slot" : 4,
+            "cores_per_slot" : 4,
+            "gpus_per_slot"  : 1,
+            "lfs_per_slot"   : 0,
+            "mem_per_slot"   : 0
+        }
+    },
+
+    "result": {
+        "slots": {
+            "partition_id"     : null,
+            "ranks"            : [{"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[0], [1], [2], [3]],
+                                   "gpu_map"   : [[0], [0], [0], [0]],
+                                   "mem"       : 0,
+                                   "lfs"       : 0},
+                                  {"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[4], [5], [6], [7]],
+                                   "gpu_map"   : [[1], [1], [1], [1]],
+                                   "mem"       : 0,
+                                   "lfs"       : 0},
+                                  {"node_name" : "a",
+                                   "node_id"   : "1",
+                                   "core_map"  : [[8], [9], [10], [11]],
+                                   "gpu_map"   : [[2], [2], [2], [2]],
+                                   "mem"       : 0,
+                                   "lfs"       : 0}]
+        },
+        "colo_history": {}
+    }
+}
+
