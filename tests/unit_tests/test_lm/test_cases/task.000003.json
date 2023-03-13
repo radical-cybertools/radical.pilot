@@ -7,6 +7,7 @@
             "arguments"     : ["10"],
             "ranks"         : 1,
             "cores_per_rank": 4,
+            "threading_type": "",
             "gpus_per_rank" : 0,
             "gpu_type"      : "",
             "environment"   : {}
@@ -21,8 +22,8 @@
                 "gpus_per_node" : 1,
                 "lfs_per_node"  : 0,
                 "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "node1",
-                                    "core_map"  : [[0,1,2,3]],
+                                    "node_id"   : "1",
+                                    "core_map"  : [[0, 1, 2, 3]],
                                     "gpu_map"   : [],
                                     "lfs"       : 0}]
             },
@@ -56,7 +57,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun -b rs -n1 -a1 -c4",
+                "launch_cmd" : "jsrun -n1 -a1 -c4 -g0 -b rs",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf"   : {
@@ -70,7 +71,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0: { host: node1; cpu: {0,1,2,3} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0,1,2,3} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000003"

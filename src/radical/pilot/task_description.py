@@ -228,8 +228,9 @@ class TaskDescription(ru.TypedDict):
 
     .. py:attribute:: gpus_per_rank
 
-       [type: `int` | default: `0`] The number of gpus made available to each
-       rank.
+       [type: `float` | default: `0.`] The number of gpus made available to
+       each rank. If gpu is shared among several ranks, then a fraction of gpu
+       should be provided (e.g., 2 ranks share a GPU, then `gpus_per_rank=.5`).
 
        `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
        attributes `gpu_threads` and `gpu_process_type` are also deprecated and
@@ -485,8 +486,8 @@ class TaskDescription(ru.TypedDict):
         node.  Note that for MPI tasks, the `pre_exec` directives are executed
         once per rank.  Running large numbers of `pre_exec` directives
         concurrently can lead to system performance degradation (*), for example
-        when those  directives concurrently hot the shared files system (for
-        loading modules or Python virtualenvs etc).
+        when those  directives concurrently hot the shared file system (for
+        loading modules or Python virtualenvs etc.).
 
         Use `pre_exec` directives for task environment setup such as `module
         load`, `virtualenv activate`, `export` whose effects are expected to be
@@ -535,7 +536,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : int         ,
         CORES_PER_RANK  : int         ,
-        GPUS_PER_RANK   : int         ,
+        GPUS_PER_RANK   : float       ,
         THREADING_TYPE  : str         ,
         GPU_TYPE        : str         ,
         LFS_PER_RANK    : int         ,
@@ -590,7 +591,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : 1           ,
         CORES_PER_RANK  : 1           ,
-        GPUS_PER_RANK   : 0           ,
+        GPUS_PER_RANK   : 0.          ,
         THREADING_TYPE  : ''          ,
         GPU_TYPE        : ''          ,
         LFS_PER_RANK    : 0           ,
@@ -671,7 +672,7 @@ class TaskDescription(ru.TypedDict):
             self.cpu_thread_type = None
 
         if self.gpu_processes:
-            self.gpus_per_rank = self.gpu_processes
+            self.gpus_per_rank = float(self.gpu_processes)
             self.gpu_processes = 0
 
         if self.gpu_process_type:
