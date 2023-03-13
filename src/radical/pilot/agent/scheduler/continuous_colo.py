@@ -211,7 +211,7 @@ class ContinuousColo(Continuous):
         descr['threading_type']   = rpc.POSIX  # force single node
         descr['ranks']            = 1
         descr['cores_per_rank']   = 1
-        descr['gpus_per_rank']    = 0
+        descr['gpus_per_rank']    = 0.
         descr['gpu_type']         = None
 
         self._log.debug('try schedule uids  %s ', self._bags[bag]['uids'])

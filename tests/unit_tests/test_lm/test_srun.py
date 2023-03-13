@@ -120,45 +120,49 @@ class TestSrun(TestCase):
 
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
-            if result != 'RuntimeError':
 
-                td = task.get('description', {})
-                lm_srun._rm_info.update({
-                    'requested_gpus'  : td['ranks'] *
-                                        td.get('gpus_per_rank', 0),
-                    'threads_per_core': task.get('resource_cfg', {}).
-                                        get('system_architecture', {}).
-                                        get('smt', 1)})
+            if result == 'RuntimeError':
+                with self.assertRaises(RuntimeError):
+                    lm_srun.get_launch_cmds(task, '')
+                continue
 
-                command = lm_srun.get_launch_cmds(task, '')
-                self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
+            td = task.get('description', {})
+            lm_srun._rm_info.update({
+                'requested_gpus'  : int(td['ranks'] *
+                                        td.get('gpus_per_rank', 0)),
+                'threads_per_core': task.get('resource_cfg', {}).
+                                    get('system_architecture', {}).
+                                    get('smt', 1)})
 
-                if task.get('slots'):
+            command = lm_srun.get_launch_cmds(task, '')
+            self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
-                    # mimic that we have n_nodes more than MIN_NNODES_IN_LIST
-                    if len(task['slots']['ranks']) <= MIN_NNODES_IN_LIST:
-                        rank_base = task['slots']['ranks'][0]
-                        del task['slots']['ranks'][:]
-                        for idx in range(MIN_NNODES_IN_LIST + 1):
-                            task['slots']['ranks'].append(dict(rank_base))
-                            task['slots']['ranks'][-1]['node_name'] = str(idx)
+            if task.get('slots'):
 
-                    if len(task['slots']['ranks']) > MIN_NNODES_IN_LIST:
-                        nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
+                # mimic that we have n_nodes more than MIN_NNODES_IN_LIST
+                if len(task['slots']['ranks']) <= MIN_NNODES_IN_LIST:
+                    rank_base = task['slots']['ranks'][0]
+                    del task['slots']['ranks'][:]
+                    for idx in range(MIN_NNODES_IN_LIST + 1):
+                        task['slots']['ranks'].append(dict(rank_base))
+                        task['slots']['ranks'][-1]['node_name'] = str(idx)
 
-                        # `nodefile` will be (or is already) created
-                        lm_srun.get_launch_cmds(task, '')
-                        self.assertTrue(os.path.isfile(nodefile))
-                        os.unlink(nodefile)
+                if len(task['slots']['ranks']) > MIN_NNODES_IN_LIST:
+                    nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
 
-                        # with min Slurm version `nodefile` will not be created
-                        lm_srun._vmajor = MIN_VSLURM_IN_LIST
-                        lm_srun.get_launch_cmds(task, '')
-                        self.assertFalse(os.path.isfile(nodefile))
-                        lm_srun._vmajor = MIN_VSLURM_IN_LIST + 1
+                    # `nodefile` will be (or is already) created
+                    lm_srun.get_launch_cmds(task, '')
+                    self.assertTrue(os.path.isfile(nodefile))
+                    os.unlink(nodefile)
 
-                command = lm_srun.get_exec(task)
-                self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+                    # with min Slurm version `nodefile` will not be created
+                    lm_srun._vmajor = MIN_VSLURM_IN_LIST
+                    lm_srun.get_launch_cmds(task, '')
+                    self.assertFalse(os.path.isfile(nodefile))
+                    lm_srun._vmajor = MIN_VSLURM_IN_LIST + 1
+
+            command = lm_srun.get_exec(task)
+            self.assertEqual(command, result['rank_exec'], msg=task['uid'])
 
 
     # --------------------------------------------------------------------------
