@@ -40,7 +40,7 @@
     "results": {
         "lm": {
             "jsrun" : {
-                "launch_cmd" : "jsrun -n1 -a4 -c8 -g1 -r1 -b packed:8 --smpiargs=\"-gpu\"",
+                "launch_cmd" : "jsrun -n1 -a4 -c8 -g1 -r1 -b packed:2 --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "jsrun_erf": {
