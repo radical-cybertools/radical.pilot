@@ -170,12 +170,13 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs           = len(slots['ranks'])
-            slot_ranks   = slots['ranks'][0]
-            ranks_per_rs = len(slot_ranks['core_map'])
-            cores_per_rs = (math.ceil(len(slot_ranks['core_map'][0]) /
-                                      self._rm_info['threads_per_core']) *
-                            ranks_per_rs)
+            rs             = len(slots['ranks'])
+            slot_ranks     = slots['ranks'][0]
+            # physical cores per rank
+            cores_per_rank = math.ceil(len(slot_ranks['core_map'][0]) /
+                             self._rm_info['threads_per_core'])
+            ranks_per_rs   = len(slot_ranks['core_map'])
+            cores_per_rs   = cores_per_rank * ranks_per_rs
 
             gpus_per_rs  = 0
             if slot_ranks['gpu_map']:
@@ -202,10 +203,11 @@ class JSRUN(LaunchMethod):
                 cmd_options += ' -r%d' % max_rs_per_node
 
             # -b: binding of tasks within a resource set (none, rs, or packed:N)
-            if td['threading_type'] == rpc.OpenMP:
-                # for OpenMP threads RP will set:
-                #    export OMP_NUM_THREADS=<cores_per_rank>
-                cmd_options += ' -b packed:%d' % cores_per_rs
+            if ranks_per_rs > 1:
+                if td['threading_type'] == rpc.OpenMP:
+                    # for OpenMP threads RP will set:
+                    #    export OMP_NUM_THREADS=<threads_per_rank>
+                    cmd_options += ' -b packed:%d' % cores_per_rank
             else:
                 cmd_options += ' -b rs'
 
