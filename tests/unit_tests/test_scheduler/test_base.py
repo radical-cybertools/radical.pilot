@@ -58,11 +58,10 @@ class TestBaseScheduling(TestCase):
         for c in self._test_cases['initialize']:
 
             def _mock_get(_c, name):
-                print([_c, name])
                 return _c['registry'][name]
 
             from functools import partial
-            print(c)
+
             mock_get   = partial(_mock_get, c)
             sched._cfg = ru.Config(from_dict=c['config'])
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):

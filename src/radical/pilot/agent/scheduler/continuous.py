@@ -126,8 +126,8 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_resources(self, node, find_slots, cores_per_slot, gpus_per_slot,
-                              lfs_per_slot, mem_per_slot, partial):
+    def _find_resources(self, node, find_slots, ranks_per_slot, cores_per_slot,
+                        gpus_per_slot, lfs_per_slot, mem_per_slot, partial):
         '''
         Find up to the requested number of slots, where each slot features the
         respective `x_per_slot` resources.  This call will return a list of
@@ -135,9 +135,9 @@ class Continuous(AgentSchedulingComponent):
 
             {
                 'node_name': 'node_name',
-                'node_id'  : 'node.0001',
-                'core_map' : [[1, 2, 4, 5]],
-                'gpu_map'  : [[1, 3]],
+                'node_id'  : '1',
+                'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
+                'gpu_map'  : [[1, 3], [1, 3]],
                 'lfs'      : 1234,
                 'mem'      : 4321
             }
@@ -171,13 +171,13 @@ class Continuous(AgentSchedulingComponent):
             alc_slots = int(m.floor(free_cores / cores_per_slot))
 
         if gpus_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot)))
 
         if lfs_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot)))
 
         if mem_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot )))
+            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot)))
 
         # is this enough?
         if not alc_slots:
@@ -215,8 +215,13 @@ class Continuous(AgentSchedulingComponent):
                     gpus.append(gpu_idx)
                 gpu_idx += 1
 
-            core_map = [cores]
-            gpu_map  = [[gpu] for gpu in gpus]
+            cores_per_rank = cores_per_slot // ranks_per_slot
+            # create number of lists (equal to `ranks_per_slot`) with
+            # cores indices (i.e., cores per rank)
+            core_map = [cores[i:i + cores_per_rank]
+                        for i in range(0, len(cores), cores_per_rank)]
+            # gpus per rank are the same within the slot
+            gpu_map  = [gpus] * len(core_map)
 
             slots.append({'node_name': node_name,
                           'node_id'  : node_id,
@@ -259,8 +264,11 @@ class Continuous(AgentSchedulingComponent):
         td  = task['description']
         mpi = bool(td['ranks'] > 1)
 
-        # dig out the allocation request details
-        req_slots      = td['ranks']
+        cores_per_node = self._rm.info.cores_per_node
+        gpus_per_node  = self._rm.info.gpus_per_node
+        lfs_per_node   = self._rm.info.lfs_per_node
+        mem_per_node   = self._rm.info.mem_per_node
+
         cores_per_slot = td['cores_per_rank']
         gpus_per_slot  = td['gpus_per_rank']
         lfs_per_slot   = td['lfs_per_rank']
@@ -270,8 +278,26 @@ class Continuous(AgentSchedulingComponent):
         if not cores_per_slot:
             cores_per_slot = 1
 
-        self._log.debug_3('req : %s %s %s %s %s', req_slots, cores_per_slot,
-                        gpus_per_slot, lfs_per_slot, mem_per_slot)
+        # check if there is a GPU sharing
+        if gpus_per_slot and not gpus_per_slot.is_integer():
+            gpus           = m.ceil(td['ranks'] * gpus_per_slot)
+            # find the greatest common divisor
+            req_slots      = m.gcd(td['ranks'], gpus)
+            ranks_per_slot = td['ranks'] // req_slots
+            gpus_per_slot  = gpus        // req_slots
+
+            cores_per_slot *= ranks_per_slot
+            lfs_per_slot   *= ranks_per_slot
+            mem_per_slot   *= ranks_per_slot
+
+        else:
+            req_slots      = td['ranks']
+            ranks_per_slot = 1
+            gpus_per_slot  = int(gpus_per_slot)
+
+        self._log.debug_3('req : %s %s %s %s %s %s',
+                          req_slots, ranks_per_slot, cores_per_slot,
+                          gpus_per_slot, lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -282,27 +308,22 @@ class Continuous(AgentSchedulingComponent):
         #
         # FIXME: persistent node index
 
-        cores_per_node = self._rm.info.cores_per_node
-        gpus_per_node  = self._rm.info.gpus_per_node
-        lfs_per_node   = self._rm.info.lfs_per_node
-        mem_per_node   = self._rm.info.mem_per_node
-
         # we always fail when too many threads are requested
         assert cores_per_slot <= cores_per_node, \
-                'too many threads per proc %s' % cores_per_slot
+               'too many threads per proc %s' % cores_per_slot
         assert gpus_per_slot  <= gpus_per_node, \
-                'too many gpus    per proc %s' % gpus_per_slot
+               'too many gpus    per proc %s' % gpus_per_slot
         assert lfs_per_slot   <= lfs_per_node, \
-                'too much lfs     per proc %s' % lfs_per_slot
+               'too much lfs     per proc %s' % lfs_per_slot
         assert mem_per_slot   <= mem_per_node, \
-                'too much mem     per proc %s' % mem_per_slot
+               'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,
-                                 int(m.floor(gpus_per_node / gpus_per_slot )))
+                                 int(m.floor(gpus_per_node / gpus_per_slot)))
 
         if lfs_per_slot:
             slots_per_node = min(slots_per_node,
@@ -351,8 +372,8 @@ class Continuous(AgentSchedulingComponent):
                                                   len(alc_slots))
 
             # Check if a task is tagged to use this node.  This means we check
-            #   - if a colocate tag exists
-            #   - if the colo_tag has been used before
+            #   - if a "colocate" tag exists
+            #   - if a "colocate" tag has been used before
             #   - if the previous use included this node
             # If a tag exists, continue to consider this node if the tag was
             # used for this node - else continue to the next node.
@@ -385,21 +406,22 @@ class Continuous(AgentSchedulingComponent):
                 if _skip_node:
                     continue
 
-            # if only a small set of cores/gpus remains unallocated (ie. less
+            # if only a small set of cores/gpus remains unallocated (i.e., less
             # than node size), we are in fact looking for the last node.  Note
             # that this can also be the first node, for small tasks.
             if rem_slots < slots_per_node:
                 is_last = True
 
-            # we allow partial nodes on the first and last node, and on any
-            # node if a 'scattered' allocation is requested.
-            if is_first or self._scattered or is_last:
-                partial = True
-            else:
+            if not mpi:
+                # non-mpi tasks are never partially allocated
                 partial = False
 
-            # but also, non-mpi tasks are never partially allocated
-            if not mpi:
+            elif is_first or self._scattered or is_last:
+                # we allow partial nodes on the first and last node,
+                # and on any node if a 'scattered' allocation is requested.
+                partial = True
+
+            else:
                 partial = False
 
             # now we know how many slots we still need at this point - but
@@ -410,6 +432,7 @@ class Continuous(AgentSchedulingComponent):
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
                                              find_slots     = find_slots,
+                                             ranks_per_slot = ranks_per_slot,
                                              cores_per_slot = cores_per_slot,
                                              gpus_per_slot  = gpus_per_slot,
                                              lfs_per_slot   = lfs_per_slot,
