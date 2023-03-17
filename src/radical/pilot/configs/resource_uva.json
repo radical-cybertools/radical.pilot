@@ -15,7 +15,6 @@
             "filesystem_endpoint"     : "sftp://rivanna.hpc.virginia.edu/"
         },
         "default_queue"               : "standard",
-        "cores_per_node"              : 40,
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
