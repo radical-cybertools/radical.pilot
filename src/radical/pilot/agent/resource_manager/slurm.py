@@ -33,6 +33,11 @@ class Slurm(ResourceManager):
                 raise RuntimeError('$SLURM_CPUS_ON_NODE not set')
             rm_info.cores_per_node = int(cpn_str)
 
+        if not rm_info.gpus_per_node:
+            gpn_str = os.environ.get('SLURM_GPUS_ON_NODE')
+            if gpn_str is not None:
+                rm_info.gpus_per_node = int(gpn_str)
+
         nodes = [(node, rm_info.cores_per_node) for node in node_names]
 
         rm_info.node_list = self._get_node_list(nodes, rm_info)
