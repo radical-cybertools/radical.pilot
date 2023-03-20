@@ -151,7 +151,7 @@ class TaskDescription(ru.TypedDict):
          - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
            required attributes: `executable`
            related  attributes: `arguments`
-         
+
          - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
            required attributes: `executable`
            related  attributes: `arguments`
