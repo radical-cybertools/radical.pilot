@@ -26,7 +26,6 @@
         "virtenv_mode"                : "use",
         "virtenv"                     : "/home/merzky/radical/radical.pilot.3/ve3/",
         "python_dist"                 : "default",
-        "virtenv_dist"                : "system",
         "cores_per_node"              :  16,
         "gpus_per_node"               :   4,
         "lfs_path_per_node"           : "/tmp",

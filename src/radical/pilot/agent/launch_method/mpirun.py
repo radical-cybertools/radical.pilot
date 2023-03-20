@@ -152,6 +152,7 @@ class MPIRun(LaunchMethod):
         td         = task['description']
         sandbox    = task['task_sandbox_path']
         task_cores = td.get('cores_per_rank', 1)
+        task_gpus  = td.get('gpus_per_rank', 0.)
 
         if '_dplace' in self.name and task_cores > 1:
             # dplace pinning would disallow threads to map to other cores
@@ -203,8 +204,7 @@ class MPIRun(LaunchMethod):
         else        : np = len(host_list)
 
         options = ''
-        if td.get('gpus_per_rank') \
-                and self._mpi_flavor == self.MPI_FLAVOR_SPECTRUM:
+        if task_gpus and self._mpi_flavor == self.MPI_FLAVOR_SPECTRUM:
             # https://on-demand.gputechconf.com/gtc/2018/presentation/
             # s8314-multi-gpu-programming-with-mpi.pdf - s.18
             options = '-gpu '
