@@ -166,8 +166,9 @@ class TaskDescription(ru.TypedDict):
         mapped to other task attributes.
 
         TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are two special types of tasks
-        that defines the requirements of RAPTOR engine master(s) / worker(s) resource 
-        requirements and launch them on one or more than one node.
+        that define RAPTOR's engine master(s) and worker(s) components and their
+        resource requirements to be launched by the Pilot on one or more than one
+        node.
 
     .. py:attribute:: executable
 
