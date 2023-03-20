@@ -148,6 +148,14 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
+         - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+         
+         - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
         There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
         should be used for short running tasks which require a single core and
@@ -156,6 +164,10 @@ class TaskDescription(ru.TypedDict):
         `TASK_SHELL` should only be used if the command to be run requires shell
         specific functionality (pipes, I/O redirection) which cannot easily be
         mapped to other task attributes.
+
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are two special types of tasks
+        that defines the requirements of RAPTOR engine master(s) / worker(s) resource 
+        requirements and launch them on one or more than one node.
 
     .. py:attribute:: executable
 
