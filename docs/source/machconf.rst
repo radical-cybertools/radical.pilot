@@ -158,6 +158,7 @@ A configuration file has to be valid JSON. The structure is as follows:
             "task_launch_method"          : "SSH",
             "mpi_launch_method"           : "MPIEXEC",
             "forward_tunnel_endpoint"     : "login03",
+            "virtenv_mode"                : "create",
             "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
             "python_dist"                 : "default",
             "pre_bootstrap_0"             : ["source /etc/profile",
@@ -195,6 +196,14 @@ All fields are mandatory, unless indicated otherwise below.
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
+* ``virtenv_mode``: RADICAL-Pilot agent enviroment setup (optional):
+        * ``create``: create a python virtual enviroment from scratch (default).
+        * ``recreate``: delete the exsiting virtual enviroment and build it from scratch, if not found then ``create``.
+        * ``use``: use an existing virtual enviroment, if not found then ``create``.
+        * ``update`` update the existing virtual enviroment, if not found then ``create``.
+        * ``local``: use the client existing virtual enviroment.
+* ``virtenv``: only use when ``virtenv_mode=use``, path to an exsiting python enviroment with pre-installed RCT stack (optional). 
+
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
 under ``radical/pilot/configs/`` in the RADICAL-Pilot git repository.
