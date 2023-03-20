@@ -21,8 +21,9 @@ Resources are acquired by submitting a job to the batch system of an HPC
 machine. Once the job is scheduled on the requested resources, RP can directly
 schedule and launch application tasks on those resources. Thus, tasks are not
 scheduled via the batch system of the HPC platform, but directly on the acquired
-resources with the maximum degree of concurrency they afford. See a `brief
-presentation <https://radical-cybertools.github.io/presentations/pilot.mp4>`_ to
+resources with the maximum degree of concurrency they afford. See our `Brief
+Introduction to RADICAL-Pilot
+ <https://radical-cybertools.github.io/presentations/pilot.mp4>`_ to
 see how RP works on an HPC platform.
 
 RP offers unique features when compared to other pilot systems: (1) execution
@@ -42,19 +43,7 @@ architecture.
    :maxdepth: 2
 
    getting_started.ipynb
-   configuration.ipynb
-   describing_tasks.ipynb
-   staging_data.ipynb
+   tutorials.rst
    supported_platforms.rst
    internals.rst
    apidoc.rst
-
-..  merged/3-getting-started.ipynb
-..  merged/data-staging.ipynb
-
-.. Indices and tables
-.. ------------------
-
-.. * :ref:`genindex`
-.. * :ref:`modindex`
-.. * :ref:`search`
