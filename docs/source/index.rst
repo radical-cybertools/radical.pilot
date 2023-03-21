@@ -44,6 +44,6 @@ architecture.
 
    getting_started.ipynb
    tutorials.rst
-   supported_platforms.rst
+   supported.rst
    internals.rst
    apidoc.rst
