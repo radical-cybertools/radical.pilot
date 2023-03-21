@@ -46,3 +46,5 @@ nosetests.xml
 .idea/
 
 makefile
+*.vscode
+_build
