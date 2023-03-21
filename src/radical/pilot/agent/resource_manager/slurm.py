@@ -34,9 +34,12 @@ class Slurm(ResourceManager):
             rm_info.cores_per_node = int(cpn_str)
 
         if not rm_info.gpus_per_node:
-            gpn_str = os.environ.get('SLURM_GPUS_ON_NODE')
-            if gpn_str is not None:
-                rm_info.gpus_per_node = int(gpn_str)
+            if os.environ.get('SLURM_GPUS_ON_NODE'):
+                rm_info.gpus_per_node = int(os.environ['SLURM_GPUS_ON_NODE'])
+            elif os.environ.get('SLURM_JOB_GPUS'):
+                # global GPU IDs of the GPUs allocated to the job
+                gpu_ids = os.environ['SLURM_JOB_GPUS'].split(',')
+                rm_info.gpus_per_node = len(gpu_ids) // len(node_names)
 
         nodes = [(node, rm_info.cores_per_node) for node in node_names]
 
