@@ -165,8 +165,8 @@ class TaskDescription(ru.TypedDict):
         specific functionality (e.g., pipes, I/O redirection) which cannot easily 
         be mapped to other task attributes.
 
-        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of task
-        that define RAPTOR's engine master(s) and worker(s) components and their
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
+        that define RAPTOR's master(s) and worker(s) components and their
         resource requirements. They are launched by the Agent on one or more 
         nodes, depending on their requirements.
 
