@@ -156,19 +156,19 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
-        There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+        There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
         should be used for short running tasks which require a single core and
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (pipes, I/O redirection) which cannot easily be
-        mapped to other task attributes.
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily 
+        be mapped to other task attributes.
 
-        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are two special types of tasks
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of task
         that define RAPTOR's engine master(s) and worker(s) components and their
-        resource requirements to be launched by the Pilot on one or more than one
-        node.
+        resource requirements. They are launched by the Agent on one or more 
+        nodes, depending on their requirements.
 
     .. py:attribute:: executable
 
