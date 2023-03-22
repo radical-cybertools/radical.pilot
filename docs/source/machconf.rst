@@ -161,6 +161,8 @@ A configuration file has to be valid JSON. The structure is as follows:
             "virtenv_mode"                : "create",
             "virtenv"                     : "/home/hpc/pr87be/di29sut/pilotve",
             "python_dist"                 : "default",
+            "cores_per_node"              : 64,
+            "gpus_per_node"               : 4,
             "pre_bootstrap_0"             : ["source /etc/profile",
                                              "source /etc/profile.d/modules.sh",
                                              "module unload mpi.ibm", "module load mpi.intel",
@@ -189,10 +191,12 @@ All fields are mandatory, unless indicated otherwise below.
 * ``filesystem_endpoint``: access url for file staging (interpreted by SAGA).
 * ``default_queue``: queue to use for pilot submission (optional).
 * ``resource_manager``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
-* ``task_launch_method``: type of compute node access, required for non-MPI tasks. Valid values are: ``SSH``,``APRUN`` or ``LOCAL``.
+* ``task_launch_method``: type of compute node access, required for non-MPI tasks. Valid values are: ``SSH``, ``APRUN``, ``LOCAL``.
 * ``mpi_launch_method``: type of MPI support, required for MPI tasks. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN``, etc.
 * ``python_interpreter``: path to python (optional).
 * ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
+* ``cores_per_node``: number of avilable cores per compute node (optional).
+* ``gpus_per_node``: number of avilable gpus per compute node (optional).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
@@ -202,7 +206,7 @@ All fields are mandatory, unless indicated otherwise below.
         * ``use``: use an existing virtual enviroment, if not found then ``create``.
         * ``update`` update the existing virtual enviroment, if not found then ``create``.
         * ``local``: use the client existing virtual enviroment.
-* ``virtenv``: only use when ``virtenv_mode=use``, path to an exsiting python enviroment with pre-installed RCT stack (optional). 
+* ``virtenv``: only use when ``virtenv_mode=use``, path to an exsiting python enviroment with pre-installed RCT stack (optional).
 
 
 Several configuration files are part of the RADICAL-Pilot installation, and can be found
