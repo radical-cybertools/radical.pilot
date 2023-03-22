@@ -191,12 +191,12 @@ All fields are mandatory, unless indicated otherwise below.
 * ``filesystem_endpoint``: access url for file staging (interpreted by SAGA).
 * ``default_queue``: queue to use for pilot submission (optional).
 * ``resource_manager``: type of job management system. Valid values are: ``LOADL``, ``LSF``, ``PBSPRO``, ``SGE``, ``SLURM``, ``TORQUE``, ``FORK``.
-* ``task_launch_method``: type of compute node access, required for non-MPI tasks. Valid values are: ``SSH``, ``APRUN``, ``LOCAL``.
+* ``task_launch_method``: type of compute node access, required for non-MPI tasks. Valid values are: ``SSH``, ``APRUN`` or ``LOCAL``.
 * ``mpi_launch_method``: type of MPI support, required for MPI tasks. Valid values are: ``MPIRUN``, ``MPIEXEC``, ``APRUN``, ``IBRUN``, etc.
 * ``python_interpreter``: path to python (optional).
 * ``python_dist``: `anaconda` or `default`, i.e., not `anaconda` (mandatory).
-* ``cores_per_node``: number of avilable cores per compute node (optional).
-* ``gpus_per_node``: number of avilable gpus per compute node (optional).
+* ``cores_per_node``: number of available cores per compute node (optional).
+* ``gpus_per_node``: number of available gpus per compute node (optional).
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
