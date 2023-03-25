@@ -148,14 +148,27 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
-        There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+         - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+         - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+        There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
         should be used for short running tasks which require a single core and
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (pipes, I/O redirection) which cannot easily be
-        mapped to other task attributes.
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily 
+        be mapped to other task attributes.
+
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
+        that define RAPTOR's master(s) and worker(s) components and their
+        resource requirements. They are launched by the Agent on one or more 
+        nodes, depending on their requirements.
 
     .. py:attribute:: executable
 
@@ -434,6 +447,9 @@ class TaskDescription(ru.TypedDict):
       empty, and the path is *always* considered relative to the locations
       specified above (even though URLs usually don't have a notion of relative
       paths).
+
+      For more details on path and sandbox handling check the documentation of
+      :meth:`radical.pilot.staging_directives.complete_url`.
 
 
     Action operators
