@@ -42,6 +42,24 @@ class SlurmTestCase(TestCase):
         self.assertEqual(rm_info.cores_per_node, 24)
         self.assertEqual(rm_info.gpus_per_node,  1)
 
+        # test `gpus_per_node` discovery
+
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
+                                                      'gpus_per_node' : 0}))
+        self.assertEqual(rm_info.gpus_per_node, 0)
+
+        os.environ['SLURM_GPUS_ON_NODE'] = '10'
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
+                                                      'gpus_per_node' : 0}))
+        self.assertEqual(rm_info.gpus_per_node, 10)
+
+        del os.environ['SLURM_GPUS_ON_NODE']
+        os.environ['SLURM_JOB_GPUS'] = '0,1,2,3'
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
+                                                      'gpus_per_node' : 0}))
+        # 4 GPUs within 2 nodes (list of nodes is in SLURM_NODELIST)
+        self.assertEqual(rm_info.gpus_per_node, 2)
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__', return_value=None)
