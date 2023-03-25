@@ -656,8 +656,12 @@ class Pilot(object):
     #
     def stage_in(self, sds):
         '''
-        Stages the content of the :py:mod:`~radical.pilot.staging_directives` into the
-        pilot's staging area.
+        Stages the content of the :py:mod:`~radical.pilot.staging_directives`
+        to the pilot sandbox.
+
+        Please note the documentation of
+        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        path and sandbox semantics.
         '''
 
         sds = ru.as_list(sds)
@@ -677,9 +681,12 @@ class Pilot(object):
     #
     def stage_out(self, sds=None):
         '''
-        Fetch files (default:`staging_output.tgz`) from the pilot sandbox.
+        Fetches the content of the :py:mod:`~radical.pilot.staging_directives`
+        from the pilot sandbox.
 
-        See :py:mod:`radical.pilot.staging_directives`.
+        Please note the documentation of
+        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        path and sandbox semantics.
         '''
 
         sds = ru.as_list(sds)
