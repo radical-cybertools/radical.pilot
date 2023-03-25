@@ -36,7 +36,7 @@ PilotManagers
    :special-members: __init__
 
 PilotDescription
------------------------
+----------------
 .. autoclass:: radical.pilot.PilotDescription
    :members:
 
@@ -46,7 +46,7 @@ Pilots
    :members:
 
 Tasks and TaskManagers
-=============================
+======================
 
 TaskManager
 -----------
@@ -55,13 +55,28 @@ TaskManager
    :special-members: __init__
 
 TaskDescription
------------------------
+---------------
 .. autoclass:: radical.pilot.TaskDescription
    :members:
 
 Task
------------
+----
 .. autoclass:: radical.pilot.Task
+   :members:
+
+Utilities and helpers
+---------------------
+.. automodule:: radical.pilot.utils.component
+   :members:
+.. automodule:: radical.pilot.utils.db_utils
+   :members:
+.. automodule:: radical.pilot.utils.prof_utils
+   :members:
+.. automodule:: radical.pilot.utils.serializer
+   :members:
+.. automodule:: radical.pilot.utils.session
+   :members:
+.. automodule:: radical.pilot.utils.misc
    :members:
 
 
