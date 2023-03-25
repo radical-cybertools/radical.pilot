@@ -448,6 +448,9 @@ class TaskDescription(ru.TypedDict):
       specified above (even though URLs usually don't have a notion of relative
       paths).
 
+      For more details on path and sandbox handling check the documentation of
+      :meth:`radical.pilot.staging_directives.complete_url`.
+
 
     Action operators
     ----------------
