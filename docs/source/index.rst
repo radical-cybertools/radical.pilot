@@ -45,5 +45,6 @@ architecture.
    getting_started.ipynb
    tutorials.rst
    supported.rst
-   internals.rst
+   envs.rst
    apidoc.rst
+   internals.rst
