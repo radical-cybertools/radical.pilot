@@ -25,8 +25,8 @@ def run(fpath, cname, cfg):
         # import all known workers into the local name space so that
         # `get_type` has a chance to find them
 
-        from rp.raptor import DefaultWorker       # pylint: disable=W0611 # noqa
-        from rp.raptor import MPIWorker           # pylint: disable=W0611 # noqa
+        from radical.pilot.raptor import DefaultWorker  # pylint: disable=W0611 # noqa
+        from radical.pilot.raptor import MPIWorker      # pylint: disable=W0611 # noqa
 
         wclass = ru.get_type(cname)
 

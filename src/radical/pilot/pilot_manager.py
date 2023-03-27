@@ -612,9 +612,13 @@ class PilotManager(rpu.Component):
                 ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
                         % (self._session._rec, pilot.uid, self._rec_id))
 
-            self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
-                      (pilot.uid, pd['resource'],
-                       pd.get('cores', 0), pd.get('gpus', 0)))
+            if pd.get('nodes'):
+                self._rep.plain('\n\t%s   %-20s %6d nodes' %
+                                (pilot.uid, pd['resource'], pd['nodes']))
+            else:
+                self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
+                                (pilot.uid, pd['resource'],
+                                 pd.get('cores', 0), pd.get('gpus', 0)))
 
 
         # initial state advance to 'NEW'
