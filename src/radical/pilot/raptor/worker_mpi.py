@@ -434,10 +434,18 @@ class MPIWorkerRank(mt.Thread):
                 self._prof.prof('advance',    uid=uid, state=AGENT_EXECUTING)
                 self._prof.prof('task_start', uid=uid)
 
+                sbox = task['description'].get('sandbox')
+                if not sbox:
+                    sbox = self._sbox + '/' + task['uid']
+                    task['description']['sandbox'] = sbox
+
                 try:
                     # this should never happen
                     if self._rank not in task['ranks']:
                         raise RuntimeError('inconsistent rank info')
+
+                    ru.rec_makedir(sbox)
+                    os.chdir(sbox)
 
                     self._prof.prof('exec_start', uid=uid)
                     out, err, ret, val, exc = self._dispatch(task)
@@ -463,6 +471,7 @@ class MPIWorkerRank(mt.Thread):
                 finally:
                     # send task back to rank 0
                     # FIXME: task_exec_stop
+                    os.chdir(self._sbox)
                     self._prof.prof('unschedule_start', uid=uid)
                     rank_result_q.put(task)
 

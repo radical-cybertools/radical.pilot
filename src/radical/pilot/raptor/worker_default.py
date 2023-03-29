@@ -279,17 +279,28 @@ class DefaultWorker(Worker):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['slots']['gpus'])
 
+            sbox = task['description'].get('sandbox')
+            if not sbox:
+                sbox = self._sbox + '/' + task['uid']
+                task['description']['sandbox'] = sbox
+
             out = None
             err = None
             ret = 1
             val = None
             exc = [None, None]
             try:
+
+                ru.rec_makedir(sbox)
+                os.chdir(sbox)
                 dispatcher = self.get_dispatcher(task['description']['mode'])
                 out, err, ret, val, exc = dispatcher(task)
 
             except Exception as e:
                 exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+
+            finally:
+                os.chdir(self._sbox)
 
             res = [task, out, err, ret, val, exc]
 
