@@ -86,9 +86,6 @@ class Flux(AgentExecutingComponent) :
         self.register_input(rps.AGENT_SCHEDULING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        # also listen on the command channel for task cancellation requests
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.control_cb)
-
         # wait for some time to get watcher and listener initialized
         start = time.time()
         while time.time() - start < 10.0:
@@ -102,19 +99,10 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def control_cb(self, topic, msg):
+    def cancel_task(self, uid):
 
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-      # arg = msg['arg']
-
-        if cmd == 'cancel_tasks':
-
-            # FIXME: clarify how to cancel tasks in Flux
-            pass
-
-        return True
+        # FIXME: clarify how to cancel tasks in Flux
+        pass
 
 
     # --------------------------------------------------------------------------

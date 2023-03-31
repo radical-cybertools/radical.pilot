@@ -21,6 +21,7 @@ from .context                   import Context
 
 from .task_manager              import TaskManager
 from .task                      import Task
+from .raptor_tasks              import RaptorMaster, RaptorWorker
 from .pytask                    import PythonTask
 from .task_description          import TaskDescription
 from .task_description          import TASK_EXECUTABLE, TASK_FUNCTION

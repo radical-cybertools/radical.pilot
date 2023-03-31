@@ -139,18 +139,10 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def control_cb(self, topic, msg):
+    def cancel_task(self, uid):
 
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-
-        if cmd == 'cancel_tasks':
-
-            # FIXME: clarify how to cancel tasks
-            pass
-
-        return True
+        # FIXME: clarify how to cancel tasks in Flux
+        pass
 
 
 # ------------------------------------------------------------------------------

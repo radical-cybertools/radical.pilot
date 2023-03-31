@@ -64,7 +64,6 @@ class Worker(object):
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
                                                     'arg': {'uid' : self._uid}})
 
-
           # # FIXME: we never unregister on termination
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})

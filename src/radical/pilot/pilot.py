@@ -74,6 +74,7 @@ class Pilot(object):
         self._callbacks  = dict()
         self._cache      = dict()    # cache of SAGA dir handles
         self._cb_lock    = ru.RLock()
+        self._tmgr       = None
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -169,7 +170,6 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def _default_state_cb(self, pilot, state=None):
-
 
         uid   = self.uid
         state = self.state
@@ -596,6 +596,58 @@ class Pilot(object):
             pass
 
         self._pmgr.cancel_pilots(self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def attach_tmgr(self, tmgr) -> None:
+
+        if self._tmgr:
+            raise RuntimeError('this pilot is already attached to %s'
+                               % self._tmgr.uid)
+        self._tmgr = tmgr
+
+      # if self._task_waitpool:
+      #     self._tmgr.submit_tasks(self._task_waitpool)
+      #
+      # if self._raptor_waitpool:
+      #     self._tmgr.submit_tasks(self._raptor_waitpool)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_tasks(self, descriptions):
+
+        for descr in descriptions:
+            descr.pilot = self.uid
+
+        if not self._tmgr:
+
+          # self._task_waitpool.append(descriptions)
+          # return  # FIXME: cannot return tasks here
+
+            raise RuntimeError('pilot is not attached to a task manager, yet')
+
+        return self._tmgr.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_raptors(self, descriptions):
+
+        descriptions = ru.as_list(descriptions)
+
+        for descr in descriptions:
+            descr.pilot = self.uid
+
+        if not self._tmgr:
+
+          # self._task_waitpool.append(descriptions)
+          # return  # FIXME: cannot return tasks here
+
+            raise RuntimeError('pilot is not attached to a task manager, yet')
+
+        return self._tmgr.submit_raptor(descriptions)
 
 
     # --------------------------------------------------------------------------

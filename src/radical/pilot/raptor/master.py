@@ -1,6 +1,5 @@
 
 import os
-import sys
 import copy
 import time
 
@@ -19,11 +18,6 @@ from .. import constants as rpc
 from .. import Session, Task, TaskDescription, TASK_EXECUTABLE
 
 from ..task_description import RAPTOR_WORKER
-
-
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -132,7 +126,7 @@ class Master(rpu.Component):
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # and register that input queue with the scheduler
-        self._log.debug('registered raptor queue')
+        self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
         self.publish(rpc.CONTROL_PUBSUB,
                       {'cmd': 'register_raptor_queue',
                        'arg': {'name' : self._uid,
@@ -173,7 +167,6 @@ class Master(rpu.Component):
         cfg['log_lvl'] = 'warn'
         cfg['kind']    = 'master'
         cfg['sid']     = self._sid
-        cfg['base']    = self._sbox
         cfg['path']    = self._sbox
 
         cfg = ru.Config(cfg=cfg)
@@ -599,8 +592,15 @@ class Master(rpu.Component):
 
         self._log.debug('request_cb: %d', len(tasks))
 
+        normal_tasks = list()
+        for task in tasks:
+            if task['description']['mode'] == RAPTOR_WORKER:
+                self.submit_workers(task['description'], 1)
+            else:
+                normal_tasks.append(task)
+
         try:
-            filtered = self.request_cb(tasks)
+            filtered = self.request_cb(normal_tasks)
             if filtered:
                 for task in filtered:
                     self._log.debug('REQ cb: %s', task['uid'])

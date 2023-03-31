@@ -77,24 +77,6 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def control_cb(self, topic, msg):
-
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'cancel_tasks':
-
-            self._log.info('cancel_tasks command (%s)' % arg)
-            for tid in arg['uids']:
-                self.cancel_task(tid)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def cancel_task(self, uid):
 
         self._watch_queue.put([self.TO_CANCEL, uid])
@@ -575,6 +557,7 @@ class Popen(AgentExecutingComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_REGISTRY_URL="%s"\n'     % self.prof
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)

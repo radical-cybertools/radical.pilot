@@ -14,7 +14,8 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as rpcud
+from .task_description import TaskDescription, RAPTOR_MASTER, RAPTOR_WORKER
+from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -360,8 +361,8 @@ class TaskManager(rpu.Component):
 
                     self._log.debug('task %s is  restartable', task['uid'])
                     task['restarted'] = True
-                    ud = rpcud.TaskDescription(task['description'])
-                    to_restart.append(ud)
+                    descr = TaskDescription(task['description'])
+                    to_restart.append(descr)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old task.
 
@@ -702,6 +703,9 @@ class TaskManager(rpu.Component):
             # sanity check, and keep pilots around for inspection
             for pilot in pilots:
 
+                # let the pilot know that we own it now
+                pilot.attach_tmgr(self)
+
                 if isinstance(pilot, dict):
                     pilot_dict = pilot
                 else:
@@ -830,6 +834,57 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def submit_raptor(self, descriptions):
+        """
+        Submits on or more :class:`radical.pilot.TaskDescription` instances to
+        the task manager, where the `TaskDescriptions` have the mode
+        `RAPTOR_MASTER` set.
+
+        This is a thin wrapper around `submit_tasks`.
+
+        **Returns:**
+              * A list of :class:`radical.pilot.Raptor` objects.
+        """
+
+        descriptions = ru.as_list(descriptions)
+
+        for descr in descriptions:
+            descr.mode       = RAPTOR_MASTER
+            descr.executable = 'raptor_master.py'
+
+        return self.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_workers(self, descriptions, raptor_id=None):
+        """
+        Submits on or more :class:`radical.pilot.TaskDescription` instances to
+        the task manager, where the `TaskDescriptions` have the mode
+        `RAPTOR_WORKER` set.
+
+        uid:  (str) ID of raptor master this worker will be associated with
+
+        This is a thin wrapper around `submit_tasks`.
+
+        **Returns:**
+              * A list of :class:`radical.pilot.RaptorWorker` objects.
+        """
+
+        descriptions = ru.as_list(descriptions)
+
+        for descr in descriptions:
+            descr.mode       = RAPTOR_MASTER
+            descr.executable = 'raptor_worker.py'
+
+            if raptor_id:
+                descr.raptor[RAPTOR_MASTER] = raptor_id
+
+        return self.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
     def submit_tasks(self, descriptions):
         """
         Submits on or more :class:`radical.pilot.Task` instances to the
@@ -857,25 +912,27 @@ class TaskManager(rpu.Component):
         # we return a list of tasks
         self._rep.progress_tgt(len(descriptions), label='submit')
         tasks = list()
-        for ud in descriptions:
+        for descr in descriptions:
 
-            task = Task(tmgr=self, descr=ud, origin='client')
-            tasks.append(task)
+            mode = descr.mode
+
+            if mode == RAPTOR_MASTER:
+                task = RaptorMaster(tmgr=self, descr=descr, origin='client')
+
+            elif mode == RAPTOR_WORKER:
+                task = RaptorWorker(tmgr=self, descr=descr, origin='client')
+
+            else:
+                task = Task(tmgr=self, descr=descr, origin='client')
+                tasks.append(task)
 
             # keep tasks around
             with self._tasks_lock:
                 self._tasks[task.uid] = task
 
-            if self._session._rec:
-                ru.write_json(ud.as_dict(), "%s/%s.batch.%03d.json"
-                        % (self._session._rec, task.uid, self._rec_id))
-
             self._rep.progress()
 
         self._rep.progress_done()
-
-        if self._session._rec:
-            self._rec_id += 1
 
         # insert tasks into the database, as a bulk.
         task_docs = [u.as_dict() for u in tasks]

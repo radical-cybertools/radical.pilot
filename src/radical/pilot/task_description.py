@@ -86,8 +86,8 @@ PILOT            = 'pilot'
 STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
-SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
+RAPTOR           = 'raptor'
 METADATA         = 'metadata'
 
 
@@ -379,15 +379,17 @@ class TaskDescription(ru.TypedDict):
        a pilot, but cannot finish because the pilot fails or is canceled,
        the task can be restarted.
 
-    .. py:attribute:: scheduler
-
-       [type: `str` | default: `""`] Request the task to be handled by a
-       specific agent scheduler.
-
     .. py:attribute:: tags
 
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
+
+    .. py:attribute:: raptor
+
+       [type: `dict` | default: `{}`] raptor related properties.  Supported
+       properties are:
+
+         `rp.RAPTOR_MASTER`: (str) Raptor master ID this task is associated with
 
     .. py:attribute:: metadata
 
@@ -571,8 +573,8 @@ class TaskDescription(ru.TypedDict):
         MEM_PER_PROCESS : int         ,  # MEM_PER_RANK
 
         RESTARTABLE     : bool        ,
-        SCHEDULER       : str         ,
         TAGS            : {None: None},
+        RAPTOR          : {str: str}  ,
         METADATA        : None        ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
@@ -582,7 +584,7 @@ class TaskDescription(ru.TypedDict):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : None        ,
+        MODE            : TASK_EXECUTABLE,
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
@@ -626,8 +628,8 @@ class TaskDescription(ru.TypedDict):
         MEM_PER_PROCESS : 0           ,
 
         RESTARTABLE     : False       ,
-        SCHEDULER       : ''          ,
         TAGS            : dict()      ,
+        RAPTOR          : dict()      ,
         METADATA        : None        ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,

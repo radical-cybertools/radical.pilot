@@ -46,6 +46,7 @@ class Agent_0(rpu.Worker):
         self._uid     = 'agent.0'
         self._cfg     = cfg
         self._pid     = cfg.pid
+        self._sid     = cfg.sid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
 
@@ -63,9 +64,10 @@ class Agent_0(rpu.Worker):
         reg_uid = 'radical.pilot.reg.%s' % self._uid
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()
+        self._reg_addr = self._reg_service.addr
 
         # let all components know where to look for the registry
-        self._cfg['reg_addr'] = self._reg_service.addr
+        self._cfg['reg_addr'] = self._reg_addr
 
         # connect to MongoDB for state push/pull
         self._connect_db()

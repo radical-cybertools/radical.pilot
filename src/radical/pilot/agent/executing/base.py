@@ -5,7 +5,9 @@ __license__   = 'MIT'
 import os
 import time
 
-import threading as mt
+import threading          as mt
+
+import radical.utils      as ru
 
 from ... import states    as rps
 from ... import agent     as rpa
@@ -125,7 +127,18 @@ class AgentExecutingComponent(rpu.Component):
     #
     def control_cb(self, topic, msg):
 
-        raise NotImplementedError('control_cb is not implemented')
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_tasks':
+
+            self._log.info('cancel_tasks command (%s)', arg)
+            for tid in arg['uids']:
+                self.cancel_task(tid)
+
+        return True
 
 
     # --------------------------------------------------------------------------
