@@ -137,13 +137,5 @@ class Sleep(AgentExecutingComponent) :
                                     publish=True, push=True)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def cancel_task(self, uid):
-
-        # FIXME: clarify how to cancel tasks in Flux
-        pass
-
-
 # ------------------------------------------------------------------------------
 

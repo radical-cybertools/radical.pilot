@@ -172,13 +172,6 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
-
-        raise NotImplementedError('no cancellation support in sleep executor')
-
-
-    # --------------------------------------------------------------------------
-    #
     def handle_events(self, task, events):
         '''
         Return `True` on final events so that caller can clean caches.
