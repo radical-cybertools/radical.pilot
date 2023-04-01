@@ -94,6 +94,7 @@ PILOT_ID=
 RP_VERSION=
 PYTHON=
 PYTHON_DIST=
+VIRTENV_DIST=
 SESSION_ID=
 SESSION_SANDBOX=
 PILOT_SANDBOX=`pwd`
@@ -115,6 +116,12 @@ PREBOOTSTRAP2=""
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600 # 10 min
+
+VIRTENV_VER="virtualenv-16.7.5"
+VIRTENV_DIR="$VIRTENV_VER"
+VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/66/f0/6867af06d2e2f511e4e1d7094ff663acdebc4f15d4a0cb0fed1007395124/$VIRTENV_TGZ"
+VIRTENV_IS_ACTIVATED=FALSE
 
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex dill"
@@ -653,6 +660,7 @@ virtenv_setup()
     virtenv="$2"
     virtenv_mode="$3"
     python_dist="$4"
+    virtenv_dist="$5"
 
     ve_create=UNDEFINED
     ve_update=UNDEFINED
@@ -817,7 +825,7 @@ virtenv_setup()
         then
             echo 'rp lock for virtenv create'
             lock "$pid" "$virtenv" # use default timeout
-            virtenv_create "$virtenv" "$python_dist"
+            virtenv_create "$virtenv" "$python_dist" "$virtenv_dist"
             if ! test "$?" = 0
             then
                 echo "ERROR: couldn't create virtenv - abort"
@@ -993,11 +1001,66 @@ virtenv_create()
 
     virtenv="$1"
     python_dist="$2"
+    virtenv_dist="$3"
 
     if test "$python_dist" = "default"
     then
 
-        VIRTENV_CMD="$PYTHON -m venv"
+        # check if the `venv` module is installed
+        if python3 -m venv -h > /dev/null 2>&1
+        then
+            VIRTENV_CMD="$PYTHON -m venv"
+
+        else
+            # the `venv` module is not available - fall back to virtualenv
+            if test "$virtenv_dist" = "default"
+            then
+                virtenv_dist="20.21.0"
+            fi
+
+            if test "$virtenv_dist" = "20.21.0"
+            then
+                flags='-1 -k -L -O'
+                if (hostname -f | grep -e '^smic' > /dev/null)
+                then
+                    flags='-k -L -O'
+                fi
+
+                run_cmd "Download virtualenv tgz" \
+                        "curl $flags '$VIRTENV_TGZ_URL'"
+
+                if ! test "$?" = 0
+                then
+                    echo "WARNING: couldn't download virtualenv via curl! Using system version"
+                    virtenv_dist="system"
+
+                else
+                    run_cmd "unpacking virtualenv tgz" \
+                            "tar zxmf '$VIRTENV_TGZ'"
+
+                    if test $? -ne 0
+                    then
+                        echo "Couldn't unpack virtualenv! Using system version"
+                        virtenv_dist="system"
+                    else
+                        VIRTENV_CMD="$PYTHON $VIRTENV_DIR/virtualenv.py"
+                    fi
+
+                fi
+            fi
+
+            # don't use `elif` here - above falls back to 'system' virtenv on errors
+            if test "$virtenv_dist" = "system"
+            then
+                VIRTENV_CMD="virtualenv"
+            fi
+
+            if test "$VIRTENV_CMD" = ""
+            then
+                echo "ERROR: invalid or unusable virtenv_dist option"
+                return 1
+            fi
+        fi
 
         run_cmd "Create virtualenv" \
                 "$VIRTENV_CMD $virtenv"
@@ -1006,6 +1069,12 @@ virtenv_create()
         then
             echo "ERROR: couldn't create virtualenv"
             return 1
+        fi
+
+        # clean out virtenv sources
+        if test -d "$VIRTENV_DIR"
+        then
+            rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
         fi
 
     elif test "$python_dist" = "anaconda"
@@ -1417,6 +1486,7 @@ untar()
 #    -d   distribution source tarballs for radical stack install
 #    -e   execute commands before bootstrapping phase 1: the main agent
 #    -f   tunnel forward endpoint (MongoDB host:port)
+#    -g   virtualenv distribution (default, 1.9, system)
 #    -h   hostport to create tunnel to
 #    -i   python Interpreter to use, e.g., python2.7
 #    -j   add a command for the service node
@@ -1433,7 +1503,7 @@ untar()
 #
 # NOTE: -z makes some assumptions on sandbox and tarball location
 #
-while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:b:cd:e:f:g:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"         ;;
         b)  PYTHON_DIST="$OPTARG"             ;;
@@ -1441,6 +1511,7 @@ while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         d)  SDISTS="$OPTARG"                  ;;
         e)  pre_bootstrap_0 "$OPTARG"         ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
+        g)  VIRTENV_DIST="$OPTARG"            ;;
         h)  HOSTPORT="$OPTARG"                ;;
         i)  PYTHON="$OPTARG"                  ;;
         j)  add_services "$OPTARG"            ;;
@@ -1653,7 +1724,8 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
+                 "$PYTHON_DIST" "$VIRTENV_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 create_deactivate
 
