@@ -10,6 +10,7 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
+from .task_description   import RAPTOR_MASTER
 from .staging_directives import complete_url
 
 
@@ -635,17 +636,18 @@ class Pilot(object):
     #
     def submit_raptors(self, descriptions):
 
-        descriptions = ru.as_list(descriptions)
-
-        for descr in descriptions:
-            descr.pilot = self.uid
-
         if not self._tmgr:
 
           # self._task_waitpool.append(descriptions)
           # return  # FIXME: cannot return tasks here
 
             raise RuntimeError('pilot is not attached to a task manager, yet')
+
+        descriptions = ru.as_list(descriptions)
+
+        for descr in descriptions:
+            descr.pilot = self.uid
+            descr.mode  = RAPTOR_MASTER
 
         return self._tmgr.submit_raptor(descriptions)
 

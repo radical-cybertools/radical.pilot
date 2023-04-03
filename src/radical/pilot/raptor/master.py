@@ -5,7 +5,7 @@ import time
 
 
 from collections import defaultdict
-from typing      import Dict, Union
+from typing      import List, Dict, Union
 
 import threading         as mt
 
@@ -266,62 +266,71 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_workers(self, descr: Dict[str, Union[str, int]],
-                             count: int) -> None:
+    def submit_workers(self, descriptions: List[TaskDescription]
+                           ) -> None:
         '''
-        Submit`count` workers per given `descr`, and pass the queue info as
-        configuration file.  Do *not* wait for the workers to come up - they are
-        expected to register via the control channel.
+        Submit a raptor workers per given `descriptions` element and pass the
+        queue raptor info as configuration file.  Do *not* wait for the workers
+        to come up - they are expected to register via the control channel.
 
-        The `descr` dict is expected to support the following keys:
+        The task `descriptions` specifically support the following keys:
 
-          - named_env       : environment to use (same as master usually)
-          - ranks           : number of MPI ranks per worker
-          - cores_per_rank  : int, number of cores per worker rank
-          - gpus_per_rank   : int, number of gpus per worker rank
-          - worker_class    : str, type name of worker class to execute
-          - worker_file     : str, optional if an RP worker class is used
+          - raptor_class: str, type name of worker class to execute
+          - raptor_file : str, optional if an RP worker class is used
 
-        Note that only one rank (presumably rank 0) should register with the
-        master - the worker ranks are expected to syncronize their ranks as
+        Note that only one worker rank (presumably rank 0) should register with
+        the master - the workers are expected to syncronize their ranks as
         needed.
         '''
+
+        # FIXME registry: use registry instead of config files
+
         tasks = list()
         base  = self._uid
 
-        worker_file  = descr.pop('worker_file', '')
-        worker_class = descr.pop('worker_class', 'DefaultWorker')
+        for td in descriptions:
 
-        td = TaskDescription(descr)
-        td.mode       = RAPTOR_WORKER
-        td.executable = 'radical-pilot-raptor-worker'
+            # sharing GPUs among multiple ranks not yet supported
+            if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
+                raise RuntimeError('GPU sharing for workers is not supported')
 
-        # ensure that defaults and backward compatibility kick in
-        td.verify()
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
 
-        cfg                   = copy.deepcopy(self._cfg)
-        cfg['info']           = self._info
-        cfg['ts_addr']        = self._task_service.addr
-        cfg['ranks']          = td.ranks
-        cfg['cores_per_rank'] = td.cores_per_rank
-        # sharing GPUs among multiple ranks not supported
-        if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
-            raise RuntimeError('GPU sharing for workers is not supported')
-        cfg['gpus_per_rank']  = int(td.gpus_per_rank)
+            assert td.mode == RAPTOR_WORKER
 
-        for i in range(count):
+            raptor_file   = td.get('raptor_file')  or  ''
+            raptor_class  = td.get('raptor_class') or  'DefaultWorker'
 
-            uid        = '%s.worker.%04d' % (base, i)
-            cfg['uid'] = uid
+            if not td.get('uid'):
+                td.uid = '%s.worker' % base
+                # NOTE: ensure uniqueness in tmgr
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-worker'
+
+            if not td.get('sandbox'):
+                td.sandbox = self._sbox
+
+            ru.rec_makedir(td.sandbox)
+
+            cfg                   = copy.deepcopy(self._cfg)
+            cfg['uid']            = td.uid
+            cfg['info']           = self._info
+            cfg['ts_addr']        = self._task_service.addr
+            cfg['ranks']          = td.ranks
+            cfg['cores_per_rank'] = td.cores_per_rank
+            cfg['gpus_per_rank']  = int(td.gpus_per_rank)
+
 
             now   = time.time()
-            fname = './%s.json' % uid
+            fname = '%s/%s.json' % (td.sandbox, td.uid)
             ru.write_json(cfg, fname)
 
             # this master is obviously running in a suitable python3 env,
             # so we expect that the same env is also suitable for the worker
             # NOTE: shell escaping is a bit tricky here - careful on change!
-            td.arguments  = [worker_file, worker_class, fname]
+            td.arguments = [raptor_file, raptor_class, fname]
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -331,8 +340,8 @@ class Master(rpu.Component):
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['status']            = self.NEW
             task['type']              = 'task'
-            task['uid']               = uid
-            task['task_sandbox_path'] = self._sbox
+            task['uid']               = td.uid
+            task['task_sandbox_path'] = td.sbox
             task['task_sandbox']      = 'file://localhost/' + self._sbox
             task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
@@ -346,11 +355,11 @@ class Master(rpu.Component):
             #       being maintained through the component's message push,
             #       the update worker's message receive up to the insertion
             #       order into the update worker's DB bulk op.
-            self._log.debug('insert %s', uid)
+            self._log.debug('insert %s', td.uid)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
-            self._workers[uid] = {
-                    'uid'        : uid,
+            self._workers[td.uid] = {
+                    'uid'        : td.uid,
                     'status'     : self.NEW,
                     'heartbeats' : {r: now for r in range(td.ranks)},
                     'description': task['description']

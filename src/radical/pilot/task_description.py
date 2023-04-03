@@ -149,12 +149,12 @@ class TaskDescription(ru.TypedDict):
            related  attributes: `arguments`
 
          - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
-           required attributes: `executable`
-           related  attributes: `arguments`
+           required attributes: `raptor_class`
+           related  attributes: `raptor_file`
 
          - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
-           required attributes: `executable`
-           related  attributes: `arguments`
+           required attributes: `raptor_class`
+           related  attributes: `raptor_file`
 
         There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
@@ -162,12 +162,12 @@ class TaskDescription(ru.TypedDict):
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (e.g., pipes, I/O redirection) which cannot easily 
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily
         be mapped to other task attributes.
 
         TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
         that define RAPTOR's master(s) and worker(s) components and their
-        resource requirements. They are launched by the Agent on one or more 
+        resource requirements. They are launched by the Agent on one or more
         nodes, depending on their requirements.
 
     .. py:attribute:: executable
@@ -384,12 +384,19 @@ class TaskDescription(ru.TypedDict):
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
 
-    .. py:attribute:: raptor
+    .. py:attribute:: raptor_id
 
-       [type: `dict` | default: `{}`] raptor related properties.  Supported
-       properties are:
+       [type: `str` | default: ``] Raptor master ID this task is associated with
 
-         `rp.RAPTOR_MASTER`: (str) Raptor master ID this task is associated with
+    .. py:attribute:: raptor_class
+
+       [type: `str` | default: ``] Class name to instantiate for this Raptor
+       master or worker task.
+
+    .. py:attribute:: raptor_file
+
+       [type: `str` | default: ``] Optional application supplied Python source
+       file to load `raptor_class` from.
 
     .. py:attribute:: metadata
 
