@@ -38,13 +38,12 @@ if __name__ == '__main__':
         tmgr.wait_tasks(task.uid)
         print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
 
-        worker.cancel()
-        tmgr.wait_tasks(worker.uid)
-        print('%s [%s]: %s' % (worker.uid, worker.state, worker.stdout))
-
-        raptor.cancel()
+        raptor.rpc('stop')
         tmgr.wait_tasks(raptor.uid)
         print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
+
+        tmgr.wait_tasks(worker.uid)
+        print('%s [%s]: %s' % (worker.uid, worker.state, worker.stdout))
 
     finally:
         session.close(download=False)

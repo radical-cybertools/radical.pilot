@@ -718,7 +718,7 @@ class Pilot(object):
         This is basically an RPC into the pilot.
         '''
 
-        reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
+        reply = self._session._dbs.pilot_rpc(self.uid, self.uid, rpc, args)
 
         return reply
 

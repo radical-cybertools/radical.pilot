@@ -653,11 +653,11 @@ class Agent_0(rpu.Worker):
             rpc_res = msg['arg']
 
             if cmd != 'rpc_res':
-                # not an rpc responese
+                # not an rpc responese, keep cb registered
                 return True
 
             if rpc_res['uid'] != rpc_id:
-                # not the right rpc response
+                # not the right rpc response, keep cb registered
                 return True
 
             # send the response to the DB
@@ -665,7 +665,7 @@ class Agent_0(rpu.Worker):
                                  'uid'   : self._pid},
                                 {'$set'  : {'rpc_res': rpc_res}})
 
-            # work is done - unregister this temporary cb (rpc_cb)
+            # work is done - unregister this temporary cb
             return False
 
 

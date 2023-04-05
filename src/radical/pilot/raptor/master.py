@@ -253,6 +253,30 @@ class Master(rpu.Component):
             self._workers[uid]['status'] = self.DONE
 
 
+        elif cmd == 'rpc_req':
+
+            if arg['tgt'] != self._uid:
+                return
+
+            self._log.debug('handle rpc %s', arg)
+
+            rpc_res = {'uid': arg['uid']}
+            if arg['rpc'] == 'stop':
+                self.stop()
+                rpc_res['err'] = ''
+                rpc_res['out'] = ''
+                rpc_res['ret'] = 0
+
+            else:
+                rpc_res['err'] = 'unknown rpc command'
+                rpc_res['out'] = ''
+                rpc_res['ret'] = 1
+
+
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
+                                              'arg':  rpc_res})
+
+
     # --------------------------------------------------------------------------
     #
     def _state_cb(self, topic, msg):
