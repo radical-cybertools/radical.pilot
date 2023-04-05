@@ -759,6 +759,10 @@ class TaskDescription(ru.TypedDict):
         if self.gpu_threads     : pass
         if self.gpu_thread_type : pass
 
+        if self.environment:
+            for k,v in self.environment.items():
+                self.environment[k] = str(v)
+
       # if self.mode in [TASK_SHELL, TASK_PROC]:
       #
       #     if self.get('cpu_processes', 1) * self.get('cpu_threads', 1) > 1:

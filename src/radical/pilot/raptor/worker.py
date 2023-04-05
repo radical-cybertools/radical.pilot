@@ -97,9 +97,10 @@ class Worker(object):
         self.register_mode(TASK_SHELL,    self._dispatch_shell)
 
         # prepare base env dict used for all tasks
+        # NOTE: raptor tasks run in the same environment as the raptor worker
         self._task_env = dict()
         for k,v in os.environ.items():
-            if k.startswith('RP_'):
+            if not k.startswith('RP_'):
                 self._task_env[k] = v
 
 
@@ -499,12 +500,13 @@ class Worker(object):
             uid  = task['uid']
             exe  = task['description']['executable']
             args = task['description'].get('arguments', list())
-            tenv = task['description'].get('environment', dict())
+            env  = dict(self._task_env)
+            env.update(task['description']['environment'])
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
             self._prof.prof('rank_start', uid=uid)
-            proc = sp.Popen(cmd, env=tenv,  stdin=None,
+            proc = sp.Popen(cmd, env=env,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
             out, err = proc.communicate()
@@ -533,7 +535,9 @@ class Worker(object):
         try:
             uid = task['uid']
             cmd = task['description']['command']
-            env = task['description']['environment']
+            env = dict(self._task_env)
+            env.update(task['description']['environment'])
+
           # self._log.debug('shell: --%s--', cmd)
 
             self._prof.prof('rank_start', uid=uid)

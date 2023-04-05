@@ -494,8 +494,8 @@ class MPIWorkerRank(mt.Thread):
                'RP_GTOD'            : os.environ['RP_GTOD'],
                'RP_PROF'            : os.environ['RP_PROF'],
                'RP_PROF_TGT'        : os.environ['RP_PROF_TGT'],
-               'RP_RANKS'           : 1,  # dispatch_mpi will oveerwrite this
-               'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
+               'RP_RANKS'           : '1',  # dispatch_mpi will overwrite this
+               'RP_RANK'            : '0',  # dispatch_mpi will overwrite this
                })
 
         if task['description']['ranks'] > 1:
