@@ -59,21 +59,21 @@ class Worker(object):
         time.sleep(1)
 
         # the manager (rank 0) registers the worker with the master
+        self._register_event = mt.Event()
         if self._manager:
-            self._register_event = mt.Event()
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
                     {'cmd': 'worker_register',
                      'arg': {'uid'        : self._uid,
                              'raptor_id'  : self._raptor_id,
                              'description': self._descr}})
 
-            # wait for raptor response
-            self._log.debug('=== wait for registration to complete')
-            self._register_event.wait()
-
           # # FIXME: we never unregister on termination
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})
+
+        # wait for raptor response
+        self._log.debug('=== wait for registration to complete')
+        self._register_event.wait()
 
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
         self._hb_delay  = 5
@@ -143,8 +143,7 @@ class Worker(object):
 
             self._log.debug('=== registration complete: %s', self._manager)
 
-            if self._manager:
-                self._register_event.set()
+            self._register_event.set()
 
         elif cmd == 'terminate':
             self.stop()

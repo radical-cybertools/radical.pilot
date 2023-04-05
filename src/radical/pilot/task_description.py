@@ -44,8 +44,11 @@ CODE             = 'code'
 COMMAND          = 'command'
 
 # mode: RAPTOR_MASTER, RAPTOR_WORKER
+SCHEDULER        = 'scheduler'                # deprecated for `raptor_id`
 RAPTOR_ID        = 'raptor_id'
+WORKER_CLASS     = 'worker_class'             # deprecated for raptor_class
 RAPTOR_CLASS     = 'raptor_class'
+WORKER_FILE      = 'worker_file'              # deprecated for raptor_file
 RAPTOR_FILE      = 'raptor_file'
 
 # environment
@@ -388,14 +391,27 @@ class TaskDescription(ru.TypedDict):
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
 
+    .. py:attribute:: scheduler
+
+       [type: `str` | default: ``] deprecated in favor of `raptor_id`
+
     .. py:attribute:: raptor_id
 
        [type: `str` | default: ``] Raptor master ID this task is associated with
+
+    .. py:attribute:: worker_class
+
+       [type: `str` | default: ``] deprecated in favor of `raptor_class`
+       master or worker task.
 
     .. py:attribute:: raptor_class
 
        [type: `str` | default: ``] Class name to instantiate for this Raptor
        master or worker task.
+
+    .. py:attribute:: worker_file
+
+       [type: `str` | default: ``] deprecated in favor of `raptor_class`
 
     .. py:attribute:: raptor_file
 
@@ -582,6 +598,9 @@ class TaskDescription(ru.TypedDict):
         GPU_THREAD_TYPE : str         ,  # n/a
         LFS_PER_PROCESS : int         ,  # LFS_PER_RANK
         MEM_PER_PROCESS : int         ,  # MEM_PER_RANK
+        SCHEDULER       : str         ,  # RAPTOR_ID
+        WORKER_FILE     : str         ,  # RAPTOR_FILE
+        WORKER_CLASS    : str         ,  # RAPTOR_CLASS
 
         RESTARTABLE     : bool        ,
         TAGS            : {None: None},
@@ -639,6 +658,9 @@ class TaskDescription(ru.TypedDict):
         GPU_THREAD_TYPE : ''          ,
         LFS_PER_PROCESS : 0           ,
         MEM_PER_PROCESS : 0           ,
+        SCHEDULER       : ''          ,
+        WORKER_FILE     : ''          ,
+        WORKER_CLASS    : ''          ,
 
         RESTARTABLE     : False       ,
         TAGS            : dict()      ,
@@ -719,6 +741,18 @@ class TaskDescription(ru.TypedDict):
         if self.mem_per_process:
             self.mem_per_rank = self.mem_per_process
             self.mem_per_process = 0
+
+        if self.scheduler:
+            self.raptor_id = self.scheduler
+            self.scheduler = ''
+
+        if self.worker_file:
+            self.raptor_file = self.worker_file
+            self.worker_file = ''
+
+        if self.raptor_class:
+            self.raptor_class = self.raptor_class
+            self.raptor_class
 
         # deprecated and ignored
         if self.cpu_process_type: pass

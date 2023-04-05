@@ -87,7 +87,7 @@ class MyMaster(rp.raptor.Master):
             tds.append(rp.TaskDescription({
                 'uid'        : 'task.exe.m.%06d' % i,
                 'mode'       : rp.TASK_EXECUTABLE,
-                'scheduler'  : None,
+                'raptor_id'  : None,
                 'ranks'      : RANKS,
                 'executable' : '/bin/sh',
                 'arguments'  : ['-c', 'sleep %d;' % self._sleep +
@@ -101,7 +101,7 @@ class MyMaster(rp.raptor.Master):
                 'function'  : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i,
                                      'sleep': self._sleep},
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             bson = func_mpi(None, msg='task.call.m.%06d' % i, sleep=self._sleep)
             tds.append(rp.TaskDescription({
@@ -110,7 +110,7 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_FUNCTION,
                 'ranks'     : RANKS,
                 'function'  : bson,
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             bson = func_non_mpi(i + 1, sleep=self._sleep)
             tds.append(rp.TaskDescription({
@@ -119,7 +119,7 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_FUNCTION,
                 'ranks'     : 1,
                 'function'  : bson,
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.eval.m.%06d' % i,
@@ -130,7 +130,7 @@ class MyMaster(rp.raptor.Master):
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
                     'time.sleep(%d)))' % self._sleep,
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.exec.m.%06d' % i,
@@ -141,7 +141,7 @@ class MyMaster(rp.raptor.Master):
                     'import time\ntime.sleep(%d)\n' % self._sleep +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.proc.m.%06d' % i,
@@ -153,7 +153,7 @@ class MyMaster(rp.raptor.Master):
                                'sleep %d; ' % self._sleep +
                                'echo "hello $RP_RANK/$RP_RANKS: '
                                '$RP_TASK_ID"'],
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.shell.m.%06d' % i,
@@ -162,7 +162,7 @@ class MyMaster(rp.raptor.Master):
                 'ranks'     : RANKS,
                 'command'   : 'sleep %d; ' % self._sleep +
                               'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler' : 'master.000000'}))
+                'raptor_id' : 'master.000000'}))
 
 
         self.submit_tasks(tds)
@@ -214,7 +214,7 @@ class MyMaster(rp.raptor.Master):
                                     'sleep %d; ' % self._sleep +
                                     'echo "hello $RP_RANK/$RP_RANKS: '
                                           '$RP_TASK_ID"'],
-                     'scheduler' : 'master.000000'}))
+                     'raptor_id' : 'master.000000'}))
 
         return tasks
 
@@ -279,12 +279,12 @@ if __name__ == '__main__':
     print('workers: %d' % n_workers)
     descr['ranks']         = nodes_per_worker * cores_per_node
     descr['gpus_per_rank'] = nodes_per_worker * gpus_per_node
-    master.submit_workers(descr=descr, count=n_workers)
+    master.submit_workers(descriptions=[rp.TaskDescription(descr)] * n_workers)
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
-  # master.wait(count=nworkers)
+  # master.wait(count=n_workers)
 
     master.start()
     master.submit()

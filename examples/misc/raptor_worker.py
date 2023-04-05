@@ -54,7 +54,7 @@ class MyWorker(rp.raptor.DefaultWorker):
 
         td = rp.TaskDescription({
                 'mode'            : rp.TASK_EXECUTABLE,
-                'scheduler'       : None,
+                'raptor_id'       : None,
                 'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',

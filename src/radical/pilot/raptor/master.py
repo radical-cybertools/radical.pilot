@@ -347,10 +347,7 @@ class Master(rpu.Component):
             if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
                 raise RuntimeError('GPU sharing for workers is not supported')
 
-            # ensure that defaults and backward compatibility kick in
-            td.verify()
-
-            assert td.mode == RAPTOR_WORKER
+            td.mode       = RAPTOR_WORKER
 
             raptor_file   = td.get('raptor_file')  or  ''
             raptor_class  = td.get('raptor_class') or  'DefaultWorker'
@@ -368,7 +365,15 @@ class Master(rpu.Component):
             # this master is obviously running in a suitable python3 env,
             # so we expect that the same env is also suitable for the worker
             # NOTE: shell escaping is a bit tricky here - careful on change!
-            td.arguments = [raptor_file, raptor_class]
+            td.arguments = [raptor_file, raptor_class, self.uid]
+
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
+
+            import pprint
+            import sys
+            sys.stderr.write(pprint.pformat(td.as_dict()))
+            sys.stderr.write('\n\n')
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -379,7 +384,7 @@ class Master(rpu.Component):
             task['status']            = self.NEW
             task['type']              = 'task'
             task['uid']               = td.uid
-            task['task_sandbox_path'] = td.sbox
+            task['task_sandbox_path'] = td.sandbox
             task['task_sandbox']      = 'file://localhost/' + self._sbox
             task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
@@ -396,6 +401,7 @@ class Master(rpu.Component):
             self._log.debug('insert %s', td.uid)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
+            now = time.time()
             self._workers[td.uid] = {
                     'uid'        : td.uid,
                     'status'     : self.NEW,
