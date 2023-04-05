@@ -482,9 +482,8 @@ class Worker(object):
             uid  = task['uid']
             exe  = task['description']['executable']
             args = task['description'].get('arguments', list())
-            env  = ru.dict_merge(self._task_env,
-                                 task['description']['environment'],
-                                 ru.OVERWRITE)
+            env  = dict(self._task_env)
+            env.update(task['description']['environment'])
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
           # self._log.debug('proc: --%s--', args)
@@ -518,9 +517,9 @@ class Worker(object):
         try:
             uid = task['uid']
             cmd = task['description']['command']
-            env = ru.dict_merge(self._task_env,
-                                task['description']['environment'],
-                                ru.OVERWRITE)
+            env = dict(self._task_env)
+            env.update(task['description']['environment'])
+
           # self._log.debug('shell: --%s--', cmd)
             self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
