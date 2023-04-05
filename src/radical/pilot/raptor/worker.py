@@ -26,17 +26,14 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, manager, rank):
+    def __init__(self, manager, rank, raptor_id):
 
-        if cfg is None:
-            cfg = dict()
-
-        if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
-        else                   : self._cfg = ru.Config(cfg=cfg)
-
-        self._rank = rank
-        self._sbox = os.environ['RP_TASK_SANDBOX']
-        self._uid  = os.environ['RP_TASK_ID']
+        self._manager   = manager
+        self._rank      = rank
+        self._raptor_id = raptor_id
+        self._sbox      = os.environ['RP_TASK_SANDBOX']
+        self._uid       = os.environ['RP_TASK_ID']
+        self._descr     = ru.read_json('%s.json' % self._uid)
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level='DEBUG', targets=['.'], path=self._sbox)
@@ -47,8 +44,11 @@ class Worker(object):
         psbox = os.environ['RP_PILOT_SANDBOX']
         ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
+        self._log.debug('===== %s : %s : %s', self._uid, rpc.CONTROL_PUBSUB,
+                                              ctrl_cfg['sub'])
         ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
-                          log=self._log, prof=self._prof, cb=self._control_cb)
+                          log=self._log, prof=self._prof, cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
@@ -59,10 +59,17 @@ class Worker(object):
         time.sleep(1)
 
         # the manager (rank 0) registers the worker with the master
-        if manager:
+        if self._manager:
+            self._register_event = mt.Event()
+            self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
+                    {'cmd': 'worker_register',
+                     'arg': {'uid'        : self._uid,
+                             'raptor_id'  : self._raptor_id,
+                             'description': self._descr}})
 
-            self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
-                                                    'arg': {'uid' : self._uid}})
+            # wait for raptor response
+            self._log.debug('=== wait for registration to complete')
+            self._register_event.wait()
 
           # # FIXME: we never unregister on termination
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
@@ -116,15 +123,38 @@ class Worker(object):
     #
     def _control_cb(self, topic, msg):
 
-        if msg['cmd'] == 'terminate':
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        self._log.debug('=== ctrl: %s : %s', cmd, arg)
+
+        if cmd == 'worker_registered':
+
+            self._log.debug('=== got registered message: %s', msg)
+
+            if arg['uid'] != self._uid:
+                return
+
+            self._log.debug('=== got registered message for me: %s', arg)
+
+            self._ts_addr      = arg['info']['ts_addr']
+            self._res_addr_put = arg['info']['res_addr_put']
+            self._req_addr_get = arg['info']['req_addr_get']
+
+            self._log.debug('=== registration complete: %s', self._manager)
+
+            if self._manager:
+                self._register_event.set()
+
+        elif cmd == 'terminate':
             self.stop()
             self.join()
             sys.exit()
 
-        elif msg['cmd'] == 'worker_terminate':
+        elif cmd == 'worker_terminate':
             self._log.debug('worker_terminate signal')
 
-            if msg['arg']['uid'] == self._uid:
+            if arg['uid'] == self._uid:
                 self.stop()
                 self.join()
                 sys.exit()
@@ -155,7 +185,7 @@ class Worker(object):
                 return self._task_service_ep.request('run_task', td)
         # ----------------------------------------------------------------------
 
-        return Master(self._cfg.ts_addr)
+        return Master(self._ts_addr)
 
 
     # --------------------------------------------------------------------------

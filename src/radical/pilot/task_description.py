@@ -43,6 +43,11 @@ CODE             = 'code'
 # mode: TASK_PROC, TASK_SHELL
 COMMAND          = 'command'
 
+# mode: RAPTOR_MASTER, RAPTOR_WORKER
+RAPTOR_ID        = 'raptor_id'
+RAPTOR_CLASS     = 'raptor_class'
+RAPTOR_FILE      = 'raptor_file'
+
 # environment
 ENVIRONMENT      = 'environment'
 NAMED_ENV        = 'named_env'
@@ -87,7 +92,6 @@ STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
 TAGS             = 'tags'
-RAPTOR           = 'raptor'
 METADATA         = 'metadata'
 
 
@@ -581,7 +585,9 @@ class TaskDescription(ru.TypedDict):
 
         RESTARTABLE     : bool        ,
         TAGS            : {None: None},
-        RAPTOR          : {str: str}  ,
+        RAPTOR_ID       : str         ,
+        RAPTOR_CLASS    : str         ,
+        RAPTOR_FILE     : str         ,
         METADATA        : None        ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
@@ -636,7 +642,9 @@ class TaskDescription(ru.TypedDict):
 
         RESTARTABLE     : False       ,
         TAGS            : dict()      ,
-        RAPTOR          : dict()      ,
+        RAPTOR_ID       : ''          ,
+        RAPTOR_CLASS    : ''          ,
+        RAPTOR_FILE     : ''          ,
         METADATA        : None        ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,

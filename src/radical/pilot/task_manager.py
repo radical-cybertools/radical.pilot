@@ -834,8 +834,8 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_raptor(self, descriptions):
-        """
+    def submit_raptor(self, descriptions, pilot_id=None):
+        '''
         Submits on or more :class:`radical.pilot.TaskDescription` instances to
         the task manager, where the `TaskDescriptions` have the mode
         `RAPTOR_MASTER` set.
@@ -844,7 +844,7 @@ class TaskManager(rpu.Component):
 
         **Returns:**
               * A list of :class:`radical.pilot.Raptor` objects.
-        """
+        '''
 
         descriptions = ru.as_list(descriptions)
 
@@ -874,44 +874,55 @@ class TaskManager(rpu.Component):
         descriptions = ru.as_list(descriptions)
 
         for descr in descriptions:
-            descr.mode       = RAPTOR_MASTER
-            descr.executable = 'raptor_worker.py'
-
-            if raptor_id:
-                descr.raptor[RAPTOR_MASTER] = raptor_id
+            descr.mode       = RAPTOR_WORKER
+            descr.executable = 'radical-pilot-raptor-worker'
 
         return self.submit_tasks(descriptions)
 
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self, descriptions):
-        """
+    def submit_tasks(self, descriptions=None, tasks=None):
+        '''
         Submits on or more :class:`radical.pilot.Task` instances to the
         task manager.
 
         **Arguments:**
             * **descriptions** [:class:`radical.pilot.TaskDescription`
               or list of :class:`radical.pilot.TaskDescription`]: The
-              description of the task instance(s) to create.
+              description of the task instance(s) to create and submit
+
+            * **tasks** [list of :class:`radical.pilot.Task`]: the tasks to be
+              submitted
 
         **Returns:**
-              * A list of :class:`radical.pilot.Task` objects.
-        """
+              * A list of :class:`radical.pilot.Task` submitted objects.
+        '''
 
         from .task import Task
 
+        if not descriptions and not tasks:
+            return []
+
+        if not descriptions: descriptions = list()
+        if not tasks       : tasks        = list()
+
         ret_list = True
-        if not isinstance(descriptions, list):
+        if descriptions and not isinstance(descriptions, list):
             ret_list     = False
             descriptions = [descriptions]
 
-        if len(descriptions) == 0:
-            raise ValueError('cannot submit no task descriptions')
+        for task in tasks:
+            if task.uid in self._tasks:
+                raise ValueError('task %s already submitted' % task.uid)
+
+            if task.state != rps.NEW:
+                raise ValueError('task %s not in NEW state (%s)'
+                                % (task.uid, task.state))
+
 
         # we return a list of tasks
-        self._rep.progress_tgt(len(descriptions), label='submit')
-        tasks = list()
+        self._rep.progress_tgt(len(descriptions) + len(tasks), label='submit')
         for descr in descriptions:
 
             mode = descr.mode
@@ -924,13 +935,15 @@ class TaskManager(rpu.Component):
 
             else:
                 task = Task(tmgr=self, descr=descr, origin='client')
-                tasks.append(task)
 
-            # keep tasks around
-            with self._tasks_lock:
-                self._tasks[task.uid] = task
-
+            tasks.append(task)
             self._rep.progress()
+
+
+        # keep tasks around
+        with self._tasks_lock:
+            for task in tasks:
+                self._tasks[task.uid] = task
 
         self._rep.progress_done()
 

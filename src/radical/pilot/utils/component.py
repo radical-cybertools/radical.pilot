@@ -6,6 +6,7 @@ __license__   = 'MIT'
 
 import os
 import copy
+from re import sub
 import time
 
 import threading       as mt
@@ -1044,6 +1045,9 @@ class Component(object):
         # dig the addresses from the bridge's config file
         fname = '%s/%s.cfg' % (path, pubsub)
         cfg   = ru.read_json(fname)
+
+        if 'control' in pubsub.lower():
+            self._log.debug('===== %s : %s : %s', self._uid, pubsub, cfg['sub'])
 
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,

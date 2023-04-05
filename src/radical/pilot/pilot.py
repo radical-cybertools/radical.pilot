@@ -645,11 +645,28 @@ class Pilot(object):
 
         descriptions = ru.as_list(descriptions)
 
-        for descr in descriptions:
-            descr.pilot = self.uid
-            descr.mode  = RAPTOR_MASTER
+        for td in descriptions:
+            td.pilot = self.uid
+            td.mode  = RAPTOR_MASTER
 
-        return self._tmgr.submit_raptor(descriptions)
+            raptor_file   = td.get('raptor_file')  or  ''
+            raptor_class  = td.get('raptor_class') or  'Master'
+
+            td.arguments  = [raptor_file, raptor_class]
+
+            td.environment['PYTHONUNBUFFERED'] = '1'
+
+            if not td.get('uid'):
+                td.uid = ru.generate_id('raptor.%(item_counter)04d',
+                                        ru.ID_CUSTOM, ns=self._session.uid)
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-master'
+
+            if not td.get('named_env'):
+                td.named_env = 'rp'
+
+        return self._tmgr.submit_tasks(descriptions)
 
 
     # --------------------------------------------------------------------------

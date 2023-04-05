@@ -785,7 +785,7 @@ class AgentSchedulingComponent(rpu.Component):
                 for task in data:
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
-                    raptor = task['description'].get('scheduler')
+                    raptor = task['description'].get('raptor_id')
                     if raptor:
                         if raptor not in to_raptor:
                             to_raptor[raptor] = [task]

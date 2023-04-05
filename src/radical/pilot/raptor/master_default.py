@@ -52,8 +52,6 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self._log.debug('==== master initializing')
-
         self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
         self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
 
@@ -116,18 +114,10 @@ class Master(rpu.Component):
         self._res_get = ru.zmq.Getter('raptor_results',  self._res_addr_get,
                                                          cb=self._result_cb)
 
-        # also create a ZMQ server endpoint for the workers to
-        # send task execution requests back to the master
-        self._task_service = ru.zmq.Server()
-        self._task_service.register_request('run_task', self._run_task)
-        self._task_service.start()
-        self._task_service_data = dict()   # task.uid : [mt.Event, task]
-
         # for the workers it is the opposite: they will get requests from the
         # request queue, and will send responses to the response queue.
         self._info = {'req_addr_get': self._req_addr_get,
-                      'res_addr_put': self._res_addr_put,
-                      'task_service': self._task_service.addr}
+                      'res_addr_put': self._res_addr_put}
 
         # make sure the channels are up before allowing to submit requests
         time.sleep(1)
@@ -142,6 +132,13 @@ class Master(rpu.Component):
                        'arg': {'name' : self._uid,
                                'queue': qname,
                                'addr' : str(self._input_queue.addr_put)}})
+
+        # also create a ZMQ server endpoint for the workers to
+        # send task execution requests back to the master
+        self._task_service = ru.zmq.Server()
+        self._task_service.register_request('run_task', self._run_task)
+        self._task_service.start()
+        self._task_service_data = dict()   # task.uid : [mt.Event, task]
 
         # all comm channels are set up - begin to work
         self._log.debug('startup complete')
@@ -171,7 +168,6 @@ class Master(rpu.Component):
         cfg['kind']    = 'master'
         cfg['sid']     = self._sid
         cfg['path']    = self._sbox
-        cfg['base']    = os.environ['RP_PILOT_SANDBOX']
 
         cfg = ru.Config(cfg=cfg)
         cfg['uid'] = self._uid
@@ -193,40 +189,15 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== ctrl: %s : %s', cmd, arg)
-
         if cmd == 'worker_register':
 
             uid = arg['uid']
-            rid = arg['raptor_id']
-            td  = arg['description']
 
-            self._log.debug('=== register %s', uid)
+            self._log.debug('register %s', uid)
 
-            if rid != self._uid:
-                self._log.debug('=== register %s - ignored', uid)
-                return
-
-            now = time.time()
             if uid not in self._workers:
-                self._workers[uid] = {
-                        'uid'        : uid,
-                        'status'     : self.NEW,
-                        'heartbeats' : {r: now for r in range(td['ranks'])},
-                        'description': td
-                }
-
+                return
             self._workers[uid]['status'] = self.ACTIVE
-
-            # return a message to the worker to inform about the master service
-            # endpoints
-            info = {'req_addr_get': self._req_addr_get,
-                    'res_addr_put': self._res_addr_put,
-                    'ts_addr'     : self._task_service.addr}
-            self._log.debug('=== registered msg to %s: %s', uid, info)
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_registered',
-                                              'arg': {'uid' : uid,
-                                                      'info': info}})
 
 
         elif cmd == 'worker_rank_heartbeat':
@@ -234,7 +205,7 @@ class Master(rpu.Component):
             uid  = arg['uid']
             rank = arg['rank']
 
-            self._log.debug('recv rank heartbeat %s:%s', uid, rank)
+            self._log.debug('=== recv rank heartbeat %s:%s', uid, rank)
 
             if uid not in self._workers:
                 return
@@ -341,10 +312,24 @@ class Master(rpu.Component):
             if not td.get('sandbox'):
                 td.sandbox = self._sbox
 
+            ru.rec_makedir(td.sandbox)
+
+            cfg                   = copy.deepcopy(self._cfg)
+            cfg['uid']            = td.uid
+            cfg['info']           = self._info
+            cfg['ts_addr']        = self._task_service.addr
+            cfg['ranks']          = td.ranks
+            cfg['cores_per_rank'] = td.cores_per_rank
+            cfg['gpus_per_rank']  = int(td.gpus_per_rank)
+
+            now   = time.time()
+            fname = '%s/%s.json' % (td.sandbox, td.uid)
+            ru.write_json(cfg, fname)
+
             # this master is obviously running in a suitable python3 env,
             # so we expect that the same env is also suitable for the worker
             # NOTE: shell escaping is a bit tricky here - careful on change!
-            td.arguments = [raptor_file, raptor_class]
+            td.arguments = [raptor_file, raptor_class, fname]
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -545,7 +530,6 @@ class Master(rpu.Component):
             assert 'description' in task
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
-            self._log.debug('%s %s' % (task['uid'], mode))
             if mode == TASK_EXECUTABLE:
                 executable_tasks.append(task)
             else:
