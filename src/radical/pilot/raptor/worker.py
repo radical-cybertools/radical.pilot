@@ -290,7 +290,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+          # self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
