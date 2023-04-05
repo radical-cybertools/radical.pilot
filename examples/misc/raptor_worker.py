@@ -9,7 +9,7 @@ RANKS = 1
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.DefaultWorker):
+class MyWorker(rp.raptor.MPIWorker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.

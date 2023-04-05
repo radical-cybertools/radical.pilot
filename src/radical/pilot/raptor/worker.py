@@ -31,6 +31,7 @@ class Worker(object):
         self._manager   = manager
         self._rank      = rank
         self._raptor_id = raptor_id
+        self._reg_event = mt.Event()
         self._sbox      = os.environ['RP_TASK_SANDBOX']
         self._uid       = os.environ['RP_TASK_ID']
         self._descr     = ru.read_json('%s.json' % self._uid)
@@ -44,8 +45,6 @@ class Worker(object):
         psbox = os.environ['RP_PILOT_SANDBOX']
         ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
-        self._log.debug('===== %s : %s : %s', self._uid, rpc.CONTROL_PUBSUB,
-                                              ctrl_cfg['sub'])
         ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
                           log=self._log, prof=self._prof, cb=self._control_cb,
                           topic=rpc.CONTROL_PUBSUB)
@@ -59,7 +58,6 @@ class Worker(object):
         time.sleep(1)
 
         # the manager (rank 0) registers the worker with the master
-        self._register_event = mt.Event()
         if self._manager:
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
                     {'cmd': 'worker_register',
@@ -72,8 +70,8 @@ class Worker(object):
           #                                         'arg': {'uid' : self._uid}})
 
         # wait for raptor response
-        self._log.debug('=== wait for registration to complete')
-        self._register_event.wait()
+        self._log.debug('wait for registration to complete')
+        self._reg_event.wait()
 
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
         self._hb_delay  = 5
@@ -126,24 +124,16 @@ class Worker(object):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== ctrl: %s : %s', cmd, arg)
-
         if cmd == 'worker_registered':
-
-            self._log.debug('=== got registered message: %s', msg)
 
             if arg['uid'] != self._uid:
                 return
-
-            self._log.debug('=== got registered message for me: %s', arg)
 
             self._ts_addr      = arg['info']['ts_addr']
             self._res_addr_put = arg['info']['res_addr_put']
             self._req_addr_get = arg['info']['req_addr_get']
 
-            self._log.debug('=== registration complete: %s', self._manager)
-
-            self._register_event.set()
+            self._reg_event.set()
 
         elif cmd == 'terminate':
             self.stop()
@@ -278,7 +268,7 @@ class Worker(object):
                 to_call, _args, _kwargs = PythonTask.get_func_attr(func)
 
             except Exception:
-                self._log.exception('function is not a PythonTask [%s] ', uid)
+                self._log.warn('function is not a PythonTask [%s] ', uid)
 
             else:
                 py_func = True
@@ -545,6 +535,7 @@ class Worker(object):
             cmd = task['description']['command']
             env = task['description']['environment']
           # self._log.debug('shell: --%s--', cmd)
+
             self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
             exc = (None, None)

@@ -3,12 +3,7 @@
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
-
-sys.stdout.write('======== %s\n' % os.getcwd())
-sys.stdout.flush()
-
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -17,8 +12,6 @@ import radical.pilot as rp
 # ------------------------------------------------------------------------------
 #
 def run(fpath, cname):
-
-    print('=== run', fpath, cname)
 
     # load master class from fname if that is a valid string
     cls = None
@@ -30,13 +23,11 @@ def run(fpath, cname):
     else:
         if cname == 'Master': cls = rp.raptor.Master
 
-    print('=== cls', cls)
     if not cls:
         raise RuntimeError('no master [%s] [%s]' % (cname, fpath))
 
     master = cls()
     master.start()
-    print('=== cls started')
 
     ret = master.join()
     sys.exit(ret)

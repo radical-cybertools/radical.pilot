@@ -10,6 +10,11 @@ import radical.utils as ru
 import radical.pilot as rp
 
 
+def out(msg):
+    sys.stdout.write('==== %s\n' % msg)
+    sys.stdout.flush()
+
+
 # This script has to run as a task within a pilot allocation, and is
 # a demonstration of a task overlay within the RCT framework. It is expected
 # to be staged and launched by the `raptor.py` script in the radical.pilot
@@ -276,7 +281,7 @@ if __name__ == '__main__':
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
-    print('workers: %d' % n_workers)
+    out('workers: %d' % n_workers)
     descr['ranks']         = nodes_per_worker * cores_per_node
     descr['gpus_per_rank'] = nodes_per_worker * gpus_per_node
     master.submit_workers(descriptions=[rp.TaskDescription(descr)] * n_workers)
@@ -286,10 +291,16 @@ if __name__ == '__main__':
     # a work queue.
   # master.wait(count=n_workers)
 
+    out('start')
     master.start()
+    out('submit')
     master.submit()
-    master.join()
+    out('stop')
     master.stop()
+    out('join')
+    master.join()
+    out('done')
+
 
 
 # ------------------------------------------------------------------------------

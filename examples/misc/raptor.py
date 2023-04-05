@@ -39,7 +39,7 @@ import radical.pilot as rp
 # For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
 logger = ru.Logger('raptor')
 PWD    = os.path.abspath(os.path.dirname(__file__))
-RANKS  = 1
+RANKS  = 2
 
 
 # ------------------------------------------------------------------------------
@@ -265,8 +265,8 @@ if __name__ == '__main__':
                 'ranks'           : RANKS,
                 'code'            :
                     'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
-                    'time.sleep(%d)))' % sleep,
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"])) or '
+                    'time.sleep(%d)' % sleep,
                 'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({

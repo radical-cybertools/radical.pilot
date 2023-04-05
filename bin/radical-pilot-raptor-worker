@@ -3,14 +3,7 @@
 __copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
-
-sys.stdout.write('======== %s\n' % os.getcwd())
-sys.stdout.flush()
-
-print('==== test')
-
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -23,8 +16,6 @@ def run(fpath, cname, raptor_id):
     # load worker class from fname if that is a valid string
     cls = None
 
-    print('==== run:', fpath, cname)
-
     # Create the worker class and run it's work loop.
     if fpath:
         cls = ru.load_class(fpath, cname, rp.raptor.Worker)
@@ -36,12 +27,8 @@ def run(fpath, cname, raptor_id):
     if not cls:
         raise RuntimeError('no worker [%s] [%s]' % (cname, fpath))
 
-    print('=== cls:', cls)
-
     worker = cls(raptor_id)
     worker.start()
-
-    print('=== cls started')
 
     ret = worker.join()
     sys.exit(ret)

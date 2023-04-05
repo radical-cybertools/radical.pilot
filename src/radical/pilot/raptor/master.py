@@ -52,8 +52,6 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self._log.debug('==== master initializing')
-
         self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
         self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
 
@@ -193,18 +191,13 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('=== ctrl: %s : %s', cmd, arg)
-
         if cmd == 'worker_register':
 
             uid = arg['uid']
             rid = arg['raptor_id']
             td  = arg['description']
 
-            self._log.debug('=== register %s', uid)
-
             if rid != self._uid:
-                self._log.debug('=== register %s - ignored', uid)
                 return
 
             now = time.time()
@@ -223,11 +216,9 @@ class Master(rpu.Component):
             info = {'req_addr_get': self._req_addr_get,
                     'res_addr_put': self._res_addr_put,
                     'ts_addr'     : self._task_service.addr}
-            self._log.debug('=== registered msg to %s: %s', uid, info)
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_registered',
                                               'arg': {'uid' : uid,
                                                       'info': info}})
-
 
         elif cmd == 'worker_rank_heartbeat':
 
