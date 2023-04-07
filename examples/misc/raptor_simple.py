@@ -29,11 +29,11 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
 
         raptor = pilot.submit_raptors(rp.TaskDescription())[0]
-        worker = raptor.submit_workers(rp.TaskDescription())[0]
+      # worker = raptor.submit_workers(rp.TaskDescription())[0]
         task   = raptor.submit_tasks(rp.TaskDescription(
-            {'command': 'date',
-             'mode'   : rp.TASK_SHELL,
-             'uid'    : 'raptor_task.0000'}))[0]
+            {'executable': 'date',
+             'mode'      : rp.TASK_EXECUTABLE,
+             'uid'       : 'raptor_task.0000'}))[0]
 
         tmgr.wait_tasks(task.uid)
         print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
@@ -42,8 +42,8 @@ if __name__ == '__main__':
         tmgr.wait_tasks(raptor.uid)
         print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
 
-        tmgr.wait_tasks(worker.uid)
-        print('%s [%s]: %s' % (worker.uid, worker.state, worker.stdout))
+      # tmgr.wait_tasks(worker.uid)
+      # print('%s [%s]: %s' % (worker.uid, worker.state, worker.stdout))
 
     finally:
         session.close(download=False)

@@ -198,12 +198,12 @@ class Flux(AgentExecutingComponent) :
             if state == rps.AGENT_STAGING_OUTPUT_PENDING:
                 task['target_state'] = rps.DONE  # FIXME
                 # on completion, push toward output staging
-                self.advance(task, state, ts=ts, publish=True, push=True)
+                self.advance_tasks(task, state, ts=ts, publish=True, push=True)
                 ret = True
 
             else:
                 # otherwise only push a state update
-                self.advance(task, state, ts=ts, publish=True, push=False)
+                self.advance_tasks(task, state, ts=ts, publish=True, push=False)
 
         return ret
 
@@ -268,7 +268,8 @@ class Flux(AgentExecutingComponent) :
                         self._prof.prof('unschedule_start', uid=task['uid'])
                         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-                        self.advance(task, rps.FAILED, publish=True, push=False)
+                        self.advance_tasks(task, rps.FAILED, publish=True,
+                                                             push=False)
 
 
                 try:

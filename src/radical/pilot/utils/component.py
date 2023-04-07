@@ -1046,9 +1046,6 @@ class Component(object):
         fname = '%s/%s.cfg' % (path, pubsub)
         cfg   = ru.read_json(fname)
 
-        if 'control' in pubsub.lower():
-            self._log.debug('===== %s : %s : %s', self._uid, pubsub, cfg['sub'])
-
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,
                                                           url=cfg['sub'],

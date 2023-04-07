@@ -44,7 +44,7 @@ class DefaultWorker(Worker):
         # connect to the master queues
         self._res_put = ru.zmq.Putter('result',  self._res_addr_put)
         self._req_get = ru.zmq.Getter('request', self._req_addr_get,
-                                                 cb=self.request_cb)
+                                                 cb=self._request_cb)
 
         # keep worker ID and rank
         self._n_cores =     self._descr.get('cores_per_rank', 1)
@@ -176,7 +176,7 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, tasks):
+    def _request_cb(self, tasks):
         '''
         grep call type from tasks, check if methods are registered, and
         invoke them.

@@ -264,8 +264,8 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_EVAL,
                 'ranks'           : RANKS,
                 'code'            :
-                    'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"])) or '
+                    'print("hello %%s/%%s: %%s" %% (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"])) and '
                     'time.sleep(%d)' % sleep,
                 'raptor_id'       : master_ids[i % n_masters]}))
 
@@ -306,7 +306,7 @@ if __name__ == '__main__':
             tasks = tmgr.submit_tasks(tds)
 
             logger.info('Wait for tasks %s', [t.uid for t in tds])
-            tmgr.wait_tasks(uids=[t.uid for t in tasks])
+            tmgr.wait_tasks(uids=[t.uid for t in tasks], timeout=300)
 
             for task in tasks:
                 report.info('id: %s [%s]:\n    out: %s\n    ret: %s\n'

@@ -86,7 +86,7 @@ class Popen(AgentExecutingComponent):
     #
     def work(self, tasks):
 
-        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
@@ -105,7 +105,7 @@ class Popen(AgentExecutingComponent):
 
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -470,7 +470,8 @@ class Popen(AgentExecutingComponent):
 
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-                    self.advance(task, rps.CANCELED, publish=True, push=False)
+                    self.advance_tasks(task, rps.CANCELED, publish=True,
+                                                           push=False)
 
             else:
 
@@ -507,8 +508,8 @@ class Popen(AgentExecutingComponent):
                     # stdout/stderr
                     task['target_state'] = rps.DONE
 
-                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                   publish=True, push=True)
+                self.advance_tasks(task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                         publish=True, push=True)
 
         return action
 

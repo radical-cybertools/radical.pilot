@@ -41,6 +41,7 @@ class Master(rpu.Component):
 
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
+        self._exec_tasks = list()      # keep track of executable tasks
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
@@ -278,17 +279,17 @@ class Master(rpu.Component):
         # state update for tasks created by raptor
         if cmd == 'raptor_state_update':
 
-            tasks = ru.as_list(arg)
+            # raptor workers can get caught in the `raptor_state_update` hook
+            # when they are submitted by the master. Filter them out - we don't
+            # want result callbacks for workers.
+            tasks = [task for task in arg
+                          if  task['description']['mode'] != RAPTOR_WORKER]
 
             for task in tasks:
-                uid   = task['uid']
-                state = task['state']
+                self._log.debug('==== raptor state update: %s : %s',
+                                task['uid'], task['state'])
 
-                if uid in self._task_service_data:
-                    # update task info and signal task service thread
-                    self._log.debug('unlock 2 %s', uid)
-                    self._task_service_data[uid][1] = task
-                    self._task_service_data[uid][0].set()
+            self._result_cb(tasks)
 
 
         # general task state updates -- check if our workers are affected
@@ -298,6 +299,8 @@ class Master(rpu.Component):
 
                 uid   = thing['uid']
                 state = thing['state']
+
+                self._log.debug('==== state update %s: %s', uid, state)
 
                 if uid in self._workers:
 
@@ -338,10 +341,9 @@ class Master(rpu.Component):
             if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
                 raise RuntimeError('GPU sharing for workers is not supported')
 
-            td.mode       = RAPTOR_WORKER
-
-            raptor_file   = td.get('raptor_file')  or  ''
-            raptor_class  = td.get('raptor_class') or  'DefaultWorker'
+            td.mode      = RAPTOR_WORKER
+            raptor_file  = td.get('raptor_file')  or  ''
+            raptor_class = td.get('raptor_class') or  'DefaultWorker'
 
             if not td.get('uid'):
                 td.uid = '%s.worker' % base
@@ -360,11 +362,6 @@ class Master(rpu.Component):
 
             # ensure that defaults and backward compatibility kick in
             td.verify()
-
-            import pprint
-            import sys
-            sys.stderr.write(pprint.pformat(td.as_dict()))
-            sys.stderr.write('\n\n')
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -530,15 +527,21 @@ class Master(rpu.Component):
         event = mt.Event()
 
         td['uid'] = tid
+        task = Task(self, td, origin='raptor').as_dict()
 
-        self._task_service_data[tid] = [event, td]
-        self.submit_tasks([td])
+        self._task_service_data[tid] = [event, task]
+        self.submit_tasks([task])
 
         # wait for the result cb to pick up the td again
         event.wait()
 
         # update td info and remove data
-        task = self._task_service_data[tid][1]
+        if len(self._task_service_data[tid]) != 3:
+            self._log.error('invalid task_service data: %s',
+                            self._task_service_data[tid])
+
+        task.update(self._task_service_data[tid][2])
+
         del self._task_service_data[tid]
 
         # the task is completed and we can return it to the caller
@@ -552,18 +555,43 @@ class Master(rpu.Component):
         submit a list of tasks to the task queue
         We expect to get either `TaskDescription` instances which will then get
         converted into task dictionaries and pushed out, or we get task
-        dictionaries which are used as is.
+        dictionaries which are used as is.  Either way, `self.request_cb` will
+        be called for all tasks submitted here.
         '''
 
-        raptor_tasks     = list()
-        executable_tasks = list()
+        normalized = list()
         for task in ru.as_list(tasks):
 
             if isinstance(task, TaskDescription):
                 # convert to task dict
-                task = Task(self, task, origin='raptor').as_dict()
+                normalized.append(Task(self, task, origin='raptor').as_dict())
+
+            else:
+                normalized.append(task)
+
+        self._submit_tasks(self.request_cb(normalized))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _submit_tasks(self, tasks):
+        '''
+        This is the internal implementation of `self.submit_tasks` which
+        performs the actual submission after the tasks passed through the
+        `request_cb`.
+        '''
+
+        if not tasks:
+            return
+
+        raptor_tasks     = list()
+        executable_tasks = list()
+
+        for task in ru.as_list(tasks):
 
             assert 'description' in task
+
+            self._log.debug('submit: %s', task['uid'])
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
             self._log.debug('%s %s' % (task['uid'], mode))
@@ -625,6 +653,10 @@ class Master(rpu.Component):
             self._log.debug('insert %s', td['uid'])
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
+            # we want to pick up state updates for executable tasks so that we
+            # can invoke the result callback as we do for raptor tasks.
+            self._exec_tasks.append(task['uid'])
+
         self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
                             publish=True, push=True)
 
@@ -639,17 +671,22 @@ class Master(rpu.Component):
 
         normal_tasks = list()
         for task in tasks:
+
+            # executable tasks which come from the scheduler are in danger of
+            # entering a loop as we will push them back to the scheduler for
+            # execution.  To avoid that we set an additional attribute
+            # (raptor_seen=True) which the scheduler can filter for
+            if task['description']['mode'] == TASK_EXECUTABLE:
+                task['raptor_seen'] = True
+
+            # handle workers differently than other tasks
             if task['description']['mode'] == RAPTOR_WORKER:
                 self.submit_workers(task['description'], 1)
             else:
                 normal_tasks.append(task)
 
         try:
-            filtered = self.request_cb(normal_tasks)
-            if filtered:
-                for task in filtered:
-                    self._log.debug('REQ cb: %s', task['uid'])
-                self.submit_tasks(filtered)
+            self.submit_tasks(normal_tasks)
 
         except:
             self._log.exception('request cb failed')
@@ -670,6 +707,29 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
+        for task in tasks:
+
+            self._log.debug('=== _result cb         : %s',
+                            task['uid'], task['state'])
+
+            uid = task['uid']
+
+            if not task.get('target_state'):
+
+                ret = task.get('exit_code')
+                if ret is None:
+                    ret = -1
+
+                if int(ret) == 0: task['target_state'] = rps.DONE
+                else            : task['target_state'] = rps.FAILED
+
+            if uid in self._task_service_data:
+
+                # update task info and signal task service thread
+                self._log.debug('unlock 2 %s', uid)
+                self._task_service_data[uid].append(task)
+                self._task_service_data[uid][0].set()
+
         try:
             self.result_cb(tasks)
 
@@ -677,20 +737,8 @@ class Master(rpu.Component):
             self._log.exception('result callback failed')
 
         for task in tasks:
-
-            # check if the task was submited via the task_service EP
-            tid = task['uid']
-
-            if tid in self._task_service_data:
-                # update task info and signal task service thread
-                self._log.debug('unlock 1 %s', tid)
-                self._task_service_data[tid][1] = task
-                self._task_service_data[tid][0].set()
-
-            ret = int(task.get('exit_code', -1))
-
-            if ret == 0: task['target_state'] = rps.DONE
-            else       : task['target_state'] = rps.FAILED
+            self._log.debug('=== advance            : %s : %s',
+                            task['uid'], task['state'])
 
         self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
                             publish=True, push=True)

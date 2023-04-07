@@ -29,7 +29,7 @@ def out(msg):
 #
 # The worker itself is an external program which is not covered in this code.
 
-RANKS  = 1
+RANKS = 2
 
 
 @rp.pythontask
@@ -132,9 +132,9 @@ class MyMaster(rp.raptor.Master):
                 'mode'      : rp.TASK_EVAL,
                 'ranks'     : RANKS,
                 'code'      :
-                    'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
-                    'time.sleep(%d)))' % self._sleep,
+                    'print("hello %%s/%%s: %%s" %% (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"])) and '
+                    'time.sleep(%d)' % self._sleep,
                 'raptor_id' : 'master.000000'}))
 
             tds.append(rp.TaskDescription({
@@ -183,15 +183,14 @@ class MyMaster(rp.raptor.Master):
             if submitted:
                 # request_cb has been called, so we can wait for completion
 
-                self._log.info('exec done?: %d >= %d ', completed, submitted)
+                self._log.info('=== submit done?: %d >= %d ', completed, submitted)
 
                 if completed >= submitted:
-                  # self.stop()
                     break
 
             time.sleep(1)
 
-        self._log.info('exec done!')
+        self._log.info('=== submit done!')
 
 
     # --------------------------------------------------------------------------
@@ -200,7 +199,7 @@ class MyMaster(rp.raptor.Master):
 
         for task in tasks:
 
-            self._log.debug('request_cb %s\n' % (task['uid']))
+            self._log.debug('=== request_cb %s\n', task['uid'])
 
             mode = task['description']['mode']
             uid  = task['description']['uid']
@@ -238,7 +237,7 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.info('result_cb  %s: %s [%s] [%s]',
+            self._log.info('=== result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
                             task['stdout'],
@@ -295,6 +294,10 @@ if __name__ == '__main__':
     master.start()
     out('submit')
     master.submit()
+
+    # let some time pass for client side tasks to complete
+    time.sleep(60)
+
     out('stop')
     master.stop()
     out('join')

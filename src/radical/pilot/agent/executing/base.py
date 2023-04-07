@@ -7,6 +7,8 @@ import time
 
 import threading          as mt
 
+import radical.utils      as ru
+
 from ... import states    as rps
 from ... import agent     as rpa
 from ... import constants as rpc
@@ -184,6 +186,47 @@ class AgentExecutingComponent(rpu.Component):
         if to > 0.0:
             with self._to_lock:
                 self._to_tasks.append([to, time.time(), task])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def advance_tasks(self, tasks, state, publish, push):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in ru.as_list(tasks):
+            buckets[task['origin']].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                                            publish=publish, push=push)
+
+        if buckets['raptor']:
+            for task in buckets['raptor']:
+                self._log.debug('==== raptor_state_update %s: %s', task['uid'], state)
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            for task in buckets['agent']:
+                self._log.debug('==== agent_state_update  %s: %s', task['uid'], state)
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
+                                            'arg': buckets['agent']})
+
 
 
 # ------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ import random
 
 import radical.pilot as rp
 
-RANKS = 1
+RANKS = 2
 
 
 # ------------------------------------------------------------------------------
