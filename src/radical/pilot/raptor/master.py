@@ -266,18 +266,19 @@ class Master(rpu.Component):
 
             rpc_res  = {'uid': arg['uid']}
             rpc_cmd  = arg['rpc']
+            rpc_args = arg['arg']
 
-            rpc_handler = self._rpc_handlers(rpc_cmd)
+            rpc_handler = self._rpc_handlers.get(rpc_cmd)
             if rpc_handler:
                 try:
                     # FIXME: capture stdout/stderr
-                    if 'arg' in arg:
+                    if rpc_args is not None:
                         rpc_handler(arg['arg'])
                     else:
                         rpc_handler()
                     rpc_res['err'] = ''
                     rpc_res['out'] = ''
-                    rpc_res['ret'] =
+                    rpc_res['ret'] = 0
 
                 except Exception as e:
                     rpc_res['err'] = repr(e)
@@ -309,7 +310,7 @@ class Master(rpu.Component):
                           if  task['description']['mode'] != RAPTOR_WORKER]
 
             for task in tasks:
-                self._log.debug('==== raptor state update: %s : %s',
+                self._log.debug('raptor state update: %s : %s',
                                 task['uid'], task['state'])
 
             self._result_cb(tasks)
@@ -322,8 +323,6 @@ class Master(rpu.Component):
 
                 uid   = thing['uid']
                 state = thing['state']
-
-                self._log.debug('==== state update %s: %s', uid, state)
 
                 if uid in self._workers:
 
@@ -737,9 +736,6 @@ class Master(rpu.Component):
 
         for task in tasks:
 
-            self._log.debug('=== _result cb         : %s',
-                            task['uid'], task['state'])
-
             uid = task['uid']
 
             if not task.get('target_state'):
@@ -763,10 +759,6 @@ class Master(rpu.Component):
 
         except:
             self._log.exception('result callback failed')
-
-        for task in tasks:
-            self._log.debug('=== advance            : %s : %s',
-                            task['uid'], task['state'])
 
         self.advance(tasks, rps.AGENT_STAGING_OUTPUT_PENDING,
                             publish=True, push=True)

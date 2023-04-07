@@ -504,16 +504,12 @@ class Worker(object):
             env.update(task['description']['environment'])
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
-            self._log.debug('===== proc: --%s--', cmd)
             self._prof.prof('rank_start', uid=uid)
             proc = sp.Popen(cmd, env=env,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
                             close_fds=True, shell=True)
-            self._prof.prof('rank_stop_3', uid=uid)
             out, err = proc.communicate()
-            self._prof.prof('rank_stop_2', uid=uid)
             ret      = proc.returncode
-            self._prof.prof('rank_stop_1', uid=uid)
             exc      = (None, None)
             self._prof.prof('rank_stop', uid=uid)
 

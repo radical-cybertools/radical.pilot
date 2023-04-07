@@ -204,6 +204,7 @@ class AgentExecutingComponent(rpu.Component):
         `origin` attributes for tasks.
         '''
 
+
         buckets = {'client': list(),
                    'raptor': list(),
                    'agent' : list()}
@@ -211,19 +212,23 @@ class AgentExecutingComponent(rpu.Component):
         for task in ru.as_list(tasks):
             buckets[task['origin']].append(task)
 
+        # we want any task which has a `raptor_id` set to show up in raptor's
+        # result callbacks
+        if state != rps.AGENT_EXECUTING:
+            for task in ru.as_list(tasks):
+                if task['description'].get('raptor_id'):
+                    if task not in buckets['raptor']:
+                        buckets['raptor'].append(task)
+
         if buckets['client']:
             self.advance(buckets['client'], state=state,
                                             publish=publish, push=push)
 
         if buckets['raptor']:
-            for task in buckets['raptor']:
-                self._log.debug('==== raptor_state_update %s: %s', task['uid'], state)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
                                             'arg': buckets['raptor']})
 
         if buckets['agent']:
-            for task in buckets['agent']:
-                self._log.debug('==== agent_state_update  %s: %s', task['uid'], state)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
                                             'arg': buckets['agent']})
 
