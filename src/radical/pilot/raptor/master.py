@@ -330,7 +330,20 @@ class Master(rpu.Component):
                         self._workers[uid]['status'] = self.DONE
                         self._log.info('worker %s final: %s', uid, state)
 
+                    self.worker_state_cb(self._workers, state)
+
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def worker_state_cb(self, worker_dict, state):
+        '''
+        This callback can be overloaded - it will be invoked whenever the master
+        receives a state update for a worker it is connected to.
+        '''
+
+        pass
 
 
     # --------------------------------------------------------------------------
