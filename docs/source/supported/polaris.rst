@@ -26,10 +26,10 @@ General description
 
 .. note::
 
-   RADICAL-Pilot provides a possibility to manage the ``-l`` option for
-   ``PBSPRO`` and sets the default values in a corresponding configuration file.
-   For the cases, when it is needed to have a different setup, please, follow
-   these steps:
+   RADICAL-Pilot provides a possibility to manage the ``-l`` option (resource
+   selection qualifier) for ``PBSPRO`` and sets the default values in a
+   corresponding configuration file. For the cases, when it is needed to have a
+   different setup, please, follow these steps:
 
    .. code-block:: bash
 
@@ -66,8 +66,7 @@ Python virtual environment
    # OR clone base environment
    #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
 
-RADICAL-Pilot is installed after a corresponding virtual environment is
-activated.
+Install RADICAL-Pilot after activating a corresponding virtual environment.
 
 MongoDB
 -------
@@ -76,7 +75,7 @@ Local installation
 ^^^^^^^^^^^^^^^^^^
 
 If MongoDB was already setup and initialized then just run its instance
-(see "Run MongoDB instance" subsection).
+(see `Run MongoDB instance <#run-mongodb-instance>`_ subsection).
 
 .. code-block:: bash
 
@@ -129,6 +128,11 @@ Run MongoDB instance
    # shutdown the server
    $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf --shutdown
 
+.. warning::
+
+   The instance of MongoDB runs on a login node. Please, make sure to terminate
+   it after every run.
+
 MongoDB initialization
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -149,8 +153,7 @@ RADICAL-Pilot will connect to the MongoDB instance using the following URL.
 
    export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
 
-
-Example of the launching script
+Launching script example
 ===============================
 
 Launching script (e.g., ``rp_launcher.sh``) for the RADICAL-Pilot application
