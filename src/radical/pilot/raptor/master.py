@@ -51,6 +51,9 @@ class Master(rpu.Component):
         cfg              = self._get_config(cfg)
         self._session    = Session(cfg=cfg, uid=cfg.sid, _primary=False)
 
+        self._rpc_handlers = dict()
+        self.register_rpc_handler('stop', self.stop)
+
         rpu.Component.__init__(self, cfg, self._session)
 
         self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
@@ -144,6 +147,15 @@ class Master(rpu.Component):
 
         # all comm channels are set up - begin to work
         self._log.debug('startup complete')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_rpc_handler(self, cmd, handler):
+        '''
+        register a handler to be invoked on 'cmd' type rpc calls.
+        '''
+        self._rpc_handlers[cmd] = handler
 
 
     # --------------------------------------------------------------------------
@@ -252,18 +264,29 @@ class Master(rpu.Component):
 
             self._log.debug('handle rpc %s', arg)
 
-            rpc_res = {'uid': arg['uid']}
-            if arg['rpc'] == 'stop':
-                self.stop()
-                rpc_res['err'] = ''
-                rpc_res['out'] = ''
-                rpc_res['ret'] = 0
+            rpc_res  = {'uid': arg['uid']}
+            rpc_cmd  = arg['rpc']
 
+            rpc_handler = self._rpc_handlers(rpc_cmd)
+            if rpc_handler:
+                try:
+                    # FIXME: capture stdout/stderr
+                    if 'arg' in arg:
+                        rpc_handler(arg['arg'])
+                    else:
+                        rpc_handler()
+                    rpc_res['err'] = ''
+                    rpc_res['out'] = ''
+                    rpc_res['ret'] =
+
+                except Exception as e:
+                    rpc_res['err'] = repr(e)
+                    rpc_res['out'] = ''
+                    rpc_res['ret'] = 1
             else:
                 rpc_res['err'] = 'unknown rpc command'
                 rpc_res['out'] = ''
                 rpc_res['ret'] = 1
-
 
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                               'arg':  rpc_res})
@@ -667,10 +690,11 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
-        self._log.debug('request_cb: %d', len(tasks))
 
         normal_tasks = list()
         for task in tasks:
+
+            self._log.debug('request_cb: %s', task['uid'])
 
             # executable tasks which come from the scheduler are in danger of
             # entering a loop as we will push them back to the scheduler for

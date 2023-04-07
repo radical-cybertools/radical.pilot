@@ -288,6 +288,7 @@ if __name__ == '__main__':
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
+    # FIXME
   # master.wait(count=n_workers)
 
     out('start')
@@ -299,11 +300,15 @@ if __name__ == '__main__':
     time.sleep(60)
 
     out('stop')
+    # TODO: can be run from thread?
     master.stop()
     out('join')
+
+    # TODO: worker state callback
     master.join()
     out('done')
 
+    # TODO: expose RPC hooks
 
 
 # ------------------------------------------------------------------------------
