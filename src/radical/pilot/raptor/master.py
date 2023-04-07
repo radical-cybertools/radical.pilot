@@ -425,33 +425,37 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def wait(self, count=None, uids=None):
+    def wait_workers(self, count=None, uids=None):
         '''
-        wait for `n` workers, *or* for workers with given UID, *or* for all
-        workers to become available, then return.
+        Wait for `n` workers, *or* for workers with given UID, *or* for all
+        workers to become available, then return.  A worker is considered
+        `available` when it registered with this master.
         '''
-
-        if uids:
-            uids = [uid for uid in uids if uid in self._workers]
-        else:
-            uids = list(self._workers.keys())
-
-        if not count or count > len(uids):
-            count = len(uids)
-
-        self._log.debug('wait for %d workers: %s', count, uids)
-
 
         while True:
+
+            # workers can be submitted by the client - we thus re-check for new
+            # IDs on every loop
+            if uids:
+                check_uids = [uid for uid in uids if uid in self._workers]
+            else:
+                check_uids = list(self._workers.keys())
+
+            if not count or count > len(check_uids):
+                count = len(check_uids)
+
+            self._log.debug('wait for %d workers: %s', count, check_uids)
+
 
             stats = defaultdict(int)
             for uid in uids:
                 stats[self._workers[uid]['status']] += 1
 
-            n_done = stats[self.DONE]
-            self._log.debug('stats [%d]: %s', n_done, stats)
+            n_avail   = stats[self.ACTIVE]
+            n_workers = len(self._workers)
+            self._log.debug('avail [%d / %d]: %s', n_avail, n_workers, stats)
 
-            if n_done >= count:
+            if n_avail >= count:
                 self._log.debug('wait ok')
                 return
 
