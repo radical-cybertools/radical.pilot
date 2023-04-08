@@ -349,7 +349,7 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_workers(self, descriptions: List[TaskDescription]
-                           ) -> None:
+                      ) -> List[str]:
         '''
         Submit a raptor workers per given `descriptions` element and pass the
         queue raptor info as configuration file.  Do *not* wait for the workers
@@ -368,8 +368,6 @@ class Master(rpu.Component):
         # FIXME registry: use registry instead of config files
 
         tasks = list()
-        base  = self._uid
-
         for td in descriptions:
 
             # sharing GPUs among multiple ranks not yet supported
@@ -381,8 +379,8 @@ class Master(rpu.Component):
             raptor_class = td.get('raptor_class') or  'DefaultWorker'
 
             if not td.get('uid'):
-                td.uid = '%s.worker' % base
-                # NOTE: ensure uniqueness in tmgr
+                td.uid = '%s.%s' % (self.uid, ru.generate_id('worker',
+                                                             ns=self.uid))
 
             if not td.get('executable'):
                 td.executable = 'radical-pilot-raptor-worker'
@@ -434,6 +432,8 @@ class Master(rpu.Component):
 
         self.advance(tasks, publish=True, push=True)
 
+        return [task['uid'] for task in tasks]
+
 
     # --------------------------------------------------------------------------
     #
@@ -444,6 +444,11 @@ class Master(rpu.Component):
         `available` when it registered with this master.
         '''
 
+        if not uids and not count:
+            # wait for all known workers by default
+            uids = list(self._workers.keys())
+
+
         while True:
 
             # workers can be submitted by the client - we thus re-check for new
@@ -453,23 +458,30 @@ class Master(rpu.Component):
             else:
                 check_uids = list(self._workers.keys())
 
-            if not count or count > len(check_uids):
-                count = len(check_uids)
+            if not check_uids:
+                # nothing to wait for, yet
+                time.sleep(1)
+                continue
 
-            self._log.debug('wait for %d workers: %s', count, check_uids)
 
+            stats = defaultdict(list)
+            for uid in check_uids:
+                stats[self._workers[uid]['status']].append(uid)
 
-            stats = defaultdict(int)
-            for uid in uids:
-                stats[self._workers[uid]['status']] += 1
+            # if we wait for specific uids, check if all are ACTIVE
+            if uids:
+                ok = True
+                for uid in check_uids:
+                    if uid not in stats[self.ACTIVE]:
+                        ok = False
+                        break
 
-            n_avail   = stats[self.ACTIVE]
-            n_workers = len(self._workers)
-            self._log.debug('avail [%d / %d]: %s', n_avail, n_workers, stats)
+                if ok:
+                    return
 
-            if n_avail >= count:
-                self._log.debug('wait ok')
-                return
+            elif count:
+                if count <= len(stats[self.ACTIVE]):
+                    return
 
             time.sleep(1)
 

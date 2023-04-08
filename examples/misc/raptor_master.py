@@ -283,13 +283,14 @@ if __name__ == '__main__':
     out('workers: %d' % n_workers)
     descr['ranks']         = nodes_per_worker * cores_per_node
     descr['gpus_per_rank'] = nodes_per_worker * gpus_per_node
-    master.submit_workers(descriptions=[rp.TaskDescription(descr)] * n_workers)
+    worker_ids = master.submit_workers(
+                 [rp.TaskDescription(descr) for _ in range(n_workers)])
 
     # wait until `m` of those workers are up
     # This is optional, work requests can be submitted before and will wait in
     # a work queue.
     # FIXME
-  # master.wait(count=n_workers)
+    master.wait_workers(count=1)
 
     out('start')
     master.start()
