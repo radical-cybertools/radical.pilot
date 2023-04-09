@@ -434,16 +434,12 @@ class MPIWorkerRank(mt.Thread):
                 self._prof.prof('advance',    uid=uid, state=AGENT_EXECUTING)
                 self._prof.prof('task_start', uid=uid)
 
-                sbox = task['description'].get('sandbox')
-                if not sbox:
-                    sbox = self._sbox + '/' + task['uid']
-                    task['description']['sandbox'] = sbox
-
                 try:
                     # this should never happen
                     if self._rank not in task['ranks']:
                         raise RuntimeError('inconsistent rank info')
 
+                    sbox = task['task_sandbox_path']
                     ru.rec_makedir(sbox)
                     os.chdir(sbox)
 

@@ -541,7 +541,8 @@ class Master(rpu.Component):
             # performed by the tmgr.scheduler, so we add it here
             dummy = {'pilot_sandbox': self._psbox}
             sbox  = self._session._get_task_sandbox(task, dummy)
-            task['task_sandbox'] = str(sbox)
+            task['task_sandbox']      = str(sbox)
+            task['task_sandbox_path'] = sbox.path
 
         self._submit_executable_tasks(executable_tasks)
         self._submit_raptor_tasks(raptor_tasks)
@@ -574,12 +575,8 @@ class Master(rpu.Component):
 
             td = task['description']
 
-            sbox = '%s/%s' % (self._sbox, td['uid'])
-
           # task['uid']               = td.get('uid')
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['task_sandbox_path'] = sbox
-            task['task_sandbox']      = 'file://localhost/' + sbox
             task['pilot_sandbox']     = self._psbox
             task['session_sandbox']   = self._ssbox
             task['resource_sandbox']  = self._rsbox

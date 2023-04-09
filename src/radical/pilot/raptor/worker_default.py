@@ -279,11 +279,6 @@ class DefaultWorker(Worker):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['slots']['gpus'])
 
-            sbox = task['description'].get('sandbox')
-            if not sbox:
-                sbox = self._sbox + '/' + task['uid']
-                task['description']['sandbox'] = sbox
-
             out = None
             err = None
             ret = 1
@@ -291,6 +286,7 @@ class DefaultWorker(Worker):
             exc = [None, None]
             try:
 
+                sbox = task['task_sandbox_path']
                 ru.rec_makedir(sbox)
                 os.chdir(sbox)
                 dispatcher = self.get_dispatcher(task['description']['mode'])
