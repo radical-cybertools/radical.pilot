@@ -1,7 +1,12 @@
+#!/usr/bin/env python3
+
 # pylint: disable=unused-argument
 
 __copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
+
+
+import os
 
 from radical.pilot.raptor.worker_default import DefaultWorker
 
@@ -109,6 +114,46 @@ class TestRaptorWorker(TestCase):
         self.assertEqual(out, '4\n')
         self.assertEqual(err, '')
         self.assertEqual(exc, (None, None))
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(DefaultWorker, '__init__', return_value=None)
+    @mock.patch('radical.utils.Logger')
+    def test_sandbox(self, mocked_Logger, mocked_init):
+
+        # FIXME: this test is still invalid: `_dispatch_func()` happens after
+        #        the change to the task sandbox and as such the test will not
+        #        see sandbox change.  But testing the outer loop is (a)
+        #        different for both workers, and (b) involves spawning new
+        #        processes which I do not know how to handle / mock here in
+        #        pytest.
+
+        component = DefaultWorker()
+        component.check_pwd = os.getcwd
+        component._prof = mock.Mock()
+        component._log  = mocked_Logger
+        task = {'uid'        : 'task.0000',
+                'description': {
+                        'function': 'check_pwd',
+                        'sandbox' : '/tmp',
+                        'args'    : [],
+                        'kwargs'  : {}}}
+        out, err, ret, val, exc = component._dispatch_func(task)
+
+        self.assertEqual(ret, 0)
+      # self.assertEqual(val, '/tmp')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+        self.assertEqual(exc, (None, None))
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    tc = TestRaptorWorker()
+    tc.test_sandbox()
 
 
 # ------------------------------------------------------------------------------
