@@ -120,7 +120,7 @@ class TestRaptorWorker(TestCase):
     #
     @mock.patch.object(DefaultWorker, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_sandbox(self, mocked_init, mocked_Logger):
+    def test_sandbox(self, mocked_Logger, mocked_init):
 
         # FIXME: this test is still invalid: `_dispatch_func()` happens after
         #        the change to the task sandbox and as such the test will not
