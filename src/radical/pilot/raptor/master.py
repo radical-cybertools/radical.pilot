@@ -659,7 +659,7 @@ class Master(rpu.Component):
             dummy = {'pilot_sandbox': self._psbox}
             sbox  = self._session._get_task_sandbox(task, dummy)
             task['task_sandbox']      = str(sbox)
-            task['task_sandbox_path'] = sbox.path
+            task['task_sandbox_path'] = ru.Url(sbox).path
 
         self._submit_executable_tasks(executable_tasks)
         self._submit_raptor_tasks(raptor_tasks)

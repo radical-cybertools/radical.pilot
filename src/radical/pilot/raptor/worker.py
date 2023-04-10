@@ -9,6 +9,7 @@ import threading         as mt
 
 import radical.utils     as ru
 
+from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
@@ -42,9 +43,13 @@ class Worker(object):
                                  path=self._sbox)
 
         # register for lifetime management messages on the control pubsub
-        psbox = os.environ['RP_PILOT_SANDBOX']
-        ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
+        psbox     = os.environ['RP_PILOT_SANDBOX']
+        state_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.STATE_PUBSUB))
+        ctrl_cfg  = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
+        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['sub'],
+                          log=self._log, prof=self._prof, cb=self._state_cb,
+                          topic=rpc.STATE_PUBSUB)
         ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
                           log=self._log, prof=self._prof, cb=self._control_cb,
                           topic=rpc.CONTROL_PUBSUB)
@@ -120,6 +125,33 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
+    def _state_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        # general task state updates -- check if our master is affected
+        if cmd == 'update':
+
+            for thing in ru.as_list(arg):
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid == self._raptor_id:
+
+                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                        # master completed - terminate this worker
+                        self._log.info('master %s final: %s - terminate',
+                                       uid, state)
+                        self.stop()
+                        return False
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
     def _control_cb(self, topic, msg):
 
         cmd = msg['cmd']
@@ -189,7 +221,7 @@ class Worker(object):
     #
     def stop(self):
 
-        raise NotImplementedError('`run()` must be implemented by child class')
+        raise NotImplementedError('`stop()` must be implemented by child class')
 
 
     # --------------------------------------------------------------------------
