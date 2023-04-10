@@ -200,6 +200,9 @@ All fields are mandatory, unless indicated otherwise below.
 * ``pre_bootstrap_0``: list of commands to execute for initialization of main agent (optional).
 * ``pre_bootstrap_1``: list of commands to execute for initialization of sub-agent (optional).
 * ``forward_tunnel_endpoint``: name of the host which can be used to create ssh tunnels from the compute nodes to the outside world (optional).
+* ``virtenv_dist``: By default, RADICAL-Pilot installs virtualenv version ``1.9`` while bootstrapping the pilot.
+    Setting ``virtenv_dist`` to a different version string will use that respective version.
+    Setting it to the string ``system`` will use the system supplied ``virtualenv`` command.
 * ``virtenv_mode``: RADICAL-Pilot agent enviroment setup (optional):
         * ``create``: create a python virtual enviroment from scratch (default).
         * ``recreate``: delete the exsiting virtual enviroment and build it from scratch, if not found then ``create``.
