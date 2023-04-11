@@ -6,7 +6,6 @@ __license__   = 'MIT'
 
 import os
 import copy
-from re import sub
 import time
 
 import threading       as mt

@@ -190,7 +190,7 @@ class AgentExecutingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def advance_tasks(self, tasks, state, publish, push):
+    def advance_tasks(self, tasks, state, publish, push, ts=None):
         '''
         sort tasks into different buckets, depending on their origin.
         That origin will determine where tasks which completed execution
@@ -222,13 +222,17 @@ class AgentExecutingComponent(rpu.Component):
 
         if buckets['client']:
             self.advance(buckets['client'], state=state,
-                                            publish=publish, push=push)
+                                            publish=publish, push=push, ts=ts)
 
         if buckets['raptor']:
+            self.advance(buckets['client'], state=state,
+                                            publish=publish, push=False, ts=ts)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
                                             'arg': buckets['raptor']})
 
         if buckets['agent']:
+            self.advance(buckets['client'], state=state,
+                                            publish=publish, push=False, ts=ts)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
                                             'arg': buckets['agent']})
 

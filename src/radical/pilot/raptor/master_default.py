@@ -5,7 +5,7 @@ import time
 
 
 from collections import defaultdict
-from typing      import List, Dict, Union
+from typing      import List
 
 import threading         as mt
 
@@ -603,7 +603,7 @@ class Master(rpu.Component):
         normal_tasks = list()
         for task in tasks:
             if task['description']['mode'] == RAPTOR_WORKER:
-                self.submit_workers(task['description'], 1)
+                self.submit_workers(task['description'])
             else:
                 normal_tasks.append(task)
 

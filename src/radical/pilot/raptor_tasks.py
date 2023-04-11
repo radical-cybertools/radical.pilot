@@ -4,7 +4,7 @@ from typing import Dict, List, Any, Optional
 import radical.utils as ru
 
 from .task             import Task
-from .task_description import TaskDescription, RAPTOR_WORKER
+from .task_description import TaskDescription
 
 
 # ------------------------------------------------------------------------------
