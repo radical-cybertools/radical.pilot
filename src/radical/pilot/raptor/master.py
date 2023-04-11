@@ -486,6 +486,9 @@ class Master(rpu.Component):
                 if count <= len(stats[self.ACTIVE]):
                     return
 
+            if self._term.is_set():
+                raise RuntimeError('wait interrupted by master termination')
+
             time.sleep(1)
 
 
