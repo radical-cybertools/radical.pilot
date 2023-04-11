@@ -38,25 +38,8 @@ class Raptor(Task):
 
         for td in descriptions:
 
-            td.mode = RAPTOR_WORKER
+            td.raptor_id = self.uid
 
-            raptor_file  = td.get('raptor_file')  or  ''
-            raptor_class = td.get('raptor_class') or  'DefaultWorker'
-
-            if not td.get('uid'):
-                td.uid = '%s.worker' % self.uid
-                # NOTE: ensure uniqueness in tmgr
-
-            if not td.get('executable'):
-                td.executable = 'radical-pilot-raptor-worker'
-
-            if not td.get('named_env'):
-                td.named_env = 'rp'
-
-            td.environment['PYTHONUNBUFFERED'] = '1'
-            td.mode      = RAPTOR_WORKER
-            td.uid       = 'raptor_worker.0000'
-            td.arguments = [raptor_file, raptor_class, self._uid]
 
         return self._tmgr.submit_workers(descriptions)
 

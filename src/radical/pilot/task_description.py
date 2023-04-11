@@ -605,8 +605,8 @@ class TaskDescription(ru.TypedDict):
         RESTARTABLE     : bool        ,
         TAGS            : {None: None},
         RAPTOR_ID       : str         ,
-        RAPTOR_CLASS    : str         ,
         RAPTOR_FILE     : str         ,
+        RAPTOR_CLASS    : str         ,
         METADATA        : None        ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
@@ -665,8 +665,8 @@ class TaskDescription(ru.TypedDict):
         RESTARTABLE     : False       ,
         TAGS            : dict()      ,
         RAPTOR_ID       : ''          ,
-        RAPTOR_CLASS    : ''          ,
         RAPTOR_FILE     : ''          ,
+        RAPTOR_CLASS    : ''          ,
         METADATA        : None        ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
@@ -750,9 +750,9 @@ class TaskDescription(ru.TypedDict):
             self.raptor_file = self.worker_file
             self.worker_file = ''
 
-        if self.raptor_class:
-            self.raptor_class = self.raptor_class
-            self.raptor_class
+        if self.worker_class:
+            self.raptor_class = self.worker_class
+            self.raptor_class = ''
 
         # deprecated and ignored
         if self.cpu_process_type: pass

@@ -361,8 +361,8 @@ class TaskManager(rpu.Component):
 
                     self._log.debug('task %s is  restartable', task['uid'])
                     task['restarted'] = True
-                    descr = TaskDescription(task['description'])
-                    to_restart.append(descr)
+                    td = TaskDescription(task['description'])
+                    to_restart.append(td)
                     # FIXME: increment some restart counter in the description?
                     # FIXME: reference the resulting new uid in the old task.
 
@@ -848,9 +848,10 @@ class TaskManager(rpu.Component):
 
         descriptions = ru.as_list(descriptions)
 
-        for descr in descriptions:
-            descr.mode       = RAPTOR_MASTER
-            descr.executable = 'raptor_master.py'
+        for td in descriptions:
+            td.mode       = RAPTOR_MASTER
+            td.pilot      = pilot_id
+            td.executable = 'raptor_master.py'
 
         return self.submit_tasks(descriptions)
 
@@ -873,9 +874,25 @@ class TaskManager(rpu.Component):
 
         descriptions = ru.as_list(descriptions)
 
-        for descr in descriptions:
-            descr.mode       = RAPTOR_WORKER
-            descr.executable = 'radical-pilot-raptor-worker'
+        for td in descriptions:
+
+            raptor_file  = td.get('raptor_file')  or  ''
+            raptor_class = td.get('raptor_class') or  'DefaultWorker'
+
+            if not td.get('uid'):
+                td.uid = '%s.worker' % self.uid
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-worker'
+
+            if not td.get('named_env'):
+                td.named_env = 'rp'
+
+            td.mode      = RAPTOR_WORKER
+            td.raptor_id = raptor_id
+            td.arguments = [raptor_file, raptor_class, self.uid]
+
+            td.environment['PYTHONUNBUFFERED'] = '1'
 
         return self.submit_tasks(descriptions)
 
@@ -923,18 +940,18 @@ class TaskManager(rpu.Component):
 
         # we return a list of tasks
         self._rep.progress_tgt(len(descriptions) + len(tasks), label='submit')
-        for descr in descriptions:
+        for td in descriptions:
 
-            mode = descr.mode
+            mode = td.mode
 
             if mode == RAPTOR_MASTER:
-                task = RaptorMaster(tmgr=self, descr=descr, origin='client')
+                task = RaptorMaster(tmgr=self, descr=td, origin='client')
 
             elif mode == RAPTOR_WORKER:
-                task = RaptorWorker(tmgr=self, descr=descr, origin='client')
+                task = RaptorWorker(tmgr=self, descr=td, origin='client')
 
             else:
-                task = Task(tmgr=self, descr=descr, origin='client')
+                task = Task(tmgr=self, descr=td, origin='client')
 
             tasks.append(task)
             self._rep.progress()
@@ -977,10 +994,10 @@ class TaskManager(rpu.Component):
 
             for doc in task_docs:
 
-                descr = TaskDescription(doc['description'])
-                descr.uid = doc['uid']
+                td = TaskDescription(doc['description'])
+                td.uid = doc['uid']
 
-                task = Task(tmgr=self, descr=descr, origin='client')
+                task = Task(tmgr=self, descr=td, origin='client')
                 task._update(doc, reconnect=True)
 
                 self._tasks[task.uid] = task

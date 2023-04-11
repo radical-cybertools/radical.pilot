@@ -373,11 +373,16 @@ class Master(rpu.Component):
         tasks = list()
         for td in descriptions:
 
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
+
             # sharing GPUs among multiple ranks not yet supported
             if td.gpus_per_rank and not td.gpus_per_rank.is_integer():
                 raise RuntimeError('GPU sharing for workers is not supported')
 
             td.mode      = RAPTOR_WORKER
+            td.raptor_id = self.uid
+
             raptor_file  = td.get('raptor_file')  or  ''
             raptor_class = td.get('raptor_class') or  'DefaultWorker'
 
