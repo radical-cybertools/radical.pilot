@@ -461,30 +461,25 @@ class Master(rpu.Component):
             else:
                 check_uids = list(self._workers.keys())
 
-            if not check_uids:
-                # nothing to wait for, yet
-                time.sleep(1)
-                continue
-
-
-            stats = defaultdict(list)
-            for uid in check_uids:
-                stats[self._workers[uid]['status']].append(uid)
-
-            # if we wait for specific uids, check if all are ACTIVE
-            if uids:
-                ok = True
+            if check_uids:
+                stats = defaultdict(list)
                 for uid in check_uids:
-                    if uid not in stats[self.ACTIVE]:
-                        ok = False
-                        break
+                    stats[self._workers[uid]['status']].append(uid)
 
-                if ok:
-                    return
+                # if we wait for specific uids, check if all are ACTIVE
+                if uids:
+                    ok = True
+                    for uid in check_uids:
+                        if uid not in stats[self.ACTIVE]:
+                            ok = False
+                            break
 
-            elif count:
-                if count <= len(stats[self.ACTIVE]):
-                    return
+                    if ok:
+                        return
+
+                elif count:
+                    if count <= len(stats[self.ACTIVE]):
+                        return
 
             if self._term.is_set():
                 raise RuntimeError('wait interrupted by master termination')
