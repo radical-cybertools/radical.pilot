@@ -2,6 +2,7 @@
     "task": {
          "uid"                  : "task.000000",
          "name"                 : "test_task",
+         "origin"               : "client",
          "description": {
              "executable"       : "/bin/sleep",
              "arguments"        : ["10"],

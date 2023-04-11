@@ -479,10 +479,12 @@ class Master(rpu.Component):
                             break
 
                     if ok:
+                        self._log.debug('wait ok')
                         return
 
                 elif count:
                     if count <= len(stats[self.ACTIVE]):
+                        self._log.debug('wait ok')
                         return
 
             if self._term.is_set():
