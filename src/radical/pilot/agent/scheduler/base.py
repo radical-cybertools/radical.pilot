@@ -17,7 +17,8 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from ..resource_manager import ResourceManager
+from ...task_description import RAPTOR_WORKER
+from ..resource_manager  import ResourceManager
 
 
 # ------------------------------------------------------------------------------
@@ -785,10 +786,14 @@ class AgentSchedulingComponent(rpu.Component):
                     data = [data]
 
                 for task in data:
+
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
                     raptor_id = task['description'].get('raptor_id')
-                    if raptor_id:
+                    mode      = task['description'].get('mode')
+
+                    # raptor workers are not scheduled by raptor itself!
+                    if raptor_id and mode != RAPTOR_WORKER:
 
                         if task.get('raptor_seen'):
                             # raptor has handled this one - we can execute it

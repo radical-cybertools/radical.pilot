@@ -646,7 +646,6 @@ class Master(rpu.Component):
             self._log.debug('submit: %s', task['uid'])
 
             mode = task['description'].get('mode', TASK_EXECUTABLE)
-            self._log.debug('%s %s' % (task['uid'], mode))
             if mode == TASK_EXECUTABLE:
                 executable_tasks.append(task)
             else:
@@ -722,31 +721,23 @@ class Master(rpu.Component):
 
         tasks = ru.as_list(tasks)
 
-
-        normal_tasks = list()
         for task in tasks:
 
             self._log.debug('request_cb: %s', task['uid'])
 
             # executable tasks which come from the scheduler are in danger of
             # entering a loop as we will push them back to the scheduler for
-            # execution.  To avoid that we set an additional attribute
+            # execution.  To avoid that loop we set an additional attribute
             # (raptor_seen=True) which the scheduler can filter for
             if task['description']['mode'] == TASK_EXECUTABLE:
                 task['raptor_seen'] = True
 
-            # handle workers differently than other tasks
-            if task['description']['mode'] == RAPTOR_WORKER:
-                self.submit_workers(task['description'], 1)
-            else:
-                normal_tasks.append(task)
-
         try:
-            self.submit_tasks(normal_tasks)
+            self.submit_tasks(tasks)
 
         except:
             self._log.exception('request cb failed')
-            # FIXME: fail tasks
+            self.advance(tasks, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------

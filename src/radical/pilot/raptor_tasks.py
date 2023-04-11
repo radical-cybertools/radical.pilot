@@ -38,6 +38,8 @@ class Raptor(Task):
 
         for td in descriptions:
 
+            td.mode = RAPTOR_WORKER
+
             raptor_file  = td.get('raptor_file')  or  ''
             raptor_class = td.get('raptor_class') or  'DefaultWorker'
 
