@@ -218,7 +218,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : 1,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
@@ -227,7 +227,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call_mpi.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : RANKS,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
@@ -236,7 +236,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.3.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'function'        : 'my_hello',
                 'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
                 'raptor_id'       : master_ids[i % n_masters]}))
@@ -245,7 +245,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : RANKS,
                 'function'        : bson,
                 'raptor_id'       : master_ids[i % n_masters]}))
@@ -254,7 +254,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : 1,
                 'function'        : bson,
                 'raptor_id'       : master_ids[i % n_masters]}))

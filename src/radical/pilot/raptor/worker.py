@@ -13,7 +13,7 @@ from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
-from ..task_description import TASK_FUNCTION, TASK_EXEC
+from ..task_description import TASK_FUNC, TASK_EXEC
 from ..task_description import TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
@@ -62,6 +62,33 @@ class Worker(object):
         # let ZMQ settle
         time.sleep(1)
 
+        # run heartbeat thread in all ranks (one hb msg every `n` seconds)
+        self._hb_delay  = 5
+        self._hb_thread = mt.Thread(target=self._hb_worker)
+        self._hb_thread.daemon = True
+        self._hb_thread.start()
+
+        # run worker initialization *before* starting to work on requests.
+        # the worker provides these builtin methods:
+        #     eval:  evaluate a piece of python code with `eval`
+        #     exec:  evaluate a piece of python code with `exec`
+        #     call:  execute  a method or function call
+        #     proc:  execute  a command line (fork/exec)
+        #     shell: execute  a shell command
+        self._modes = dict()
+        self.register_mode(TASK_FUNC,  self._dispatch_func)
+        self.register_mode(TASK_EVAL,  self._dispatch_eval)
+        self.register_mode(TASK_EXEC,  self._dispatch_exec)
+        self.register_mode(TASK_PROC,  self._dispatch_proc)
+        self.register_mode(TASK_SHELL, self._dispatch_shell)
+
+        # prepare base env dict used for all tasks
+        # NOTE: raptor tasks run in the same environment as the raptor worker
+        self._task_env = dict()
+        for k,v in os.environ.items():
+            if not k.startswith('RP_'):
+                self._task_env[k] = v
+
         # the manager (rank 0) registers the worker with the master
         if self._manager:
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
@@ -76,37 +103,11 @@ class Worker(object):
 
         # wait for raptor response
         self._log.debug('wait for registration to complete')
-        self._reg_event.wait()
-
-        # run heartbeat thread in all ranks (one hb msg every `n` seconds)
-        self._hb_delay  = 5
-        self._hb_thread = mt.Thread(target=self._hb_worker)
-        self._hb_thread.daemon = True
-        self._hb_thread.start()
-
-        self._log.debug('heartbeat thread started %s:%s', self._uid, self._rank)
-
-        self._modes = dict()
-
-        # run worker initialization *before* starting to work on requests.
-        # the worker provides these builtin methods:
-        #     eval:  evaluate a piece of python code with `eval`
-        #     exec:  evaluate a piece of python code with `exec`
-        #     call:  execute  a method or function call
-        #     proc:  execute  a command line (fork/exec)
-        #     shell: execute  a shell command
-        self.register_mode(TASK_FUNCTION, self._dispatch_func)
-        self.register_mode(TASK_EVAL,     self._dispatch_eval)
-        self.register_mode(TASK_EXEC,     self._dispatch_exec)
-        self.register_mode(TASK_PROC,     self._dispatch_proc)
-        self.register_mode(TASK_SHELL,    self._dispatch_shell)
-
-        # prepare base env dict used for all tasks
-        # NOTE: raptor tasks run in the same environment as the raptor worker
-        self._task_env = dict()
-        for k,v in os.environ.items():
-            if not k.startswith('RP_'):
-                self._task_env[k] = v
+        if not self._reg_event.wait(timeout=60):
+            self._log.warning('registration with master timed out')
+            self.stop()
+            self.join()
+            return
 
 
     # --------------------------------------------------------------------------

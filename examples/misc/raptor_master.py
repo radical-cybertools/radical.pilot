@@ -101,7 +101,7 @@ class MyMaster(rp.raptor.Master):
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.call.m.%06d' % i,
               # 'timeout'   : 10,
-                'mode'      : rp.TASK_FUNCTION,
+                'mode'      : rp.TASK_FUNC,
                 'ranks'     : RANKS,
                 'function'  : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.m.%06d' % i,
@@ -112,7 +112,7 @@ class MyMaster(rp.raptor.Master):
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.mpi_ser_func.m.%06d' % i,
               # 'timeout'   : 10,
-                'mode'      : rp.TASK_FUNCTION,
+                'mode'      : rp.TASK_FUNC,
                 'ranks'     : RANKS,
                 'function'  : bson,
                 'raptor_id' : 'master.000000'}))
@@ -121,7 +121,7 @@ class MyMaster(rp.raptor.Master):
             tds.append(rp.TaskDescription({
                 'uid'       : 'task.ser_func.m.%06d' % i,
               # 'timeout'   : 10,
-                'mode'      : rp.TASK_FUNCTION,
+                'mode'      : rp.TASK_FUNC,
                 'ranks'     : 1,
                 'function'  : bson,
                 'raptor_id' : 'master.000000'}))
@@ -207,7 +207,7 @@ class MyMaster(rp.raptor.Master):
             self._submitted[mode] += 1
 
             # for each `function` mode task, submit one more `proc` mode request
-            if mode == rp.TASK_FUNCTION:
+            if mode == rp.TASK_FUNC:
                 self.submit_tasks(rp.TaskDescription(
                     {'uid'       : 'extra' + uid,
                    # 'timeout'   : 10,

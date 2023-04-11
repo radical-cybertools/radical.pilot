@@ -9,7 +9,8 @@ import radical.utils as ru
 # task modes
 TASK_EXECUTABLE  = 'task.executable'
 TASK_FUNCTION    = 'task.function'
-TASK_METHOD      = 'task.method'
+TASK_FUNC        = 'task.function'
+TASK_METHOD      = 'task.function'
 TASK_EVAL        = 'task.eval'
 TASK_EXEC        = 'task.exec'
 TASK_PROC        = 'task.proc'
@@ -32,7 +33,7 @@ METHOD           = 'method'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
 
-# mode: TASK_FUNCTION
+# mode: TASK_FUNC
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
@@ -131,7 +132,7 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
-         - TASK_FUNCTION: the task references a python function to be called.
+         - TASK_FUNC: the task references a python function to be called.
            required attributes: `function`
            related  attributes: `args`
            related  attributes: `kwargs`
@@ -199,7 +200,7 @@ class TaskDescription(ru.TypedDict):
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
        scope of the respective RP worker implementation (see documentation
-       there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
+       there).  The task mode must be set to `TASK_FUNC`.  `args` and
        `kwargs` are passed as function parameters.
 
     .. py:attribute:: args
@@ -692,9 +693,9 @@ class TaskDescription(ru.TypedDict):
             if not self.get('executable'):
                 raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
 
-        elif self.mode == TASK_FUNCTION:
+        elif self.mode == TASK_FUNC:
             if not self.get('function'):
-                raise ValueError("TASK_FUNCTION Task needs 'function'")
+                raise ValueError("TASK_FUNC Task needs 'function'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
