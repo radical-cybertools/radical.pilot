@@ -2,15 +2,16 @@
 
 # pylint: disable=unused-argument
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
-__license__   = 'MIT'
-
-
+import glob
 import os
+import shutil
 
-from radical.pilot.raptor.worker_default import DefaultWorker
+import multiprocessing as mp
+import radical.pilot   as rp
 
 from unittest import mock, TestCase
+
+from radical.pilot.raptor.worker_default import DefaultWorker
 
 
 # ------------------------------------------------------------------------------
@@ -24,6 +25,23 @@ def calculate_area(x):
 # ------------------------------------------------------------------------------
 #
 class TestRaptorWorker(TestCase):
+
+    _cleanup_files = []
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def tearDownClass(cls) -> None:
+
+        for p in cls._cleanup_files:
+            for f in glob.glob(p):
+                if os.path.isdir(f):
+                    try:
+                        shutil.rmtree(f)
+                    except OSError as e:
+                        print('[ERROR] %s - %s' % (e.filename, e.strerror))
+                else:
+                    os.unlink(f)
 
     # --------------------------------------------------------------------------
     #
@@ -50,7 +68,6 @@ class TestRaptorWorker(TestCase):
         task = {'uid'        : 'task.0000',
                 'description': {'code': '2 + 5'}}
         out, err, ret, val, exc = component._dispatch_eval(task)
-        print(out, err, ret, val, exc)
 
         self.assertEqual(ret, 0)
         self.assertEqual(val, 7)
@@ -119,33 +136,52 @@ class TestRaptorWorker(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(DefaultWorker, '__init__', return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_sandbox(self, mocked_Logger, mocked_init):
-
-        # FIXME: this test is still invalid: `_dispatch_func()` happens after
-        #        the change to the task sandbox and as such the test will not
-        #        see sandbox change.  But testing the outer loop is (a)
-        #        different for both workers, and (b) involves spawning new
-        #        processes which I do not know how to handle / mock here in
-        #        pytest.
+    @mock.patch('multiprocessing.Process')
+    def test_sandbox(self, mocked_mp_process, mocked_init):
 
         component = DefaultWorker()
-        component.check_pwd = os.getcwd
-        component._prof = mock.Mock()
-        component._log  = mocked_Logger
-        task = {'uid'        : 'task.0000',
-                'description': {
-                        'function': 'check_pwd',
-                        'sandbox' : '/tmp',
-                        'args'    : [],
-                        'kwargs'  : {}}}
-        out, err, ret, val, exc = component._dispatch_func(task)
+        component.check_pwd     = os.getcwd
+        component._log          = mock.Mock()
+        component._prof         = mock.Mock()
+        component._result_queue = mp.Queue()
+        component._sbox         = '/tmp'
+        component._modes        = {rp.TASK_FUNCTION: component._dispatch_func}
 
-        self.assertEqual(ret, 0)
-      # self.assertEqual(val, '/tmp')
-        self.assertEqual(out, '')
-        self.assertEqual(err, '')
-        self.assertEqual(exc, (None, None))
+        task_sbox = 'task_sandbox'
+        task_sbox_path = os.path.join(os.getcwd(), task_sbox)
+        self.assertFalse(os.path.isdir(task_sbox_path))
+
+        task = {'uid'              : 'task.0000',
+                'slots'            : {'gpus': []},
+                'description'      : {'mode'    : rp.TASK_FUNCTION,
+                                      'function': 'check_pwd',
+                                      'args'    : [],
+                                      'kwargs'  : {},
+                                      'timeout' : 0},
+                'task_sandbox_path': task_sbox}
+
+        def _target_process(target, args):
+            nonlocal component
+            target(args[0])
+            res = component._result_queue.get(timeout=0.1)
+            # out
+            self.assertEqual(res[1], '')
+            # err
+            self.assertEqual(res[2], '')
+            # return code
+            self.assertEqual(res[3], 0)
+            # result from executed function
+            self.assertEqual(res[4], task_sbox_path)
+            mp_process = mock.Mock()
+            mp_process.is_alive.return_value = False
+            return mp_process
+
+        mocked_mp_process.side_effect = _target_process
+        with mock.patch('sys.exit'):
+            component._dispatch(task, {})
+
+        self.assertTrue(os.path.isdir(task_sbox_path))
+        self._cleanup_files.append(task_sbox_path)
 
 
 # ------------------------------------------------------------------------------
