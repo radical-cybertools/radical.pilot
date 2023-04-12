@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument, no-value-for-parameter
 
 import glob
 import os
@@ -73,6 +73,7 @@ class TestRaptorWorker(TestCase):
         self.assertEqual(val, 7)
         self.assertEqual(out, '')
         self.assertEqual(err, '')
+        self.assertEqual(exc, (None, None))
 
         task = {'uid'        : 'task.0001',
                 'description': {'code': 'math.add(2, 5)'}}
