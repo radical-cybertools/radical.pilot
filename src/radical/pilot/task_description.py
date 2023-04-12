@@ -162,12 +162,12 @@ class TaskDescription(ru.TypedDict):
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (e.g., pipes, I/O redirection) which cannot easily 
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily
         be mapped to other task attributes.
 
         TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
         that define RAPTOR's master(s) and worker(s) components and their
-        resource requirements. They are launched by the Agent on one or more 
+        resource requirements. They are launched by the Agent on one or more
         nodes, depending on their requirements.
 
     .. py:attribute:: executable
