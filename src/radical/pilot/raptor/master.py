@@ -40,10 +40,13 @@ class Master(rpu.Component):
     def __init__(self, cfg=None):
 
         self._uid        = os.environ['RP_TASK_ID']
+        self._pid        = os.environ['RP_PILOT_ID']
         self._sid        = os.environ['RP_SESSION_ID']
         self._name       = os.environ['RP_TASK_NAME']
         self._sbox       = os.environ['RP_TASK_SANDBOX']
         self._psbox      = os.environ['RP_PILOT_SANDBOX']
+        self._ssbox      = os.environ['RP_SESSION_SANDBOX']
+        self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
 
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
@@ -341,10 +344,10 @@ class Master(rpu.Component):
             task['uid']               = uid
             task['task_sandbox_path'] = self._sbox
             task['task_sandbox']      = 'file://localhost/' + self._sbox
-            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
-            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
-            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
-            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['pilot_sandbox']     = self._psbox
+            task['session_sandbox']   = self._ssbox
+            task['resource_sandbox']  = self._rsbox
+            task['pilot']             = self._pid
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
             tasks.append(task)
@@ -534,6 +537,13 @@ class Master(rpu.Component):
             else:
                 raptor_tasks.append(task)
 
+            # tasks submitted in raptor will miss sandbox completion as
+            # performed by the tmgr.scheduler, so we add it here
+            dummy = {'pilot_sandbox': self._psbox}
+            sbox  = self._session._get_task_sandbox(task, dummy)
+            task['task_sandbox']      = str(sbox)
+            task['task_sandbox_path'] = sbox.path
+
         self._submit_executable_tasks(executable_tasks)
         self._submit_raptor_tasks(raptor_tasks)
 
@@ -565,16 +575,12 @@ class Master(rpu.Component):
 
             td = task['description']
 
-            sbox = '%s/%s' % (self._sbox, td['uid'])
-
           # task['uid']               = td.get('uid')
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['task_sandbox_path'] = sbox
-            task['task_sandbox']      = 'file://localhost/' + sbox
-            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
-            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
-            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
-            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['pilot_sandbox']     = self._psbox
+            task['session_sandbox']   = self._ssbox
+            task['resource_sandbox']  = self._rsbox
+            task['pilot']             = self._pid
             task['resources']         = {'cpu': td['ranks'] *
                                                 td.get('cores_per_rank', 1),
                                          'gpu': td['ranks'] *
