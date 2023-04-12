@@ -129,8 +129,8 @@ class Session(rs.Session):
         self._closed  = False
         self._t_start = time.time()
 
-        self._proxy   = None             # proxy client instance
-        self._reg     = None             # registry client instance
+        self._proxy = None    # proxy client instance
+        self._reg   = None    # registry client instance
 
         self._pmgrs = dict()  # map IDs to pmgr instances
         self._tmgrs = dict()  # map IDs to tmgr instances
@@ -140,20 +140,20 @@ class Session(rs.Session):
         if uid: self._uid = uid
         else  : self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
 
+        self._init_cfg(cfg)
+        self._init_registry()
+        self._init_proxy(proxy_url, proxy_host)
+
+        if self._role == self._PRIMARY:
+            self._rep.info ('<<new session: ')
+            self._rep.plain('[%s]' % self._uid)
+
         for site in self._rcfgs:
             for rcfg in self._rcfgs[site].values():
                 for schema in rcfg.get('schemas', []):
                     while isinstance(rcfg.get(schema), str):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
-
-        if self._role == self._PRIMARY:
-            self._rep.info ('<<new session: ')
-            self._rep.plain('[%s]' % self._uid)
-
-        self._init_cfg(cfg)
-        self._init_registry()
-        self._init_proxy(proxy_url, proxy_host)
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -415,7 +415,7 @@ class Session(rs.Session):
         if self._closed:
             return
 
-        if self._primary:
+        if self._role == self._PRIMARY:
             self._rep.info('closing session %s' % self._uid)
 
         self._log.debug("session %s closing", self._uid)
@@ -471,11 +471,6 @@ class Session(rs.Session):
 
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
-        if self.closed and self.created:
-            self._rep.info('<<session lifetime: %.1fs' %
-                           (self.closed - self.created))
-        self._rep.ok('>>ok\n')
-
             # dump json
             json = {'session' : self.as_dict(),
                     'pmgr'    : list(),
@@ -502,6 +497,11 @@ class Session(rs.Session):
 
             tgt = '%s/%s.json' % (self.path, self.uid)
             ru.write_json(json, tgt)
+
+        if self.closed and self.created:
+            self._rep.info('<<session lifetime: %.1fs' %
+                           (self.closed - self.created))
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -574,7 +574,7 @@ class Session(rs.Session):
     #
     @property
     def primary(self):
-        return self._primary
+        return self._role == self._PRIMARY
 
 
     # --------------------------------------------------------------------------

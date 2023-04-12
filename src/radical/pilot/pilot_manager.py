@@ -125,7 +125,6 @@ class PilotManager(rpu.Component):
         cfg.uid            = self._uid
         cfg.owner          = self._uid
         cfg.sid            = session.uid
-        cfg.base           = session.base
         cfg.path           = session.path
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
