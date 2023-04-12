@@ -688,30 +688,30 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER,
-                         AGENT_SERVICE]:
+        if self.mode in [TASK_EXECUTABLE, AGENT_SERVICE]:
             if not self.get('executable'):
-                raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
+                umode = self.mode.upper().replace('.', '_')
+                raise ValueError("%s Task mode needs 'executable'" % umode)
 
         elif self.mode == TASK_FUNC:
             if not self.get('function'):
-                raise ValueError("TASK_FUNC Task needs 'function'")
+                raise ValueError("TASK_FUNC Task mode needs 'function'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
-                raise ValueError("TASK_PROC Task needs 'executable'")
+                raise ValueError("TASK_PROC Task mode needs 'executable'")
 
         elif self.mode == TASK_EVAL:
             if not self.get('code'):
-                raise ValueError("TASK_EVAL Task needs 'code'")
+                raise ValueError("TASK_EVAL Task mode needs 'code'")
 
         elif self.mode == TASK_EXEC:
             if not self.get('code'):
-                raise ValueError("TASK_EXEC Task needs 'code'")
+                raise ValueError("TASK_EXEC Task mode needs 'code'")
 
         elif self.mode == TASK_SHELL:
             if not self.get('command'):
-                raise ValueError("TASK_SHELL Task needs 'command'")
+                raise ValueError("TASK_SHELL Task mode needs 'command'")
 
         # backward compatibility for deprecated attributes
         if self.cpu_processes:
