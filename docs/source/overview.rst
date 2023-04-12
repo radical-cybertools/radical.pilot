@@ -45,17 +45,6 @@ Summarizing, RP is the right tool if, for example, you want to:
    concurrently.
 
 
-What is a Task?
-===============
-
-Tasks are wrappers around self-contained executables, executed as one or more
-processes on the operating system of one or more compute nodes of a HPC
-cluster. As such, tasks are independent, i.e., don't execute with a shared
-memory space and tasks are not methods or functions executed by RP on the
-resources of a HPC platform. Task executables can be any 'program' like, for
-example, Gromacs, Namd or stress but also sleep, date, etc.
-
-
 What is a Workload?
 ===================
 
@@ -67,22 +56,51 @@ For RP it makes no difference if new tasks arrive while other tasks are
 executing.
 
 
-What is a Task (Task)?
-============================
+What is a Task?
+===============
 
-In RP, tasks are called ``Tasks`` (Task, or 'task'), indicating that are
-independent and self-contained tasks of computation. Each Task represents a
-self-contained, executable part of the application's workload.  A Task is
-described by the following attributes:
+Tasks are self-contained portions of an application which RP can execute
+independently from each other.  Those tasks are usually application executables
+(such as `Gromacs`, `NAMD` etc) whose execution is further parameterized by
+command line arguments, input files, environment settings, etc.  But those tasks
+can also be individual function calls or small snippets of Python code which RP
+will execute on the target resource - in that case the execution is
+parameterized by function arguments, Python excution context, etc.
 
-  * `executable`    : the name of the executable to be run on the target machines
-  * `arguments`     : a list of argument strings to be passed to the executable
-  * `environment`   : a dictionary of environment variable/value pairs to be set before task execution
-  * `input_staging` : a set of staging directives for input data
-  * `output_staging`: a set of staging directives for output data
+It is important to note that RP considers tasks independent, i.e., they don't
+execute with a shared memory space.
 
 For more details, see the
 :class:`API documentation <radical.pilot.TaskDescription>`
+
+What is a Task Rank?
+--------------------
+
+The notion of `ranks` is central to RP's `TaskDescription` class.  We here
+use the same notion as MPI, in that the number of `ranks` refers to the
+number of individual processes to be spawned by the task execution backend.
+These processes will be near-exact copies of each other: they run in the
+same workdir and the same `environment`, are defined by the same
+`executable` and `arguments`, get the same amount of resources allocated,
+etc.  Notable exceptions are:
+
+  - rank processes may run on different nodes;
+  - rank processes can communicate via MPI;
+  - each rank process obtains a unique rank ID.
+
+It is up to the underlying MPI implementation to determine the exact value
+of the process' rank ID.  The MPI implementation may also set a number of
+additional environment variables for each process.
+
+It is important to understand that only applications which make use of MPI
+should have more than one rank -- otherwise identical copies of the *same*
+application instance are launched which will compute the same results, thus
+wasting resources for all ranks but one.  Worse: I/O-routines of these
+non-MPI ranks can interfere with each other and invalidate those results.
+
+Also: applications with a single rank cannot make effective use of MPI
+- depending on the specific resource configuration, RP may launch those tasks
+without providing an MPI communicator.
 
 
 What is a Pilot?
