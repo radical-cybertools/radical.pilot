@@ -283,10 +283,9 @@ class TaskDescription(ru.TypedDict):
 
     .. py:attribute:: sandbox
 
-       [type: `str` | default: `""`] This specifies the working directory of
-       the task. That directory *MUST* be relative to the pilot sandbox. It
-       will be created if it does not exist. By default, the sandbox has
-       the name of the task's uid.
+       [type: `str` | default: `""`] This specifies the working directory of the
+       task.  It will be created if it does not exist. By default, the sandbox
+       has the name of the task's uid and is relative to the pilot's sandbox.
 
     .. py:attribute:: stdout
 
