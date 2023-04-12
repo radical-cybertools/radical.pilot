@@ -285,11 +285,18 @@ class DefaultWorker(Worker):
             val = None
             exc = [None, None]
             try:
+
+                sbox = task['task_sandbox_path']
+                ru.rec_makedir(sbox)
+                os.chdir(sbox)
                 dispatcher = self.get_dispatcher(task['description']['mode'])
                 out, err, ret, val, exc = dispatcher(task)
 
             except Exception as e:
                 exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+
+            finally:
+                os.chdir(self._sbox)
 
             res = [task, out, err, ret, val, exc]
 
