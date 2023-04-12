@@ -390,6 +390,7 @@ class MPIWorkerRank(mt.Thread):
         self._log               = log
         self._prof              = prof
         self._base              = base
+        self._sbox              = os.environ['RP_TASK_SANDBOX']
 
 
     # --------------------------------------------------------------------------
