@@ -24,8 +24,6 @@ Security Contexts
    :members:
    :special-members: __init__
 
-.. seealso:: :ref:`ssh_config`
-
 Pilots and PilotManagers
 ========================
 
