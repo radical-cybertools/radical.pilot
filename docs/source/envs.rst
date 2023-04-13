@@ -1,5 +1,6 @@
-List of Env vars
-__________________
+===============================================
+List of Environment Variables for RADICAL-Pilot
+===============================================
 
 
 .. list-table:: User List
@@ -10,22 +11,22 @@ __________________
       - Description
       - Default value
     * - .. envvar:: RADICAL_BASE
-      - root dir for temporary state files,
+      - root dir for temporary state files
       - `$HOME/.radical/`
     * - .. envvar:: RADICAL_PILOT_DBURL
-      - MongoDB URL string and mandatory for RP to work.
+      - MongoDB URL string and mandatory for RP to work
       - {NOT_SET}
     * - .. envvar:: RADICAL_UTILS_NTPHOST
       - NTP host to be used for profile syncing
       - `0.pool.ntp.org`
     * - .. envvar:: RADICAL_PILOT_BULK_CB
-      - Enable bulk callbacks for performance boost. This changes the callback signature.
+      - Enable bulk callbacks for performance boost. This changes the callback signature
       - FALSE
     * - .. envvar:: RADICAL_PILOT_STRICT_CANCEL
       - Limit task cancelation, not to force state "CANCELLED" on a Task Manager side. Note that corresponding command for pilot(s) to cancel tasks is published anyway
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEFAULT_LOG_TGT
-      - The log target.
+      - The log target
       - .
     * - .. envvar:: RADICAL_DEFAULT_LOG_DIR
       - The Log dir
@@ -37,7 +38,7 @@ __________________
       - Flag to turn reporting on [TRUE/1] or off [FALSE/0/OFF]
       - TRUE
     * - .. envvar:: RADICAL_DEFAULT_REPORT_TGT
-      - Similar to ..LOG_TGT: List of comma separated targets [0/null, 1/stdout, 2/stderr, ./{report_name/path}] to write the report info.
+      - Similar to ..LOG_TGT: List of comma separated targets [0/null, 1/stdout, 2/stderr, ./{report_name/path}] to write the report info
       - stderr
     * - .. envvar:: RADICAL_DEFAULT_REPORT_DIR
       - Directory of Reporter module
@@ -62,13 +63,13 @@ __________________
       - Description
       - Default value
     * - <NS>_LOG_LVL
-      - Logging level ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] to control the debug output for a corresponding namespace NS, where NS can be applied as for a specific package (e.g., "RADICAL_PILOT_LOG_LVL" or "RADICAL_UTILS_LOG_LVL") or for a whole stack (e.g., "RADICAL_LOG_LVL").
+      - Logging level ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] to control the debug output for a corresponding namespace NS, where NS can be applied as for a specific package (e.g., "RADICAL_PILOT_LOG_LVL" or "RADICAL_UTILS_LOG_LVL") or for a whole stack (e.g., "RADICAL_LOG_LVL")
       - Refer `RADICAL_DEFAULT_*`
     * - <NS>_LOG_TGT
       - Used for the log targets
       - Refer `RADICAL_DEFAULT_*`
 
-.. note:: The name space is used to derive env variable names for log levels and targets. If no ns is given, the ns is derived from the name. Eg. the name `radical.pilot` becomes `RADICAL_PILOT`.
+.. note:: The name space is used to derive environmental variable names for log levels and targets. If no ns is given, the ns is derived from the name. Eg. the name `radical.pilot` becomes `RADICAL_PILOT`.
 
 .. raw:: html
 
@@ -85,7 +86,7 @@ __________________
       - Boolean to turn on and off Reporter
       - TRUE
     * - <NS>_LOG_TGT
-      - Where to report to. List of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] to write the debug output for a corresponding namespace NS.
+      - Where to report to. List of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] to write the debug output for a corresponding namespace NS
       - {NOT_SET}
 
 .. raw:: html
@@ -100,28 +101,28 @@ __________________
       - Description
       - Default value
     * - .. envvar:: RADICAL_UTILS_NO_ATFORK
-      - Monkeypatching can be disabled by setting RADICAL_UTILS_NO_ATFORK.
+      - Monkeypatching can be disabled by setting RADICAL_UTILS_NO_ATFORK
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEBUG
-      - enables scattered debug facilities. This will likely slow down and even destabilize the code.
+      - enables scattered debug facilities. This will likely slow down and even destabilize the code
       - {NOT_SET}
     * - RU_RAISE_ON_*
       - related to :envvar:`RADICAL_DEBUG` to trigger specific exceptions
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEBUG_HELPER
-      - related to :envvar:`RADICAL_DEBUG`, enables a persistent debug helper class in the code and installs some signal handlers for extra debug output.
+      - related to :envvar:`RADICAL_DEBUG`, enables a persistent debug helper class in the code and installs some signal handlers for extra debug output
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEBUG_VERBOSE
-      - related to :envvar:`RADICAL_DEBUG`, enables verbose messages for debugging. Controls "debug" module to collect stack traces. Verbose flag sets the level of details for output messages.
+      - related to :envvar:`RADICAL_DEBUG`, enables verbose messages for debugging. Controls "debug" module to collect stack traces. Verbose flag sets the level of details for output messages
       - {NOT_SET}
     * - *_PROFILE
       - `Profiler` is similar to `Logger` and `Reporter`
       - {NOT_SET}
     * - .. envvar:: RADICAL_PILOT_PRUN_VERBOSE
-      - Increase verbosity of prun output
+      - Increase verbosity of `prun` output
       - FALSE
     * - .. envvar:: UMS_OMPIX_PRRTE_DIR
-      - Installation directory for PMIx/PRRTE used in RP LM PRTE (optional, to be obsolete).
+      - Installation directory for PMIx/PRRTE used in RP LM PRTE (optional, to be obsolete)
       - {NOT_SET}
     * - .. envvar:: RADICAL_SAGA_SMT
       - Sets SMT settings on some resources. Usually covered via resource config options
@@ -177,8 +178,8 @@ __________________
       - enable backward compatibility for old state defines
 
 
-Referring Env variable in your code for hyperlink (Usage Example)
-------------------------------------------------------------------
+.. Referring environment variable in your code for hyperlink (Usage Example)
+.. -------------------------------------------------------------------------
 
-Your documentation text while using/referring env like
-this ``:envvar:`RADICAL_TEST_ENV``` and continuing.
+.. Your documentation text while using/referring env like
+.. this ``:envvar:`RADICAL_TEST_ENV``` and continuing.

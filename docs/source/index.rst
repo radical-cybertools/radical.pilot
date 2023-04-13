@@ -42,8 +42,9 @@ architecture.
    :numbered:
    :maxdepth: 2
 
-   getting_started.ipynb
+   tutorials/getting_started.ipynb
    tutorials.rst
    supported.rst
-   internals.rst
+   envs.rst
    apidoc.rst
+   internals.rst
