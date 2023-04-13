@@ -6,8 +6,8 @@ Tutorials
 
 This set of tutorials explore some of RADICAL-Pilot capabilities. Each tutorial
 focuses on a specific topic, covering simple and more advanced details. Before
-dwelling into these tutorials, you should be comfortable with our `getting
-started <getting_started.ipynb>`_ example application.
+dwelling into these tutorials, you should be comfortable with our
+`getting started <getting_started.ipynb>`_ example application.
 
 
 Running the Tutorials
