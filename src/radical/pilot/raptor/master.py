@@ -360,7 +360,8 @@ class Master(rpu.Component):
         The task `descriptions` specifically support the following keys:
 
           - raptor_class: str, type name of worker class to execute
-          - raptor_file : str, optional if an RP worker class is used
+          - raptor_file : str, optional
+              Module file from which *raptor_class* may be imported, if a custom RP worker class is used
 
         Note that only one worker rank (presumably rank 0) should register with
         the master - the workers are expected to syncronize their ranks as
