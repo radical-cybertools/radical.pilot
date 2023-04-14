@@ -173,6 +173,10 @@ class Worker(object):
             if arg['uid'] != self._uid:
                 return
 
+            if self._reg_event.is_set():
+                # registration was completed already
+                return
+
             self._ts_addr      = arg['info']['ts_addr']
             self._res_addr_put = arg['info']['res_addr_put']
             self._req_addr_get = arg['info']['req_addr_get']
