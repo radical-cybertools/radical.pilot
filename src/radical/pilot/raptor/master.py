@@ -61,9 +61,6 @@ class Master(rpu.Component):
         self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
         self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
 
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb,   self._psbox)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
-
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE, self._psbox)
@@ -139,6 +136,10 @@ class Master(rpu.Component):
         # begin to receive tasks in that queue
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
+        # everything is set up - we can serve messages on the pubsubs also
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb,   self._psbox)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
+
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
         self.publish(rpc.CONTROL_PUBSUB,
@@ -205,6 +206,7 @@ class Master(rpu.Component):
 
         cmd = msg['cmd']
         arg = msg['arg']
+
 
         if cmd == 'worker_register':
 

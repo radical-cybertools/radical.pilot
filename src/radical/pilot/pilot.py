@@ -10,7 +10,6 @@ import radical.utils as ru
 from . import states    as rps
 from . import constants as rpc
 
-from .task_description   import RAPTOR_MASTER
 from .staging_directives import complete_url
 
 
@@ -666,30 +665,7 @@ class Pilot(object):
 
             raise RuntimeError('pilot is not attached to a task manager, yet')
 
-        descriptions = ru.as_list(descriptions)
-
-        for td in descriptions:
-            td.pilot = self.uid
-            td.mode  = RAPTOR_MASTER
-
-            raptor_file   = td.get('raptor_file')  or  ''
-            raptor_class  = td.get('raptor_class') or  'Master'
-
-            td.arguments  = [raptor_file, raptor_class]
-
-            td.environment['PYTHONUNBUFFERED'] = '1'
-
-            if not td.get('uid'):
-                td.uid = ru.generate_id('raptor.%(item_counter)04d',
-                                        ru.ID_CUSTOM, ns=self._session.uid)
-
-            if not td.get('executable'):
-                td.executable = 'radical-pilot-raptor-master'
-
-            if not td.get('named_env'):
-                td.named_env = 'rp'
-
-        return self._tmgr.submit_tasks(descriptions)
+        return self._tmgr.submit_raptors(descriptions, self.uid)
 
 
     # --------------------------------------------------------------------------

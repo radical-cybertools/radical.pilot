@@ -205,8 +205,6 @@ class Master(rpu.Component):
             uid  = arg['uid']
             rank = arg['rank']
 
-            self._log.debug('=== recv rank heartbeat %s:%s', uid, rank)
-
             if uid not in self._workers:
                 return
 

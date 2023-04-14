@@ -104,10 +104,12 @@ class Worker(object):
         # wait for raptor response
         self._log.debug('wait for registration to complete')
         if not self._reg_event.wait(timeout=60):
-            self._log.warning('registration with master timed out')
             self.stop()
             self.join()
-            return
+            self._log.error('registration with master timed out')
+            raise RuntimeError('registration with master timed out')
+
+        self._log.debug('registration with master ok')
 
 
     # --------------------------------------------------------------------------
@@ -175,9 +177,9 @@ class Worker(object):
             sys.exit()
 
         elif cmd == 'worker_terminate':
-            self._log.debug('worker_terminate signal')
 
             if arg['uid'] == self._uid:
+                self._log.debug('worker_terminate signal')
                 self.stop()
                 self.join()
                 sys.exit()

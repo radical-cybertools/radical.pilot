@@ -37,9 +37,7 @@ class Raptor(Task):
         descriptions = ru.as_list(descriptions)
 
         for td in descriptions:
-
             td.raptor_id = self.uid
-
 
         return self._tmgr.submit_workers(descriptions)
 

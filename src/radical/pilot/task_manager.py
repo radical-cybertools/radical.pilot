@@ -834,7 +834,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_raptor(self, descriptions, pilot_id=None):
+    def submit_raptors(self, descriptions, pilot_id=None):
         '''
         Submits on or more :class:`radical.pilot.TaskDescription` instances to
         the task manager, where the `TaskDescriptions` have the mode
@@ -849,16 +849,33 @@ class TaskManager(rpu.Component):
         descriptions = ru.as_list(descriptions)
 
         for td in descriptions:
-            td.mode       = RAPTOR_MASTER
-            td.pilot      = pilot_id
-            td.executable = 'raptor_master.py'
+
+            td.pilot = pilot_id
+            td.mode  = RAPTOR_MASTER
+
+            raptor_file   = td.get('raptor_file')  or  ''
+            raptor_class  = td.get('raptor_class') or  'Master'
+
+            td.arguments  = [raptor_file, raptor_class]
+
+            td.environment['PYTHONUNBUFFERED'] = '1'
+
+            if not td.get('uid'):
+                td.uid = ru.generate_id('raptor.%(item_counter)04d',
+                                        ru.ID_CUSTOM, ns=self._session.uid)
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-master'
+
+            if not td.get('named_env'):
+                td.named_env = 'rp'
 
         return self.submit_tasks(descriptions)
 
 
     # --------------------------------------------------------------------------
     #
-    def submit_workers(self, descriptions, raptor_id=None):
+    def submit_workers(self, descriptions):
         """
         Submits on or more :class:`radical.pilot.TaskDescription` instances to
         the task manager, where the `TaskDescriptions` have the mode
@@ -876,11 +893,16 @@ class TaskManager(rpu.Component):
 
         for td in descriptions:
 
+            raptor_id    = td.get('raptor_id')
             raptor_file  = td.get('raptor_file')  or  ''
             raptor_class = td.get('raptor_class') or  'DefaultWorker'
 
+            if not raptor_id:
+                raise ValueError('RAPTOR_WORKER descriptions need `raptor_id`')
+
             if not td.get('uid'):
-                td.uid = '%s.worker' % self.uid
+                td.uid = ru.generate_id(raptor_id + '.%(item_counter)04d',
+                                        ru.ID_CUSTOM, ns=self._session.uid)
 
             if not td.get('executable'):
                 td.executable = 'radical-pilot-raptor-worker'
@@ -890,7 +912,7 @@ class TaskManager(rpu.Component):
 
             td.mode      = RAPTOR_WORKER
             td.raptor_id = raptor_id
-            td.arguments = [raptor_file, raptor_class, self.uid]
+            td.arguments = [raptor_file, raptor_class, raptor_id]
 
             td.environment['PYTHONUNBUFFERED'] = '1'
 
