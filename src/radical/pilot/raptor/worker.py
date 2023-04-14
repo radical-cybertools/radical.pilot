@@ -89,13 +89,15 @@ class Worker(object):
             if not k.startswith('RP_'):
                 self._task_env[k] = v
 
+        reg_msg = {'cmd': 'worker_register',
+                   'arg': {'uid'        : self._uid,
+                           'raptor_id'  : self._raptor_id,
+                           'description': self._descr}}
+
         # the manager (rank 0) registers the worker with the master
         if self._manager:
-            self._ctrl_pub.put(rpc.CONTROL_PUBSUB,
-                    {'cmd': 'worker_register',
-                     'arg': {'uid'        : self._uid,
-                             'raptor_id'  : self._raptor_id,
-                             'description': self._descr}})
+            self._log.debug('register: %s / %s', self._uid, self._raptor_id)
+            self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
 
           # # FIXME: we never unregister on termination
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
@@ -103,11 +105,17 @@ class Worker(object):
 
         # wait for raptor response
         self._log.debug('wait for registration to complete')
-        if not self._reg_event.wait(timeout=60):
-            self.stop()
-            self.join()
-            self._log.error('registration with master timed out')
-            raise RuntimeError('registration with master timed out')
+        count = 0
+        while not self._reg_event.wait(timeout=1):
+            if count < 60:
+                count += 1
+                self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
+                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
+            else:
+                self.stop()
+                self.join()
+                self._log.error('registration with master timed out')
+                raise RuntimeError('registration with master timed out')
 
         self._log.debug('registration with master ok')
 

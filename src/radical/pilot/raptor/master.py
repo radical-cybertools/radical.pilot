@@ -207,7 +207,6 @@ class Master(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-
         if cmd == 'worker_register':
 
             uid = arg['uid']
