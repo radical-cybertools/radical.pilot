@@ -6,7 +6,6 @@ pytest-timeout
 pylint
 flake8
 flake8-per-file-ignores
-codecov
 coverage
 psutil
 pudb
