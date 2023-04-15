@@ -1064,12 +1064,12 @@ virtenv_create()
 
             run_cmd "Create ve with virtualenv" \
                     "$VIRTENV_CMD $virtenv"
-        fi
 
-        if test $? -ne 0
-        then
-            echo "ERROR: couldn't create virtualenv"
-            return 1
+            if test $? -ne 0
+            then
+                echo "ERROR: couldn't create virtualenv"
+                return 1
+            fi
         fi
 
         # clean out virtenv sources
