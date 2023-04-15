@@ -1006,10 +1006,11 @@ virtenv_create()
     if test "$python_dist" = "default"
     then
 
-        # check if the `venv` module is installed
-        if python3 -m venv -h > /dev/null 2>&1
+        # check if the `venv` module is usable
+        if run_cmd "Create ve with venv" \
+                   "python3 -m venv $virtenv"
         then
-            VIRTENV_CMD="$PYTHON -m venv"
+            true
 
         else
             # the `venv` module is not available - fall back to virtualenv
@@ -1060,10 +1061,10 @@ virtenv_create()
                 echo "ERROR: invalid or unusable virtenv_dist option"
                 return 1
             fi
-        fi
 
-        run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD $virtenv"
+            run_cmd "Create ve with virtualenv" \
+                    "$VIRTENV_CMD $virtenv"
+        fi
 
         if test $? -ne 0
         then
