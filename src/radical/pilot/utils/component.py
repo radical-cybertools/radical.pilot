@@ -315,10 +315,10 @@ class Component(object):
 
       - 'thing's are always in a well defined state;
       - components are simple and focus on the semantics of 'thing' state
-        progression;
+            progression;
       - no state races can occur on 'thing' state progression;
       - only valid state transitions can be enacted (given correct declaration
-        of the component's semantics);
+            of the component's semantics);
       - the overall system is performant and scalable.
 
     Inheriting classes SHOULD overload the following methods:
@@ -332,9 +332,9 @@ class Component(object):
 
       - `work()`
         - called in the main loop of the component process, on all entities
-          arriving on input channels.  The component will *not* terminate if
-          this method raises an exception.  For termination, `terminate()` must
-          be called.
+              arriving on input channels.  The component will *not* terminate if
+              this method raises an exception.  For termination, `terminate()`
+              must be called.
 
       - `finalize()`
         - tear down the component (close threads, unregister resources, etc).
@@ -1162,12 +1162,12 @@ class Component(object):
         state model.  This method will update the thing state, and push it into
         the output queue registered as target for that state.
 
-        things:  list of things to advance
-        state:   new state to set for the things
-        publish: determine if state update notifications should be issued
-        push:    determine if things should be pushed to outputs
-        prof:    determine if state advance creates a profile event
-                 (publish, and push are always profiled)
+         - things:  list of things to advance
+         - state:   new state to set for the things
+         - publish: determine if state update notifications should be issued
+         - push:    determine if things should be pushed to outputs
+         - prof:    determine if state advance creates a profile event
+           (publish, and push are always profiled)
 
         'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
