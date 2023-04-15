@@ -413,8 +413,7 @@ class TaskDescription(ru.TypedDict):
        the TaskManager, an exception is raised.
 
 
-    Task Ranks
-    ==========
+    **Task Ranks**
 
     The notion of `ranks` is central to RP's `TaskDescription` class.  We here
     use the same notion as MPI, in that the number of `ranks` refers to the
@@ -440,11 +439,10 @@ class TaskDescription(ru.TypedDict):
 
     Also: applications with a single rank cannot make effective use of MPI
     - depending on the specific resource configuration, RP may launch those
-      tasks without providing an MPI communicator.
+    tasks without providing an MPI communicator.
 
 
-    Task Environment
-    ================
+    **Task Environment**
 
     RP tasks are expected to be executed in isolation, meaning that their
     runtime environment is completely independent from the environment of other
@@ -493,8 +491,7 @@ class TaskDescription(ru.TypedDict):
     executing the directives again.
 
 
-    Staging Directives
-    ==================
+    **Staging Directives**
 
     The Staging Directives are specified using a dict in the following form::
 
@@ -507,8 +504,7 @@ class TaskDescription(ru.TypedDict):
           }
 
 
-    Locations
-    ---------
+    *Locations*
 
       `source` and `target` locations can be given as strings or `ru.Url`
       instances.  Strings containing `://` are converted into URLs immediately.
@@ -517,10 +513,10 @@ class TaskDescription(ru.TypedDict):
 
       Special URL schemas:
 
-        * `client://`   : relative to the client's working directory
-        * `resource://` : relative to the RP    sandbox on the target resource
-        * `pilot://`    : relative to the pilot sandbox on the target resource
-        * `task://`     : relative to the task  sandbox on the target resource
+        - `client://`   : relative to the client's working directory
+        - `resource://` : relative to the RP    sandbox on the target resource
+        - `pilot://`    : relative to the pilot sandbox on the target resource
+        - `task://`     : relative to the task  sandbox on the target resource
 
       In all these cases, the `hostname` element of the URL is expected to be
       empty, and the path is *always* considered relative to the locations
@@ -531,25 +527,23 @@ class TaskDescription(ru.TypedDict):
       :meth:`radical.pilot.staging_directives.complete_url`.
 
 
-    Action operators
-    ----------------
+    *Action operators*
 
       Action operators:
 
-        * rp.TRANSFER : remote file transfer from `source` URL to `target` URL
-        * rp.COPY     : local file copy, i.e., not crossing host boundaries
-        * rp.MOVE     : local file move
-        * rp.LINK     : local file symlink
+        - rp.TRANSFER : remote file transfer from `source` URL to `target` URL
+        - rp.COPY     : local file copy, i.e., not crossing host boundaries
+        - rp.MOVE     : local file move
+        - rp.LINK     : local file symlink
 
 
-    Flags
-    -----
+    *Flags*
 
       Flags:
 
-        * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-          the fly
-        * rp.RECURSIVE      : if `source` is a directory, handles it recursively
+        - rp.CREATE_PARENTS : create the directory hierarchy for targets on
+            the fly
+        - rp.RECURSIVE      : if `source` is a directory, handles it recursively
     '''
 
     _schema = {
