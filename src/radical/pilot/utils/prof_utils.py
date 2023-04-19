@@ -832,10 +832,10 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     For all ra.pilot or ra.task entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
 
-      - a resource type (we know about cores and gpus)
-      - a metric name (what the resource was used for)
-      - a list of 4-tuples of the form: [t0, t1, r0, r1]
-            The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
+    - a resource type (we know about cores and gpus)
+    - a metric name (what the resource was used for)
+    - a list of 4-tuples of the form: [t0, t1, r0, r1]
+        The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
         - t0: time, begin of resource consumption
         - t1: time, begin of resource consumption
         - r0: int,  index of resources consumed (min)
@@ -1363,4 +1363,3 @@ def get_resource_timelines(task, transitions):
 
 
 # ------------------------------------------------------------------------------
-
