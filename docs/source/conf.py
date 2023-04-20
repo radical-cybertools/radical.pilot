@@ -88,6 +88,16 @@ html_theme_path = ["_themes", ]
 # so a file named "default.css" will overwrite the builtin "default.css".
 # html_static_path = ['_static']
 
+# -- Options for intersphinx extension ---------------------------------------
+
+intersphinx_mapping = {
+    "https://docs.python.org/3/": None,
+    "https://radicalsaga.readthedocs.io/en/stable/": None,
+    "https://radicalutils.readthedocs.io/en/stable": None,
+    "https://msgpack-python.readthedocs.io/en/latest/": None,
+    "https://mpi4py.readthedocs.io/en/stable/": None,
+}
+
 # -- Napoleon settings -------------------------------------------------------
 # Reference https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
 napoleon_google_docstring = True
