@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
-__license__   = "MIT"
-
 
 import sys
 import time
@@ -20,12 +17,12 @@ dh = ru.DebugHelper()
 #
 def main(cfg):
     '''
-    This thin wrapper starts a RCT component It expects a single argument:
-    a config to use for the component's configuration.  The config must contain:
+    This thin wrapper starts an RCT task overlay worker. It expects a single
+    argument: a config to use for the worker's configuration.
+    That config must contain:
 
-      - uid : UID of component instance (unique to the hosting session)
-      - name: name of the component
-      - kind: type of component
+      - 'uid' : UID of worker instance (unique to the hosting session)
+      - 'path': sandbox for log files etc.
 
     If the config contains a `heartbeat` section, that section must be formatted
     as follows:
@@ -38,19 +35,18 @@ def main(cfg):
           'timeout' : <float>
         }
 
-    If that section exists, the process will daemonize and heartbeats are used
-    to manage the bridge lifetime: the lifetime of this bridge is then dependent
-    on receiving heartbeats from the given `uid`: after `timeout` seconds of no
-    heartbeats arriving, the bridge will terminate.  The bridge itself will
-    publish heartbeats every `interval` seconds on the heartbeat channel under
-    its own uid.
+    If that section exists, heartbeats are used to manage the worker's lifetime:
+    the lifetime of this worker is then dependent on receiving heartbeats from
+    the given `uid`: after `timeout` seconds of no heartbeats arriving, the
+    worker will terminate.  The worker itself will publish heartbeats every
+    `interval` seconds on the heartbeat channel under its own uid.
 
-    If the heartbeat section is not present in the config file, the components
+    If the heartbeat section is not present in the config file, the worker's
     lifetime is expected to be explicitly managed, i.e., that this wrapper
-    process hosting the bridge is terminated externally.
+    process hosting the worker is terminated externally.
 
-    The config file may contain other entries which are passed to the component
-    and are interpreted by the component implementation.
+    The config file may contain other entries which are passed to the worker and
+    are interpreted by the component implementation.
     '''
 
     # basic setup: cfg, logger and profiler
@@ -58,16 +54,17 @@ def main(cfg):
     prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
 
     try:
-        prof.prof('comp_start', uid=cfg.uid)
+        prof.prof('worker_start', uid=cfg.uid)
         prof.disable()
         wrapped_main(cfg, log, prof)
+    except:
+        prof.enable()
+        prof.prof('worker_fail', uid=cfg.uid)
     finally:
         prof.enable()
-        prof.prof('comp_stop', uid=cfg.uid)
+        prof.prof('worker_stop', uid=cfg.uid)
 
 
-# ------------------------------------------------------------------------------
-#
 def wrapped_main(cfg, log, prof):
 
     term = mt.Event()
@@ -78,17 +75,17 @@ def wrapped_main(cfg, log, prof):
     session = rp.Session(cfg=cfg, _role=rp.Session._DEFAULT)
 
     # create the component and begin to work
-    comp = rp.utils.Component.create(cfg, session)
-    comp.start()
+    worker = rp.utils.Component.create(cfg, session)
+    worker.start()
 
     # component runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub)  # , log=log)
+    hb_pub = ru.zmq.Publisher ('heartbeat', cfg.heartbeat.addr_pub)
 
     def hb_beat_cb():
         hb_pub.put('heartbeat', msg={'uid': cfg.uid})
 
     def hb_term_cb(hb_uid):
-        comp.stop()
+        worker.stop()
         term.set()
         return None
 
@@ -130,9 +127,9 @@ if __name__ == "__main__":
     cfg   = ru.Config(path=fname)
     path  = '%s/%s' % (cfg.path, cfg.uid)
 
-    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
-                                        stderr='%s.err' % path)
-    sys.exit(0)
+    # NOTE: this script runs as an RP task and will *not* daemonize
+
+    main(cfg)
 
 
 # ------------------------------------------------------------------------------

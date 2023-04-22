@@ -24,7 +24,7 @@ def run_record(rec):
         dburl   = s_dict.get('dburl')
         rep.info('session dburl: %s' % dburl)
 
-        session = rp.Session(database_url=dburl)
+        session = rp.Session()
         rep.ok('session uid  : %s' % session.uid)
 
         pmgr    = rp.PilotManager(session=session)

@@ -57,7 +57,8 @@ class Master(rpu.Component):
         self._hb_timeout = 15          # consider worker dead after 15 seconds
 
         cfg              = self._get_config(cfg)
-        self._session    = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+        cfg              = self._get_config(cfg)
+        self._session    = Session(cfg=cfg, uid=cfg.sid, _role=Session._DEFAULT)
 
         rpu.Component.__init__(self, cfg, self._session)
 

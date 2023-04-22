@@ -138,6 +138,7 @@ class TaskManager(rpu.Component):
         cfg.owner          = self._uid
         cfg.sid            = session.uid
         cfg.path           = session.path
+        cfg.reg_addr       = session.cfg.reg_addr
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 

@@ -72,6 +72,7 @@ class ComponentManager(object):
                                path=self._cfg.path)
         self._log  = ru.Logger(self._uid, ns='radical.pilot',
                                path=self._cfg.path)
+        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
 
         self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
 
@@ -83,6 +84,7 @@ class ComponentManager(object):
                               'uid'        : self._uid + '.hb',
                               'stall_hwm'  : 1,
                               'bulk_size'  : 0,
+                              'reg_addr'   : self._cfg.reg_addr,
                               'path'       : self._cfg.path})
         self._hb_bridge = ru.zmq.PubSub(bcfg)
         self._hb_bridge.start()
@@ -188,10 +190,13 @@ class ComponentManager(object):
             bcfg.cmgr        = self.uid
             bcfg.sid         = cfg.sid
             bcfg.path        = cfg.path
+            bcfg.reg_addr    = cfg.reg_addr
             bcfg.heartbeat   = cfg.heartbeat
 
             fname = '%s/%s.json' % (cfg.path, bcfg.uid)
             bcfg.write(fname)
+
+            self._reg.put('bridge.%s' % bname, bcfg)
 
             self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
 
@@ -252,6 +257,7 @@ class ComponentManager(object):
                 ccfg.sid         = cfg.sid
                 ccfg.base        = cfg.base
                 ccfg.path        = cfg.path
+                ccfg.reg_addr    = cfg.reg_addr
                 ccfg.proxy_url   = cfg.proxy_url
                 ccfg.heartbeat   = cfg.heartbeat
 
@@ -465,6 +471,8 @@ class Component(object):
         self._rep  = self._session._get_reporter(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
                                                  level=self._debug)
+        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+
         self._q    = None
         self._in   = None
         self._out  = None
@@ -503,7 +511,7 @@ class Component(object):
 
         except Exception:
             self._log.exception('worker thread initialization failed')
-            return
+            raise
 
         sync.set()
 
