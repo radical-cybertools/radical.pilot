@@ -3,6 +3,81 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.21.0 Release                                                        2023-02-01
+--------------------------------------------------------------------------------
+  
+  - add worker rank heartbeats to raptor
+  - ensure descr defaults for raptor worker submission
+  - move `blocked_cores/gpus` under `system_architecture` in resource config
+  - fix `blocked_cores/gpus` parameters in configs for ACCESS and ORNL resources
+  - fix core-option in JSRun LM
+  - fix inconsistency in launching order if some LMs failed to be created
+  - fix thread-safety of PilotManager staging operations.
+  - add ANL's polaris and polaris_interactive support
+  - refactor raptor dispatchers to worker base class
+  
+
+1.20.1 Hotfix Release                                                 2023-01-07
+--------------------------------------------------------------------------------
+
+  - fix task cancellation call
+
+
+1.20.0 Release                                                        2022-12-16
+--------------------------------------------------------------------------------
+
+  - interactive amarel cfg
+  - add docstring for run_task, remove sort
+  - add option `-r` (number of RS per node) is case of GPU tasks
+  - add `TaskDescription` attribute `pre_exec_sync`
+  - add test for `Master.wait`
+  - add test for tasks cancelling
+  - add test for TMGR StagingIn
+  - add comment for config addition Fixes #2089
+  - add TASK_BULK_MKDIR_THRESHOLD as configurable Fixes #2089
+  - agent does not need to pull failed tasks
+  - bump python test env to 3.7
+  - cleanup error reporting
+  - document attributes as `attr`, not `data`.
+  - extended tests for RM PBSPro
+  - fix `allocated_cores/gpus` in PMGR Launching
+  - fix commands per rank (either a single string command or list of commands)
+  - fix JSRun test
+  - fix nodes indexing (`node_id`)
+  - fix option `-b` (`--bind`)
+  - fix setup procedure for agent staging test(s)
+  - fix executor test
+  - fix task cancelation if task is waiting in the scheduler wait queue
+  - fix Sphinx syntax.
+  - fix worker state statistics
+  - implement task timeout for popen executor
+  - refactor popen task cancellation
+  - removed `pre_rank` and `post_rank` from Popen executor
+  - rename XSEDE to ACCESS #2676
+  - reorder env setup per rank (by RP) and consider (enforce) CPU/GPU types
+  - reorganized task/rank-execution processes and synced that with launch processes
+  - support schema aliases in resource configs
+  - task attribute `slots` is not required in an executor
+  - unify raptor and non-raptor prof traces
+  - update amarel cfg
+  - update RM Fork
+  - update RM PBSPro
+  - update SRun option `cpus-per-task` - set the option if `cpu_threads > 0`
+  - update test for PMGR Launching
+  - update test for Popen (for pre/post_rank transformation)
+  - update test for RM Fork
+  - update test for JSRun (w/o ERF)
+  - update test for RM PBSPro
+  - update profile events for raptor tasks
+  - interactive amarel cfg
+  
+
+1.18.1 Hotfix Release                                                 2022-11-01
+--------------------------------------------------------------------------------
+
+  - fix Amarel configuration
+
+
 1.18.0 Release                                                        2022-10-11
 --------------------------------------------------------------------------------
 

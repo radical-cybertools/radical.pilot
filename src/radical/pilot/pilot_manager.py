@@ -125,7 +125,6 @@ class PilotManager(rpu.Component):
         cfg.uid            = self._uid
         cfg.owner          = self._uid
         cfg.sid            = session.uid
-        cfg.base           = session.base
         cfg.path           = session.path
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
@@ -441,7 +440,6 @@ class PilotManager(rpu.Component):
         # prepare to wait for completion
         with self._sds_lock:
 
-            self._active_sds = dict()
             for sd in sds:
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
@@ -458,17 +456,21 @@ class PilotManager(rpu.Component):
                 sd_states = [sd['state'] for sd
                                          in  self._active_sds.values()
                                          if  sd['uid'] in uids]
+        try:
+            if rps.FAILED in sd_states:
+                errs = list()
+                for uid in uids:
+                    if self._active_sds[uid].get('exception'):
+                        errs.append(self._active_sds[uid]['exception'])
 
-        if rps.FAILED in sd_states:
-            errs = list()
-            for uid in self._active_sds:
-                if self._active_sds[uid].get('error'):
-                    errs.append(self._active_sds[uid]['error'])
-
-            if errs:
-                raise RuntimeError('pilot staging failed: %s' % errs)
-            else:
-                raise RuntimeError('pilot staging failed')
+                if errs:
+                    raise RuntimeError('pilot staging failed: %s' % errs)
+                else:
+                    raise RuntimeError('pilot staging failed')
+        finally:
+            with self._sds_lock:
+                for uid in uids:
+                    del self._active_sds[uid]
 
 
     # --------------------------------------------------------------------------
@@ -485,7 +487,6 @@ class PilotManager(rpu.Component):
         # prepare to wait for completion
         with self._sds_lock:
 
-            self._active_sds = dict()
             for sd in sds:
                 sd['state'] = rps.NEW
                 self._active_sds[sd['uid']] = sd
@@ -503,17 +504,21 @@ class PilotManager(rpu.Component):
                 sd_states = [sd['state'] for sd in self._active_sds.values()
                                                 if sd['uid'] in uids]
 
-        if rps.FAILED in sd_states:
-            errs = list()
-            for uid in self._active_sds:
-                if self._active_sds[uid].get('error'):
-                    errs.append(self._active_sds[uid]['error'])
+        try:
+            if rps.FAILED in sd_states:
+                errs = list()
+                for uid in uids:
+                    if self._active_sds[uid].get('exception'):
+                        errs.append(self._active_sds[uid]['exception'])
 
-            if errs:
-                raise RuntimeError('pilot staging failed: %s' % errs)
-            else:
-                raise RuntimeError('pilot staging failed')
-
+                if errs:
+                    raise RuntimeError('pilot staging failed: %s' % errs)
+                else:
+                    raise RuntimeError('pilot staging failed')
+        finally:
+            with self._sds_lock:
+                for uid in uids:
+                    del self._active_sds[uid]
 
     # --------------------------------------------------------------------------
     #
@@ -531,8 +536,10 @@ class PilotManager(rpu.Component):
                 for sd in arg['sds']:
                     uid = sd['uid']
                     if uid in self._active_sds:
-                        self._active_sds[uid]['state'] = sd['state']
-                        self._active_sds[uid]['error'] = sd['error']
+                        active_sd = self._active_sds[uid]
+                        active_sd['state']            = sd['state']
+                        active_sd['exception']        = sd['exception']
+                        active_sd['exception_detail'] = sd['exception_detail']
 
         return True
 

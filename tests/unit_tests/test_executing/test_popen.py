@@ -2,14 +2,17 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2013-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import queue
+
 import threading as mt
 
-import radical.pilot.states as rps
-import radical.utils as ru
+import radical.pilot.constants as rpc
+import radical.pilot.states    as rps
+import radical.utils           as ru
 
 from unittest import mock, TestCase
 
@@ -32,28 +35,26 @@ class TestPopen(TestCase):
         cls._test_case = ru.read_json('%s/test_cases/test_base.json' % base)
         assert cls._test_case, 'how is this test supposed to work???'
 
-
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Popen, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
-    def test_command_cb(self, mocked_logger, mocked_init):
+    def test_control_cb(self, mocked_logger, mocked_init):
 
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
-        pex._tasks_to_cancel = []
+        pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
-        self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were not added to the list `_tasks_to_cancel`
-        self.assertFalse(pex._tasks_to_cancel)
+        self.assertTrue(pex.control_cb(topic=None, msg=msg))
 
         msg['cmd'] = 'cancel_tasks'
-        self.assertTrue(pex.command_cb(topic=None, msg=msg))
-        # tasks were added to the list `_tasks_to_cancel`
-        self.assertEqual(pex._tasks_to_cancel, msg['arg']['uids'])
-
+        self.assertTrue(pex.control_cb(topic=None, msg=msg))
+        for uid in msg['arg']['uids']:
+            mode, tid = pex._watch_queue.get()
+            self.assertEqual(mode, pex.TO_CANCEL)
+            self.assertEqual(tid, uid)
 
     # --------------------------------------------------------------------------
     #
@@ -76,6 +77,7 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
@@ -90,6 +92,9 @@ class TestPopen(TestCase):
         pex._rm.find_launcher = mocked_find_launcher
 
         pex._handle_task(task)
+
+        popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
+        self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh', '.sl']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
@@ -118,6 +123,30 @@ class TestPopen(TestCase):
             try   : os.remove(path)
             except: pass
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Popen, '__init__', return_value=None)
+    def test_extend_pre_exec(self, mocked_init):
+
+        pex = Popen(cfg=None, session=None)
+
+        td    = {'cores_per_rank': 2,
+                 'threading_type': '',
+                 'gpus_per_rank' : 1,
+                 'gpu_type'      : '',
+                 'pre_exec'      : []}
+        ranks = [{'core_map': [[0, 1]],
+                  'gpu_map' : [[5]]}]
+
+        pex._extend_pre_exec(td, ranks)
+        self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])
+
+        td.update({'threading_type': rpc.OpenMP,
+                   'gpu_type'      : rpc.CUDA})
+
+        pex._extend_pre_exec(td, ranks)
+        self.assertIn('export OMP_NUM_THREADS=2',             td['pre_exec'])
+        self.assertIn({'0': 'export CUDA_VISIBLE_DEVICES=5'}, td['pre_exec'])
 
     # --------------------------------------------------------------------------
     #
@@ -129,32 +158,36 @@ class TestPopen(TestCase):
         task['target_state'] = None
 
         pex = Popen(cfg=None, session=None)
-        pex._tasks_to_watch  = []
-        pex._tasks_to_cancel = []
-        pex._cancel_lock     = mt.RLock()
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
+
+        os.getpgid = mock.Mock()
+        os.killpg  = mock.Mock()
+
+        to_watch  = list()
+        to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
-        pex._tasks_to_watch.append(task)
-        pex._tasks_to_cancel.append(task['uid'])
-        pex._check_running()
-        self.assertFalse(pex._tasks_to_cancel)
+        task['proc'].pid = os.getpid()
+        to_watch.append(task)
+        to_cancel.append(task['uid'])
+        pex._check_running(to_watch, to_cancel)
+        self.assertFalse(to_cancel)
 
         # case 2: exit_code == 0
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 0
-        pex._tasks_to_watch.append(task)
-        pex._check_running()
+        to_watch.append(task)
+        pex._check_running(to_watch, to_cancel)
         self.assertEqual(task['target_state'], rps.DONE)
 
         # case 3: exit_code == 1
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 1
-        pex._tasks_to_watch.append(task)
-        pex._check_running()
+        to_watch.append(task)
+        pex._check_running(to_watch, to_cancel)
         self.assertEqual(task['target_state'], rps.FAILED)
 
     # --------------------------------------------------------------------------
@@ -183,9 +216,10 @@ if __name__ == '__main__':
 
     tc = TestPopen()
     tc.setUpClass()
-    tc.test_command_cb()
+    tc.test_control_cb()
     tc.test_check_running()
     tc.test_handle_task()
+    tc.test_extend_pre_exec()
 
 
 # ------------------------------------------------------------------------------

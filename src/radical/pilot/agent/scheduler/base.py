@@ -5,7 +5,6 @@ __license__   = 'MIT'
 import copy
 import time
 import queue
-import pprint
 
 import threading          as mt
 import multiprocessing    as mp
@@ -130,7 +129,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     task = { ...
 #       'ranks'         : 4,
 #       'cores_per_rank': 2,
-#       'gpus_per_rank  : 2,
+#       'gpus_per_rank  : 2.,
 #       'slots' :
 #       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
 #         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
@@ -223,11 +222,12 @@ class AgentSchedulingComponent(rpu.Component):
         # waitlist to a binned list where tasks are binned by size for faster
         # lookups of replacement tasks.  And outdated binlist is mostly
         # sufficient, only rebuild when we run dry
-        self._waitpool   = dict()  # map uid:task
+        self._lock       = mt.Lock()  # lock for waitpool
+        self._waitpool   = dict()     # map uid:task
         self._ts_map     = dict()
-        self._ts_valid   = False   # set to False to trigger re-binning
-        self._active_cnt = 0       # count of currently scheduled tasks
-        self._named_envs = list()  # record available named environments
+        self._ts_valid   = False      # set to False to trigger re-binning
+        self._active_cnt = 0          # count of currently scheduled tasks
+        self._named_envs = list()     # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -372,8 +372,37 @@ class AgentSchedulingComponent(rpu.Component):
                     del self._raptor_tasks[name]
 
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
+
+                    for task in tasks:
+                        task['exception']        = 'RuntimeError("raptor gone")'
+                        task['exception_detail'] = 'raptor queue disappeared'
+
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
+
+        elif cmd == 'cancel_tasks':
+
+            uids = arg['uids']
+            to_cancel = list()
+            with self._lock:
+                for uid in uids:
+                    if uid in self._waitpool:
+                        to_cancel.append(self._waitpool[uid])
+                        del self._waitpool[uid]
+
+            with self._raptor_lock:
+                for queue in self._raptor_tasks:
+                    matches = [t for t in self._raptor_tasks[queue]
+                                       if t['uid'] in uids]
+                    for task in matches:
+                        to_cancel.append(task)
+                        self._raptor_tasks[queue].remove(task)
+
+            for task in to_cancel:
+                task['target_state'] = rps.CANCELED
+                task['control']      = 'tmgr_pending'
+                task['$all']         = True
+            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -399,7 +428,7 @@ class AgentSchedulingComponent(rpu.Component):
         # for node_name, node_id, cores, gpus in slots['ranks']:
         for rank in slots['ranks']:
 
-            # Find the entry in the the slots list
+            # Find the entry in the slots list
 
             # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
@@ -419,14 +448,12 @@ class AgentSchedulingComponent(rpu.Component):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            cores = rank['core_map']
-            for cslot in cores:
-                for core in cslot:
+            for core_map in rank['core_map']:
+                for core in core_map:
                     node['cores'][core] = new_state
 
-            gpus = rank['gpu_map']
-            for gslot in gpus:
-                for gpu in gslot:
+            for gpu_map in rank['gpu_map']:
+                for gpu in gpu_map:
                     node['gpus'][gpu] = new_state
 
             if rank['lfs']:
@@ -604,13 +631,13 @@ class AgentSchedulingComponent(rpu.Component):
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
 
-        #  subscribe to control messages, e.g., to register raptor queues
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
-        # also keep a backlog of raptor tasks until their queues are registered
+        # keep a backlog of raptor tasks until their queues are registered
         self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
+
+        #  subscribe to control messages, e.g., to register raptor queues
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
@@ -709,7 +736,8 @@ class AgentSchedulingComponent(rpu.Component):
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
-            task['stderr']       = error
+            error                = error.replace('"', '\\"')
+            task['exception']    = 'RuntimeError("%s")' % error
             task['control']      = 'tmgr_pending'
             task['target_state'] = 'FAILED'
             task['$all']         = True
@@ -723,10 +751,8 @@ class AgentSchedulingComponent(rpu.Component):
         for task in scheduled:
             td = task['description']
             task['$set']      = ['resources']
-            task['resources'] = {'cpu': td['ranks'] *
-                                        td['cores_per_rank'],
-                                 'gpu': td['ranks'] *
-                                        td['gpus_per_rank']}
+            task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
+                                 'gpu': td['ranks'] * td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
                                                              push=True)
 
@@ -853,10 +879,11 @@ class AgentSchedulingComponent(rpu.Component):
 
             except Exception as e:
 
-                task['stderr']       = str(e)
-                task['control']      = 'tmgr_pending'
-                task['target_state'] = 'FAILED'
-                task['$all']         = True
+                task['control']          = 'tmgr_pending'
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                task['target_state']     = 'FAILED'
+                task['$all']             = True
 
                 self._log.exception('scheduling failed for %s', task['uid'])
 
@@ -985,37 +1012,41 @@ class AgentSchedulingComponent(rpu.Component):
         attempt to allocate cores/gpus for a specific task.
         '''
 
-        uid = task['uid']
-      # td  = task['description']
+        try:
+            uid = task['uid']
+          # td  = task['description']
 
-      # self._prof.prof('schedule_try', uid=uid)
-        slots = self.schedule_task(task)
-        if not slots:
+          # self._prof.prof('schedule_try', uid=uid)
+            slots = self.schedule_task(task)
+            if not slots:
 
-            # schedule failure
-          # self._prof.prof('schedule_fail', uid=uid)
+                # schedule failure
+              # self._prof.prof('schedule_fail', uid=uid)
 
-            # if schedule fails while no other task is scheduled, then the
-            # `schedule_task` will never be able to succeed - fail that task
-            if self._active_cnt == 0:
-                self._log.error('task cannot be scheduled ever: %s',
-                        pprint.pformat(task['description']))
-                raise RuntimeError('insufficient resources')
+                # if schedule fails while no other task is scheduled, then the
+                # `schedule_task` will never be able to succeed - fail that task
+                if self._active_cnt == 0:
+                    raise RuntimeError('task can never be scheduled')
 
-            return False
+                return False
 
-        self._active_cnt += 1
+            self._active_cnt += 1
 
-        # the task was placed, we need to reflect the allocation in the
-        # nodelist state (BUSY) and pass placement to the task, to have
-        # it enacted by the executor
-        self._change_slot_states(slots, rpc.BUSY)
-        task['slots'] = slots
+            # the task was placed, we need to reflect the allocation in the
+            # nodelist state (BUSY) and pass placement to the task, to have
+            # it enacted by the executor
+            self._change_slot_states(slots, rpc.BUSY)
+            task['slots'] = slots
 
-        self.slot_status('after scheduled task', task['uid'])
+            self.slot_status('after scheduled task', task['uid'])
 
-        # got an allocation, we can go off and launch the process
-        self._prof.prof('schedule_ok', uid=uid)
+            # got an allocation, we can go off and launch the process
+            self._prof.prof('schedule_ok', uid=uid)
+
+        except Exception as e:
+            task['exception']        = repr(e)
+            task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+            raise
 
         return True
 
@@ -1040,7 +1071,7 @@ class AgentSchedulingComponent(rpu.Component):
         d = task['description']
         task['tuple_size'] = tuple([d.get('ranks'         , 1),
                                     d.get('cores_per_rank', 1),
-                                    d.get('gpus_per_rank' , 0)])
+                                    d.get('gpus_per_rank' , 0.)])
 
 
 # ------------------------------------------------------------------------------

@@ -123,7 +123,7 @@ class Default(TMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _advance_tasks(self, tasks, pid, state=None):
+    def _advance_tasks(self, tasks, pid=None, state=None, push=True):
 
         if not state:
             state = rps.AGENT_STAGING_INPUT_PENDING
@@ -131,7 +131,7 @@ class Default(TMGRStagingInputComponent):
         # perform and publish state update
         # push to the proxy queue
         self._log.debug('=== send to pq: %d', len(tasks))
-        self.advance(tasks, state, publish=True, push=True, qname=pid)
+        self.advance(tasks, state, publish=True, push=push, qname=pid)
 
 
     # --------------------------------------------------------------------------
@@ -284,27 +284,25 @@ class Default(TMGRStagingInputComponent):
                   #         j.exit_code)
 
 
-        for pid in no_staging_tasks:
+        if no_staging_tasks:
 
+            # nothing to stage, push to the agent
             self._advance_tasks(no_staging_tasks[pid], pid)
 
-        for pid in staging_tasks:
+        to_fail = list()
+        for task,actionables in staging_tasks:
+            try:
+                self._handle_task(task, actionables)
+                self._advance_tasks([task], pid)
 
-            for task,actionables in staging_tasks[pid]:
-                try:
-                    self._handle_task(task, actionables)
-                    self._advance_tasks([task], pid=task['pilot'])
-                except Exception as e:
-                    # FIXME: serialize exception
-                    task['exception'] = str(e)
-                    self._advance_tasks([task], pid=task['pilot'],
-                                                state=rps.FAILED)
+            except Exception as e:
+                # staging failed - do not pass task to agent
+                task['control']          = 'tmgr'
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                to_fail.append(task)
 
-        if no_staging_tasks:
-            # nothing to stage, push to the agent
-            self.advance(no_staging_tasks, rps.AGENT_STAGING_INPUT_PENDING,
-                         publish=True, push=True)
-
+        self._advance_tasks(to_fail, state=rps.FAILED, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -356,6 +354,8 @@ class Default(TMGRStagingInputComponent):
         # create a new actionable list during the filtering
         new_actionables = list()
         tar_file        = None
+        tar_path        = None
+        tar_sd          = None
 
         for sd in actionables:
 
@@ -427,8 +427,8 @@ class Default(TMGRStagingInputComponent):
                 # Always set CREATE_PARENTS
                 flags |= rsfs.CREATE_PARENTS
 
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
+                src = complete_url(str(src), src_context, self._log)
+                tgt = complete_url(str(tgt), tgt_context, self._log)
 
                 self._prof.prof('staging_in_start', uid=uid, msg=did)
                 saga_dir.copy(src, tgt, flags=flags)
@@ -436,6 +436,9 @@ class Default(TMGRStagingInputComponent):
 
 
         if tar_file:
+
+            assert tar_path
+            assert tar_sd
 
             # some tarball staging was done.  Add a staging directive for the
             # agent to untar the tarball, and clean up.

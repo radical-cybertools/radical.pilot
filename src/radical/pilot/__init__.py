@@ -27,10 +27,13 @@ from .task_description          import TaskDescription
 from .task_description          import TASK_EXECUTABLE, TASK_FUNCTION
 from .task_description          import TASK_EXEC, TASK_EVAL, TASK_PROC, TASK_SHELL
 from .task_description          import RAPTOR_MASTER, RAPTOR_WORKER
+from .task_description          import AGENT_SERVICE
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
 from .pilot_description         import PilotDescription
+
+pythontask = PythonTask.pythontask
 
 
 # ------------------------------------------------------------------------------

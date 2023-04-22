@@ -159,8 +159,6 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             attr.project_name   = proj
             attr.reservation_id = res
 
-            self._log.debug('=== rt: %s', jd.runtime)
-
             spec = psij.JobSpec()
             spec.attributes  = attr
             spec.executable  = jd.executable

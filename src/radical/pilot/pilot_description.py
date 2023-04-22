@@ -3,11 +3,12 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
-
+from .task_description import TaskDescription
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
 #
+
 UID               = 'uid'
 RESOURCE          = 'resource'
 ACCESS_SCHEMA     = 'access_schema'
@@ -44,8 +45,8 @@ class PilotDescription(ru.TypedDict):
     a new pilot.
 
     .. note:: A PilotDescription **MUST** define at least
-              :data:`resource`, :data:`cores` or :data:`nodes`,
-              and :data:`runtime`.
+              :attr:`resource`, :attr:`cores` or :attr:`nodes`,
+              and :attr:`runtime`.
 
     **Example**::
 
@@ -57,18 +58,18 @@ class PilotDescription(ru.TypedDict):
 
           pilot = pm.submit_pilots(pd)
 
-    .. data:: uid
+    .. py:attribute:: uid
 
        [type: `str` | default: `None`] A unique ID for the pilot. This attribute
        is optional, a unique ID will be assigned by RP if the field is not set.
 
-    .. data:: job_name
+    .. py:attribute:: job_name
 
        [type: `str` | default: `None`] The name of the job / pilot, which will
        be provided to `radical.saga.job.Description`. If not set then
-       :data:`uid` will be used instead.
+       :attr:`uid` will be used instead.
 
-    .. data:: resource
+    .. py:attribute:: resource
 
        [type: `str` | default: `None`] [**mandatory**] The key of a
        :ref:`chapter_machconf` entry. If the key exists, the machine-specific
@@ -76,19 +77,19 @@ class PilotDescription(ru.TypedDict):
        is passed to :meth:`radical.pilot.PilotManager.submit_pilots`. If the
        key doesn't exist, an exception :class:`ValueError` is raised.
 
-    .. data:: access_schema
+    .. py:attribute:: access_schema
 
        [type: `str` | default: `None`] The key of an access mechanism to use.
        The valid access mechanism is defined in the resource configuration,
        see :ref:`chapter_machconf`. The first one defined there is used by
        default, if no other is specified.
 
-    .. data:: runtime
+    .. py:attribute:: runtime
 
        [type: `int` | default: `10`] [**mandatory**] The maximum run time
        (wall-clock time) in **minutes** of the pilot.
 
-    .. data:: sandbox
+    .. py:attribute:: sandbox
 
        [type: `str` | default: `None`] The working ("sandbox") directory of
        the pilot agent. This parameter is optional and if not set, it defaults
@@ -99,7 +100,7 @@ class PilotDescription(ru.TypedDict):
                     on a shared filesystem that can be reached from all
                     compute nodes.
 
-    .. data:: nodes
+    .. py:attribute:: nodes
 
        [type: `int` | default: `1`] The number of nodes the pilot should
        allocate on the target resource. This parameter could be set instead of
@@ -107,7 +108,7 @@ class PilotDescription(ru.TypedDict):
 
        .. note:: If `nodes` is specified, `gpus` and `cores` must not be specified.
 
-    .. data:: cores
+    .. py:attribute:: cores
 
        [type: `int` | default: `0`] The number of cores the pilot should
        allocate on the target resource. This parameter could be set instead of
@@ -118,38 +119,38 @@ class PilotDescription(ru.TypedDict):
                  the attribute `"fake_resources"`).
        .. note:: If `cores` is specified, `nodes` must not be specified.
 
-    .. data:: gpus
+    .. py:attribute:: gpus
 
        [type: `int` | default: `0`] The number of gpus the pilot should
        allocate on the target resource.
 
        .. note:: If `gpus` is specified, `nodes` must not be specified.
 
-    .. data:: memory
+    .. py:attribute:: memory
 
        [type: `int` | default: `0`] The total amount of physical memory the
        pilot (and related to it job) requires. This parameter translates into
        `TotalPhysicalMemory` at `radical.saga.job.Description`.
 
-    .. data:: queue
+    .. py:attribute:: queue
 
        [type: `str` | default: `None`] The name of the job queue the pilot
        should get submitted to. If `queue` is set in the resource configuration
-       (:data:`resource`), defining `queue` will override it explicitly.
+       (:attr:`resource`), defining `queue` will override it explicitly.
 
-    .. data:: project
+    .. py:attribute:: project
 
        [type: `str` | default: `None`] The name of the project / allocation to
        charge for used CPU time. If `project` is set in the resource
-       configuration (:data:`resource`), defining `project` will override it
+       configuration (:attr:`resource`), defining `project` will override it
        explicitly.
 
-    .. data:: candidate_hosts
+    .. py:attribute:: candidate_hosts
 
        [type: `list` | default: `[]`] The list of host names where this pilot
        is allowed to start on.
 
-    .. data:: app_comm
+    .. py:attribute:: app_comm
 
        [type: `list` | default: `[]`] The list of names is interpreted as
        communication channels to start within the pilot agent, for the purpose
@@ -162,36 +163,36 @@ class PilotDescription(ru.TypedDict):
        with the given channel name (uppercased), and `IN/OUT` indicate the
        respective endpoint addresses for the created channels
 
-    .. data:: input_staging
+    .. py:attribute:: input_staging
 
        [type: `list` | default: `[]`] The list of files to be staged into the
        pilot sandbox.
 
-    .. data:: output_staging
+    .. py:attribute:: output_staging
 
        [type: `list` | default: `[]`] The list of files to be staged from the
        pilot sandbox.
 
-    .. data:: cleanup
+    .. py:attribute:: cleanup
 
        [type: `bool` | default: `False`] If cleanup is set to True, the pilot
        will delete its entire sandbox upon termination. This includes individual
        Task sandboxes and all generated output data. Only log files will
        remain in the sandbox directory.
 
-    .. data:: exit_on_error
+    .. py:attribute:: exit_on_error
 
        [type: `bool` | default: `True`] Flag to trigger app termination in case
        of the pilot failure.
 
-    .. data:: services
+    .. py:attribute:: services
 
-       [Type: [`str`] | default: `[]`] [optional] A list of commands which get
-       started on a separate service compute node right after bootstrapping, and
-       before any RP task is launched.  That service compute node will not be
-       used for any other tasks.
+       [Type: [`TaskDescription`] | default: `[]`] [optional] A list of
+       commands which get started on a separate service compute node right after
+       bootstrapping, and before any RP task is launched.  That service compute
+       node will not be used for any other tasks.
 
-    .. data:: layout
+    .. py:attribute:: layout
 
        [type: `str` or `dict` | default: `"default"`] Point to a json file or
        an explicit (dict) description of the pilot layout: number and size of
@@ -220,7 +221,7 @@ class PilotDescription(ru.TypedDict):
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
-        SERVICES        : [str]      ,
+        SERVICES        : [TaskDescription],
     }
 
     _defaults = {
@@ -272,4 +273,3 @@ class PilotDescription(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
-

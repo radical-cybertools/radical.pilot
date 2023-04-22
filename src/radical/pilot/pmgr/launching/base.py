@@ -37,7 +37,6 @@ RP_UL_NAME_PSI_J = "PSI_J"
 DEFAULT_AGENT_SPAWNER = 'POPEN'
 DEFAULT_RP_VERSION    = 'local'
 DEFAULT_VIRTENV_MODE  = 'update'
-DEFAULT_VIRTENV_DIST  = 'default'
 DEFAULT_AGENT_CONFIG  = 'default'
 
 
@@ -570,12 +569,9 @@ class PMGRLaunchingComponent(rpu.Component):
         python_interpreter      = rcfg.get('python_interpreter')
         rp_version              = rcfg.get('rp_version')
         virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
-        virtenv_dist            = rcfg.get('virtenv_dist', DEFAULT_VIRTENV_DIST)
         virtenv                 = rcfg.get('virtenv',      default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        blocked_cores           = rcfg.get('blocked_cores', [])
-        blocked_gpus            = rcfg.get('blocked_gpus',  [])
         lfs_path_per_node       = rcfg.get('lfs_path_per_node')
         lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
@@ -588,6 +584,10 @@ class PMGRLaunchingComponent(rpu.Component):
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         services               += rcfg.get('services', [])
+
+        # part of the core specialization settings
+        blocked_cores           = system_architecture.get('blocked_cores', [])
+        blocked_gpus            = system_architecture.get('blocked_gpus',  [])
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -739,7 +739,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # sanity checks
         RE = RuntimeError
         if not python_dist     : raise RE("missing python distribution")
-        if not virtenv_dist    : raise RE("missing virtualenv distribution")
         if not agent_spawner   : raise RE("missing agent spawner")
         if not agent_scheduler : raise RE("missing agent scheduler")
         if not resource_manager: raise RE("missing resource manager")
@@ -798,8 +797,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # now that we know the number of nodes to request, derive
         # the *actual* number of cores and gpus we allocate
-        allocated_cores = requested_nodes * cores_per_node
-        allocated_gpus  = requested_nodes * gpus_per_node
+        allocated_cores = (requested_nodes * cores_per_node) or requested_cores
+        allocated_gpus  = (requested_nodes * gpus_per_node)  or requested_gpus
 
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
@@ -830,7 +829,6 @@ class PMGRLaunchingComponent(rpu.Component):
         bs_args.extend(['-m', virtenv_mode])
         bs_args.extend(['-r', rp_version])
         bs_args.extend(['-b', python_dist])
-        bs_args.extend(['-g', virtenv_dist])
         bs_args.extend(['-v', virtenv])
         bs_args.extend(['-y', str(runtime)])
         bs_args.extend(['-z', tar_name])
@@ -843,7 +841,6 @@ class PMGRLaunchingComponent(rpu.Component):
         if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
 
-        for arg in services       :   bs_args.extend(['-j', arg])
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
@@ -876,6 +873,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['services']            = services
 
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
@@ -952,9 +950,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # ----------------------------------------------------------------------
         # Create Job description
 
-        total_cpu_count = (requested_nodes * cores_per_node) or requested_cores
-        total_gpu_count = (requested_nodes * gpus_per_node)  or requested_gpus
-
         jd_dict = ru.TypedDict()
 
         jd_dict.name                  = job_name
@@ -965,8 +960,8 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.output                = 'bootstrap_0.out'
         jd_dict.error                 = 'bootstrap_0.err'
         jd_dict.node_count            = requested_nodes
-        jd_dict.total_cpu_count       = total_cpu_count
-        jd_dict.total_gpu_count       = total_gpu_count
+        jd_dict.total_cpu_count       = allocated_cores
+        jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = avail_cores_per_node
         jd_dict.spmd_variation        = spmd_variation
@@ -1101,8 +1096,12 @@ class PMGRLaunchingComponent(rpu.Component):
 
             with self._sds_lock:
                 for sd in arg['sds']:
-                    if sd['uid'] in self._active_sds:
-                        self._active_sds[sd['uid']]['state'] = sd['state']
+                    uid = sd['uid']
+                    if uid in self._active_sds:
+                        active_sd = self._active_sds[uid]
+                        active_sd['state']            = sd['state']
+                        active_sd['exception']        = sd['exception']
+                        active_sd['exception_detail'] = sd['exception_detail']
 
         return True
 

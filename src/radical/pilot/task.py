@@ -83,6 +83,7 @@ class Task(object):
         self._stderr           = None
         self._return_value     = None
         self._exception        = None
+        self._exception_detail = None
         self._pilot            = descr.get('pilot')
         self._endpoint_fs      = None
         self._resource_sandbox = None
@@ -161,14 +162,13 @@ class Task(object):
                     raise RuntimeError('invalid state transition %s: %s -> %s'
                             % (self.uid, current, target))
 
-        self._state = target
-
         # we update all fields
         # FIXME: well, not all really :/
         # FIXME: setattr is ugly...  we should maintain all state in a dict.
-        for key in ['state', 'stdout', 'stderr', 'exit_code', 'pilot',
+        for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
-                    'pilot_sandbox', 'task_sandbox', 'client_sandbox']:
+                    'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
+                    'exception', 'exception_detail']:
 
             val = task_dict.get(key, None)
             if val is not None:
@@ -196,6 +196,7 @@ class Task(object):
             'stderr':           self.stderr,
             'return_value':     self.return_value,
             'exception':        self.exception,
+            'exception_detail': self.exception_detail,
             'pilot':            self.pilot,
             'endpoint_fs':      self.endpoint_fs,
             'resource_sandbox': self.resource_sandbox,
@@ -219,7 +220,6 @@ class Task(object):
         **Returns:**
             * A :class:`Session`.
         '''
-
         return self._session
 
 
@@ -233,7 +233,6 @@ class Task(object):
         **Returns:**
             * A :class:`TaskManager`.
         '''
-
         return self._tmgr
 
 
@@ -288,7 +287,6 @@ class Task(object):
         **Returns:**
             * string
         '''
-
         return self._origin
 
 
@@ -302,7 +300,6 @@ class Task(object):
         **Returns:**
             * state (string enum)
         '''
-
         return self._state
 
 
@@ -317,7 +314,6 @@ class Task(object):
         **Returns:**
             * exit code (int)
         '''
-
         return self._exit_code
 
 
@@ -337,7 +333,6 @@ class Task(object):
         **Returns:**
             * stdout (string)
         '''
-
         return self._stdout
 
 
@@ -357,7 +352,6 @@ class Task(object):
         **Returns:**
             * stderr (string)
         '''
-
         return self._stderr
 
 
@@ -375,7 +369,6 @@ class Task(object):
         **Returns:**
             * Any
         '''
-
         return self._return_value
 
 
@@ -384,21 +377,34 @@ class Task(object):
     @property
     def exception(self):
         '''
-        Returns an exception if such one was raised by a task representing
-        a function call or some code, or None otherwise.
+        Returns an string representation (`__repr__`) of the exception which
+        caused the task's `FAILED` state if such one was raised while managing
+        or executing the task.
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will always return None.
 
-        If the exception type cannot be created, a base exception will be
-        returned with the error message set to `type: msg` where `type` is the
-        original exception type and `msg` the original error message.
+        **Returns:**
+            * str
+        '''
+        return self._exception
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def exception_detail(self):
+        '''
+        Returns additional information about the exception which caused this
+        task to enter FAILED state.
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will always return None.
 
         **Returns:**
-            * Exception
+            * str
         '''
-
-        return self._exception
+        return self._exception_detail
 
 
     # --------------------------------------------------------------------------
@@ -412,19 +418,16 @@ class Task(object):
         **Returns:**
             * A pilot ID (string)
         '''
-
         return self._pilot
 
 
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self):         # **NOTE:** deprecated, use *`sandbox`*
-        return self.sandbox
-
-
-    @property
     def sandbox(self):
+        '''
+        This is an alias for :func:`~radical.pilot.Task.task_sandbox`.
+        '''
         return self.task_sandbox
 
 
@@ -437,39 +440,72 @@ class Task(object):
         **Returns:**
             * A URL (radical.utils.Url).
         '''
-
-        # NOTE: The task has a sandbox property, containing the full sandbox
-        #       path, which is used by the tmgr to stage data back and forth.
-        #       However, the full path as visible from the tmgr side might not
-        #       be what the agent is seeing, specifically in the case of
-        #       non-shared filesystems (OSG).  The agent thus uses
-        #       `$PWD/t['uid']` as sandbox, with the assumption that this will
-        #       get mapped to whatever is here returned as sandbox URL.
-        #
-        #       There is thus implicit knowledge shared between the RP client
-        #       and the RP agent on how the sandbox path is formed!
-
         return self._task_sandbox
 
 
     @property
     def endpoint_fs(self):
+        '''
+        Returns the URL which is internally used to access the target resource's
+        root file system.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._endpoint_fs
+
 
     @property
     def resource_sandbox(self):
+        '''
+        Returns the full URL of the path that RP considers the resource sandbox,
+        i.e., the sandbox on the target resource's file system which is shared
+        by all sessions which access that resource.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._resource_sandbox
+
 
     @property
     def session_sandbox(self):
+        '''
+        Returns the full URL of the path that RP considers the session sandbox
+        on the target resource's file system which is shared
+        by all pilots which access that resource in the current session.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._session_sandbox
+
 
     @property
     def pilot_sandbox(self):
+        '''
+        Returns the full URL of the path that RP considers the pilot sandbox
+        on the target resource's file system which is shared
+        by all tasks which are executed by that pilot.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._pilot_sandbox
+
 
     @property
     def client_sandbox(self):
+        '''
+        Returns the full URL of the client sandbox which is usually the same as
+        the current working directory of the Python script in which the RP
+        Session is instantiated.  Note that the URL may not be usable to access
+        that sandbox from another machine: RP in general knows nothing about
+        available access endpoints on the local host.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._client_sandbox
 
 
@@ -483,7 +519,6 @@ class Task(object):
         **Returns:**
             * description (dict)
         '''
-
         return copy.deepcopy(self._descr)
 
 
@@ -494,7 +529,6 @@ class Task(object):
         '''
         Returns the metadata field of the task's description
         '''
-
         return copy.deepcopy(self._descr.get('metadata'))
 
 

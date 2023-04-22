@@ -137,7 +137,6 @@ class TaskManager(rpu.Component):
         cfg.uid            = self._uid
         cfg.owner          = self._uid
         cfg.sid            = session.uid
-        cfg.base           = session.base
         cfg.path           = session.path
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
@@ -318,6 +317,7 @@ class TaskManager(rpu.Component):
 
         for pilot in pilots:
 
+            pid   = pilot.uid
             state = pilot.state
 
             if state in rps.FINAL:
@@ -355,7 +355,10 @@ class TaskManager(rpu.Component):
                 to_restart = list()
                 for task in tasks:
 
+                    task['exception']        = 'RuntimeError("pilot died")'
+                    task['exception_detail'] = 'pilot %s is final' % pid
                     task['state'] = rps.FAILED
+
                     if not task['description'].get('restartable'):
                         self._log.debug('task %s not restartable', task['uid'])
                         continue

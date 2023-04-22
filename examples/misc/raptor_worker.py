@@ -4,21 +4,35 @@ import random
 
 import radical.pilot as rp
 
+RANKS = 1
+
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.MPIWorker):
+class MyWorker(rp.raptor.DefaultWorker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
     '''
 
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
-        rp.raptor.MPIWorker.__init__(self, cfg)
+        super().__init__(cfg)
+
+        self.register_mode('foo', self._dispatch_foo)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _dispatch_foo(self, task):
+
+        import pprint
+        self._log.debug('==== running foo\n%s',
+                pprint.pformat(task['description']))
+
+        return 'out', 'err', 0, None, None
 
 
     # --------------------------------------------------------------------------
@@ -41,7 +55,7 @@ class MyWorker(rp.raptor.MPIWorker):
         td = rp.TaskDescription({
                 'mode'            : rp.TASK_EXECUTABLE,
                 'scheduler'       : None,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
                             'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"']})
@@ -50,7 +64,7 @@ class MyWorker(rp.raptor.MPIWorker):
               # 'uid'             : 'task.call.w.000000',
               # 'timeout'         : 10,
                 'mode'            : rp.TASK_EXECUTABLE,
-                'ranks'           : 2,
+                'ranks'           : RANKS,
                 'executable'      : 'radical-pilot-hello.sh',
                 'arguments'       : ['1', 'task.call.w.000000']})
 
@@ -58,6 +72,8 @@ class MyWorker(rp.raptor.MPIWorker):
         task   = master.run_task(td)
 
         print(task['stdout'])
+
+        return 'my_hello retval'
 
 
 # ------------------------------------------------------------------------------

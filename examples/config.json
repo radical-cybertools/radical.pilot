@@ -53,28 +53,28 @@
         "cores"    : 64
     },
 
-    "xsede.expanse": {
+    "access.expanse": {
         "project"  : "UNC100",
         "queue"    : "compute",
         "schema"   : "local",
         "cores"    : 128
     },
 
-    "xsede.supermic_ssh" : {
+    "access.supermic_ssh" : {
         "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 64
     },
 
-    "xsede.supermic" : {
+    "access.supermic" : {
         "project"  : "TG-MCB090174",
         "queue"    : "workq",
         "schema"   : "gsissh",
         "cores"    : 80
     },
 
-    "xsede.supermic_orte" : {
+    "access.supermic_orte" : {
         "project"  : "TG-CCR140028",
         "queue"    : "workq",
         "schema"   : "gsissh",
@@ -110,42 +110,42 @@
         "cores"    : 64
     },
 
-    "xsede.longhorn" : {
+    "access.longhorn" : {
         "project"  : "FTA-Jha",
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 40
     },
 
-    "xsede.bridges2" : {
+    "access.bridges2" : {
         "project"  : null,
         "queue"    : "RM",
         "schema"   : "local",
         "cores"    : 128
     },
 
-    "xsede.wrangler" : {
+    "access.wrangler" : {
         "project"  : "TG-MCB090174",
         "queue"    : "debug",
         "schema"   : "gsissh",
         "cores"    : 24
     },
 
-    "xsede.stampede2_ssh"  : {
+    "access.stampede2_ssh"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 204
     },
 
-    "xsede.stampede2_srun"  : {
+    "access.stampede2_srun"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
         "schema"   : "local",
         "cores"    : 204
     },
 
-    "xsede.stampede2_ibrun"  : {
+    "access.stampede2_ibrun"  : {
         "project"  : "TG-MCB090174",
         "queue"    : "development",
         "schema"   : "local",

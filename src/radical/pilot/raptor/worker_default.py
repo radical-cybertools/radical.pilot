@@ -1,6 +1,4 @@
 
-
-import io
 import os
 import sys
 import time
@@ -11,7 +9,7 @@ import multiprocessing   as mp
 
 import radical.utils     as ru
 
-from .worker import Worker
+from .worker  import Worker
 
 
 # ------------------------------------------------------------------------------
@@ -20,7 +18,7 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None, session=None):
+    def __init__(self, cfg=None):
 
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
@@ -34,11 +32,11 @@ class DefaultWorker(Worker):
         if rank is None: rank = 0
         else           : rank = int(rank)
 
-        # only rank 0 registers with the master
-        if rank == 0: register = True
-        else        : register = False
+        # only rank 0 (the manager) registers with the master.
+        if rank == 0: manager = True
+        else        : manager = False
 
-        super().__init__(cfg=cfg, session=session, register=register)
+        super().__init__(cfg=cfg, manager=manager, rank=rank)
 
         # connect to the master queues
         self._res_put = ru.zmq.Putter('result',  self._cfg.info.res_addr_put)
@@ -49,17 +47,15 @@ class DefaultWorker(Worker):
         self._cfg['rank'] = rank
         self._cfg['uid']  = '%s.%03d' % (self._cfg['uid'], rank)
 
-        self._n_cores = self._cfg.worker_descr.cores_per_rank
-        self._n_gpus  = self._cfg.worker_descr.gpus_per_rank
+        self._n_cores = self._cfg.cores_per_rank
+        self._n_gpus  = self._cfg.gpus_per_rank
 
         self._res_evt = mp.Event()          # set on free resources
         self._my_term = mt.Event()          # for start/stop/join
 
-        self._mlock   = ru.Lock(self._uid)  # lock `_modes`
-        self._modes   = dict()              # call modes (call, exec, eval, ...)
-
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
+        self._rlock     = mt.Lock()
         self._resources = {'cores' : [0] * self._n_cores,
                            'gpus'  : [0] * self._n_gpus}
 
@@ -69,27 +65,8 @@ class DefaultWorker(Worker):
         # resources are initially all free
         self._res_evt.set()
 
-      # # create a multiprocessing pool with `cpn` worker processors.  Set
-      # # `maxtasksperchild` to `1` so that we get a fresh process for each
-      # # task.  That will also allow us to run command lines via `exec`,
-      # # effectively replacing the worker process in the pool for a specific
-      # # task.
-      # #
-      # # We use a `fork` context to inherit log and profile handles.
-      # #
-      # # NOTE: The mp documentation is wrong; mp.Pool does *not* have a context
-      # #       parameters.  Instead, the Pool has to be created within
-      # #       a context.
-      # ctx = mp.get_context('fork')
-      # self._pool = ctx.Pool(processes=self._n_cores,
-      #                       initializer=None,
-      #                       maxtasksperchild=1)
-      # NOTE: a multiprocessing pool won't work, as pickle is not able to
-      #       serialize our worker object.  So we use our own process pool.
-      #       It's not much of a loss since we want to respawn new processes for
-      #       each task anyway (to improve isolation).
-        self._pool  = dict()  # map task uid to process instance
-        self._plock = ru.Lock('p' + self._uid)  # lock _pool
+        self._pool  = dict()     # map task uid to process instance
+        self._plock = mt.Lock()  # lock _pool
 
         # We also create a queue for communicating results back, and a thread to
         # watch that queue
@@ -97,27 +74,6 @@ class DefaultWorker(Worker):
         self._result_thread = mt.Thread(target=self._result_watcher)
         self._result_thread.daemon = True
         self._result_thread.start()
-
-        # run worker initialization *before* starting to work on requests.
-        # the worker provides three builtin methods:
-        #     eval:  evaluate a piece of python code with `eval`
-        #     exec:  evaluate a piece of python code with `exec`
-        #     call:  execute  a method or function call
-        #     proc:  execute  a command line (fork/exec)
-        #     shell: execute  a shell command
-        self.register_mode('eval',  self._eval)
-        self.register_mode('exec',  self._exec)
-        self.register_mode('call',  self._call)
-        self.register_mode('proc',  self._proc)
-        self.register_mode('shell', self._shell)
-
-        self.pre_exec()
-
-        # prepare base env dict used for all tasks
-        self._task_env = dict()
-        for k,v in os.environ.items():
-            if k.startswith('RP_'):
-                self._task_env[k] = v
 
 
     # --------------------------------------------------------------------------
@@ -146,271 +102,15 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def pre_exec(self):
-        '''
-        This method can be overloaded by the Worker implementation to run any
-        pre_exec commands before spawning worker processes.
-        '''
-
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def register_mode(self, name, executor):
-
-        assert name not in self._modes
-
-        self._modes[name] = executor
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _eval(self, data):
-        '''
-        We expect data to have a single entry: 'code', containing the Python
-        code to be eval'ed
-        '''
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            val = eval(data['code'])
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_eval failed: %s' % (data))
-            self._log.exception('_eval failed: %s' % (data))
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\neval failed: %s' % e)
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-
-        return out, err, ret, val
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _exec(self, data):
-        '''
-        We expect data to have a single entry: 'code', containing the Python
-        code to be exec'ed.  Data can have an optional entry `pre_exec` which
-        can be used for any import statements and the like which need to run
-        before the executed code.
-        '''
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            pre  = data.get('pre_exec', '')
-            code = data['code']
-
-            # create a wrapper function around the given code
-            lines = code.split('\n')
-            outer = 'def _my_exec():\n'
-            for line in lines:
-                outer += '    ' + line + '\n'
-
-            # call that wrapper function via exec, and keep the return value
-            src = '%s\n\n%s\n\nresult=_my_exec()' % (pre, outer)
-
-            # assign a local variable to capture the code's return value.
-            loc = dict()
-            exec(src, {}, loc)                # pylint: disable=exec-used # noqa
-            val = loc['result']
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_exec failed: %s' % (data))
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\nexec failed: %s' % e)
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-
-        return out, err, ret, val
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _call(self, data):
-        '''
-        We expect data to have a three entries: 'method' or 'function',
-        containing the name of the member method or the name of a free function
-        to call, `args`, an optional list of unnamed parameters, and `kwargs`,
-        and optional dictionary of named parameters.
-        '''
-
-        if 'method' in data:
-            to_call = getattr(self, data['method'], None)
-
-        elif 'function' in data:
-            names   = dict(list(globals().items()) + list(locals().items()))
-            to_call = names.get(data['function'])
-
-        else:
-            raise ValueError('no method or function specified: %s' % data)
-
-        if not to_call:
-            raise ValueError('callable not found: %s' % data)
-
-
-        args   = data.get('args',   [])
-        kwargs = data.get('kwargs', {})
-
-        bak_stdout = sys.stdout
-        bak_stderr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        try:
-            # redirect stdio to capture them during execution
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            val = to_call(*args, **kwargs)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            ret = 0
-
-        except Exception as e:
-            self._log.exception('_call failed: %s' % (data))
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue() + ('\ncall failed: %s' % e)
-            ret = 1
-
-        finally:
-            # restore stdio
-            sys.stdout = bak_stdout
-            sys.stderr = bak_stderr
-
-
-        return out, err, ret, val
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _proc(self, data):
-        '''
-        We expect data to have two entries: 'exe', containing the executabele to
-        run, and `args` containing a list of arguments (strings) to pass as
-        command line arguments.  We use `sp.Popen` to run the fork/exec, and to
-        collect stdout, stderr and return code
-        '''
-
-        try:
-            import subprocess as sp
-
-            exe  = data['exe']
-            args = data.get('args', list())
-            env  = data.get('env',  dict())
-
-            args = '%s %s' % (exe, ' '.join(args))
-
-            proc = sp.Popen(args=args,      env=env,
-                            stdin=None,     stdout=sp.PIPE, stderr=sp.PIPE,
-                            close_fds=True, shell=True)
-            out, err = proc.communicate()
-            ret      = proc.returncode
-
-        except Exception as e:
-            self._log.exception('popen failed: %s' % (data))
-            out = None
-            err = 'exec failed: %s' % e
-            ret = 1
-
-        return out, err, ret, None
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _shell(self, data):
-        '''
-        We expect data to have a single entry: 'cmd', containing the command
-        line to be called as string.
-        '''
-
-        try:
-            out, err, ret = ru.sh_callout(data['cmd'], shell=True)
-
-        except Exception as e:
-            self._log.exception('_shell failed: %s' % (data))
-            out = None
-            err = 'shell failed: %s' % e
-            ret = 1
-
-        return out, err, ret, None
-
-
-    # --------------------------------------------------------------------------
-    #
-    # FIXME: an MPI call mode should be added.  That could work along these
-    #        lines of:
-    #
-    # --------------------------------------------------------------------------
-    #  def _mpi(self, data):
-    #
-    #      try:
-    #          cmd = rp.agent.launch_method.construct_command(data,
-    #                  executable=self.exe, args=data['func'])
-    #          out = rp.sh_callout(cmd)
-    #          err = None
-    #          ret = 0
-    #
-    #      except Exception as e:
-    #          self._log.exception('_mpi failed: %s' % (data))
-    #          out = None
-    #          err = 'mpi failed: %s' % e
-    #          ret = 1
-    #
-    #      return out, err, ret, None
-    # --------------------------------------------------------------------------
-    #
-    # For that to work we would need to be able to create a LM here, but ideally
-    # not replicate the work done in the agent executor.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _alloc_task(self, task):
+    def _alloc(self, task):
         '''
         allocate task resources
         '''
 
-        with self._mlock:
+        uid = task['uid']
+        self._prof.prof('schedule_try', uid=uid)
+
+        with self._rlock:
 
             cores = task.get('cores', 1)
             gpus  = task.get('gpus' , 0)
@@ -443,17 +143,22 @@ class DefaultWorker(Worker):
 
             task['slots'] = {'cores': alloc_cores,
                              'gpus' : alloc_gpus}
-            return True
+
+        self._prof.prof('schedule_ok', uid=uid)
+
+        return True
 
 
     # --------------------------------------------------------------------------
     #
-    def _dealloc_task(self, task):
+    def _dealloc(self, task):
         '''
         deallocate task resources
         '''
 
-        with self._mlock:
+        self._prof.prof('unschedule_start', uid=task['uid'])
+
+        with self._rlock:
 
             resources = task['slots']
 
@@ -467,30 +172,9 @@ class DefaultWorker(Worker):
 
             # signal available resources
             self._res_evt.set()
+            self._prof.prof('unschedule_stop', uid=task['uid'])
 
-            return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def task_pre_exec(self, task):
-        '''
-        This method is called upon receiving a new request, and can be
-        overloaded to perform any preperatory action before the request is acted
-        upon
-        '''
-        pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def task_post_exec(self, task):
-        '''
-        This method is called upon completing a request, and can be
-        overloaded to perform any cleanup action before the request is reported
-        as complete.
-        '''
-        pass
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -505,13 +189,11 @@ class DefaultWorker(Worker):
 
             task['worker'] = self._uid
 
-            self.task_pre_exec(task)
-
             try:
 
                 # ok, we have work to do.  Check the requirements to see how
                 # many cpus and gpus we need to mark as busy
-                while not self._alloc_task(task):
+                while not self._alloc(task):
 
                     # no resource - wait for new resources
                     #
@@ -558,14 +240,12 @@ class DefaultWorker(Worker):
                 self._log.exception('request failed')
 
                 # free resources again for failed task
-                self._dealloc_task(task)
+                self._dealloc(task)
 
-                res = {'req': task['uid'],
-                       'out': None,
-                       'err': 'req_cb error: %s' % e,
-                       'ret': 1}
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
-                self._res_put.put(res)
+                self._res_put.put(task)
 
 
     # --------------------------------------------------------------------------
@@ -587,7 +267,7 @@ class DefaultWorker(Worker):
             os.environ[k] = v
 
         # ----------------------------------------------------------------------
-        def _dispatch_proc(res_lock):
+        def _worker_proc(res_lock):
             # FIXME: do we still need this thread?
 
             import setproctitle
@@ -599,8 +279,26 @@ class DefaultWorker(Worker):
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
                              ','.join(str(i) for i in task['slots']['gpus'])
 
-            out, err, ret, val = self._modes[mode](task.get('data'))
-            res = [task, str(out), str(err), int(ret), val]
+            out = None
+            err = None
+            ret = 1
+            val = None
+            exc = [None, None]
+            try:
+
+                sbox = task['task_sandbox_path']
+                ru.rec_makedir(sbox)
+                os.chdir(sbox)
+                dispatcher = self.get_dispatcher(task['description']['mode'])
+                out, err, ret, val, exc = dispatcher(task)
+
+            except Exception as e:
+                exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+
+            finally:
+                os.chdir(self._sbox)
+
+            res = [task, out, err, ret, val, exc]
 
             with res_lock:
                 self._result_queue.put(res)
@@ -609,37 +307,30 @@ class DefaultWorker(Worker):
 
         ret = None
         try:
-          # self._log.debug('dispatch: %s: %d', task['uid'], task['pid'])
-            mode = task['mode']
-            assert mode in self._modes, 'no such call mode %s' % mode
+            tout = task['description']['timeout'] or None
 
-            tout = task.get('timeout')
-            self._log.debug('dispatch with tout %s', tout)
-
-          # result = self._modes[mode](task.get('data'))
-          # self._log.debug('got result: task %s: %s', task['uid'], result)
-          # out, err, ret, val = result
-          # # TODO: serialize `val`?
-          # res = [task, str(out), str(err), int(ret), val]
-          # self._result_queue.put(res)
+          # self._log.debug('dispatch: %s: %d (%.1f)',
+          #                 task['uid'], task['pid'], tout)
 
             res_lock = mp.Lock()
-            dispatcher = mp.Process(target=_dispatch_proc, args=(res_lock,))
-            dispatcher.daemon = True
-            dispatcher.start()
-            dispatcher.join(timeout=tout)
+            worker_proc = mp.Process(target=_worker_proc, args=(res_lock,))
+            worker_proc.daemon = True
+            worker_proc.start()
+            worker_proc.join(timeout=tout)
 
             with res_lock:
-                if dispatcher.is_alive():
-                    dispatcher.terminate()
-                    dispatcher.join()
+                if worker_proc.is_alive():
+                    worker_proc.terminate()
+                    worker_proc.join()
                     out = None
                     err = 'timeout (>%s)' % tout
                     ret = 1
-                    res = [task, str(out), str(err), int(ret), None]
+                    val = None
+                    exc = ['TimeoutError("task timed out")', None]
+                    res = [task, str(out), str(err), int(ret), val, exc]
                     self._log.debug('put 2 result: task %s', task['uid'])
                     self._result_queue.put(res)
-                    self._log.debug('dispatcher killed: %s', task['uid'])
+                    self._log.debug('worker_proc killed: %s', task['uid'])
 
         except Exception as e:
 
@@ -647,8 +338,11 @@ class DefaultWorker(Worker):
             out = None
             err = 'dispatch failed: %s' % e
             ret = 1
-            res = [task, str(out), str(err), int(ret), None]
+            val = None
+            exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+            res = [task, str(out), str(err), int(ret), val, exc]
             self._log.debug('put 3 result: task %s', task['uid'])
+
             self._result_queue.put(res)
 
         finally:
@@ -687,31 +381,25 @@ class DefaultWorker(Worker):
     #
     def _result_cb(self, result):
 
-        try:
-            task, out, err, ret, val = result
-            self._log.debug('result cb: task %s', task['uid'])
+        task, out, err, ret, val, exc = result
+        self._log.debug('result cb: task %s', task['uid'])
 
-            with self._plock:
-                pid  = task['pid']
-                del self._pool[pid]
+        with self._plock:
+            pid  = task['pid']
+            del self._pool[pid]
 
-            # free resources again for the task
-            self._dealloc_task(task)
+        # free resources again for the task
+        self._dealloc(task)
 
-            res = {'req': task['uid'],
-                   'out': out,
-                   'err': err,
-                   'ret': ret,
-                   'val': val}
+        task['stdout']           = out
+        task['stderr']           = err
+        task['exit_code']        = ret
+        task['return_value']     = val
+        task['exception']        = exc[0]
+        task['exception_detail'] = exc[1]
 
-            self._res_put.put(res)
-            self.task_post_exec(task)
-            self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
-
-        except:
-            self._log.exception('result cb failed')
-            raise
-
+        self._res_put.put(task)
+        self._prof.prof('req_stop', uid=task['uid'], msg=self._uid)
 
 
     # --------------------------------------------------------------------------

@@ -1,0 +1,12 @@
+
+-r requirements.txt
+
+pytest
+pytest-timeout
+pylint
+flake8
+flake8-per-file-ignores
+coverage
+psutil
+pudb
+

@@ -129,23 +129,31 @@ class Session(rs.Session):
         self._closed  = False
         self._t_start = time.time()
 
-        self._proxy   = None             # proxy client instance
-        self._reg     = None             # registry client instance
+        self._proxy = None    # proxy client instance
+        self._reg   = None    # registry client instance
 
         self._pmgrs = dict()  # map IDs to pmgr instances
         self._tmgrs = dict()  # map IDs to tmgr instances
         self._cmgr  = None    # only primary sessions have a cmgr
 
+
         if uid: self._uid = uid
         else  : self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
+        self._init_cfg(cfg)
+        self._init_registry()
+        self._init_proxy(proxy_url, proxy_host)
 
         if self._role == self._PRIMARY:
             self._rep.info ('<<new session: ')
             self._rep.plain('[%s]' % self._uid)
 
-        self._init_cfg(cfg)
-        self._init_registry()
-        self._init_proxy(proxy_url, proxy_host)
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -190,6 +198,7 @@ class Session(rs.Session):
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
                                         level=self._cfg.get('debug'))
+
 
         self._prof.prof('session_start', uid=self._uid)
 
@@ -338,7 +347,7 @@ class Session(rs.Session):
         self._cmgr.start_components()
 
         # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
 
         # make sure we send heartbeats to the proxy
         self._run_proxy_hb()
@@ -375,7 +384,6 @@ class Session(rs.Session):
         self._state_pub = ru.zmq.Publisher(rpc.STATE_PUBSUB, path=pwd)
         self._proxy_state_sub = ru.zmq.Subscriber(rpc.PROXY_STATE_PUBSUB, path=pwd)
         self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
-
 
 
     # --------------------------------------------------------------------------
@@ -458,6 +466,7 @@ class Session(rs.Session):
             tgt = self._cfg.base
             # FIXME: MongoDB
           # self.fetch_json    (tgt=tgt)
+          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
@@ -495,6 +504,11 @@ class Session(rs.Session):
 
             tgt = '%s/%s.json' % (self.path, self.uid)
             ru.write_json(json, tgt)
+
+        if self.closed and self.created:
+            self._rep.info('<<session lifetime: %.1fs' %
+                           (self.closed - self.created))
+        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -567,7 +581,7 @@ class Session(rs.Session):
     #
     @property
     def primary(self):
-        return self._primary
+        return self._role == self._PRIMARY
 
 
     # --------------------------------------------------------------------------

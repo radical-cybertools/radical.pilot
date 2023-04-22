@@ -71,16 +71,10 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
-            except Exception:
-                # append the startup error to the tasks stderr.  This is
-                # not completely correct (as this text is not produced
-                # by the task), but it seems the most intuitive way to
-                # communicate that error to the application/user.
+            except Exception as e:
                 self._log.exception("error running Task")
-                if task['stderr'] is None:
-                    task['stderr'] = ''
-                task['stderr'] += '\nPilot cannot start task:\n'
-                task['stderr'] += '\n'.join(ru.get_exception_trace())
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
                 # can't rely on the executor base to free the task resources
                 self._prof.prof('unschedule_start', uid=task['uid'])
@@ -88,11 +82,15 @@ class Sleep(AgentExecutingComponent) :
 
                 self.advance(task, rps.FAILED, publish=True, push=False)
 
-            finally:
-                self._prof.prof('task_stop', uid=task['uid'])
-
         with self._tasks_lock:
             self._tasks.extend(tasks)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        raise NotImplementedError('no cancellation support in sleep executor')
 
 
     # --------------------------------------------------------------------------
@@ -153,9 +151,9 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
 

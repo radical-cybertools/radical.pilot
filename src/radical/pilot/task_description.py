@@ -16,6 +16,7 @@ TASK_PROC        = 'task.proc'
 TASK_SHELL       = 'task.shell'
 RAPTOR_MASTER    = 'raptor.master'
 RAPTOR_WORKER    = 'raptor.worker'
+AGENT_SERVICE    = 'agent.service'
 
 # task description attributes
 UID              = 'uid'
@@ -79,6 +80,7 @@ PRE_EXEC         = 'pre_exec'
 PRE_EXEC_SYNC    = 'pre_exec_sync'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
+TIMEOUT          = 'timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 STDOUT           = 'stdout'
@@ -92,7 +94,7 @@ METADATA         = 'metadata'
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.TypedDict):
-    """
+    '''
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
@@ -101,18 +103,18 @@ class TaskDescription(ru.TypedDict):
     .. note:: A TaskDescription **MUST** define at least an
               `executable` -- all other elements are optional.
 
-    .. data:: uid
+    .. py:attribute:: uid
 
        [type: `str` | default: `""`] A unique ID for the task. This attribute
        is optional, a unique ID will be assigned by RP if the field is not set.
 
-    .. data:: name
+    .. py:attribute:: name
 
        [type: `str` | default: `""`] A descriptive name for the task. This
        attribute can be used to map individual tasks back to application level
        workloads.
 
-    .. data:: mode
+    .. py:attribute:: mode
 
        [type: `str` | default: `"executable"`] The execution mode to be used for
        this task.  The following modes are accepted:
@@ -146,33 +148,46 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
-        There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+         - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+         - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+        There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
         should be used for short running tasks which require a single core and
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (pipes, I/O redirection) which cannot easily be
-        mapped to other task attributes.
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily
+        be mapped to other task attributes.
 
-    .. data:: executable
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
+        that define RAPTOR's master(s) and worker(s) components and their
+        resource requirements. They are launched by the Agent on one or more
+        nodes, depending on their requirements.
+
+    .. py:attribute:: executable
 
        [type: `str` | default: `""`] The executable to launch. The executable
        is expected to be either available via `$PATH` on the target resource,
        or to be an absolute path.
 
-    .. data:: arguments
+    .. py:attribute:: arguments
 
        [type: `list` | default: `[]`] The command line arguments for the given
        `executable` (`list` of `strings`).
 
-    .. data:: code
+    .. py:attribute:: code
 
        [type: `str` | default: `""`] The code to run.  This field is expected to
        contain valid python code which is executed when the task mode is
        `TASK_EXEC` or `TASK_EVAL`.
 
-    .. data:: function
+    .. py:attribute:: function
 
        [type: `str` | default: `""`] The function to run.  This field is
        expected to contain a python function name which can be resolved in the
@@ -180,24 +195,24 @@ class TaskDescription(ru.TypedDict):
        there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
        `kwargs` are passed as function parameters.
 
-    .. data:: args
+    .. py:attribute:: args
 
        [type: `list` | default: `[]`] Unnamed arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. data:: kwargs
+    .. py:attribute:: kwargs
 
        [type: `dict` | default: `{}`] Named arguments to be passed to the
        `function` (see above).  This field will be serialized  with `msgpack`
        and can thus contain any serializable data types.
 
-    .. data:: command
+    .. py:attribute:: command
 
        [type: `str` | default: `""`] A shell command to be executed.  This
        attribute is used for the `TASK_SHELL` mode.
 
-    .. data:: ranks
+    .. py:attribute:: ranks
 
        [type: `int` | default: `1`] The number of application processes to start
        on CPU cores.  For two ranks or more, an MPI communicator will be
@@ -207,7 +222,7 @@ class TaskDescription(ru.TypedDict):
        `cpu_process_type` was previously used to signal the need for an MPI
        communicator - that attribute is now also deprecated and will be ignored.
 
-    .. data:: cores_per_rank
+    .. py:attribute:: cores_per_rank
 
        [type: `int` | default: `1`] The number of cpu cores each process will
        have available to start its own threads or processes on.  By default,
@@ -217,89 +232,89 @@ class TaskDescription(ru.TypedDict):
 
        `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
 
-    .. data:: threading_type
+    .. py:attribute:: threading_type
 
        [type: `str` | default: `""`] The thread type, influences startup and
        environment (`<empty>/POSIX`, `OpenMP`).
 
        `threading_type` replaces the deprecated attribute `cpu_thread_type`.
 
-    .. data:: gpus_per_rank
+    .. py:attribute:: gpus_per_rank
 
-       [type: `int` | default: `0`] The number of gpus made available to each
-       rank.
+       [type: `float` | default: `0.`] The number of gpus made available to
+       each rank. If gpu is shared among several ranks, then a fraction of gpu
+       should be provided (e.g., 2 ranks share a GPU, then `gpus_per_rank=.5`).
 
        `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
        attributes `gpu_threads` and `gpu_process_type` are also deprecated and
        will be ignored.
 
-    .. data:: gpu_type
+    .. py:attribute:: gpu_type
 
        [type: `str` | default: `""`] The type of GPU environment to provide to
        the ranks (`<empty>`, `CUDA`, `ROCm`).
 
        `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
 
-    .. data:: lfs_per_rank
+    .. py:attribute:: lfs_per_rank
 
        [type: `int` | default: `0`] Local File Storage per rank - amount of
        data (MB) required on the local file system of the node.
 
        `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
 
-    .. data:: mem_per_rank
+    .. py:attribute:: mem_per_rank
 
        [type: `int` | default: `0`] Amount of physical memory required per
        rank.
 
        `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
-    .. data:: environment
+    .. py:attribute:: environment
 
        [type: `dict` | default: `{}`] Environment variables to set in the
        environment before the execution (launching picked `LaunchMethod`).
 
-    .. data:: named_env
+    .. py:attribute:: named_env
 
        [type: `str` | default: `""`] A named virtual environment as prepared by
        the pilot. The task will remain in `AGENT_SCHEDULING` state until that
        environment gets created.
 
-    .. data:: sandbox
+    .. py:attribute:: sandbox
 
-       [type: `str` | default: `""`] This specifies the working directory of
-       the task. That directory *MUST* be relative to the pilot sandbox. It
-       will be created if it does not exist. By default, the sandbox has
-       the name of the task's uid.
+       [type: `str` | default: `""`] This specifies the working directory of the
+       task.  It will be created if it does not exist. By default, the sandbox
+       has the name of the task's uid and is relative to the pilot's sandbox.
 
-    .. data:: stdout
+    .. py:attribute:: stdout
 
        [type: `str` | default: `""`] The name of the file to store stdout. If
        not set then the name of the following format will be used: `<uid>.out`.
 
-    .. data:: stderr
+    .. py:attribute:: stderr
 
        [type: `str` | default: `""`] The name of the file to store stderr. If
        not set then the name of the following format will be used: `<uid>.err`.
 
-    .. data:: input_staging
+    .. py:attribute:: input_staging
 
        [type: `list` | default: `[]`] The files that need to be staged before
        the execution (`list` of `staging directives`, see below).
 
-    .. data:: output_staging
+    .. py:attribute:: output_staging
 
        [type: `list` | default: `[]`] The files that need to be staged after
        the execution (`list` of `staging directives`, see below).
 
-    .. data:: stage_on_error
+    .. py:attribute:: stage_on_error
 
        [type: `bool` | default: `False`] Output staging is normally skipped on
        `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
        attempted either way. This may though lead to additional errors if the
        tasks did not manage to produce the expected output files to stage.
 
-    .. data:: pre_launch
+    .. py:attribute:: pre_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before launching (i.e., before LaunchMethod is submitted), potentially
@@ -311,14 +326,14 @@ class TaskDescription(ru.TypedDict):
        resources! Deviating from that rule will likely result in reduced
        overall throughput.
 
-    .. data:: post_launch
+    .. py:attribute:: post_launch
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after launching (i.e., after LaunchMethod is executed).
 
        Precautions are the same as for `pre_launch` actions.
 
-    .. data:: pre_exec
+    .. py:attribute:: pre_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        before the task starts (LaunchMethod is submitted, but no actual task
@@ -344,40 +359,46 @@ class TaskDescription(ru.TypedDict):
        `FAILED` state, and no execution of the actual workload will be
        attempted.
 
-    .. data:: pre_exec_sync
+    .. py:attribute:: pre_exec_sync
 
        [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
        execution, which enforce to delay individual rank execution, until all
        `pre_exec` actions for all ranks are completed.
 
-    .. data:: post_exec
+    .. py:attribute:: post_exec
 
        [type: `list` | default: `[]`] Actions (shell commands) to perform
        after the task finishes. The same remarks as on `pre_exec` apply,
        inclusive the point on error handling, which again will cause the task
        to fail, even if the actual execution was successful.
 
-    .. data:: restartable
+    .. py:attribute:: restartable
 
        [type: `bool` | default: `False`] If the task starts to execute on
        a pilot, but cannot finish because the pilot fails or is canceled,
        the task can be restarted.
 
-    .. data:: scheduler
+    .. py:attribute:: scheduler
 
        [type: `str` | default: `""`] Request the task to be handled by a
        specific agent scheduler.
 
-    .. data:: tags
+    .. py:attribute:: tags
 
        [type: `dict` | default: `{}`] Configuration specific tags, which
        influence task scheduling and execution (e.g., tasks co-location).
 
-    .. data:: metadata
+    .. py:attribute:: metadata
 
        [type: `ANY` | default: `None`] User defined metadata.
 
-    .. data:: cleanup
+    .. py:attribute:: timeout
+
+       [type: `float` | default: `0.0`] Any timeout larger than 0 will result in
+       the task process to be killed after the specified amount of seconds.  The
+       task will then end up in `CANCELED` state.
+
+    .. py:attribute:: cleanup
 
        [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
        delete the entire task sandbox upon termination. This includes all
@@ -385,67 +406,41 @@ class TaskDescription(ru.TypedDict):
        before cleanup. Note that task sandboxes are also deleted if the pilot's
        own `cleanup` flag is set.
 
-    .. data:: pilot
+    .. py:attribute:: pilot
 
        [type: `str` | default: `""`] Pilot `uid`, if specified, the task is
        submitted to the pilot with the given ID. If that pilot is not known to
        the TaskManager, an exception is raised.
 
 
-    Staging Directives
-    ------------------
+    Task Ranks
+    ==========
 
-    The Staging Directives are specified using a dict in the following form::
+    The notion of `ranks` is central to RP's `TaskDescription` class.  We here
+    use the same notion as MPI, in that the number of `ranks` refers to the
+    number of individual processes to be spawned by the task execution backend.
+    These processes will be near-exact copies of each other: they run in the
+    same workdir and the same `environment`, are defined by the same
+    `executable` and `arguments`, get the same amount of resources allocated,
+    etc.  Notable exceptions are:
 
-          staging_directive = {
-             'source'  : None, # see 'Location' below
-             'target'  : None, # see 'Location' below
-             'action'  : None, # See 'Action operators' below
-             'flags'   : None, # See 'Flags' below
-             'priority': 0     # Control ordering of actions (unused)
-          }
+      - rank processes may run on different nodes;
+      - rank processes can communicate via MPI;
+      - each rank process obtains a unique rank ID.
 
+    It is up to the underlying MPI implementation to determine the exact value
+    of the process' rank ID.  The MPI implementation may also set a number of
+    additional environment variables for each process.
 
-    Locations
-    ---------
+    It is important to understand that only applications which make use of MPI
+    should have more than one rank -- otherwise identical copies of the *same*
+    application instance are launched which will compute the same results, thus
+    wasting resources for all ranks but one.  Worse: I/O-routines of these
+    non-MPI ranks can interfere with each other and invalidate those results.
 
-      `source` and `target` locations can be given as strings or `ru.Url`
-      instances.  Strings containing `://` are converted into URLs immediately.
-      Otherwise, they are considered absolute or relative paths and are then
-      interpreted in the context of the client's working directory.
-
-      Special URL schemas:
-
-        * `client://`   : relative to the client's working directory
-        * `resource://` : relative to the RP    sandbox on the target resource
-        * `pilot://`    : relative to the pilot sandbox on the target resource
-        * `task://`     : relative to the task  sandbox on the target resource
-
-      In all these cases, the `hostname` element of the URL is expected to be
-      empty, and the path is *always* considered relative to the locations
-      specified above (even though URLs usually don't have a notion of relative
-      paths).
-
-
-    Action operators
-    ----------------
-
-      Action operators:
-
-        * rp.TRANSFER : remote file transfer from `source` URL to `target` URL
-        * rp.COPY     : local file copy, i.e., not crossing host boundaries
-        * rp.MOVE     : local file move
-        * rp.LINK     : local file symlink
-
-
-    Flags
-    -----
-
-      Flags:
-
-        * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-          the fly
-        * rp.RECURSIVE      : if `source` is a directory, handles it recursively
+    Also: applications with a single rank cannot make effective use of MPI
+    - depending on the specific resource configuration, RP may launch those
+      tasks without providing an MPI communicator.
 
 
     Task Environment
@@ -496,7 +491,66 @@ class TaskDescription(ru.TypedDict):
     and will cache the resulting environment settings - those cached settings
     are then applied to all other tasks with the same directives, without
     executing the directives again.
-    """
+
+
+    Staging Directives
+    ------------------
+
+    The Staging Directives are specified using a dict in the following form::
+
+          staging_directive = {
+             'source'  : None, # see 'Location' below
+             'target'  : None, # see 'Location' below
+             'action'  : None, # See 'Action operators' below
+             'flags'   : None, # See 'Flags' below
+             'priority': 0     # Control ordering of actions (unused)
+          }
+
+
+    Locations
+    ---------
+
+      `source` and `target` locations can be given as strings or `ru.Url`
+      instances.  Strings containing `://` are converted into URLs immediately.
+      Otherwise, they are considered absolute or relative paths and are then
+      interpreted in the context of the client's working directory.
+
+      Special URL schemas:
+
+        * `client://`   : relative to the client's working directory
+        * `resource://` : relative to the RP    sandbox on the target resource
+        * `pilot://`    : relative to the pilot sandbox on the target resource
+        * `task://`     : relative to the task  sandbox on the target resource
+
+      In all these cases, the `hostname` element of the URL is expected to be
+      empty, and the path is *always* considered relative to the locations
+      specified above (even though URLs usually don't have a notion of relative
+      paths).
+
+      For more details on path and sandbox handling check the documentation of
+      :meth:`radical.pilot.staging_directives.complete_url`.
+
+
+    Action operators
+    ----------------
+
+      Action operators:
+
+        * rp.TRANSFER : remote file transfer from `source` URL to `target` URL
+        * rp.COPY     : local file copy, i.e., not crossing host boundaries
+        * rp.MOVE     : local file move
+        * rp.LINK     : local file symlink
+
+
+    Flags
+    -----
+
+      Flags:
+
+        * rp.CREATE_PARENTS : create the directory hierarchy for targets on
+          the fly
+        * rp.RECURSIVE      : if `source` is a directory, handles it recursively
+    '''
 
     _schema = {
         UID             : str         ,
@@ -527,7 +581,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : int         ,
         CORES_PER_RANK  : int         ,
-        GPUS_PER_RANK   : int         ,
+        GPUS_PER_RANK   : float       ,
         THREADING_TYPE  : str         ,
         GPU_TYPE        : str         ,
         LFS_PER_RANK    : int         ,
@@ -549,6 +603,7 @@ class TaskDescription(ru.TypedDict):
         SCHEDULER       : str         ,
         TAGS            : {None: None},
         METADATA        : None        ,
+        TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
     }
@@ -581,7 +636,7 @@ class TaskDescription(ru.TypedDict):
 
         RANKS           : 1           ,
         CORES_PER_RANK  : 1           ,
-        GPUS_PER_RANK   : 0           ,
+        GPUS_PER_RANK   : 0.          ,
         THREADING_TYPE  : ''          ,
         GPU_TYPE        : ''          ,
         LFS_PER_RANK    : 0           ,
@@ -603,6 +658,7 @@ class TaskDescription(ru.TypedDict):
         SCHEDULER       : ''          ,
         TAGS            : dict()      ,
         METADATA        : None        ,
+        TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
     }
@@ -622,7 +678,8 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER]:
+        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER,
+                         AGENT_SERVICE]:
             if not self.get('executable'):
                 raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
 
@@ -660,7 +717,7 @@ class TaskDescription(ru.TypedDict):
             self.cpu_thread_type = None
 
         if self.gpu_processes:
-            self.gpus_per_rank = self.gpu_processes
+            self.gpus_per_rank = float(self.gpu_processes)
             self.gpu_processes = 0
 
         if self.gpu_process_type:

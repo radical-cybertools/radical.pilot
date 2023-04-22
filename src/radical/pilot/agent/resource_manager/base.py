@@ -217,14 +217,15 @@ class ResourceManager(object):
         rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
         rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
-        rcfg = self._cfg.resource_cfg
-        rm_info.mem_per_node     = rcfg.mem_per_node or 0
-        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
-                                       rcfg.get('system_architecture', {}).
-                                            get('smt', 1))
-
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
+
+        rcfg                     = self._cfg.resource_cfg
+        rm_info.mem_per_node     = rcfg.mem_per_node or 0
+
+        system_architecture      = rcfg.get('system_architecture', {})
+        rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
+                                       system_architecture.get('smt', 1))
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)
@@ -245,9 +246,9 @@ class ResourceManager(object):
         assert alloc_nodes >= rm_info.requested_nodes
 
         # however, the config can override core and gpu detection,
-        # and decide to block some resources
-        blocked_cores = self._cfg.resource_cfg.blocked_cores or []
-        blocked_gpus  = self._cfg.resource_cfg.blocked_gpus  or []
+        # and decide to block some resources (part of the core specialization)
+        blocked_cores = system_architecture.get('blocked_cores', [])
+        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
@@ -320,30 +321,26 @@ class ResourceManager(object):
         launch_methods  = self._cfg.resource_cfg.launch_methods
 
         self._launchers    = {}
-        self._launch_order = None
+        self._launch_order = launch_methods.get('order') or list(launch_methods)
 
-        for name, lm_cfg in launch_methods.items():
+        for lm_name in list(self._launch_order):
 
-            if name == 'order':
-                self._launch_order = lm_cfg
-                continue
+            lm_cfg = launch_methods[lm_name]
 
             try:
-                self._log.debug('prepare lm %s', name)
+                self._log.debug('prepare lm %s', lm_name)
                 lm_cfg['pid']         = self._cfg.pid
                 lm_cfg['reg_addr']    = self._cfg.reg_addr
                 lm_cfg['resource']    = self._cfg.resource
-                self._launchers[name] = rpa.LaunchMethod.create(
-                    name, lm_cfg, rm_info, self._log, self._prof)
+                self._launchers[lm_name] = rpa.LaunchMethod.create(
+                    lm_name, lm_cfg, rm_info, self._log, self._prof)
 
             except:
-                self._log.exception('skip LM %s' % name)
+                self._log.exception('skip lm %s', lm_name)
+                self._launch_order.remove(lm_name)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
-
-        if not self._launch_order:
-            self._launch_order = list(self._launchers.keys())
 
 
     # --------------------------------------------------------------------------
@@ -516,12 +513,15 @@ class ResourceManager(object):
         as required for rm_info.
         '''
 
+        # keep nodes to be indexed (node_id) starting at 1
+        # (required for jsrun ERF spec files and expanded to all other RMs)
         node_list = [{'node_name': node[0],
-                      'node_id'  : node[0],
+                      'node_id'  : str(idx + 1),
                       'cores'    : [rpc.FREE] * node[1],
                       'gpus'     : [rpc.FREE] * rm_info.gpus_per_node,
                       'lfs'      : rm_info.lfs_per_node,
-                      'mem'      : rm_info.mem_per_node} for node in nodes]
+                      'mem'      : rm_info.mem_per_node}
+                     for idx, node in enumerate(nodes)]
 
         return node_list
 

@@ -10,8 +10,8 @@ import queue
 import atexit
 import pprint
 import signal
-import threading as mt
-import subprocess
+import threading  as mt
+import subprocess as sp
 
 import radical.utils as ru
 
@@ -52,6 +52,10 @@ class Popen(AgentExecutingComponent):
     _header    = '#!/bin/sh\n'
     _separator = '\n# ' + '-' * 78 + '\n'
 
+    # flags for the watcher queue
+    TO_WATCH  = 0
+    TO_CANCEL = 1
+
     # --------------------------------------------------------------------------
     #
     def initialize(self):
@@ -59,10 +63,7 @@ class Popen(AgentExecutingComponent):
       # self._log.debug('popen initialize start')
         AgentExecutingComponent.initialize(self)
 
-        self._cancel_lock     = mt.RLock()
-        self._tasks_to_cancel = list()
-        self._tasks_to_watch  = list()
-        self._watch_queue     = queue.Queue()
+        self._watch_queue = queue.Queue()
 
         self._pid = self._cfg['pid']
 
@@ -73,11 +74,12 @@ class Popen(AgentExecutingComponent):
 
       # self._log.debug('popen initialize stop')
 
+
     # --------------------------------------------------------------------------
     #
-    def command_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
-        self._log.info('command_cb [%s]: %s', topic, msg)
+        self._log.info('control_cb [%s]: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -85,10 +87,18 @@ class Popen(AgentExecutingComponent):
         if cmd == 'cancel_tasks':
 
             self._log.info('cancel_tasks command (%s)' % arg)
-            with self._cancel_lock:
-                self._tasks_to_cancel.extend(arg['uids'])
+            for tid in arg['uids']:
+                self.cancel_task(tid)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+
+        self._watch_queue.put([self.TO_CANCEL, uid])
+
 
     # --------------------------------------------------------------------------
     #
@@ -102,16 +112,10 @@ class Popen(AgentExecutingComponent):
                 self._prof.prof('task_start', uid=task['uid'])
                 self._handle_task(task)
 
-            except Exception:
-                # append the startup error to the tasks stderr.  This is
-                # not completely correct (as this text is not produced
-                # by the task), but it seems the most intuitive way to
-                # communicate that error to the application/user.
+            except Exception as e:
                 self._log.exception("error running Task")
-                if task['stderr'] is None:
-                    task['stderr'] = ''
-                task['stderr'] += '\nPilot cannot start task:\n'
-                task['stderr'] += '\n'.join(ru.get_exception_trace())
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
                 # can't rely on the executor base to free the task resources
                 self._prof.prof('unschedule_start', uid=task['uid'])
@@ -120,9 +124,6 @@ class Popen(AgentExecutingComponent):
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
                 self.advance(task, rps.FAILED, publish=True, push=False)
-
-            finally:
-                self._prof.prof('task_stop', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -168,7 +169,7 @@ class Popen(AgentExecutingComponent):
         # defined) are executed, and then, after all ranks are synchronized,
         # finally the task ranks begin to run.
         #
-        # The scripts thus show the following structure:
+        # The scripts thus show the following approximate structure:
         #
         # Launcher Script (`task.000000.launch.sh`):
         # ----------------------------------------------------------------------
@@ -355,65 +356,79 @@ class Popen(AgentExecutingComponent):
         self._prof.prof('task_mkdir_done', uid=tid)
 
         # launch and exec script are done, get ready for execution.
-        cmdline = '/bin/sh %s' % launch_script
+        cmdline = '%s/%s' % (sbox, launch_script)
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+        # `start_new_session=True` is default, which enables decoupling
+        # from the parent process group (part of the task cancellation)
+        _start_new_session = self._cfg['resource_cfg'].\
+            get('new_session_per_task', True)
 
         self._prof.prof('task_run_start', uid=tid)
-        task['proc'] = subprocess.Popen(args       = cmdline,
-                                        executable = None,
-                                        stdin      = None,
-                                        stdout     = _launch_out_h,
-                                        stderr     = subprocess.STDOUT,
-                                        close_fds  = True,
-                                        shell      = True,
-                                        cwd        = sbox)
-        # decoupling from parent process group is disabled,
-        # in case of enabling it, one of the following options should be added:
-        #    `preexec_fn=os.setsid` OR `start_new_session=True`
+        task['proc'] = sp.Popen(args              = cmdline,
+                                executable        = None,
+                                shell             = False,
+                                stdin             = None,
+                                stdout            = _launch_out_h,
+                                stderr            = sp.STDOUT,
+                                start_new_session = _start_new_session,
+                                close_fds         = True,
+                                cwd               = sbox)
         self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
 
-        self._watch_queue.put(task)
+        # handle task timeout if needed
+        self.handle_timeout(task)
+
+        # watch task for completion
+        self._watch_queue.put([self.TO_WATCH, task])
 
 
     # --------------------------------------------------------------------------
     #
     def _watch(self):
 
+        to_watch  = list()  # contains task dicts
+        to_cancel = set()   # contains task IDs
+
         try:
             while not self._term.is_set():
 
-                tasks = list()
+                # FIXME: we don't want to only wait for one Task -- then we
+                #        would pull Task state too frequently.  OTOH, we
+                #        also don't want to learn about tasks until all
+                #        slots are filled, because then we may not be able
+                #        to catch finishing tasks in time -- so there is
+                #        a fine balance here.  Balance means 100.
+                MAX_QUEUE_BULKSIZE = 100
+                count = 0
+
                 try:
+                    while count < MAX_QUEUE_BULKSIZE:
 
-                    # FIXME: we don't want to only wait for one Task -- then we
-                    #        would pull Task state too frequently.  OTOH, we
-                    #        also don't want to learn about tasks until all
-                    #        slots are filled, because then we may not be able
-                    #        to catch finishing tasks in time -- so there is
-                    #        a fine balance here.  Balance means 100.
-                    MAX_QUEUE_BULKSIZE = 100
+                        flag, thing = self._watch_queue.get_nowait()
+                        count += 1
 
-                    while len(tasks) < MAX_QUEUE_BULKSIZE :
-                        tasks.append (self._watch_queue.get_nowait())
+                        # NOTE: `thing` can be task id or task dict, depending
+                        #       on the flag value
+                        if   flag == self.TO_WATCH : to_watch.append(thing)
+                        elif flag == self.TO_CANCEL: to_cancel.add(thing)
+                        else: raise RuntimeError('unknown flag %s' % flag)
 
                 except queue.Empty:
                     # nothing found -- no problem, see if any tasks finished
                     pass
 
-                # add all tasks we found to the watchlist
-                for task in tasks :
-                    self._tasks_to_watch.append (task)
-
                 # check on the known tasks.
-                action = self._check_running()
+                action = self._check_running(to_watch, to_cancel)
 
-                if not action and not tasks :
+                # FIXME: remove uids from lists after completion
+
+                if not action and not count:
                     # nothing happened at all!  Zzz for a bit.
                     # FIXME: make configurable
                     time.sleep(0.1)
@@ -426,75 +441,82 @@ class Popen(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     # Iterate over all running tasks, check their status, and decide on the
     # next step.  Also check for a requested cancellation for the tasks.
-    def _check_running(self):
+    def _check_running(self, to_watch, to_cancel):
 
-        action = 0
-        for task in self._tasks_to_watch:
+        #
+        action = False
+
+        # `to_watch.remove()` in the loop requires copy to iterate over the list
+        for task in list(to_watch):
+
+            tid = task['uid']
 
             # poll subprocess object
             exit_code = task['proc'].poll()
-            tid       = task['uid']
 
             to_advance    = list()
             to_cancel     = list()
 
             if exit_code is None:
-                # Process is still running
 
-                if tid in self._tasks_to_cancel:
+                # process is still running - cancel if needed
+                if tid in to_cancel:
 
-                    # FIXME: there is a race condition between the state poll
-                    # above and the kill command below.  We probably should pull
-                    # state after kill again?
+                    self._log.debug('cancel %s', tid)
 
+                    action = True
                     self._prof.prof('task_run_cancel_start', uid=tid)
 
-                    # We got a request to cancel this task - send SIGTERM to the
+                    # got a request to cancel this task - send SIGTERM to the
                     # process group (which should include the actual launch
                     # method)
-                  # task['proc'].kill()
-                    action += 1
                     try:
-                        os.killpg(task['proc'].pid, signal.SIGTERM)
+                        # kill the whole process group
+                        pgrp = os.getpgid(task['proc'].pid)
+                        os.killpg(pgrp, signal.SIGKILL)
                     except OSError:
-                        # task is already gone, we ignore this
+                        # lost race: task is already gone, we ignore this
+                        # FIXME: collect and move to DONE/FAILED
                         pass
+
                     task['proc'].wait()  # make sure proc is collected
 
-                    with self._cancel_lock:
-                        self._tasks_to_cancel.remove(tid)
+                    to_cancel.remove(tid)
+                    to_watch.remove(task)
+                    del task['proc']  # proc is not json serializable
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
-                    del task['proc']  # proc is not json serializable
                     self._prof.prof('unschedule_start', uid=tid)
                     to_cancel.append(task)
 
-                    # we don't need to watch canceled tasks
-                    self._tasks_to_watch.remove(task)
-
             else:
 
+                action = True
                 self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
                 task['proc'].wait()
 
                 # we have a valid return code -- task is final
-                action += 1
                 self._log.info("Task %s has return code %s.", tid, exit_code)
 
                 task['exit_code'] = exit_code
 
                 # Free the Slots, Flee the Flots, Ree the Frots!
-                self._tasks_to_watch.remove(task)
+                to_watch.remove(task)
+                if tid in to_cancel:
+                    to_cancel.remove(tid)
                 del task['proc']  # proc is not json serializable
                 to_advance.append(task)
+
                 self._prof.prof('unschedule_start', uid=tid)
 
                 if exit_code != 0:
-                    # The task failed - fail after staging output
-                    task['target_state'] = rps.FAILED
+                    # task failed - fail after staging output
+                    task['exception']        = 'RuntimeError("task failed")'
+                    task['exception_detail'] = 'exit code: %s' % exit_code
+                    task['target_state'    ] = rps.FAILED
 
                 else:
                     # The task finished cleanly, see if we need to deal with
@@ -516,6 +538,7 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
+    # pylint: disable=unused-argument
     def _get_prof(self, event, tid, msg=''):
 
         return '$RP_PROF %s\n' % event
@@ -685,10 +708,15 @@ class Popen(AgentExecutingComponent):
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            td['pre_exec'].append(
-                {str(rank_id): 'export CUDA_VISIBLE_DEVICES=%s' %
-                               ','.join([str(gm[0]) for gm in rank['gpu_map']])
-                 for rank_id, rank in enumerate(ranks)})
+            rank_id  = 0
+            rank_env = {}
+            for slot_ranks in ranks:
+                for gpu_map in slot_ranks['gpu_map']:
+                    rank_env[str(rank_id)] = \
+                        'export CUDA_VISIBLE_DEVICES=%s' % \
+                        ','.join([str(g) for g in gpu_map])
+                    rank_id += 1
+            td['pre_exec'].append(rank_env)
 
 
     # --------------------------------------------------------------------------
