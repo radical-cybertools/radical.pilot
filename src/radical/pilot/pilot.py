@@ -439,15 +439,38 @@ class Pilot(object):
 
     @property
     def endpoint_fs(self):
+        '''
+        Returns the URL which is internally used to access the target resource's
+        root file system.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._endpoint_fs
 
     @property
     def resource_sandbox(self):
+        '''
+        Returns the full URL of the path that RP considers the resource sandbox,
+        i.e., the sandbox on the target resource's file system which is shared
+        by all sessions which access that resource.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._resource_sandbox
 
 
     @property
     def session_sandbox(self):
+        '''
+        Returns the full URL of the path that RP considers the session sandbox
+        on the target resource's file system which is shared
+        by all pilots which access that resource in the current session.
+
+        **Returns:**
+            * A URL (radical.utils.Url).
+        '''
         return self._session_sandbox
 
     @property
@@ -656,8 +679,12 @@ class Pilot(object):
     #
     def stage_in(self, sds):
         '''
-        Stages the content of the :py:mod:`~radical.pilot.staging_directives` into the
-        pilot's staging area.
+        Stages the content of the :py:mod:`~radical.pilot.staging_directives`
+        to the pilot sandbox.
+
+        Please note the documentation of
+        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        path and sandbox semantics.
         '''
 
         sds = ru.as_list(sds)
@@ -677,9 +704,12 @@ class Pilot(object):
     #
     def stage_out(self, sds=None):
         '''
-        Fetch files (default:`staging_output.tgz`) from the pilot sandbox.
+        Fetches the content of the :py:mod:`~radical.pilot.staging_directives`
+        from the pilot sandbox.
 
-        See :py:mod:`radical.pilot.staging_directives`.
+        Please note the documentation of
+        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        path and sandbox semantics.
         '''
 
         sds = ru.as_list(sds)

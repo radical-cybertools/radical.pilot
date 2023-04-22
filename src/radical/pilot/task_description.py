@@ -94,7 +94,7 @@ METADATA         = 'metadata'
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.TypedDict):
-    """
+    '''
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
     :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
@@ -148,14 +148,27 @@ class TaskDescription(ru.TypedDict):
            required attributes: `executable`
            related  attributes: `arguments`
 
-        There exists a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+         - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+         - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+           required attributes: `executable`
+           related  attributes: `arguments`
+
+        There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
         and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
         should be used for short running tasks which require a single core and
         no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
         should be used for all other tasks and is in fact the default.
         `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (pipes, I/O redirection) which cannot easily be
-        mapped to other task attributes.
+        specific functionality (e.g., pipes, I/O redirection) which cannot easily
+        be mapped to other task attributes.
+
+        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
+        that define RAPTOR's master(s) and worker(s) components and their
+        resource requirements. They are launched by the Agent on one or more
+        nodes, depending on their requirements.
 
     .. py:attribute:: executable
 
@@ -270,10 +283,9 @@ class TaskDescription(ru.TypedDict):
 
     .. py:attribute:: sandbox
 
-       [type: `str` | default: `""`] This specifies the working directory of
-       the task. That directory *MUST* be relative to the pilot sandbox. It
-       will be created if it does not exist. By default, the sandbox has
-       the name of the task's uid.
+       [type: `str` | default: `""`] This specifies the working directory of the
+       task.  It will be created if it does not exist. By default, the sandbox
+       has the name of the task's uid and is relative to the pilot's sandbox.
 
     .. py:attribute:: stdout
 
@@ -401,6 +413,86 @@ class TaskDescription(ru.TypedDict):
        the TaskManager, an exception is raised.
 
 
+    Task Ranks
+    ==========
+
+    The notion of `ranks` is central to RP's `TaskDescription` class.  We here
+    use the same notion as MPI, in that the number of `ranks` refers to the
+    number of individual processes to be spawned by the task execution backend.
+    These processes will be near-exact copies of each other: they run in the
+    same workdir and the same `environment`, are defined by the same
+    `executable` and `arguments`, get the same amount of resources allocated,
+    etc.  Notable exceptions are:
+
+      - rank processes may run on different nodes;
+      - rank processes can communicate via MPI;
+      - each rank process obtains a unique rank ID.
+
+    It is up to the underlying MPI implementation to determine the exact value
+    of the process' rank ID.  The MPI implementation may also set a number of
+    additional environment variables for each process.
+
+    It is important to understand that only applications which make use of MPI
+    should have more than one rank -- otherwise identical copies of the *same*
+    application instance are launched which will compute the same results, thus
+    wasting resources for all ranks but one.  Worse: I/O-routines of these
+    non-MPI ranks can interfere with each other and invalidate those results.
+
+    Also: applications with a single rank cannot make effective use of MPI
+    - depending on the specific resource configuration, RP may launch those
+      tasks without providing an MPI communicator.
+
+
+    Task Environment
+    ================
+
+    RP tasks are expected to be executed in isolation, meaning that their
+    runtime environment is completely independent from the environment of other
+    tasks, independent from the launch mechanism used to start the task, and
+    also independent from the environment of the RP stack itself.
+
+    The task description provides several hooks to help setting up the
+    environment in that context.  It is important to understand the way those
+    hooks interact with respect to the environments mentioned above.
+
+      - `pre_launch` directives are set and executed before the task is passed
+        on to the task launch method.  As such, `pre_launch` usually executed
+        on the node where RP's agent is running, and *not* on the tasks target
+        node.  Executing `pre_launch` directives for many tasks can thus
+        negatively impact RP's performance (*).  Note also that `pre_launch`
+        directives can in some cases interfere with the launch method.
+
+        Use `pre_launch` directives for rare, heavy-weight operations which
+        prepare the runtime environment for multiple tasks: fetch data from
+        a remote source, unpack input data, create global communication
+        channels, etc.
+
+      - `pre_exec` directives are set and executed *after* the launch method
+        placed the task on the compute nodes and are thus running on the target
+        node.  Note that for MPI tasks, the `pre_exec` directives are executed
+        once per rank.  Running large numbers of `pre_exec` directives
+        concurrently can lead to system performance degradation (*), for example
+        when those  directives concurrently hot the shared files system (for
+        loading modules or Python virtualenvs etc).
+
+        Use `pre_exec` directives for task environment setup such as `module
+        load`, `virtualenv activate`, `export` whose effects are expected to be
+        applied either to all task ranks or to specified ranks.  Avoid file
+        staging operations at this point (files would be redundantly staged
+        multiple times - once per rank).
+
+    (*) The performance impact of repeated concurrent access to the system's
+    shared file system can be significant and can pose a major bottleneck for
+    your application.  Specifically `module load` and `virtualenv activate`
+    operations and the like are heavy on file system I/O, and executing those
+    for many tasks is ill advised.  Having said that: RP attempts to optimize
+    those operations: if it identifies that identical `pre_exec` directives are
+    shared between multiple tasks, RP will execute the directives exactly *once*
+    and will cache the resulting environment settings - those cached settings
+    are then applied to all other tasks with the same directives, without
+    executing the directives again.
+
+
     Staging Directives
     ==================
 
@@ -435,6 +527,9 @@ class TaskDescription(ru.TypedDict):
       specified above (even though URLs usually don't have a notion of relative
       paths).
 
+      For more details on path and sandbox handling check the documentation of
+      :meth:`radical.pilot.staging_directives.complete_url`.
+
 
     Action operators
     ----------------
@@ -455,57 +550,7 @@ class TaskDescription(ru.TypedDict):
         * rp.CREATE_PARENTS : create the directory hierarchy for targets on
           the fly
         * rp.RECURSIVE      : if `source` is a directory, handles it recursively
-
-
-    Task Environment
-    ================
-
-    RP tasks are expected to be executed in isolation, meaning that their
-    runtime environment is completely independent from the environment of other
-    tasks, independent from the launch mechanism used to start the task, and
-    also independent from the environment of the RP stack itself.
-
-    The task description provides several hooks to help setting up the
-    environment in that context.  It is important to understand the way those
-    hooks interact with respect to the environments mentioned above.
-
-      - `pre_launch` directives are set and executed before the task is passed
-        on to the task launch method.  As such, `pre_launch` usually executed
-        on the node where RP's agent is running, and *not* on the tasks target
-        node.  Executing `pre_launch` directives for many tasks can thus
-        negatively impact RP's performance (*).  Note also that `pre_launch`
-        directives can in some cases interfere with the launch method.
-
-        Use `pre_launch` directives for rare, heavy-weight operations which
-        prepare the runtime environment for multiple tasks: fetch data from
-        a remote source, unpack input data, create global communication
-        channels, etc.
-
-      - `pre_exec` directives are set and executed *after* the launch method
-        placed the task on the compute nodes and are thus running on the target
-        node.  Note that for MPI tasks, the `pre_exec` directives are executed
-        once per rank.  Running large numbers of `pre_exec` directives
-        concurrently can lead to system performance degradation (*), for example
-        when those  directives concurrently hot the shared file system (for
-        loading modules or Python virtualenvs etc.).
-
-        Use `pre_exec` directives for task environment setup such as `module
-        load`, `virtualenv activate`, `export` whose effects are expected to be
-        applied either to all task ranks or to specified ranks.  Avoid file
-        staging operations at this point (files would be redundantly staged
-        multiple times - once per rank).
-
-    (*) The performance impact of repeated concurrent access to the system's
-    shared file system can be significant and can pose a major bottleneck for
-    your application.  Specifically `module load` and `virtualenv activate`
-    operations and the like are heavy on file system I/O, and executing those
-    for many tasks is ill advised.  Having said that: RP attempts to optimize
-    those operations: if it identifies that identical `pre_exec` directives are
-    shared between multiple tasks, RP will execute the directives exactly *once*
-    and will cache the resulting environment settings - those cached settings
-    are then applied to all other tasks with the same directives, without
-    executing the directives again.
-    """
+    '''
 
     _schema = {
         UID             : str         ,
