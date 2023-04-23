@@ -20,6 +20,8 @@ from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
 
+from ...task_description import RAPTOR_MASTER, RAPTOR_WORKER
+
 
 # ------------------------------------------------------------------------------
 # ensure tasks are killed on termination
@@ -226,7 +228,8 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
-      # ru.write_json('%s/%s.json' % (sbox, tid), td)
+        if td['mode'] in [RAPTOR_MASTER, RAPTOR_WORKER]:
+            ru.write_json('%s/%s.json' % (sbox, tid), td)
 
         with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 

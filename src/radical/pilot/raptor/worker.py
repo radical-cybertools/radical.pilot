@@ -35,7 +35,7 @@ class Worker(object):
         self._reg_event = mt.Event()
         self._sbox      = os.environ['RP_TASK_SANDBOX']
         self._uid       = os.environ['RP_TASK_ID']
-        self._ranks     = os.environ['RP_RANKS']
+        self._ranks     = int(os.environ['RP_RANKS'])
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level='DEBUG', targets=['.'], path=self._sbox)

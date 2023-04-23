@@ -107,7 +107,6 @@ class PilotManager(rpu.Component):
         self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._rec_id      = 0       # used for session recording
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()

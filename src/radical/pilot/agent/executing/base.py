@@ -225,17 +225,14 @@ class AgentExecutingComponent(rpu.Component):
                                             publish=publish, push=push, ts=ts)
 
         if buckets['raptor']:
-            self.advance(buckets['client'], state=state,
+            self.advance(buckets['raptor'], state=state,
                                             publish=publish, push=False, ts=ts)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
                                             'arg': buckets['raptor']})
 
         if buckets['agent']:
-            self.advance(buckets['client'], state=state,
+            self.advance(buckets['agent'], state=state,
                                             publish=publish, push=False, ts=ts)
-            self.publish(rpc.STATE_PUBSUB, {'cmd': 'agent_state_update',
-                                            'arg': buckets['agent']})
-
 
 
 # ------------------------------------------------------------------------------

@@ -28,11 +28,15 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots([pd])[0]
         tmgr.add_pilots(pilot)
 
-        raptor = pilot.submit_raptors(rp.TaskDescription())[0]
-        worker = raptor.submit_workers(rp.TaskDescription())[0]
-        task   = raptor.submit_tasks(rp.TaskDescription(
-            {'executable': 'date',
-             'mode'      : rp.TASK_PROC}))[0]
+        raptor = pilot.submit_raptors(rp.TaskDescription(
+            {'mode': rp.RAPTOR_MASTER}))[0]
+
+        worker = raptor.submit_workers(rp.TaskDescription(
+            {'mode': rp.RAPTOR_WORKER}))[0]
+
+        task = raptor.submit_tasks(rp.TaskDescription(
+            {'mode': rp.TASK_PROC,
+             'executable': 'date'}))[0]
 
         tmgr.wait_tasks(task.uid)
         print('%s [%s]: %s' % (task.uid, task.state, task.stdout))

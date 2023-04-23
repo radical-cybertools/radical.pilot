@@ -120,7 +120,6 @@ class TaskManager(rpu.Component):
         self._tcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._rec_id      = 0       # used for session recording
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
@@ -930,7 +929,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self, descriptions=None, tasks=None):
+    def submit_tasks(self, descriptions):
         '''
         Submits on or more :class:`radical.pilot.Task` instances to the
         task manager.
@@ -940,34 +939,20 @@ class TaskManager(rpu.Component):
               or list of :class:`radical.pilot.TaskDescription`]: The
               description of the task instance(s) to create and submit
 
-            * **tasks** [list of :class:`radical.pilot.Task`]: the tasks to be
-              submitted
-
         **Returns:**
               * A list of :class:`radical.pilot.Task` submitted objects.
         '''
 
         from .task import Task
 
-        if not descriptions and not tasks:
+        if not descriptions:
             return []
 
-        if not descriptions: descriptions = list()
-        if not tasks       : tasks        = list()
-
+        tasks    = list()
         ret_list = True
         if descriptions and not isinstance(descriptions, list):
             ret_list     = False
             descriptions = [descriptions]
-
-        for task in tasks:
-            if task.uid in self._tasks:
-                raise ValueError('task %s already submitted' % task.uid)
-
-            if task.state != rps.NEW:
-                raise ValueError('task %s not in NEW state (%s)'
-                                % (task.uid, task.state))
-
 
         # we return a list of tasks
         self._rep.progress_tgt(len(descriptions) + len(tasks), label='submit')

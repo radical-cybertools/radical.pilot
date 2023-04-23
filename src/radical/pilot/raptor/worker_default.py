@@ -46,6 +46,8 @@ class DefaultWorker(Worker):
         self._req_get = ru.zmq.Getter('request', self._req_addr_get,
                                                  cb=self._request_cb)
 
+        self._descr = ru.read_json('%s.json' % self._uid)
+
         # keep worker ID and rank
         self._n_cores =     self._descr.get('cores_per_rank', 1)
         self._n_gpus  = int(self._descr.get('gpus_per_rank',  0))
