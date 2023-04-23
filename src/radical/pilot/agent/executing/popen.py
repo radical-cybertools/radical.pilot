@@ -332,15 +332,13 @@ class Popen(AgentExecutingComponent):
         os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
 
         # make sure the sandbox exists
-        slots_fname = '%s/%s.sl' % (sbox, tid)
-
-        with ru.ru_open(slots_fname, 'w') as fout:
-            fout.write('\n%s\n\n' % pprint.pformat(slots))
-
-        # make sure the sandbox exists
         self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
         self._prof.prof('task_mkdir_done', uid=tid)
+
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level >= 5:
+            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
