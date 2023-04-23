@@ -48,7 +48,7 @@ class TaskManager(rpu.Component):
     which determines which :class:`Task` gets executed on which
     :class:`Pilot`.
 
-    **Example**::
+    Example::
 
         s = rp.Session(database_url=DBURL)
 
@@ -80,27 +80,25 @@ class TaskManager(rpu.Component):
     state notification arrives, any callback registered for that notification is
     fired.
 
-    NOTE: State notifications can arrive out of order wrt the task state model!
+    Note:
+        State notifications can arrive out of order wrt the task state model!
+
     """
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, session, cfg='default', scheduler=None, uid=None):
-        """
-        Creates a new TaskManager and attaches it to the session.
+        """Create a new TaskManager and attaches it to the session.
 
-        **Arguments:**
-            * session [:class:`radical.pilot.Session`]:
-              The session instance to use.
-            * cfg (`dict` or `string`):
-              The configuration or name of configuration to use.
-            * scheduler (`string`):
-              The name of the scheduler plug-in to use.
-            * uid (`string`):
-              ID for unit manager, to be used for reconnect
+        Arguments:
+            session (radical.pilot.Session): The session instance to use.
+            cfg (dict | str): The configuration or name of configuration to use.
+            scheduler (str): The name of the scheduler plug-in to use.
+            uid (str): ID for unit manager, to be used for reconnect
 
-        **Returns:**
-            * A new `TaskManager` object [:class:`radical.pilot.TaskManager`].
+        Returns:
+            radical.pilot.TaskManager: A new `TaskManager` object.
+
         """
 
         # initialize the base class (with no intent to fork)
@@ -225,9 +223,7 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def close(self):
-        """
-        Shut down the TaskManager and all its components.
-        """
+        """Shut down the TaskManager and all its components."""
 
         # we do not cancel tasks at this point, in case any component or pilot
         # wants to continue to progress task states, which should indeed be
@@ -256,9 +252,7 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """
-        Returns a dictionary representation of the TaskManager object.
-        """
+        """Returns a dictionary representation of the TaskManager object."""
 
         ret = {
             'uid': self.uid,
@@ -271,9 +265,7 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        """
-        Returns a string representation of the TaskManager object.
-        """
+        """Returns a string representation of the TaskManager object."""
 
         return str(self.as_dict())
 
@@ -659,9 +651,7 @@ class TaskManager(rpu.Component):
     #
     @property
     def uid(self):
-        """
-        Returns the unique id.
-        """
+        """str: The unique id."""
         return self._uid
 
 
@@ -669,9 +659,7 @@ class TaskManager(rpu.Component):
     #
     @property
     def scheduler(self):
-        """
-        Returns the scheduler name.
-        """
+        """str: The scheduler name."""
 
         return self._cfg.get('scheduler')
 
@@ -680,14 +668,12 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def add_pilots(self, pilots):
-        """
-        Associates one or more pilots with the task manager.
+        """Associates one or more pilots with the task manager.
 
-        **Arguments:**
+        Arguments:
+            pilots (radical.pilot.Pilot | list[radical.pilot.Pilot]):
+                The pilot objects that will be added to the task manager.
 
-            * **pilots** [:class:`radical.pilot.Pilot` or list of
-              :class:`radical.pilot.Pilot`]: The pilot objects that will be
-              added to the task manager.
         """
 
         if not isinstance(pilots, list):
@@ -727,11 +713,11 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """
-        Lists the UIDs of the pilots currently associated with the task manager.
+        """Lists the UIDs of the pilots currently associated with the task manager.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Pilot` UIDs [`string`].
+        Returns:
+            list[str]: A list of :class:`radical.pilot.Pilot` UIDs.
+
         """
 
         with self._pilots_lock:
@@ -741,11 +727,11 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def get_pilots(self):
-        """
-        Get the pilots instances currently associated with the task manager.
+        """Get the pilot instances currently associated with the task manager.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Pilot` instances.
+        Returns:
+            list[radical.pilot.Pilot]: A list of :class:`radical.pilot.Pilot` instances.
+
         """
 
         with self._pilots_lock:
@@ -755,19 +741,18 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def remove_pilots(self, pilot_ids, drain=False):
-        """
-        Disassociates one or more pilots from the task manager.
+        """Disassociates one or more pilots from the task manager.
 
         After a pilot has been removed from a task manager, it won't process
         any of the task manager's tasks anymore. Calling `remove_pilots`
         doesn't stop the pilot itself.
 
-        **Arguments:**
+        Arguments:
+            drain (bool): Drain determines what happens to the tasks
+                which are managed by the removed pilot(s). If `True`, all tasks
+                currently assigned to the pilot are allowed to finish execution.
+                If `False` (the default), then non-final tasks will be canceled.
 
-            * **drain** [`boolean`]: Drain determines what happens to the tasks
-              which are managed by the removed pilot(s). If `True`, all tasks
-              currently assigned to the pilot are allowed to finish execution.
-              If `False` (the default), then non-final tasks will be canceled.
         """
 
         # TODO: Implement 'drain'.
@@ -799,9 +784,13 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def list_units(self):
-        '''
-        deprecated - use `list_tasks()`
-        '''
+        """Get Task UIDs.
+
+        .. deprecated:: 1.5.12
+
+            use :func:`list_tasks()`
+
+        """
         _warn(self.list_units, self.list_tasks)
         return self.list_tasks()
 
@@ -809,12 +798,11 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def list_tasks(self):
-        """
-        Returns the UIDs of the :class:`radical.pilot.Task` managed by
-        this task manager.
+        """Get the UIDs of the tasks managed by this task manager.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Task` UIDs [`string`].
+        Returns:
+            list[str]: A list of :class:`radical.pilot.Task` UIDs.
+
         """
 
         with self._pilots_lock:
@@ -824,9 +812,13 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_units(self, descriptions):
-        '''
-        deprecated - use `submit_tasks()`
-        '''
+        """Submit tasks for execution.
+
+        .. deprecated:: 1.5.12
+
+            use :py:func:`submit_tasks()`
+
+        """
         _warn(self.submit_units, self.submit_tasks)
         return self.submit_tasks(descriptions=descriptions)
 
@@ -834,16 +826,22 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_raptors(self, descriptions, pilot_id=None):
-        '''
+        """Submit RAPTOR master tasks.
+
         Submits on or more :class:`radical.pilot.TaskDescription` instances to
         the task manager, where the `TaskDescriptions` have the mode
         `RAPTOR_MASTER` set.
 
         This is a thin wrapper around `submit_tasks`.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Raptor` objects.
-        '''
+        Arguments:
+            descriptions: (radical.pilot.TaskDescription) description of the
+                workers to submit.
+
+        Returns:
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
+        """
 
         descriptions = ru.as_list(descriptions)
 
@@ -879,17 +877,21 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_workers(self, descriptions):
-        """
+        """Submit RAPTOR workers.
+
         Submits on or more :class:`radical.pilot.TaskDescription` instances to
         the task manager, where the `TaskDescriptions` have the mode
         `RAPTOR_WORKER` set.
 
-        uid:  (str) ID of raptor master this worker will be associated with
+        This method is a thin wrapper around `submit_tasks`.
 
-        This is a thin wrapper around `submit_tasks`.
+        Arguments:
+            descriptions: (radical.pilot.TaskDescription) description of the
+                workers to submit.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.RaptorWorker` objects.
+        Returns:
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
         """
 
         descriptions = ru.as_list(descriptions)
@@ -930,18 +932,21 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_tasks(self, descriptions):
-        '''
-        Submits on or more :class:`radical.pilot.Task` instances to the
-        task manager.
+        """Submit tasks for execution.
 
-        **Arguments:**
-            * **descriptions** [:class:`radical.pilot.TaskDescription`
-              or list of :class:`radical.pilot.TaskDescription`]: The
-              description of the task instance(s) to create and submit
+        Submits one or more :class:`radical.pilot.Task` instances to the task
+        manager.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Task` submitted objects.
-        '''
+        Arguments:
+            descriptions (radical.pilot.TaskDescription | list
+                [radical.pilot.TaskDescription]):
+                The description of the task instance(s) to create.
+
+        Returns:
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
+
+        """
 
         from .task import Task
 
@@ -996,10 +1001,11 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _reconnect_tasks(self):
-        '''
+        """Re-associate tasks on reconnect.
+
         When reconnecting, we need to dig information about all tasks from the
         DB for which this tmgr is responsible.
-        '''
+        """
 
         from .task             import Task
         from .task_description import TaskDescription
@@ -1022,9 +1028,13 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def get_units(self, uids=None):
-        '''
-        deprecated - use `get_tasks()`
-        '''
+        """Get one or more tasks identified by their IDs.
+
+        .. deprecated:: 1.5.12
+
+            use :py:func:`get_tasks()`
+
+        """
         _warn(self.get_units, self.get_tasks)
         return self.get_tasks(uids=uids)
 
@@ -1032,14 +1042,15 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def get_tasks(self, uids=None):
-        """Returns one or more tasks identified by their IDs.
+        """Get one or more tasks identified by their IDs.
 
-        **Arguments:**
-            * **uids** [`string` or `list of strings`]: The IDs of the
-              task objects to return.
+        Arguments:
+            uids (str | list[str]): The IDs of the task objects to return.
 
-        **Returns:**
-              * A list of :class:`radical.pilot.Task` objects.
+        Returns:
+            list[radical.pilot.Task]:
+                A list of :class:`radical.pilot.Task` objects.
+
         """
 
         if not uids:
@@ -1066,9 +1077,13 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def wait_units(self, uids=None, state=None, timeout=None):
-        '''
-        deprecated - use `wait_tasks()`
-        '''
+        """Block for state transition.
+
+        .. deprecated:: 1.5.12
+
+            use :py:func:`wait_tasks()`
+
+        """
         _warn(self.wait_units, self.wait_tasks)
         return self.wait_tasks(uids=uids, state=state, timeout=timeout)
 
@@ -1076,7 +1091,8 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def wait_tasks(self, uids=None, state=None, timeout=None):
-        """
+        """Block for state transition.
+
         Returns when one or more :class:`radical.pilot.Tasks` reach a
         specific state.
 
@@ -1084,31 +1100,27 @@ class TaskManager(rpu.Component):
         Tasks reach the state defined in `state`.  This may include
         tasks which have previously terminated or waited upon.
 
-        **Example**::
+        Example::
 
             # TODO -- add example
 
-        **Arguments:**
+        Arguments:
+            uids (str | list[str]): If uids is set, only the Tasks with the
+                specified uids are considered. If uids is `None` (default), all
+                Tasks are considered.
+            state (str): The state that Tasks have to reach in order for the call
+                to return.
 
-            * **uids** [`string` or `list of strings`]
-              If uids is set, only the Tasks with the specified
-              uids are considered. If uids is `None` (default), all
-              Tasks are considered.
+                By default `wait_tasks` waits for the Tasks to
+                reach a terminal state, which can be one of the following.
 
-            * **state** [`string`]
-              The state that Tasks have to reach in order for the call
-              to return.
+                * :data:`radical.pilot.rps.DONE`
+                * :data:`radical.pilot.rps.FAILED`
+                * :data:`radical.pilot.rps.CANCELED`
+            timeout (float):
+                Timeout in seconds before the call returns regardless of Pilot
+                state changes. The default value **None** waits forever.
 
-              By default `wait_tasks` waits for the Tasks to
-              reach a terminal state, which can be one of the following:
-
-              * :data:`radical.pilot.rps.DONE`
-              * :data:`radical.pilot.rps.FAILED`
-              * :data:`radical.pilot.rps.CANCELED`
-
-            * **timeout** [`float`]
-              Timeout in seconds before the call returns regardless of Pilot
-              state changes. The default value **None** waits forever.
         """
 
         if not uids:
@@ -1203,9 +1215,13 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def cancel_units(self, uids=None):
-        '''
-        deprecated - use `cancel_tasks()`
-        '''
+        """Cancel one or more :class:`radical.pilot.Task` s.
+
+        .. deprecated:: 1.5.12
+
+            use :py:func:`cancel_tasks()`
+
+        """
         _warn(self.cancel_units, self.cancel_tasks)
         return self.cancel_tasks(uids=uids)
 
@@ -1213,8 +1229,7 @@ class TaskManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def cancel_tasks(self, uids=None):
-        """
-        Cancel one or more :class:`radical.pilot.Tasks`.
+        """Cancel one or more :class:`radical.pilot.Task` s.
 
         Note that cancellation of tasks is *immediate*, i.e. their state is
         immediately set to `CANCELED`, even if some RP component may still
@@ -1224,13 +1239,13 @@ class TaskManager(rpu.Component):
         acceptable tradeoff in the sense "Oh, that task was DONE at point of
         cancellation -- ok, we can use the results, sure!".
 
-        If that behavior is not wanted, set the environment variable:
+        If that behavior is not wanted, set the environment variable::
 
             export RADICAL_PILOT_STRICT_CANCEL=True
 
-        **Arguments:**
-            * **uids** [`string` or `list of strings`]: The IDs of the
-              tasks objects to cancel.
+        Arguments:
+            uids (str | list[str]): The IDs of the tasks to cancel.
+
         """
 
         if not uids:
@@ -1287,41 +1302,44 @@ class TaskManager(rpu.Component):
     # TODO: `metric` -> `metrics`, for consistency with `unregister_callback()`
     #
     def register_callback(self, cb, cb_data=None, metric=None, uid=None):
-        """
-        Registers a new callback function with the TaskManager.  Manager-level
+        """Registers a new callback function with the TaskManager.
+
+        Manager-level
         callbacks get called if the specified metric changes.  The default
         metric `TASK_STATE` fires the callback if any of the Tasks
         managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
 
-            def cb(obj, value)
+            def cb(obj, value) -> None:
+                ...
 
-        where ``object`` is a handle to the object that triggered the callback,
+        where ``obj`` is a handle to the object that triggered the callback,
         ``value`` is the metric, and ``data`` is the data provided on
         callback registration..  In the example of `TASK_STATE` above, the
         object would be the task in question, and the value would be the new
         state of the task.
 
-        If 'cb_data' is given, then the 'cb' signature changes to
+        If ``cb_data`` is given, then the ``cb`` signature changes to
+        ::
 
-            def cb(obj, state, cb_data)
+            def cb(obj, state, cb_data) -> None:
+                ...
 
-        and 'cb_data' are passed unchanged.
+        and ``cb_data`` are passed unchanged.
 
-        If 'uid' is given, the callback will invoked only for the specified
+        If ``uid`` is given, the callback will invoked only for the specified
         task.
 
+        Available metrics are
 
-        Available metrics are:
+        * `TASK_STATE`: fires when the state of any of the tasks which are
+          managed by this task manager instance is changing.  It communicates
+          the task object instance and the tasks new state.
+        * `WAIT_QUEUE_SIZE`: fires when the number of unscheduled tasks (i.e.
+          of tasks which have not been assigned to a pilot for execution)
+          changes.
 
-          * `TASK_STATE`: fires when the state of any of the tasks which are
-            managed by this task manager instance is changing.  It communicates
-            the task object instance and the tasks new state.
-
-          * `WAIT_QUEUE_SIZE`: fires when the number of unscheduled tasks (i.e.
-            of tasks which have not been assigned to a pilot for execution)
-            changes.
         """
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
@@ -1400,4 +1418,3 @@ class TaskManager(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
-

@@ -1,9 +1,4 @@
-
-
-"""
-.. module:: radical.pilot.context
-   :platform: Unix
-   :synopsis: Implementation of the Context class(es).
+"""Implementation of the Context class(es).
 
 .. moduleauthor:: Ole Weidner <ole.weidner@rutgers.edu>
 """
@@ -33,4 +28,3 @@ class Context (rs.Context):
 
 
 # ------------------------------------------------------------------------------
-

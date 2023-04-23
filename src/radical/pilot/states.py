@@ -61,9 +61,7 @@ def _pilot_state_value(s):
 # ------------------------------------------------------------------------------
 #
 def _pilot_state_progress(pid, current, target):
-    '''
-    See documentation of 'task_state_progress' below.
-    '''
+    """See documentation of 'task_state_progress' below."""
 
     # first handle final state corrections
     if current == CANCELED:
@@ -102,10 +100,11 @@ def _pilot_state_progress(pid, current, target):
 # ------------------------------------------------------------------------------
 #
 def _pilot_state_collapse(states):
-    '''
+    """Select the relevant state.
+
     This method takes a list of pilot states and selects the one with the
     highest state value.
-    '''
+    """
 
     # we first check the final states, as we want to express a preference there.
     # Then we start comparing actual values.
@@ -178,7 +177,8 @@ def _task_state_value(s):
 
 
 def _task_state_progress(uid, current, target):
-    """
+    """Normalize state progression.
+
     This method will ensure a task state progression in sync with the state
     model defined above.  It will return a tuple: [new_state, passed_states]
     where 'new_state' is either 'target' or 'current', depending which comes
@@ -246,10 +246,7 @@ def _task_state_progress(uid, current, target):
 # ------------------------------------------------------------------------------
 #
 def _task_state_collapse(states):
-    """
-    This method takes a list of task states and selects the one with the highest
-    state value.
-    """
+    """Select the highest state value from a list of task states."""
 
     # we first check the final states, as we want to express a preference there.
     # Then we start comparing actual values.
@@ -322,4 +319,3 @@ UMGR_STAGING_OUTPUT          = TMGR_STAGING_OUTPUT
 
 
 # -----------------------------------------------------------------------------
-
