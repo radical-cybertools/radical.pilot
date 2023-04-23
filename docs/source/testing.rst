@@ -44,7 +44,7 @@ testing can  be controlled via a set of environment variables:
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_REMOTE_CORES``       | Number of cores to allocate.        |
 +-------------------------------------------+-------------------------------------+
-| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Tasks to run.     |
+| ``RADICAL_PILOT_TEST_REMOTE_NUM_CUS``     | Number of Tasks to run.             |
 +-------------------------------------------+-------------------------------------+
 | ``RADICAL_PILOT_TEST_TIMEOUT``            | Test timeout in minutes.            |
 +-------------------------------------------+-------------------------------------+
@@ -77,8 +77,8 @@ If you want to add a new tests, for example to reproduce an error that you have
 encountered, please follow this procedure:
 
 In the ``tests/issues/`` directory, create a new file. If applicable, name it
-after the issues number in the RADICAL-Pilot 
-`issues tracker <https://github.com/radical-cybertools/radical.pilot/issues>`_, 
+after the issues number in the RADICAL-Pilot
+`issues tracker <https://github.com/radical-cybertools/radical.pilot/issues>`_,
 e.g., ``issue_123.py``.
 
 The content of the file should look like this (make sure to change the class

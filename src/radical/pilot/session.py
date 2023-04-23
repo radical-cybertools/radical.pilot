@@ -22,14 +22,15 @@ from .proxy import Proxy
 # ------------------------------------------------------------------------------
 #
 class Session(rs.Session):
-    '''
+    """Root of RP object hierarchy for an application instance.
+
     A Session is the root object of all RP objects in an application instance:
     it holds :class:`radical.pilot.PilotManager` and
     :class:`radical.pilot.TaskManager` instances which in turn hold
     :class:`radical.pilot.Pilot` and :class:`radical.pilot.Task`
     instances, and several other components which operate on those stateful
     entities.
-    '''
+    """
 
     # In that role, the session will create a special pubsub channel `heartbeat`
     # which is used by all components in its hierarchy to exchange heartbeat
@@ -55,13 +56,14 @@ class Session(rs.Session):
     _AGENT   = 'agent'
     _DEFAULT = 'default'
 
+
     # --------------------------------------------------------------------------
     #
     def __init__(self, proxy_url=None, proxy_host=None, uid=None,
                        cfg=None, _role=_PRIMARY, **close_options):
-        '''
-        Creates a new session.  A new Session instance is created and
-        stored in the database.
+        """Create a new session.
+
+        A new Session instance is created and stored in the database.
 
         Any RP Session will require an RP Proxy to facilitate communication
         between the client machine (i.e., the host where the application created
@@ -87,41 +89,42 @@ class Session(rs.Session):
               the session itself will use the first port larger than 10.000
               which is found to be free.
 
-        **Arguments:**
-            * **proxy_url** (`string`): proxy service URL - points to an RP
+        Arguments:
+            proxy_url (str, optional): proxy service URL - points to an RP
               proxy service which is used to establish an RP communication proxy
               for this session.
 
-            * **proxy_host** (`string`): proxy host - alternative to the
+            proxy_host (str, optional): proxy host - alternative to the
               `proxy_url`, the application can specify a host name on which
               a temporary proxy is started by the session.  This default to
               `localhost` (but see remarks above about the interpretation of
               environment variables).
 
-            * **uid** (`string`): Create a session with this UID.  Session UIDs
-              MUST be unique - otherwise they will lead to conflicts in the
-              underlying database, resulting in undefined behaviours (or worse).
+            uid (str, optional): Create a session with this UID.  Session UIDs
+                MUST be unique - otherwise they will lead to conflicts in the
+                underlying database, resulting in undefined behaviours (or
+                worse).
 
-            * **cfg** (`str` or `dict`): a named or instantiated configuration
-              to be used for the session.
+            cfg (str | dict, optional): a named or instantiated configuration
+                to be used for the session.
 
-            * **_role** (`bool`): only `PRIMARY` sessions created by the
-              original application process (via `rp.Session()`), will create
-              proxies and Registry Serivices.  `AGENT` sessions will also create
-              a Registry but no proxies.  All other `DEFAULT` session instances
-              are instantiated internally in processes spawned (directly or
-              indirectly) by the initial session, for example in some of it's
-              components, or by the RP agent.  Those sessions will inherit
-              the original session ID, but will not attempt to create a new
-              proxies or registries.
+            _role (`bool`): only `PRIMARY` sessions created by the original
+                application process (via `rp.Session()`), will create proxies
+                and Registry Serivices.  `AGENT` sessions will also create
+                a Registry but no proxies.  All other `DEFAULT` session
+                instances are instantiated internally in processes spawned
+                (directly or indirectly) by the initial session, for example in
+                some of it's components, or by the RP agent.  Those sessions
+                will inherit the original session ID, but will not attempt to
+                create a new proxies or registries.
 
-        If additional key word arguments are provided, they will be used as the
-        default arguments to Session.close(). (This can be useful when the
-        Session is used as a Python context manager, such that close() is called
-        automatically at the end of a ``with`` block.)
-        '''
+            close_options (optional): If additional key word arguments are
+                provided, they will be used as the default arguments to
+                Session.close(). (This can be useful when the Session is used as
+                a Python context manager, such that close() is called
+                automatically at the end of a ``with`` block.)
 
-        # TODO: document valid config options
+        """
 
         self._close_options = _CloseOptions(close_options)
 
@@ -424,17 +427,20 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def close(self, **kwargs):
-        '''
-        Closes the session.  All subsequent attempts access objects attached to
-        the session will result in an error.
+        """Close the session.
 
-        **Arguments:**
-            * **terminate** (`bool`):
-              Shut down all pilots associated with the session.
-            * **download** (`bool`):
-              Fetch pilot profiles and database entries.
+        All subsequent attempts access objects attached to the session will
+        result in an error. If cleanup is set to True, the session data is
+        removed from the database.
 
-        '''
+        Arguments:
+            cleanup (bool, optional): Remove session from MongoDB (implies *
+                terminate=True*)
+            terminate (bool, optional): Shut down all pilots associated with the
+                session.
+            download (bool, optional): Fetch pilot profiles and database entries.
+
+        """
 
         # close only once
         if self._closed:
@@ -578,9 +584,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        '''
-        Returns a Python dictionary representation of the object.
-        '''
+        """Returns a Python dictionary representation of the object."""
 
         object_dict = {
             "uid"        : self._uid,
@@ -596,8 +600,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-        '''Returns a string representation of the object.
-        '''
+        """Returns a string representation of the object."""
         return str(self.as_dict())
 
 
@@ -654,10 +657,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_logger(self, name, level=None):
-        '''
+        """Get the Logger instance.
+
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        '''
+        """
         return ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
                          targets=['.'], level=level)
 
@@ -665,10 +669,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_reporter(self, name):
-        '''
+        """Get the Reporter instance.
+
         This is a thin wrapper around `ru.Reporter()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        '''
+        """
 
         if not self._reporter:
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
@@ -679,10 +684,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_profiler(self, name):
-        '''
+        """Get the Profiler instance.
+
         This is a thin wrapper around `ru.Profiler()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
-        '''
+        """
 
         prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
 
@@ -692,10 +698,10 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def inject_metadata(self, metadata):
-        '''
-        Insert (experiment) metadata into an active session
+        """Insert (experiment) metadata into an active session.
+
         RP stack version info always get added.
-        '''
+        """
 
         if not isinstance(metadata, dict):
             raise Exception("Session metadata should be a dict!")
@@ -727,14 +733,15 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def list_pilot_managers(self):
-        '''
+        """Get PilotManager instances.
+
         Lists the unique identifiers of all :class:`radical.pilot.PilotManager`
         instances associated with this session.
 
-        **Returns:**
-            * A list of :class:`radical.pilot.PilotManager` uids
-              (`list` of `strings`).
-        '''
+        Returns:
+            list[str]: A list of :class:`radical.pilot.PilotManager` uids.
+
+        """
 
         return list(self._pmgrs.keys())
 
@@ -742,17 +749,15 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_pilot_managers(self, pmgr_uids=None):
-        '''
-        returns known PilotManager(s).
+        """Get known PilotManager(s).
 
-        **Arguments:**
+        Arguments:
+            pmgr_uids (str | list[str]): Unique identifier of the PilotManager we want.
 
-            * **pmgr_uids** [`string`]:
-              unique identifier of the PilotManager we want
+        Returns:
+            str | list[str]: One or more `radical.pilot.PilotManager` objects.
 
-        **Returns:**
-            * One or more [:class:`radical.pilot.PilotManager`] objects.
-        '''
+        """
 
         return_scalar = False
         if not isinstance(pmgr_uids, list):
@@ -786,13 +791,15 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def list_task_managers(self):
-        '''
+        """Get TaskManager identifiers.
+
         Lists the unique identifiers of all :class:`radical.pilot.TaskManager`
         instances associated with this session.
 
-        **Returns:**
-            * A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
-        '''
+        Returns:
+            list[str]: A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
+
+        """
 
         return list(self._tmgrs.keys())
 
@@ -800,17 +807,16 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_task_managers(self, tmgr_uids=None):
-        '''
-        returns known TaskManager(s).
+        """Get known TaskManager(s).
 
-        **Arguments:**
+        Arguments:
+            tmgr_uids (str | list[str]): Unique identifier of the TaskManager we want
 
-            * **tmgr_uids** [`string`]:
-              unique identifier of the TaskManager we want
+        Returns:
+            radical.pilot.TaskManager | list[radical.pilot.TaskManager]:
+                One or more `radical.pilot.TaskManager` objects.
 
-        **Returns:**
-            * One or more [:class:`radical.pilot.TaskManager`] objects.
-        '''
+        """
 
         return_scalar = False
         if not isinstance(tmgr_uids, list):
@@ -827,10 +833,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def list_resources(self):
-        '''
+        """Get list of known resource labels.
+
         Returns a list of known resource labels which can be used in a pilot
         description.
-        '''
+        """
 
         resources = list()
         for domain in self._rcfgs:
@@ -843,9 +850,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def get_resource_config(self, resource, schema=None):
-        '''
-        Returns a dictionary of the requested resource config
-        '''
+        """Returns a dictionary of the requested resource config."""
 
         domain, host = resource.split('.', 1)
         if domain not in self._rcfgs:
@@ -901,15 +906,16 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_client_sandbox(self):
-        '''
-        For the session in the client application, this is os.getcwd().  For the
+        """Client sandbox path.
+
+        For the session in the client application, this is `os.getcwd()`.  For the
         session in any other component, specifically in pilot components, the
         client sandbox needs to be read from the session config (or pilot
         config).  The latter is not yet implemented, so the pilot can not yet
-        interpret client sandboxes.  Since pilot-side stagting to and from the
+        interpret client sandboxes.  Since pilot-side staging to and from the
         client sandbox is not yet supported anyway, this seems acceptable
         (FIXME).
-        '''
+        """
 
         return self._cache['client_sandbox']
 
@@ -917,10 +923,11 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_resource_sandbox(self, pilot):
-        '''
-        for a given pilot dict, determine the global RP sandbox, based on the
+        """Global RP sandbox.
+
+        For a given pilot dict, determine the global RP sandbox, based on the
         pilot's 'resource' attribute.
-        '''
+        """
 
         # FIXME: this should get 'resource, schema=None' as parameters
 
@@ -1150,9 +1157,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_jsurl(self, pilot):
-        '''
-        get job service endpoint and hop URL for the pilot's target resource.
-        '''
+        """Get job service endpoint and hop URL for the pilot's target resource."""
 
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']
@@ -1237,15 +1242,17 @@ class Session(rs.Session):
 # ------------------------------------------------------------------------------
 #
 class _CloseOptions(ru.TypedDict):
-    '''
-    Options and validation for Session.close().
+    """Options and validation for Session.close().
 
-    **Arguments:**
-        * **download** (`bool`):
-          Fetch pilot profiles and database entries. (default False)
-        * **terminate** (`bool`):
-          Shut down all pilots associated with the session. (default True)
-    '''
+    Arguments:
+        cleanup (bool, optional): Remove session from MongoDB.
+            Implies *terminate=True*. (default False)
+        download (bool, optional): Fetch pilot profiles and database entries.
+            (Default False.)
+        terminate (bool, optional): Shut down all pilots associated with the
+            session. (Default True.)
+
+    """
 
     _schema = {
         'download' : bool,
@@ -1279,4 +1286,3 @@ class _CloseOptions(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
-
