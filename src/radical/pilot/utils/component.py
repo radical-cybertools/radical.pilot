@@ -82,7 +82,7 @@ class ComponentManager(object):
                               'stall_hwm'  : 1,
                               'bulk_size'  : 0,
                               'path'       : self._cfg.path})
-        self._hb_bridge = ru.zmq.PubSub(bcfg)
+        self._hb_bridge = ru.zmq.PubSub(channel='heartbeat', kind='pubsub')
         self._hb_bridge.start()
 
         self._cfg.heartbeat.addr_pub = str(self._hb_bridge.addr_pub)
@@ -108,6 +108,9 @@ class ComponentManager(object):
         self._hb.start()
         self._hb.wait_startup(self._uid, self._cfg.heartbeat.timeout)
         self._log.info('heartbeat system up')
+
+        # publish heartbeat information in registry
+        self._reg['heartbeat'] = self._cfg.heartbeat
 
 
     # --------------------------------------------------------------------------

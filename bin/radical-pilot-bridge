@@ -82,7 +82,7 @@ def main(sid, reg_addr, uid):
     [3] connect to the command channel, send messages for topic `foo`
     '''
 
-    # basic setup: cfg, logger and profiler
+    # basic setup: logger and profiler
     log  = ru.Logger(name=uid, ns='radical.pilot')
     prof = ru.Profiler(name=uid, ns='radical.pilot')
 
@@ -90,6 +90,7 @@ def main(sid, reg_addr, uid):
         prof.prof('bridge_start', uid=uid)
         prof.disable()
         wrapped_main(sid, reg_addr, uid, log, prof)
+
     finally:
         prof.enable()
         prof.prof('bridge_stop', uid=uid)
@@ -102,10 +103,12 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     term = mt.Event()
     reg  = ru.zmq.RegistryClient(url=reg_addr, pwd=sid)
 
+    hb_cfg = reg['hb_cfg']
+
     spt.setproctitle('rp.%s' % uid)
 
     # create the bridge, store connection addresses in FS, and begin to work
-    bridge = ru.zmq.Bridge.create(sid, reg_addr, uid)
+    bridge = ru.zmq.Bridge.create(uid)
 
     reg['bridges.%s' % uid] = {bridge.type_in : str(bridge.addr_in),
                                bridge.type_out: str(bridge.addr_out)}
@@ -113,34 +116,34 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub,
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.heartbeat.addr_pub,
                               log=log, prof=prof)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', msg={'uid': cfg.uid})
+        hb_pub.put('heartbeat', msg={'uid': uid})
 
     def hb_term_cb(hb_uid):
         bridge.stop()
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=cfg.uid,
-                      timeout=cfg.heartbeat.timeout,
-                      interval=cfg.heartbeat.interval,
+    hb = ru.Heartbeat(uid=hb_cfg.uid,
+                      timeout=hb_cfg.heartbeat.timeout,
+                      interval=hb_cfg.heartbeat.interval,
                       beat_cb=hb_beat_cb,
                       term_cb=hb_term_cb,
                       log=log)
     hb.start()
 
     # register cmgr heartbeat by beating once
-    hb.beat(uid=cfg.cmgr)
+    hb.beat(uid=hb_cfg.cmgr)
 
     # record cmgr heartbeats
     def hb_sub_cb(topic, msg):
-        if msg['uid'] == cfg.cmgr:
-            hb.beat(uid=cfg.cmgr)
+        if msg['uid'] == hb_cfg.cmgr:
+            hb.beat(uid=hb_cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+    ru.zmq.Subscriber('heartbeat', hb_cfg.heartbeat.addr_sub,
                       topic='heartbeat', cb=hb_sub_cb,
                       log=log, prof=prof)
 

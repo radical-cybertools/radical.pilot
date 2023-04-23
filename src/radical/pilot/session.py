@@ -235,9 +235,6 @@ class Session(rs.Session):
         self._cmgr.start_components(self._cfg.components)
         self._reg_service.dump()
 
-        # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
-
         self._rec = False
         if self._cfg.record:
 
