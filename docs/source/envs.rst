@@ -181,5 +181,10 @@ List of Environment Variables for RADICAL-Pilot
 .. Referring environment variable in your code for hyperlink (Usage Example)
 .. -------------------------------------------------------------------------
 
+<<<<<<< HEAD:docs/source/envs.rst
 .. Your documentation text while using/referring env like
 .. this ``:envvar:`RADICAL_TEST_ENV``` and continuing.
+=======
+Your documentation text while using/referring env like
+this ``:envvar:`RADICAL_TEST_ENV``` and continuing.
+>>>>>>> devel:docs/source/user_guide/12_list_of_environment_variables.rst

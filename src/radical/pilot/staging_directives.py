@@ -12,26 +12,26 @@ from .constants import DEFAULT_ACTION, DEFAULT_FLAGS, DEFAULT_PRIORITY
 # ------------------------------------------------------------------------------
 #
 def expand_description(descr: Dict[str, Any]) -> None:
-    '''
-    convert any simple, string based staging directive in the given task
-    description into its dictionary equivalent
+    """Get description dictionary for simple string directive.
 
-    In this context, the following kinds of expansions are performed:
+    Convert any simple, string based staging directive in the given task
+    description into its dictionary equivalent.
 
-      in:  ['input.dat']
-      out: {'source' : 'client:///input.dat',
+    In this context, the following kinds of expansions are performed::
+        in:  ['input.dat']
+        out: {'source' : 'client:///input.dat',
             'target' : 'task:///input.dat',
             'action' : rp.TRANSFER}
 
-      in:  ['input.dat > staged.dat']
-      out: {'source' : 'client:///input.dat',
+        in:  ['input.dat > staged.dat']
+        out: {'source' : 'client:///input.dat',
             'target' : 'task:///staged.dat',
             'action' : rp.TRANSFER}
 
     This method changes the given description in place - repeated calls on the
     same description instance will have no effect.  However, we expect this
     method to be called only once during task construction.
-    '''
+    """
 
     if descr.get('input_staging')  is None: descr['input_staging']  = list()
     if descr.get('output_staging') is None: descr['output_staging'] = list()
@@ -44,9 +44,7 @@ def expand_description(descr: Dict[str, Any]) -> None:
 #
 def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
                              ) -> List[Dict[str, Any]]:
-    '''
-    Take an abbreviated or compressed staging directive and expand it.
-    '''
+    """Take an abbreviated or compressed staging directive and expand it."""
 
     if not sds:
         return []
@@ -147,16 +145,17 @@ def complete_url(path   : str,
                  context: Dict[str, str],
                  log    : ru.Logger = None
                 ) -> ru.Url:
-    '''
+    """Construct a URL.
+
     Some paths in data staging directives are to be interpreted relative to
     certain locations, namely relative to
 
-        * `client://`  : the client's working directory
-        * `endpoint://`: the root of the target resource's file system
-        * `resource://`: the sandbox base dir on the target resource
-        * `session://` : the session sandbox  on the target resource
-        * `pilot://`   : the pilot   sandbox  on the target resource
-        * `task://`    : the task    sandbox  on the target resource
+    * `client://`  : the client's working directory
+    * `endpoint://`: the root of the target resource's file system
+    * `resource://`: the sandbox base dir on the target resource
+    * `session://` : the session sandbox  on the target resource
+    * `pilot://`   : the pilot   sandbox  on the target resource
+    * `task://`    : the task    sandbox  on the target resource
 
     All location are interpreted as directories, never as files.
 
@@ -180,10 +179,11 @@ def complete_url(path   : str,
     Note that the notion of 'root' dependends of the access protocol and the
     providing service implementation.
 
-    NOTE: URL parsing is not really cheap, so this method should be used
-    conservatively.
+    Note:
+        URL parsing is not really cheap, so this method should be used
+        conservatively.
 
-    '''
+    """
 
     # FIXME: consider evaluation of env vars
 
@@ -240,4 +240,3 @@ def complete_url(path   : str,
 
 
 # ------------------------------------------------------------------------------
-
