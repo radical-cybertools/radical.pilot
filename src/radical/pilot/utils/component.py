@@ -313,38 +313,35 @@ class Component(object):
 
     This approach should ensure that
 
-      - 'thing's are always in a well defined state;
-      - components are simple and focus on the semantics of 'thing' state
+    - 'thing's are always in a well defined state;
+    - components are simple and focus on the semantics of 'thing' state
         progression;
-      - no state races can occur on 'thing' state progression;
-      - only valid state transitions can be enacted (given correct declaration
+    - no state races can occur on 'thing' state progression;
+    - only valid state transitions can be enacted (given correct declaration
         of the component's semantics);
-      - the overall system is performant and scalable.
+    - the overall system is performant and scalable.
 
     Inheriting classes SHOULD overload the following methods:
 
-      - `initialize()`:
+    - `initialize()`:
         - set up the component state for operation
         - register input/output/notification channels
         - register work methods
         - register callbacks to be invoked on state notification
         - the component will terminate if this method raises an exception.
-
-      - `work()`
-        - called in the main loop of the component process, on all entities
-          arriving on input channels.  The component will *not* terminate if
-          this method raises an exception.  For termination, `terminate()` must
-          be called.
-
-      - `finalize()`
+    - `work()`
+    - called in the main loop of the component process, on all entities
+        arriving on input channels.  The component will *not* terminate if
+        this method raises an exception.  For termination, `terminate()`
+        must be called.
+    - `finalize()`
         - tear down the component (close threads, unregister resources, etc).
 
-    Inheriting classes MUST call the constructor:
+    Inheriting classes MUST call the constructor::
 
         class StagingComponent(rpu.Component):
             def __init__(self, cfg, session):
                 rpu.Component.__init__(self, cfg, session)
-
 
     A component thus must be passed a configuration (either as a path pointing
     to a file name to be opened as `ru.Config`, or as a pre-populated
@@ -364,13 +361,13 @@ class Component(object):
     components, and must terminate itself if those go AWOL.
 
     Further, the class must implement the registered work methods, with
-    a signature of:
+    a signature of::
 
         work(self, things)
 
     The method is expected to change the state of the 'thing's given.  'Thing's
     will not be pushed to outgoing channels automatically -- to do so, the work
-    method has to call (see call documentation for other options):
+    method has to call (see call documentation for other options)::
 
         self.advance(thing)
 
@@ -1162,12 +1159,12 @@ class Component(object):
         state model.  This method will update the thing state, and push it into
         the output queue registered as target for that state.
 
-        things:  list of things to advance
-        state:   new state to set for the things
-        publish: determine if state update notifications should be issued
-        push:    determine if things should be pushed to outputs
-        prof:    determine if state advance creates a profile event
-                 (publish, and push are always profiled)
+         - things:  list of things to advance
+         - state:   new state to set for the things
+         - publish: determine if state update notifications should be issued
+         - push:    determine if things should be pushed to outputs
+         - prof:    determine if state advance creates a profile event
+           (publish, and push are always profiled)
 
         'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
@@ -1330,4 +1327,3 @@ class Worker(Component):
 
 
 # ------------------------------------------------------------------------------
-
