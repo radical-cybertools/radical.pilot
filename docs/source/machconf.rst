@@ -68,7 +68,7 @@ your user-id on the remote resource, use the following construct:
 
 
 Configuring GSISSH Access for XSEDE/ACCESS resources
-=============================================
+====================================================
 
 XSEDE/ACCESS resources require using gsissh instead of ssh. Once the gsissh and
 myproxy are successfully installed, one need to acquire a X509 certificate:
@@ -120,7 +120,7 @@ provided resource configuration files, you can write your own, and save it in
 
 .. note:: The remote resource configuration file name must start with
           "resource\_", followed by the *site* name, and end with the ".json" suffix. Within each resource
-          file, multiple resource *host*s can be listed. For example, the
+          file, multiple resource *host* s can be listed. For example, the
           :download:`resource_xsede.json <../../src/radical/pilot/configs/resource_xsede.json>`
           file contains many different HPC resources from XSEDE/ACCESS.
 
@@ -223,10 +223,7 @@ seen by RP with *e.g.* :py:func:`radical.pilot.Session.get_resource_config()`.
 The following tools are available to look up resource definitions without an
 active :py:class:`~radical.pilot.Session`.
 
-.. autofunction:: radical.pilot.utils.misc.get_resource_config
-
-.. autofunction:: radical.pilot.utils.misc.get_resource_configs
-
-.. autofunction:: radical.pilot.utils.misc.get_resource_fs_url
-
-.. autofunction:: radical.pilot.utils.misc.get_resource_job_url
+* :py:func:`radical.pilot.utils.misc.get_resource_config`
+* :py:func:`radical.pilot.utils.misc.get_resource_configs`
+* :py:func:`radical.pilot.utils.misc.get_resource_fs_url`
+* :py:func:`radical.pilot.utils.misc.get_resource_job_url`
