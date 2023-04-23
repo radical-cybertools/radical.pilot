@@ -850,13 +850,14 @@ class TaskManager(rpu.Component):
 
         for td in descriptions:
 
-            td.pilot = pilot_id
-            td.mode  = RAPTOR_MASTER
+            if not td.mode == RAPTOR_MASTER:
+                raise ValueError('unexpected task mode [%s]' % td.mode)
 
-            raptor_file   = td.get('raptor_file')  or  ''
-            raptor_class  = td.get('raptor_class') or  'Master'
+            raptor_file  = td.get('raptor_file')  or  ''
+            raptor_class = td.get('raptor_class') or  'Master'
 
-            td.arguments  = [raptor_file, raptor_class]
+            td.pilot     = pilot_id
+            td.arguments = [raptor_file, raptor_class]
 
             td.environment['PYTHONUNBUFFERED'] = '1'
 
@@ -869,6 +870,9 @@ class TaskManager(rpu.Component):
 
             if not td.get('named_env'):
                 td.named_env = 'rp'
+
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
 
         return self.submit_tasks(descriptions)
 
@@ -893,6 +897,9 @@ class TaskManager(rpu.Component):
 
         for td in descriptions:
 
+            if not td.mode == RAPTOR_WORKER:
+                raise ValueError('unexpected task mode [%s]' % td.mode)
+
             raptor_id    = td.get('raptor_id')
             raptor_file  = td.get('raptor_file')  or  ''
             raptor_class = td.get('raptor_class') or  'DefaultWorker'
@@ -910,11 +917,13 @@ class TaskManager(rpu.Component):
             if not td.get('named_env'):
                 td.named_env = 'rp'
 
-            td.mode      = RAPTOR_WORKER
             td.raptor_id = raptor_id
             td.arguments = [raptor_file, raptor_class, raptor_id]
 
             td.environment['PYTHONUNBUFFERED'] = '1'
+
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
 
         return self.submit_tasks(descriptions)
 
