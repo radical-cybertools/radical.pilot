@@ -94,327 +94,232 @@ METADATA         = 'metadata'
 # ------------------------------------------------------------------------------
 #
 class TaskDescription(ru.TypedDict):
-    '''
+    """Describe the requirements and properties of a Task.
+
     A TaskDescription object describes the requirements and properties
     of a :class:`radical.pilot.Task` and is passed as a parameter to
-    :meth:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
+    :func:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
 
-    .. note:: A TaskDescription **MUST** define at least an
-              `executable` -- all other elements are optional.
-
-    .. py:attribute:: uid
-
-       [type: `str` | default: `""`] A unique ID for the task. This attribute
-       is optional, a unique ID will be assigned by RP if the field is not set.
-
-    .. py:attribute:: name
-
-       [type: `str` | default: `""`] A descriptive name for the task. This
-       attribute can be used to map individual tasks back to application level
-       workloads.
-
-    .. py:attribute:: mode
-
-       [type: `str` | default: `"executable"`] The execution mode to be used for
-       this task.  The following modes are accepted:
-
-         - TASK_EXECUTABLE: the task is spawned as an external executable via a
-           resource specific launch method (srun, aprun, mpiexec, etc).
-           required attributes: `executable`
-           related  attributes: `arguments`
-
-         - TASK_FUNCTION: the task references a python function to be called.
-           required attributes: `function`
-           related  attributes: `args`
-           related  attributes: `kwargs`
-
-         - TASK_METHOD: the task references a raptor worker method to be
-           called.
-           required attributes: `method`
-           related  attributes: `args`
-           related  attributes: `kwargs`
-
-         - TASK_EVAL: the task is a code snippet to be evaluated.
-           required attributes: `code`
-
-         - TASK_EXEC: the task is a code snippet to be `exec`'ed.
-           required attributes: `code`
-
-         - TASK_SHELL: the task is a shell command line to be run.
-           required attributes: `command`
-
-         - TASK_PROC: the task is a single core process to be executed.
-           required attributes: `executable`
-           related  attributes: `arguments`
-
-         - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
-           required attributes: `executable`
-           related  attributes: `arguments`
-
-         - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
-           required attributes: `executable`
-           related  attributes: `arguments`
-
-        There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
-        and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
-        should be used for short running tasks which require a single core and
-        no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
-        should be used for all other tasks and is in fact the default.
-        `TASK_SHELL` should only be used if the command to be run requires shell
-        specific functionality (e.g., pipes, I/O redirection) which cannot easily
-        be mapped to other task attributes.
-
-        TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
-        that define RAPTOR's master(s) and worker(s) components and their
-        resource requirements. They are launched by the Agent on one or more
-        nodes, depending on their requirements.
-
-    .. py:attribute:: executable
-
-       [type: `str` | default: `""`] The executable to launch. The executable
-       is expected to be either available via `$PATH` on the target resource,
-       or to be an absolute path.
-
-    .. py:attribute:: arguments
-
-       [type: `list` | default: `[]`] The command line arguments for the given
-       `executable` (`list` of `strings`).
-
-    .. py:attribute:: code
-
-       [type: `str` | default: `""`] The code to run.  This field is expected to
-       contain valid python code which is executed when the task mode is
-       `TASK_EXEC` or `TASK_EVAL`.
-
-    .. py:attribute:: function
-
-       [type: `str` | default: `""`] The function to run.  This field is
-       expected to contain a python function name which can be resolved in the
-       scope of the respective RP worker implementation (see documentation
-       there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
-       `kwargs` are passed as function parameters.
-
-    .. py:attribute:: args
-
-       [type: `list` | default: `[]`] Unnamed arguments to be passed to the
-       `function` (see above).  This field will be serialized  with `msgpack`
-       and can thus contain any serializable data types.
-
-    .. py:attribute:: kwargs
-
-       [type: `dict` | default: `{}`] Named arguments to be passed to the
-       `function` (see above).  This field will be serialized  with `msgpack`
-       and can thus contain any serializable data types.
-
-    .. py:attribute:: command
-
-       [type: `str` | default: `""`] A shell command to be executed.  This
-       attribute is used for the `TASK_SHELL` mode.
-
-    .. py:attribute:: ranks
-
-       [type: `int` | default: `1`] The number of application processes to start
-       on CPU cores.  For two ranks or more, an MPI communicator will be
-       available to the processes.
-
-       `ranks` replaces the deprecated attribute `cpu_processes`.  The attribute
-       `cpu_process_type` was previously used to signal the need for an MPI
-       communicator - that attribute is now also deprecated and will be ignored.
-
-    .. py:attribute:: cores_per_rank
-
-       [type: `int` | default: `1`] The number of cpu cores each process will
-       have available to start its own threads or processes on.  By default,
-       `core` refers to a physical CPU core - but if the pilot has been
-       launched with SMT-settings > 1, `core` will refer to a virtual core or
-       hyperthread instead (the name depends on the CPU vendor).
-
-       `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
-
-    .. py:attribute:: threading_type
-
-       [type: `str` | default: `""`] The thread type, influences startup and
-       environment (`<empty>/POSIX`, `OpenMP`).
-
-       `threading_type` replaces the deprecated attribute `cpu_thread_type`.
-
-    .. py:attribute:: gpus_per_rank
-
-       [type: `float` | default: `0.`] The number of gpus made available to
-       each rank. If gpu is shared among several ranks, then a fraction of gpu
-       should be provided (e.g., 2 ranks share a GPU, then `gpus_per_rank=.5`).
-
-       `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.  The
-       attributes `gpu_threads` and `gpu_process_type` are also deprecated and
-       will be ignored.
-
-    .. py:attribute:: gpu_type
-
-       [type: `str` | default: `""`] The type of GPU environment to provide to
-       the ranks (`<empty>`, `CUDA`, `ROCm`).
-
-       `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
-
-    .. py:attribute:: lfs_per_rank
-
-       [type: `int` | default: `0`] Local File Storage per rank - amount of
-       data (MB) required on the local file system of the node.
-
-       `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
-
-    .. py:attribute:: mem_per_rank
-
-       [type: `int` | default: `0`] Amount of physical memory required per
-       rank.
-
-       `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
-
-    .. py:attribute:: environment
-
-       [type: `dict` | default: `{}`] Environment variables to set in the
-       environment before the execution (launching picked `LaunchMethod`).
-
-    .. py:attribute:: named_env
-
-       [type: `str` | default: `""`] A named virtual environment as prepared by
-       the pilot. The task will remain in `AGENT_SCHEDULING` state until that
-       environment gets created.
-
-    .. py:attribute:: sandbox
-
-       [type: `str` | default: `""`] This specifies the working directory of the
-       task.  It will be created if it does not exist. By default, the sandbox
-       has the name of the task's uid and is relative to the pilot's sandbox.
-
-    .. py:attribute:: stdout
-
-       [type: `str` | default: `""`] The name of the file to store stdout. If
-       not set then the name of the following format will be used: `<uid>.out`.
-
-    .. py:attribute:: stderr
-
-       [type: `str` | default: `""`] The name of the file to store stderr. If
-       not set then the name of the following format will be used: `<uid>.err`.
-
-    .. py:attribute:: input_staging
-
-       [type: `list` | default: `[]`] The files that need to be staged before
-       the execution (`list` of `staging directives`, see below).
-
-    .. py:attribute:: output_staging
-
-       [type: `list` | default: `[]`] The files that need to be staged after
-       the execution (`list` of `staging directives`, see below).
-
-    .. py:attribute:: stage_on_error
-
-       [type: `bool` | default: `False`] Output staging is normally skipped on
-       `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
-       attempted either way. This may though lead to additional errors if the
-       tasks did not manage to produce the expected output files to stage.
-
-    .. py:attribute:: pre_launch
-
-       [type: `list` | default: `[]`] Actions (shell commands) to perform
-       before launching (i.e., before LaunchMethod is submitted), potentially
-       on a batch node which is different from the node the task is placed on.
-
-       Note that the set of shell commands given here are expected to load
-       environments, check for work directories and data, etc. They are not
-       expected to consume any significant amount of CPU time or other
-       resources! Deviating from that rule will likely result in reduced
-       overall throughput.
-
-    .. py:attribute:: post_launch
-
-       [type: `list` | default: `[]`] Actions (shell commands) to perform
-       after launching (i.e., after LaunchMethod is executed).
-
-       Precautions are the same as for `pre_launch` actions.
-
-    .. py:attribute:: pre_exec
-
-       [type: `list` | default: `[]`] Actions (shell commands) to perform
-       before the task starts (LaunchMethod is submitted, but no actual task
-       running yet). Each item could be either a string (`str`), which
-       represents an action applied to all ranks, or a dictionary (`dict`),
-       which represents a list of actions applied to specified ranks (key is a
-       rankID and value is a list of actions to be performed for this rank).
-
-       The actions/commands are executed on the respective nodes where the
-       ranks are placed, and the actual rank startup will be delayed until
-       all `pre_exec` commands have completed.
-
-       Precautions are the same as for `pre_launch` actions.
-
-       No assumption should be made as to where these commands are executed
-       (although RP attempts to perform them in the task's execution
-       environment).
-
-       No assumption should be made on the specific shell environment the
-       commands are executed in other than a POSIX shell environment.
-
-       Errors in executing these commands will result in the task to enter
-       `FAILED` state, and no execution of the actual workload will be
-       attempted.
-
-    .. py:attribute:: pre_exec_sync
-
-       [type: `bool` | default: `False`] Flag indicates necessary to sync ranks
-       execution, which enforce to delay individual rank execution, until all
-       `pre_exec` actions for all ranks are completed.
-
-    .. py:attribute:: post_exec
-
-       [type: `list` | default: `[]`] Actions (shell commands) to perform
-       after the task finishes. The same remarks as on `pre_exec` apply,
-       inclusive the point on error handling, which again will cause the task
-       to fail, even if the actual execution was successful.
-
-    .. py:attribute:: restartable
-
-       [type: `bool` | default: `False`] If the task starts to execute on
-       a pilot, but cannot finish because the pilot fails or is canceled,
-       the task can be restarted.
-
-    .. py:attribute:: scheduler
-
-       [type: `str` | default: `""`] Request the task to be handled by a
-       specific agent scheduler.
-
-    .. py:attribute:: tags
-
-       [type: `dict` | default: `{}`] Configuration specific tags, which
-       influence task scheduling and execution (e.g., tasks co-location).
-
-    .. py:attribute:: metadata
-
-       [type: `ANY` | default: `None`] User defined metadata.
-
-    .. py:attribute:: timeout
-
-       [type: `float` | default: `0.0`] Any timeout larger than 0 will result in
-       the task process to be killed after the specified amount of seconds.  The
-       task will then end up in `CANCELED` state.
-
-    .. py:attribute:: cleanup
-
-       [type: `bool` | default: `False`] If cleanup flag is set, the pilot will
-       delete the entire task sandbox upon termination. This includes all
-       generated output data in that sandbox. Output staging will be performed
-       before cleanup. Note that task sandboxes are also deleted if the pilot's
-       own `cleanup` flag is set.
-
-    .. py:attribute:: pilot
-
-       [type: `str` | default: `""`] Pilot `uid`, if specified, the task is
-       submitted to the pilot with the given ID. If that pilot is not known to
-       the TaskManager, an exception is raised.
-
-
-    Task Ranks
-    ==========
+    Note:
+        A TaskDescription **MUST** define at least an
+        *executable* -- all other elements are optional.
+
+    Attributes:
+        uid (str, optional): A unique ID for the task. This attribute
+            is optional, a unique ID will be assigned by RP if the field is not set.
+        name (str, optional): A descriptive name for the task. This
+            attribute can be used to map individual tasks back to application level
+            workloads.
+        mode (str, optional): The execution mode to be used for
+            this task. Default "executable". The following modes are accepted.
+
+            - TASK_EXECUTABLE: the task is spawned as an external executable via a
+              resource specific launch method (srun, aprun, mpiexec, etc).
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            - TASK_FUNCTION: the task references a python function to be called.
+
+              - required attributes: `function`
+              - related  attributes: `args`
+              - related  attributes: `kwargs`
+
+            - TASK_METHOD: the task references a raptor worker method to be
+              called.
+
+              - required attributes: `method`
+              - related  attributes: `args`
+              - related  attributes: `kwargs`
+
+            - TASK_EVAL: the task is a code snippet to be evaluated.
+
+              - required attributes: `code`
+
+            - TASK_EXEC: the task is a code snippet to be `exec`'ed.
+
+              - required attributes: `code`
+
+            - TASK_SHELL: the task is a shell command line to be run.
+
+              - required attributes: `command`
+
+            - TASK_PROC: the task is a single core process to be executed.
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
+            and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
+            should be used for short running tasks which require a single core and
+            no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
+            should be used for all other tasks and is in fact the default.
+            `TASK_SHELL` should only be used if the command to be run requires shell
+            specific functionality (e.g., pipes, I/O redirection) which cannot easily
+            be mapped to other task attributes.
+
+            TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
+            that define RAPTOR's master(s) and worker(s) components and their
+            resource requirements. They are launched by the Agent on one or more
+            nodes, depending on their requirements.
+        executable (str): The executable to launch. The executable is
+            expected to be either available via ``$PATH`` on the target resource,
+            or to be an absolute path.
+        arguments (list[str]): The command line arguments for the given
+            `executable` (`list` of `strings`).
+        code (str): The code to run.  This field is expected to contain valid
+            python code which is executed when the task mode is
+            `TASK_EXEC` or `TASK_EVAL`.
+        function (str): The function to run.  This field is expected to contain
+            a python function name which can be resolved in the
+            scope of the respective RP worker implementation (see documentation
+            there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
+            `kwargs` are passed as function parameters.
+        args (list, optional): Positional arguments to be passed to the `function`
+            (see above).  This field will be serialized  with `msgpack`
+            and can thus contain any serializable data types.
+        kwargs (dict, optional): Named arguments to be passed to the `function`
+            (see above).  This field will be serialized  with `msgpack`
+            and can thus contain any serializable data types.
+        command (str): A shell command to be executed. This attribute is used
+            for the `TASK_SHELL` mode.
+        ranks (int, optional): The number of application processes to start
+            on CPU cores. Default 1.
+
+            For two ranks or more, an MPI communicator will be available to the
+            processes.
+
+            `ranks` replaces the deprecated attribute `cpu_processes`.  The attribute
+            `cpu_process_type` was previously used to signal the need for an MPI
+            communicator - that attribute is now also deprecated and will be ignored.
+        cores_per_rank (int, optional): The number of cpu cores each process will
+            have available to start its own threads or processes on.  By default,
+            `core` refers to a physical CPU core - but if the pilot has been
+            launched with SMT-settings > 1, `core` will refer to a virtual core or
+            hyperthread instead (the name depends on the CPU vendor).
+
+            `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
+        threading_type (str, optional): The thread type, influences startup and
+            environment (`<empty>/POSIX`, `OpenMP`).
+
+            `threading_type` replaces the deprecated attribute `cpu_thread_type`.
+        gpus_per_rank (float, optional): The number of gpus made available to
+            each rank. If gpu is shared among several ranks, then a fraction of
+            gpu should be provided (e.g., 2 ranks share a GPU, then
+            *gpus_per_rank=.5*).
+
+            `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.
+            The attributes `gpu_threads` and `gpu_process_type` are also
+            deprecated and will be ignored.
+        gpu_type (str, optional): The type of GPU environment to provide to
+            the ranks (`<empty>`, `CUDA`, `ROCm`).
+
+            `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
+        lfs_per_rank (int, optional): Local File Storage per rank - amount of
+            data (MB) required on the local file system of the node.
+
+            `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
+        mem_per_rank (int, optional): Amount of physical memory required per
+            rank.
+
+            `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
+        environment (dict, optional): Environment variables to set in the
+            environment before the execution (launching picked `LaunchMethod`).
+        named_env (str, optional): A named virtual environment as prepared by
+            the pilot. The task will remain in `AGENT_SCHEDULING` state until
+            that environment gets created.
+        sandbox (str, optional): This specifies the working directory of the
+            task.  It will be created if it does not exist. By default, the
+            sandbox has the name of the task's uid and is relative to the
+            pilot's sandbox.
+        stdout (str, optional): The name of the file to store stdout. If
+            not set then :file:`{uid}.out` will be used.
+        stderr (str, optional): The name of the file to store stderr. If
+            not set then :file:`{uid}.err` will be used.
+        input_staging (list, optional): The files that need to be staged before
+            the execution (`list` of `staging directives`, see below).
+        output_staging (list, optional): The files that need to be staged after
+            the execution (`list` of `staging directives`, see below).
+        stage_on_error (bool, optional): Output staging is normally skipped on
+            `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
+            attempted either way. This may though lead to additional errors if
+            the tasks did not manage to produce the expected output files to
+            stage. Default False.
+        pre_launch (list, optional): Actions (shell commands) to perform
+            before launching (i.e., before LaunchMethod is submitted), potentially
+            on a batch node which is different from the node the task is placed on.
+
+            Note that the set of shell commands given here are expected to load
+            environments, check for work directories and data, etc. They are not
+            expected to consume any significant amount of CPU time or other
+            resources! Deviating from that rule will likely result in reduced
+            overall throughput.
+        post_launch (list, optional): Actions (shell commands) to perform
+            after launching (i.e., after LaunchMethod is executed).
+
+            Precautions are the same as for `pre_launch` actions.
+        pre_exec (list, optional): Actions (shell commands) to perform
+            before the task starts (LaunchMethod is submitted, but no actual task
+            running yet). Each item could be either a string (`str`), which
+            represents an action applied to all ranks, or a dictionary (`dict`),
+            which represents a list of actions applied to specified ranks (key is a
+            rankID and value is a list of actions to be performed for this rank).
+
+            The actions/commands are executed on the respective nodes where the
+            ranks are placed, and the actual rank startup will be delayed until
+            all `pre_exec` commands have completed.
+
+            Precautions are the same as for `pre_launch` actions.
+
+            No assumption should be made as to where these commands are executed
+            (although RP attempts to perform them in the task's execution
+            environment).
+
+            No assumption should be made on the specific shell environment the
+            commands are executed in other than a POSIX shell environment.
+
+            Errors in executing these commands will result in the task to enter
+            `FAILED` state, and no execution of the actual workload will be
+            attempted.
+        pre_exec_sync (bool, optional): Flag indicates necessary to sync ranks
+            execution, which enforce to delay individual rank execution, until
+            all `pre_exec` actions for all ranks are completed. Default False.
+        post_exec (list, optional): Actions (shell commands) to perform
+            after the task finishes. The same remarks as on `pre_exec` apply,
+            inclusive the point on error handling, which again will cause the task
+            to fail, even if the actual execution was successful.
+        restartable (bool, optional): If the task starts to execute on a pilot,
+            but cannot finish because the pilot fails or is canceled, the task
+            can be restarted. Default False.
+        scheduler (str, optional): Request the task to be handled by a
+            specific agent scheduler.
+        tags (dict, optional): Configuration specific tags, which
+            influence task scheduling and execution (e.g., tasks co-location).
+        metadata (Any, optional): User defined metadata. Default None.
+        timeout (float, optional): Any timeout larger than 0 will result in
+            the task process to be killed after the specified amount of seconds.
+            The task will then end up in `CANCELED` state.
+        cleanup (bool, optional): If cleanup flag is set, the pilot will
+            delete the entire task sandbox upon termination. This includes all
+            generated output data in that sandbox. Output staging will be performed
+            before cleanup. Note that task sandboxes are also deleted if the pilot's
+            own `cleanup` flag is set. Default False.
+        pilot (str, optional): Pilot `uid`. If specified, the task is
+            submitted to the pilot with the given ID. If that pilot is not known to
+            the TaskManager, an exception is raised.
+
+    **Task Ranks**
 
     The notion of `ranks` is central to RP's `TaskDescription` class.  We here
     use the same notion as MPI, in that the number of `ranks` refers to the
@@ -422,11 +327,11 @@ class TaskDescription(ru.TypedDict):
     These processes will be near-exact copies of each other: they run in the
     same workdir and the same `environment`, are defined by the same
     `executable` and `arguments`, get the same amount of resources allocated,
-    etc.  Notable exceptions are:
+    etc.  Notable exceptions are
 
-      - rank processes may run on different nodes;
-      - rank processes can communicate via MPI;
-      - each rank process obtains a unique rank ID.
+    - rank processes may run on different nodes;
+    - rank processes can communicate via MPI;
+    - each rank process obtains a unique rank ID.
 
     It is up to the underlying MPI implementation to determine the exact value
     of the process' rank ID.  The MPI implementation may also set a number of
@@ -438,13 +343,11 @@ class TaskDescription(ru.TypedDict):
     wasting resources for all ranks but one.  Worse: I/O-routines of these
     non-MPI ranks can interfere with each other and invalidate those results.
 
-    Also: applications with a single rank cannot make effective use of MPI
-    - depending on the specific resource configuration, RP may launch those
-      tasks without providing an MPI communicator.
+    Also, applications with a single rank cannot make effective use of MPI---
+    depending on the specific resource configuration, RP may launch those
+    tasks without providing an MPI communicator.
 
-
-    Task Environment
-    ================
+    **Task Environment**
 
     RP tasks are expected to be executed in isolation, meaning that their
     runtime environment is completely independent from the environment of other
@@ -455,31 +358,30 @@ class TaskDescription(ru.TypedDict):
     environment in that context.  It is important to understand the way those
     hooks interact with respect to the environments mentioned above.
 
-      - `pre_launch` directives are set and executed before the task is passed
-        on to the task launch method.  As such, `pre_launch` usually executed
-        on the node where RP's agent is running, and *not* on the tasks target
-        node.  Executing `pre_launch` directives for many tasks can thus
-        negatively impact RP's performance (*).  Note also that `pre_launch`
-        directives can in some cases interfere with the launch method.
+    - `pre_launch` directives are set and executed before the task is passed
+      on to the task launch method.  As such, `pre_launch` usually executed
+      on the node where RP's agent is running, and *not* on the tasks target
+      node.  Executing `pre_launch` directives for many tasks can thus
+      negatively impact RP's performance (*).  Note also that `pre_launch`
+      directives can in some cases interfere with the launch method.
 
-        Use `pre_launch` directives for rare, heavy-weight operations which
-        prepare the runtime environment for multiple tasks: fetch data from
-        a remote source, unpack input data, create global communication
-        channels, etc.
+      Use `pre_launch` directives for rare, heavy-weight operations which
+      prepare the runtime environment for multiple tasks: fetch data from
+      a remote source, unpack input data, create global communication
+      channels, etc.
+    - `pre_exec` directives are set and executed *after* the launch method
+      placed the task on the compute nodes and are thus running on the target
+      node.  Note that for MPI tasks, the `pre_exec` directives are executed
+      once per rank.  Running large numbers of `pre_exec` directives
+      concurrently can lead to system performance degradation (*), for example
+      when those  directives concurrently hot the shared files system (for
+      loading modules or Python virtualenvs etc).
 
-      - `pre_exec` directives are set and executed *after* the launch method
-        placed the task on the compute nodes and are thus running on the target
-        node.  Note that for MPI tasks, the `pre_exec` directives are executed
-        once per rank.  Running large numbers of `pre_exec` directives
-        concurrently can lead to system performance degradation (*), for example
-        when those  directives concurrently hot the shared files system (for
-        loading modules or Python virtualenvs etc).
-
-        Use `pre_exec` directives for task environment setup such as `module
-        load`, `virtualenv activate`, `export` whose effects are expected to be
-        applied either to all task ranks or to specified ranks.  Avoid file
-        staging operations at this point (files would be redundantly staged
-        multiple times - once per rank).
+      Use `pre_exec` directives for task environment setup such as `module
+      load`, `virtualenv activate`, `export` whose effects are expected to be
+      applied either to all task ranks or to specified ranks.  Avoid file
+      staging operations at this point (files would be redundantly staged
+      multiple times - once per rank).
 
     (*) The performance impact of repeated concurrent access to the system's
     shared file system can be significant and can pose a major bottleneck for
@@ -492,9 +394,7 @@ class TaskDescription(ru.TypedDict):
     are then applied to all other tasks with the same directives, without
     executing the directives again.
 
-
-    Staging Directives
-    ==================
+    **Staging Directives**
 
     The Staging Directives are specified using a dict in the following form::
 
@@ -506,51 +406,41 @@ class TaskDescription(ru.TypedDict):
              'priority': 0     # Control ordering of actions (unused)
           }
 
+    *Locations*
 
-    Locations
-    ---------
+    `source` and `target` locations can be given as strings or `ru.Url`
+    instances.  Strings containing `://` are converted into URLs immediately.
+    Otherwise, they are considered absolute or relative paths and are then
+    interpreted in the context of the client's working directory.
 
-      `source` and `target` locations can be given as strings or `ru.Url`
-      instances.  Strings containing `://` are converted into URLs immediately.
-      Otherwise, they are considered absolute or relative paths and are then
-      interpreted in the context of the client's working directory.
+    .. rubric:: Special URL schemas
 
-      Special URL schemas:
+    - ``client://``   : relative to the client's working directory
+    - ``resource://`` : relative to the RP    sandbox on the target resource
+    - ``pilot://``    : relative to the pilot sandbox on the target resource
+    - ``task://``     : relative to the task  sandbox on the target resource
 
-        * `client://`   : relative to the client's working directory
-        * `resource://` : relative to the RP    sandbox on the target resource
-        * `pilot://`    : relative to the pilot sandbox on the target resource
-        * `task://`     : relative to the task  sandbox on the target resource
+    In all these cases, the `hostname` element of the URL is expected to be
+    empty, and the path is *always* considered relative to the locations
+    specified above (even though URLs usually don't have a notion of relative
+    paths).
 
-      In all these cases, the `hostname` element of the URL is expected to be
-      empty, and the path is *always* considered relative to the locations
-      specified above (even though URLs usually don't have a notion of relative
-      paths).
+    For more details on path and sandbox handling check the documentation of
+    :func:`radical.pilot.staging_directives.complete_url`.
 
-      For more details on path and sandbox handling check the documentation of
-      :meth:`radical.pilot.staging_directives.complete_url`.
+    *Action operators*
 
+    - rp.TRANSFER : remote file transfer from `source` URL to `target` URL
+    - rp.COPY     : local file copy, i.e., not crossing host boundaries
+    - rp.MOVE     : local file move
+    - rp.LINK     : local file symlink
 
-    Action operators
-    ----------------
+    *Flags*
 
-      Action operators:
+    - rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
+    - rp.RECURSIVE: if `source` is a directory, handles it recursively
 
-        * rp.TRANSFER : remote file transfer from `source` URL to `target` URL
-        * rp.COPY     : local file copy, i.e., not crossing host boundaries
-        * rp.MOVE     : local file move
-        * rp.LINK     : local file symlink
-
-
-    Flags
-    -----
-
-      Flags:
-
-        * rp.CREATE_PARENTS : create the directory hierarchy for targets on
-          the fly
-        * rp.RECURSIVE      : if `source` is a directory, handles it recursively
-    '''
+    """
 
     _schema = {
         UID             : str         ,
