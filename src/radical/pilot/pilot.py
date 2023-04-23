@@ -7,6 +7,8 @@ import copy
 import time
 
 import radical.utils as ru
+
+from . import PilotManager
 from . import states    as rps
 from . import constants as rpc
 
@@ -16,14 +18,14 @@ from .staging_directives import complete_url
 # ------------------------------------------------------------------------------
 #
 class Pilot(object):
-    """
-    A Pilot represent a resource overlay on a local or remote resource.
+    """Represent a resource overlay on a local or remote resource.
 
-    .. note:: A Pilot cannot be created directly. The factory method
-              :meth:`radical.pilot.PilotManager.submit_pilots` has to be
-              used instead.
+    Note:
+        A Pilot cannot be created directly. The factory method
+        :func:`radical.pilot.PilotManager.submit_pilots` has to be
+        used instead.
 
-    **Example**::
+    Example::
 
           pm = radical.pilot.PilotManager(session=s)
           pd = radical.pilot.PilotDescription()
@@ -33,6 +35,7 @@ class Pilot(object):
           pd.runtime  = 5 # minutes
 
           pilot = pm.submit_pilots(pd)
+
     """
 
     # --------------------------------------------------------------------------
@@ -49,7 +52,7 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, pmgr, descr):
+    def __init__(self, pmgr: PilotManager, descr):
 
         # sanity checks on description
         if not descr.runtime:
@@ -189,12 +192,15 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def _update(self, pilot_dict):
-        '''
+        """Trigger an update.
+
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
 
-        Return True if state changed, False otherwise
-        '''
+        Returns:
+             booL: True if state changed, False otherwise.
+
+        """
 
         self._log.debug('update %s', pilot_dict['uid'])
 
@@ -243,9 +249,12 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        '''
-        Returns a Python dictionary representation of the object.
-        '''
+        """Dictionary representation.
+
+        Returns:
+             dict: a Python dictionary representation of the object.
+
+        """
 
         ret = {'session'          : self.session.uid,
                'pmgr'             : self.pmgr.uid,
@@ -274,12 +283,7 @@ class Pilot(object):
     #
     @property
     def session(self):
-        '''
-        Returns the pilot's session.
-
-        **Returns:**
-            * A :class:`Session`.
-        '''
+        """Session: The pilot's session."""
 
         return self._session
 
@@ -288,12 +292,7 @@ class Pilot(object):
     #
     @property
     def pmgr(self):
-        '''
-        Returns the pilot's manager.
-
-        **Returns:**
-            * A :class:`PilotManager`.
-        '''
+        """PilotManager: The pilot's manager."""
 
         return self._pmgr
 
@@ -302,9 +301,7 @@ class Pilot(object):
     #
     @property
     def resource_details(self):
-        '''
-        Returns agent level resource information
-        '''
+        """dict: agent level resource information."""
 
         return self._pilot_dict.get('resource_details')
 
@@ -313,14 +310,7 @@ class Pilot(object):
     #
     @property
     def uid(self):
-        '''
-        Returns the pilot's unique identifier.
-
-        The uid identifies the pilot within a :class:`PilotManager`.
-
-        **Returns:**
-            * A unique identifier (string).
-        '''
+        """str: The pilot's unique identifier within a :class:`PilotManager`."""
 
         return self._uid
 
@@ -329,12 +319,7 @@ class Pilot(object):
     #
     @property
     def state(self):
-        '''
-        Returns the current :py:mod:`state <radical.pilot.states>` of the pilot.
-
-        **Returns:**
-            * state (string enum)
-        '''
+        """str: The current :py:mod:`state <radical.pilot.states>` of the pilot."""
 
         return self._state
 
@@ -343,14 +328,10 @@ class Pilot(object):
     #
     @property
     def log(self):
-        '''
-        Returns a list of human readable [timestamp, string] tuples describing
+        """list[tuple]: A list of human readable [timestamp, string] tuples describing
         various events during the pilot's lifetime.  Those strings are not
         normative, only informative!
-
-        **Returns:**
-            * log (list of [timestamp, string] tuples)
-        '''
+        """
 
         return self._pilot_dict.get('log')
 
@@ -359,18 +340,15 @@ class Pilot(object):
     #
     @property
     def stdout(self):
-        '''
-        Returns a snapshot of the pilot's STDOUT stream.
+        """str: A snapshot of the pilot's STDOUT stream.
 
         If this property is queried before the pilot has reached
         'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can be inefficient.  Output may be incomplete and/or
-           filtered.
+        Warning:
+            This can be inefficient. Output may be incomplete and/or filtered.
 
-        **Returns:**
-            * stdout (string)
-        '''
+        """
 
         return self._pilot_dict.get('stdout')
 
@@ -379,18 +357,15 @@ class Pilot(object):
     #
     @property
     def stderr(self):
-        '''
-        Returns a snapshot of the pilot's STDERR stream.
+        """str: A snapshot of the pilot's STDERR stream.
 
         If this property is queried before the pilot has reached
         'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can be inefficient.  Output may be incomplete and/or
-           filtered.
+        Warning:
+            This can be inefficient.  Output may be incomplete and/or filtered.
 
-        **Returns:**
-            * stderr (string)
-        '''
+        """
 
         return self._pilot_dict.get('stderr')
 
@@ -399,12 +374,7 @@ class Pilot(object):
     #
     @property
     def resource(self):
-        '''
-        Returns the resource tag of this pilot.
-
-        **Returns:**
-            * A resource tag (string)
-        '''
+        """str: The resource tag of this pilot."""
 
         return self._descr.get('resource')
 
@@ -413,13 +383,9 @@ class Pilot(object):
     #
     @property
     def pilot_sandbox(self):
-        '''
-        Returns the full sandbox URL of this pilot, if that is already
+        """str: The full sandbox URL of this pilot, if that is already
         known, or 'None' otherwise.
-
-        **Returns:**
-            * A string
-        '''
+        """
 
         # NOTE: The pilot has a sandbox property, containing the full sandbox
         #       path, which is used by the pmgr to stage data back and forth.
@@ -439,38 +405,26 @@ class Pilot(object):
 
     @property
     def endpoint_fs(self):
-        '''
-        Returns the URL which is internally used to access the target resource's
-        root file system.
-
-        **Returns:**
-            * A URL (radical.utils.Url).
-        '''
+        """radical.utils.Url: The URL which is internally used to access the
+        target resource's root file system.
+        """
         return self._endpoint_fs
 
     @property
     def resource_sandbox(self):
-        '''
-        Returns the full URL of the path that RP considers the resource sandbox,
-        i.e., the sandbox on the target resource's file system which is shared
-        by all sessions which access that resource.
-
-        **Returns:**
-            * A URL (radical.utils.Url).
-        '''
+        """radical.utils.Url: The full URL of the path that RP considers the
+        resource sandbox, i.e., the sandbox on the target resource's file system
+        which is shared by all sessions which access that resource.
+        """
         return self._resource_sandbox
 
 
     @property
     def session_sandbox(self):
-        '''
-        Returns the full URL of the path that RP considers the session sandbox
-        on the target resource's file system which is shared
-        by all pilots which access that resource in the current session.
-
-        **Returns:**
-            * A URL (radical.utils.Url).
-        '''
+        """radical.utils.Url: The full URL of the path that RP considers the
+        session sandbox on the target resource's file system which is shared by
+        all pilots which access that resource in the current session.
+        """
         return self._session_sandbox
 
     @property
@@ -482,12 +436,7 @@ class Pilot(object):
     #
     @property
     def description(self):
-        '''
-        Returns the description the pilot was started with, as a dictionary.
-
-        **Returns:**
-            * description (dict)
-        '''
+        """dict: The description the pilot was started with, as a dictionary."""
 
         return copy.deepcopy(self._descr)
 
@@ -495,7 +444,8 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def register_callback(self, cb, metric=rpc.PILOT_STATE, cb_data=None):
-        '''
+        """Add callback for state changes.
+
         Registers a callback function that is triggered every time the
         pilot's state changes.
 
@@ -503,15 +453,16 @@ class Pilot(object):
 
             def cb(obj, state)
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb' signature changes to
+        where ``obj`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.  If *cb_data* is given,
+        then the *cb* signature changes to
+        ::
 
             def cb(obj, state, cb_data)
 
-        and 'cb_data' are passed along.
+        and *cb_data* are passed along.
 
-        '''
+        """
 
         if metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
@@ -551,27 +502,28 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def wait(self, state=None, timeout=None):
-        '''
+        """Block for state change.
+
         Returns when the pilot reaches a specific state or
         when an optional timeout is reached.
 
-        **Arguments:**
+        Arguments:
+            state (list[str]):
+                The :py:mod:`state(s) <radical.pilot.states>` that pilot has to reach in
+                order for the call to return.
 
-            * **state** [`list of strings`]
-              The :py:mod:`state(s) <radical.pilot.states>` that pilot has to reach in
-              order for the call to return.
+                By default `wait` waits for the pilot to reach a **final**
+                state, which can be one of the following:
 
-              By default `wait` waits for the pilot to reach a **final**
-              state, which can be one of the following:
+                * :data:`radical.pilot.states.DONE`
+                * :data:`radical.pilot.states.FAILED`
+                * :data:`radical.pilot.states.CANCELED`
+            timeout (float):
+                Optional timeout in seconds before the call returns regardless
+                whether the pilot has reached the desired state or not.  The
+                default value **None** never times out.
 
-              * :data:`radical.pilot.states.DONE`
-              * :data:`radical.pilot.states.FAILED`
-              * :data:`radical.pilot.states.CANCELED`
-
-            * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless
-              whether the pilot has reached the desired state or not.  The
-              default value **None** never times out.  '''
+        """
 
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
@@ -605,9 +557,7 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def cancel(self):
-        '''
-        Cancel the pilot.
-        '''
+        """Cancel the pilot."""
 
         # clean connection cache
         try:
@@ -624,39 +574,43 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def prepare_env(self, env_name, env_spec):
-        '''
-        request the preparation of a task or worker environment on the target
+        """Prepare a virtual environment.
+
+        Request the preparation of a task or worker environment on the target
         resource.  This call will block until the env is created.
 
-        env_name: name of the environment to prepare (str)
-        env_spec: specification of the environment to prepare (dict), like:
+        Arguments:
+            env_name (str): name of the environment to prepare.
+            env_spec (dict): specification of the environment to prepare,
+                like::
 
-            {'type'    : 'venv',
-             'version' : '3.7',
-             'pre_exec': ['module load python'],
-             'setup'   : ['radical.pilot==1.0', 'pandas']},
+                    {'type'    : 'venv',
+                     'version' : '3.7',
+                     'pre_exec': ['module load python'],
+                     'setup'   : ['radical.pilot==1.0', 'pandas']},
 
-            {'type'    : 'conda',
-             'version' : '3.8',
-             'setup'   : ['numpy']}
+                    {'type'    : 'conda',
+                     'version' : '3.8',
+                     'setup'   : ['numpy']}
 
-            {'type'   : 'conda',
-             'version': '3.8',
-             'path'   : '/path/to/ve',
-             'setup'  : ['numpy']}
+                    {'type'   : 'conda',
+                     'version': '3.8',
+                     'path'   : '/path/to/ve',
+                     'setup'  : ['numpy']}
 
+                where the *type* specifies the environment type, *version* specifies the
+                Python version to deploy, and *setup* specifies how the environment is
+                to be prepared.  If *path* is specified the env will be created at that
+                path.  If *path* is not specified, RP will place the named env in the
+                pilot sandbox (under :file:`env/named_env_{name}`). If a VE exists at that
+                path, it will be used as is (an update is not performed). *pre_exec*
+                commands are executed before env creation and setup are attempted.
 
-        where the `type` specifies the environment type, `version` specifies the
-        Python version to deploy, and `setup` specifies how the environment is
-        to be prepared.  If `path` is specified the env will be created at that
-        path.  If `path` is not specified, RP will place the named env in the
-        pilot sandbox (under `env/named_env_<name>`). If a VE exists at that
-        path, it will be used as is (an update is not performed). `pre_exec`
-        commands are executed before env creation and setup are attempted.
+        Note:
+            The `version` specifier is only interpreted up to minor version;
+            subminor and less are ignored.
 
-        Note: the `version` specifier is only interpreted up to minor version,
-        sibminor and less are ignored.
-        '''
+        """
 
         self.rpc('prepare_env', {'env_name': env_name,
                                  'env_spec': env_spec})
@@ -665,10 +619,11 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def rpc(self, rpc, args):
-        '''
+        """Remote procedure call.
+
         Send a pilot command, wait for the response, and return the result.
         This is basically an RPC into the pilot.
-        '''
+        """
 
         reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
 
@@ -678,14 +633,15 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def stage_in(self, sds):
-        '''
+        """Stage files "in".
+
         Stages the content of the :py:mod:`~radical.pilot.staging_directives`
         to the pilot sandbox.
 
         Please note the documentation of
-        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        :func:`radical.pilot.staging_directives.complete_url` for details on
         path and sandbox semantics.
-        '''
+        """
 
         sds = ru.as_list(sds)
 
@@ -703,14 +659,15 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def stage_out(self, sds=None):
-        '''
+        """Stage data "out".
+
         Fetches the content of the :py:mod:`~radical.pilot.staging_directives`
         from the pilot sandbox.
 
         Please note the documentation of
-        :meth:`radical.pilot.staging_directives.complete_url` for details on
+        :func:`radical.pilot.staging_directives.complete_url` for details on
         path and sandbox semantics.
-        '''
+        """
 
         sds = ru.as_list(sds)
 
