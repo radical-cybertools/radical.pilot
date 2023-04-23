@@ -92,17 +92,17 @@ def get_resource_configs() -> ru.Config:
     '''
     Return all resource configurations used by `radical.pilot`.
 
+    Configurations for the individual resources are organized as sites and
+    resources::
+
+       cfgs = get_resource_configs()
+       sites = cfgs.keys()
+       for site in sites:
+           resource_names = cfgs[site].keys()
+
     Returns:
 
         :obj:`radical.utils.Config`: the resource configurations
-
-        Configurations for the individual resources are organized as sites and
-        resources:
-
-           cfgs = get_resource_configs()
-           sites = cfgs.keys()
-           for site in sites:
-               resource_names = cfgs[site].keys()
     '''
 
     global _rcfgs
