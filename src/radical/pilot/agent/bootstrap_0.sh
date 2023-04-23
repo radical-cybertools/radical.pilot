@@ -117,11 +117,13 @@ PREBOOTSTRAP2=""
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600 # 10 min
 
-VIRTENV_VER="virtualenv-20.22.0"
+VIRTENV_VER="virtualenv-16.7.12"
 VIRTENV_DIR="$VIRTENV_VER"
 VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
-VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/12/c5/9e9c1dca8838e1eca43b23e5d8a34a6ad5065f15d702ee703c91b7e64b79/$VIRTENV_TGZ"
+VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/1c/c2/7516ea983fc37cec2128e7cb0b2b516125a478f8fc633b8f5dfa849f13f7/$VIRTENV_TGZ"
 VIRTENV_IS_ACTIVATED=FALSE
+
+echo $VIRTENV_TGZ_URL
 
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex dill"
