@@ -1002,21 +1002,43 @@ virtenv_create()
     virtenv="$1"
     python_dist="$2"
 
-    if test "$python_dist" = "default"
+    if test "$python_dist" = "anaconda"
+    then
+        run_cmd "Create virtualenv" \
+                "conda create -y -p $virtenv python=3.8"
+        if test $? -ne 0
+        then
+            echo "ERROR: couldn't create (conda) virtualenv"
+            return 1
+        fi
+
+    elif test "$python_dist" = "default"
     then
 
-        # check if the `venv` module is installed
-        if python3 -m venv -h > /dev/null 2>&1
+        # check if the `venv` module is usable
+        ok=''
+        if run_cmd "Create ve with venv" \
+                   "python3 -m venv $virtenv"
         then
-            VIRTENV_CMD="$PYTHON -m venv"
+            ok='true'
+        fi
+
 
         # check if virtualenv is available
-        elif which virtualenv > def/null 2>&1
+        if ! test "$ok" = 'true'
         then
-            VIRTENV_CMD="virtualenv"
+
+            if run_cmd "Create ve with system virtualenv" \
+                       "virtualenv $virtenv"
+            then
+                ok='true'
+            fi
+        fi
 
         # fall back to local virtualenv deployment
-        else
+        if ! test "$ok" = 'true'
+        then
+
             flags='-1 -k -L -O'
             if (hostname -f | grep -e '^smic' > /dev/null)
             then
@@ -1041,32 +1063,20 @@ virtenv_create()
                 exit 1
             fi
 
-            VIRTENV_CMD="$PYTHON $VIRTENV_DIR/virtualenv.py"
-        fi
+            run_cmd "Create ve with virtualenv" \
+                    "$PYTHON $VIRTENV_DIR/virtualenv.py $virtenv"
 
-        run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD $virtenv"
-
-        if test $? -ne 0
-        then
-            echo "ERROR: couldn't create virtualenv"
-            return 1
+            if test $? -ne 0
+            then
+                echo "ERROR: couldn't create virtualenv"
+                return 1
+            fi
         fi
 
         # clean out virtenv sources
         if test -d "$VIRTENV_DIR"
         then
             rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
-        fi
-
-    elif test "$python_dist" = "anaconda"
-    then
-        run_cmd "Create virtualenv" \
-                "conda create -y -p $virtenv python=3.8"
-        if test $? -ne 0
-        then
-            echo "ERROR: couldn't create (conda) virtualenv"
-            return 1
         fi
 
     else
