@@ -365,7 +365,7 @@ class Master(rpu.Component):
               Module file from which *raptor_class* may be imported, if a custom RP worker class is used
 
         Note that only one worker rank (presumably rank 0) should register with
-        the master - the workers are expected to syncronize their ranks as
+        the master - the workers are expected to synchronize their ranks as
         needed.
         '''
 
