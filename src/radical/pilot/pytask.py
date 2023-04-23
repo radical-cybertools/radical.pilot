@@ -41,21 +41,20 @@ class PythonTask(object):
     #
     @staticmethod
     def get_func_attr(bson_obj):
-        '''
-        Deserialize function call from BSON string.
+        """Deserialize function call from BSON string.
 
-        :param bson_obj: serialized PythonTask
-        :return: callable, args, and kwargs
+        Args:
+            bson_obj (str): serialized PythonTask
 
-        Raises
-        ------
-        ValueError
-            argument is not a `str`
-        TypeError
-            serialized object does not appear to be a PythonTask
-        Exception
-            error raised when attempting to deserialize *bson_obj*
-        '''
+        Returns:
+            tuple: callable, args, and kwargs
+
+        Raises:
+            ValueError: argument is not a `str`
+            TypeError: serialized object does not appear to be a PythonTask
+            Exception: error raised when attempting to deserialize *bson_obj*
+
+        """
 
         if not isinstance(bson_obj, str):
             raise ValueError('bson object should be string')
@@ -74,16 +73,16 @@ class PythonTask(object):
     #
     @staticmethod
     def pythontask(f: Callable):
-        '''
-        We handle all other functions here.
+        """We handle all other functions here.
 
-        Example:
+        Example::
             from PythonTask import pythonfunc as pythonfunc
             @pythontask
             def func_C(x):
                 return (x)
             cud.EXECUTABLE = func_C(2)
-        '''
+
+        """
 
         if not callable(f):
             raise ValueError('task function not callable')
@@ -103,4 +102,3 @@ class PythonTask(object):
 
 
 # ------------------------------------------------------------------------------
-

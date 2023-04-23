@@ -351,7 +351,7 @@ radical server 2
 * **Available schemas** : ``ssh, local``
 
 RESOURCE_XSEDE/ACCESS
-==============
+=====================
 
 WRANGLER_SSH
 ************
@@ -561,4 +561,3 @@ SUMMIT
  * ``access_schema :local``
 
 * **Available schemas** : ``local``
-
