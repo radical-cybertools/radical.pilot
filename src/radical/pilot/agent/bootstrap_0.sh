@@ -1030,6 +1030,7 @@ virtenv_create()
             then
                 echo "ERROR: couldn't download virtualenv via curl"
                 exit 1
+            fi
 
             run_cmd "unpacking virtualenv tgz" \
                     "tar zxmf '$VIRTENV_TGZ'"
