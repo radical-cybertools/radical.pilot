@@ -35,7 +35,7 @@ class Worker(object):
         self._reg_event = mt.Event()
         self._sbox      = os.environ['RP_TASK_SANDBOX']
         self._uid       = os.environ['RP_TASK_ID']
-        self._descr     = ru.read_json('%s.json' % self._uid)
+        self._ranks     = os.environ['RP_RANKS']
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level='DEBUG', targets=['.'], path=self._sbox)
@@ -92,7 +92,7 @@ class Worker(object):
         reg_msg = {'cmd': 'worker_register',
                    'arg': {'uid'        : self._uid,
                            'raptor_id'  : self._raptor_id,
-                           'description': self._descr}}
+                           'ranks'      : self._ranks}}
 
         # the manager (rank 0) registers the worker with the master
         if self._manager:

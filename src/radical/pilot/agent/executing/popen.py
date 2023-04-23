@@ -226,7 +226,7 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
-        ru.write_json('%s/%s.json' % (sbox, tid), td)
+      # ru.write_json('%s/%s.json' % (sbox, tid), td)
 
         with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 

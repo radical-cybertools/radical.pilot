@@ -209,9 +209,9 @@ class Master(rpu.Component):
 
         if cmd == 'worker_register':
 
-            uid = arg['uid']
-            rid = arg['raptor_id']
-            td  = arg['description']
+            uid   = arg['uid']
+            rid   = arg['raptor_id']
+            ranks = arg['ranks']
 
             if rid != self._uid:
                 return
@@ -221,8 +221,7 @@ class Master(rpu.Component):
                 self._workers[uid] = {
                         'uid'        : uid,
                         'status'     : self.NEW,
-                        'heartbeats' : {r: now for r in range(td['ranks'])},
-                        'description': td
+                        'heartbeats' : {r: now for r in range(ranks)}
                 }
 
             self._workers[uid]['status'] = self.ACTIVE
@@ -362,7 +361,8 @@ class Master(rpu.Component):
 
           - raptor_class: str, type name of worker class to execute
           - raptor_file : str, optional
-              Module file from which *raptor_class* may be imported, if a custom RP worker class is used
+              Module file from which *raptor_class* may be imported,
+              if a custom RP worker class is used
 
         Note that only one worker rank (presumably rank 0) should register with
         the master - the workers are expected to syncronize their ranks as
@@ -434,8 +434,7 @@ class Master(rpu.Component):
             self._workers[td.uid] = {
                     'uid'        : td.uid,
                     'status'     : self.NEW,
-                    'heartbeats' : {r: now for r in range(td.ranks)},
-                    'description': task['description']
+                    'heartbeats' : {r: now for r in range(td.ranks)}
             }
 
         self.advance(tasks, publish=True, push=True)
