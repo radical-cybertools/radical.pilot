@@ -13,8 +13,9 @@ export LC_NUMERIC="C"
 unset PROMPT_COMMAND
 unset -f cd ls uname pwd date bc cat echo grep
 
-# we should always find the RU env helper in our cwd
-. ./radical-utils-env.sh
+# we should always find the RU env helper in cwd or path
+test -f ./radical-utils-env.sh && . ./radical-utils-env.sh
+test -f ./radical-utils-env.sh || .   radical-utils-env.sh
 
 # get out of any virtual or conda env (from .bashrc etc)
 env_deactivate
@@ -115,6 +116,14 @@ PREBOOTSTRAP2=""
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
 LOCK_TIMEOUT=600 # 10 min
+
+VIRTENV_VER="virtualenv-16.7.12"
+VIRTENV_DIR="$VIRTENV_VER"
+VIRTENV_TGZ="$VIRTENV_VER.tar.gz"
+VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/1c/c2/7516ea983fc37cec2128e7cb0b2b516125a478f8fc633b8f5dfa849f13f7/$VIRTENV_TGZ"
+VIRTENV_IS_ACTIVATED=FALSE
+
+echo $VIRTENV_TGZ_URL
 
 VIRTENV_RADICAL_DEPS="pymongo<4 colorama ntplib "\
 "pyzmq netifaces setproctitle msgpack regex dill"
@@ -407,7 +416,8 @@ lock()
         fi
 
         # retry
-        err=`/bin/bash -c "set -C ; echo $pid > '$lockfile' && chmod a+r '$lockfile' && echo ok" 2>&1`
+        cmd="set -C ; echo $pid > $lockfile && chmod a+r $lockfile && echo ok"
+        err=`/bin/bash -c "$cmd" 2>&1`
     done
 
     # one way or the other, we got the lock finally.
@@ -994,21 +1004,7 @@ virtenv_create()
     virtenv="$1"
     python_dist="$2"
 
-    if test "$python_dist" = "default"
-    then
-
-        VIRTENV_CMD="$PYTHON -m venv"
-
-        run_cmd "Create virtualenv" \
-                "$VIRTENV_CMD $virtenv"
-
-        if test $? -ne 0
-        then
-            echo "ERROR: couldn't create virtualenv"
-            return 1
-        fi
-
-    elif test "$python_dist" = "anaconda"
+    if test "$python_dist" = "anaconda"
     then
         run_cmd "Create virtualenv" \
                 "conda create -y -p $virtenv python=3.8"
@@ -1016,6 +1012,73 @@ virtenv_create()
         then
             echo "ERROR: couldn't create (conda) virtualenv"
             return 1
+        fi
+
+    elif test "$python_dist" = "default"
+    then
+
+        # check if the `venv` module is usable
+        ok=''
+        if run_cmd "Create ve with venv" \
+                   "python3 -m venv $virtenv"
+        then
+            ok='true'
+        fi
+
+
+        # check if virtualenv is available
+        if ! test "$ok" = 'true'
+        then
+
+            if run_cmd "Create ve with system virtualenv" \
+                       "virtualenv $virtenv"
+            then
+                ok='true'
+            fi
+        fi
+
+        # fall back to local virtualenv deployment
+        if ! test "$ok" = 'true'
+        then
+
+            flags='-1 -k -L -O'
+            if (hostname -f | grep -e '^smic' > /dev/null)
+            then
+                flags='-k -L -O'
+            fi
+
+            run_cmd "Download virtualenv tgz" \
+                    "curl $flags '$VIRTENV_TGZ_URL'"
+
+            if ! test "$?" = 0
+            then
+                echo "ERROR: couldn't download virtualenv via curl"
+                exit 1
+            fi
+
+            run_cmd "unpacking virtualenv tgz" \
+                    "tar zxmf '$VIRTENV_TGZ'"
+
+            if test $? -ne 0
+            then
+                echo "ERROR: Couldn't unpack virtualenv!"
+                exit 1
+            fi
+
+            run_cmd "Create ve with virtualenv" \
+                    "$PYTHON $VIRTENV_DIR/virtualenv.py $virtenv"
+
+            if test $? -ne 0
+            then
+                echo "ERROR: couldn't create virtualenv"
+                return 1
+            fi
+        fi
+
+        # clean out virtenv sources
+        if test -d "$VIRTENV_DIR"
+        then
+            rm -rf "$VIRTENV_DIR" "$VIRTENV_TGZ"
         fi
 
     else
@@ -1653,7 +1716,8 @@ fi
 rehash "$PYTHON"
 
 # ready to setup the virtenv
-virtenv_setup    "$PILOT_ID" "$VIRTENV" "$VIRTENV_MODE" "$PYTHON_DIST"
+virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
+                 "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
 create_deactivate
 
