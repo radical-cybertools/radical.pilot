@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# pylint: disable=unused-argument, no-value-for-parameter
+
 import os
 import time
 
@@ -13,7 +15,6 @@ import radical.pilot as rp
 # ------------------------------------------------------------------------------
 #
 class TestWorker(TestCase):
-
 
     def read_json_side_effect(fname):
         return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
