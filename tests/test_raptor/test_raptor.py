@@ -16,7 +16,7 @@ import radical.pilot as rp
 #
 class TestWorker(TestCase):
 
-    def read_json_side_effect(fname):
+    def read_json_side_effect(self, fname=None):
         return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
 
 

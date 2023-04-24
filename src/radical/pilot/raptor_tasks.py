@@ -21,15 +21,15 @@ class Raptor(Task):
     executables, and tasks with heterogeneous resource requirements.
     '''
 
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, tmgr: object,
-                       descr: Dict[str, Any],
-                       origin: str) -> None:
-
-        super().__init__(tmgr, descr, origin)
-
-
+  # # --------------------------------------------------------------------------
+  # #
+  # def __init__(self, tmgr: object,
+  #                    descr: Dict[str, Any],
+  #                    origin: str) -> None:
+  #
+  #     super().__init__(tmgr, descr, origin)
+  #
+  #
     # --------------------------------------------------------------------------
     #
     def submit_workers(self, descriptions: List[TaskDescription]) -> List[Task]:
