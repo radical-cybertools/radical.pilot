@@ -713,10 +713,6 @@ class Master(rpu.Component):
             self._log.debug('insert %s', td['uid'])
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
-            # we want to pick up state updates for executable tasks so that we
-            # can invoke the result callback as we do for raptor tasks.
-            self._exec_tasks.append(task['uid'])
-
         self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
                             publish=True, push=True)
 

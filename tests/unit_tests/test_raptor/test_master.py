@@ -12,8 +12,6 @@ import radical.pilot.states as rps
 
 from unittest import mock, TestCase
 
-import radical.pilot as rp
-
 from radical.pilot.raptor.master import Master
 
 

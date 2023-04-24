@@ -1,3 +1,4 @@
+
 {
     "task": {
          "uid"                  : "task.000000",
@@ -16,6 +17,7 @@
                                   ],
              "pre_exec_sync"    : true,
              "post_exec"        : ["test_post_exec"],
+             "mode"             : "task.executable",
              "ranks"            : 2,
              "cores_per_rank"   : 1,
              "threading_type"   : "OpenMP",
@@ -50,3 +52,4 @@
         }
     }
 }
+

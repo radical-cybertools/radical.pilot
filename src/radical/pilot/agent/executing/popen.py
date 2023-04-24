@@ -8,7 +8,6 @@ import stat
 import time
 import queue
 import atexit
-import pprint
 import signal
 import threading  as mt
 import subprocess as sp
