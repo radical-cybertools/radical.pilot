@@ -67,15 +67,16 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 def fetch_filetype(ext, name, sid, dburl=None, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
-    ext : file extension to fetch
-    name: full name of filetype for log messages etc
-    sid : session for which all files are fetched
-    src : dir to look for client session files ($src/$sid/*.ext)
-    tgt : dir to store the files in
-          - $tgt/$sid/*.ext,
-          - $tgt/$sid/$pid/*.ext)
+    Args:
+        ext  (str): file extension to fetch
+        name (str): full name of filetype for log messages etc
+        sid  (str): session for which all files are fetched
+        src  (str): dir to look for client session files (`$src/$sid/*.ext`)
+        tgt  (str): dir to store the files in (`$tgt/$sid/*.ext`,
+            `$tgt/$sid/$pid/*.ext`)
 
-    returns list of file names (fetched and/or cached)
+    Returns:
+        list[str]: list of file names (fetched and/or cached)
     '''
 
     if not log and session:

@@ -20,7 +20,7 @@ an example for each case on thee following repo:
 `<https://github.com/radical-group/koubbe/tree/master/Containers/First%20experiments/src/exp2>`_
 
 What is a container?
--------------------
+--------------------
 
 A container is a standard task of software that packages up code and all
 its dependencies so the application runs quickly and reliably from one
@@ -33,7 +33,7 @@ always run the same, regardless of the infrastructure, ensuring that it works
 uniformly despite differences for instance between development and staging.
 
 What is Singularity?
--------------------
+--------------------
 
 Singularity is a container runtime that favors integration while still
 preserving security restrictions on the container, and providing reproducible
@@ -53,7 +53,7 @@ the following document:
 Computing Platforms using RADICAL-Cybertools <https://github.com/radical-group/koubbe/blob/master/Misc/Technical%20Report/GeorgeKoubbe_Report.pdf>`_
 
 Step-by-step on Bridges directly
--------------------
+--------------------------------
 
 Alright, let's dive right in.
 
@@ -263,11 +263,11 @@ application (blue bars), against the non-containerized version (orange
 bars). We can appreciate an overhead of 0.5%, 9%, 11% and 21% for 2, 4, 8
 and 16 nodes respectively.
 
-.. image:: 11_containerized_tasks_1.png
+.. image:: 11_containerized_compute_tasks_1.png
 
 It's worth noting that the same experiment running on Comet gives
 us less noticeable overheads. A container overhead of around 2% was
 achieved in all cases. Although execution times are considerably higher
 than on Bridges, the overheads are much lower and consistent.
 
-.. image:: 11_containerized_tasks_2.png
+.. image:: 11_containerized_compute_tasks_2.png

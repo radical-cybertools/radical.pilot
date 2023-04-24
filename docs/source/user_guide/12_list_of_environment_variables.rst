@@ -105,7 +105,7 @@ __________________
     * - .. envvar:: RADICAL_DEBUG
       - enables scattered debug facilities. This will likely slow down and even destabilize the code.
       - {NOT_SET}
-    * - RU_RAISE_ON_*
+    * - ``RU_RAISE_ON_*``
       - related to :envvar:`RADICAL_DEBUG` to trigger specific exceptions
       - {NOT_SET}
     * - .. envvar:: RADICAL_DEBUG_HELPER
@@ -114,7 +114,7 @@ __________________
     * - .. envvar:: RADICAL_DEBUG_VERBOSE
       - related to :envvar:`RADICAL_DEBUG`, enables verbose messages for debugging. Controls "debug" module to collect stack traces. Verbose flag sets the level of details for output messages.
       - {NOT_SET}
-    * - *_PROFILE
+    * - ``*_PROFILE``
       - `Profiler` is similar to `Logger` and `Reporter`
       - {NOT_SET}
     * - .. envvar:: RADICAL_PILOT_PRUN_VERBOSE
