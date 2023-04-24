@@ -211,6 +211,12 @@
          "queue"   : null,
          "schema"  : "ssh",
          "cores"   : 8
+    },
+
+    "uva.rivanna"  : {
+        "project"  : null,
+        "queue"    : "standard",
+        "schema"   : "local",
+        "cores"    : 8
     }
 }
-
