@@ -688,12 +688,13 @@ class TaskManager(rpu.Component):
             # sanity check, and keep pilots around for inspection
             for pilot in pilots:
 
-                # let the pilot know that we own it now
-                pilot.attach_tmgr(self)
-
                 if isinstance(pilot, dict):
                     pilot_dict = pilot
                 else:
+                    # let the pilot know that we own it now
+                    # FIXME: this is not working for pilot dicts (ENTK)
+                    pilot.attach_tmgr(self)
+
                     pilot_dict = pilot.as_dict()
                     # real object: subscribe for state updates
                     pilot.register_callback(self._pilot_state_cb)
