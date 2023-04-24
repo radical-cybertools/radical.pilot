@@ -38,8 +38,9 @@ class Session(rs.Session):
     # sessions of RP client or agent modules), but all components need to call
     # the sessions `heartbeat()` method at regular intervals.
 
-    # the reporter is an applicataion-level singleton
+    # the reporter is an application-level singleton
     _reporter = None
+
 
     # --------------------------------------------------------------------------
     #
