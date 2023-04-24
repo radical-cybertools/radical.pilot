@@ -52,6 +52,7 @@ class TestWorker(TestCase):
         os.environ['RP_TASK_ID']       = 'task.000000'
         os.environ['RP_TASK_SANDBOX']  = '/tmp'
         os.environ['RP_PILOT_SANDBOX'] = '/tmp'
+        os.environ['RP_RANKS']         = str(8)
 
         with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
             fout.write('{"sub": "tcp://localhost:10000", '

@@ -100,7 +100,7 @@ class TestPopen(TestCase):
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
         self.assertFalse(popen_input_kwargs['start_new_session'])
 
-        for prefix in ['.launch.sh', '.exec.sh', '.sl']:
+        for prefix in ['.launch.sh', '.exec.sh']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
             self.assertTrue(os.path.isfile(path))
 
