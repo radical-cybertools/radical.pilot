@@ -516,6 +516,31 @@ def get_session_profile(sid, src=None):
     profile           = ru.clean_profile(profile, sid, s.FINAL, s.CANCELED)
     hostmap           = get_hostmap(profile)
 
+    # we sometimes miss the `bootstrap_0_stop` event when the bootstrapper is
+    # killed before being able to terminate nicely.  In that case we use the
+    # last timestamp for that pilot for that event.
+    last_ts = dict()
+    seen_bs = dict()
+    for e in profile:
+        if 'pilot.' in e[4]:
+            pid = e[4]
+            last_ts[pid] = max(last_ts.get(pid, 0), e[0])
+
+            if e[1] == 'bootstrap_0_stop':
+                seen_bs[pid] = True
+
+    for pid in last_ts:
+        if seen_bs.get(pid) is None:
+            profile.append([last_ts[pid],
+                            'bootstrap_0_stop',
+                            'bootstrap_0',
+                            'MainThread',
+                            pid,
+                            'pilot_state',
+                            '',
+                            'pilot'])
+
+
     if not hostmap:
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
