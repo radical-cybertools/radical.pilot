@@ -216,6 +216,12 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
+        # before we run any tasks, prepare a named_env `rp` for tasks which use
+        # the pilot's own environment, such as raptors
+        env_spec = {'type': os.environ['RP_VENV_TYPE'],
+                    'path': os.environ['RP_VENV_PATH']}
+        self._prepare_env('rp', env_spec)
+
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_control_cb,
                                timer=self._cfg['db_poll_sleeptime'])
@@ -647,11 +653,11 @@ class Agent_0(rpu.Worker):
             rpc_res = msg['arg']
 
             if cmd != 'rpc_res':
-                # not an rpc responese
+                # not an rpc responese, keep cb registered
                 return True
 
             if rpc_res['uid'] != rpc_id:
-                # not the right rpc response
+                # not the right rpc response, keep cb registered
                 return True
 
             # send the response to the DB
@@ -659,7 +665,7 @@ class Agent_0(rpu.Worker):
                                  'uid'   : self._pid},
                                 {'$set'  : {'rpc_res': rpc_res}})
 
-            # work is done - unregister this temporary cb (rpc_cb)
+            # work is done - unregister this temporary cb
             return False
 
 

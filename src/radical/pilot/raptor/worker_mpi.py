@@ -58,7 +58,7 @@ class _Resources(object):
         self._res_evt   = mt.Event()  # signals free resources
         self._res_lock  = mt.Lock()   # lock resource for alloc / dealloc
         self._resources = {
-                'cores': [0] * self._ranks
+                'cores': [0] * self._ranks,
               # 'gpus' : [0] * self._n_gpus
         }
 
@@ -585,7 +585,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, raptor_id: str):
 
         self._my_term = mt.Event()
         self._my_ret  = 0
@@ -603,7 +603,8 @@ class MPIWorker(Worker):
 
         # rank 0 is the manager rank and will register the worker with the
         # master and connect to the task and result queues
-        super().__init__(cfg=cfg, manager=self._manager, rank=self._rank)
+        super().__init__(manager=self._manager, rank=self._rank,
+                         raptor_id=raptor_id)
 
 
         # rank 0 starts two ZMQ queues: one to send tasks to the worker ranks
@@ -612,8 +613,8 @@ class MPIWorker(Worker):
         info = None
         if self._manager:
 
-            self._worker_task_q_get   = self._cfg.info.req_addr_get
-            self._worker_result_q_put = self._cfg.info.res_addr_put
+            self._worker_task_q_get   = self._req_addr_get
+            self._worker_result_q_put = self._res_addr_put
 
             self._rank_task_q   = ru.zmq.Queue(channel='rank_task_q')
             self._rank_result_q = ru.zmq.Queue(channel='rank_result_q')
