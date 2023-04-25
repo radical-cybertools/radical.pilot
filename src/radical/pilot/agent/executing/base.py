@@ -5,7 +5,9 @@ __license__   = 'MIT'
 import os
 import time
 
-import threading as mt
+import threading          as mt
+
+import radical.utils      as ru
 
 from ... import states    as rps
 from ... import agent     as rpa
@@ -125,7 +127,18 @@ class AgentExecutingComponent(rpu.Component):
     #
     def control_cb(self, topic, msg):
 
-        raise NotImplementedError('control_cb is not implemented')
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_tasks':
+
+            self._log.info('cancel_tasks command (%s)', arg)
+            for tid in arg['uids']:
+                self.cancel_task(tid)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -173,6 +186,53 @@ class AgentExecutingComponent(rpu.Component):
         if to > 0.0:
             with self._to_lock:
                 self._to_tasks.append([to, time.time(), task])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def advance_tasks(self, tasks, state, publish, push, ts=None):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in ru.as_list(tasks):
+            buckets[task['origin']].append(task)
+
+        # we want any task which has a `raptor_id` set to show up in raptor's
+        # result callbacks
+        if state != rps.AGENT_EXECUTING:
+            for task in ru.as_list(tasks):
+                if task['description'].get('raptor_id'):
+                    if task not in buckets['raptor']:
+                        buckets['raptor'].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                                            publish=publish, push=push, ts=ts)
+
+        if buckets['raptor']:
+            self.advance(buckets['raptor'], state=state,
+                                            publish=publish, push=False, ts=ts)
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            self.advance(buckets['agent'], state=state,
+                                            publish=publish, push=False, ts=ts)
 
 
 # ------------------------------------------------------------------------------

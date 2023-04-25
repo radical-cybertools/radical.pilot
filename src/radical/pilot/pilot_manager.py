@@ -106,7 +106,6 @@ class PilotManager(rpu.Component):
         self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._rec_id      = 0       # used for session recording
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -124,7 +123,6 @@ class PilotManager(rpu.Component):
         cfg.uid            = self._uid
         cfg.owner          = self._uid
         cfg.sid            = session.uid
-        cfg.base           = session.base
         cfg.path           = session.path
         cfg.dburl          = session.dburl
         cfg.heartbeat      = session.cfg.heartbeat
@@ -593,10 +591,6 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            if self._session._rec:
-                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
-                        % (self._session._rec, pilot.uid, self._rec_id))
-
             self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
                       (pilot.uid, pd['resource'],
                        pd.get('cores', 0), pd.get('gpus', 0)))
@@ -608,9 +602,6 @@ class PilotManager(rpu.Component):
         #        the profile entry for the advance to NEW.  So we here basically
         #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
-
-        if self._session._rec:
-            self._rec_id += 1
 
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
