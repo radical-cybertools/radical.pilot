@@ -127,7 +127,7 @@ class TestBaseScheduling(TestCase):
         component._prof       = mock.Mock()
         component._prof.prof  = mock.Mock(return_value=True)
 
-        component._log._debug_level = 6
+        component._log._debug_level = 0
 
         # FIXME: the try_allocation part in the test config has no results?
         for c in self._test_cases['try_allocation']:

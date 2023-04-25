@@ -75,7 +75,7 @@ class TestContinuous(TestCase):
         component._log  = ru.Logger('foo', targets=None, level='OFF')
         component._prof = mock.Mock()
 
-        component._log._debug_level = 6
+        component._log._debug_level = 0
 
         # test `_schedule_incoming` and `_schedule_waitpool`
 
