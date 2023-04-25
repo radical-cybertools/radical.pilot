@@ -1,0 +1,8 @@
+#time,event,comp,thread,uid,state,msg
+1682368116.000000,sync_abs,bootstrap_0,MainThread,pilot.0000,PMGR_ACTIVE_PENDING,rivendell:192.168.135.12:1682368116:1682368116:1682368116
+1682368116.000000,bootstrap_0_start,bootstrap_0,MainThread,pilot.0000,pilot_state,
+1682368117.000000,ve_setup_start,bootstrap_0,MainThread,pilot.0000,pilot_state,
+1682368117.000000,ve_activate_start,bootstrap_0,MainThread,pilot.0000,pilot_state,
+1682368117.000000,ve_activate_stop,bootstrap_0,MainThread,pilot.0000,pilot_state,
+1682368117.000000,ve_setup_stop,bootstrap_0,MainThread,pilot.0000,pilot_state,
+1682368120.000000,bootstrap_0_ok,bootstrap_0,MainThread,pilot.0000,pilot_state,
