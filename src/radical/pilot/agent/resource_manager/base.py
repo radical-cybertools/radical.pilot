@@ -234,18 +234,7 @@ class ResourceManager(object):
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
 
-        # number of nodes could be unknown if `cores_per_node` is not in config,
-        # but is provided by a corresponding RM in `_init_from_scratch`
-        if not rm_info.requested_nodes:
-            n_nodes = rm_info.requested_cores / rm_info.cores_per_node
-            if rm_info.gpus_per_node:
-                n_nodes = max(rm_info.requested_gpus / rm_info.gpus_per_node,
-                              n_nodes)
-            rm_info.requested_nodes = math.ceil(n_nodes)
-
-        assert alloc_nodes >= rm_info.requested_nodes
-
-        # however, the config can override core and gpu detection,
+        # the config can override core and gpu detection,
         # and decide to block some resources (part of the core specialization)
         blocked_cores = system_architecture.get('blocked_cores', [])
         blocked_gpus  = system_architecture.get('blocked_gpus',  [])
@@ -268,6 +257,17 @@ class ResourceManager(object):
                     assert len(node['gpus']) > idx
                     node['gpus'][idx] = rpc.DOWN
 
+        # number of nodes could be unknown if `cores_per_node` is not in config,
+        # but is provided by a corresponding RM in `_init_from_scratch`
+        if not rm_info.requested_nodes:
+            n_nodes = rm_info.requested_cores / rm_info.cores_per_node
+            if rm_info.gpus_per_node:
+                n_nodes = max(
+                    rm_info.requested_gpus / rm_info.gpus_per_node,
+                    n_nodes)
+            rm_info.requested_nodes = math.ceil(n_nodes)
+
+        assert alloc_nodes                          >= rm_info.requested_nodes
         assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
         assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
 
