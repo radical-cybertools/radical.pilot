@@ -63,7 +63,7 @@ class Sleep(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
@@ -80,7 +80,7 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('unschedule_start', uid=task['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
         with self._tasks_lock:
             self._tasks.extend(tasks)
@@ -133,24 +133,8 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('unschedule_start', uid=uid)
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-            self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                    publish=True, push=True)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def control_cb(self, topic, msg):
-
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-
-        if cmd == 'cancel_tasks':
-
-            # FIXME: clarify how to cancel tasks
-            pass
-
-        return True
+            self.advance_tasks(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                          publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------
