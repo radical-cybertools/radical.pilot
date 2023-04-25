@@ -1,6 +1,6 @@
-============
-ALCF Polaris
-============
+==================
+Polaris (ALCF/ANL)
+==================
 
 Platform user guide
 ===================
@@ -154,7 +154,7 @@ RADICAL-Pilot will connect to the MongoDB instance using the following URL.
    export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
 
 Launching script example
-===============================
+========================
 
 Launching script (e.g., ``rp_launcher.sh``) for the RADICAL-Pilot application
 includes setup processes to activate a certain execution environment and
@@ -190,4 +190,11 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
    nohup ./rp_launcher.sh > OUTPUT 2>&1 </dev/null &
    # check the status of the script running:
    #   jobs -l
+
+=====
+
+.. note::
+
+   If you find any inaccuracy in this description, please, report back to us
+   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
