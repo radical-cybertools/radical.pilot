@@ -795,15 +795,17 @@ class PMGRLaunchingComponent(rpu.Component):
                 requested_nodes = requested_cores / avail_cores_per_node
 
             if avail_gpus_per_node:
-                requested_nodes = max(requested_gpus  / avail_gpus_per_node,
+                requested_nodes = max(requested_gpus / avail_gpus_per_node,
                                       requested_nodes)
 
             requested_nodes = math.ceil(requested_nodes)
 
         # now that we know the number of nodes to request, derive
         # the *actual* number of cores and gpus we allocate
-        allocated_cores = (requested_nodes * cores_per_node) or requested_cores
-        allocated_gpus  = (requested_nodes * gpus_per_node)  or requested_gpus
+        allocated_cores = (
+            requested_nodes * avail_cores_per_node) or requested_cores
+        allocated_gpus  = (
+            requested_nodes * avail_gpus_per_node)  or requested_gpus
 
         self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
