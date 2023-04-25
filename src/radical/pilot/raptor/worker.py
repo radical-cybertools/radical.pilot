@@ -9,10 +9,11 @@ import threading         as mt
 
 import radical.utils     as ru
 
+from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
-from ..task_description import TASK_FUNCTION, TASK_EXEC
+from ..task_description import TASK_FUNC, TASK_EXEC
 from ..task_description import TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
@@ -26,17 +27,15 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, manager, rank):
+    def __init__(self, manager, rank, raptor_id):
 
-        if cfg is None:
-            cfg = dict()
-
-        if isinstance(cfg, str): self._cfg = ru.Config(cfg=ru.read_json(cfg))
-        else                   : self._cfg = ru.Config(cfg=cfg)
-
-        self._rank = rank
-        self._sbox = os.environ['RP_TASK_SANDBOX']
-        self._uid  = os.environ['RP_TASK_ID']
+        self._manager   = manager
+        self._rank      = rank
+        self._raptor_id = raptor_id
+        self._reg_event = mt.Event()
+        self._sbox      = os.environ['RP_TASK_SANDBOX']
+        self._uid       = os.environ['RP_TASK_ID']
+        self._ranks     = int(os.environ['RP_RANKS'])
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level='DEBUG', targets=['.'], path=self._sbox)
@@ -44,11 +43,16 @@ class Worker(object):
                                  path=self._sbox)
 
         # register for lifetime management messages on the control pubsub
-        psbox = os.environ['RP_PILOT_SANDBOX']
-        ctrl_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
+        psbox     = os.environ['RP_PILOT_SANDBOX']
+        state_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.STATE_PUBSUB))
+        ctrl_cfg  = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
 
+        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['sub'],
+                          log=self._log, prof=self._prof, cb=self._state_cb,
+                          topic=rpc.STATE_PUBSUB)
         ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
-                          log=self._log, prof=self._prof, cb=self._control_cb)
+                          log=self._log, prof=self._prof, cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
@@ -58,26 +62,11 @@ class Worker(object):
         # let ZMQ settle
         time.sleep(1)
 
-        # the manager (rank 0) registers the worker with the master
-        if manager:
-
-            self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_register',
-                                                    'arg': {'uid' : self._uid}})
-
-
-          # # FIXME: we never unregister on termination
-          # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
-          #                                         'arg': {'uid' : self._uid}})
-
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
         self._hb_delay  = 5
         self._hb_thread = mt.Thread(target=self._hb_worker)
         self._hb_thread.daemon = True
         self._hb_thread.start()
-
-        self._log.debug('heartbeat thread started %s:%s', self._uid, self._rank)
-
-        self._modes = dict()
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides these builtin methods:
@@ -86,11 +75,12 @@ class Worker(object):
         #     call:  execute  a method or function call
         #     proc:  execute  a command line (fork/exec)
         #     shell: execute  a shell command
-        self.register_mode(TASK_FUNCTION, self._dispatch_func)
-        self.register_mode(TASK_EVAL,     self._dispatch_eval)
-        self.register_mode(TASK_EXEC,     self._dispatch_exec)
-        self.register_mode(TASK_PROC,     self._dispatch_proc)
-        self.register_mode(TASK_SHELL,    self._dispatch_shell)
+        self._modes = dict()
+        self.register_mode(TASK_FUNC,  self._dispatch_func)
+        self.register_mode(TASK_EVAL,  self._dispatch_eval)
+        self.register_mode(TASK_EXEC,  self._dispatch_exec)
+        self.register_mode(TASK_PROC,  self._dispatch_proc)
+        self.register_mode(TASK_SHELL, self._dispatch_shell)
 
         # prepare base env dict used for all tasks
         # NOTE: raptor tasks run in the same environment as the raptor worker
@@ -98,6 +88,36 @@ class Worker(object):
         for k,v in os.environ.items():
             if not k.startswith('RP_'):
                 self._task_env[k] = v
+
+        reg_msg = {'cmd': 'worker_register',
+                   'arg': {'uid'        : self._uid,
+                           'raptor_id'  : self._raptor_id,
+                           'ranks'      : self._ranks}}
+
+        # the manager (rank 0) registers the worker with the master
+        if self._manager:
+            self._log.debug('register: %s / %s', self._uid, self._raptor_id)
+            self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
+
+          # # FIXME: we never unregister on termination
+          # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
+          #                                         'arg': {'uid' : self._uid}})
+
+        # wait for raptor response
+        self._log.debug('wait for registration to complete')
+        count = 0
+        while not self._reg_event.wait(timeout=1):
+            if count < 60:
+                count += 1
+                self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
+                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
+            else:
+                self.stop()
+                self.join()
+                self._log.error('registration with master timed out')
+                raise RuntimeError('registration with master timed out')
+
+        self._log.debug('registration with master ok')
 
 
     # --------------------------------------------------------------------------
@@ -116,17 +136,62 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
+    def _state_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        # general task state updates -- check if our master is affected
+        if cmd == 'update':
+
+            for thing in ru.as_list(arg):
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid == self._raptor_id:
+
+                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                        # master completed - terminate this worker
+                        self._log.info('master %s final: %s - terminate',
+                                       uid, state)
+                        self.stop()
+                        return False
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
     def _control_cb(self, topic, msg):
 
-        if msg['cmd'] == 'terminate':
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'worker_registered':
+
+            if arg['uid'] != self._uid:
+                return
+
+            if self._reg_event.is_set():
+                # registration was completed already
+                return
+
+            self._ts_addr      = arg['info']['ts_addr']
+            self._res_addr_put = arg['info']['res_addr_put']
+            self._req_addr_get = arg['info']['req_addr_get']
+
+            self._reg_event.set()
+
+        elif cmd == 'terminate':
             self.stop()
             self.join()
             sys.exit()
 
-        elif msg['cmd'] == 'worker_terminate':
-            self._log.debug('worker_terminate signal')
+        elif cmd == 'worker_terminate':
 
-            if msg['arg']['uid'] == self._uid:
+            if arg['uid'] == self._uid:
+                self._log.debug('worker_terminate signal')
                 self.stop()
                 self.join()
                 sys.exit()
@@ -157,7 +222,7 @@ class Worker(object):
                 return self._task_service_ep.request('run_task', td)
         # ----------------------------------------------------------------------
 
-        return Master(self._cfg.ts_addr)
+        return Master(self._ts_addr)
 
 
     # --------------------------------------------------------------------------
@@ -171,7 +236,7 @@ class Worker(object):
     #
     def stop(self):
 
-        raise NotImplementedError('`run()` must be implemented by child class')
+        raise NotImplementedError('`stop()` must be implemented by child class')
 
 
     # --------------------------------------------------------------------------
@@ -251,7 +316,7 @@ class Worker(object):
                 to_call, _args, _kwargs = PythonTask.get_func_attr(func)
 
             except Exception:
-                self._log.exception('function is not a PythonTask [%s] ', uid)
+                self._log.warn('function is not a PythonTask [%s] ', uid)
 
             else:
                 py_func = True
@@ -263,7 +328,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+          # self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
@@ -486,7 +551,6 @@ class Worker(object):
             env.update(task['description']['environment'])
 
             cmd  = '%s %s' % (exe, ' '.join([shlex.quote(arg) for arg in args]))
-          # self._log.debug('proc: --%s--', args)
             self._prof.prof('rank_start', uid=uid)
             proc = sp.Popen(cmd, env=env,  stdin=None,
                             stdout=sp.PIPE, stderr=sp.PIPE,
@@ -521,6 +585,7 @@ class Worker(object):
             env.update(task['description']['environment'])
 
           # self._log.debug('shell: --%s--', cmd)
+
             self._prof.prof('rank_start', uid=uid)
             out, err, ret = ru.sh_callout(cmd, shell=True, env=env)
             exc = (None, None)

@@ -17,7 +17,8 @@ from ... import utils     as rpu
 from ... import states    as rps
 from ... import constants as rpc
 
-from ..resource_manager import ResourceManager
+from ...task_description import RAPTOR_WORKER
+from ..resource_manager  import ResourceManager
 
 # when pulling for tasks or resources, yield to other actions now and then as to
 # not starve other agent components
@@ -791,8 +792,8 @@ class AgentSchedulingComponent(rpu.Component):
         self._log.debug('-> schedule incoming')
 
         # fetch all tasks from the queue
-        to_schedule = list()  # some tasks get scheduled here
-        to_raptor   = dict()  # some tasks get forwared to raptor
+        to_schedule = list()             # some tasks get scheduled here
+        to_raptor   = defaultdict(list)  # some tasks get forwared to raptor
         try:
 
             while not self._term.is_set():
@@ -803,14 +804,22 @@ class AgentSchedulingComponent(rpu.Component):
                     data = [data]
 
                 for task in data:
+
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
-                    raptor = task['description'].get('scheduler')
-                    if raptor:
-                        if raptor not in to_raptor:
-                            to_raptor[raptor] = [task]
+                    raptor_id = task['description'].get('raptor_id')
+                    mode      = task['description'].get('mode')
+
+                    # raptor workers are not scheduled by raptor itself!
+                    if raptor_id and mode != RAPTOR_WORKER:
+
+                        if task.get('raptor_seen'):
+                            # raptor has handled this one - we can execute it
+                            self._set_tuple_size(task)
+                            to_schedule.append(task)
+
                         else:
-                            to_raptor[raptor].append(task)
+                            to_raptor[raptor_id].append(task)
 
                     else:
                         # no raptor - schedule it here

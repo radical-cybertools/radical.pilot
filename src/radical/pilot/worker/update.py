@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import sys
 import time
 import pymongo
 
@@ -13,12 +12,6 @@ from ..   import utils     as rpu
 from ..   import constants as rpc
 
 from ..db import DBSession
-
-
-
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------

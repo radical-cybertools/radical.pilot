@@ -5,7 +5,6 @@ __license__   = 'MIT'
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
-import sys
 import copy
 import time
 
@@ -18,12 +17,9 @@ from ..          import states         as rps
 
 # ------------------------------------------------------------------------------
 #
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
-
-# ------------------------------------------------------------------------------
+# ZMQ subscriber threads will not survive a `fork`.  We register all components
+# for an at-fork hook to reset the list of subscribers, so that the subscriber
+# threads get re-created as needed in the new process.
 #
 _components = list()
 
@@ -56,6 +52,7 @@ class ComponentManager(object):
     #
     def __init__(self, cfg):
 
+        # register for at-fork hooks
         _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
