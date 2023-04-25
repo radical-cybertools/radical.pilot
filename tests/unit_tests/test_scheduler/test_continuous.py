@@ -71,9 +71,11 @@ class TestContinuous(TestCase):
     def test_scheduling(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
-        component._uid      = 'agent_scheduling.0002'
-        component._log      = ru.Logger('foo', targets=None, level='OFF')
-        component._prof     = mock.Mock()
+        component._uid  = 'agent_scheduling.0002'
+        component._log  = ru.Logger('foo', targets=None, level='OFF')
+        component._prof = mock.Mock()
+
+        component._log._debug_level = 0
 
         # test `_schedule_incoming` and `_schedule_waitpool`
 
