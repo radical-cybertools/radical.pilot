@@ -101,7 +101,7 @@ class TestBaseScheduling(TestCase):
         rpa_sb._debug = True
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._log = ru.Logger('foo', targets=None, level='DEBUG_5')
-        sched._log._debug_level = 3
+        sched._log._debug_level = 6
 
         for c in self._test_cases['slot_status']:
             sched.nodes = c['nodes']
@@ -127,7 +127,7 @@ class TestBaseScheduling(TestCase):
         component._prof       = mock.Mock()
         component._prof.prof  = mock.Mock(return_value=True)
 
-        component._log._debug_level = 3
+        component._log._debug_level = 6
 
         # FIXME: the try_allocation part in the test config has no results?
         for c in self._test_cases['try_allocation']:
