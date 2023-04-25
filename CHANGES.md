@@ -3,6 +3,60 @@
 For a list of open issues and known problems, see:
 https://github.com/radical-cybertools/radical.pilot/issues/
 
+1.33.0 Release                                                        2023-04-25
+--------------------------------------------------------------------------------
+  
+  - add a resource definition for rivanna at UVa.
+  - add documentation for missing properties
+  - add an exception for RAPTOR workers regarding GPU sharing
+  - add an exception in case GPU sharing is used in SRun or MPIRun LMs
+  - add configuration discovery for `gpus_per_node` (Slurm)
+  - add `PMI_ID` env variable (related to Hydra)
+  - add rank env variable for MPIExec LM
+  - add resource config for Frontier@OLCF
+  - add service task description verification
+  - add interactive config to UVA
+  - add raptor tasks to the API doc
+  - add rank documentation
+  - allow access to full node memory by default
+  - changed type for `task['resources']`, let RADICAL-Analytics to handle it
+  - changed type of `gpus_per_rank` attribute in `TaskDescription` (from `int` to `float`)
+  - enforce correct task mode for raptor master/workers
+  - ensure result_cb for executable tasks
+  - ensure `session._get_task_sandbox` for raptor tasks
+  - ensure that `wait_workers` raises RuntimeError during stop
+  - ensure worker termination on raptor shutdown
+  - fix CUDA env variable(s) setup for `pre_exec` (in POPEN executor)
+  - fix `gpu_map` in Scheduler and its usage
+  - fix ranks calculation
+  - fix slots estimation process
+  - fix tasks binding (e.g., bind task to a certain number of cores)
+  - fix the process of requesting a correct number of cores/gpus (in case of blocked cores/gpus)
+  - Fix path of task sandbox path
+  - fix wait_workers
+  - google style docstrings.
+  - use parameter `new_session_per_task` within resource description to control input parameter `start_new_session` in `subprocess.Popen`
+  - keep virtualenv as fallback if venv is missing
+  - let SRun LM to get info about GPUs from configured slots
+  - make slot dumps dependent on debug level
+  - master rpc handles stop request
+  - move from custom virtualenv version to `venv` module
+  - MPI worker sync
+  - Reading resources from created task description
+  - reconcile different worker submission paths
+  - recover bootstrap_0_stop event
+  - recover task description dump for raptor
+  - removed codecov from test requirements (codecov is represented by GitHub actions)
+  - removed `gpus_per_node` - let SAGA handle GPUs
+  - removed obsolete configs (FUNCS leftover)
+  - re-order worker initialization steps, time out on registration
+  - support sandboxes for raptor tasks
+  - sync JSRun LM options according to defined slots
+  - update JSRun LM according to GPU sharing
+  - update slots estimation and `core/gpu_map` creation
+  - worker state update cb
+  
+
 1.21.0 Release                                                        2023-02-01
 --------------------------------------------------------------------------------
   
