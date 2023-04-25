@@ -56,6 +56,7 @@ class LaunchMethod(object):
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
+
       # import pprint
       # self._log.debug('addr: %s', self._lm_cfg.reg_addr)
       # self._log.debug('name: %s', self.name)

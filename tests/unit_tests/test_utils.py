@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-import glob
 import os
+import glob
 import shutil
 
 from unittest import TestCase
@@ -13,12 +15,15 @@ import radical.pilot.utils.db_utils   as rpu_db
 import radical.pilot.utils.prof_utils as rpu_prof
 import radical.pilot.utils.misc       as rpu_misc
 
+base = os.path.abspath(os.path.dirname(__file__))
+
 
 # ------------------------------------------------------------------------------
 #
 class TestUtils(TestCase):
 
     _cleanup_files = []
+
 
     # --------------------------------------------------------------------------
     #
@@ -113,7 +118,7 @@ class TestUtils(TestCase):
         with self.assertRaises(AssertionError):
             rpu_db.get_session_docs('unknown_sid', db=None, cachedir=None)
 
-        sid = 'rp.session.test_rputils.0000'
+        sid = 'rp.session.test_rputils.0001'
         ru.rec_makedir(sid)
 
         session_json = {
@@ -147,6 +152,23 @@ class TestUtils(TestCase):
 
         # set dirs and files for cleanup
         self._cleanup_files.extend([sid, cache])
+
+    # --------------------------------------------------------------------------
+    #
+    def test_get_session_profile(self):
+
+        sid  = 'rp.session.0'
+        src  = '%s/test_cases/' % base
+        prof = rpu_prof.get_session_profile(sid, src)
+
+        found_bs0_stop = False
+        for event in prof[0]:
+            if event[1] == 'bootstrap_0_stop':
+                found_bs0_stop = True
+                break
+
+        assert found_bs0_stop
+
 
     # --------------------------------------------------------------------------
     #
@@ -211,7 +233,9 @@ if __name__ == '__main__':
     tc.test_convert_sdurations()
     tc.test_expand_sduration()
     tc.test_get_session_docs()
+    tc.test_get_session_profile()
     tc.test_resource_cfg()
+
 
 # ------------------------------------------------------------------------------
 

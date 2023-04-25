@@ -291,7 +291,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_rpc(self, pid, rpc, args=None):
+    def pilot_rpc(self, pid, tgt, rpc, args=None):
         '''
         Send am RPC command and arguments to a pilot and wait for the response.
         This is a synchronous operation at this point, and it is not thread safe
@@ -308,6 +308,7 @@ class DBSession(object):
             rpc_id  = ru.generate_id('rpc')
             rpc_req = {'uid' : rpc_id,
                        'rpc' : rpc,
+                       'tgt' : tgt,
                        'arg' : args}
 
             # send the request to the pilot - this replaces any former request

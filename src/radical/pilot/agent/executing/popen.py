@@ -8,7 +8,6 @@ import stat
 import time
 import queue
 import atexit
-import pprint
 import signal
 import threading  as mt
 import subprocess as sp
@@ -19,6 +18,8 @@ from ...  import states    as rps
 from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
+
+from ...task_description import RAPTOR_MASTER, RAPTOR_WORKER
 
 
 # ------------------------------------------------------------------------------
@@ -77,24 +78,6 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def control_cb(self, topic, msg):
-
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'cancel_tasks':
-
-            self._log.info('cancel_tasks command (%s)' % arg)
-            for tid in arg['uids']:
-                self.cancel_task(tid)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
     def cancel_task(self, uid):
 
         self._watch_queue.put([self.TO_CANCEL, uid])
@@ -104,7 +87,7 @@ class Popen(AgentExecutingComponent):
     #
     def work(self, tasks):
 
-        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
@@ -123,7 +106,7 @@ class Popen(AgentExecutingComponent):
 
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -244,6 +227,9 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
+        if td['mode'] in [RAPTOR_MASTER, RAPTOR_WORKER]:
+            ru.write_json('%s/%s.json' % (sbox, tid), td)
+
         with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
             tmp  = ''
@@ -345,15 +331,13 @@ class Popen(AgentExecutingComponent):
         os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
 
         # make sure the sandbox exists
-        slots_fname = '%s/%s.sl' % (sbox, tid)
-
-        with ru.ru_open(slots_fname, 'w') as fout:
-            fout.write('\n%s\n\n' % pprint.pformat(slots))
-
-        # make sure the sandbox exists
         self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
         self._prof.prof('task_mkdir_done', uid=tid)
+
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level >= 5:
+            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
@@ -486,7 +470,8 @@ class Popen(AgentExecutingComponent):
 
                     self._prof.prof('unschedule_start', uid=tid)
                     self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-                    self.advance(task, rps.CANCELED, publish=True, push=False)
+                    self.advance_tasks(task, rps.CANCELED, publish=True,
+                                                           push=False)
 
             else:
 
@@ -523,8 +508,8 @@ class Popen(AgentExecutingComponent):
                     # stdout/stderr
                     task['target_state'] = rps.DONE
 
-                self.advance(task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                   publish=True, push=True)
+                self.advance_tasks(task, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                         publish=True, push=True)
 
         return action
 
@@ -575,6 +560,7 @@ class Popen(AgentExecutingComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+      # ret += 'export RP_REGISTRY_URL="%s"\n'     % self.reg_addr
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
