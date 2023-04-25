@@ -4,12 +4,12 @@ import random
 
 import radical.pilot as rp
 
-RANKS = 1
+RANKS = 2
 
 
 # ------------------------------------------------------------------------------
 #
-class MyWorker(rp.raptor.DefaultWorker):
+class MyWorker(rp.raptor.MPIWorker):
     '''
     This class provides the required functionality to execute work requests.
     In this simple example, the worker only implements a single call: `hello`.
@@ -54,7 +54,7 @@ class MyWorker(rp.raptor.DefaultWorker):
 
         td = rp.TaskDescription({
                 'mode'            : rp.TASK_EXECUTABLE,
-                'scheduler'       : None,
+                'raptor_id'       : None,
                 'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
