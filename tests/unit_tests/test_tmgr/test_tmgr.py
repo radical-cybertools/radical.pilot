@@ -22,6 +22,23 @@ class TMGRTestCase(TestCase):
 
     # --------------------------------------------------------------------------
     #
+    class _DummyPilot(object):
+
+        def __init__(self, uid):
+            self._uid = uid
+
+        def attach_tmgr(self, foo):
+            pass
+
+        def as_dict(self):
+            return {'uid': self._uid}
+
+        def register_callback(self, cb):
+            pass
+
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(TaskManager, '__init__', return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_add_pilots(self, mocked_logger, mocked_init):
@@ -40,13 +57,13 @@ class TMGRTestCase(TestCase):
         component._log = mocked_logger
         component._pilots = {}
 
-        p_desc = {'uid': 'pilot.0000'}
-        component.add_pilots(p_desc)
-        self.assertEqual(component._pilots['pilot.0000'], p_desc)
+        dummy = self._DummyPilot('pilot.1234')
+        component.add_pilots(dummy)
+        self.assertEqual(component._pilots['pilot.1234'], dummy.as_dict())
         # self.assertEqual(global_pilots[0], result)
 
         with self.assertRaises(ValueError):
-            component.add_pilots(p_desc)
+            component.add_pilots(dummy)
 
     # --------------------------------------------------------------------------
     #

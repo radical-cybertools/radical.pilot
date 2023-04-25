@@ -77,6 +77,7 @@ class Pilot(object):
         self._callbacks  = dict()
         self._cache      = dict()    # cache of SAGA dir handles
         self._cb_lock    = ru.RLock()
+        self._tmgr       = None
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -172,7 +173,6 @@ class Pilot(object):
     # --------------------------------------------------------------------------
     #
     def _default_state_cb(self, pilot, state=None):
-
 
         uid   = self.uid
         state = self.state
@@ -573,6 +573,53 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def attach_tmgr(self, tmgr) -> None:
+
+        if self._tmgr:
+            raise RuntimeError('this pilot is already attached to %s'
+                               % self._tmgr.uid)
+        self._tmgr = tmgr
+
+      # if self._task_waitpool:
+      #     self._tmgr.submit_tasks(self._task_waitpool)
+      #
+      # if self._raptor_waitpool:
+      #     self._tmgr.submit_tasks(self._raptor_waitpool)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_tasks(self, descriptions):
+
+        for descr in descriptions:
+            descr.pilot = self.uid
+
+        if not self._tmgr:
+
+          # self._task_waitpool.append(descriptions)
+          # return  # FIXME: cannot return tasks here
+
+            raise RuntimeError('pilot is not attached to a task manager, yet')
+
+        return self._tmgr.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_raptors(self, descriptions):
+
+        if not self._tmgr:
+
+          # self._task_waitpool.append(descriptions)
+          # return  # FIXME: cannot return tasks here
+
+            raise RuntimeError('pilot is not attached to a task manager, yet')
+
+        return self._tmgr.submit_raptors(descriptions, self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def prepare_env(self, env_name, env_spec):
         """Prepare a virtual environment.
 
@@ -625,7 +672,7 @@ class Pilot(object):
         This is basically an RPC into the pilot.
         """
 
-        reply = self._session._dbs.pilot_rpc(self.uid, rpc, args)
+        reply = self._session._dbs.pilot_rpc(self.uid, self.uid, rpc, args)
 
         return reply
 

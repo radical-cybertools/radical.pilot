@@ -39,7 +39,7 @@ import radical.pilot as rp
 # For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
 logger = ru.Logger('raptor')
 PWD    = os.path.abspath(os.path.dirname(__file__))
-RANKS  = 1
+RANKS  = 2
 
 
 # ------------------------------------------------------------------------------
@@ -69,10 +69,9 @@ def func_non_mpi(a, sleep):
 # ------------------------------------------------------------------------------
 #
 def task_state_cb(task, state):
-    logger.info('task %s: %s', task['uid'], state)
+    logger.info('task %s: %s', task.uid, state)
     if state == rp.FAILED:
-        logger.info('task %s failed', task['uid'])
-        sys.exit()
+        logger.error('task %s failed', task.uid)
 
 
 # ------------------------------------------------------------------------------
@@ -144,6 +143,7 @@ if __name__ == '__main__':
         report.info('Call pilot.prepare_env()... ')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type' : 'venv',
+                                    'path' : '/tmp/ve3',
                                     'setup': [rp.sdist_path,
                                               ru.sdist_path,
                                               'mpi4py']})
@@ -164,6 +164,7 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
+            td.named_env      = 'rp'
             td.input_staging  = [{'source': '%s/raptor_master.py' % PWD,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,
@@ -200,7 +201,7 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exe.c.%06d' % i,
                 'mode'            : rp.TASK_EXECUTABLE,
-                'scheduler'       : None,
+                'raptor_id'       : None,
                 'ranks'           : RANKS,
                 'executable'      : '/bin/sh',
                 'arguments'       : ['-c',
@@ -217,46 +218,46 @@ if __name__ == '__main__':
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : 1,
                 'function'        : 'hello',
                 'kwargs'          : {'msg': 'task.call.c.1.%06d' % i},
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call_mpi.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : RANKS,
                 'function'        : 'hello_mpi',
                 'kwargs'          : {'msg': 'task.call.c.2.%06d' % i},
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.call.c.3.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'function'        : 'my_hello',
                 'kwargs'          : {'uid': 'task.call.c.3.%06d' % i},
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             bson = func_mpi(None, msg='task.call.c.%06d' % i, sleep=sleep)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.mpi_ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : RANKS,
                 'function'        : bson,
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             bson = func_non_mpi(i, sleep=sleep)
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.ser_func.c.%06d' % i,
               # 'timeout'         : 10,
-                'mode'            : rp.TASK_FUNCTION,
+                'mode'            : rp.TASK_FUNC,
                 'ranks'           : 1,
                 'function'        : bson,
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.eval.c.%06d' % i,
@@ -264,10 +265,10 @@ if __name__ == '__main__':
                 'mode'            : rp.TASK_EVAL,
                 'ranks'           : RANKS,
                 'code'            :
-                    'print("hello %%s/%%s: %%s [%%s]" %% (os.environ["RP_RANK"],'
-                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"],'
-                    'time.sleep(%d)))' % sleep,
-                'scheduler'       : master_ids[i % n_masters]}))
+                    'print("hello %%s/%%s: %%s" %% (os.environ["RP_RANK"],'
+                    'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"])) and '
+                    'time.sleep(%d)' % sleep,
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.exec.c.%06d' % i,
@@ -278,7 +279,7 @@ if __name__ == '__main__':
                     'import time\ntime.sleep(%d)\n' % sleep +
                     'import os\nprint("hello %s/%s: %s" % (os.environ["RP_RANK"],'
                     'os.environ["RP_RANKS"], os.environ["RP_TASK_ID"]))',
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.proc.c.%06d' % i,
@@ -290,7 +291,7 @@ if __name__ == '__main__':
                                      'sleep %d; ' % sleep +
                                      'echo "hello $RP_RANK/$RP_RANKS: '
                                            '$RP_TASK_ID"'],
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
             tds.append(rp.TaskDescription({
                 'uid'             : 'task.shell.c.%06d' % i,
@@ -299,14 +300,14 @@ if __name__ == '__main__':
                 'ranks'           : RANKS,
                 'command'         : 'sleep %d; ' % sleep +
                                     'echo "hello $RP_RANK/$RP_RANKS: $RP_TASK_ID"',
-                'scheduler'       : master_ids[i % n_masters]}))
+                'raptor_id'       : master_ids[i % n_masters]}))
 
         if len(tds) > 0:
             report.info('Submit tasks %s.\n' % str([t.uid for t in tds]))
             tasks = tmgr.submit_tasks(tds)
 
             logger.info('Wait for tasks %s', [t.uid for t in tds])
-            tmgr.wait_tasks(uids=[t.uid for t in tasks])
+            tmgr.wait_tasks(uids=[t.uid for t in tasks], timeout=300)
 
             for task in tasks:
                 report.info('id: %s [%s]:\n    out: %s\n    ret: %s\n'

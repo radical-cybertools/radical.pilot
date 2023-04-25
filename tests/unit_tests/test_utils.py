@@ -113,7 +113,7 @@ class TestUtils(TestCase):
         with self.assertRaises(AssertionError):
             rpu_db.get_session_docs('unknown_sid', db=None, cachedir=None)
 
-        sid = 'rp.session.test_rputils.0000'
+        sid = 'rp.session.test_rputils.0001'
         ru.rec_makedir(sid)
 
         session_json = {
