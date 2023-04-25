@@ -260,6 +260,7 @@ setup_args = {
                             'bin/radical-pilot-inspect',
                             'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',
+                            'bin/radical-pilot-raptor-master',
                             'bin/radical-pilot-raptor-worker',
                             'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',

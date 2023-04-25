@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2016, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+import sys
+
+import radical.utils as ru
+import radical.pilot as rp
+
+
+# ------------------------------------------------------------------------------
+#
+def run(fpath, cname):
+
+    # load master class from fname if that is a valid string
+    cls = None
+
+    # Create the master class and run it's work loop.
+    if fpath:
+        cls = ru.load_class(fpath, cname, rp.raptor.Master)
+
+    else:
+        if cname == 'Master': cls = rp.raptor.Master
+
+    if not cls:
+        raise RuntimeError('no master [%s] [%s]' % (cname, fpath))
+
+    master = cls()
+    master.start()
+
+    ret = master.join()
+    sys.exit(ret)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    # FIXME: daemonization a'la component
+
+    if len(sys.argv) < 2:
+        raise ValueError('missing parameter: master file path')
+
+    if len(sys.argv) < 3:
+        raise ValueError('missing parameter: master class name')
+
+    run(sys.argv[1], sys.argv[2])
+
+
+# ------------------------------------------------------------------------------
+

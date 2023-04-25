@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# pylint: disable=unused-argument, no-value-for-parameter
+
 import os
 import time
 
@@ -14,7 +16,17 @@ import radical.pilot as rp
 #
 class TestWorker(TestCase):
 
-    def test_alloc(self):
+    def read_json_side_effect(self, fname=None):
+        return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+
+
+    @mock.patch('radical.utils.zmq.Subscriber')
+    @mock.patch('radical.utils.zmq.Publisher')
+    @mock.patch('radical.utils.zmq.Putter')
+    @mock.patch('radical.utils.read_json', side_effect=read_json_side_effect)
+    @mock.patch('threading.Event')
+    @mock.patch('threading.Thread')
+    def test_alloc(self, mock_1, mock_2, mock_3, mock_4, mock_5, mock_6):
 
         cfg = ru.Config(cfg={'uid'           : 'worker.0000',
                              'sid'           : str(time.time()),
@@ -22,21 +34,29 @@ class TestWorker(TestCase):
                              'cores_per_rank': 8,
                              'gpus_per_rank' : 2})
 
+        ru.zmq.Subscriber = mock.Mock()
+        ru.zmq.Publisher  = mock.Mock()
+        ru.zmq.Putter     = mock.Mock()
+
         rp.utils.Component.register_subscriber = mock.Mock()
         rp.utils.Component.register_publisher  = mock.Mock()
 
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
 
+        rp.raptor.Worker.publish       = mock.Mock()
+        rp.raptor.Worker._ts_addr      = 'tcp://localhost:1'
+        rp.raptor.Worker._res_addr_put = 'tcp://localhost:2'
+        rp.raptor.Worker._req_addr_get = 'tcp://localhost:3'
+
         os.environ['RP_TASK_ID']       = 'task.000000'
         os.environ['RP_TASK_SANDBOX']  = '/tmp'
         os.environ['RP_PILOT_SANDBOX'] = '/tmp'
+        os.environ['RP_RANKS']         = str(8)
 
         with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
             fout.write('{"sub": "tcp://localhost:10000", '
                        ' "pub": "tcp://localhost:10001"}\n')
-
-        rp.raptor.Worker.publish = mock.Mock()
 
         worker = rp.raptor.DefaultWorker(cfg)
 
