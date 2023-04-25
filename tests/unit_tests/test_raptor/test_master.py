@@ -67,23 +67,25 @@ class RaptorMasterTC(TestCase):
         raptor_master._log.debug.side_effect = _log_debug
 
         raptor_master._lock    = mt.Lock()
+        raptor_master._term    = mt.Event()
         raptor_master._workers = {
             'w.0000': {'status': Master.NEW},
             'w.0001': {'status': Master.NEW}
         }
 
-        def _set_workers_done(master_obj):
+        def _set_workers_active(master_obj):
             while True:
                 time.sleep(3)
                 with master_obj._lock:
                     for uid in master_obj._workers:
-                        master_obj._workers[uid]['status'] = Master.DONE
+                        master_obj._workers[uid]['status'] = Master.ACTIVE
                 break
 
-        _thread = mt.Thread(target=_set_workers_done, args=(raptor_master,))
+        _thread = mt.Thread(target=_set_workers_active, args=(raptor_master,))
+        _thread.daemon = True
         _thread.start()
 
-        raptor_master.wait()
+        raptor_master.wait_workers()
         self.assertTrue(log_debug_messages.endswith('wait ok'))
 
         _thread.join()
@@ -188,9 +190,12 @@ class RaptorMasterTC(TestCase):
         raptor_master._info         = mock.Mock()
         raptor_master._task_service = mock.Mock()
 
+        td = rp.TaskDescription({'gpus_per_rank': 1.5,
+                                 'mode': rp.RAPTOR_WORKER})
+
+        # raise an exception in case of shared GPU(s)
         with self.assertRaises(RuntimeError):
-            # raise an exception in case of shared GPU(s)
-            raptor_master.submit_workers({'gpus_per_rank': 1.5}, 1)
+            raptor_master.submit_workers([td])
 
 
 # ------------------------------------------------------------------------------
