@@ -9,7 +9,8 @@ import radical.utils as ru
 # task modes
 TASK_EXECUTABLE  = 'task.executable'
 TASK_FUNCTION    = 'task.function'
-TASK_METHOD      = 'task.method'
+TASK_FUNC        = 'task.function'
+TASK_METHOD      = 'task.function'
 TASK_EVAL        = 'task.eval'
 TASK_EXEC        = 'task.exec'
 TASK_PROC        = 'task.proc'
@@ -32,7 +33,7 @@ METHOD           = 'method'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
 
-# mode: TASK_FUNCTION
+# mode: TASK_FUNC
 FUNCTION         = 'function'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
@@ -42,6 +43,14 @@ CODE             = 'code'
 
 # mode: TASK_PROC, TASK_SHELL
 COMMAND          = 'command'
+
+# mode: RAPTOR_MASTER, RAPTOR_WORKER
+SCHEDULER        = 'scheduler'                # deprecated for `raptor_id`
+RAPTOR_ID        = 'raptor_id'
+WORKER_CLASS     = 'worker_class'             # deprecated for raptor_class
+RAPTOR_CLASS     = 'raptor_class'
+WORKER_FILE      = 'worker_file'              # deprecated for raptor_file
+RAPTOR_FILE      = 'raptor_file'
 
 # environment
 ENVIRONMENT      = 'environment'
@@ -86,7 +95,6 @@ PILOT            = 'pilot'
 STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
-SCHEDULER        = 'scheduler'
 TAGS             = 'tags'
 METADATA         = 'metadata'
 
@@ -101,16 +109,14 @@ class TaskDescription(ru.TypedDict):
     :func:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
     a new task.
 
-    Note:
-        A TaskDescription **MUST** define at least an
-        *executable* -- all other elements are optional.
-
     Attributes:
         uid (str, optional): A unique ID for the task. This attribute
             is optional, a unique ID will be assigned by RP if the field is not set.
+
         name (str, optional): A descriptive name for the task. This
             attribute can be used to map individual tasks back to application level
             workloads.
+
         mode (str, optional): The execution mode to be used for
             this task. Default "executable". The following modes are accepted.
 
@@ -150,15 +156,17 @@ class TaskDescription(ru.TypedDict):
               - required attributes: `executable`
               - related  attributes: `arguments`
 
-            - TASK_RAPTOR_MASTER: the task references a raptor master to be instantiated.
+            - TASK_RAPTOR_MASTER: the task references a raptor master to be
+                  instantiated.
 
-              - required attributes: `executable`
-              - related  attributes: `arguments`
+              - related  attributes: `raptor_file`
+              - related  attributes: `raptor_class`
 
-            - TASK_RAPTOR_WORKER: the task references a raptor worker to be instantiated.
+            - TASK_RAPTOR_WORKER: the task references a raptor worker to be
+                  instantiated.
 
-              - required attributes: `executable`
-              - related  attributes: `arguments`
+              - related  attributes: `raptor_file`
+              - related  attributes: `raptor_class`
 
             There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
             and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
@@ -173,47 +181,60 @@ class TaskDescription(ru.TypedDict):
             that define RAPTOR's master(s) and worker(s) components and their
             resource requirements. They are launched by the Agent on one or more
             nodes, depending on their requirements.
+
         executable (str): The executable to launch. The executable is
             expected to be either available via ``$PATH`` on the target resource,
             or to be an absolute path.
+
         arguments (list[str]): The command line arguments for the given
             `executable` (`list` of `strings`).
+
         code (str): The code to run.  This field is expected to contain valid
             python code which is executed when the task mode is
             `TASK_EXEC` or `TASK_EVAL`.
+
         function (str): The function to run.  This field is expected to contain
             a python function name which can be resolved in the
             scope of the respective RP worker implementation (see documentation
             there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
             `kwargs` are passed as function parameters.
+
         args (list, optional): Positional arguments to be passed to the `function`
             (see above).  This field will be serialized  with `msgpack`
             and can thus contain any serializable data types.
+
         kwargs (dict, optional): Named arguments to be passed to the `function`
             (see above).  This field will be serialized  with `msgpack`
             and can thus contain any serializable data types.
+
         command (str): A shell command to be executed. This attribute is used
             for the `TASK_SHELL` mode.
+
         ranks (int, optional): The number of application processes to start
             on CPU cores. Default 1.
 
             For two ranks or more, an MPI communicator will be available to the
             processes.
 
-            `ranks` replaces the deprecated attribute `cpu_processes`.  The attribute
-            `cpu_process_type` was previously used to signal the need for an MPI
-            communicator - that attribute is now also deprecated and will be ignored.
-        cores_per_rank (int, optional): The number of cpu cores each process will
-            have available to start its own threads or processes on.  By default,
-            `core` refers to a physical CPU core - but if the pilot has been
-            launched with SMT-settings > 1, `core` will refer to a virtual core or
-            hyperthread instead (the name depends on the CPU vendor).
+            `ranks` replaces the deprecated attribute `cpu_processes`.  The
+            attribute `cpu_process_type` was previously used to signal the need
+            for an MPI communicator - that attribute is now also deprecated and
+            will be ignored.
+
+        cores_per_rank (int, optional): The number of cpu cores each process
+            will have available to start its own threads or processes on.  By
+            default, `core` refers to a physical CPU core - but if the pilot has
+            been launched with SMT-settings > 1, `core` will refer to a virtual
+            core or hyperthread instead (the name depends on the CPU vendor).
 
             `cores_per_rank` replaces the deprecated attribute `cpu_threads`.
+
         threading_type (str, optional): The thread type, influences startup and
             environment (`<empty>/POSIX`, `OpenMP`).
 
-            `threading_type` replaces the deprecated attribute `cpu_thread_type`.
+            `threading_type` replaces the deprecated attribute
+            `cpu_thread_type`.
+
         gpus_per_rank (float, optional): The number of gpus made available to
             each rank. If gpu is shared among several ranks, then a fraction of
             gpu should be provided (e.g., 2 ranks share a GPU, then
@@ -222,40 +243,52 @@ class TaskDescription(ru.TypedDict):
             `gpus_per_rank` replaces the deprecated attribute `gpu_processes`.
             The attributes `gpu_threads` and `gpu_process_type` are also
             deprecated and will be ignored.
+
         gpu_type (str, optional): The type of GPU environment to provide to
             the ranks (`<empty>`, `CUDA`, `ROCm`).
 
             `gpu_type` replaces the deprecated attribute `gpu_thread_type`.
+
         lfs_per_rank (int, optional): Local File Storage per rank - amount of
             data (MB) required on the local file system of the node.
 
             `lfs_per_rank` replaces the deprecated attribute `lfs_per_process`.
+
         mem_per_rank (int, optional): Amount of physical memory required per
             rank.
 
             `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
+
         environment (dict, optional): Environment variables to set in the
             environment before the execution (launching picked `LaunchMethod`).
+
         named_env (str, optional): A named virtual environment as prepared by
             the pilot. The task will remain in `AGENT_SCHEDULING` state until
             that environment gets created.
+
         sandbox (str, optional): This specifies the working directory of the
             task.  It will be created if it does not exist. By default, the
             sandbox has the name of the task's uid and is relative to the
             pilot's sandbox.
+
         stdout (str, optional): The name of the file to store stdout. If
             not set then :file:`{uid}.out` will be used.
+
         stderr (str, optional): The name of the file to store stderr. If
             not set then :file:`{uid}.err` will be used.
+
         input_staging (list, optional): The files that need to be staged before
             the execution (`list` of `staging directives`, see below).
+
         output_staging (list, optional): The files that need to be staged after
             the execution (`list` of `staging directives`, see below).
+
         stage_on_error (bool, optional): Output staging is normally skipped on
             `FAILED` or `CANCELED` tasks, but if this flag is set, staging is
             attempted either way. This may though lead to additional errors if
             the tasks did not manage to produce the expected output files to
             stage. Default False.
+
         pre_launch (list, optional): Actions (shell commands) to perform
             before launching (i.e., before LaunchMethod is submitted), potentially
             on a batch node which is different from the node the task is placed on.
@@ -265,16 +298,19 @@ class TaskDescription(ru.TypedDict):
             expected to consume any significant amount of CPU time or other
             resources! Deviating from that rule will likely result in reduced
             overall throughput.
+
         post_launch (list, optional): Actions (shell commands) to perform
             after launching (i.e., after LaunchMethod is executed).
 
             Precautions are the same as for `pre_launch` actions.
+
         pre_exec (list, optional): Actions (shell commands) to perform
-            before the task starts (LaunchMethod is submitted, but no actual task
-            running yet). Each item could be either a string (`str`), which
+            before the task starts (LaunchMethod is submitted, but no actual
+            task running yet). Each item could be either a string (`str`), which
             represents an action applied to all ranks, or a dictionary (`dict`),
-            which represents a list of actions applied to specified ranks (key is a
-            rankID and value is a list of actions to be performed for this rank).
+            which represents a list of actions applied to specified ranks (key
+            is a rankID and value is a list of actions to be performed for this
+            rank).
 
             The actions/commands are executed on the respective nodes where the
             ranks are placed, and the actual rank startup will be delayed until
@@ -292,29 +328,54 @@ class TaskDescription(ru.TypedDict):
             Errors in executing these commands will result in the task to enter
             `FAILED` state, and no execution of the actual workload will be
             attempted.
+
         pre_exec_sync (bool, optional): Flag indicates necessary to sync ranks
             execution, which enforce to delay individual rank execution, until
             all `pre_exec` actions for all ranks are completed. Default False.
+
         post_exec (list, optional): Actions (shell commands) to perform
             after the task finishes. The same remarks as on `pre_exec` apply,
-            inclusive the point on error handling, which again will cause the task
-            to fail, even if the actual execution was successful.
+            inclusive the point on error handling, which again will cause the
+            task to fail, even if the actual execution was successful.
+
         restartable (bool, optional): If the task starts to execute on a pilot,
             but cannot finish because the pilot fails or is canceled, the task
             can be restarted. Default False.
+
         scheduler (str, optional): Request the task to be handled by a
             specific agent scheduler.
+
         tags (dict, optional): Configuration specific tags, which
             influence task scheduling and execution (e.g., tasks co-location).
+
+        scheduler (str, optional): deprecated in favor of `raptor_id`.
+
+        raptor_id (str, optional): Raptor master ID this task is associated
+            with.
+
+        worker_class (str, optional): deprecated in favor of `raptor_class`
+            master or worker task.
+
+        raptor_class (str, optional): Class name to instantiate for this Raptor
+            master or worker task.
+
+        worker_file (str, optional): deprecated in favor of `raptor_class`.
+
+        raptor_file (str, optional): Optional application supplied Python
+            source file to load `raptor_class` from.
+
         metadata (Any, optional): User defined metadata. Default None.
+
         timeout (float, optional): Any timeout larger than 0 will result in
             the task process to be killed after the specified amount of seconds.
             The task will then end up in `CANCELED` state.
+
         cleanup (bool, optional): If cleanup flag is set, the pilot will
             delete the entire task sandbox upon termination. This includes all
-            generated output data in that sandbox. Output staging will be performed
-            before cleanup. Note that task sandboxes are also deleted if the pilot's
-            own `cleanup` flag is set. Default False.
+            generated output data in that sandbox. Output staging will be
+            performed before cleanup. Note that task sandboxes are also deleted
+            if the pilot's own `cleanup` flag is set. Default False.
+
         pilot (str, optional): Pilot `uid`. If specified, the task is
             submitted to the pilot with the given ID. If that pilot is not known to
             the TaskManager, an exception is raised.
@@ -488,10 +549,15 @@ class TaskDescription(ru.TypedDict):
         GPU_THREAD_TYPE : str         ,  # n/a
         LFS_PER_PROCESS : int         ,  # LFS_PER_RANK
         MEM_PER_PROCESS : int         ,  # MEM_PER_RANK
+        SCHEDULER       : str         ,  # RAPTOR_ID
+        WORKER_FILE     : str         ,  # RAPTOR_FILE
+        WORKER_CLASS    : str         ,  # RAPTOR_CLASS
 
         RESTARTABLE     : bool        ,
-        SCHEDULER       : str         ,
         TAGS            : {None: None},
+        RAPTOR_ID       : str         ,
+        RAPTOR_FILE     : str         ,
+        RAPTOR_CLASS    : str         ,
         METADATA        : None        ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
@@ -501,7 +567,7 @@ class TaskDescription(ru.TypedDict):
     _defaults = {
         UID             : ''          ,
         NAME            : ''          ,
-        MODE            : None        ,
+        MODE            : TASK_EXECUTABLE,
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
         CODE            : ''          ,
@@ -543,10 +609,15 @@ class TaskDescription(ru.TypedDict):
         GPU_THREAD_TYPE : ''          ,
         LFS_PER_PROCESS : 0           ,
         MEM_PER_PROCESS : 0           ,
+        SCHEDULER       : ''          ,
+        WORKER_FILE     : ''          ,
+        WORKER_CLASS    : ''          ,
 
         RESTARTABLE     : False       ,
-        SCHEDULER       : ''          ,
         TAGS            : dict()      ,
+        RAPTOR_ID       : ''          ,
+        RAPTOR_FILE     : ''          ,
+        RAPTOR_CLASS    : ''          ,
         METADATA        : None        ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
@@ -568,30 +639,30 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, RAPTOR_MASTER, RAPTOR_WORKER,
-                         AGENT_SERVICE]:
+        if self.mode in [TASK_EXECUTABLE, AGENT_SERVICE]:
             if not self.get('executable'):
-                raise ValueError("TASK_EXECUTABLE Task needs 'executable'")
+                umode = self.mode.upper().replace('.', '_')
+                raise ValueError("%s Task mode needs 'executable'" % umode)
 
-        elif self.mode == TASK_FUNCTION:
+        elif self.mode == TASK_FUNC:
             if not self.get('function'):
-                raise ValueError("TASK_FUNCTION Task needs 'function'")
+                raise ValueError("TASK_FUNC Task mode needs 'function'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
-                raise ValueError("TASK_PROC Task needs 'executable'")
+                raise ValueError("TASK_PROC Task mode needs 'executable'")
 
         elif self.mode == TASK_EVAL:
             if not self.get('code'):
-                raise ValueError("TASK_EVAL Task needs 'code'")
+                raise ValueError("TASK_EVAL Task mode needs 'code'")
 
         elif self.mode == TASK_EXEC:
             if not self.get('code'):
-                raise ValueError("TASK_EXEC Task needs 'code'")
+                raise ValueError("TASK_EXEC Task mode needs 'code'")
 
         elif self.mode == TASK_SHELL:
             if not self.get('command'):
-                raise ValueError("TASK_SHELL Task needs 'command'")
+                raise ValueError("TASK_SHELL Task mode needs 'command'")
 
         # backward compatibility for deprecated attributes
         if self.cpu_processes:
@@ -621,6 +692,18 @@ class TaskDescription(ru.TypedDict):
         if self.mem_per_process:
             self.mem_per_rank = self.mem_per_process
             self.mem_per_process = 0
+
+        if self.scheduler:
+            self.raptor_id = self.scheduler
+            self.scheduler = ''
+
+        if self.worker_file:
+            self.raptor_file = self.worker_file
+            self.worker_file = ''
+
+        if self.worker_class:
+            self.raptor_class = self.worker_class
+            self.raptor_class = ''
 
         # deprecated and ignored
         if self.cpu_process_type: pass
