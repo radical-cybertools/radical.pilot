@@ -64,7 +64,7 @@ Install RADICAL-Pilot after activating a corresponding virtual environment.
 MongoDB
 -------
 
-MongoDB service is **not** provided by NCSA, thus, you have to use either your
+MongoDB service is **not** provided by UVA, thus, you have to use either your
 running instance of MongoDB service or contact the RADICAL team for a support.
 
 RADICAL-Pilot will connect to the MongoDB instance using a corresponding URL.
