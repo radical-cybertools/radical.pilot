@@ -1,6 +1,6 @@
-============
-UV Rivanna
-============
+====================
+Rivanna (UVA)
+====================
 
 Platform user guide
 ===================
@@ -13,35 +13,35 @@ General description
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
 
-  * ``uv.rivanna`` - ``MPIRUN``
+  * ``uva.rivanna*`` - ``MPIRUN``
 
-* Configuration per node (603 nodes in total)
+* Configuration per node (per platform ID)
 
-  * 32 CPU cores
+  * ``uva.standard`` (1 node)
 
-    * Each core has 2 threads (``SMT=2``)
+    * 40 CPU cores (1 thread per core)
+    * 375GB GiB of memory
 
-  * 4 GPUs
-  * 512 GiB of memory
+  * ``uva.parallel`` (25 nodes)
 
-.. note::
+    * 40 CPU cores (1 thread per core)
+    * 375GB GiB of memory
 
-   RADICAL-Pilot provides a possibility to manage the ``-l`` option (resource
-   selection qualifier) for ``SLURM`` and sets the default values in a
-   corresponding configuration file. For the cases, when it is needed to have a
-   different setup, please, follow these steps:
+  * ``uva.largemem`` (1 node)
 
-   .. code-block:: bash
+    * 10 CPU cores (1 thread per core)
+    * 975 GiB of memory
 
-      mkdir -p ~/.radical/pilot/configs
-      cat > ~/.radical/pilot/configs/resource_uv.json <<EOF
-      {
-          "polaris": {
-              "system_architecture": {"options": ["filesystems=grand:home",
-                                                  "place=scatter"]}
-          }
-      }
-      EOF
+  * ``uva.dev`` (2 nodes)
+
+    * 4 CPU cores (1 thread per core)
+    * 36 GiB of memory
+
+  * ``uva.gpu`` (4 nodes)
+
+    * 10 CPU cores (1 thread per core)
+    * 16 GPUs NVIDIA(RTX2080Ti, RTX3090, K80, P100, V100, and A100)
+    * 375 GiB of memory
 
 Setup execution environment
 ===========================
@@ -49,139 +49,52 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** ``venv``
+**virtual environment with** ``venv`` (virtual environment with ``conda`` is
+not provided by the system)
 
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
+   module load python
    python3 -m venv ve.rp
    source ve.rp/bin/activate
-
-**virtual environment with** ``conda``
-
-.. code-block:: bash
-
-   module load conda; conda activate
-   conda create -y -n ve.rp python=3.9
-   # OR clone base environment
-   #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
 
 Install RADICAL-Pilot after activating a corresponding virtual environment.
 
 MongoDB
 -------
 
-Local installation
-^^^^^^^^^^^^^^^^^^
+MongoDB service is **not** provided by NCSA, thus, you have to use either your
+running instance of MongoDB service or contact the RADICAL team for a support.
 
-If MongoDB was already setup and initialized then just run its instance
-(see `Run MongoDB instance <#run-mongodb-instance>`_ subsection).
-
-.. code-block:: bash
-
-   cd $HOME
-   wget https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-suse15-4.4.0.tgz
-   tar -zxf mongodb-linux-x86_64-enterprise-suse15-4.4.0.tgz
-   mv mongodb-linux-x86_64-enterprise-suse15-4.4.0 mongo
-   mkdir -p mongo/data mongo/etc mongo/var/log mongo/var/run
-   touch mongo/var/log/mongodb.log
-
-Config setup
-^^^^^^^^^^^^
-
-Description of the MongoDB setup is provided in this
-`user guide <https://docs.alcf.anl.gov/theta/data-science-workflows/mongo-db/>`_,
-which is the same for all ALCF platforms.
+RADICAL-Pilot will connect to the MongoDB instance using a corresponding URL.
 
 .. code-block:: bash
 
-   cat > mongo/etc/mongodb.polaris.conf <<EOF
-
-   processManagement:
-     fork: true
-     pidFilePath: $HOME/mongo/var/run/mongod.pid
-
-   storage:
-     dbPath: $HOME/mongo/data
-
-   systemLog:
-     destination: file
-     path: $HOME/mongo/var/log/mongodb.log
-     logAppend: true
-
-   net:
-     bindIp: 0.0.0.0
-     port: 54937
-   EOF
-
-*"Each server instance of MongoDB should have a unique port number, and this
-should be changed to a sensible number"*, then assigned port is
-``54937``, which is a random number.
-
-Run MongoDB instance
-^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-   # launch the server
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf
-   # shutdown the server
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf --shutdown
-
-.. warning::
-
-   The instance of MongoDB runs on a login node. Please, make sure to terminate
-   it after every run.
-
-MongoDB initialization
-^^^^^^^^^^^^^^^^^^^^^^
-
-Initialization of the MongoDB instance should be done **ONLY** once, thus if a
-corresponding instance is already running, then it means that this step was
-completed.
-
-.. code-block:: bash
-
-   $HOME/mongo/bin/mongo --host `hostname -f` --port 54937
-    > use rct_db
-    > db.createUser({user: "rct", pwd: "jdWeRT634k", roles: ["readWrite"]})
-    > exit
-
-RADICAL-Pilot will connect to the MongoDB instance using the following URL.
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
+   export RADICAL_PILOT_DBURL="<mongodb_url>"
 
 Launching script example
-===============================
+========================
 
 Launching script (e.g., ``rp_launcher.sh``) for the RADICAL-Pilot application
 includes setup processes to activate a certain execution environment and
-launching command for the application itself. In this example we use virtual
-environment with ``conda``.
+launching command for the application itself.
 
 .. code-block:: bash
 
    #!/bin/sh
 
    # - pre run -
-   module load conda
-   eval "$(conda shell.posix hook)"
-   conda activate ve.rp
+   module load python
+   source ve.rp/bin/activate
 
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf
-
-   export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
+   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
 
    # - run -
    python <rp_application>
-
-   # - post run -
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf --shutdown
 
 Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 
@@ -190,3 +103,10 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
    nohup ./rp_launcher.sh > OUTPUT 2>&1 </dev/null &
    # check the status of the script running:
    #   jobs -l
+
+=====
+
+.. note::
+
+   If you find any inaccuracy in this description, please, report back to us
+   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
