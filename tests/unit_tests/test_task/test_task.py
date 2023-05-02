@@ -69,6 +69,15 @@ class TestTask(TestCase):
 
         self.assertFalse(td.pre_exec_sync)
 
+        td = rp.TaskDescription({'executable': 'true'})
+        td.verify()
+        self.assertEqual(td.use_mpi, True)
+
+        td = rp.TaskDescription({'ranks'     : 2,
+                                 'executable': 'true'})
+        td.verify()
+        self.assertEqual(td.use_mpi, True)
+
 
 # ------------------------------------------------------------------------------
 #
