@@ -211,9 +211,10 @@ class TaskDescription(ru.TypedDict):
         command (str): A shell command to be executed. This attribute is used
             for the `TASK_SHELL` mode.
 
-        use_mpit (bool, optional): flag if the task should be provided an MPI
-            communicator.  Defaults to `True` if more than ` rank is requested
-            (see `ranks`), otherwise defaults to `False`.
+        use_mpi (bool, optional): flag if the task should be provided an MPI
+            communicator.  Defaults to `True` if more than 1 rank is requested
+            (see `ranks`), otherwise defaults to `False`.  Set this to `True`
+            if you want to enfoce an MPI communicator on single-ranked tasks.
 
         ranks (int, optional): The number of application processes to start
             on CPU cores. Default 1.
@@ -713,7 +714,7 @@ class TaskDescription(ru.TypedDict):
             self.raptor_class = ''
 
         if self.use_mpi is None:
-            self.use_mpi = bool(self.ranks)
+            self.use_mpi = bool(self.ranks - 1)
 
         # deprecated and ignored
         if self.cpu_process_type: pass

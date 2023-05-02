@@ -71,12 +71,11 @@ class TestTask(TestCase):
 
         td = rp.TaskDescription({'executable': 'true'})
         td.verify()
-        self.assertEqual(td.use_mpi, True)
+        self.assertFalse(td.use_mpi)
 
-        td = rp.TaskDescription({'ranks'     : 2,
-                                 'executable': 'true'})
+        td = rp.TaskDescription({'ranks': 2, 'executable': 'true'})
         td.verify()
-        self.assertEqual(td.use_mpi, True)
+        self.assertTrue(td.use_mpi)
 
 
 # ------------------------------------------------------------------------------
