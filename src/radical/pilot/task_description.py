@@ -58,6 +58,7 @@ NAMED_ENV        = 'named_env'
 SANDBOX          = 'sandbox'
 
 # resource requirements
+USE_MPI          = 'use_mpi'                  # default `True if RANKS > 1`
 RANKS            = 'ranks'                    # ranks
 CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
 GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
@@ -209,6 +210,11 @@ class TaskDescription(ru.TypedDict):
 
         command (str): A shell command to be executed. This attribute is used
             for the `TASK_SHELL` mode.
+
+        use_mpi (bool, optional): flag if the task should be provided an MPI
+            communicator.  Defaults to `True` if more than 1 rank is requested
+            (see `ranks`), otherwise defaults to `False`.  Set this to `True`
+            if you want to enfoce an MPI communicator on single-ranked tasks.
 
         ranks (int, optional): The number of application processes to start
             on CPU cores. Default 1.
@@ -530,6 +536,7 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
 
+        USE_MPI         : bool        ,
         RANKS           : int         ,
         CORES_PER_RANK  : int         ,
         GPUS_PER_RANK   : float       ,
@@ -590,6 +597,7 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
 
+        USE_MPI         : None        ,
         RANKS           : 1           ,
         CORES_PER_RANK  : 1           ,
         GPUS_PER_RANK   : 0.          ,
@@ -704,6 +712,9 @@ class TaskDescription(ru.TypedDict):
         if self.worker_class:
             self.raptor_class = self.worker_class
             self.raptor_class = ''
+
+        if self.use_mpi is None:
+            self.use_mpi = bool(self.ranks - 1)
 
         # deprecated and ignored
         if self.cpu_process_type: pass
