@@ -50,9 +50,14 @@ class TestRSH(TestCase):
 
         lm_rsh = RSH('', {}, None, None, None)
         self.assertTrue(lm_rsh.can_launch(
-            task={'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+            task={'description': {'use_mpi': False},
+                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
         self.assertFalse(lm_rsh.can_launch(
-            task={'slots': {'ranks': [{'node_id': '00001'},
+            task={'description': {'use_mpi': True},
+                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+        self.assertFalse(lm_rsh.can_launch(
+            task={'description': {'use_mpi': False},
+                  'slots': {'ranks': [{'node_id': '00001'},
                                       {'node_id': '00002'}]}})[0])
 
     # --------------------------------------------------------------------------
