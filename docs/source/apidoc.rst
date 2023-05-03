@@ -64,6 +64,13 @@ Task
 .. autoclass:: radical.pilot.Task
    :members:
 
+Raptor
+------
+.. autoclass:: radical.pilot.raptor.Master
+   :members:
+.. autoclass:: radical.pilot.raptor.Worker
+   :members:
+
 Utilities and helpers
 ---------------------
 .. automodule:: radical.pilot.utils.component

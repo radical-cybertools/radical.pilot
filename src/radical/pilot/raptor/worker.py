@@ -228,6 +228,8 @@ class Worker(object):
     # --------------------------------------------------------------------------
     #
     def start(self):
+        '''Start the workers main work loop.
+        '''
 
         raise NotImplementedError('`start()` must be implemented by child class')
 
@@ -235,6 +237,8 @@ class Worker(object):
     # --------------------------------------------------------------------------
     #
     def stop(self):
+        '''Signal the workers to stop the main work loop.
+        '''
 
         raise NotImplementedError('`stop()` must be implemented by child class')
 
@@ -242,6 +246,8 @@ class Worker(object):
     # --------------------------------------------------------------------------
     #
     def join(self):
+        '''Wait until the worker's main work loop completed.
+        '''
 
         raise NotImplementedError('`join()` must be implemented by child class')
 
@@ -249,6 +255,8 @@ class Worker(object):
     # --------------------------------------------------------------------------
     #
     def register_mode(self, name, dispatcher):
+        '''Register a new task execution mode that this worker can handle.
+        '''
 
         if name in self._modes:
             raise ValueError('mode %s already registered' % name)
@@ -259,6 +267,8 @@ class Worker(object):
     # --------------------------------------------------------------------------
     #
     def get_dispatcher(self, name):
+        '''Query a registered execution mode.
+        '''
 
         if name not in self._modes:
             raise ValueError('mode %s unknown' % name)

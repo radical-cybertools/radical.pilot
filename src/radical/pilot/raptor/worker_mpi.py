@@ -642,6 +642,9 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def get_rank_worker(self):
+        '''Return the class type of the worker class which manages each worker
+        rank.
+        '''
 
         return MPIWorkerRank
 
