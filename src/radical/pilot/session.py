@@ -160,9 +160,16 @@ class Session(rs.Session):
         assert self._cfg.reg_addr
         self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._uid)
 
-        # store session and resource configs in the registry
-        self._reg['cfg']           = self._cfg
-        self._reg['cfg.resources'] = self._rcfgs
+        # store some session and resource config data in the registry
+        self._reg['cfg'] = {'base'          : self._cfg.base,
+                            'path'          : self._cfg.path,
+                            'dburl'         : self._cfg.dburl,
+                            'reg_addr'      : self._cfg.reg_addr,
+                            'client_sandbox': self._cfg.client_sandbox,
+                            'client_sandbox': self._cfg.client_sandbox,
+                            'heartbeat'     : self._cfg.heartbeat,
+                           }
+
 
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)

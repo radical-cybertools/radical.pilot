@@ -62,6 +62,7 @@ class ComponentManager(object):
         self._reg  = ru.zmq.RegistryClient(url=reg_addr, pwd=sid)
         self._cfg  = ru.Config(from_dict=self._reg['cfg'])
 
+        self._reg.dump('init')
         self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
                                     ru.ID_CUSTOM, ns=self._sid)
         self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
@@ -82,35 +83,37 @@ class ComponentManager(object):
                               'stall_hwm'  : 1,
                               'bulk_size'  : 0,
                               'path'       : self._cfg.path})
-        self._hb_bridge = ru.zmq.PubSub(channel='heartbeat', kind='pubsub')
+        self._hb_bridge = ru.zmq.PubSub(channel='heartbeat')
         self._hb_bridge.start()
 
-        self._cfg.heartbeat.addr_pub = str(self._hb_bridge.addr_pub)
-        self._cfg.heartbeat.addr_sub = str(self._hb_bridge.addr_sub)
+        hb_cfg = ru.TypedDict(self._reg['cfg.heartbeat'])
+        hb_cfg.addr_pub = str(self._hb_bridge.addr_pub)
+        hb_cfg.addr_sub = str(self._hb_bridge.addr_sub)
+
+        # publish heartbeat information in registry
+        self._cfg.heartbeat = hb_cfg
+        self._reg['cfg.heartbeat'] = hb_cfg
 
         # runs a HB monitor on that channel
         self._hb = ru.Heartbeat(uid=self.uid,
-                                timeout=self._cfg.heartbeat.timeout,
-                                interval=self._cfg.heartbeat.interval,
+                                timeout=hb_cfg['timeout'],
+                                interval=hb_cfg['interval'],
                                 beat_cb=self._hb_beat_cb,  # on every heartbeat
                                 term_cb=self._hb_term_cb,  # on termination
                                 log=self._log)
 
-        self._hb_pub = ru.zmq.Publisher('heartbeat',
-                                        self._cfg.heartbeat.addr_pub,
+        self._hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg['addr_pub'],
                                         log=self._log, prof=self._prof)
-        self._hb_sub = ru.zmq.Subscriber('heartbeat',
-                                         self._cfg.heartbeat.addr_sub,
+        self._hb_sub = ru.zmq.Subscriber('heartbeat', hb_cfg['addr_sub'],
                                          topic='heartbeat', cb=self._hb_sub_cb,
                                          log=self._log, prof=self._prof)
 
+
         # confirm the bridge being usable by listening to our own heartbeat
         self._hb.start()
-        self._hb.wait_startup(self._uid, self._cfg.heartbeat.timeout)
+        self._hb.wait_startup(self._uid, hb_cfg['timeout'])
         self._log.info('heartbeat system up')
 
-        # publish heartbeat information in registry
-        self._reg['heartbeat'] = self._cfg.heartbeat
 
 
     # --------------------------------------------------------------------------

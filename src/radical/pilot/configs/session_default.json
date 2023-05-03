@@ -4,7 +4,7 @@
 # a functional rp session, both on the client and on the agent side.
 {
     "dburl"        : "${RADICAL_PILOT_DBURL}",
-    "session_base" : "${RADICAL_PILOT_SESSION_BASE:$PWD}",
+    "base"         : "${RADICAL_PILOT_BASE:$PWD}",
     "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
 
     "bulk_time"    : 1.0,

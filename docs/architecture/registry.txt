@@ -2,9 +2,7 @@
 registry = {
     '<sid>' : {
         '<SUB_REGISTRY>'
-        'cfg'       : {
-            'resources'  : { ... },
-        },
+        'heartbeat'  : { ... },
         'pilot.0000': {
             'description': { ... },
             'rm_info'    : { ... },
