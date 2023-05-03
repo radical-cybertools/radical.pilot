@@ -67,6 +67,7 @@ class ForkTestCase(TestCase):
         self.assertGreater(rm_info.requested_nodes, 1)
         self.assertEqual(len(rm_info.node_list), rm_info.requested_nodes)
 
+
 # ------------------------------------------------------------------------------
 
 
