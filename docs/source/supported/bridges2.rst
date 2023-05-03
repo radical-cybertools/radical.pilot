@@ -18,35 +18,36 @@ General description
   * Regular Memory allocation:
 
     * ``RM`` or ``RM-512`` queues (50 nodes):
-        * 128 CPU cores (1 thread per core)
-        * 256 GB or 512 GB of memory
+
+      * 128 CPU cores (1 thread per core)
+      * 256 GB or 512 GB of memory
 
     * ``RM-shared`` (50 nodes):
-        * 128 CPU cores (1 thread per core)
-        * 512 GB of memory
+
+      * 128 CPU cores (1 thread per core)
+      * 512 GB of memory
 
   * Extreme Memory allocation:
 
     * ``EM`` queue (100 nodes):
-        * 96 CPU cores (1 thread per core)
-        * 4 TB of memory
+
+      * 96 CPU cores (1 thread per core)
+      * 4 TB of memory
 
   * GPU allocation:
 
-    * ``V-100-32`` queue (24 nodes):
-        * 40 CPU cores (1 thread per core)
-        * 8 GPUs (Tesla v100-32 * 32 GB)
-        * 512 GB of memory
+    * ``GPU`` queue (33 nodes):
 
-    * GPU ``V-100-16`` queue (9 nodes):
-        * 40 CPU cores (1 thread per core)
-        * 8 GPUs (V100-16 * 16 GB)
-        * 192 GB of memory
+      * 40 CPU cores (1 thread per core)
+      * 8 GPUs (Tesla v100-32 * 32 GB)
+      * 8 GPUs (V100-16 * 16 GB)
+      * 512 GB of memory
 
-    * GPU ``GPU-shared`` queue (1 node):
-        * 48 CPU cores (1 thread per core)
-        * 16 GPUs (V100-32 * 32 GB)
-        * 1.5 TB of memory
+    * ``GPU-shared`` queue (1 node):
+
+      * 48 CPU cores (1 thread per core)
+      * 16 GPUs (V100-32 * 32 GB)
+      * 1.5 TB of memory
 
 Setup execution environment
 ===========================
