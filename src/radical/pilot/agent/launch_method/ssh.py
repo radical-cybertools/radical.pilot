@@ -77,6 +77,10 @@ class SSH(LaunchMethod):
         if len(task['slots']['ranks']) > 1:
             return False, 'more than one rank'
 
+        # ensure non-MPI
+        if task['description']['use_mpi']:
+            return False, 'cannot launch MPI tasks'
+
         if not task['description']['executable']:
             return False, 'no executable'
 
