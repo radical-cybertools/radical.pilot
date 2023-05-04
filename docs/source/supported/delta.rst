@@ -52,8 +52,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** ``venv`` (virtual environment with ``conda`` is
-not provided by the system)
+Create a **virtual environment with** ``venv``:
 
 .. code-block:: bash
 
@@ -62,19 +61,27 @@ not provided by the system)
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-Install RADICAL-Pilot after activating a corresponding virtual environment.
+Install RADICAL-Pilot after activating a corresponding virtual environment:
+
+.. code-block: bash
+
+   pip install radical.pilot
+
+.. note::
+   Virtual environments with ``conda`` are not provided by the system.
 
 MongoDB
 -------
 
 MongoDB service is **not** provided by NCSA, thus, you have to use either your
-running instance of MongoDB service or contact the RADICAL team for a support.
+running instance of MongoDB service or contact the RADICAL team by opening a 
+`ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
-RADICAL-Pilot will connect to the MongoDB instance using a corresponding URL.
+RADICAL-Pilot will connect to the MongoDB instance using a corresponding URI:
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<mongodb_url>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
@@ -112,5 +119,4 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 .. note::
 
    If you find any inaccuracy in this description, please, report back to us
-   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
-
+   by opening a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
