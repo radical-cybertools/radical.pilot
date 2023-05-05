@@ -11,10 +11,11 @@ General description
 ===================
 
 * Resource manager - ``SLURM``
-* Launch methods (per platform ID)
-  *  ``uva.rivanna``
+* Launch methods (per platform ID) - ``uva.rivanna``:
 
-* Configuration per platform ID per queue
+  * ``SRUN``
+
+* Configuration per platform ID per queue:
 
   * ``uva.standard`` (1 node)
 
