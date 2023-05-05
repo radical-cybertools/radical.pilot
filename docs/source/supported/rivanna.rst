@@ -31,7 +31,7 @@ General description
 .. note::
    Rivanna nodes are heterogeneous and have different node configurations.
    Please refer to this link for more information about the resources per node.
-   `nodes-details <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+   `nodes-details <https://www.rc.virginia.edu/userinfo/rivanna/overview/#system-details>`_.
 
 
 Setup execution environment
