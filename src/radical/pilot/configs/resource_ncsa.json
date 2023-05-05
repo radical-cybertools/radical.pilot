@@ -28,9 +28,7 @@
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "virtenv_mode"                : "local"
     },
 
     "delta_gpu_a40":
@@ -63,9 +61,7 @@
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "virtenv_mode"                : "local"
     },
 
     "delta_gpu_a100_4way":
@@ -98,9 +94,7 @@
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "virtenv_mode"                : "local"
     },
 
     "delta_gpu_a100_8way":
@@ -133,9 +127,7 @@
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "virtenv_mode"                : "local"
     },
 
     "delta_gpu_mi100":
@@ -168,9 +160,7 @@
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local"
+        "virtenv_mode"                : "local"
     }
 }
 
