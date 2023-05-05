@@ -30,8 +30,8 @@ General description
 
 .. note::
    Rivanna nodes are heterogeneous and have different node configurations.
-   Please refer to this link for more information about the resources per node.
-   `nodes-details <https://www.rc.virginia.edu/userinfo/rivanna/overview/#system-details>`_.
+   Please refer to this `link <https://www.rc.virginia.edu/userinfo/rivanna/overview/#system-details>`_
+   for more information about the resources per node.
 
 
 Setup execution environment
