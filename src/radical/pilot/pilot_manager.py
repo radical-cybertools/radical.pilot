@@ -599,7 +599,6 @@ class PilotManager(rpu.Component):
                                 (pilot.uid, pd['resource'],
                                  pd.get('cores', 0), pd.get('gpus', 0)))
 
-
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
         #        advance, since the state did not change.  We would then miss

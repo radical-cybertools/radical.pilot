@@ -21,12 +21,6 @@ def run(fpath, cname, raptor_id):
         cls = ru.load_class(fpath, cname, rp.raptor.Worker)
 
     else:
-        # import all known workers into the local name space so that
-        # `get_type` has a chance to find them
-
-        from radical.pilot.raptor import DefaultWorker  # pylint: disable=W0611 # noqa
-        from radical.pilot.raptor import MPIWorker      # pylint: disable=W0611 # noqa
-
         if   cname == 'DefaultWorker': cls = rp.raptor.DefaultWorker
         elif cname == 'MPIWorker'    : cls = rp.raptor.MPIWorker
 
