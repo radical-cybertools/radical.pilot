@@ -12,36 +12,26 @@ General description
 
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
+  *  ``uva.rivanna``
 
-  * ``uva.rivanna*`` - ``MPIRUN``
-
-* Configuration per node (per platform ID)
+* Configuration per platform ID per queue
 
   * ``uva.standard`` (1 node)
 
-    * 40 CPU cores (1 thread per core)
-    * 375GB GiB of memory
-
   * ``uva.parallel`` (25 nodes)
-
-    * 40 CPU cores (1 thread per core)
-    * 375GB GiB of memory
 
   * ``uva.largemem`` (1 node)
 
-    * 10 CPU cores (1 thread per core)
-    * 975 GiB of memory
-
   * ``uva.dev`` (2 nodes)
-
-    * 4 CPU cores (1 thread per core)
-    * 36 GiB of memory
 
   * ``uva.gpu`` (4 nodes)
 
-    * 10 CPU cores (1 thread per core)
-    * 16 GPUs NVIDIA(RTX2080Ti, RTX3090, K80, P100, V100, and A100)
-    * 375 GiB of memory
+
+.. note::
+   Rivanna nodes are heterogeneous and have different node configurations.
+   Please refer to this link for more information about the resources per node.
+   `nodes-details <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+
 
 Setup execution environment
 ===========================
