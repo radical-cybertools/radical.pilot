@@ -135,18 +135,6 @@ if __name__ == '__main__':
         pilot.stage_in({'source': ru.which('radical-pilot-hello.sh'),
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
-
-        # Issue an RPC to provision a Python virtual environment for the later
-        # raptor tasks.  Note that we are telling prepare_env to install
-        # radical.pilot and radical.utils from sdist archives on the local
-        # filesystem. This only works for the default resource, local.localhost.
-        report.info('Call pilot.prepare_env()... ')
-        pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type' : 'venv',
-                                    'path' : '/tmp/ve3',
-                                    'setup': [rp.sdist_path,
-                                              ru.sdist_path,
-                                              'mpi4py']})
         report.info('done\n')
 
         # Launch a raptor master task, which will launch workers and self-submit
