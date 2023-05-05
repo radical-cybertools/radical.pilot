@@ -11,18 +11,19 @@ General description
 ===================
 
 * Resource manager - ``SLURM``
-* Launch methods (per platform ID) - ``access.bridges2``
+* Launch methods (per platform ID) - ``access.bridges2``:
+    * ``MPIRUN``
 
-* Configuration per node (per platform ID)
+* Configuration per platform ID per queue
 
   * Regular Memory allocation:
 
     * ``RM`` or ``RM-512`` queues (50 nodes):
 
       * 128 CPU cores (1 thread per core)
-      * 256 GB or 512 GB of memory
+      * 256 GB or 512 GB of memory respectivley
 
-    * ``RM-shared`` (50 nodes):
+    * ``RM-shared`` queue (50 nodes):
 
       * 128 CPU cores (1 thread per core)
       * 512 GB of memory
@@ -39,14 +40,14 @@ General description
     * ``GPU`` queue (33 nodes):
 
       * 40 CPU cores (1 thread per core)
-      * 8 GPUs (Tesla v100-32 * 32 GB)
-      * 8 GPUs (V100-16 * 16 GB)
+      * 8 GPUs (NVIDIA Tesla v100-32 * 32 GB)
+      * 8 GPUs Nvidia (V100-16 * 16 GB)
       * 512 GB of memory
 
     * ``GPU-shared`` queue (1 node):
 
       * 48 CPU cores (1 thread per core)
-      * 16 GPUs (V100-32 * 32 GB)
+      * 16 GPUs (NVIDIA V100-32 * 32 GB)
       * 1.5 TB of memory
 
 Setup execution environment
