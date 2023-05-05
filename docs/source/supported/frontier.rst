@@ -22,10 +22,12 @@ General description
   * 512 GiB of memory
 
 .. note::
-   RADICAL-Pilot allows to use the ``--constraint`` option
-   (resource selection qualifier) for ``SLURM`` and set the default values in
-   a corresponding configuration file. For the cases, when it is needed to have
-   a different setup, please, follow these steps:
+
+   Frontier uses the ``--constraint`` option in ``SLURM`` to specify nodes
+   features (`SLURM constraint <https://slurm.schedmd.com/sbatch.html#OPT_constraint>`_).
+   RADICAL-Pilot allows to provide such features within a corresponding
+   configuration file. For example, follow the following steps to set ``NVMe``
+   constraint (`NVMe Usage <https://docs.olcf.ornl.gov/systems/frontier_user_guide.html#nvme-usage>`_):
 
    .. code-block:: bash
 
@@ -39,6 +41,7 @@ General description
       EOF
 
 .. note::
+
    RADICAL-Pilot follows the default setting of Frontier SLURM core
    specialization, which reserves one core from each L3 cache region, leaving
    56 allocatable cores out of the available 64.
@@ -74,6 +77,7 @@ General description
       EOF
 
 .. note::
+
    Changes in the ``"system_architecture"`` parameters can be combined.
 
 Setup execution environment
@@ -97,8 +101,9 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 
    pip install radical.pilot
    
-.. note:: 
-Frontier does not provide virtual environments with ``conda``.
+.. note::
+
+   Frontier does not provide virtual environments with ``conda``.
 
 MongoDB
 -------

@@ -17,11 +17,8 @@ General description
 
 * Configuration per node (560 nodes in total)
 
-  * 32 CPU cores
-
-    * Each core has 2 threads (``SMT=2``)
-
-  * 4 GPUs
+  * 32 CPU cores, each core has 2 threads (``SMT=2``)
+  * 4 GPUs (NVIDIA A100)
   * 512 GiB of memory
 
 .. note::
@@ -147,7 +144,7 @@ completed.
     > db.createUser({user: "rct", pwd: "jdWeRT634k", roles: ["readWrite"]})
     > exit
 
-RADICAL-Pilot will connect to the MongoDB instance using the following URL.
+RADICAL-Pilot will connect to the MongoDB instance using the following URI.
 
 .. code-block:: bash
 
@@ -196,5 +193,5 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 .. note::
 
    If you find any inaccuracy in this description, please, report back to us
-   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+   by opening a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
