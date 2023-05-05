@@ -748,11 +748,14 @@ class Session(rs.Session):
                 if '%' in sandbox_raw:
                     # expand from pilot description
                     expand = dict()
-                    for k,v in pilot['description'].items():
+                    for k, v in pilot['description'].items():
                         if v is None:
                             v = ''
-                        if k == 'project' and '_' in v and 'ornl' in resource:
-                            v = v.split('_')[0]
+                        if k == 'project':
+                            if '_' in v and 'ornl' in resource:
+                                v = v.split('_')[0]
+                            elif '-' in v and 'ncsa' in resource:
+                                v = v.split('-')[0]
                         expand['pd.%s' % k] = v
                         if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()
