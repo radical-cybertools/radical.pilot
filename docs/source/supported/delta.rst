@@ -1,6 +1,6 @@
-====================
+============
 Delta (NCSA)
-====================
+============
 
 Platform user guide
 ===================
@@ -19,32 +19,42 @@ General description
 
   * ``ncsa.delta`` (132 nodes)
 
-    * 128 CPU cores (1 thread per core)
+    * 128 CPU cores, each core has 1 thread
     * 256 GiB of memory
 
   * ``ncsa.delta_gpu_a40`` (100 nodes)
 
-    * 64 CPU cores (1 thread per core)
+    * 64 CPU cores, each core has 1 thread
     * 4 GPUs (NVIDIA A40)
     * 256 GiB of memory
 
   * ``ncsa.delta_gpu_a100_4way`` (100 nodes)
 
-    * 64 CPU cores (1 thread per core)
+    * 64 CPU cores, each core has 1 thread
     * 4 GPUs (NVIDIA A100)
     * 256 GiB of memory
 
   * ``ncsa.delta_gpu_a100_8way`` (6 nodes)
 
-    * 128 CPU cores (1 thread per core)
+    * 128 CPU cores, each core has 1 thread
     * 8 GPUs (NVIDIA A100)
     * 2,048 GiB of memory
 
   * ``ncsa.delta_gpu_mi100`` (1 node)
 
-    * 128 CPU cores (1 thread per core)
+    * 128 CPU cores, each core has 1 thread
     * 8 GPUs (AMD MI100)
     * 2,048 GiB of memory
+
+.. note::
+
+   Use the ``accounts`` command to list the accounts available for charging
+   (`Local Account Charging <https://wiki.ncsa.illinois.edu/display/DSC/Delta+User+Guide#DeltaUserGuide-LocalAccountCharging>`_).
+
+.. note::
+
+   Use the ``quota`` command to view your use of the file systems and use by
+   your projects (`Quota Usage <https://wiki.ncsa.illinois.edu/display/DSC/Delta+User+Guide#DeltaUserGuide-quotausage>`_).
 
 Setup execution environment
 ===========================
@@ -63,12 +73,13 @@ Create a **virtual environment with** ``venv``:
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
-.. code-block: bash
+.. code-block:: bash
 
    pip install radical.pilot
 
 .. note::
-   Virtual environments with ``conda`` are not provided by the system.
+
+   Polaris does not provide virtual environments with ``conda``.
 
 MongoDB
 -------
