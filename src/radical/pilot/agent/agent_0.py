@@ -66,6 +66,9 @@ class Agent_0(rpu.Worker):
         self._reg_service.start()
         self._reg_addr = self._reg_service.addr
 
+        self._reg = ru.zmq.RegistryClient(url=self._reg_addr, pwd=self._sid)
+        self._reg['cfg'] = self._cfg
+
         # let all components know where to look for the registry
         self._cfg['reg_addr'] = self._reg_addr
 
@@ -81,11 +84,14 @@ class Agent_0(rpu.Worker):
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those
-        self._cmgr = rpu.ComponentManager(self._reg_addr)
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        self._cmgr = rpu.ComponentManager(self._sid, self._reg_addr, self._uid)
+        self._cfg.heartbeat = self._reg['cfg']['heartbeat']
 
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        ccfg = {'pid': self._pid,
+                'log_lvl': 'debug'}  # FIXME
+
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components, ccfg)
 
         # service tasks uids, which were launched
         self._service_uids_launched = list()
@@ -347,8 +353,6 @@ class Agent_0(rpu.Worker):
             tmp_cfg['uid']   = sa
             tmp_cfg['aid']   = sa
             tmp_cfg['owner'] = 'agent.0'
-
-            ru.write_json(tmp_cfg, './%s.cfg' % sa)
 
 
     # --------------------------------------------------------------------------

@@ -161,11 +161,11 @@ class Session(rs.Session):
         self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._uid)
 
         # store some session and resource config data in the registry
-        self._reg['cfg'] = {'base'          : self._cfg.base,
+        self._reg['cfg'] = {'sid'           : self._uid,
+                            'base'          : self._cfg.base,
                             'path'          : self._cfg.path,
                             'dburl'         : self._cfg.dburl,
                             'reg_addr'      : self._cfg.reg_addr,
-                            'client_sandbox': self._cfg.client_sandbox,
                             'client_sandbox': self._cfg.client_sandbox,
                             'heartbeat'     : self._cfg.heartbeat,
                            }
@@ -242,10 +242,9 @@ class Session(rs.Session):
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
-        self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr)
+        self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr, self._uid)
         self._cmgr.start_bridges(self._cfg.bridges)
         self._cmgr.start_components(self._cfg.components)
-        self._reg_service.dump()
 
         self._rec = False
         if self._cfg.record:

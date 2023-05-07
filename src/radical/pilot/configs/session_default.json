@@ -7,9 +7,6 @@
     "base"         : "${RADICAL_PILOT_BASE:$PWD}",
     "record"       : "${RADICAL_PILOT_SESSION_RECORD}",
 
-    "bulk_time"    : 1.0,
-    "bulk_size"    : 1024,
-
     "heartbeat"    : {
         "interval" :  1.0,
         "timeout"  : 60.0
@@ -41,8 +38,10 @@
 
     "components" : {
         # how many instances of the respective components should be started
-        "update" : { "count" : 1 },
-        "stager" : { "count" : 1 }
+        "update" : { "count"       : 1 ,
+                     "db_bulk_time": 1.0,
+                     "db_bulk_size": 1024 },
+        "stager" : { "count"       : 1 }
     }
 }
 

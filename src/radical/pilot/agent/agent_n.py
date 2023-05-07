@@ -21,11 +21,13 @@ class Agent_n(rpu.Worker):
     def __init__(self, cfg, session):
 
         self._cfg      = cfg
+        self._sid      = cfg.sid
         self._pid      = cfg.pid
         self._pmgr     = cfg.pmgr
         self._pwd      = cfg.pilot_sandbox
         self._sid      = cfg.sid
         self._reg_addr = cfg.reg_addr
+
 
         # log / profile via session until component manager is initialized
         self._session = session
@@ -35,17 +37,19 @@ class Agent_n(rpu.Worker):
         self._starttime   = time.time()
         self._final_cause = None
 
+        self._reg = ru.zmq.RegistryClient(url=self._reg_addr, pwd=self._sid)
+
         # this is the earliest point to sync bootstrap and agent profiles
         self._prof.prof('hostname', uid=self._pid, msg=ru.get_hostname())
         self._prof.prof('sub_agent_start', uid=self._pid)
 
         # expose heartbeat channel to sub-agents, bridges and components,
         # and start those
-        self._cmgr = rpu.ComponentManager(self._reg_addr)
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        self._cmgr = rpu.ComponentManager(self._reg_addr, self._sid, self._uid)
+        self._cfg.heartbeat = self._reg['cfg']['heartbeat']
 
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and components.  We are

@@ -110,6 +110,9 @@ class TaskManager(rpu.Component):
             self._uid       = ru.generate_id('tmgr.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns=session.uid)
 
+        if not scheduler:
+            scheduler = rpc.SCHEDULER_ROUND_ROBIN
+
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
         self._tasks       = dict()
@@ -138,12 +141,9 @@ class TaskManager(rpu.Component):
         cfg.base           = session.base
         cfg.path           = session.path
         cfg.dburl          = session.dburl
+        cfg.reg_addr       = session.reg_addr
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
-
-        if scheduler:
-            # overwrite the scheduler from the config file
-            cfg.scheduler = scheduler
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
@@ -151,10 +151,14 @@ class TaskManager(rpu.Component):
         self._log.info('started tmgr %s', self._uid)
         self._rep.info('<<create task manager')
 
+        # overwrite the scheduler from the config file
+        if 'tmgr_scheduling' in self._cfg.components:
+            self._cfg.components.tmgr_scheduling.scheduler = scheduler
+
         # create pmgr bridges and components, use session cmgr for that
-        self._cmgr = rpu.ComponentManager(cfg.reg_addr)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr = rpu.ComponentManager(cfg.sid, cfg.reg_addr, self._uid)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         # let session know we exist
         if self._reconnect:

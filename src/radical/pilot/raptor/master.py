@@ -58,12 +58,12 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, cfg, self._session)
 
-        self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
-        self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
+        self.register_publisher(rpc.STATE_PUBSUB)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
 
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE, self._psbox)
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
@@ -75,12 +75,13 @@ class Master(rpu.Component):
                                    'stall_hwm' : 0,
                                    'bulk_size' : 1})
 
-        self._input_queue = ru.zmq.Queue(input_cfg)
+        # FIXME: how to pass cfg?
+        self._input_queue = ru.zmq.Queue(qname)
         self._input_queue.start()
 
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self._psbox)
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         # set up zmq queues between this master and all workers for request
         # distribution and result collection
@@ -137,8 +138,8 @@ class Master(rpu.Component):
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # everything is set up - we can serve messages on the pubsubs also
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb,   self._psbox)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
+        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)

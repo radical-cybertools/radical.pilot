@@ -50,16 +50,16 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
 
-        name = cfg['spawner']
+        name = session.cfg.resource_cfg.agent_spawner
 
         from .popen    import Popen
         from .flux     import Flux
         from .sleep    import Sleep
 
         impl = {
-            EXECUTING_NAME_POPEN  : Popen,
-            EXECUTING_NAME_FLUX   : Flux,
-            EXECUTING_NAME_SLEEP  : Sleep,
+            EXECUTING_NAME_POPEN: Popen,
+            EXECUTING_NAME_FLUX : Flux,
+            EXECUTING_NAME_SLEEP: Sleep,
         }
 
         if name not in impl:
@@ -72,26 +72,28 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
-      # self._log.debug('exec base initialize')
+        session_cfg  = ru.Config(cfg=self._reg['cfg'])
+        resource_cfg = ru.Config(cfg=session_cfg['resource_cfg'])
 
-        # The spawner/executor needs the ResourceManager information which have
-        # been collected during agent startup.
-        self._rm = rpa.ResourceManager.create(self._cfg.resource_manager,
-                                              self._cfg, self._log, self._prof)
+        # the resource manager needs to connect to the registry
+        resource_cfg.reg_addr = self._cfg.reg_addr
+
+        rm_name  = resource_cfg['resource_manager']
+        self._rm = rpa.ResourceManager.create(rm_name, resource_cfg,
+                                              self._log, self._prof)
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']
-        self.resource  = self._cfg['resource']
-        self.rsbox     = self._cfg['resource_sandbox']
-        self.ssbox     = self._cfg['session_sandbox']
-        self.psbox     = self._cfg['pilot_sandbox']
+        self.resource  = session_cfg['resource']
+        self.rsbox     = session_cfg['resource_sandbox']
+        self.ssbox     = session_cfg['session_sandbox']
+        self.psbox     = session_cfg['pilot_sandbox']
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
 
-        # if so configured, let the Task know what to use as tmp dir
-        self._task_tmp = self._cfg.get('task_tmp',
-                                       os.environ.get('TMP', '/tmp'))
-
+        # if so configured, let the tasks know what to use as tmp dir
+        self._task_tmp = resource_cfg.get('task_tmp',
+                                          os.environ.get('TMP', '/tmp'))
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
