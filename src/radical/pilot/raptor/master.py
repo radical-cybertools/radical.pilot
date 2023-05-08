@@ -76,7 +76,7 @@ class Master(rpu.Component):
                                    'bulk_size' : 1})
 
         # FIXME: how to pass cfg?
-        self._input_queue = ru.zmq.Queue(qname)
+        self._input_queue = ru.zmq.Queue(qname, cfg=input_cfg)
         self._input_queue.start()
 
         # send completed request tasks to agent output staging / tmgr
