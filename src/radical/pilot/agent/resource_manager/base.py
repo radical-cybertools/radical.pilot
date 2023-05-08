@@ -309,6 +309,7 @@ class ResourceManager(object):
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # add launch method information to rm_info
+        print('1 ============', self._cfg.resource_cfg.launch_methods)
         rm_info.launch_methods = self._cfg.resource_cfg.launch_methods
 
         return rm_info
@@ -318,6 +319,8 @@ class ResourceManager(object):
     #
     def _prepare_launch_methods(self, rm_info):
 
+        import pprint
+        print('2 ============', pprint.pformat(rm_info.as_dict()))
         launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
         self._launch_order = launch_methods.get('order') or list(launch_methods)
@@ -334,7 +337,8 @@ class ResourceManager(object):
                 self._launchers[lm_name] = rpa.LaunchMethod.create(
                     lm_name, lm_cfg, rm_info, self._log, self._prof)
 
-            except:
+            except Exception as e:
+                print(repr(e))
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
 

@@ -51,15 +51,19 @@ class TestComponent(TestCase):
             }
         }
 
-        cm = ComponentManager(None)
-        cm._uids = []
-        cm._uid  = 'cm.0000'
-        cm._sid  = 'session.0000'
-        cm._cfg  = ru.Config(cfg=cfg)
-        cm._log  = cm._prof = cm._hb = mock.Mock()
+        cm = ComponentManager('sid', 'reg_addr', 'owner')
+        cm._uids  = []
+        cm._uid   = 'cm.0000'
+        cm._sid   = 'session.0000'
+        cm._owner = 'cm.0000'
+        cm._cfg   = ru.Config(cfg=cfg)
+        cm._log   = cm._prof = cm._hb = mock.Mock()
         cm._hb.wait_startup = mock.Mock(return_value=0)
 
-        cm.start_components()
+        cm._reg      = ru.Config()
+        cm._reg_addr = None
+
+        cm.start_components(ru.Config(cfg=cfg['components']))
 
         for cname, ccfg in cfg['components'].items():
             for fname in glob.glob('%s/%s*.json' % (cfg['path'], cname)):
