@@ -67,7 +67,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
     #
     def _job_state_cb(self, job, _, saga_state, pid):
 
-        self._log.debug('=== job state: %s %s %s', pid, saga_state, job.id)
+        self._log.debug('job state: %s %s %s', pid, saga_state, job.id)
 
         try:
             with self._lock:
