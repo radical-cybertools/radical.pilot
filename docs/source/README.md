@@ -23,7 +23,8 @@ RP's documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/index.html
 3. Generate RP's documentation with Sphinx:
 
   ```shell
-  sphinx-build -b html -d build/doctrees docs/source/ build/html
+  cd docs
+  sphinx-build source _build -b html
   ```
 
 ## Publishing on Read the Docs
