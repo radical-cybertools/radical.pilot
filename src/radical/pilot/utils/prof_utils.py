@@ -868,10 +868,10 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     - r0: int,  index of resources consumed (min)
     - r1: int,  index of resources consumed (max)
 
-    An entity can consume different resources under different metrics - but the
-    returned consumption specs will never overlap, meaning, that any resource is
+    An entity can consume different resources under different metrics, but the
+    returned consumption specs will never overlap. Thus, any resource is
     accounted for exactly one metric at any point in time.  The returned
-    structure has the following overall form::
+    structure has the following overall form:
 
         {
           'metric_1' : {
