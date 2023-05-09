@@ -860,11 +860,13 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     - a resource type (we know about cores and gpus)
     - a metric name (what the resource was used for)
     - a list of 4-tuples of the form: [t0, t1, r0, r1]
-        The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
-        - t0: time, begin of resource consumption
-        - t1: time, begin of resource consumption
-        - r0: int,  index of resources consumed (min)
-        - r1: int,  index of resources consumed (max)
+
+    The tuples are formed so that t0 to t1 and r0 to r1 are continuous:
+
+    - t0: time, begin of resource consumption
+    - t1: time, begin of resource consumption
+    - r0: int,  index of resources consumed (min)
+    - r1: int,  index of resources consumed (max)
 
     An entity can consume different resources under different metrics - but the
     returned consumption specs will never overlap, meaning, that any resource is
