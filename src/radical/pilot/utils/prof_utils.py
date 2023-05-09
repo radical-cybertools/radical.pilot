@@ -553,7 +553,7 @@ def get_session_profile(sid, src=None):
 def get_session_description(sid, src=None, dburl=None):
     '''
     This will return a description which is usable for radical.analytics
-    evaluation.  It informs about
+    evaluation.  It informs about:
 
      - set of stateful entities
      - state models of those entities
@@ -563,8 +563,9 @@ def get_session_description(sid, src=None, dburl=None):
     If `src` is given, it is interpreted as path to search for session
     information (json dump).  `src` defaults to `$PWD/$sid`.
 
-    if `dburl` is given, its value is used to fetch session information from
-    a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
+    if `dburl` is given, its value is used to fetch session information from a
+    database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
+
     '''
 
     if not src:
