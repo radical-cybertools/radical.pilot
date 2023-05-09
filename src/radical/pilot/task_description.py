@@ -170,13 +170,13 @@ class TaskDescription(ru.TypedDict):
               - related  attributes: `raptor_class`
 
             There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
-            and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
-            should be used for short running tasks which require a single core and
-            no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
-            should be used for all other tasks and is in fact the default.
-            `TASK_SHELL` should only be used if the command to be run requires shell
-            specific functionality (e.g., pipes, I/O redirection) which cannot easily
-            be mapped to other task attributes.
+            and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and
+            `TASK_PROC` should be used for short running tasks which require
+            a single core and no additional resources (gpus, storage, memory).
+            `TASK_EXECUTABLE` should be used for all other tasks and is in fact
+            the default.  `TASK_SHELL` should only be used if the command to be
+            run requires shell specific functionality (e.g., pipes, I/O
+            redirection) which cannot easily be mapped to other task attributes.
 
             TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
             that define RAPTOR's master(s) and worker(s) components and their
@@ -184,8 +184,8 @@ class TaskDescription(ru.TypedDict):
             nodes, depending on their requirements.
 
         executable (str): The executable to launch. The executable is
-            expected to be either available via ``$PATH`` on the target resource,
-            or to be an absolute path.
+            expected to be either available via ``$PATH`` on the target
+            resource, or to be an absolute path.
 
         arguments (list[str]): The command line arguments for the given
             `executable` (`list` of `strings`).
@@ -200,9 +200,9 @@ class TaskDescription(ru.TypedDict):
             there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
             `kwargs` are passed as function parameters.
 
-        args (list, optional): Positional arguments to be passed to the `function`
-            (see above).  This field will be serialized  with `msgpack`
-            and can thus contain any serializable data types.
+        args (list, optional): Positional arguments to be passed to the
+            `function` (see above).  This field will be serialized  with
+            `msgpack` and can thus contain any serializable data types.
 
         kwargs (dict, optional): Named arguments to be passed to the `function`
             (see above).  This field will be serialized  with `msgpack`
@@ -347,9 +347,6 @@ class TaskDescription(ru.TypedDict):
         restartable (bool, optional): If the task starts to execute on a pilot,
             but cannot finish because the pilot fails or is canceled, the task
             can be restarted. Default False.
-
-        scheduler (str, optional): Request the task to be handled by a
-            specific agent scheduler.
 
         tags (dict, optional): Configuration specific tags, which
             influence task scheduling and execution (e.g., tasks co-location).
