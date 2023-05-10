@@ -42,3 +42,8 @@ RADICAL-Pilot Tutorials
    :glob:
 
    tutorials/*
+
+.. toctree::
+   :hidden:
+
+   tutorials/getting_started.ipynb
