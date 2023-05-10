@@ -47,6 +47,6 @@ architecture.
    supported.rst
    envs.rst
    glossary.rst
-   apidoc.rst
    internals.rst
+   apidoc.rst
    release_notes.rst
