@@ -18,7 +18,7 @@ To run the tutorials in our Docker container:
 
 1. clone the tutorials repository:
 
-  ```
+  ```shell
   git clone git@github.com:radical-cybertools/tutorials.git
   ```
 
