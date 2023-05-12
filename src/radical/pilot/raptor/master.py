@@ -414,7 +414,7 @@ class Master(rpu.Component):
             task['type']              = 'task'
             task['uid']               = td.uid
             task['task_sandbox_path'] = td.sandbox
-            task['task_sandbox']      = 'file://localhost/' + self._sbox
+            task['task_sandbox']      = 'file://localhost/' + td.sandbox
             task['pilot_sandbox']     = self._psbox
             task['session_sandbox']   = self._ssbox
             task['resource_sandbox']  = self._rsbox
