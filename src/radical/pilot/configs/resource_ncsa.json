@@ -1,0 +1,166 @@
+{
+    "delta":
+    {
+        "description"                 : "132 standard CPU (AMD  EPYC 7763) nodes",
+        "schemas"                     : ["local", "batch", "interactive"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://delta.ncsa.illinois.edu/",
+            "filesystem_endpoint"     : "file://delta.ncsa.illinois.edu/"
+        },
+        "batch"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "interactive"                 : "batch",
+        "default_queue"               : "cpu",
+        "cores_per_node"              : 128,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module reset",
+                                         "module load python"
+                                        ],
+        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "virtenv_mode"                : "local"
+    },
+
+    "delta_gpu_a40":
+    {
+        "description"                 : "100 4-way A40-based GPU nodes",
+        "schemas"                     : ["local", "batch", "interactive"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://delta.ncsa.illinois.edu/",
+            "filesystem_endpoint"     : "file://delta.ncsa.illinois.edu/"
+        },
+        "batch"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "interactive"                 : "batch",
+        "default_queue"               : "gpuA40x4",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 4,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module reset",
+                                         "module load python"
+                                        ],
+        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "virtenv_mode"                : "local"
+    },
+
+    "delta_gpu_a100_4way":
+    {
+        "description"                 : "100 4-way A100-based GPU nodes",
+        "schemas"                     : ["local", "batch", "interactive"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://delta.ncsa.illinois.edu/",
+            "filesystem_endpoint"     : "file://delta.ncsa.illinois.edu/"
+        },
+        "batch"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "interactive"                 : "batch",
+        "default_queue"               : "gpuA100x4",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 4,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module reset",
+                                         "module load python"
+                                        ],
+        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "virtenv_mode"                : "local"
+    },
+
+    "delta_gpu_a100_8way":
+    {
+        "description"                 : "6 8-way A100-based GPU nodes",
+        "schemas"                     : ["local", "batch", "interactive"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://delta.ncsa.illinois.edu/",
+            "filesystem_endpoint"     : "file://delta.ncsa.illinois.edu/"
+        },
+        "batch"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "interactive"                 : "batch",
+        "default_queue"               : "gpuA100x8",
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 8,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module reset",
+                                         "module load python"
+                                        ],
+        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "virtenv_mode"                : "local"
+    },
+
+    "delta_gpu_mi100":
+    {
+        "description"                 : "1 8-way MI100-based GPU node",
+        "schemas"                     : ["local", "batch", "interactive"],
+        "local"                       :
+        {
+            "job_manager_endpoint"    : "slurm://delta.ncsa.illinois.edu/",
+            "filesystem_endpoint"     : "file://delta.ncsa.illinois.edu/"
+        },
+        "batch"                       :
+        {
+            "job_manager_endpoint"    : "fork://localhost/",
+            "filesystem_endpoint"     : "file://localhost/"
+        },
+        "interactive"                 : "batch",
+        "default_queue"               : "gpuMI100x8",
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 8,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module reset",
+                                         "module load python"
+                                        ],
+        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "virtenv_mode"                : "local"
+    }
+}
+
