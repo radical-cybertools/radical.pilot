@@ -48,7 +48,18 @@ State Model
 Pilot
 -----
 
-TODO.
+.. csv-table:: Pilot States
+  :header: "State Name", "Component", "Owned by", "Pushed by", "Pulled by", "Action"
+  :widths: auto
+
+  "NEW", "Pilot Manager", "Pilot Manager", "", "", "Creating a pilot"
+  "PMGR_LAUNCHING_PENDING", "Pilot Manager", "Launcher queue", "Pilot Manager", "", "Pilot queued for submission"
+  "PMGR_LAUNCHING", "Pilot Manager", "Pilot Launcher", "", "LRM", "Submit a pilot to the batch system"
+  "PMGR_ACTIVE_PENDING", "LRM", "LRM", "Pilot Launcher", "LRM", "Pilot is waiting in the batch queue or bootstrapping"
+  "PMGR_ACTIVE", "LRM", "LRM", "", "", "Pilot active on the cluster resources"
+  "DONE", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as done. Final state"
+  "CANCELED", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as cancelled. Final state"
+  "FAILED", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as failed. Final state"
 
 
 Task
