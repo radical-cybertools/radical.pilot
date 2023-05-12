@@ -45,48 +45,54 @@ Download :download:`PDF version <images/architecture_taskmanager.pdf>`.
 State Model
 ===========
 
+Pilot and Task progress through linear state models.  The state names indicate
+what RP module and component operate on the specific Pilot or Task entity.
+Specifically, a Pilot or Task is, at any point in time, either owned by a RP
+component or is waiting in a Queue to be communicated between components.
+
+
 Pilot
 -----
 
 .. csv-table:: Pilot States
-  :header: "State Name", "Component", "Owned by", "Pushed by", "Pulled by", "Action"
+  :header: "State Name"    , "Module"        , "Component"      , "Action"
   :widths: auto
 
-  "NEW", "Pilot Manager", "Pilot Manager", "", "", "Creating a pilot"
-  "PMGR_LAUNCHING_PENDING", "Pilot Manager", "Launcher queue", "Pilot Manager", "", "Pilot queued for submission"
-  "PMGR_LAUNCHING", "Pilot Manager", "Pilot Launcher", "", "LRM", "Submit a pilot to the batch system"
-  "PMGR_ACTIVE_PENDING", "LRM", "LRM", "Pilot Launcher", "LRM", "Pilot is waiting in the batch queue or bootstrapping"
-  "PMGR_ACTIVE", "LRM", "LRM", "", "", "Pilot active on the cluster resources"
-  "DONE", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as done. Final state"
-  "CANCELED", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as cancelled. Final state"
-  "FAILED", "Pilot Manager", "Pilot Manager", "LRM", "", "Pilot marked as failed. Final state"
+  "NEW"                    , "Pilot Manager" , ""               , "Creating a pilot"
+  "PMGR_LAUNCHING_PENDING" , "Pilot Manager" , "Launcher queue" , "Pilot waits for submission"
+  "PMGR_LAUNCHING"         , "Pilot Manager" , "Pilot Launcher" , "Submit a pilot to the batch system"
+  "PMGR_ACTIVE_PENDING"    , "LRM"           , ""               , "Pilot is waiting in the batch queue or bootstrapping"
+  "PMGR_ACTIVE"            , "LRM"           , ""               , "Pilot is active on the cluster resources"
+  "DONE"                   , "Pilot Manager" , "Pilot Manager"  , "Pilot marked as done. Final state"
+  "CANCELED"               , "Pilot Manager" , "Pilot Manager"  , "Pilot marked as cancelled. Final state"
+  "FAILED"                 , "Pilot Manager" , "Pilot Manager"  , "Pilot marked as failed. Final state"
 
 
 Task
 ----
 
 .. csv-table:: Task States
-  :header: "State Name", "Component", "Owned by", "Pushed by", "Pulled by", "Action"
+  :header: "State Name"          , "Module"       , "Component"        , "Action"
   :widths: auto
 
-  "NEW", "Task Manager", "Task Manager", "", "", "Creating a task"
-  "TMGR_SCHEDULING_PENDING", "Task Manager", "Scheduler queue", "Task Manager", "", "Task created and queued for scheduling on a pilot"
-  "TMGR_SCHEDULING", "Task Manager", "Scheduler", "", "Scheduler", "Assigning task to a pilot"
-  "TMGR_STAGING_INPUT_PENDING", "Task Manager", "Stager In queue", "Scheduler", "", "Task assigned and queued"
-  "TMGR_STAGING_INPUT", "Task Manager", "Stager In", "", "Stager In", "Staging task's files to the target platform (if any)"
-  "AGENT_STAGING_INPUT_PENDING", "Agent", "Stager In queue", "Stager In", "", "Task's files staged on the target platform (if any) and task queued from the client Task Manager to the Agent"
-  "AGENT_STAGING_INPUT", "Agent", "Stager In", "", "Stager In", "Staging task's files inside the target platform, making available within the task sandbox"
-  "AGENT_SCHEDULING_PENDING", "Agent", "Scheduler queue", "Stager In", "", "Task queued for scheduling on resources, i.e., cores and/or GPUs"
-  "AGENT_SCHEDULING", "Agent", "Scheduler", "", "Scheduler", "Attempting to assign cores and/or GPUs to the task"
-  "AGENT_EXECUTING_PENDING", "Agent", "Executor queue", "Scheduler", "", "Cores and/or GPUs assigned to the task"
-  "AGENT_EXECUTING", "Agent", "Executor", "", "Executor", "Executing tasks on assigned cores and/or GPUs. Available resources are utilized"
-  "AGENT_STAGING_OUTPUT_PENDING", "Agent", "Stager Out queue", "Executor", "", "Task executed and queued"
-  "AGENT_STAGING_OUTPUT", "Agent", "Stager Out", "", "Stager Out", "Staging task files within the platform (if any)"
-  "TMGR_STAGING_OUTPUT_PENDING", "Task Manager", "Stager Out queue", "Stager Out", "", "Task's files staged locally (if any); preparing files for staging on a remote location (if any); task queued back to the Task Manager on RP client"
-  "TMGR_STAGING_OUTPUT", "Task Manager", "Stager Out", "", "Stager Out", "Tasks staging remotely (if any), task retried"
-  "DONE", "Task Manager", "Task Manager", "Stager Out", "", "Task marked as done. Final state"
-  "CANCELED", "Task Manager", "Task Manager", "Stager Out", "", "Task marked as cancelled. Final state"
-  "FAILED", "Task Manager", "Task Manager", "Stager Out", "", "Task marked as failed. Final state"
+  "NEW"                          , "Task Manager" , ""                 , "Creating a task"
+  "TMGR_SCHEDULING_PENDING"      , "Task Manager" , "Scheduler queue"  , "Task queued for scheduling on a pilot"
+  "TMGR_SCHEDULING"              , "Task Manager" , "Scheduler"        , "Assigning task to a pilot"
+  "TMGR_STAGING_INPUT_PENDING"   , "Task Manager" , "Stager In queue"  , "Task queued for data staging"
+  "TMGR_STAGING_INPUT"           , "Task Manager" , "Stager In"        , "Staging task's files to the target platform (if any)"
+  "AGENT_STAGING_INPUT_PENDING"  , "Agent"        , "Stager In queue"  , "Task waiting to be picked up by Agent"
+  "AGENT_STAGING_INPUT"          , "Agent"        , "Stager In"        , "Staging task's files inside the target platform, making available within the task sandbox"
+  "AGENT_SCHEDULING_PENDING"     , "Agent"        , "Scheduler queue"  , "Task waiting for scheduling on resources, i.e., cores and/or GPUs"
+  "AGENT_SCHEDULING"             , "Agent"        , "Scheduler"        , "Assign cores and/or GPUs to the task"
+  "AGENT_EXECUTING_PENDING"      , "Agent"        , "Executor queue"   , "Cores and/or GPUs are assigned, wait for execution"
+  "AGENT_EXECUTING"              , "Agent"        , "Executor"         , "Executing tasks on assigned cores and/or GPUs. Available resources are utilized"
+  "AGENT_STAGING_OUTPUT_PENDING" , "Agent"        , "Stager Out queue" , "Task completed and waits for output staging"
+  "AGENT_STAGING_OUTPUT"         , "Agent"        , "Stager Out"       , "Staging out task files within the platform (if any)"
+  "TMGR_STAGING_OUTPUT_PENDING"  , "Task Manager" , "Stager Out queue" , "Waiting for Task Manager to pick up Task again"
+  "TMGR_STAGING_OUTPUT"          , "Task Manager" , "Stager Out"       , "Task's files staged from remote to local resource (if any)"
+  "DONE"                         , "Task Manager" , ""                 , "Task marked as done. Final state"
+  "CANCELED"                     , "Task Manager" , ""                 , "Task marked as cancelled. Final state"
+  "FAILED"                       , "Task Manager" , ""                 , "Task marked as failed. Final state"
 
 
 Task Scheduling
