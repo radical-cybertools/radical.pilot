@@ -160,6 +160,47 @@ class TestSession(TestCase):
         self._session._closed = False
         self._session.close(cleanup=True, terminate=True)
 
+    # --------------------------------------------------------------------------
+    #
+    def test_get_resource_sandbox(self):
+
+        pilot = {'uid'        : 'pilot.0000',
+                 'description': {}}
+
+        with self.assertRaises(ValueError):
+            # `PilotDescription.resource` is not provided
+            self._session._get_resource_sandbox(pilot=pilot)
+
+        # check `default_remote_workdir` handling
+
+        # ORNL: split `project` by "_"
+        pilot['description'].update({'resource': 'ornl.summit',
+                                     'project' : 'PROJNAME_machine'})
+        self.assertIn('/projname/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # ORNL: no any splitting
+        pilot['description'].update({'resource': 'ornl.summit',
+                                     'project' : 'PROJNAME'})
+        self.assertIn('/projname/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # NCSA: split `project` by "-"
+        pilot['description'].update({'resource': 'ncsa.delta',
+                                     'project' : 'bbka-delta-cpu'})
+        self.assertIn('/bbka/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # NCSA: no splitting
+        pilot['description'].update({'resource': 'ncsa.delta',
+                                     'project' : 'bbka_wrongsplitter'})
+        self.assertNotIn('/bbka/',
+                         self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -169,7 +210,7 @@ if __name__ == '__main__':
     tc.test_list_resources()
     tc.test_get_resource_config()
     tc.test_resource_schema_alias()
-
+    tc.test_get_resource_sandbox()
 
 # ------------------------------------------------------------------------------
 
