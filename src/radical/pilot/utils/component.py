@@ -169,6 +169,9 @@ class ComponentManager(object):
     #
     def start_bridges(self, bridges):
 
+        if 'bridges' not in self._reg:
+            self._reg['bridges'] = dict()
+
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         timeout = self._cfg.heartbeat.timeout
@@ -210,6 +213,9 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def start_components(self, components, cfg = None):
+
+        if 'components' not in self._reg:
+            self._reg['components'] = dict()
 
         self._prof.prof('start_components_start', uid=self._uid)
 
@@ -403,24 +409,21 @@ class Component(object):
         #       to create it's own set of locks in self.initialize.
 
         self._cfg     = cfg
-        self._uid     = cfg.uid
-        self._sid     = cfg.sid
+        self._uid     = self._cfg.uid
+        self._sid     = self._cfg.sid
         self._session = session
 
         # we always need an UID
         assert self._uid, 'Component needs a uid (%s)' % type(self)
 
         # state we carry over the fork
-        self._debug      = cfg.get('debug')
-        self._owner      = cfg.get('owner', self.uid)
-        self._ctype      = "%s.%s" % (self.__class__.__module__,
-                                      self.__class__.__name__)
-        self._number     = cfg.get('number', 0)
-        self._name       = cfg.get('name.%s' %  self._number,
-                                   '%s.%s'   % (self._ctype, self._number))
+        self._debug = self._cfg.get('debug')
+        self._owner = self._cfg.get('owner', self.uid)
+        self._ctype = "%s.%s" % (self.__class__.__module__,
+                                 self.__class__.__name__)
 
-        self._reg  = ru.zmq.RegistryClient(url=self._cfg.reg_addr,
-                                           pwd=self._sid)
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr,
+                                          pwd=self._sid)
 
         self._inputs     = dict()       # queues to get things from
         self._outputs    = dict()       # queues to send things to

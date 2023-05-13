@@ -216,14 +216,14 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        session_cfg  = ru.Config(cfg=self._reg['cfg'])
-        resource_cfg = ru.Config(cfg=session_cfg['resource_cfg'])
+        scfg  = ru.Config(cfg=self._reg['cfg'])
+        rcfg = ru.Config(cfg=self._reg['rcfg'])
 
         # the resource manager needs to connect to the registry
-        resource_cfg.reg_addr = self._cfg.reg_addr
+        rcfg.reg_addr = self._cfg.reg_addr
 
-        rm_name  = resource_cfg['resource_manager']
-        self._rm = ResourceManager.create(rm_name, resource_cfg,
+        rm_name  = rcfg['resource_manager']
+        self._rm = ResourceManager.create(rm_name, scfg, rcfg,
                                           self._log, self._prof)
 
         self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
@@ -293,7 +293,7 @@ class AgentSchedulingComponent(rpu.Component):
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = session.cfg.resource_cfg.agent_scheduler
+        name = session._reg['rcfg.agent_scheduler']
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo

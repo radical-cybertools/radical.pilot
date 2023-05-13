@@ -120,7 +120,7 @@ class Flux(AgentExecutingComponent) :
     #
     def _listen(self):
 
-        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg  = self._reg['rcfg.launch_methods'].get('FLUX')
         lm_cfg['pid']       = self._cfg.pid
         lm_cfg['reg_addr']  = self._cfg.reg_addr
         lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,

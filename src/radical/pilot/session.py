@@ -17,6 +17,42 @@ from .          import utils as rpu
 
 # ------------------------------------------------------------------------------
 #
+class _CloseOptions(ru.TypedDict):
+    """Options and validation for Session.close().
+
+    Arguments:
+        cleanup (bool, optional): Remove session from MongoDB.
+            Implies *terminate=True*. (default False)
+        download (bool, optional): Fetch pilot profiles and database entries.
+            (Default False.)
+        terminate (bool, optional): Shut down all pilots associated with the
+            session. (Default True.)
+
+    """
+
+    _schema = {
+        'cleanup'  : bool,
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'cleanup'  : False,
+        'download' : False,
+        'terminate': True
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _verify(self):
+
+        if self.get('cleanup') and not self.get('terminate'):
+            self.terminate = True
+
+
+# ------------------------------------------------------------------------------
+#
 class Session(rs.Session):
     """Root of RP object hierarchy for an application instance.
 
@@ -45,7 +81,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def __init__(self, dburl=None, uid=None, cfg=None, _primary=True,
-                       _reg_addr=None,  **close_options):
+                       _reg_addr=None, **close_options):
         """Create a new session.
 
         A new Session instance is created and stored in the database.
@@ -59,8 +95,7 @@ class Session(rs.Session):
                 MUST be unique - otherwise they will lead to conflicts in the
                 underlying database, resulting in undefined behaviours (or worse).
 
-            cfg (str | dict, optional): a named or instantiated configuration
-                to be used for the session.
+            cfg (dict, optional): configuration to be used for the session.
 
             _primary (bool, optional): only sessions created by the original
                 application process (via `rp.Session()`, will connect to the  DB.
@@ -71,11 +106,9 @@ class Session(rs.Session):
                 a new DB collection - if such a DB connection is needed, the
                 component needs to establish that on its own.
 
-            _reg_addr (`str`): primary sessions will always run a registry
-                service, and the registry's address will be passed to
-                non-primary sessions.  If no such address is passed, a registry
-                will be started even if the session is not a primary one.  That
-                will, for example, happen on the root session of `agent.0`.
+            _reg_addr (str, optional): Non-primary sessions will connect to the
+                registry at that endpoint and pull session config and resource
+                configurations from there.
 
             **close_options: If additional key word arguments are provided, they
                 will be used as the default arguments to Session.close(). (This
@@ -85,105 +118,27 @@ class Session(rs.Session):
 
         """
 
+        self._dburl         = dburl
+        self._uid           = uid
+        self._cfg           = ru.Config(cfg=cfg)
+        self._primary       = _primary
+        self._reg_addr      = _reg_addr
         self._close_options = _CloseOptions(close_options)
-        # NOTE: `name` and `cfg` are overloaded, the user cannot point to
-        #       a predefined config and amend it at the same time.  This might
-        #       be ok for the session, but introduces a minor API inconsistency.
-        name = 'default'
-        if isinstance(cfg, str):
-            name = cfg
-            cfg  = None
 
-        self._dbs      = None
-        self._closed   = False
-        self._primary  = _primary
-        self._reg_addr = _reg_addr
+        self._close_options.verify()
 
-        self._pmgrs = dict()  # map IDs to pmgr instances
-        self._tmgrs = dict()  # map IDs to tmgr instances
-        self._cmgr  = None    # only primary sessions have a cmgr
+        self._dbs           = None
+        self._closed        = False
+        self._pmgrs         = dict()  # map IDs to pmgr instances
+        self._tmgrs         = dict()  # map IDs to tmgr instances
+        self._cmgr          = None    # only primary sessions have a cmgr
 
-        # path, client_sandbox, dburl
-        # bridges, components
-        # FIXME REG: if reg_addr, pull config, otherwise load config
-        self._cfg   = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
-        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
-
-        for site in self._rcfgs:
-            for rcfg in self._rcfgs[site].values():
-                for schema in rcfg.get('schemas', []):
-                    while isinstance(rcfg.get(schema), str):
-                        tgt = rcfg[schema]
-                        rcfg[schema] = rcfg[tgt]
-
-        if _primary:
-
-            pwd = os.getcwd()
-
-            if not self._cfg.sid:
-                if uid:
-                    self._cfg.sid = uid
-                else:
-                    self._cfg.sid = ru.generate_id('rp.session',
-                                                   mode=ru.ID_PRIVATE)
-            if not self._cfg.base:
-                self._cfg.base = pwd
-
-            if not self._cfg.path:
-                self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
-
-            if not self._cfg.client_sandbox:
-                self._cfg.client_sandbox = pwd
+        if self._primary:
+            self._initialize_primary()
 
         else:
-            for k in ['sid', 'base', 'path']:
-                assert k in self._cfg, 'non-primary session misses %s' % k
+            self._initialize_non_primary()
 
-        # change RU defaults to point logfiles etc. to the session sandbox
-        def_cfg             = ru.DefaultConfig()
-        def_cfg.log_dir     = self._cfg.path
-        def_cfg.report_dir  = self._cfg.path
-        def_cfg.profile_dir = self._cfg.path
-
-        self._uid = self._cfg.sid
-
-        # cfg setup is complete
-        if not self._cfg.reg_addr:
-
-            self._reg_service = ru.zmq.Registry(uid=self._uid + '.reg',
-                                                path=self.path)
-            self._reg_service.start()
-
-            self._cfg.reg_addr = self._reg_service.addr
-
-        # always create a registry client
-        assert self._cfg.reg_addr
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._uid)
-
-        # store some session and resource config data in the registry
-        self._reg['cfg'] = {'sid'           : self._uid,
-                            'base'          : self._cfg.base,
-                            'path'          : self._cfg.path,
-                            'dburl'         : self._cfg.dburl,
-                            'reg_addr'      : self._cfg.reg_addr,
-                            'client_sandbox': self._cfg.client_sandbox,
-                            'heartbeat'     : self._cfg.heartbeat,
-                           }
-
-
-        self._prof = self._get_profiler(name=self._uid)
-        self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid)
-
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
-        self._log.info('radical.utils version: %s', ru.version_detail)
-
-        self._prof.prof('session_start', uid=self._uid, msg=int(_primary))
-
-        # now we have config and uid - initialize base class (saga session)
-        rs.Session.__init__(self, uid=self._uid)
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
@@ -195,50 +150,150 @@ class Session(rs.Session):
                             'js_shells'        : dict(),
                             'fs_dirs'          : dict()}
 
-        if _primary:
-            self._initialize_primary(dburl)
-
         # at this point we have a DB connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid, msg=int(_primary))
 
 
     # --------------------------------------------------------------------------
-    def _initialize_primary(self, dburl):
+    #
+    def _initialize_primary(self):
 
+        if not self._cfg:
+            # NOTE: we only support the default session config ATM
+            self._cfg = ru.Config('radical.pilot.session', name='default')
+
+        if not self._dburl:
+            self._dburl = self._cfg.dburl
+
+        if not self._dburl:
+            raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
+
+        # keep a dburl w/o password for logging purposes
+        dburl_save = ru.Url(self._dburl)
+        if dburl_save.get_password():
+            dburl_save.set_password('***')
+
+        self._cfg.dburl_save = str(dburl_save)
+
+        if self._uid:
+
+            # make sure that cfg is consistent with specified uid
+            if self._uid != self._cfg.get('sid', self._uid):
+                raise ValueError('session ID incompatible with passed config')
+
+        else:
+
+            self._uid = self._cfg.get('sid')
+
+            # if we did not find an sid in the cfg we need to generate a new ID
+            if not self._uid:
+
+                # only primary sessions create UIDs
+                if not self._primary:
+                    raise ValueError('non-primary sessions need a UID')
+
+                self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
+        if self._reg_addr:
+            raise ValueError('primary sessions do not accept registry address')
+
+
+        # make sure the cfg has the sid set
+        self._cfg['sid'] = self._uid
+
+        # we have a minimal config and uid - initialize base class
+        rs.Session.__init__(self, uid=self._uid)
+
+
+        pwd = os.getcwd()
+
+        if not self._cfg.base:
+            self._cfg.base = pwd
+
+        if not self._cfg.path:
+            self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
+
+        if not self._cfg.client_sandbox:
+            self._cfg.client_sandbox = pwd
+
+
+        # change RU defaults to point logfiles etc. to the session sandbox
+        def_cfg             = ru.DefaultConfig()
+        def_cfg.log_dir     = self._cfg.path
+        def_cfg.report_dir  = self._cfg.path
+        def_cfg.profile_dir = self._cfg.path
+
+        # primary sessions always create a Registry instance
+
+        self._reg_service = ru.zmq.Registry(uid=self._uid + '.reg',
+                                            path=self.path)
+        self._reg_service.start()
+
+        self._cfg.reg_addr = self._reg_service.addr
+
+        # always create a registry client
+        assert self._cfg.reg_addr
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._uid)
+
+        self._prof = self._get_profiler(name=self._uid)
+        self._rep  = self._get_reporter(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid)
+
+        from . import version_detail as rp_version_detail
+        self._log.info('radical.pilot version: %s', rp_version_detail)
+        self._log.info('radical.saga  version: %s', rs.version_detail)
+        self._log.info('radical.utils version: %s', ru.version_detail)
+
+        self._prof.prof('session_start', uid=self._uid)
         self._rep.info ('<<new session: ')
         self._rep.plain('[%s]' % self._uid)
 
+        # cfg setup is complete - push it to the registry.  Make sure the
+        # registry state is consistent for this session (== empty)
+        if self._reg.get('cfg'):
+            raise RuntimeError('primary session: consistency error, cfg exists')
+
+        self._reg['cfg'] = self._cfg
+
+
+        # load resource configs and store them also in the registry
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
+
+        self._reg['rcfgs'] = self._rcfgs
+
         # create db connection - need a dburl to connect to
-        if not dburl: dburl = self._cfg.dburl
-        if not dburl: raise RuntimeError("no db URL (set RADICAL_PILOT_DBURL)")
-
-        self._cfg.dburl = dburl
-
-        dburl_no_passwd = ru.Url(dburl)
-        if dburl_no_passwd.get_password():
-            dburl_no_passwd.set_password('****')
-
         self._rep.info ('<<database   : ')
-        self._rep.plain('[%s]'   % dburl_no_passwd)
-        self._log.info('dburl %s', dburl_no_passwd)
+        self._rep.plain('[%s]'   % self._cfg.dburl_save)
+        self._log.info('dburl %s', self._cfg.dburl_save)
 
         # create/connect database handle on primary sessions
         try:
-            self._dbs = DBSession(sid=self.uid, dburl=dburl, log=self._log)
+            self._dbs = DBSession(sid=self.uid, dburl=self._dburl,
+                                  log=self._log)
 
-            py_version_detail = sys.version.replace("\n", " ")
-            from . import version_detail as rp_version_detail
+            if self._dbs.reconnected:
 
-            self.inject_metadata({'radical_stack':
-                                         {'rp': rp_version_detail,
-                                          'rs': rs.version_detail,
-                                          'ru': ru.version_detail,
-                                          'py': py_version_detail}})
+                # push version metadata to a newly created session
+                py_version_detail = sys.version.replace("\n", " ")
+                from . import version_detail as rp_version_detail
+
+                self.inject_metadata({'radical_stack':
+                                             {'rp': rp_version_detail,
+                                              'rs': rs.version_detail,
+                                              'ru': ru.version_detail,
+                                              'py': py_version_detail}})
+
         except Exception as e:
             self._rep.error(">>err\n")
-            self._log.exception('session create failed [%s]', dburl_no_passwd)
-            raise RuntimeError ('session create failed [%s]' %
-                    dburl_no_passwd) from e
+            self._log.exception('session create failed [%s]', dburl_save)
+            raise RuntimeError('session create failed [%s]' % dburl_save) from e
 
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
@@ -262,6 +317,36 @@ class Session(rs.Session):
 
 
     # --------------------------------------------------------------------------
+    #
+    def _initialize_non_primary(self):
+
+        # a secondary session needs two pieces of information: the registry
+        # address to connect to, and the session ID for which we need to pull
+        # the config
+        if not self._uid:
+            raise ValueError('Non-primary sessions need a session ID')
+
+        if not self._reg_addr:
+            raise ValueError('non-primary sessions need an registry address')
+
+        # create a registry client
+        self._reg = ru.zmq.RegistryClient(url=self._reg_addr, pwd=self._uid)
+
+        self._prof = self._get_profiler(name=self._uid)
+        self._rep  = self._get_reporter(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid)
+
+        # load cfg and resource configs from the registry
+        self._cfg   = ru.Config(from_dict=self._reg['cfg'])
+        self._rcfgs = ru.Config(from_dict=self._reg['rcfgs'])
+
+        self._dburl = self._cfg.dburl
+
+        # we have a minimal config and uid - initialize base class
+        rs.Session.__init__(self, uid=self._uid)
+
+
+    # --------------------------------------------------------------------------
     # context manager `with` clause
     #
     def __enter__(self):
@@ -276,15 +361,17 @@ class Session(rs.Session):
     def close(self, **kwargs):
         """Close the session.
 
-        All subsequent attempts access objects attached to
-        the session will result in an error. If cleanup is set to True,
-        the session data is removed from the database.
+        All subsequent attempts access objects attached to the session will
+        result in an error. If cleanup is set to True, the session data is
+        removed from the database.
 
         Arguments:
-            cleanup (bool, optional): Remove session from MongoDB (implies *terminate=True*)
-            terminate (bool, optional): Shut down all pilots associated with the session.
-            download (bool, optional): Fetch pilot profiles and database entries.
-
+            cleanup (bool, optional): Remove session from MongoDB (implies
+                *terminate=True*)
+            terminate (bool, optional): Shut down all pilots associated with the
+                session.
+            download (bool, optional): Fetch pilot profiles and database
+                entries.
         """
 
         # close only once
@@ -1067,42 +1154,6 @@ class Session(rs.Session):
         print('  issue  : %s' % title)
         print('  problem: %s' % body)
         print('----------------------------------------------------')
-
-
-# ------------------------------------------------------------------------------
-#
-class _CloseOptions(ru.TypedDict):
-    """Options and validation for Session.close().
-
-    Arguments:
-        cleanup (bool, optional): Remove session from MongoDB.
-            Implies *terminate=True*. (default False)
-        download (bool, optional): Fetch pilot profiles and database entries.
-            (Default False.)
-        terminate (bool, optional): Shut down all pilots associated with the
-            session. (Default True.)
-
-    """
-
-    _schema = {
-        'cleanup'  : bool,
-        'download' : bool,
-        'terminate': bool
-    }
-
-    _defaults = {
-        'cleanup'  : False,
-        'download' : False,
-        'terminate': True
-    }
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _verify(self):
-
-        if self.get('cleanup') and not self.get('terminate'):
-            self.terminate = True
 
 
 # ------------------------------------------------------------------------------

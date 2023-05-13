@@ -66,7 +66,7 @@ class Popen(AgentExecutingComponent):
 
         self._watch_queue = queue.Queue()
 
-        self._pid = self._cfg['pid']
+        self._pid = self._reg['cfg.pid']
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
@@ -227,9 +227,6 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
-        if td['mode'] in [RAPTOR_MASTER, RAPTOR_WORKER]:
-            ru.write_json('%s/%s.json' % (sbox, tid), td)
-
         with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
             tmp  = ''
@@ -348,8 +345,7 @@ class Popen(AgentExecutingComponent):
 
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
-        _start_new_session = self._session.cfg['resource_cfg'].\
-            get('new_session_per_task', False)
+        _start_new_session = self._reg['rcfg.new_session_per_task'] or False
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -557,11 +553,11 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self._session.reg_addr
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
-      # ret += 'export RP_REGISTRY_URL="%s"\n'     % self.reg_addr
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)

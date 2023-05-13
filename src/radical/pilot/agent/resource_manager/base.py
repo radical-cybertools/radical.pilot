@@ -123,10 +123,11 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
+    def __init__(self, cfg, rcfg, log, prof):
 
         self.name  = type(self).__name__
         self._cfg  = cfg
+        self._rcfg = rcfg
         self._log  = log
         self._prof = prof
 
@@ -309,8 +310,7 @@ class ResourceManager(object):
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
         # add launch method information to rm_info
-        print('1 ============', self._cfg.resource_cfg.launch_methods)
-        rm_info.launch_methods = self._cfg.resource_cfg.launch_methods
+        rm_info.launch_methods = self._rcfg.launch_methods
 
         return rm_info
 
@@ -319,8 +319,6 @@ class ResourceManager(object):
     #
     def _prepare_launch_methods(self, rm_info):
 
-        import pprint
-        print('2 ============', pprint.pformat(rm_info.as_dict()))
         launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
         self._launch_order = launch_methods.get('order') or list(launch_methods)
@@ -368,7 +366,7 @@ class ResourceManager(object):
     # ResourceManager.
     #
     @classmethod
-    def create(cls, name, cfg, log, prof):
+    def create(cls, name, cfg, rcfg, log, prof):
 
         from .ccm         import CCM
         from .fork        import Fork
@@ -399,7 +397,7 @@ class ResourceManager(object):
         if name not in impl:
             raise RuntimeError('ResourceManager %s unknown' % name)
 
-        return impl[name](cfg, log, prof)
+        return impl[name](cfg, rcfg, log, prof)
 
 
 

@@ -50,7 +50,7 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
 
-        name = session.cfg.resource_cfg.agent_spawner
+        name = session._reg['rcfg.agent_spawner']
 
         from .popen    import Popen
         from .flux     import Flux
@@ -72,27 +72,24 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
-        session_cfg  = ru.Config(cfg=self._reg['cfg'])
-        resource_cfg = ru.Config(cfg=session_cfg['resource_cfg'])
+        scfg  = ru.Config(cfg=self._reg['cfg'])
+        rcfg = ru.Config(cfg=self._reg['rcfg'])
 
-        # the resource manager needs to connect to the registry
-        resource_cfg.reg_addr = self._cfg.reg_addr
-
-        rm_name  = resource_cfg['resource_manager']
-        self._rm = rpa.ResourceManager.create(rm_name, resource_cfg,
+        rm_name  = rcfg['resource_manager']
+        self._rm = rpa.ResourceManager.create(rm_name, scfg, rcfg,
                                               self._log, self._prof)
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']
-        self.resource  = session_cfg['resource']
-        self.rsbox     = session_cfg['resource_sandbox']
-        self.ssbox     = session_cfg['session_sandbox']
-        self.psbox     = session_cfg['pilot_sandbox']
+        self.resource  = scfg['resource']
+        self.rsbox     = scfg['resource_sandbox']
+        self.ssbox     = scfg['session_sandbox']
+        self.psbox     = scfg['pilot_sandbox']
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
 
         # if so configured, let the tasks know what to use as tmp dir
-        self._task_tmp = resource_cfg.get('task_tmp',
+        self._task_tmp = rcfg.get('task_tmp',
                                           os.environ.get('TMP', '/tmp'))
 
         if self.psbox.startswith(self.ssbox):
