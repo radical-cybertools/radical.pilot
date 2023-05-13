@@ -129,8 +129,6 @@ class TestWorker(TestCase):
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
 
-        os.unlink('/tmp/control_pubsub.cfg')
-
 
 # ------------------------------------------------------------------------------
 #
