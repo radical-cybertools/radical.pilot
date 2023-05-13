@@ -27,8 +27,18 @@ class TestSession(TestCase):
         self._reg   = mock.Mock()
         self._log   = mock.Mock()
         self._prof  = mock.Mock()
-        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
 
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*',
+                                expand=False)
+
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
+
+        print('====', self._rcfgs.keys())
 
     # --------------------------------------------------------------------------
     #
@@ -202,6 +212,7 @@ class TestSession(TestCase):
         self._session._cache['resource_sandbox'] = {}
 
         # NCSA: split `project` by "-"
+        print('====', self._session._rcfgs.keys())
         pilot['description'].update({'resource': 'ncsa.delta',
                                      'project' : 'bbka-delta-cpu'})
         self.assertIn('/bbka/',
