@@ -20,10 +20,21 @@ class TestSession(TestCase):
 
     _cleanup_files = []
 
+
+    def se_init(self):
+
+        self._rep   = mock.Mock()
+        self._reg   = mock.Mock()
+        self._log   = mock.Mock()
+        self._prof  = mock.Mock()
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
@@ -38,6 +49,8 @@ class TestSession(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if not p:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -85,7 +98,8 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
