@@ -26,13 +26,13 @@ concurrency they afford. See our
 `Brief Introduction to RADICAL-Pilot <https://radical-cybertools.github.io/presentations/pilot.mp4>`_
 to see how RP works on an HPC platform.
 
-RP offers unique features when compared to other pilot systems: (1) execution
-different types of tasks concurrently on the same pilot, e.g.,
+RP offers unique features when compared to other pilot systems: (1) concurrent 
+and sequential execution of heterogeneous tasks on one or more pilots, e.g.,
 single/multi-core, single/multi-GPU, MPI/OpenMP; (2) describing executable tasks
 and Python function tasks; (3) support of all the major HPC batch systems, e.g.,
-slurm, torque, pbs, lsf, etc.; (4) support of more than 14 methods to launch
+slurm, torque, pbs, lsf, etc.; (4) support of more than 16 methods to launch
 tasks, e.g., ssh, mpirun, aprun, jsrun, prrte, etc.; and (5) a general purpose
-architecture.
+distributed architecture.
 
 * Repository: https://github.com/radical-cybertools/radical.pilot
 * Issues: https://github.com/radical-cybertools/radical.pilot/issues
@@ -42,7 +42,7 @@ architecture.
    :numbered:
    :maxdepth: 2
 
-   tutorials/getting_started.ipynb
+   getting_started.ipynb
    tutorials.rst
    supported.rst
    envs.rst
