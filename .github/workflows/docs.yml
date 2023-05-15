@@ -1,0 +1,44 @@
+name: Run Jupyter Notebook
+
+on:
+  push:
+    branches:
+      - docs/nb_section3
+  pull_request:
+    branches:
+      - docs/nb_section3
+
+jobs:
+  run-getting_started:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017/tcp
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.7
+
+      - name: Install dependencies
+        run: |
+          python -m venv testenv
+          . testenv/bin/activate
+          python -m pip install --upgrade pip
+          pip install -r requirements-docs.txt
+
+      - name: Run Jupyter Notebook
+        env:
+          MONGODB_HOST: localhost
+          MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
+          RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+        run: |
+          jupyter nbconvert nbconvert --ClearOutputPreprocessor.enabled=True --inplace docs/source/getting_started.ipynb
+          jupyter nbconvert --execute docs/source/getting_started.ipynb
