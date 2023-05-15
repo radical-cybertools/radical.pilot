@@ -1,6 +1,10 @@
+.. _chapter_design:
+
 =========================
 Design and Implementation
 =========================
+
+.. toctree::
 
 RADICAL-Pilot is a distributed system that executes both a client and an agent
 component. The client component executes on the same machine and the same
@@ -31,14 +35,18 @@ tasks to Resource B.
 `PilotManager` and `PilotManager Worker`
 ----------------------------------------
 
-.. image:: images/architecture_pilotmanager.png
+.. figure:: images/architecture_pilotmanager.png
+ :width: 600pt
+ :alt: RP PilotManager architecture
 
 Download :download:`PDF version <images/architecture_pilotmanager.pdf>`.
 
 `TaskManager` and `TaskManager Worker`
 --------------------------------------
 
-.. image:: images/architecture_taskmanager.png
+.. figure:: images/architecture_taskmanager.png
+ :width: 600pt
+ :alt: RP TaskManager architecture
 
 Download :download:`PDF version <images/architecture_taskmanager.pdf>`.
 
@@ -49,7 +57,6 @@ Pilot and Task progress through linear state models.  The state names indicate
 what RP module and component operate on the specific Pilot or Task entity.
 Specifically, a Pilot or Task is, at any point in time, either owned by a RP
 component or is waiting in a Queue to be communicated between components.
-
 
 Pilot
 -----
@@ -66,7 +73,6 @@ Pilot
   "DONE",                   "Pilot Manager", "",               "Pilot marked as done. Final state"
   "CANCELED",               "Pilot Manager", "",               "Pilot marked as cancelled. Final state"
   "FAILED",                 "Pilot Manager", "",               "Pilot marked as failed. Final state"
-
 
 Task
 ----
