@@ -20,10 +20,31 @@ class TestSession(TestCase):
 
     _cleanup_files = []
 
+
+    def se_init(self):
+
+        self._rep   = mock.Mock()
+        self._reg   = mock.Mock()
+        self._log   = mock.Mock()
+        self._prof  = mock.Mock()
+
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*',
+                                expand=False)
+
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
+
+        print('====', self._rcfgs.keys())
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
@@ -38,6 +59,8 @@ class TestSession(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if not p:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -85,7 +108,8 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
@@ -160,6 +184,48 @@ class TestSession(TestCase):
         self._session._closed = False
         self._session.close(cleanup=True, terminate=True)
 
+    # --------------------------------------------------------------------------
+    #
+    def test_get_resource_sandbox(self):
+
+        pilot = {'uid'        : 'pilot.0000',
+                 'description': {}}
+
+        with self.assertRaises(ValueError):
+            # `PilotDescription.resource` is not provided
+            self._session._get_resource_sandbox(pilot=pilot)
+
+        # check `default_remote_workdir` handling
+
+        # ORNL: split `project` by "_"
+        pilot['description'].update({'resource': 'ornl.summit',
+                                     'project' : 'PROJNAME_machine'})
+        self.assertIn('/projname/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # ORNL: no any splitting
+        pilot['description'].update({'resource': 'ornl.summit',
+                                     'project' : 'PROJNAME'})
+        self.assertIn('/projname/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # NCSA: split `project` by "-"
+        print('====', self._session._rcfgs.keys())
+        pilot['description'].update({'resource': 'ncsa.delta',
+                                     'project' : 'bbka-delta-cpu'})
+        self.assertIn('/bbka/',
+                      self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
+        # NCSA: no splitting
+        pilot['description'].update({'resource': 'ncsa.delta',
+                                     'project' : 'bbka_wrongsplitter'})
+        self.assertNotIn('/bbka/',
+                         self._session._get_resource_sandbox(pilot).path)
+        self._session._cache['resource_sandbox'] = {}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -169,7 +235,7 @@ if __name__ == '__main__':
     tc.test_list_resources()
     tc.test_get_resource_config()
     tc.test_resource_schema_alias()
-
+    tc.test_get_resource_sandbox()
 
 # ------------------------------------------------------------------------------
 

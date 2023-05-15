@@ -38,14 +38,14 @@ class TestBaseExecuting(TestCase):
             # method `create` is allowed to be called by the base class only
             NewExecuting.create(cfg=None, session=None)
 
-        spawners = [
-            {'spawner': 'POPEN'},
-            {'spawner': 'UNKNOWN'}
-        ]
+        spawners = ['POPEN', 'UNKNOWN']
+
 
         for spawner in spawners:
+            session = ru.Config(cfg={
+                'cfg': { 'resource_cfg': { 'agent_spawner' : spawner}}})
             try:
-                AgentExecutingComponent.create(cfg=spawner, session=None)
+                AgentExecutingComponent.create(cfg=spawner, session=session)
             except:
                 # in case of spawner is not presented in `rpa.executing.base`
                 with self.assertRaises(ValueError):
@@ -64,7 +64,6 @@ class TestBaseExecuting(TestCase):
         ec = AgentExecutingComponent(cfg=None, session=None)
         ec._cfg = ru.TypedDict(from_dict={
             'sid'             : 'sid.0000',
-            'resource_manager': 'FORK',
             'resource_sandbox': '',
             'session_sandbox' : '',
             'pilot_sandbox'   : '',
@@ -72,6 +71,13 @@ class TestBaseExecuting(TestCase):
             'resource_cfg'    : {'order': [],
                                  'launch_methods': {'SRUN': {}}}
         })
+        ec._reg               = ru.Config(cfg={
+            'cfg': {'resource'        : 'localhost',
+                    'pilot_sandbox'   : '',
+                    'session_sandbox' : '',
+                    'resource_sandbox': '',
+                    'resource_cfg'    : {'resource_manager': 'FORK',
+                                         'agent_spawner'   : 'POPEN'}}})
         ec._log               = ec._prof               = mock.Mock()
         ec.work               = ec.control_cb          = mock.Mock()
         ec.register_input     = ec.register_output     = mock.Mock()

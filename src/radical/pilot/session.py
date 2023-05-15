@@ -7,6 +7,8 @@ import copy
 import glob
 import time
 
+from typing import Optional
+
 import threading as mt
 
 import radical.utils                as ru
@@ -17,6 +19,38 @@ import radical.saga.utils.pty_shell as rsup
 from .      import constants as rpc
 from .      import utils     as rpu
 from .proxy import Proxy
+
+
+# ------------------------------------------------------------------------------
+#
+class _CloseOptions(ru.TypedDict):
+    """Options and validation for Session.close().
+
+    Arguments:
+        download (bool, optional): Fetch pilot profiles and database entries.
+            (Default False.)
+        terminate (bool, optional): Shut down all pilots associated with the
+            session. (Default True.)
+
+    """
+
+    _schema = {
+        'download' : bool,
+        'terminate': bool
+    }
+
+    _defaults = {
+        'download' : False,
+        'terminate': True
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict):
+
+        super().__init__(from_dict)
+        self._verify()
 
 
 # ------------------------------------------------------------------------------
@@ -42,7 +76,7 @@ class Session(rs.Session):
     # sessions of RP client or agent modules), but all components need to call
     # the sessions `heartbeat()` method at regular intervals.
 
-    # the reporter is an applicataion-level singleton
+    # the reporter is an application-level singleton
     _reporter = None
 
     # a session has one of three possible roles:
@@ -53,14 +87,20 @@ class Session(rs.Session):
     #   - default: any other session instance, for example such as created by
     #     components in the client or agent module.
     _PRIMARY = 'primary'
-    _AGENT   = 'agent'
+    _AGENT_0 = 'agent_0'
+    _AGENT_N = 'agent_n'
     _DEFAULT = 'default'
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, proxy_url=None, proxy_host=None, uid=None,
-                       cfg=None, _role=_PRIMARY, **close_options):
+    def __init__(self, proxy_url  : Optional[str ] = None,
+                       proxy_host : Optional[str ] = None,
+                       uid        : Optional[str ] = None,
+                       cfg        : Optional[dict] = None,
+                       _role      : Optional[str ] = _PRIMARY,
+                       _reg_addr  : Optional[str ] = None,
+                       **close_options):
         """Create a new session.
 
         A new Session instance is created and stored in the database.
@@ -90,6 +130,7 @@ class Session(rs.Session):
               which is found to be free.
 
         Arguments:
+
             proxy_url (str, optional): proxy service URL - points to an RP
               proxy service which is used to establish an RP communication proxy
               for this session.
@@ -101,9 +142,8 @@ class Session(rs.Session):
               environment variables).
 
             uid (str, optional): Create a session with this UID.  Session UIDs
-                MUST be unique - otherwise they will lead to conflicts in the
-                underlying database, resulting in undefined behaviours (or
-                worse).
+                MUST be unique - otherwise they will lead to communication
+                conflicts, resulting in undefined behaviours.
 
             cfg (str | dict, optional): a named or instantiated configuration
                 to be used for the session.
@@ -118,51 +158,58 @@ class Session(rs.Session):
                 will inherit the original session ID, but will not attempt to
                 create a new proxies or registries.
 
-            close_options (optional): If additional key word arguments are
+            **close_options (optional): If additional key word arguments are
                 provided, they will be used as the default arguments to
-                Session.close(). (This can be useful when the Session is used as
+                Session.close(). This can be useful when the Session is used as
                 a Python context manager, such that close() is called
-                automatically at the end of a ``with`` block.)
+                automatically at the end of a ``with`` block.
 
+            _reg_addr (str, optional): Non-primary sessions will connect to the
+                registry at that endpoint and pull session config and resource
+                configurations from there.
         """
-
-        self._close_options = _CloseOptions(close_options)
-
-        self._role    = _role
-        print(1, self._role)
-        self._closed  = False
         self._t_start = time.time()
-
-        self._proxy = None    # proxy client instance
-        self._reg   = None    # registry client instance
-
-        self._pmgrs = dict()  # map IDs to pmgr instances
-        self._tmgrs = dict()  # map IDs to tmgr instances
-        self._cmgr  = None    # only primary sessions have a cmgr
 
         if uid: self._uid = uid
         else  : self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
 
-        self._init_cfg(uid, cfg)
+        self._role          = _role
+        self._uid           = uid
+        self._cfg           = ru.Config(cfg=cfg)
+        self._reg_addr      = _reg_addr
+        self._proxy_url     = proxy_url
+        self._proxy_host    = proxy_host
+        self._closed        = False
+        self._created       = time.time()
+        self._close_options = _CloseOptions(close_options)
+        self._close_options.verify()
+
+        self._proxy    = None    # proxy client instance
+        self._reg      = None    # registry client instance
+        self._pmgrs    = dict()  # map IDs to pmgr instances
+        self._tmgrs    = dict()  # map IDs to tmgr instances
+        self._cmgr     = None    # only primary sessions have a cmgr
+
+        self._init_uid()
         self._init_registry()
+        self._init_cfg()
         self._init_proxy(proxy_url, proxy_host)
-
-        if self._role == self._PRIMARY:
-            self._rep.info ('<<new session: ')
-            self._rep.plain('[%s]' % self._uid)
-
-        for site in self._rcfgs:
-            for rcfg in self._rcfgs[site].values():
-                for schema in rcfg.get('schemas', []):
-                    while isinstance(rcfg.get(schema), str):
-                        tgt = rcfg[schema]
-                        rcfg[schema] = rcfg[tgt]
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
 
         # start bridges and components
         self._init_components()
+
+        # cache sandboxes etc.
+        self._cache_lock = ru.RLock()
+        self._cache      = {'endpoint_fs'      : dict(),
+                            'resource_sandbox' : dict(),
+                            'session_sandbox'  : dict(),
+                            'pilot_sandbox'    : dict(),
+                            'client_sandbox'   : self._cfg.client_sandbox,
+                            'js_shells'        : dict(),
+                            'fs_dirs'          : dict()}
 
         # at this point we have a bridge connection, logger, etc, and are done
         self._prof.prof('session_ok', uid=self._uid)
@@ -173,62 +220,154 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _init_cfg(self, uid, cfg):
+    def _init_uid(self):
+
+        if self._role == self._PRIMARY:
+
+            # only primary sessions create UIDs
+            if self._uid:
+                raise ValueError('only non-primary sessions need a UID')
+
+            # if user did not set a uid, we need to generate a new ID
+            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
+        else:
+
+            if not self._uid:
+                raise ValueError('non-primary sessions need a UID')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_registry(self):
+        '''
+        PRIMARY: create registry client and service
+        AGENT  : create registry client and service
+        DEFAULT: create registry client only
+        '''
+
+        if self._role == self._PRIMARY and self._reg_addr:
+            raise ValueError('primary sessions do not accept registry address')
+
+
+        # primary and agent_0 sessions run an inline registry service to share
+        # runtime config with their components (and sub-agents)
+        if self._role in [self._PRIMARY, self._AGENT_0]:
+
+            reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid)
+            reg_service.start()
+
+            self._reg_addr = reg_service.addr
+
+            assert self._reg_addr
+
+            # register the session ID as sanity check for non-primary sessions
+            self._reg = ru.zmq.RegistryClient(url=self._reg_addr)
+            self._reg.put('sid', self._uid)
+
+        else:
+
+            # non-primary sessions also connect a registry client
+            assert self._reg_addr
+            self._reg = ru.zmq.RegistryClient(url=self._reg_addr)
+
+            # ensure the registry is up and valid
+            assert self._reg.get('sid') == self._uid
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_cfg(self):
+
+        # At this point we have a UID and a valid registry client.  Depending on
+        # session role, the session config is initialized in different ways:
+        #
+        #   - PRIMARY: read from disk
+        #   - AGENT  : get cfg dict (agent config staged by client side)
+        #   - DEFAULT: fetch from registry
+        #
+        # The same scheme holds for resource configs.
 
         # NOTE: `cfg_name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
-        #       be ok for the session, but introduces a minor API inconsistency.
+        #       be ok for the session, but introduces an API inconsistency.
 
-        cfg_name = 'default'
-        if isinstance(cfg, str):
-            cfg_name = cfg
-            cfg      = None
+        if self._role == self._PRIMARY:
 
-        self._cfg   = ru.Config('radical.pilot.session',  name=cfg_name, cfg=cfg)
-        self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+            cfg_name = 'default'
+            if isinstance(self._cfg, str):
+                cfg_name  = self._cfg
+                self._cfg = None
 
-        if uid and self._cfg.sid:
-            assert uid == self._cfg.sid
+            self._cfg   = ru.Config('radical.pilot.session',  name=cfg_name, cfg=self._cfg)
+            self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
 
-        if uid:
-            self._uid = uid
-        elif self._cfg.sid:
-            self._uid = self._cfg.sid
-        else:
-            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+            for site in self._rcfgs:
+                for rcfg in self._rcfgs[site].values():
+                    for schema in rcfg.get('schemas', []):
+                        while isinstance(rcfg.get(schema), str):
+                            tgt = rcfg[schema]
+                            rcfg[schema] = rcfg[tgt]
+
+        # make sure the cfg has the sid set
+        self._cfg['sid'] = self._uid
+
+        # we have a minimal config and uid - initialize base class
+        rs.Session.__init__(self, uid=self._uid)
 
         # session path: where to store logfiles etc.
         if self._cfg.path: self._path = self._cfg.path
-        else             : self._path = '%s/%s' % (os.getcwd(), self.uid)
+        else             : self._path = '%s/%s' % (os.getcwd(), self._uid)
+
+        pwd = os.getcwd()
+
+        if not self._cfg.base:
+            self._cfg.base = pwd
+
+        if not self._cfg.path:
+            self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
+
+        if not self._cfg.client_sandbox:
+            self._cfg.client_sandbox = pwd
+
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
-        def_cfg.log_dir     = self._path
-        def_cfg.report_dir  = self._path
-        def_cfg.profile_dir = self._path
+        def_cfg.log_dir     = self._cfg.path
+        def_cfg.report_dir  = self._cfg.path
+        def_cfg.profile_dir = self._cfg.path
 
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
                                         level=self._cfg.get('debug'))
 
-        self._log.debug('=== 1 %s', self._role)
-        self._log.debug('=== Session(%s, %s) [%s]', uid, self._role,
-                self._cfg.sid)
+        from . import version_detail as rp_version_detail
+        self._log.info('radical.pilot version: %s', rp_version_detail)
+        self._log.info('radical.saga  version: %s', rs.version_detail)
+        self._log.info('radical.utils version: %s', ru.version_detail)
+
+        self._log.debug('=== Session(%s, %s)', self._uid, self._role)
         self._log.debug('\n'.join(ru.get_stacktrace()))
 
         self._prof.prof('session_start', uid=self._uid)
 
-        if self._role == self._PRIMARY:
-            self._rep.info ('<<new session: ')
-            self._rep.plain('[%s]' % self._uid)
+        self._rep.info ('<<new session: ')
+        self._rep.plain('[%s]' % self._uid)
 
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s' % rp_version_detail)
-        self._log.info('radical.saga  version: %s' % rs.version_detail)
-        self._log.info('radical.utils version: %s' % ru.version_detail)
+        # primary sessions always create a Registry instance
+        self._reg_service = ru.zmq.Registry(uid=self._uid + '.reg',
+                                            path=self._cfg.path)
+        self._reg_service.start()
 
-      # FIXME MONGODB: to json
+        self._cfg.reg_addr = self._reg_service.addr
+
+        # always create a registry client
+        assert self._cfg.reg_addr
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+
+
+        # FIXME MONGODB: to json
         self._metadata = {'radical_stack':
                                      {'rp': rp_version_detail,
                                       'rs': rs.version_detail,
@@ -243,54 +382,19 @@ class Session(rs.Session):
         else:
             assert self._cfg.client_sandbox
 
-        # cache sandboxes etc.
-        self._cache_lock = ru.RLock()
-        self._cache      = {'endpoint_fs'      : dict(),
-                            'resource_sandbox' : dict(),
-                            'session_sandbox'  : dict(),
-                            'pilot_sandbox'    : dict(),
-                            'client_sandbox'   : self._cfg.client_sandbox,
-                            'js_shells'        : dict(),
-                            'fs_dirs'          : dict()}
+
+        # cfg setup is complete - push it to the registry.  Make sure the
+        # registry state is consistent for this session (== empty)
+        if self._reg.get('cfg'):
+            raise RuntimeError('primary session: consistency error, cfg exists')
 
         # The config is inherited by all session components, so update it
-        self._cfg.path = self._path
-        self._cfg.sid  = self._uid
+        self._cfg.path = self._path  ##
+        self._cfg.sid  = self._uid   ##
         self._log.debug('=== 2 %s', self._role)
 
-        # basic state is set up (sid, logger, profiler, caches etc).  Next order
-        # of business for a primary session is to create a registry instance so
-        # that all components in this session can obtain information about comm
-        # channels, proxy URLs etc.
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _init_registry(self):
-
-        self._log.debug('=== 3 %s', self._role)
-        if self._role in [self._PRIMARY, self._AGENT]:
-            # run an inline registry service to share runtime config with other
-            # client components
-            reg_uid = 'radical.pilot.reg.%s' % self._uid
-            reg_service = ru.zmq.Registry(uid=reg_uid)
-            reg_service.start()
-            self._cfg.reg_addr = reg_service.addr
-
-            assert self._cfg.reg_addr
-
-            # register the session ID as sanity check for non-primary sessions
-            self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-            self._reg.put('sid', self._uid)
-
-        else:
-
-            # non-primary sessions also connect a registry client
-            assert self._cfg.reg_addr
-            self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-
-            # ensure the registry is up and valid
-            assert self._reg.get('sid') == self._uid
+        self._reg['cfg']   = self._cfg
+        self._reg['rcfgs'] = self._rcfgs
 
 
     # --------------------------------------------------------------------------
@@ -305,7 +409,7 @@ class Session(rs.Session):
 
         if not proxy_url:
 
-            if self._role in [self._AGENT, self._DEFAULT]:
+            if self._role in [self._AGENT_0, self._AGENT_N, self._DEFAULT]:
                 raise RuntimeError('proxy service URL missing')
 
             # start a temporary embedded service on the proxy host
@@ -360,7 +464,7 @@ class Session(rs.Session):
                 raise
 
 
-        elif self._role == self._AGENT:
+        elif self._role == self._AGENT_0:
 
             self._log.debug('=== 7 %s', self._role)
             # query the same service to fetch proxy created by primary session
@@ -377,18 +481,16 @@ class Session(rs.Session):
     #
     def _init_components(self):
 
-        if self._role not in [self._PRIMARY, self._AGENT]:
+        if self._role not in [self._PRIMARY, self._AGENT_0, self._AGENT_N]:
             # no components to start
             return
 
+
         # primary sessions have a component manager which also manages
         # heartbeat.  'self._cmgr.close()` should be called during termination
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
-
-        # expose the cmgr's heartbeat channel to anyone who wants to use it
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat   # pylint: disable=E1101
+        self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr, self._uid)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         # make sure we send heartbeats to the proxy
         self._run_proxy_hb()
@@ -434,12 +536,10 @@ class Session(rs.Session):
         removed from the database.
 
         Arguments:
-            cleanup (bool, optional): Remove session from MongoDB (implies *
-                terminate=True*)
             terminate (bool, optional): Shut down all pilots associated with the
                 session.
-            download (bool, optional): Fetch pilot profiles and database entries.
-
+            download (bool, optional): Fetch pilot profiles and database
+                entries.
         """
 
         # close only once
@@ -535,9 +635,9 @@ class Session(rs.Session):
             tgt = '%s/%s.json' % (self.path, self.uid)
             ru.write_json(json, tgt)
 
-        if self.closed and self.created:
+        if self._closed and self._created:
             self._rep.info('<<session lifetime: %.1fs' %
-                           (self.closed - self.created))
+                           (self._closed - self._created))
         self._rep.ok('>>ok\n')
 
 
@@ -587,28 +687,18 @@ class Session(rs.Session):
         """Returns a Python dictionary representation of the object."""
 
         object_dict = {
-            "uid"        : self._uid,
-          # "created"    : self.created,
-          # "connected"  : self.connected,
-          # "closed"     : self.closed,
-            "proxy_url"  : str(self.proxy_url),
-            "cfg"        : copy.deepcopy(self._cfg)
+            'uid'      : self._uid,
+            'proxy_url': str(self.proxy_url),
+            'cfg'      : copy.deepcopy(self._cfg)
         }
         return object_dict
 
 
     # --------------------------------------------------------------------------
     #
-    def __str__(self):
-        """Returns a string representation of the object."""
-        return str(self.as_dict())
-
-
-    # --------------------------------------------------------------------------
-    #
     @property
-    def primary(self):
-        return self._role == self._PRIMARY
+    def reg_addr(self):
+        return self._cfg.reg_addr
 
 
     # --------------------------------------------------------------------------
@@ -650,7 +740,6 @@ class Session(rs.Session):
     #
     @property
     def cmgr(self):
-        assert self._primary
         return self._cmgr
 
 
@@ -958,11 +1047,14 @@ class Session(rs.Session):
                 if '%' in sandbox_raw:
                     # expand from pilot description
                     expand = dict()
-                    for k,v in pilot['description'].items():
+                    for k, v in pilot['description'].items():
                         if v is None:
                             v = ''
-                        if k == 'project' and '_' in v and 'ornl' in resource:
-                            v = v.split('_')[0]
+                        if k == 'project':
+                            if '_' in v and 'ornl' in resource:
+                                v = v.split('_')[0]
+                            elif '-' in v and 'ncsa' in resource:
+                                v = v.split('-')[0]
                         expand['pd.%s' % k] = v
                         if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()
@@ -1026,7 +1118,7 @@ class Session(rs.Session):
             else: raise Exception("invalid schema: %s" % js_url.schema)
 
             if js_url.schema == 'fork':
-                js_url.hostname = 'localhost'
+                js_url.host = 'localhost'
 
             self._log.debug("rsup.PTYShell('%s')", js_url)
             shell = rsup.PTYShell(js_url, self)
@@ -1178,111 +1270,5 @@ class Session(rs.Session):
         return js_url, js_hop
 
 
-    # --------------------------------------------------------------------------
-    #
-    @staticmethod
-    def autopilot(user, passwd):
-
-        try:
-            import github3
-        except ImportError:
-            print('ERROR: github3 library is not available')
-            return
-        import random
-
-        labels = 'type:autopilot'
-        titles = ['+++ Out of Cheese Error +++',
-                  '+++ Redo From Start! +++',
-                  '+++ Mr. Jelly! Mr. Jelly! +++',
-                  '+++ Melon melon melon',
-                  '+++ Wahhhhhhh! Mine! +++',
-                  '+++ Divide By Cucumber Error +++',
-                  '+++ Please Reinstall Universe And Reboot +++',
-                  '+++ Whoops! Here comes the cheese! +++',
-                  '+++ End of Cheese Error +++',
-                  '+++ Can Not Find Drive Z: +++',
-                  '+++ Unknown Application Error +++',
-                  '+++ Please Reboot Universe +++',
-                  '+++ Year Of The Sloth +++',
-                  '+++ error of type 5307 has occured +++',
-                  '+++ Eternal domain error +++',
-                  '+++ Error at Address Number 6, Treacle Mine Road +++']
-
-        def excuse():
-            cmd_fetch  = "telnet bofh.jeffballard.us 666 2>&1 "
-            cmd_filter = "grep 'Your excuse is:' | cut -f 2- -d :"
-            out        = ru.sh_callout("%s | %s" % (cmd_fetch, cmd_filter),
-                                       shell=True)[0]
-            return out.strip()
-
-        github = github3.login(user, passwd)
-        repo   = github.repository("radical-cybertools", "radical.pilot")
-
-        title = 'autopilot: %s' % titles[random.randint(0, len(titles) - 1)]
-
-        print('----------------------------------------------------')
-        print('autopilot')
-
-        for issue in repo.issues(labels=labels, state='open'):
-            if issue.title == title:
-                reply = 'excuse: %s' % excuse()
-                issue.create_comment(reply)
-                print('  resolve: %s' % reply)
-                return
-
-        # issue not found - create
-        body  = 'problem: %s' % excuse()
-        issue = repo.create_issue(title=title, body=body, labels=[labels],
-                                  assignee=user)
-        print('  issue  : %s' % title)
-        print('  problem: %s' % body)
-        print('----------------------------------------------------')
-
-
 # ------------------------------------------------------------------------------
-#
-class _CloseOptions(ru.TypedDict):
-    """Options and validation for Session.close().
 
-    Arguments:
-        cleanup (bool, optional): Remove session from MongoDB.
-            Implies *terminate=True*. (default False)
-        download (bool, optional): Fetch pilot profiles and database entries.
-            (Default False.)
-        terminate (bool, optional): Shut down all pilots associated with the
-            session. (Default True.)
-
-    """
-
-    _schema = {
-        'download' : bool,
-        'terminate': bool
-    }
-
-    _defaults = {
-        'download' : False,
-        'terminate': True
-    }
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, from_dict):
-
-        super().__init__(from_dict)
-        self._verify()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _verify(self):
-
-        if self.get('cleanup') and not self.get('terminate'):
-            self.terminate = True
-
-        for key in self:
-            if key not in self._schema and key not in ['cleanup', 'terminate']:
-                raise ValueError('key %s not supported' % key)
-
-
-# ------------------------------------------------------------------------------

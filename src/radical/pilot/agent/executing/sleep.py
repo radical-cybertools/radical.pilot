@@ -63,7 +63,7 @@ class Sleep(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
@@ -80,7 +80,7 @@ class Sleep(AgentExecutingComponent) :
                 self._prof.prof('unschedule_start', uid=task['uid'])
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
         with self._tasks_lock:
             self._tasks.extend(tasks)
@@ -112,7 +112,7 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _timed(self):
+    def _collect(self):
 
         while not self._terminate.is_set():
 
@@ -145,8 +145,8 @@ class Sleep(AgentExecutingComponent) :
             self._log.debug('collected                : %d', len(to_finish))
 
             self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_finish)
-            self.advance(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                    publish=True, push=True)
+            self.advance_tasks(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                          publish=True, push=True)
 
 
     # --------------------------------------------------------------------------

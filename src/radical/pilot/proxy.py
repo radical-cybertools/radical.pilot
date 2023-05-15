@@ -215,9 +215,9 @@ class Proxy(ru.zmq.Server):
 
         try:
             data = q.get(timeout=10)
-        except queue.Empty:
+        except queue.Empty as e:
             proc.terminate()
-            raise RuntimeError('worker startup failed')
+            raise RuntimeError('worker startup failed') from e
 
         self._clients[sid] = {'proc': proc,
                               'term': term,
@@ -238,20 +238,20 @@ class Proxy(ru.zmq.Server):
         proxy_aq = None
 
         try:
-            proxy_cp = ru.zmq.PubSub(cfg={'channel': 'proxy_control_pubsub',
-                                          'uid'    : 'proxy_control_pubsub',
+            proxy_cp = ru.zmq.PubSub(channel='proxy_control_pubsub',
+                                     cfg={'uid'    : 'proxy_control_pubsub',
                                           'type'   : 'pubsub',
                                           'log_lvl': 'debug',
                                           'path'   : sid})
 
-            proxy_sp = ru.zmq.PubSub(cfg={'channel': 'proxy_state_pubsub',
-                                          'uid'    : 'proxy_state_pubsub',
+            proxy_sp = ru.zmq.PubSub(channel='proxy_state_pubsub',
+                                     cfg={'uid'    : 'proxy_state_pubsub',
                                           'type'   : 'pubsub',
                                           'log_lvl': 'debug',
                                           'path'   : sid})
 
-            proxy_aq = ru.zmq.Queue (cfg={'channel': 'proxy_task_queue',
-                                          'uid'    : 'proxy_task_queue',
+            proxy_aq = ru.zmq.Queue (channel='proxy_task_queue',
+                                     cfg={'uid'    : 'proxy_task_queue',
                                           'type'   : 'queue',
                                           'log_lvl': 'debug',
                                           'path'   : sid})

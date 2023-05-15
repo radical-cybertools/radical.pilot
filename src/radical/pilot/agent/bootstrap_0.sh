@@ -893,6 +893,7 @@ virtenv_activate()
     python_dist="$2"
 
     if test "$python_dist" = "anaconda"; then
+        export RP_VENV_TYPE='conda'
         if ! test -z $(which conda); then
             eval "$(conda shell.posix hook)"
             conda activate "$virtenv"
@@ -906,6 +907,7 @@ virtenv_activate()
             exit 1
         fi
     else
+        export RP_VENV_TYPE='venv'
         unset VIRTUAL_ENV
         . "$virtenv/bin/activate"
         if test -z "$VIRTUAL_ENV"; then
@@ -913,6 +915,8 @@ virtenv_activate()
             exit 1
         fi
     fi
+
+    export RP_VENV_PATH="$virtenv"
 
     VIRTENV_IS_ACTIVATED=TRUE
     echo "VIRTENV activated : $virtenv"

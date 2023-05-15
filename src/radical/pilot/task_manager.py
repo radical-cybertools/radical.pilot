@@ -14,7 +14,8 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from . import task_description as rptd
+from .task_description import TaskDescription, RAPTOR_MASTER, RAPTOR_WORKER
+from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -109,6 +110,9 @@ class TaskManager(rpu.Component):
             self._uid       = ru.generate_id('tmgr.%(item_counter)04d',
                                              ru.ID_CUSTOM, ns=session.uid)
 
+        if not scheduler:
+            scheduler = rpc.SCHEDULER_ROUND_ROBIN
+
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
         self._tasks       = dict()
@@ -136,13 +140,9 @@ class TaskManager(rpu.Component):
         cfg.owner          = self._uid
         cfg.sid            = session.uid
         cfg.path           = session.path
-        cfg.reg_addr       = session.cfg.reg_addr
+        cfg.reg_addr       = session.reg_addr
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
-
-        if scheduler:
-            # overwrite the scheduler from the config file
-            cfg.scheduler = scheduler
 
         rpu.Component.__init__(self, cfg, session=session)
         self.start()
@@ -150,10 +150,14 @@ class TaskManager(rpu.Component):
         self._log.info('started tmgr %s', self._uid)
         self._rep.info('<<create task manager')
 
+        # overwrite the scheduler from the config file
+        if 'tmgr_scheduling' in self._cfg.components:
+            self._cfg.components.tmgr_scheduling.scheduler = scheduler
+
         # create pmgr bridges and components, use session cmgr for that
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr = rpu.ComponentManager(cfg.sid, cfg.reg_addr, self._uid)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         # let session know we exist
         if self._reconnect:
@@ -315,63 +319,21 @@ class TaskManager(rpu.Component):
 
             if state in rps.FINAL:
 
-                self._log.debug('pilot %s is final - pull tasks', pilot.uid)
+                self._log.debug('pilot %s is final', pilot.uid)
 
                 # FIXME: MongoDB
+                # TODO: fail all non-final tasks which were assigned to that
+                # pilot
                 continue
-                task_cursor = self.session._dbs._c.find({
-                    'type'    : 'task',
-                    'pilot'   : pilot.uid,
-                    'tmgr'    : self.uid,
-                    'control' : {'$in' : ['agent_pending', 'agent']}})
 
-                if not task_cursor.count():
-                    tasks = list()
-                else:
-                    tasks = list(task_cursor)
-
-                self._log.debug("tasks pulled: %3d (pilot dead)", len(tasks))
-
-                if not tasks:
-                    continue
-
-                # update the tasks to avoid pulling them again next time.
-                # NOTE:  this needs not locking with the task pulling in the
-                #        _task_pull_cb, as that will only pull tmgr_pending
-                #        tasks.
-                uids = [task['uid'] for task in tasks]
-
-                self._session._dbs._c.update({'type'  : 'task',
-                                              'uid'   : {'$in'     : uids}},
-                                             {'$set'  : {'control' : 'tmgr'}},
-                                             multi=True)
-                to_restart = list()
-                for task in tasks:
-
-                    task['exception']        = 'RuntimeError("pilot died")'
-                    task['exception_detail'] = 'pilot %s is final' % pid
-                    task['state'] = rps.FAILED
-
-                    if not task['description'].get('restartable'):
-                        self._log.debug('task %s not restartable', task['uid'])
-                        continue
-
-                    self._log.debug('task %s is  restartable', task['uid'])
-                    task['restarted'] = True
-                    td = rptd.TaskDescription(task['description'])
-                    to_restart.append(td)
-                    # FIXME: increment some restart counter in the description?
-                    # FIXME: reference the resulting new uid in the old task.
-
-                if to_restart and not self._closed:
-                    self._log.debug('restart %s tasks', len(to_restart))
-                    restarted = self.submit_tasks(to_restart)
-                    for u in restarted:
-                        self._log.debug('restart task %s', u.uid)
-
-                # final tasks are not pushed
-                self.advance(tasks, publish=True, push=False)
-
+             ## for task in tasks:
+             ##
+             ##     task['exception']        = 'RuntimeError("pilot died")'
+             ##     task['exception_detail'] = 'pilot %s is final' % pid
+             ##     task['state'] = rps.FAILED
+             ##
+             ## # final tasks are not pushed
+             ## self.advance(tasks, publish=True, push=False)
 
         # keep cb registered
         return True
@@ -581,6 +543,10 @@ class TaskManager(rpu.Component):
                 if isinstance(pilot, dict):
                     pilot_dict = pilot
                 else:
+                    # let the pilot know that we own it now
+                    # FIXME: this is not working for pilot dicts (ENTK)
+                    pilot.attach_tmgr(self)
+
                     pilot_dict = pilot.as_dict()
                     # real object: subscribe for state updates
                     pilot.register_callback(self._pilot_state_cb)
@@ -714,44 +680,159 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def submit_raptors(self, descriptions, pilot_id=None):
+        """Submit RAPTOR master tasks.
+
+        Submits on or more :class:`radical.pilot.TaskDescription` instances to
+        the task manager, where the `TaskDescriptions` have the mode
+        `RAPTOR_MASTER` set.
+
+        This is a thin wrapper around `submit_tasks`.
+
+        Arguments:
+            descriptions: (radical.pilot.TaskDescription) description of the
+                workers to submit.
+
+        Returns:
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
+        """
+
+        descriptions = ru.as_list(descriptions)
+
+        for td in descriptions:
+
+            if not td.mode == RAPTOR_MASTER:
+                raise ValueError('unexpected task mode [%s]' % td.mode)
+
+            raptor_file  = td.get('raptor_file')  or  ''
+            raptor_class = td.get('raptor_class') or  'Master'
+
+            td.pilot     = pilot_id
+            td.arguments = [raptor_file, raptor_class]
+
+            td.environment['PYTHONUNBUFFERED'] = '1'
+
+            if not td.get('uid'):
+                td.uid = ru.generate_id('raptor.%(item_counter)04d',
+                                        ru.ID_CUSTOM, ns=self._session.uid)
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-master'
+
+            if not td.get('named_env'):
+                td.named_env = 'rp'
+
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
+
+        return self.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def submit_workers(self, descriptions):
+        """Submit RAPTOR workers.
+
+        Submits on or more :class:`radical.pilot.TaskDescription` instances to
+        the task manager, where the `TaskDescriptions` have the mode
+        `RAPTOR_WORKER` set.
+
+        This method is a thin wrapper around `submit_tasks`.
+
+        Arguments:
+            descriptions: (radical.pilot.TaskDescription) description of the
+                workers to submit.
+
+        Returns:
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
+        """
+
+        descriptions = ru.as_list(descriptions)
+
+        for td in descriptions:
+
+            if not td.mode == RAPTOR_WORKER:
+                raise ValueError('unexpected task mode [%s]' % td.mode)
+
+            raptor_id    = td.get('raptor_id')
+            raptor_file  = td.get('raptor_file')  or  ''
+            raptor_class = td.get('raptor_class') or  'DefaultWorker'
+
+            if not raptor_id:
+                raise ValueError('RAPTOR_WORKER descriptions need `raptor_id`')
+
+            if not td.get('uid'):
+                td.uid = ru.generate_id(raptor_id + '.%(item_counter)04d',
+                                        ru.ID_CUSTOM, ns=self._session.uid)
+
+            if not td.get('executable'):
+                td.executable = 'radical-pilot-raptor-worker'
+
+            if not td.get('named_env'):
+                td.named_env = 'rp'
+
+            td.raptor_id = raptor_id
+            td.arguments = [raptor_file, raptor_class, raptor_id]
+
+            td.environment['PYTHONUNBUFFERED'] = '1'
+
+            # ensure that defaults and backward compatibility kick in
+            td.verify()
+
+        return self.submit_tasks(descriptions)
+
+
+    # --------------------------------------------------------------------------
+    #
     def submit_tasks(self, descriptions):
         """Submit tasks for execution.
 
-        Submits one or more :class:`radical.pilot.Task` instances to the
-        task manager.
+        Submits one or more :class:`radical.pilot.Task` instances to the task
+        manager.
 
         Arguments:
-            descriptions (radical.pilot.TaskDescription | list[radical.pilot.TaskDescription]):
+            descriptions (radical.pilot.TaskDescription | list
+                [radical.pilot.TaskDescription]):
                 The description of the task instance(s) to create.
 
         Returns:
-            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task` objects.
+            list[radical.pilot.Task]: A list of :class:`radical.pilot.Task`
+                objects.
 
         """
 
         from .task import Task
 
+        if not descriptions:
+            return []
+
         ret_list = True
-        if not isinstance(descriptions, list):
+        if descriptions and not isinstance(descriptions, list):
             ret_list     = False
             descriptions = [descriptions]
 
-        if len(descriptions) == 0:
-            raise ValueError('cannot submit no task descriptions')
-
         # we return a list of tasks
-        self._rep.progress_tgt(len(descriptions), label='submit')
         tasks = list()
         ret   = list()
+        self._rep.progress_tgt(len(descriptions), label='submit')
         for td in descriptions:
 
-            task = Task(tmgr=self, descr=td, origin='client')
+            self._rep.progress()
+
+            mode = td.mode
+
+            if mode == RAPTOR_MASTER:
+                task = RaptorMaster(tmgr=self, descr=td, origin='client')
+
+            elif mode == RAPTOR_WORKER:
+                task = RaptorWorker(tmgr=self, descr=td, origin='client')
+
+            else:
+                task = Task(tmgr=self, descr=td, origin='client')
+
             tasks.append(task)
-
-            # keep tasks around
-            with self._tasks_lock:
-                self._tasks[task.uid] = task
-
             self._rep.progress()
 
             if len(tasks) >= 1024:
@@ -764,10 +845,15 @@ class TaskManager(rpu.Component):
 
         # submit remaining bulk (if any)
         if tasks:
-            task_docs = [u.as_dict() for u in tasks]
+            task_docs = [t.as_dict() for t in tasks]
             self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                          publish=True, push=True)
             ret += tasks
+
+        # keep tasks around
+        with self._tasks_lock:
+            for task in tasks:
+                self._tasks[task.uid] = task
 
         self._rep.progress_done()
 
@@ -793,10 +879,10 @@ class TaskManager(rpu.Component):
 
             for doc in task_docs:
 
-                descr = TaskDescription(doc['description'])
-                descr.uid = doc['uid']
+                td = TaskDescription(doc['description'])
+                td.uid = doc['uid']
 
-                task = Task(tmgr=self, descr=descr, origin='client')
+                task = Task(tmgr=self, descr=td, origin='client')
                 task._update(doc, reconnect=True)
 
                 self._tasks[task.uid] = task

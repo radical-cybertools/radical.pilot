@@ -67,6 +67,8 @@ class PilotLauncherSAGA(PilotLauncherBase):
     #
     def _job_state_cb(self, job, _, saga_state, pid):
 
+        self._log.debug('job state: %s %s %s', pid, saga_state, job.id)
+
         try:
             with self._lock:
 
@@ -206,6 +208,11 @@ class PilotLauncherSAGA(PilotLauncherBase):
         self._log.debug('cancellation start')
         tc.cancel()
         tc.wait()
+
+        for pid in pids:
+            pilot = self._pilots[pid]
+            self._state_cb(pilot, rps.CANCELED)
+
         self._log.debug('cancellation done')
 
 

@@ -54,11 +54,12 @@ class Default(TMGRStagingInputComponent):
     def initialize(self):
 
         # we keep a cache of SAGA dir handles
-        self._fs_cache    = dict()
-        self._js_cache    = dict()
-        self._pilots      = dict()
-        self._pilots_lock = ru.RLock()
-        self._connected   = list()  # list of pilot conected by ZMQ
+        self._fs_cache     = dict()
+        self._js_cache     = dict()
+        self._pilots       = dict()
+        self._pilots_lock  = ru.RLock()
+        self._connected    = list()  # list of pilot conected by ZMQ
+        self._session_sbox = self._reg['cfg.session_sandbox']
 
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
@@ -144,6 +145,7 @@ class Default(TMGRStagingInputComponent):
         # advance them again as a bulk.  We work over the others one by one, and
         # advance them individually, to avoid stalling from slow staging ops.
 
+        session_sbox     = self._session_sbox
         staging_tasks    = dict()  # pid: [tasks]
         no_staging_tasks = dict()  # pid: [tasks]
 
@@ -315,7 +317,7 @@ class Default(TMGRStagingInputComponent):
 
         self._prof.prof("create_sandbox_start", uid=uid)
 
-        src_context = {'pwd'      : os.getcwd(),                # !!!
+        src_context = {'pwd'      : task['client_sandbox'],     # !!!
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],

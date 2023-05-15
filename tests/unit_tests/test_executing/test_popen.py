@@ -41,6 +41,8 @@ class TestPopen(TestCase):
     @mock.patch('radical.utils.Logger')
     def test_control_cb(self, mocked_logger, mocked_init):
 
+        mocked_logger._debug_level = 1
+
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
@@ -77,6 +79,8 @@ class TestPopen(TestCase):
         pex = Popen(cfg=None, session=None)
 
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._log._debug_level = 1
+
         pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
@@ -87,6 +91,7 @@ class TestPopen(TestCase):
         pex.psbox    = ''
         pex.gtod     = ''
         pex.prof     = ''
+        pex._session = ru.Config(cfg={'cfg': {'resource_cfg': {}}})
 
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher
@@ -94,9 +99,10 @@ class TestPopen(TestCase):
         pex._handle_task(task)
 
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
+        print(popen_input_kwargs)
         self.assertFalse(popen_input_kwargs['start_new_session'])
 
-        for prefix in ['.launch.sh', '.exec.sh', '.sl']:
+        for prefix in ['.launch.sh', '.exec.sh']:
             path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
             self.assertTrue(os.path.isfile(path))
 

@@ -40,13 +40,20 @@ def bootstrap_3(aid):
         setproctitle.setproctitle('rp.%s' % aid)
 
         cfg = ru.Config(path='%s.cfg' % aid)
-        cfg.uid  = aid
-        cfg.aid  = aid  # used by executor
-        cfg.path = os.getcwd()
-        cfg.base = os.getcwd()
+
+        # this script runs the registry for the agent instances
+        reg_service = ru.zmq.Registry(uid=aid + '.reg')
+        reg_service.start()
+
+        cfg.reg_addr = reg_service.addr
+
+        assert cfg.reg_addr
 
         # start a non-primary session (the agents will own their cmgrs)
-        session = rp.Session(cfg=cfg, _role=rp.Session._AGENT)
+        session = rp.Session(cfg=cfg, _role=rp.Session._AGENT, _reg_addr=cfg.reg_addr)
+
+        cfg.uid = aid
+        cfg.aid = aid  # used by executor
 
         if aid == 'agent.0': agent = rp.Agent_0(cfg, session)
         else               : agent = rp.Agent_n(cfg, session)

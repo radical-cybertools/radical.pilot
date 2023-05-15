@@ -43,14 +43,13 @@ class Agent_0(rpu.Worker):
     def __init__(self, cfg: ru.Config, session: Session):
 
         self._uid     = 'agent.0'
-        self._cfg     = cfg
         self._pid     = cfg.pid
+        self._sid     = cfg.sid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
 
         self._session = session
-        self._sid     = self._session.uid
-        self._log     = session._log
+        self._log     = ru.Logger(self._uid, ns='radical.pilot')
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -58,20 +57,30 @@ class Agent_0(rpu.Worker):
         # pick up proxy config from session
         self._cfg.proxy = self._session._cfg.proxy
 
-        rpu.Worker.__init__(self, self._cfg, session)
+        # extract bridges, components and resource_cfg subsections from the cfg
+        self._bcfg = cfg.bridges
+        self._ccfg = cfg.components
+        self._rcfg = cfg.resource_cfg
+
+        del cfg['bridges']
+        del cfg['components']
+        del cfg['resource_cfg']
+
+        # keep some state about service startups
+        self._service_uids_launched = list()
+        self._service_uids_running  = list()
+        self._services_setup        = mt.Event()
 
         # this is the earliest point to sync bootstrap and agent profiles
         self._prof = ru.Profiler(ns='radical.pilot', name=self._uid)
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
-        # run an inline registry service to share runtime config with other
-        # agent components
-        reg_uid = 'radical.pilot.reg.%s' % self._uid
-        self._reg_service = ru.zmq.Registry(uid=reg_uid)
-        self._reg_service.start()
+        # init the worker / component base classes, connects registry
+        rpu.Worker.__init__(self, cfg, session)
 
-        # let all components know where to look for the registry
-        self._cfg['reg_addr'] = self._reg_service.addr
+        # store the agent config in the registry
+        self._reg['cfg'] = self._cfg
+        self._reg['rcfg'] = self._rcfg
 
         # configure ResourceManager before component startup, as components need
         # ResourceManager information for function (scheduler, executor)
@@ -80,23 +89,21 @@ class Agent_0(rpu.Worker):
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
 
-        # expose heartbeat channel to sub-agents, bridges and components,
-        # and start those
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        # ready to configure agent components
+        self._cmgr = rpu.ComponentManager(self._cfg.sid, self._cfg.reg_addr,
+                                          self._uid)
 
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr.start_bridges(self._bcfg)
+        self._cmgr.start_components(self._ccfg)
 
         # connect to proxy communication channels, maybe
         self._connect_proxy()
 
-        # service tasks uids, which were launched
-        self._service_uids_launched = list()
-        # service tasks uids, which were confirmed to be started
-        self._service_uids_running  = list()
-        # set flag when all services are running
-        self._services_setup = mt.Event()
+        # before we run any tasks, prepare a named_env `rp` for tasks which use
+        # the pilot's own environment, such as raptors or RP service tasks
+        env_spec = {'type': os.environ['RP_VENV_TYPE'],
+                    'path': os.environ['RP_VENV_PATH']}
+        self._prepare_env('rp', env_spec)
 
         # start any services if they are requested
         self._start_services()
@@ -105,7 +112,9 @@ class Agent_0(rpu.Worker):
         self._write_sa_configs()
         self._start_sub_agents()   # TODO: move to cmgr?
 
-        # handle control messages
+        # at this point the session is up and connected, and it should have
+        # brought up all communication bridges and components.  We are
+        # ready to rumble!
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
         self.register_subscriber(rpc.STATE_PUBSUB,   self._service_state_cb)
 
@@ -141,7 +150,6 @@ class Agent_0(rpu.Worker):
         self._session._run_proxy_hb()
 
 
-
     # --------------------------------------------------------------------------
     #
     def _hb_check(self):
@@ -153,7 +161,7 @@ class Agent_0(rpu.Worker):
     #
     def _hb_term_cb(self, msg=None):
 
-        self._cmgr.close()
+        self._session.close()
         self._log.warn('hb termination: %s', msg)
 
         return None
@@ -239,6 +247,7 @@ class Agent_0(rpu.Worker):
     def _client_ctrl_cb(self, topic, msg):
 
         self._log.debug('ctl sub cb: %s %s', topic, msg)
+        ## FIXME?
 
 
     # --------------------------------------------------------------------------
@@ -250,8 +259,8 @@ class Agent_0(rpu.Worker):
         # information to the config, for the benefit of the scheduler).
 
         self._rm = ResourceManager.create(name=self._cfg.resource_manager,
-                                          cfg=self._cfg, log=self._log,
-                                          prof=self._prof)
+                                          cfg=self._cfg, rcfg=self._rcfg,
+                                          log=self._log, prof=self._prof)
 
         self._log.debug(pprint.pformat(self._rm.info))
 
@@ -298,8 +307,6 @@ class Agent_0(rpu.Worker):
         rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
 
-        self._start_services()
-
         pilot = {'type'     : 'pilot',
                  'uid'      : self._pid,
                  'state'    : rps.PMGR_ACTIVE,
@@ -343,13 +350,6 @@ class Agent_0(rpu.Worker):
         self._log.debug('stage output parent')
         self.stage_output()
 
-        # tear things down in reverse order
-        self._hb.stop()
-        self._cmgr.close()
-
-        if self._rm:
-            self._rm.stop()
-
         self._log.info('rusage: %s', rpu.get_rusage())
 
         out, err, log = '', '', ''
@@ -360,8 +360,6 @@ class Agent_0(rpu.Worker):
         except: pass
         try   : log = open('./agent.0.log', 'r').read(1024)
         except: pass
-
-        self._reg_service.stop()
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
@@ -384,6 +382,11 @@ class Agent_0(rpu.Worker):
         self._log.debug('update state: %s: %s', state, self._final_cause)
         self.publish(rpc.PROXY_STATE_PUBSUB,
                      topic=rpc.STATE_PUBSUB, msg=[pilot])
+
+        # tear things down in reverse order
+        self._rm.stop()
+        self._hb.stop()
+        self._session.close()
 
 
     # --------------------------------------------------------------------
@@ -411,8 +414,6 @@ class Agent_0(rpu.Worker):
             tmp_cfg['uid']   = sa
             tmp_cfg['aid']   = sa
             tmp_cfg['owner'] = 'agent.0'
-
-            ru.write_json(tmp_cfg, './%s.cfg' % sa)
 
 
     # --------------------------------------------------------------------------
@@ -675,7 +676,6 @@ class Agent_0(rpu.Worker):
 
             if self._pid not in arg.get('uids'):
                 self._log.debug('ignore cancel %s', msg)
-                return True
 
             self._log.info('cancel pilot cmd')
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
@@ -683,8 +683,16 @@ class Agent_0(rpu.Worker):
             self._final_cause = 'cancel'
             self.stop()
 
-            return False  # we are done
+            # work is done - unregister this cb
+            return False
 
+         ## if cmd != 'rpc_res':
+         ##     # not an rpc responese, keep cb registered
+         ##     return True
+         ##
+         ## if rpc_res['uid'] != rpc_id:
+         ##     # not the right rpc response, keep cb registered
+         ##     return True
 
         # all other messages (such as cancel_tasks) are forwarded to the agent
         # control pubsub, to be picked up by the respective target components

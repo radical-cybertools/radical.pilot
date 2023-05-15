@@ -57,6 +57,9 @@ class Fork(LaunchMethod):
         if node not in ['localhost', self.node_name]:
             return False, 'not on localhost'
 
+        if task['description']['use_mpi']:
+            return False, 'cannot launch MPI tasks'
+
         if task['description']['ranks'] > 1:
             return False, 'needs MPI'
 

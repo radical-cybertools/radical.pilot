@@ -8,7 +8,6 @@ import stat
 import time
 import queue
 import atexit
-import pprint
 import signal
 import threading  as mt
 import subprocess as sp
@@ -65,7 +64,7 @@ class Popen(AgentExecutingComponent):
 
         self._watch_queue = queue.Queue()
 
-        self._pid = self._cfg['pid']
+        self._pid = self._reg['cfg.pid']
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
@@ -73,24 +72,6 @@ class Popen(AgentExecutingComponent):
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def control_cb(self, topic, msg):
-
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd == 'cancel_tasks':
-
-            self._log.info('cancel_tasks command (%s)' % arg)
-            for tid in arg['uids']:
-                self.cancel_task(tid)
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -104,7 +85,7 @@ class Popen(AgentExecutingComponent):
     #
     def work(self, tasks):
 
-        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         for task in tasks:
 
@@ -123,7 +104,7 @@ class Popen(AgentExecutingComponent):
 
                 task['control'] = 'tmgr_pending'
                 task['$all']    = True
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -345,15 +326,13 @@ class Popen(AgentExecutingComponent):
         os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
 
         # make sure the sandbox exists
-        slots_fname = '%s/%s.sl' % (sbox, tid)
-
-        with ru.ru_open(slots_fname, 'w') as fout:
-            fout.write('\n%s\n\n' % pprint.pformat(slots))
-
-        # make sure the sandbox exists
         self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
         self._prof.prof('task_mkdir_done', uid=tid)
+
+        # need to set `DEBUG_5` or higher to get slot debug logs
+        if self._log._debug_level >= 5:
+            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
@@ -361,10 +340,10 @@ class Popen(AgentExecutingComponent):
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
-        _start_new_session = self._cfg['resource_cfg'].\
-            get('new_session_per_task', True)
+        _start_new_session = self._reg['rcfg.new_session_per_task'] or False
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -578,6 +557,7 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self._session.reg_addr
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod

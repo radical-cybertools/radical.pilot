@@ -37,7 +37,7 @@ class Stager(rpu.Worker):
     #
     def initialize(self):
 
-        self._sid   = self._cfg['sid']
+        self._sid = self._cfg['sid']
 
         self.register_input(rps.NEW, rpc.STAGER_REQUEST_QUEUE, self.work)
         self.register_publisher(rpc.STAGER_RESPONSE_PUBSUB)

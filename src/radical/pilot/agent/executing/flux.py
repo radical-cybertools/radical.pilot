@@ -56,12 +56,12 @@ class Flux(AgentExecutingComponent) :
                           }
 
         # we get an instance of the resource manager (init from registry info)
-        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
-                                          cfg=self._cfg, log=self._log,
-                                          prof=self._prof)
+        scfg = ru.Config(cfg=self._reg['cfg'])
+        rcfg = ru.Config(cfg=self._reg['rcfg'])
 
-      # assert self._rm.from_info
-
+        rm_name  = rcfg['resource_manager']
+        self._rm = ResourceManager.create(rm_name, scfg, rcfg,
+                                          self._log, self._prof)
 
         # thread termination signal
         self._term = mt.Event()
@@ -86,9 +86,6 @@ class Flux(AgentExecutingComponent) :
         self.register_input(rps.AGENT_SCHEDULING,
                             rpc.AGENT_EXECUTING_QUEUE, self.work)
 
-        # also listen on the command channel for task cancellation requests
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.control_cb)
-
         # wait for some time to get watcher and listener initialized
         start = time.time()
         while time.time() - start < 10.0:
@@ -102,19 +99,10 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def control_cb(self, topic, msg):
+    def cancel_task(self, uid):
 
-        self._log.info('control_cb [%s]: %s', topic, msg)
-
-        cmd = msg['cmd']
-      # arg = msg['arg']
-
-        if cmd == 'cancel_tasks':
-
-            # FIXME: clarify how to cancel tasks in Flux
-            pass
-
-        return True
+        # FIXME: clarify how to cancel tasks in Flux
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -132,7 +120,7 @@ class Flux(AgentExecutingComponent) :
     #
     def _listen(self):
 
-        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
+        lm_cfg  = self._reg['rcfg.launch_methods'].get('FLUX')
         lm_cfg['pid']       = self._cfg.pid
         lm_cfg['reg_addr']  = self._cfg.reg_addr
         lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
@@ -184,13 +172,6 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
-
-        raise NotImplementedError('no cancellation support in sleep executor')
-
-
-    # --------------------------------------------------------------------------
-    #
     def handle_events(self, task, events):
         '''
         Return `True` on final events so that caller can clean caches.
@@ -217,12 +198,12 @@ class Flux(AgentExecutingComponent) :
             if state == rps.AGENT_STAGING_OUTPUT_PENDING:
                 task['target_state'] = rps.DONE  # FIXME
                 # on completion, push toward output staging
-                self.advance(task, state, ts=ts, publish=True, push=True)
+                self.advance_tasks(task, state, ts=ts, publish=True, push=True)
                 ret = True
 
             else:
                 # otherwise only push a state update
-                self.advance(task, state, ts=ts, publish=True, push=False)
+                self.advance_tasks(task, state, ts=ts, publish=True, push=False)
 
         return ret
 
@@ -287,7 +268,8 @@ class Flux(AgentExecutingComponent) :
                         self._prof.prof('unschedule_start', uid=task['uid'])
                         self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
-                        self.advance(task, rps.FAILED, publish=True, push=False)
+                        self.advance_tasks(task, rps.FAILED, publish=True,
+                                                             push=False)
 
 
                 try:

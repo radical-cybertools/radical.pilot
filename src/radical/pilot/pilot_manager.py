@@ -8,7 +8,6 @@ __license__   = "MIT"
 import os
 import time
 import threading as mt
-from radical.pilot.constants import PILOT_STATE
 
 import radical.utils as ru
 
@@ -125,7 +124,7 @@ class PilotManager(rpu.Component):
         cfg.owner          = self._uid
         cfg.sid            = session.uid
         cfg.path           = session.path
-        cfg.reg_addr       = session.cfg.reg_addr
+        cfg.reg_addr       = session.reg_addr
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 
@@ -136,9 +135,9 @@ class PilotManager(rpu.Component):
         self._rep.info('<<create pilot manager')
 
         # create pmgr bridges and components, use session cmgr for that
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr = rpu.ComponentManager(cfg.sid, cfg.reg_addr, self._uid)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         if self._reconnect:
             self._session._reconnect_pmgr(self)
@@ -612,8 +611,7 @@ class PilotManager(rpu.Component):
         #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
 
-        # immediately send first heartbeat and any other commands which are
-        # included in the pilot description
+        # immediately send first heartbeat
         for pilot_doc in pilot_docs:
             pid = pilot_doc['uid']
             self._pilot_send_hb(pid)

@@ -5,7 +5,9 @@ __license__   = 'MIT'
 import os
 import time
 
-import threading as mt
+import threading          as mt
+
+import radical.utils      as ru
 
 from ... import states    as rps
 from ... import agent     as rpa
@@ -48,16 +50,16 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
 
-        name = cfg['spawner']
+        name = session._reg['rcfg.agent_spawner']
 
         from .popen    import Popen
         from .flux     import Flux
         from .sleep    import Sleep
 
         impl = {
-            EXECUTING_NAME_POPEN  : Popen,
-            EXECUTING_NAME_FLUX   : Flux,
-            EXECUTING_NAME_SLEEP  : Sleep,
+            EXECUTING_NAME_POPEN: Popen,
+            EXECUTING_NAME_FLUX : Flux,
+            EXECUTING_NAME_SLEEP: Sleep,
         }
 
         if name not in impl:
@@ -70,26 +72,25 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
-      # self._log.debug('exec base initialize')
+        scfg = ru.Config(cfg=self._reg['cfg'])
+        rcfg = ru.Config(cfg=self._reg['rcfg'])
 
-        # The spawner/executor needs the ResourceManager information which have
-        # been collected during agent startup.
-        self._rm = rpa.ResourceManager.create(self._cfg.resource_manager,
-                                              self._cfg, self._log, self._prof)
+        rm_name  = rcfg['resource_manager']
+        self._rm = rpa.ResourceManager.create(rm_name, scfg, rcfg,
+                                              self._log, self._prof)
 
         self._pwd      = os.path.realpath(os.getcwd())
         self.sid       = self._cfg['sid']
-        self.resource  = self._cfg['resource']
-        self.rsbox     = self._cfg['resource_sandbox']
-        self.ssbox     = self._cfg['session_sandbox']
-        self.psbox     = self._cfg['pilot_sandbox']
+        self.resource  = scfg['resource']
+        self.rsbox     = scfg['resource_sandbox']
+        self.ssbox     = scfg['session_sandbox']
+        self.psbox     = scfg['pilot_sandbox']
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
 
-        # if so configured, let the Task know what to use as tmp dir
-        self._task_tmp = self._cfg.get('task_tmp',
-                                       os.environ.get('TMP', '/tmp'))
-
+        # if so configured, let the tasks know what to use as tmp dir
+        self._task_tmp = rcfg.get('task_tmp',
+                                          os.environ.get('TMP', '/tmp'))
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
@@ -125,7 +126,18 @@ class AgentExecutingComponent(rpu.Component):
     #
     def control_cb(self, topic, msg):
 
-        raise NotImplementedError('control_cb is not implemented')
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'cancel_tasks':
+
+            self._log.info('cancel_tasks command (%s)', arg)
+            for tid in arg['uids']:
+                self.cancel_task(tid)
+
+        return True
 
 
     # --------------------------------------------------------------------------
@@ -173,6 +185,53 @@ class AgentExecutingComponent(rpu.Component):
         if to > 0.0:
             with self._to_lock:
                 self._to_tasks.append([to, time.time(), task])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def advance_tasks(self, tasks, state, publish, push, ts=None):
+        '''
+        sort tasks into different buckets, depending on their origin.
+        That origin will determine where tasks which completed execution
+        and end up here will be routed to:
+
+          - client: state update to update worker
+          - raptor: state update to `STATE_PUBSUB`
+          - agent : state update to `STATE_PUBSUB`
+
+        a fallback is not in place to enforce the specification of the
+        `origin` attributes for tasks.
+        '''
+
+
+        buckets = {'client': list(),
+                   'raptor': list(),
+                   'agent' : list()}
+
+        for task in ru.as_list(tasks):
+            buckets[task['origin']].append(task)
+
+        # we want any task which has a `raptor_id` set to show up in raptor's
+        # result callbacks
+        if state != rps.AGENT_EXECUTING:
+            for task in ru.as_list(tasks):
+                if task['description'].get('raptor_id'):
+                    if task not in buckets['raptor']:
+                        buckets['raptor'].append(task)
+
+        if buckets['client']:
+            self.advance(buckets['client'], state=state,
+                                            publish=publish, push=push, ts=ts)
+
+        if buckets['raptor']:
+            self.advance(buckets['raptor'], state=state,
+                                            publish=publish, push=False, ts=ts)
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'raptor_state_update',
+                                            'arg': buckets['raptor']})
+
+        if buckets['agent']:
+            self.advance(buckets['agent'], state=state,
+                                            publish=publish, push=False, ts=ts)
 
 
 # ------------------------------------------------------------------------------
