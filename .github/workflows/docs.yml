@@ -33,6 +33,7 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements-docs.txt
+          pip install jupyter
 
       - name: Run Jupyter Notebook
         env:
