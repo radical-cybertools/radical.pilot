@@ -1,4 +1,9 @@
-name: Run Jupyter Notebook
+name: 'Test Jupyter notebooks'
+
+# **What**: runs all the notebooks of RP documentation
+# **Why** : integration testing on GNU/Linux localhost; make sure that the
+#           documentation works for the current RADICAL-Pilot release
+# **Who** : Docs content and testing.
 
 on:
   push:
@@ -8,39 +13,25 @@ on:
     branches:
       - docs/nb_section3
 
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
 jobs:
   run-getting_started:
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo
-        ports:
-          - 27017/tcp
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - uses: actions/run-rp-notebook@v1
         with:
           python-version: 3.7
+          notebook-name: 'getting_started.ipynb'
 
-      - name: Install dependencies
-        run: |
-          python -m venv testenv
-          . testenv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements-docs.txt
-          pip install jupyter
-
-      - name: Run Jupyter Notebook
-        env:
-          MONGODB_HOST: localhost
-          MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
-          RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
-        run: |
-          . testenv/bin/activate
-          jupyter nbconvert --clear-output --inplace docs/source/getting_started.ipynb
-          jupyter nbconvert --to notebook --execute docs/source/getting_started.ipynb
+  run-tutorial-configuration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/run-rp-notebook@v1
+        with:
+          python-version: 3.7
+          notebook-name: 'configuration.ipynb'
+          notebook-path: 'tutorials'
