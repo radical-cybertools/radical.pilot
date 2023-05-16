@@ -1,3 +1,5 @@
+.. _chapter_supported:
+
 ========================================
 HPC Platforms Supported by RADICAL-Pilot
 ========================================
