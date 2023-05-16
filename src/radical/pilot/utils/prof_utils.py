@@ -872,7 +872,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     An entity can consume different resources under different metrics, but the
     returned consumption specs will never overlap. Thus, any resource is
     accounted for exactly one metric at any point in time.  The returned
-    structure has the following overall form:
+    structure has the following overall form::
 
         {
           'metric_1' : {
@@ -884,7 +884,6 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
           },
           'metric_2' : ...
         }
-
     '''
 
     log = ru.Logger('radical.pilot.utils')
