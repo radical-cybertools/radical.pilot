@@ -22,8 +22,11 @@ jobs:
   run-getting_started:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/run-rp-notebook@v1
+      - uses: actions/run-rp-notebook
         with:
+          repository: radical-cybertools/radical.pilot
+          ref: docs/nb_section3
+          path: .github/actions
           python-version: 3.7
           notebook-name: 'getting_started.ipynb'
 
