@@ -22,7 +22,7 @@ jobs:
   run-getting_started:
     runs-on: ubuntu-latest
     steps:
-      - uses: radical-cybertools/radical.pilot/.github/actions/run-rp-notebook.yml@docs/nb_section3
+      - uses: radical-cybertools/radical.pilot/.github/actions/run-rp-notebook.yml
         with:
           # repository: radical-cybertools/radical.pilot
           # ref: docs/nb_section3
