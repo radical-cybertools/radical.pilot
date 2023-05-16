@@ -42,5 +42,5 @@ jobs:
           RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
         run: |
           . testenv/bin/activate
-          jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace docs/source/getting_started.ipynb
+          jupyter nbconvert --clear-output --inplace docs/source/getting_started.ipynb
           jupyter nbconvert --execute docs/source/getting_started.ipynb
