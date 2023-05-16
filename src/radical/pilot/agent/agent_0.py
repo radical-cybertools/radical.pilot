@@ -218,8 +218,13 @@ class Agent_0(rpu.Worker):
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
-        env_spec = {'type': os.environ['RP_VENV_TYPE'],
-                    'path': os.environ['RP_VENV_PATH']}
+        env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
+                    'path'    : os.environ['RP_VENV_PATH'],
+                    'pre_exec': ['export PYTHONPATH=%s'
+                                 %  os.environ.get('PYTHONPATH', ''),
+                                 'export PATH=%s'
+                                 %  os.environ.get('PATH', '')]
+                   }
         self._prepare_env('rp', env_spec)
 
         # register the command callback which pulls the DB for commands
