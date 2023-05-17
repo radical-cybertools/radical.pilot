@@ -3,7 +3,7 @@ name: 'Run RP Jupyter notebook'
 on:
   workflow_call:
     inputs:
-      python-version: # ${{ inputs.python-version }}
+      python-version:
         description: 'Python version for running the Jupyter notebook'
         required: true
         type: string
@@ -44,8 +44,8 @@ jobs:
           python -m venv testenv
           . testenv/bin/activate
           python -m pip install --upgrade pip
-          pip install -r requirements-docs.txt
-          pip install jupyter
+          python -m pip install -r requirements-docs.txt
+          python -m pip install jupyter
       - name: Run Jupyter Notebook
         env:
           MONGODB_HOST: localhost
