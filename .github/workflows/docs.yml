@@ -22,7 +22,7 @@ jobs:
   run-getting_started:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/workflows/run-rp-notebook.yml
+      - uses: .github/workflows/run-rp-notebook.yml
         with:
           python-version: 3.7
           notebook-name: 'getting_started.ipynb'
@@ -30,7 +30,7 @@ jobs:
   run-tutorial-configuration:
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/workflows/run-rp-notebook.yml
+      - uses: .github/workflows/run-rp-notebook.yml
         with:
           python-version: 3.7
           notebook-name: 'configuration.ipynb'
