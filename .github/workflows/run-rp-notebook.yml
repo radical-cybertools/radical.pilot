@@ -54,5 +54,5 @@ jobs:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
         run: |
           . testenv/bin/activate
-          jupyter nbconvert --clear-output --inplace $target
-          jupyter nbconvert --to notebook --execute $target
+          jupyter nbconvert --clear-output --inplace $TARGET_PATH
+          jupyter nbconvert --to notebook --execute $TARGET_PATH

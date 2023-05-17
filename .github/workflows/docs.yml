@@ -20,7 +20,8 @@ concurrency:
 
 jobs:
   run-getting_started:
-    uses: radical-cybertools/radical.pilot/.github/workflows/run-rp-notebook.yml@docs/nb_section3
+    uses: ./.github/workflows/run-rp-notebook.yml
+      # radical-cybertools/radical.pilot/.github/workflows/run-rp-notebook.yml@docs/nb_section3
     with:
       python-version: 3.7
       notebook-name: 'getting_started.ipynb'
