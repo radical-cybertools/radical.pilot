@@ -22,12 +22,16 @@
                                          "SRUN" : {}
                                         },
         "pre_bootstrap_0"             : [
+                                         "module load mongodb",
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "$PSCRATCH",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 128,
-        "system_architecture"         : {"smt": 2}
+        "system_architecture"         : {
+                                         "smt"     : 2,
+                                         "options" : ["cpu"]
+                                        }
     },
 
     "perlmutter_gpu": {
@@ -52,6 +56,7 @@
                                          "SRUN"  : {}
                                         },
         "pre_bootstrap_0"             : [
+                                         "module load mongodb",
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "$PSCRATCH",
@@ -59,10 +64,8 @@
         "cores_per_node"              : 64,
         "gpus_per_node"               : 4,
         "system_architecture"         : {
-                                         "smt"           : 2,
-                                         "options"       : ["gpu"],
-                                         "blocked_cores" : [],
-                                         "blocked_gpus"  : []
+                                         "smt"     : 2,
+                                         "options" : ["gpu"]
                                         }
     }
 }
