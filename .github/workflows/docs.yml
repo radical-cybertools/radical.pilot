@@ -1,8 +1,9 @@
 name: 'Test Jupyter notebooks'
 
 # **What**: runs all the notebooks of RP documentation
-# **Why** : integration testing on GNU/Linux localhost; make sure that the
-#           documentation works for the current RADICAL-Pilot release
+# **Why** : integration testing of RADICAL-Pilot on GNU/Linux localhost;
+#           make sure that the documentation works for the current
+#           RADICAL-Pilot release
 # **Who** : Docs content and testing.
 
 on:
@@ -19,19 +20,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  run-getting_started:
+  test-getting_started:
     uses: ./.github/workflows/run-rp-notebook.yml
-      # radical-cybertools/radical.pilot/.github/workflows/run-rp-notebook.yml@docs/nb_section3
     with:
       python-version: 3.7
       notebook-name: 'getting_started.ipynb'
 
-
-  # run-tutorial-configuration:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: .github/workflows/run-rp-notebook.yml
-  #       with:
-  #         python-version: 3.7
-  #         notebook-name: 'configuration.ipynb'
-  #         notebook-path: 'tutorials'
+  test-tutorials:
+    strategy:
+      matrix:
+        tutorial: [
+          'configuration.ipynb',
+          # 'debugging.ipynb',
+          'describing_tasks.ipynb',
+          'multiple_pilots.ipynb',
+          # 'profiling.ipynb',
+          'raptor.ipynb',
+          'staging_data.ipynb',
+          'submission.ipynb'
+        ]
+    uses: ./.github/workflows/run-rp-notebook.yml
+    with:
+      python-version: 3.7
+      notebook-name: ${{ matrix.tutorial }}
+      notebook-path: 'tutorials'
