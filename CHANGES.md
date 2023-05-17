@@ -1359,7 +1359,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 -   switch from bson to json for session dumps
 -   fixes #451
 -   update resources.rst
--   remove superfluous `\n`{=tex}
+-   remove superfluous ```\n`{=tex}``
 -   fix #438
 -   add documentation on resource config changes, closes #421
 -   .ssh/authorized_keys2 is deprecated since 2011
