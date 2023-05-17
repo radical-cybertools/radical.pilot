@@ -20,13 +20,11 @@ concurrency:
 
 jobs:
   run-getting_started:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: radical-cybertools/radical.pilot/.github/workflows/run-rp-notebook.yml@docs/nb_section3
-              #.github/workflows/run-rp-notebook.yml
-        with:
-          python-version: 3.7
-          notebook-name: 'getting_started.ipynb'
+    uses: radical-cybertools/radical.pilot/.github/workflows/run-rp-notebook.yml@docs/nb_section3
+    with:
+      python-version: 3.7
+      notebook-name: 'getting_started.ipynb'
+
 
   # run-tutorial-configuration:
   #   runs-on: ubuntu-latest
