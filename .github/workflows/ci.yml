@@ -102,7 +102,7 @@ jobs:
       run: |
         . testenv/bin/activate
         jupyter nbconvert --clear-output --inplace $TARGET_PATH
-        jupyter nbconvert --to notebook --execute $TARGET_PATH
+        jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
 
 
   analytics:
