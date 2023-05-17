@@ -17,7 +17,7 @@ General description
 
 * Configuration per node (per platform ID)
 
-  * ``nersc.perlmutter`` (3072 nodes)
+  * ``nersc.perlmutter`` (3,072 nodes)
 
     * 128 CPU cores, each core has 2 threads (``SMT=2``)
     * 512 GiB of memory
