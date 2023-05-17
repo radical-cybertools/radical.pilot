@@ -1,7 +1,7 @@
 
 version: 2
 
-formats: htmlzip
+formats: [htmlzip]
 
 python:
   system_packages: true
