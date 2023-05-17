@@ -49,4 +49,4 @@ distributed architecture.
    glossary.rst
    internals.rst
    apidoc.rst
-   ../../CHANGES.md
+   release_notes.md
