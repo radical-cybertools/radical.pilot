@@ -1,0 +1,16 @@
+#%Module
+
+proc ModulesHelp { } {
+        global version prefix
+        puts stderr "my python"
+}
+
+module-whatis	"loads my python"
+
+set	version		1.0.0
+set	prefix		$env(PWD)/modules/my_python_dir
+
+setenv          MODULESHOME	$prefix
+prepend-path    PATH   		$prefix/bin/
+prepend-path    PYTHONPATH  $prefix/lib/
+
