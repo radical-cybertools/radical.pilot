@@ -35,7 +35,7 @@ jobs:
           (test -z "$NEW" || test -z "$OLD") && echo 'nothing to lint' && exit 0
           DIFF=`git diff --name-only --diff-filter=db $NEW..$OLD`
           FILTERED=$(for f in $DIFF; do echo $f; done | \
-                     grep -v -e '/architecture/' -e '/archive/' | \
+                     grep -v -e 'concepts/' -e '/archive/' | \
                      grep -e '\.py$' |  sed "s|^|$PWD/|")
           test -z "$FILTERED" && echo 'nothing to lint' && exit 0
           flake8 $FILTERED
