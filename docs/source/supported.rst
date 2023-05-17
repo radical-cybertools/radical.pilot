@@ -1,8 +1,8 @@
 .. _chapter_supported:
 
-========================================
-HPC Platforms Supported by RADICAL-Pilot
-========================================
+=======================
+Supported HPC Platforms
+=======================
 
 .. csv-table:: Department of Energy (DOE) HPC Platforms
    :header: "Name", "FQDN", "RADICAL-Pilot Config File"
