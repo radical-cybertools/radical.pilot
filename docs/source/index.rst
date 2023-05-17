@@ -26,7 +26,7 @@ concurrency they afford. See our
 `Brief Introduction to RADICAL-Pilot <https://radical-cybertools.github.io/presentations/pilot.mp4>`_
 to see how RP works on an HPC platform.
 
-RP offers unique features when compared to other pilot systems: (1) concurrent 
+RP offers unique features when compared to other pilot systems: (1) concurrent
 and sequential execution of heterogeneous tasks on one or more pilots, e.g.,
 single/multi-core, single/multi-GPU, MPI/OpenMP; (2) describing executable tasks
 and Python function tasks; (3) support of all the major HPC batch systems, e.g.,
@@ -49,4 +49,4 @@ distributed architecture.
    glossary.rst
    internals.rst
    apidoc.rst
-   release_notes.rst
+   ../../CHANGES.md
