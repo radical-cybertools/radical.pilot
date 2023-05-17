@@ -1,7 +1,7 @@
 # Release Notes
 
 For a list of open issues and known problems, see:
-https://github.com/radical-cybertools/radical.pilot/issues/
+ [https://github.com/radical-cybertools/radical.pilot/issues/](https://github.com/radical-cybertools/radical.pilot/issues/)
 
 ## Current
 
@@ -1428,13 +1428,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 
 - The Milestone 8 release (MS.8)
 - Closed Tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+](https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+)
 
 ### 0.18 Release July 22. 2014
 
 - The Milestone 7 release (MS.7)
 - Closed Tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed)
 
 ### 0.17 Release June 18. 2014
 
@@ -1447,13 +1447,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
 ### 0.15 Release June 12. 2014
 
 - Bugfix release
-- fixed distribution MANIFEST: https://github.com/radical-cybertools/radical.pilot/issues/174
+- fixed distribution MANIFEST:  [https://github.com/radical-cybertools/radical.pilot/issues/174](https://github.com/radical-cybertools/radical.pilot/issues/174)
 
 ### 0.14 Release June 11. 2014
 
 Closed Tickets:
 
-- https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed
+-  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed)
 
 New Features
 
@@ -1481,7 +1481,7 @@ API Changes:
 - Updated resource files
 - Updated state model
 - Closed tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed)
 
 ### 0.11 Release Apr. 29. 2014
 
@@ -1494,7 +1494,7 @@ API Changes:
 - Cleaned up an streamlined Input and Outpout file transfer workers
 - Support for interchangeable pilot agents
 - Closed tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed)
 
 ### 0.9 Release Apr. 16. 2014
 
@@ -1502,21 +1502,21 @@ API Changes:
 - Streamlines data model
 - More loosely coupled components connected via DB queues
 - Closed tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed)
 
 ### 0.8 Release Mar. 24. 2014
 
 - Renamed codebase from sagapilot to radical.pilot
 - Added explicit close() calls to PM, UM and Session.
 - Cloesed tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed)
 
 ### 0.7 Release Feb. 25. 2014
 
 - Added support for callbacks
 - Added support for input file transfer !
 - Closed tickets:
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed
+  -  [https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed](https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed)
 
 ### 0.6 Release Feb. 24. 2014
 
@@ -1528,7 +1528,7 @@ API Changes:
 - Added support for multiprocessing worker
 - Support for Task stdout and stderr transfer via MongoDB GridFS
 - Closed tickets:
-  - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
+  -  [https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed](https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed)
 
 ### 0.4 Release
 
@@ -1537,16 +1537,14 @@ API Changes:
 
 ### 0.1.3 Release
 
-- Github only release: pip install --upgrade -e
-  git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+- Github only release: `pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot`
 - Added logging
 - Added security context handling
 - Closed tickets:
-  - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
+  -  [https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed](https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed)
 
 ### 0.1.2 Release
 
-- Github only release: pip install --upgrade -e
-  git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
+- Github only release: `pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot`
 - Closed tickets:
-  - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
+  -  [https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed](https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed)
