@@ -24,7 +24,7 @@ RP's documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/index.html
 3. Clean and compile all the notebooks as Read the Docs' containers do not have enough resources to run RADICAL-Pilot
 
   ```shell
-  for n in `find ./ -name "*.ipynb" -type f`; do find . -type d -name 'rp.session.three.mturilli.*' -prune -exec rm -rf {} +; jupyter nbconvert --clear-output --inplace $n; jupyter nbconvert --to notebook --execute --inplace $n; done
+  for n in `find ./ -name "*.ipynb" -type f`; do find . -type d -name 'rp.session.three.*' -prune -exec rm -rf {} +; jupyter nbconvert --clear-output --inplace $n; jupyter nbconvert --to notebook --execute --inplace $n; done
   ```
 
 4. Generate RP's documentation with Sphinx:
