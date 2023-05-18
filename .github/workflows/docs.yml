@@ -1,0 +1,46 @@
+name: 'Test Jupyter notebooks'
+
+# **What**: runs all the notebooks of RP documentation
+# **Why** : integration testing of RADICAL-Pilot on GNU/Linux localhost;
+#           make sure that the documentation works for the current
+#           RADICAL-Pilot release
+# **Who** : Docs content and testing.
+
+on:
+  push:
+    branches:
+      - docs/nb_section3
+  pull_request:
+    branches:
+      - docs/nb_section3
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  test-getting_started:
+    uses: ./.github/workflows/run-rp-notebook.yml
+    with:
+      python-version: 3.7
+      notebook-name: 'getting_started.ipynb'
+
+  test-tutorials:
+    strategy:
+      matrix:
+        tutorial: [
+          'configuration.ipynb',
+          # 'debugging.ipynb',
+          'describing_tasks.ipynb',
+          'multiple_pilots.ipynb',
+          # 'profiling.ipynb',
+          # 'raptor.ipynb',
+          'staging_data.ipynb',
+          'submission.ipynb'
+        ]
+    uses: ./.github/workflows/run-rp-notebook.yml
+    with:
+      python-version: 3.7
+      notebook-name: ${{ matrix.tutorial }}
+      notebook-path: 'tutorials'
