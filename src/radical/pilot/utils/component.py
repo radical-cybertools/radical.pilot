@@ -41,11 +41,11 @@ class ComponentManager(object):
     RP spans a hierarchy of component instances: the application has a pmgr and
     tmgr, and the tmgr has a staging component and a scheduling component, and
     the pmgr has a launching component, and components also can have bridges,
-    etc. etc.  This ComponentManager centralises the code needed to spawn,
-    manage and terminate such components - any code which needs to create
-    component should create a ComponentManager instance and pass the required
-    component and bridge layout and configuration.  Callng `stop()` on the cmgr
-    will terminate the components and brisged.
+    etc. This ComponentManager centralises the code needed to spawn, manage and
+    terminate such components. Any code which needs to create component should
+    create a ComponentManager instance and pass the required component and
+    bridge layout and configuration.  Callng `stop()` on the cmgr will terminate
+    the components and brisged.
     '''
 
     # --------------------------------------------------------------------------
@@ -293,7 +293,7 @@ class Component(object):
       - define notification channels over which messages with other components
         can be exchanged (publish/subscriber channels)
 
-    All low level communication is handled by the base class -- deriving classes
+    All low level communication is handled by the base class. Deriving classes
     will register the respective channels, valid state transitions, and work
     methods.  When a 'thing' is received, the component is assumed to have full
     ownership over it, and that no other component will change the 'thing's
@@ -302,11 +302,10 @@ class Component(object):
     The main event loop of the component -- `work()` -- is executed on `run()`
     and will not terminate on its own, unless it encounters a fatal error.
 
-    Components inheriting this class should attempt not to use shared
-    resources.  That will ensure that multiple instances of the component can
-    coexist for higher overall system throughput.  Should access to shared
-    resources be necessary, it will require some locking mechanism across
-    process boundaries.
+    Components inheriting this class should attempt not to use shared resources.
+    That will ensure that multiple instances of the component can coexist for
+    higher overall system throughput.  Should access to shared resources be
+    necessary, it will require some locking mechanism across process boundaries.
 
     This approach should ensure that
 
@@ -328,9 +327,9 @@ class Component(object):
         - the component will terminate if this method raises an exception.
     - `work()`
     - called in the main loop of the component process, on all entities
-        arriving on input channels.  The component will *not* terminate if
-        this method raises an exception.  For termination, `terminate()`
-        must be called.
+        arriving on input channels.  The component will *not* terminate if this
+        method raises an exception.  For termination, `terminate()` must be
+        called.
     - `finalize()`
         - tear down the component (close threads, unregister resources, etc).
 
@@ -347,9 +346,9 @@ class Component(object):
     itself which MUST be unique within the scope of the given session.  It MUST
     further contain information about the session's heartbeat ZMQ pubsub channel
     (`hb_pub`, `hb_sub`) on which heartbeats are sent and received for lifetime
-    management.  All components and the session will continuously sent
-    heartbeat messages on that channel - missing heartbeats will by default lead
-    to session termination.
+    management.  All components and the session will continuously sent heartbeat
+    messages on that channel - missing heartbeats will by default lead to
+    session termination.
 
     The config MAY contain `bridges` and `component` sections.  If those exist,
     the component will start the communication bridges and the components
@@ -357,8 +356,8 @@ class Component(object):
     bridges.  As such, it much watch the HB channel for heartbeats from those
     components, and must terminate itself if those go AWOL.
 
-    Further, the class must implement the registered work methods, with
-    a signature of::
+    Further, the class must implement the registered work methods, with a
+    signature of::
 
         work(self, things)
 
