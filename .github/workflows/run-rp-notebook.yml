@@ -1,0 +1,58 @@
+name: 'Run RP Jupyter notebook'
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version for running the Jupyter notebook'
+        required: true
+        type: string
+      notebook-name:
+        description: 'File name of the Jupyter notebook'
+        required: true
+        type: string
+      documentation-path:
+        description: 'Path of the documentation in the repository'
+        required: false
+        default: 'docs/source'
+        type: string
+      notebook-path:
+        description: 'Path of the Jupyter notebook within the documentation'
+        required: false
+        default: ''
+        type: string
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017/tcp    # will assign a random free host port
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m venv testenv
+          . testenv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-docs.txt
+          python -m pip install jupyter
+      - name: Run Jupyter Notebook
+        env:
+          MONGODB_HOST: localhost
+          MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
+          RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+          TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
+        run: |
+          . testenv/bin/activate
+          jupyter nbconvert --clear-output --inplace $TARGET_PATH
+          jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
