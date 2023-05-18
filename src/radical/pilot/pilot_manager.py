@@ -32,7 +32,7 @@ class PilotManager(rpu.Component):
     A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
-    It is possible to attach one or more :ref:`chapter_machconf` to a
+    It is possible to attach one or more :ref:`chapter_design` to a
     PilotManager to outsource machine specific configuration parameters
     to an external configuration file.
 
