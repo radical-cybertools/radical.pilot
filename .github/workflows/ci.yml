@@ -99,6 +99,8 @@ jobs:
     #     TARGET_PATH: 'docs/source/getting_started.ipynb'
     #   run: |
     #     . testenv/bin/activate
+    #     python -m pip install -r requirements-docs.txt
+    #     python -m pip install jupyter
     #     jupyter nbconvert --clear-output --inplace $TARGET_PATH
     #     jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
 
