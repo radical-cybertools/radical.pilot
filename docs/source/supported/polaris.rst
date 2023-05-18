@@ -60,10 +60,18 @@ Python virtual environment
 
    module load conda; conda activate
    conda create -y -n ve.rp python=3.9
+   conda activate ve.rp
    # OR clone base environment
    #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
+   #   conda activate $HOME/ve.rp
 
-Install RADICAL-Pilot after activating a corresponding virtual environment.
+Install RADICAL-Pilot after activating a corresponding virtual environment:
+
+.. code-block:: bash
+
+   pip install radical.pilot
+   # OR in case of conda environment
+   conda install -c conda-forge radical.pilot
 
 MongoDB
 -------
