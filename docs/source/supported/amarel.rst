@@ -47,6 +47,12 @@ General description
 
     * "main" partition for the Amarel resources located in Camden
 
+
+.. note::
+   In order to be able to access Amarel cluster, you must be connected to
+   Rutgers Virtual Private Network (VPN) with a valid Rutgers ``netid``.
+   
+
 .. note::
 
    Amarel uses the ``--constraint`` option in ``SLURM`` to specify nodes
