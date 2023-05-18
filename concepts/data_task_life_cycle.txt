@@ -1,0 +1,178 @@
+
+--------------------------------------------------------------------------------
+INPUT ONLY
+cud_1 = {
+    name        : cu_1
+    exe         : cat
+    args        : [$(du_1[RADICAL]) $(du_1[OGF])]
+    input_data  : du_1
+    output_data : du_5
+}
+
+
+dud_1 = {
+    name        : du_1
+    file_urls   : { RADICAL : [google://.../radical.txt]
+                    OGF     : [file://.../ogf.txt    ] }
+}
+
+
+us: 
+	-> submit (cpd (kraken)
+	-> submit (dpd (kraken)
+	-> cu_1 = submit (cud_1)
+	-> du_1 = submit (dud_1)
+	-> du_1        : replicate (kraken)
+	   file_urls   : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt]
+	                   OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
+	-> cu_1        : cat /.../radical.txt /.../ogf.txt
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+INPUT/OUTPUT
+Note: output DUs MUST be empty DUs (physical file(s) do not exist).
+
+cud_1 = {
+    name        : cu_1
+    exe         : split
+    args        : [-n_a 2 -n_b 3 $(du_1[RADICAL])]
+    input_data  : du_1
+    output_data : du_2
+}
+
+
+dud_1 = {
+    name        : du_1
+    file_urls   : { RADICAL : [google://.../radical.txt]
+                    OGF     : [google://.../ogf.txt    ] }
+}
+
+
+dud_2 = {
+    name        : du_2
+    file_urls   : { "SPLIT_a*" : "./data_a/splits_*.txt", 
+                    "SPLIT_b*" : "./data_b/splits_*.txt" }
+    --> 
+    file_urls   : { SPLIT_a1   : [./data_a/splits_1.txt] , 
+                    SPLIT_a2   : [./data_a/splits_2.txt] , 
+                    SPLIT_b1   : [./data_b/splits_1.txt] , 
+                    SPLIT_b2   : [./data_b/splits_2.txt] , 
+                    SPLIT_b3   : [./data_b/splits_3.txt] }
+}
+
+cud_2 = {
+    name        : cu_2
+    exe         : combine
+    args        : [$(du_2[SPLIT_a1]), $(du_2[SPLIT_b2])]
+    input_data  : du_2
+}
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SPLIT A DU
+[du_2, du_3] = du_1.split (2)
+
+  -> du_2 
+     file_urls   : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt] }
+
+  -> du_3 
+     file_urls   : { OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
+
+
+cud_2 = {
+    name         : cu_2
+    exe          : wc
+    args         : [$(du_2[RADICAL])]
+    input_data   : du_2
+}
+
+
+cud_3 = {
+    name         : cu_3
+    exe          : wc
+    args         : [$(du_3[RADICAL])]
+    input_data   : du_3
+}
+
+cud_4 = {
+    name         : cu_4
+    exe          : wc
+    args         : [-l $(du_1[RADICAL]) $(du_1[OGF])]
+    input_data   : du_1
+}
+
+
+us: 
+	-> submit (cud_2)
+	-> cu_2        : wc /.../radical.txt
+	-> submit (cud_3)
+	-> cu_3        : wc /.../ogf.txt
+	-> submit (cud_4)
+	-> cu_4        : wc -l /.../radical.txt /.../ogf.txt
+
+du_2.cancel ():
+	-> keeps du_1, du_3, nothing is removed
+
+du_1.cancel ():
+	-> keeps du_3, radical.txt is removed
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+MERGE DUs
+du_3 = dp.merge (du_1, du_2)
+
+  -> du_2 
+     file_urls   : { RADICAL : [google://.../radical.txt, kraken://.../radical.txt] }
+
+  -> du_3 
+     file_urls   : { OGF     : [google://.../ogf.txt    , kraken://.../ogf.txt    ] }
+
+
+cud_2 = {
+    name         : cu_2
+    exe          : wc
+    args         : [$(du_2[RADICAL])]
+    input_data   : du_2
+}
+
+
+cud_3 = {
+    name         : cu_3
+    exe          : wc
+    args         : [$(du_3[RADICAL])]
+    input_data   : du_3
+}
+
+cud_4 = {
+    name         : cu_4
+    exe          : wc
+    args         : [-l $(du_1[RADICAL]) $(du_1[OGF])]
+    input_data   : du_1
+}
+
+
+us: 
+	-> submit (cud_2)
+	-> cu_2        : wc /.../radical.txt
+	-> submit (cud_3)
+	-> cu_3        : wc /.../ogf.txt
+	-> submit (cud_4)
+	-> cu_4        : wc -l /.../radical.txt /.../ogf.txt
+
+du_2.cancel ():
+	-> keeps du_1, du_3, nothing is removed
+
+du_1.cancel ():
+	-> keeps du_3, radical.txt is removed
+
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+SUB_DUs:
+
+du_2 = du_1.files[0:2]
+  -> no specific constraints on du_1 or du_2
+  -> meaning of reference is responsibility of application (like symlink)
+--------------------------------------------------------------------------------
+
