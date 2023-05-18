@@ -11,21 +11,21 @@ General description
 ===================
 
 * Resource manager - ``SLURM``
-* Launch methods (per platform ID) - ``uva.rivanna``:
+* Launch methods (per platform ID)
 
-  * ``SRUN``
+  * ``uva.rivanna`` - ``SRUN``
 
-* Configuration per platform ID per queue:
+* Configuration per node (per queue):
 
-  * ``uva.standard`` (1 node)
+  * ``standard`` (1 node)
 
-  * ``uva.parallel`` (25 nodes)
+  * ``parallel`` (25 nodes)
 
-  * ``uva.largemem`` (1 node)
+  * ``largemem`` (1 node)
 
-  * ``uva.dev`` (2 nodes)
+  * ``dev`` (2 nodes)
 
-  * ``uva.gpu`` (4 nodes)
+  * ``gpu`` (4 nodes)
 
 
 .. note::
@@ -100,4 +100,5 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 .. note::
 
    If you find any inaccuracy in this description, please, report back to us
-   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+   by opening a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+

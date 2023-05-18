@@ -11,10 +11,11 @@ General description
 ===================
 
 * Resource manager - ``SLURM``
-* Launch methods (per platform ID) - ``access.bridges2``:
-    * ``MPIRUN``
+* Launch methods (per platform ID)
 
-* Configuration per platform ID per queue
+  * ``access.bridges2`` - ``MPIRUN``
+
+* Configuration per node (per queue)
 
   * Regular Memory allocation:
 
@@ -73,7 +74,13 @@ Python virtual environment
    conda create --name conda.rp
    conda activate conda.rp
 
-Install RADICAL-Pilot after activating a corresponding virtual environment.
+Install RADICAL-Pilot after activating a corresponding virtual environment:
+
+.. code-block:: bash
+
+   pip install radical.pilot
+   # OR in case of conda environment
+   conda install -c conda-forge radical.pilot
 
 MongoDB
 -------
@@ -123,4 +130,5 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 .. note::
 
    If you find any inaccuracy in this description, please, report back to us
-   with a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+   by opening a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
+
