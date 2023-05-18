@@ -302,6 +302,17 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
+        # before we run any tasks, prepare a named_env `rp` for tasks which use
+        # the pilot's own environment, such as raptors
+        env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
+                    'path'    : os.environ['RP_VENV_PATH'],
+                    'pre_exec': ['export PYTHONPATH=%s'
+                                 %  os.environ.get('PYTHONPATH', ''),
+                                 'export PATH=%s'
+                                 %  os.environ.get('PATH', '')]
+                   }
+        self._prepare_env('rp', env_spec)
+
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
         rm_info = self._rm.info
