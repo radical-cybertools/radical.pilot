@@ -39,8 +39,12 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+.env
+.ipynb_checkpoints
 
 # IDEA / PyCharm
 .idea/
 
 makefile
+*.vscode
+_build
