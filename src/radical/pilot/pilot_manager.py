@@ -32,7 +32,7 @@ class PilotManager(rpu.Component):
     A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
-    It is possible to attach one or more :ref:`chapter_machconf` to a
+    It is possible to attach one or more :ref:`chapter_design` to a
     PilotManager to outsource machine specific configuration parameters
     to an external configuration file.
 
@@ -591,10 +591,13 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
-                      (pilot.uid, pd['resource'],
-                       pd.get('cores', 0), pd.get('gpus', 0)))
-
+            if pd.get('nodes'):
+                self._rep.plain('\n\t%s   %-20s %6d nodes' %
+                                (pilot.uid, pd['resource'], pd['nodes']))
+            else:
+                self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
+                                (pilot.uid, pd['resource'],
+                                 pd.get('cores', 0), pd.get('gpus', 0)))
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
