@@ -1,11 +1,16 @@
-
+# Release Notes
 
 For a list of open issues and known problems, see:
-https://github.com/radical-cybertools/radical.pilot/issues/
+ [https://github.com/radical-cybertools/radical.pilot/issues/](https://github.com/radical-cybertools/radical.pilot/issues/)
 
-1.33.0 Release                                                        2023-04-25
+## Current
+
+This is the latest release - if uncertain, use this release.
+
+
 --------------------------------------------------------------------------------
-  
+### 1.33.0 Release                                                    2023-04-25
+
   - add a resource definition for rivanna at UVa.
   - add documentation for missing properties
   - add an exception for RAPTOR workers regarding GPU sharing
@@ -19,8 +24,10 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add raptor tasks to the API doc
   - add rank documentation
   - allow access to full node memory by default
-  - changed type for `task['resources']`, let RADICAL-Analytics to handle it
-  - changed type of `gpus_per_rank` attribute in `TaskDescription` (from `int` to `float`)
+  - changed type for `task['resources']`, let RADICAL-Analytics to
+    handle it
+  - changed type of `gpus_per_rank` attribute in `TaskDescription` (from
+    `int` to `float`)
   - enforce correct task mode for raptor master/workers
   - ensure result_cb for executable tasks
   - ensure `session._get_task_sandbox` for raptor tasks
@@ -31,11 +38,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix ranks calculation
   - fix slots estimation process
   - fix tasks binding (e.g., bind task to a certain number of cores)
-  - fix the process of requesting a correct number of cores/gpus (in case of blocked cores/gpus)
+  - fix the process of requesting a correct number of cores/gpus (in
+    case of blocked cores/gpus)
   - Fix path of task sandbox path
   - fix wait_workers
   - google style docstrings.
-  - use parameter `new_session_per_task` within resource description to control input parameter `start_new_session` in `subprocess.Popen`
+  - use parameter `new_session_per_task` within resource description to
+    control input parameter `start_new_session` in `subprocess.Popen`
   - keep virtualenv as fallback if venv is missing
   - let SRun LM to get info about GPUs from configured slots
   - make slot dumps dependent on debug level
@@ -44,9 +53,10 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - MPI worker sync
   - Reading resources from created task description
   - reconcile different worker submission paths
-  - recover bootstrap_0_stop event
+  - recover bootstrap_0\_stop event
   - recover task description dump for raptor
-  - removed codecov from test requirements (codecov is represented by GitHub actions)
+  - removed codecov from test requirements (codecov is represented by
+    GitHub actions)
   - removed `gpus_per_node` - let SAGA handle GPUs
   - removed obsolete configs (FUNCS leftover)
   - re-order worker initialization steps, time out on registration
@@ -55,30 +65,37 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - update JSRun LM according to GPU sharing
   - update slots estimation and `core/gpu_map` creation
   - worker state update cb
-  
 
-1.21.0 Release                                                        2023-02-01
+
+## Past
+
+Use past releases to reproduce an earlier experiments.
+
 --------------------------------------------------------------------------------
-  
+### 1.21.0 Release                                                    2023-02-01
+
   - add worker rank heartbeats to raptor
   - ensure descr defaults for raptor worker submission
-  - move `blocked_cores/gpus` under `system_architecture` in resource config
-  - fix `blocked_cores/gpus` parameters in configs for ACCESS and ORNL resources
+  - move `blocked_cores/gpus` under `system_architecture` in resource
+  config
+  - fix `blocked_cores/gpus` parameters in configs for ACCESS and ORNL
+  resources
   - fix core-option in JSRun LM
-  - fix inconsistency in launching order if some LMs failed to be created
+  - fix inconsistency in launching order if some LMs failed to be
+  created
   - fix thread-safety of PilotManager staging operations.
   - add ANL's polaris and polaris_interactive support
   - refactor raptor dispatchers to worker base class
-  
 
-1.20.1 Hotfix Release                                                 2023-01-07
+
 --------------------------------------------------------------------------------
+### 1.20.1 Hotfix Release                                             2023-01-07
 
   - fix task cancellation call
 
 
-1.20.0 Release                                                        2022-12-16
 --------------------------------------------------------------------------------
+### 1.20.0 Release                                                    2022-12-16
 
   - interactive amarel cfg
   - add docstring for run_task, remove sort
@@ -95,7 +112,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - document attributes as `attr`, not `data`.
   - extended tests for RM PBSPro
   - fix `allocated_cores/gpus` in PMGR Launching
-  - fix commands per rank (either a single string command or list of commands)
+  - fix commands per rank (either a single string command or list of
+  commands)
   - fix JSRun test
   - fix nodes indexing (`node_id`)
   - fix option `-b` (`--bind`)
@@ -108,15 +126,18 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - refactor popen task cancellation
   - removed `pre_rank` and `post_rank` from Popen executor
   - rename XSEDE to ACCESS #2676
-  - reorder env setup per rank (by RP) and consider (enforce) CPU/GPU types
-  - reorganized task/rank-execution processes and synced that with launch processes
+  - reorder env setup per rank (by RP) and consider (enforce) CPU/GPU
+  types
+  - reorganized task/rank-execution processes and synced that with
+  launch processes
   - support schema aliases in resource configs
   - task attribute `slots` is not required in an executor
   - unify raptor and non-raptor prof traces
   - update amarel cfg
   - update RM Fork
   - update RM PBSPro
-  - update SRun option `cpus-per-task` - set the option if `cpu_threads > 0`
+  - update SRun option `cpus-per-task` - set the option if
+  `cpu_threads > 0`
   - update test for PMGR Launching
   - update test for Popen (for pre/post_rank transformation)
   - update test for RM Fork
@@ -124,19 +145,19 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - update test for RM PBSPro
   - update profile events for raptor tasks
   - interactive amarel cfg
-  
 
-1.18.1 Hotfix Release                                                 2022-11-01
+
 --------------------------------------------------------------------------------
+### 1.18.1 Hotfix Release                                             2022-11-01
 
   - fix Amarel configuration
 
 
-1.18.0 Release                                                        2022-10-11
 --------------------------------------------------------------------------------
+### 1.18.0 Release                                                    2022-10-11
 
-  - move raptor profiles and logfiles into sandboxes  
-  - consistent use of task modes  
+  - move raptor profiles and logfiles into sandboxes\
+  - consistent use of task modes\
   - derive etypes from task modes
   - clarify and troubleshoot raptor.py example
   - docstring update
@@ -148,8 +169,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - update task description (focus on `ranks`)
 
 
-1.17.0 Release                                                        2022-09-15
 --------------------------------------------------------------------------------
+### 1.17.0 Release                                                    2022-09-15
 
   - add `docker compose` recipe.
   - add option `-gpu` for IBM Spectrum MPI
@@ -178,8 +199,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - use current working tree for docker rp source.
 
 
-1.16.0 Release                                                        2022-08-15
 --------------------------------------------------------------------------------
+### 1.16.0 Release                                                    2022-08-15
 
   - add check for exception message
   - add test for `Agent_0`
@@ -191,24 +212,26 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix rp serializer unittest
   - fix sub_agent keyerror
   - keep agent's config with sub-agents in sync with default one
-  - remove confusion of task attribute names (slots vs. resources)
+  - remove confusion of task attribute names (slots vs. resources)
   - set default values for agent and service tasks descriptions
-  - set env variable (`RP_PILOT_SANDBOX`) for agent and service tasks launchers
+  - set env variable (`RP_PILOT_SANDBOX`) for agent and service tasks
+  launchers
   - update exec profile events
   - update headers for mpirun- and mpiexec-modules
-  - update LM env setup for `MPIRun` and `MPIExec` special case (MPT=true)
+  - update LM env setup for `MPIRun` and `MPIExec` special case
+  (MPT=true)
   - update LM IBRun
   - update mpi-info extraction
 
 
-1.15.1  Hotfix Release                                                2022-07-04
 --------------------------------------------------------------------------------
+### 1.15.1 Hotfix Release                                             2022-07-04
 
   - fix syntactic error in env prep script
 
 
-1.15.0  Release                                                       2022-07-04
 --------------------------------------------------------------------------------
+### 1.15.0 Release                                                    2022-07-04
 
   - added tests for PRTE LM
   - added tests for `rank_cmd` (IBRun and SRun LMs)
@@ -229,12 +252,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - 'state_history' is no longer supported
   - support existing VEs for `prepare_env`
   - updated installation of dependencies in bootstrapper
-  - updated PRTE LM setup and config (including new release of PRRTE on Summit)
+  - updated PRTE LM setup and config (including new release of PRRTE on
+  Summit)
   - updating PMGR/AGENT stats - see #2401
 
 
-1.14.0  Release                                                       2022-04-13
 --------------------------------------------------------------------------------
+### 1.14.0 Release                                                    2022-04-13
 
   - support for MPI function tasks
   - support different RAPTOR workers
@@ -249,20 +273,20 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fixed resource configuration for `jsrun`
   - fix argument escapes
   - raptor consistently reports exceptions now
-  
 
-1.13.0  Release                                                       2022-03-21
+
 --------------------------------------------------------------------------------
+### 1.13.0 Release                                                    2022-03-21
 
-   - fix slurm nodefile/nodelist
-   - clean temporary setup files
-   - fixed test for LM `Srun`
-   - local execution needs to check FORK first
-   - fix Bridges-2 resource config
+  - fix slurm nodefile/nodelist
+  - clean temporary setup files
+  - fixed test for LM `Srun`
+  - local execution needs to check FORK first
+  - fix Bridges-2 resource config
 
 
-1.12.0  Release                                                       2022-02-28
 --------------------------------------------------------------------------------
+### 1.12.0 Release                                                    2022-02-28
 
   - fix callback unregistration
   - fix capturing of task exit code
@@ -271,21 +295,21 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - get backfilling scheduler back in sync
   - re-introduced LM to handle `aprun`
   - Remove task log and the state_history
-  - ru.Description -> ru.TypedDict
+  - ru.Description -\> ru.TypedDict
   - set LM's initial env with activated VE
   - updated LSF handling cores indexing for LM JSRun
   - use proper shell quoting
   - use ru.TypedDict for Munch, fix tests
 
 
-1.11.2  Hotfix Release                                                2022-01-21
 --------------------------------------------------------------------------------
+### 1.11.2 Hotfix Release                                             2022-01-21
 
   - for non-mpi tasks, ensure that `$RP_RANK` is set to `0`
 
 
-1.11.0  Release                                                       2022-01-19
 --------------------------------------------------------------------------------
+### 1.11.0 Release                                                    2022-01-19
 
   - improve environment isolation for tasks and RCT components
   - add test for LM Srun
@@ -315,14 +339,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - removed dead code
 
 
-1.10.2 Hotfix Release                                                 2021-12-14
 --------------------------------------------------------------------------------
+### 1.10.2 Hotfix Release                                             2021-12-14
 
   - constrain mongodb version dependency
 
 
-1.10.0 Release                                                        2021-11-22
 --------------------------------------------------------------------------------
+### 1.10.0 Release                                                    2021-11-22
 
   - Add fallback for ssh tunnel on ifconfig-less nodes
   - cleanup old resources
@@ -331,39 +355,40 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix recursive flag
 
 
-1.9.2  Hotfix Release                                                 2021-10-27
 --------------------------------------------------------------------------------
+### 1.9.2 Hotfix Release                                              2021-10-27
 
   - fix shell escaping for task arguments
 
 
-1.9.0  Release                                                        2021-10-18
 --------------------------------------------------------------------------------
+### 1.9.0 Release                                                     2021-10-18
 
   - amarel cfg
 
 
-1.8.0  Release                                                        2021-09-23
 --------------------------------------------------------------------------------
+### 1.8.0 Release                                                     2021-09-23
 
   - fixed pilot staging for input directories
   - clean up configs
-  - disabled `os.setsid` in `Popen` executor/spawner (in `subprocess.Popen`)
+  - disabled `os.setsid` in `Popen` executor/spawner (in
+  `subprocess.Popen`)
   - refreshed module list for Summit
   - return virtenv setup parameters
   - Support for :py:mod:`radical.pilot.X` links. (@eirrgang)
   - use local virtual env (either venv or conda) for Summit
 
 
-1.6.8  Hotfix Release                                                 2021-08-24
 --------------------------------------------------------------------------------
+### 1.6.8 Hotfix Release                                              2021-08-24
 
   - adapt flux integration to changes in flux event model
   - fix a merge problem on flux termination handling
 
 
-1.6.7  Release                                                        2021-07-09
 --------------------------------------------------------------------------------
+### 1.6.7 Release                                                     2021-07-09
 
   - artifact upload for RA integration test
   - encapsulate kwargs handling for Session.close().
@@ -372,11 +397,11 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fixed jsrun resource_set_file to use `cpu_index_using: logical`
   - separate cpu/gpu utilization
   - fix error handling in data stager
-  - use methods from the new module `host` within RU (>=1.6.7)
+  - use methods from the new module `host` within RU (\>=1.6.7)
 
 
-1.6.6  Release                                                        2021-05-18
 --------------------------------------------------------------------------------
+### 1.6.6 Release                                                     2021-05-18
 
   - added flags to keep `prun` aware of gpus (PRTE2 LM)
   - add service node support
@@ -393,13 +418,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - updated documentation for `PilotDescription` and `TaskDescription`
 
 
-1.6.5  Release                                                        2021-04-14
 --------------------------------------------------------------------------------
+### 1.6.5 Release                                                     2021-04-14
 
-  - added flag `exclusive` for tags (in task description, default `False`)
+  - added flag `exclusive` for tags (in task description, default
+  `False`)
   - Adding Bridges2 and Comet
   - always specifu GPU number on srun
-  - apply RP+* env vars to raptor tasks
+  - apply RP+\* env vars to raptor tasks
   - avoid a termination race
   - Summit LFS config and JSRUN integration tests
   - gh workflows and badges
@@ -408,29 +434,30 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fixed launch command for PRTE2 LM
   - fix missing event updates
   - fix ve isolation for prep_env
-  - keep track of tagged nodes (no nodes overlapping between different tags)
+  - keep track of tagged nodes (no nodes overlapping between different
+  tags)
   - ensure conda activate works
   - allow output staging on failed tasks
-  - python 2 -> 3 fix for shebangs
+  - python 2 -\> 3 fix for shebangs
   - remove support for add_resource_config
   - Stampede2 migrates to work2 filesystem
   - update setup module (use `python3`)
-  
 
-1.6.3  Hotfix Release                                                 2021-04-03
+
 --------------------------------------------------------------------------------
+### 1.6.3 Hotfix Release                                              2021-04-03
 
   - fix uid assignment for managers
 
 
-1.6.2  Hotfix Release                                                 2021-03-26
 --------------------------------------------------------------------------------
+### 1.6.2 Hotfix Release                                              2021-03-26
 
   - switch to pep-440 for sdist and wheel versioning, to keep pip happy
 
 
-1.6.1  Release                                                        2021-03-09
 --------------------------------------------------------------------------------
+### 1.6.1 Release                                                     2021-03-09
 
   - support for Andes@ORNL, obsolete Rhea@ORNL
   - add_pilot() also accepts pilot dict
@@ -443,14 +470,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - prepare partitioning
 
 
-1.6.0  Release                                                        2021-02-13
 --------------------------------------------------------------------------------
+### 1.6.0 Release                                                     2021-02-13
 
-  - rename ComputeUnit             -> Task
-  - rename ComputeUnitDescription  -> TaskDescription
-  - rename ComputePilot            -> Pilot
-  - rename ComputePilotDescription -> PilotDescription
-  - rename UnitManager             -> TaskManager
+  - rename ComputeUnit -\> Task
+  - rename ComputeUnitDescription -\> TaskDescription
+  - rename ComputePilot -\> Pilot
+  - rename ComputePilotDescription -\> PilotDescription
+  - rename UnitManager -\> TaskManager
   - related renames to state and constant names etc
   - backward compatibility for now deprecated names
   - preparation for agent partitioning (RM)
@@ -463,8 +490,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - update scheduler tag types
 
 
-1.5.12 Release                                                        2021-02-02
 --------------------------------------------------------------------------------
+### 1.5.12 Release                                                    2021-02-02
 
   - multi-dvm support
   - cleanup of raptor
@@ -477,14 +504,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - support new resource utilization plots
 
 
-1.5.11 Release                                                        2021-01-19
 --------------------------------------------------------------------------------
+### 1.5.11 Release                                                    2021-01-19
 
   - cleanup pypi tarball
 
 
-1.5.10 Release                                                        2021-01-18
 --------------------------------------------------------------------------------
+### 1.5.10 Release                                                    2021-01-18
 
   - gpu related fixes (summit)
   - avoid a race condition during termination
@@ -496,8 +523,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - use C locale in bootstrapper
 
 
-1.5.8 Release                                                         2020-12-09
 --------------------------------------------------------------------------------
+### 1.5.8 Release                                                     2020-12-09
 
   - improve test coverage
   - add env isolation prototype and documentation
@@ -516,8 +543,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - work around pip problem on Summit
 
 
-1.5.7 Release                                                         2020-10-30
 --------------------------------------------------------------------------------
+### 1.5.7 Release                                                     2020-10-30
 
   - Adding init files in all test folders
   - document containerized tasks
@@ -535,14 +562,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - unit test for popen/spawn #1881
 
 
-1.5.4 Release                                                         2020-10-01
 --------------------------------------------------------------------------------
+### 1.5.4 Release                                                     2020-10-01
 
   - fix jsrun GPU mapping
 
 
-1.5.4 Release                                                         2020-09-14
 --------------------------------------------------------------------------------
+### 1.5.4 Release                                                     2020-09-14
 
   - Arbitrary udurations for consumed resources
   - Fix unit tests
@@ -561,20 +588,21 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - remove "debug" rp_version remnant
 
 
-1.5.2 Hotfix Release                                                  2020-08-11
 --------------------------------------------------------------------------------
+### 1.5.2 Hotfix Release                                              2020-08-11
 
   - add/fix RA prof metrics
   - clean dependencies
   - fix RS file system cache
 
-      
-1.5.1 Hotfix Release                                                  2020-08-05
+
 --------------------------------------------------------------------------------
+### 1.5.1 Hotfix Release                                              2020-08-05
 
   - added config parameter for MongoDB tunneling
   - applied exception chaining
-  - filtering for login/batch nodes that should not be considered (LSF RM)
+  - filtering for login/batch nodes that should not be considered (LSF
+  RM)
   - fix for Resource Set file at JSRUN LM
   - support memory required per node at the RP level
   - added Profiler instance into Publisher and Subscriber (zmq.pubsub)
@@ -592,7 +620,7 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - hide passwords on dburl reports / logs
   - multi-master load distribution
   - pep8
-  - RADICAL_BASE_DIR -> RADICAL_BASE
+  - RADICAL_BASE_DIR -\> RADICAL_BASE
   - remove private TMPDIR export - this fixes #2158
   - Remove SKIP_FAILED (unused)
   - support for custom batch job names
@@ -600,22 +628,22 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - updated license file
   - updated readme
   - updated version requirement for python (min is 3.6)
-  
 
-1.4.1 Hotfix Release                                                  2020-06-09
+
 --------------------------------------------------------------------------------
+### 1.4.1 Hotfix Release                                              2020-06-09
 
   - fix tmpdir mosconfiguration for summit / prrte
 
 
-1.4.0 Release                                                         2020-05-12
 --------------------------------------------------------------------------------
+### 1.4.0 Release                                                     2020-05-12
 
   - merge #2122: fixed `n_nodes` for the case when `slots` are set
   - merge #2123: fix #2121
   - merge #2124: fixed conda-env path definition
   - merge #2127: bootstrap env fix
-  - merge #2133, #2138:  IBRun fixes
+  - merge #2133, #2138: IBRun fixes
   - merge #2134: agent stage_in test1
   - merge #2137: agent_0 initialization fix
   - merge #2142: config update
@@ -636,32 +664,34 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - updated IBRun tests
   - updated LM IBRun
 
-      
-1.3.0 Release                                                         2020-04-10
+
 --------------------------------------------------------------------------------
+### 1.3.0 Release                                                     2020-04-10
 
   - task overlay + docs
   - iteration on srun placement
   - add env support to srun
   - theta config
-  - clean up launcher termination guard against lower level termination errors
+  - clean up launcher termination guard against lower level termination
+  errors
   - cobalt rm
   - optional output stager
   - revive ibrun support
   - switch comet FS
 
 
-1.2.1 Hotfix Release                                                  2020-02-11
 --------------------------------------------------------------------------------
+### 1.2.1 Hotfix Release                                              2020-02-11
 
   - scattered fixes cfor summit
 
-      
-1.2.0 Release                                                         2020-02-11
+
 --------------------------------------------------------------------------------
+### 1.2.0 Release                                                    2020-02-11
 
   - support for bulk callbacks
-  - fixed package paths for launch methods (radical.pilot.agent.launch_method)
+  - fixed package paths for launch methods
+  (radical.pilot.agent.launch_method)
   - updated documentation references
   - raise minimum Python version to 3.6
   - local submit configuration for Frontera
@@ -669,21 +699,21 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix cray agent config
   - fix issue #2075 part 2
 
-      
-1.1.1 Hotfix Release                                                  2020-02-11
+
 --------------------------------------------------------------------------------
+### 1.1.1 Hotfix Release                                              2020-02-11
 
   - fix dependency version for radical.utils
 
-      
-1.1 Release                                                           2020-02-11
+
 --------------------------------------------------------------------------------
+### 1.1 Release                                                       2020-02-11
 
   - code cleanup
 
 
-1.0.0   Release                                                       2019-12-24
 --------------------------------------------------------------------------------
+### 1.0.0 Release                                                     2019-12-24
 
   - transition to Python3
   - migrate Rhea to Slurm
@@ -702,37 +732,37 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - configuration system revamp
   - heartbeat based process management
   - faster termination
-  - support for  Frontera
+  - support for Frontera
   - lockfree scheduler base class
   - switch to RU ZMQ layer
 
-      
-0.90.1  Release                                                       2019-10-12
+
 --------------------------------------------------------------------------------
+### 0.90.1 Release                                                    2019-10-12
 
   - port pubsub hotfix
 
-      
-0.90.0  Release                                                       2019-10-07
+
 --------------------------------------------------------------------------------
+### 0.90.0 Release                                                    2019-10-07
 
   - transition to Python3
 
-      
-0.73.1  Release                                                       2019-10-07
+
 --------------------------------------------------------------------------------
+### 0.73.1 Release                                                    2019-10-07
 
   - Stampede-2 support
 
 
-0.72.2  Hotfix Release                                                2019-09-30
 --------------------------------------------------------------------------------
+### 0.72.2 Hotfix Release                                             2019-09-30
 
   - fix sandbox setting on absolute paths
 
 
-0.72.0  Release                                                       2019-09-11
 --------------------------------------------------------------------------------
+### 0.72.0 Release                                                    2019-09-11
 
   - implement function executor
   - implement / improve PRTE launch method
@@ -762,26 +792,26 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add debug executor
 
 
-0.70.3  Hotfix Release                                                2019-08-02
 --------------------------------------------------------------------------------
+### 0.70.3 Hotfix Release                                             2019-08-02
 
   - fix example and summit configuration
 
 
-0.70.2  Hotfix Release                                                2019-07-31
 --------------------------------------------------------------------------------
+### 0.70.2 Hotfix Release                                             2019-07-31
 
   - fix static ve creation for Tiger (Princeton)
 
 
-0.70.1  Hotfix Release                                                2019-07-30
 --------------------------------------------------------------------------------
+### 0.70.1 Hotfix Release                                             2019-07-30
 
   - fix configuration for Tiger (Princeton)
 
-      
-0.70.0  Release                                                       2019-07-07
+
 --------------------------------------------------------------------------------
+### 0.70.0 Release                                                    2019-07-07
 
   - support summitdev, summit @ ORNL (JSRUN, PRTE, RS, ERF, LSF, SMT)
   - support tiger @ princeton (JSRUN)
@@ -803,12 +833,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - unify mpirun / mpirun_rsh
 
 
-0.63.0  Release                                                       2019-06-25
 --------------------------------------------------------------------------------
+### 0.63.0 Release                                                    2019-06-25
 
   - support for summit (experimental, jsrun + ERF)
   - PRRTE support (experimental, summit only)
-  - many changes to the test setup (pytest, pylint, flake8, coverage, travis)
+  - many changes to the test setup (pytest, pylint, flake8, coverage,
+  travis)
   - support for Tiger (adds SRUN launch method)
   - support NOOP scheduler
   - support application level communication
@@ -816,17 +847,18 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - partial code cleanup (coding guidelines)
   - simplifying MPI base launch methods
   - support for resource specific SMT settings
-  - resource specific ranges of cores/threads can now be blocked from use
+  - resource specific ranges of cores/threads can now be blocked from
+  use
   - ORTE support is doscontinued
   - fixes in hombre scheduler
   - improvements on GPU support
-  - fix in continuous scheduler which caused underutilization on heterogeneous
-    tasks
+  - fix in continuous scheduler which caused underutilization on
+  heterogeneous tasks
   - fixed: #1758, #1764, #1792, #1790, #1827, #187
 
 
-0.62.0  Release                                                       2019-06-08
 --------------------------------------------------------------------------------
+### 0.62.0 Release                                                    2019-06-08
 
   - add unit test
   - trigger tests
@@ -842,8 +874,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix for cheyenne
 
 
-0.61.0  Release                                                       2019-05-07
 --------------------------------------------------------------------------------
+### 0.61.0 Release                                                    2019-05-07
 
   - add travis support, test cleanup
   - ensure safe bootstrapper termination on faulty installs
@@ -853,14 +885,14 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - remove deprecated special case in bootstrapper
 
 
-0.60.1  Hotfix                                                        2019-04-12
 --------------------------------------------------------------------------------
+### 0.60.1 Hotfix                                                     2019-04-12
 
   - work around a pip install problem
 
 
-0.60.0  Release                                                       2019-04-10
 --------------------------------------------------------------------------------
+### 0.60.0 Release                                                    2019-04-10
 
   - add issue template
   - rename RP_PILOT_SBOX to RP_PILOT_STAGING and expose to tasks
@@ -871,95 +903,95 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - follow rename of saga-python to radical.saga
 
 
-0.50.23 Release                                                       2019-03-20
 --------------------------------------------------------------------------------
+### 0.50.23 Release                                                   2019-03-20
 
   - hotfix: use popen spawner for localhost
 
 
-0.50.22 Release                                                       2019-02-11
 --------------------------------------------------------------------------------
+### 0.50.22 Release                                                   2019-02-11
 
   - another fix LSF var expansion
 
 
-0.50.21 Release                                                       2018-12-19
 --------------------------------------------------------------------------------
+### 0.50.21 Release                                                   2018-12-19
 
   - fix LSF var expansion
 
 
-0.50.20 Release                                                       2018-11-25
 --------------------------------------------------------------------------------
+### 0.50.20 Release                                                   2018-11-25
 
   - fix Titan OMPI installation
   - support metdata for tasks
   - fix git error detection during setup
 
 
-0.50.19 Release                                                       2018-11-15
 --------------------------------------------------------------------------------
+### 0.50.19 Release                                                   2018-11-15
 
   - ensure profile fetching on empty tarballs
 
 
-0.50.18 Release                                                       2018-11-13
 --------------------------------------------------------------------------------
+### 0.50.18 Release                                                   2018-11-13
 
   - support for data locality aware scheduling
 
 
-0.50.17 Release                                                       2018-10-31
 --------------------------------------------------------------------------------
+### 0.50.17 Release                                                   2018-10-31
 
   - improve event documentation
   - support Task level metadata
 
 
-0.50.16 Release                                                       2018-10-26
 --------------------------------------------------------------------------------
+### 0.50.16 Release                                                   2018-10-26
 
   - add new shell spawner as popen replacement
 
 
-0.50.15 Release                                                       2018-10-24
 --------------------------------------------------------------------------------
+### 0.50.15 Release                                                   2018-10-24
 
-  - fix recursive pilot staging             
+  - fix recursive pilot staging
 
 
-0.50.14 Release                                                       2018-10-24
 --------------------------------------------------------------------------------
+### 0.50.14 Release                                                   2018-10-24
 
   - add Cheyenne support - thanks Vivek!
 
 
-0.50.13 Release                                                       2018-10-16
 --------------------------------------------------------------------------------
+### 0.50.13 Release                                                   2018-10-16
 
   - survive if SAGA does not support job.name (#1744)
 
 
-0.50.12 Release                                                       2018-10-12
 --------------------------------------------------------------------------------
+### 0.50.12 Release                                                   2018-10-12
 
   - fix stacksize usage on BW
 
 
-0.50.11 Release                                                       2018-10-09
 --------------------------------------------------------------------------------
+### 0.50.11 Release                                                   2018-10-09
 
   - fix 'getting_started' example (no MPI)
 
 
-0.50.10 Release                                                       2018-09-29
 --------------------------------------------------------------------------------
+### 0.50.10 Release                                                   2018-09-29
 
   - ensure the correct code path in SAGA for Blue Waters
 
 
-0.50.9  Release                                                       2018-09-28
 --------------------------------------------------------------------------------
+### 0.50.9 Release                                                    2018-09-28
 
   - fix examples
   - fix issue #1715 (#1716)
@@ -967,27 +999,27 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - supermic does not like `curl -1` (#1723)
 
 
-0.50.8  Release                                                       2018-08-03
 --------------------------------------------------------------------------------
+### 0.50.8 Release                                                    2018-08-03
 
   - make sure that CUD values are not None (#1688)
   - don't limit pymongo version anymore (#1687)
 
 
-0.50.7  Release                                                       2018-08-01
 --------------------------------------------------------------------------------
+### 0.50.7 Release                                                    2018-08-01
 
   - fix bwpy handling
 
 
-0.50.6  Release                                                       2018-07-31
 --------------------------------------------------------------------------------
+### 0.50.6 Release                                                    2018-07-31
 
   - fix curl tssl negotiation problem (#1683)
 
 
-0.50.5  Release                                                       2018-07-30
 --------------------------------------------------------------------------------
+### 0.50.5 Release                                                    2018-07-30
 
   - fix default values for process and thread types (#1681)
   - fix outdated links in ompi deploy script
@@ -995,94 +1027,94 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix scheduler config checks (#1677)
 
 
-0.50.4  Release                                                       2018-07-13
 --------------------------------------------------------------------------------
+### 0.50.4 Release                                                    2018-07-13
 
   - set oversubscribe default to True
 
 
-0.50.3  Release                                                       2018-07-11
 --------------------------------------------------------------------------------
+### 0.50.3 Release                                                    2018-07-11
 
   - disable rcfg expnsion
 
 
-0.50.2  Release                                                       2018-07-08
 --------------------------------------------------------------------------------
+### 0.50.2 Release                                                    2018-07-08
 
   - fix relative tarball unpack paths
 
 
-0.50.1  Release                                                       2018-07-05
 --------------------------------------------------------------------------------
+### 0.50.1 Release                                                    2018-07-05
 
   - GPU support
   - many bug fixes
 
 
-0.47.14 Release                                                       2018-06-13
 --------------------------------------------------------------------------------
+### 0.47.14 Release                                                   2018-06-13
 
   - fix recursive output staging
 
 
-0.47.13 Release                                                       2018-06-02
 --------------------------------------------------------------------------------
+### 0.47.13 Release                                                   2018-06-02
 
   - catch up with RU log, rep and prof settings
 
 
-0.47.12 Release                                                       2018-05-19
 --------------------------------------------------------------------------------
+### 0.47.12 Release                                                   2018-05-19
 
-  - ensure that tasks are started in their own process group, to ensure clean
-    cancellation semantics.
+  - ensure that tasks are started in their own process group, to ensure
+  clean cancellation semantics.
 
 
-0.47.11 Release                                                       2018-05-08
 --------------------------------------------------------------------------------
+### 0.47.11 Release                                                   2018-05-08
 
   - fix schemas on BW (local orte, local aprun)
 
 
-0.47.10 Release                                                       2018-04-19
 --------------------------------------------------------------------------------
+### 0.47.10 Release                                                   2018-04-19
 
   - fix #1602
 
 
-0.47.9 Release                                                        2018-04-18
 --------------------------------------------------------------------------------
+### 0.47.9 Release                                                    2018-04-18
 
   - fix default scheduler for localhost
 
 
-0.47.8 Release                                                        2018-04-16
 --------------------------------------------------------------------------------
+### 0.47.8 Release                                                    2018-04-16
 
   - hotfix to catch up with pypi upgrade
 
 
-0.47.7 Release                                                        2018-04-15
 --------------------------------------------------------------------------------
+### 0.47.7 Release                                                    2018-04-15
 
   - bugfix related to radical.entk #255
 
 
-0.47.6 Release                                                        2018-04-12
 --------------------------------------------------------------------------------
+### 0.47.6 Release                                                    2018-04-12
 
   - bugfix related to #1590
 
 
-0.47.5 Release                                                        2018-04-12
 --------------------------------------------------------------------------------
+### 0.47.5 Release                                                    2018-04-12
 
   - make sure a dict object exists even on empty env settings (#1590)
 
 
-0.47.4 Release                                                        2018-03-20
 --------------------------------------------------------------------------------
+### 0.47.4 Release                                                    2018-03-20
 
   - fifo agent scheduler (#1537)
   - hombre agent scheduler (#1536)
@@ -1092,8 +1124,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - add agent configuration doc (#1540)
 
 
-0.47.3 Release                                                        2018-03-20
 --------------------------------------------------------------------------------
+### 0.47.3 Release                                                    2018-03-20
 
   - add resource limit test
   - add tmp cheyenne config
@@ -1102,8 +1134,8 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - tighten bootstrap process, add documentation
 
 
-0.47.2 Release                                                        2018-02-28
 --------------------------------------------------------------------------------
+### 0.47.2 Release                                                    2018-02-28
 
   - fix issue 1538
   - fix issue 1554
@@ -1112,13 +1144,13 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - fix event docs, add an event for symmetry (#1527)
   - name attribute has been changed to uid, fixes issue #1518
   - make use of flags consistent between RP and RS (#1547)
-  - add support for recursive data staging (#1513. #1514)  (JD, VB, GC)
+  - add support for recursive data staging (#1513. #1514) (JD, VB, GC)
   - change staging flags to integers (inherited from RS)
   - add support for bulk data transfer (#1512) (IP, SM)
 
 
-0.47 Release                                                          2017-11-19
 --------------------------------------------------------------------------------
+### 0.47 Release                                                      2017-11-19
 
   - Correctly added 'lm_info.cores_per_node' SLURM
   - Torque RM now respects config settings for cpn
@@ -1134,8 +1166,10 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - better hops for titan
   - better integration of Task script and app profs
   - catch up with config changes for local testing
-  - centralize URL derivation for pilot job service endpoints, hops, and sandboxes
-  - clarify use of namespace vs. full qualified URL in the context of RP file staging
+  - centralize URL derivation for pilot job service endpoints, hops, and
+  sandboxes
+  - clarify use of namespace vs. full qualified URL in the context of RP
+  file staging
   - clean up config management, inheritance
   - don't fetch json twice
   - ensure that profiles are flushed and packed correctly
@@ -1155,61 +1189,61 @@ https://github.com/radical-cybertools/radical.pilot/issues/
   - make sure profs are flushed on termination
   - make sure the tmgr only pulls tasks its interested in
   - profile mkdir
-  - publish resource_details (incl. lm_info) again
+  - publish resource_details (incl. lm_info) again
   - re-add a profile flag to advance()
   - remove old controllers
   - remove old files
-  - remove uid clashes for sub-agent components and components in general
+  - remove uid clashes for sub-agent components and components in
+  general
   - setup number of cores per node on stampede2
   - smaller default pilot size for supermic
   - switch to ibrun for comet_ssh
   - track task drops
   - use js hop for untar
   - using new process class
-  - GPU/CPU pinning test is now complete, needs some env settings in the launchers
+  - GPU/CPU pinning test is now complete, needs some env settings in the
+  launchers
 
 
-0.46.2 Release                                                        2017-09-02
 --------------------------------------------------------------------------------
+### 0.46.2 Release                                                    2017-09-02
 
   - hotfix for #1426 - thanks Iannis!
 
 
-0.46.1 Release                                                        2017-08-23
 --------------------------------------------------------------------------------
+### 0.46.1 Release                                                    2017-08-23
 
   - hotfix for #1415
 
 
-Version 0.46                                                          2017-08-11
 --------------------------------------------------------------------------------
+### Version 0.46                                                      2017-08-11
 
   - TODO
 
 
-0.45.3 Release                                                        2017-05-09
 --------------------------------------------------------------------------------
+### 0.45.3 Release                                                    2017-05-09
 
   - Documentation update for the BW tutorial
 
 
-0.45.1 Release                                                        2017-03-05
 --------------------------------------------------------------------------------
+### 0.45.1 Release                                                    2017-03-05
 
-  - NOTE: OSG and ORTE_LIB on titan are considered unsupported.  You can enable
-          those resources for experiments by setting the `enabled` keys in the
-          respective config entries to `true`.
-
+  - NOTE: OSG and ORTE_LIB on titan are considered unsupported. You can
+  enable those resources for experiments by setting the `enabled` keys
+  in the respective config entries to `true`.
   - hotfix the configurations markers above
 
 
-0.45 Release                                                          2017-02-28
 --------------------------------------------------------------------------------
+### 0.45 Release                                                      2017-02-28
 
-  - NOTE: OSG and ORTE_LIB on titan are considered unsupported.  You can enable
-          those resources for experiments by removing the comment markers from
-          the respective resource configs.
-
+  - NOTE: OSG and ORTE_LIB on titan are considered unsupported. You can
+  enable those resources for experiments by removing the comment
+  markers from the respective resource configs.
   - Adapt to new orte-submit interface.
   - Add orte-cffi dependency to bootstrapper.
   - Agent based staging directives.
@@ -1240,12 +1274,12 @@ Version 0.46                                                          2017-08-11
   - use new ompi installation on comet (#1228)
   - add a simple/stupid ompi deployment helper
   - updated Config for Stampede and YARN
-  - fix state transition to UNSCHEDDULED to avoid repetition
-    and invalid state ordering
+  - fix state transition to UNSCHEDDULED to avoid repetition and invalid
+  state ordering
 
 
-0.44.1 Release                                                        2016-11-01
 --------------------------------------------------------------------------------
+### 0.44.1 Release                                                    2016-11-01
 
   - add an agent config for cray/aprun all on mom node
   - add anaconda config for examples
@@ -1266,28 +1300,32 @@ Version 0.46                                                          2017-08-11
   - update installation.rst
   - analytics backport
   - use profiler from RU
-  - when calling a task state callback, missed states also trigger callbacks
+  - when calling a task state callback, missed states also trigger
+  callbacks
 
 
-0.43.1 Release                                                        2016-09-09
 --------------------------------------------------------------------------------
+### 0.43.1 Release                                                    2016-09-09
 
-  - hotfix: fix netifaces to version 0.10.4 to avoid trouble on BlueWaters
+  - hotfix: fix netifaces to version 0.10.4 to avoid trouble on
+  BlueWaters
 
 
-0.43 Release                                                          2016-09-08
 --------------------------------------------------------------------------------
+### 0.43 Release                                                      2016-09-08
 
   - Add aec_handover for orte.
   - add a local confiuration for bw
   - add early binding eample for osg
-  - add greenfield config (only works for single-node runs at the moment)
+  - add greenfield config (only works for single-node runs at the
+  moment)
   - add PYTHONPATH to the vars we reset for Task envs
   - allow overloading of agent config
   - fix #1071
   - fix synapse example
   - avoid profiling of empty state transitions
-  - Check of YARN start-all script. Raising Runtime error in case of error.
+  - Check of YARN start-all script. Raising Runtime error in case of
+  error.
   - disable hwm altogether
   - drop clones *before* push
   - enable scheduling time measurements.
@@ -1303,7 +1341,7 @@ Version 0.46                                                          2017-08-11
   - Remove temp agent config directory.
   - Resolving #1107
   - Schedule behind the real task and support multicore.
-  - SchedulerContinuous -> AgentSchedulingComponent.
+  - SchedulerContinuous -\> AgentSchedulingComponent.
   - Take ccmrun out of bootstrap_2.
   - Tempfile is not a tempfile so requires explicit removal.
   - resolve #1001
@@ -1311,19 +1349,20 @@ Version 0.46                                                          2017-08-11
   - use high water mark for ZMQ to avoid message drops on high loads
 
 
-0.42 Release                                                          2016-08-09
 --------------------------------------------------------------------------------
+### 0.42 Release                                                      2016-08-09
 
   - change examples to use 2 cores on localhost
   - Iterate documentation
   - Manual cherry pick fix for getip.
 
 
-0.41 Release                                                          2016-07-15
 --------------------------------------------------------------------------------
+### 0.41 Release                                                      2016-07-15
 
   - address some of error messages and type checks
-  - add scheduler documentation simplify interpretation of BF oversubscription fix a log message
+  - add scheduler documentation simplify interpretation of BF
+  oversubscription fix a log message
   - fix logging problem reported by Ming and Vivek
   - global default url, sync profile/logfile/db fetching tools
   - make staging path resilient against cwd changes
@@ -1332,111 +1371,111 @@ Version 0.46                                                          2017-08-11
   - update allocation IDs
 
 
-0.40.4 Release                                                        2016-05-18
 --------------------------------------------------------------------------------
+### 0.40.4 Release                                                    2016-05-18
 
   - point release with more tutorial configurations
 
 
-0.40.3 Release                                                        2016-05-17
 --------------------------------------------------------------------------------
+### 0.40.3 Release                                                    2016-05-17
 
   - point release with tutorial configurations
 
 
-0.40.2 Release                                                        2016-05-13
 --------------------------------------------------------------------------------
+### 0.40.2 Release                                                    2016-05-13
 
   - hotfix to fix vnode parsing on archer
 
 
-0.40.1 Release                                                        2016-02-11
 --------------------------------------------------------------------------------
+### 0.40.1 Release                                                    2016-02-11
 
   - hotfix which makes sure agents don't report FAILED on cancel()
 
 
-0.40 Release                                                          2016-02-03
 --------------------------------------------------------------------------------
+### 0.40 Release                                                      2016-02-03
 
   - Really numberous changes, fixes and features, most prominently:
-    - OSG support
-    - Yarn support
-    - new resource supported
-    - ORTE used for more resources
-    - improved examples, profiling
-    - communication cleanup
-    - large Task support
-    - lrms hook fixes
-    - agent code splitup
+  - OSG support
+  - Yarn support
+  - new resource supported
+  - ORTE used for more resources
+  - improved examples, profiling
+  - communication cleanup
+  - large Task support
+  - lrms hook fixes
+  - agent code splitup
 
 
-0.38 Release                                                          2015-12-22
 --------------------------------------------------------------------------------
+### 0.38 Release                                                      2015-12-22
 
   - fix busy mongodb pull
 
 
-0.37.10 Release                                                       2015-10-20
 --------------------------------------------------------------------------------
+### 0.37.10 Release                                                   2015-10-20
 
   - config fix
 
 
-0.37.9 Release                                                        2015-10-20
 --------------------------------------------------------------------------------
+### 0.37.9 Release                                                    2015-10-20
 
   - Example fix
 
 
-0.37.8 Release                                                        2015-10-20
 --------------------------------------------------------------------------------
+### 0.37.8 Release                                                    2015-10-20
 
   - Allocation fix
 
 
-0.37.7 Release                                                        2015-10-20
 --------------------------------------------------------------------------------
+### 0.37.7 Release                                                    2015-10-20
 
   - Allocation fix
 
 
-0.37.6 Release                                                        2015-10-20
 --------------------------------------------------------------------------------
+### 0.37.6 Release                                                    2015-10-20
 
   - Documentation
 
 
-0.37.5 Release                                                        2015-10-19
 --------------------------------------------------------------------------------
+### 0.37.5 Release                                                    2015-10-19
 
   - timing fix to ensure task state ordering
 
 
-0.37.3 Release                                                        2015-10-19
 --------------------------------------------------------------------------------
+### 0.37.3 Release                                                    2015-10-19
 
   - small fixes, doc changes
 
 
-0.37.2 Release                                                        2015-10-18
 --------------------------------------------------------------------------------
+### 0.37.2 Release                                                    2015-10-18
 
   - fix example installation
 
 
-0.37.1 Release                                                        2015-10-18
 --------------------------------------------------------------------------------
+### 0.37.1 Release                                                    2015-10-18
 
   - update of documentation and examples
   - some small fixes on shutdown installation
 
 
-0.37 Release                                                          2015-10-15
 --------------------------------------------------------------------------------
+### 0.37 Release                                                      2015-10-15
 
   - change default spawner to POPEN
-  - use hostlist to avoid mpirun* limitations
+  - use hostlist to avoid mpirun\* limitations
   - support default callbacks on tasks and pilots
   - use a config for examples
   - add lrms shutdown hook for ORTE LM
@@ -1453,17 +1492,19 @@ Version 0.46                                                          2017-08-11
   - Use designated termination procedure for ORTE.
   - Use statically compiled and linked OMPI/ORTE.
   - Wait for its component children on termination
-  - make localhost (ForkLRMS) behave like a resource with an inifnite number of cores
+  - make localhost (ForkLRMS) behave like a resource with an inifnite
+  number of cores
 
 
-0.36 Release                                                          2015-10-08
 --------------------------------------------------------------------------------
+### 0.36 Release                                                      2015-10-08
 
-  (the release notes also cover some changes from 0.34 to 0.35)
+(the release notes also cover some changes from 0.34 to 0.35)
 
   - simplify agent process tree, process naming
   - improve session and agent termination
-  - several fixes and chages to the task state model (refer to documentation!)
+  - several fixes and chages to the task state model (refer to
+  documentation!)
   - fix POPEN state reporting
   - split agent component into individual, relocatable processes
   - improve and generalize agent bootstrapping
@@ -1484,14 +1525,15 @@ Version 0.46                                                          2017-08-11
   - allow agent on mom node to use tunnel.
   - fix logging to avoid log leakage from lower layers
   - avoid some file system bottlenecks
-  - several resource specific configuration fixes (mostly stampede, archer, bw)
+  - several resource specific configuration fixes (mostly stampede,
+  archer, bw)
   - backport stdout/stderr/log retrieval
   - better logging of clone/drops, better error handling for configs
   - fix, improve profiling of Task execution
   - make profile an object
   - use ZMQ pubsub and queues for agent/sub-agent communication
-  - decouple launch methods from scheduler for most LMs
-    NOTE: RUNJOB remains coupled!
+  - decouple launch methods from scheduler for most LMs NOTE: RUNJOB
+  remains coupled!
   - detect disappearing orte-dvm when exit code is zero
   - perform node allocation for sub-agents
   - introduce a barrier on agent startup
@@ -1503,154 +1545,156 @@ Version 0.46                                                          2017-08-11
   - protect agent cb invokation by lock
   - (re)add command line for profile fetching
   - cleanup of data staging, with better support for different schemas
-    (incl. GlobusOnline)
+  (incl. GlobusOnline)
   - work toward better OSG support
   - Use netifaces for ip address mangling.
   - Use ORTE from the 2.x branch.
   - remove Url class
 
 
-0.35.1 Release                                                        2015-09-29
 --------------------------------------------------------------------------------
+### 0.35.1 Release                                                    2015-09-29
 
   - hotfix to use popen on localhost
 
 
-0.35 Release                                                          2015-07-14
 --------------------------------------------------------------------------------
+### 0.35 Release                                                      2015-07-14
 
   - numerous bug fixes and support for new resources
 
 
-0.34 Release                                                          2015-07-14
 --------------------------------------------------------------------------------
+### 0.34 Release                                                      2015-07-14
 
   - Hotfix release for an installation issue
 
 
-0.33 Release                                                          2015-05-27
 --------------------------------------------------------------------------------
+### 0.33 Release                                                      2015-05-27
 
   - Hotfix release for off-by-one error (#621)
 
 
-0.32 Release                                                          2015-05-18
 --------------------------------------------------------------------------------
+### 0.32 Release                                                      2015-05-18
 
   - Hotfix release for MPIRUN_RSH on Stampede (#572).
 
 
-0.31 Release                                                          2015-04-30
 --------------------------------------------------------------------------------
+### 0.31 Release                                                      2015-04-30
 
   - version bump to trigger pypi release update
 
 
-0.30 Release                                                          2015-04-29
 --------------------------------------------------------------------------------
+### 0.30 Release                                                      2015-04-29
 
   - hotfix to handle broken pip/bash combo on archer
 
 
-0.29 Release                                                          2015-04-28
 --------------------------------------------------------------------------------
+### 0.29 Release                                                      2015-04-28
 
-  - hotfix to handle stale ve locks
+    - hotfix to handle stale ve locks
 
 
-0.28 Release                                                          2015-04-16
 --------------------------------------------------------------------------------
+### 0.28 Release                                                      2015-04-16
 
-  - This release contains a very large set of commits, and covers a fundamental
-    overhaul of the RP agent (amongst others).  It also includes:
-    - support for agent profiling
-    - removes a number of state race conditions
-    - support for new backends (ORTE, CCM)
-    - fixes for other backends
-    - revamp of the integration tests
+  - This release contains a very large set of commits, and covers a
+  fundamental overhaul of the RP agent (amongst others). It also
+  includes:
+  - support for agent profiling
+  - removes a number of state race conditions
+  - support for new backends (ORTE, CCM)
+  - fixes for other backends
+  - revamp of the integration tests
 
 
-0.26 Release                                                          2015-04-08
 --------------------------------------------------------------------------------
+### 0.26 Release                                                      2015-04-08
 
-  - hotfix to cope with API changing pymongo release
+    - hotfix to cope with API changing pymongo release
 
 
-0.25 Release                                                          2015-04-01
 --------------------------------------------------------------------------------
+### 0.25 Release                                                      2015-04-01
 
   - hotfix for a stampede configuration change
 
 
-0.24 Release                                                          2015-03-30
 --------------------------------------------------------------------------------
+### 0.24 Release                                                      2015-03-30
 
-  - More support for URLs in StagingDirectives (#489).
-  - Create parent directories of staged files.
-  - Only process entries for Output FTW, fixes #490.
-  - SuperMUC config change.
-  - switch from bson to json for session dumps
-  - fixes #451
-  - update resources.rst
-  - remove superfluous \n
-  - fix #438
-  - add documentation on resource config changes, closes #421
-  - .ssh/authorized_keys2 is deprecated since 2011
-  - improved intra-node SSH FAQ item
+    - More support for URLs in StagingDirectives (#489).
+    - Create parent directories of staged files.
+    - Only process entries for Output FTW, fixes #490.
+    - SuperMUC config change.
+    - switch from bson to json for session dumps
+    - fixes #451
+    - update resources.rst
+    - remove superfluous ```\n`{=tex}``
+    - fix #438
+    - add documentation on resource config changes, closes #421
+    - .ssh/authorized_keys2 is deprecated since 2011
+    - improved intra-node SSH FAQ item
 
 
-0.23 Release                                                          2014-12-13
 --------------------------------------------------------------------------------
+### 0.23 Release                                                      2014-12-13
 
   - fix #455
 
 
-0.22 Release                                                          2014-12-11
 --------------------------------------------------------------------------------
+### 0.22 Release                                                      2014-12-11
 
-  - several state races fixed
-  - fix to tools for session cleanup and purging
-  - partial fix for pilot cancelation
-  - improved shutdown behavior
-  - improved hopper support
-  - adapt plotting to changed slothistory format
-  - make instructions clearer on data staging examples
-  - addresses issue #216
-  - be more resilient on pilot shutdown
-  - take care of cancelling of active pilots
-  - fix logic error on state check for pilot cancellation
-  - fix blacklight config (#360)
-  - attempt to cancel pilots timely...
-  - as fallback, use PPN information provided by SAGA
-  - hopper usues torque (thanks Mark!)
-  - Re-fix blacklight config. Addresses #359 (again).
-  - allow to pass application data to callbacks
-  - threads should not be daemons...
-  - workaround on failing bson encoding...
-  - report pilot id on cu inspection
-  - ignore caching errors
-  - also use staging flags on input staging
-  - stampede environment fix
-  - Added missing stampede alias
-  - adds timestamps to task and pilot logentries
-  - fix state tags for plots
-  - fix plot style for waitq
-  - introduce UNSCHEDULED state as per #233
-  - selectable terminal type for plot
-  - document pilot log env
-  - add faq about VE problems on setuptools upgrade
-  - allow to specify session cache files
-  - added  configuration for BlueBiou (Thanks Jordane)
-  - better support for json/bson/timestamp handling; cache mongodb data for stats, plots etc
-  - localize numpy dependency
-  - retire input_data and output_data
-  - remove obsolete staging examples
-  - address #410
-  - fix another subtle state race
+    - several state races fixed
+    - fix to tools for session cleanup and purging
+    - partial fix for pilot cancelation
+    - improved shutdown behavior
+    - improved hopper support
+    - adapt plotting to changed slothistory format
+    - make instructions clearer on data staging examples
+    - addresses issue #216
+    - be more resilient on pilot shutdown
+    - take care of cancelling of active pilots
+    - fix logic error on state check for pilot cancellation
+    - fix blacklight config (#360)
+    - attempt to cancel pilots timely...
+    - as fallback, use PPN information provided by SAGA
+    - hopper usues torque (thanks Mark!)
+    - Re-fix blacklight config. Addresses #359 (again).
+    - allow to pass application data to callbacks
+    - threads should not be daemons...
+    - workaround on failing bson encoding...
+    - report pilot id on cu inspection
+    - ignore caching errors
+    - also use staging flags on input staging
+    - stampede environment fix
+    - Added missing stampede alias
+    - adds timestamps to task and pilot logentries
+    - fix state tags for plots
+    - fix plot style for waitq
+    - introduce UNSCHEDULED state as per #233
+    - selectable terminal type for plot
+    - document pilot log env
+    - add faq about VE problems on setuptools upgrade
+    - allow to specify session cache files
+    - added configuration for BlueBiou (Thanks Jordane)
+    - better support for json/bson/timestamp handling; cache mongodb data
+      for stats, plots etc
+    - localize numpy dependency
+    - retire input_data and output_data
+    - remove obsolete staging examples
+    - address #410
+    - fix another subtle state race
 
 
-0.21 Release                                                          2014-10-29
 --------------------------------------------------------------------------------
+### 0.21 Release                                                      2014-10-29
 
   - Documentation of MPI support
   - Documentation of data staging operations
@@ -1663,68 +1707,61 @@ Version 0.46                                                          2017-08-11
   - fix ibrun tmp file problem on stampede
 
 
-0.19 Release                                                  September 12. 2014
 --------------------------------------------------------------------------------
+### 0.19 Release                                              September 12. 2014
 
   - The Milestone 8 release (MS.8)
-  - Closed Tickets:
-
-    - https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+
+  - [Closed Tickets](https://github.com/radical-cybertools/radical.pilot/issues?q=is%3Aclosed+milestone%3AMS-8+)
 
 
-0.18 Release                                                       July 22. 2014
 --------------------------------------------------------------------------------
+### 0.18 Release                                                   July 22. 2014
 
   - The Milestone 7 release (MS.7)
-  - Closed Tickets:
-
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed
+  - [Closed Tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=13&state=closed)
 
 
-0.17 Release                                                       June 18. 2014
 --------------------------------------------------------------------------------
+### 0.17 Release                                                   June 18. 2014
 
-Bugfix release - fixed file permissions et al. :/
+  - Bugfix release - fixed file permissions et al. :/
 
 
-0.16 Release                                                       June 17. 2014
 --------------------------------------------------------------------------------
+### 0.16 Release                                                   June 17. 2014
 
-Bugfix release - fixed file permissions et al.
+  - Bugfix release - fixed file permissions et al.
 
 
-0.15 Release                                                       June 12. 2014
 --------------------------------------------------------------------------------
+### 0.15 Release                                                   June 12. 2014
 
-Bugfix release - fixed distribution MANIFEST:
+  - Bugfix release
+  - fixed distribution MANIFEST: [issues #174](https://github.com/radical-cybertools/radical.pilot/issues/174)
 
-https://github.com/radical-cybertools/radical.pilot/issues/174
 
-
-0.14 Release                                                       June 11. 2014
 --------------------------------------------------------------------------------
+### 0.14 Release                                                   June 11. 2014
 
-Closed Tickets:
-
-  - https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed
+  - [Closed tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=16&state=closed)
 
 New Features
 
   - Experimental pilot-agent for Cray systems
   - New multi-core agent with MPI support
   - New ResourceConfig mechanism does not reuquire the user to add
-    resource configurations explicitly. Resources can be configured
-    programatically on API-level.
+  resource configurations explicitly. Resources can be configured
+  programatically on API-level.
 
 API Changes:
 
-  - TaskDescription.working\_dir\_priv removed
+  - TaskDescription.working_dir_priv removed
   - Extended state model
-  - resource\_configurations parameter removed from PilotManager c`tor
+  - resource_configurations parameter removed from PilotManager c\`tor
 
 
-0.13 Release                                                        May 19. 2014
 --------------------------------------------------------------------------------
+### 0.13 Release                                                    May 19. 2014
 
   - ExTASY demo release
   - Support for project / allocation
@@ -1732,100 +1769,85 @@ API Changes:
   - Refactored bootstrap mechnism
 
 
-0.12 Release                                                        May 09. 2014
 --------------------------------------------------------------------------------
+### 0.12 Release                                                    May 09. 2014
 
   - Updated resource files
   - Updated state model
-  - Closed tickets:
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed
+  - [Closed tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=12&state=closed)
 
 
-0.11 Release                                                       Apr. 29. 2014
 --------------------------------------------------------------------------------
+### 0.11 Release                                                   Apr. 29. 2014
 
   - Fixes error in state history reporting
 
-0.10 Release                                                       Apr. 29. 2014
---------------------------------------------------------------------------------
 
-  - Support for state transition introspection via Task/Pilot state\_history
+--------------------------------------------------------------------------------
+### 0.10 Release Apr.                                                   29. 2014
+
+  - Support for state transition introspection via Task/Pilot
+  state_history
   - Cleaned up an streamlined Input and Outpout file transfer workers
   - Support for interchangeable pilot agents
-  - Closed tickets:
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed
+  - [Closed tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=11&state=closed)
 
 
-0.9 Release                                                        Apr. 16. 2014
 --------------------------------------------------------------------------------
+### 0.9 Release                                                    Apr. 16. 2014
 
   - Support for output file staging
   - Streamlines data model
   - More loosely coupled components connected via DB queues
-  - Closed tickets:
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed
+  - [Closed tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=10&state=closed)
 
 
-0.8 Release                                                        Mar. 24. 2014
 --------------------------------------------------------------------------------
+### 0.8 Release                                                    Mar. 24. 2014
 
   - Renamed codebase from sagapilot to radical.pilot
   - Added explicit close() calls to PM, UM and Session.
-  - Cloesed tickets:
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed
+  - [Closed tickets](https://github.com/radical-cybertools/radical.pilot/issues?milestone=9&state=closed)
 
 
-0.7 Release                                                        Feb. 25. 2014
 --------------------------------------------------------------------------------
+### 0.7 Release                                                    Feb. 25. 2014
 
   - Added support for callbacks
   - Added support for input file transfer !
-  - Closed tickets:
-    - https://github.com/radical-cybertools/radical.pilot/issues?milestone=8&state=closed
 
 
-0.6 Release                                                        Feb. 24. 2014
 --------------------------------------------------------------------------------
+### 0.6 Release                                                    Feb. 24. 2014
 
   - BROKEN RELEASE
 
 
-0.5 Release                                                        Feb. 06. 2014
 --------------------------------------------------------------------------------
+### 0.5 Release                                                    Feb. 06. 2014
 
   - Tutorial 2 release (Github only)
   - Added support for multiprocessing worker
   - Support for Task stdout and stderr transfer via MongoDB GridFS
-  - Closed tickets:
-    - https://github.com/saga-project/saga-pilot/issues?milestone=7&page=1&state=closed
 
 
-0.4 Release
 --------------------------------------------------------------------------------
+### 0.4 Release
 
   - Tutorial 1 release (Github only)
   - Consistent naming (sagapilot instead of sinon)
 
 
-0.1.3 Release
 --------------------------------------------------------------------------------
+### 0.1.3 Release
 
-  - Github only release: pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
-
+  - Github only release
   - Added logging
   - Added security context handling
-  - Closed tickets:
-    - https://github.com/saga-project/saga-pilot/issues?milestone=3&state=closed
 
 
-0.1.2 Release
 --------------------------------------------------------------------------------
+### 0.1.2 Release
 
-  - Github only release: pip install --upgrade -e git://github.com/saga-project/saga-pilot.git@master#egg=saga-pilot
-
-  - Closed tickets:
-    - https://github.com/saga-project/saga-pilot/issues?milestone=4&state=closed
-
-        
---------------------------------------------------------------------------------
+  - Github only release
 

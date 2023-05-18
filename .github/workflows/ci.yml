@@ -8,7 +8,6 @@ on:
     branches: [ devel ]
 
 jobs:
-
   linting:
     runs-on: ubuntu-latest
     steps:
@@ -36,11 +35,20 @@ jobs:
           (test -z "$NEW" || test -z "$OLD") && echo 'nothing to lint' && exit 0
           DIFF=`git diff --name-only --diff-filter=db $NEW..$OLD`
           FILTERED=$(for f in $DIFF; do echo $f; done | \
-                     grep -v -e '/architecture/' -e '/archive/' | \
+                     grep -v -e 'concepts/' -e '/archive/' | \
                      grep -e '\.py$' |  sed "s|^|$PWD/|")
           test -z "$FILTERED" && echo 'nothing to lint' && exit 0
           flake8 $FILTERED
           pylint $FILTERED
+
+  # getting_started:
+  #   strategy:
+  #     matrix:
+  #       python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+  #   uses: ./.github/workflows/run-rp-notebook.yml
+  #   with:
+  #     python-version: ${{ matrix.python-version }}
+  #     notebook-name: 'getting_started.ipynb'
 
   tests:
     runs-on: ${{ matrix.os }}
@@ -72,7 +80,9 @@ jobs:
         python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
         python -m pip install --upgrade .
         python -m pip install -r requirements-tests.txt
-    - name: Test with pytest
+        python -m pip install -r requirements-docs.txt
+        python -m pip install jupyter
+    - name: Unit tests
       env:
         RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
       run: |
@@ -83,6 +93,17 @@ jobs:
       if: ${{ matrix.python-version == '3.7' }}
       with:
         files: ./coverage.xml
+    - name: Integration test
+      env:
+        MONGODB_HOST: localhost
+        MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
+        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+        TARGET_PATH: 'docs/source/getting_started.ipynb'
+      run: |
+        . testenv/bin/activate
+        jupyter nbconvert --clear-output --inplace $TARGET_PATH
+        jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
+
 
   analytics:
     runs-on: ${{ matrix.os }}
