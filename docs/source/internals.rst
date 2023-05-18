@@ -32,23 +32,23 @@ tasks to Resource B.
  Figure 1. High-level view of RP architecture when deployed on a simplified
  view of two HPC platforms.
 
-`PilotManager` and `PilotManager Worker`
-----------------------------------------
+.. `PilotManager` and `PilotManager Worker`
+.. ----------------------------------------
 
-.. figure:: images/architecture_pilotmanager.png
- :width: 600pt
- :alt: RP PilotManager architecture
+.. .. figure:: images/architecture_pilotmanager.png
+..  :width: 600pt
+..  :alt: RP PilotManager architecture
 
-Download :download:`PDF version <images/architecture_pilotmanager.pdf>`.
+.. Download :download:`PDF version <images/architecture_pilotmanager.pdf>`.
 
-`TaskManager` and `TaskManager Worker`
---------------------------------------
+.. `TaskManager` and `TaskManager Worker`
+.. --------------------------------------
 
-.. figure:: images/architecture_taskmanager.png
- :width: 600pt
- :alt: RP TaskManager architecture
+.. .. figure:: images/architecture_taskmanager.png
+..  :width: 600pt
+..  :alt: RP TaskManager architecture
 
-Download :download:`PDF version <images/architecture_taskmanager.pdf>`.
+.. Download :download:`PDF version <images/architecture_taskmanager.pdf>`.
 
 State Model
 ===========
@@ -125,22 +125,23 @@ the agent scheduler will place tasks on the set of available resources
 via agent and resource configuration files (see :ref:`chapter_supported`).
 
 
-Round-Robin Scheduler (`SCHEDULER_ROUND_ROBIN`)
------------------------------------------------
+Round-Robin Scheduler
+---------------------
 
-The Round-Robin scheduler will fairly distribute arriving tasks over
-the set of known pilots, independent of task state, expected workload, pilot
-state or pilot lifetime. As such, it is a fairly simplistic, but also a very
-fast scheduler, which does not impose any additional communication round trips
-between the task manager and pilot agents.
+The Round-Robin scheduler (`SCHEDULER_ROUND_ROBIN`) will fairly distribute
+arriving tasks over the set of known pilots, independent of task state, expected
+workload, pilot state or pilot lifetime. As such, it is a fairly simplistic, but
+also a very fast scheduler, which does not impose any additional communication
+round trips between the task manager and pilot agents.
 
 
-Backfilling Scheduler (`SCHEDULER_BACKFILLING`)
------------------------------------------------
+Backfilling Scheduler
+--------------------
 
-The backfilling scheduler does a better job at actual load balancing, but at
-the cost of additional communication round trips. It depends on the actual
-application workload if that load balancing is beneficial or not.
+The backfilling scheduler (`SCHEDULER_BACKFILLING`) does a better job at actual
+load balancing, but at the cost of additional communication round trips. It
+depends on the actual application workload if that load balancing is beneficial
+or not.
 
 Backfilling is most beneficial for large numbers of pilots and for relatively
 long-running tasks, where the task runtime is significantly longer than the

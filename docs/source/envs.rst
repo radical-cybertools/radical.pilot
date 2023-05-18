@@ -1,8 +1,8 @@
 .. _chapter_env_variables:
 
-===============================================
-List of Environment Variables for RADICAL-Pilot
-===============================================
+=====================
+Environment Variables
+=====================
 
 
 .. list-table:: User List

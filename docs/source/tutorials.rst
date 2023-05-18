@@ -34,8 +34,8 @@ To run the tutorials in our Docker container:
 
 
 
-RADICAL-Pilot Tutorials
------------------------
+List of Tutorials
+-----------------
 
 .. toctree::
    :maxdepth: 2
