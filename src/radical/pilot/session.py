@@ -190,10 +190,31 @@ class Session(rs.Session):
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
 
-        self._init_uid()
-        self._init_registry()
-        self._init_cfg()
-        self._init_proxy(proxy_url, proxy_host)
+
+        if self._role == self._PRIMARY:
+
+            # if user did not set a uid, we need to generate a new ID
+            if not self._uid:
+                self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
+            self._init_primary()
+
+
+        elif self._role == self._AGENT_0:
+
+            if self._uid:
+                raise ValueError('non-primary sessions need a UID')
+
+            self._init_agent_0()
+
+
+        elif self._role in [self._AGENT_N, self._DEFAULT]:
+
+            if self._uid:
+                raise ValueError('non-primary sessions need a UID')
+
+            self._init_secondary()
+
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -220,61 +241,111 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _init_uid(self):
+    def _init_primary(self):
 
-        if self._role == self._PRIMARY:
+        # The primary session
+        #   - reads session config files
+        #   - reads resource config files
+        #   - starts the client side registry service
+        #   - pushes the configs into that registry
+        #   - pushes bridge and component configs into that registry
+        #   - starts a ZMQ proxy (or ensures one is up and running)
 
-            # only primary sessions create UIDs
-            if self._uid:
-                raise ValueError('only non-primary sessions need a UID')
+        # we still call `_init_cfg` to complete missing config settings
+        # FIXME: completion only needed by `PRIMARY`
+        self._read_cfg()
 
-            # if user did not set a uid, we need to generate a new ID
-            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+        # primary sessions create a registry service
+        self._start_registry()
+        self._init_registry()
 
-        else:
+        # store the session config in the new registry
+        self._reg.put('sid', self._uid)
 
-            if not self._uid:
-                raise ValueError('non-primary sessions need a UID')
+        # only primary sessions and agent_0 connect to the ZMQ proxy
+        self._init_proxy()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_agent_0(self):
+
+        # The agent_0 session expects the `cfg` parameter to contain the
+        # complete agent config!
+        #
+        #   - starts the agent side registry service
+        #   - separates
+        #     - session config (== agent config)
+        #     - bridge configs
+        #     - component configs
+        #     - resource config
+        #   - pushes them all into the registry
+        #   - connects to the ZMQ proxy for client/agent communication
+
+        self._start_registry()
+        self._init_registry()
+        self._init_cfg()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_secondary(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_registry(self):
+
+        # make sure that no other registry is used
+        if self._reg_addr:
+            raise ValueError('cannot start registry when providing `reg_addr`')
+
+        self._reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid)
+        self._reg_service.start()
+
+        self._reg_addr = self._reg_service.addr
 
 
     # --------------------------------------------------------------------------
     #
     def _init_registry(self):
-        '''
-        PRIMARY: create registry client and service
-        AGENT  : create registry client and service
-        DEFAULT: create registry client only
-        '''
 
-        if self._role == self._PRIMARY and self._reg_addr:
-            raise ValueError('primary sessions do not accept registry address')
+        if not self._reg_addr:
+            raise ValueError('session needs a registry address')
+
+        # register the session ID as sanity check for non-primary sessions
+        self._reg = ru.zmq.RegistryClient(url=self._reg_addr)
 
 
-        # primary and agent_0 sessions run an inline registry service to share
-        # runtime config with their components (and sub-agents)
-        if self._role in [self._PRIMARY, self._AGENT_0]:
+    # --------------------------------------------------------------------------
+    #
+    def _read_cfg(self):
 
-            reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid)
-            reg_service.start()
+        # NOTE: the `cfg` parameter to the c'tor is overloaded: it can be
+        #       a config name (str) or a config dict to be merged into the
+        #       default config.
+        cfg_name = 'default'
+        if isinstance(self._cfg, str):
+            cfg_name  = self._cfg
+            self._cfg = None
 
-            self._reg_addr = reg_service.addr
+        # load the named config, merge provided config
+        self._cfg = ru.Config('radical.pilot.session', name=cfg_name,
+                                                       cfg=self._cfg)
 
-            assert self._reg_addr
+        self._rcfgs = ru.Config('radical.pilot.resource', name='*',
+                                                          expand=False)
 
-            # register the session ID as sanity check for non-primary sessions
-            self._reg = ru.zmq.RegistryClient(url=self._reg_addr)
-            self._reg.put('sid', self._uid)
-
-        else:
-
-            # non-primary sessions also connect a registry client
-            assert self._reg_addr
-            self._reg = ru.zmq.RegistryClient(url=self._reg_addr)
-
-            # ensure the registry is up and valid
-            assert self._reg.get('sid') == self._uid
-
-
+        # expand recfgs for all schema options
+        # FIXME: this is ugly
+        for site in self._rcfgs:
+            for rcfg in self._rcfgs[site].values():
+                for schema in rcfg.get('schemas', []):
+                    while isinstance(rcfg.get(schema), str):
+                        tgt = rcfg[schema]
+                        rcfg[schema] = rcfg[tgt]
     # --------------------------------------------------------------------------
     #
     def _init_cfg(self):
@@ -291,23 +362,6 @@ class Session(rs.Session):
         # NOTE: `cfg_name` and `cfg` are overloaded, the user cannot point to
         #       a predefined config and amend it at the same time.  This might
         #       be ok for the session, but introduces an API inconsistency.
-
-        if self._role == self._PRIMARY:
-
-            cfg_name = 'default'
-            if isinstance(self._cfg, str):
-                cfg_name  = self._cfg
-                self._cfg = None
-
-            self._cfg   = ru.Config('radical.pilot.session',  name=cfg_name, cfg=self._cfg)
-            self._rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
-
-            for site in self._rcfgs:
-                for rcfg in self._rcfgs[site].values():
-                    for schema in rcfg.get('schemas', []):
-                        while isinstance(rcfg.get(schema), str):
-                            tgt = rcfg[schema]
-                            rcfg[schema] = rcfg[tgt]
 
         # make sure the cfg has the sid set
         self._cfg['sid'] = self._uid
@@ -399,15 +453,14 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _init_proxy(self, proxy_url, proxy_host):
+    def _init_proxy(self):
 
-        self._log.debug('=== 4 %s', self._role)
         # need a proxy_url to connect to - get from arg or config (default cfg
         # pulls this from env)
-        if not proxy_url:
-            proxy_url = self._cfg.proxy_url
+        if not self._proxy_url:
+            self._proxy_url = self._cfg.proxy_url
 
-        if not proxy_url:
+        if not self._proxy_url:
 
             if self._role in [self._AGENT_0, self._AGENT_N, self._DEFAULT]:
                 raise RuntimeError('proxy service URL missing')
@@ -415,16 +468,16 @@ class Session(rs.Session):
             # start a temporary embedded service on the proxy host
             # (defaults to localhost on the default cfg)
 
-            if not proxy_host:
-                proxy_host = self._cfg.proxy_host
+            if not self._proxy_host:
+                self._proxy_host = self._cfg.proxy_host
 
             # NOTE: we assume ssh connectivity to the proxy host - but in fact
             #       do allow proxy_host to be a full saga job service URL
-            if '://' in proxy_host:
-                proxy_host_url = ru.Url(proxy_host)
+            if '://' in self._proxy_host:
+                proxy_host_url = ru.Url(self._proxy_host)
             else:
                 proxy_host_url = ru.Url()
-                proxy_host_url.set_host(proxy_host)
+                proxy_host_url.set_host(self._proxy_host)
 
             self._proxy_addr   = None
             self._proxy_event  = mt.Event()
@@ -442,9 +495,9 @@ class Session(rs.Session):
         self._log.debug('=== 5 %s', self._role)
         if self._role == self._PRIMARY:
             self._rep.info ('<<bridge     : ')
-            self._rep.plain('[%s]' % proxy_url)
+            self._rep.plain('[%s]' % self._proxy_url)
 
-        self._cfg.proxy_url = proxy_url
+        self._cfg.proxy_url = self._proxy_url
 
         # a primary session will create proxy comm channels, an agent session
         # will query the proxy settings from the same service instance.  All
