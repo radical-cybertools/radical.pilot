@@ -79,7 +79,10 @@ Create a **virtual environment with** ``venv``:
 
    export PYTHONNOUSERSITE=True
    module load python
-   python3 -m venv ve.rp
+   # OR
+   #   module use /projects/community/modulefiles
+   #   module load python/3.9.6-gc563
+   python3.9 -m venv ve.rp
    source ve.rp/bin/activate
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
@@ -87,10 +90,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 .. code-block:: bash
 
    pip install radical.pilot
-
-.. note::
-
-   Amarel does not provide virtual environments with ``conda``.
 
 MongoDB
 -------
