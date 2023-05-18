@@ -80,9 +80,9 @@ Logger
       - Used for the log targets
       - Refer `RADICAL_DEFAULT_*`
 
-.. note:: The name space is used to derive environmental variable names for log levels and targets. If no name space is given, it is derived from the variable name. For example, the name `radical.pilot` becomes `RADICAL_PILOT`.
+.. note:: The name space is used to derive environmental variable names for log levels and targets. If no name space is given, it is derived from the variable name. For example, the name ``radical.pilot`` becomes ``RADICAL_PILOT``.
 
-.. note:: <NS>_LOG_LVL controls the debug output for a corresponding namespace (NS), where NS can be applied as for a specific package (e.g., RADICAL_PILOT_LOG_LVL or RADICAL_UTILS_LOG_LVL) or for a whole stack (e.g., RADICAL_LOG_LVL).
+.. note:: ``<NS>_LOG_LVL`` controls the debug output for a corresponding namespace (NS), where NS can be applied as for a specific package (e.g., ``RADICAL_PILOT_LOG_LVL`` or ``RADICAL_UTILS_LOG_LVL``) or for a whole stack (e.g., ``RADICAL_LOG_LVL``).
 
 Reporter
 --------
@@ -103,7 +103,7 @@ Reporter
       - Where to report to.
       - {NOT_SET}
 
-.. note:: <NS>_LOG_TGT is a list of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] where to write the debug output for a corresponding namespace (NS).
+.. note:: ``<NS>_LOG_TGT`` is a list of comma separated targets ["0"/"null", "1"/"stdout", "2"/"stderr", "."/"<log_name>"] where to write the debug output for a corresponding namespace (NS).
 
 Developers
 ----------
