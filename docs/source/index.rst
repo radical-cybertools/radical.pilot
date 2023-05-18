@@ -23,7 +23,7 @@ resources, RP can directly schedule and launch application tasks on those
 resources. Thus, tasks are not scheduled via the batch system of the HPC
 platform, but directly on the acquired resources with the maximum degree of
 concurrency they afford. See our
-`Brief Introduction to RADICAL-Pilot <https://radical-cybertools.github.io/presentations/pilot.mp4>`_
+`Brief Introduction to RADICAL-Pilot <https://radical-cybertools.github.io/presentations/rp_internals.mp4>`_
 to see how RP works on an HPC platform.
 
 RP offers unique features when compared to other pilot systems: (1) concurrent
