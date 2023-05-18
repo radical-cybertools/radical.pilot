@@ -39,7 +39,6 @@ distributed architecture.
 
 
 .. toctree::
-   :numbered:
    :maxdepth: 2
 
    getting_started.ipynb
