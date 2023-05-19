@@ -41,14 +41,14 @@ jobs:
           flake8 $FILTERED
           pylint $FILTERED
 
-  # getting_started:
-  #   strategy:
-  #     matrix:
-  #       python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
-  #   uses: ./.github/workflows/run-rp-notebook.yml
-  #   with:
-  #     python-version: ${{ matrix.python-version }}
-  #     notebook-name: 'getting_started.ipynb'
+  notebook_integration_test:
+    strategy:
+      matrix:
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+    uses: ./.github/workflows/run-rp-notebook.yml
+    with:
+      python-version: ${{ matrix.python-version }}
+      notebook-name: 'getting_started.ipynb'
 
   tests:
     runs-on: ${{ matrix.os }}
@@ -80,8 +80,6 @@ jobs:
         python -m pip install git+https://github.com/radical-cybertools/radical.saga.git@devel
         python -m pip install --upgrade .
         python -m pip install -r requirements-tests.txt
-        python -m pip install -r requirements-docs.txt
-        python -m pip install jupyter
     - name: Unit tests
       env:
         RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
@@ -93,16 +91,18 @@ jobs:
       if: ${{ matrix.python-version == '3.7' }}
       with:
         files: ./coverage.xml
-    - name: Integration test
-      env:
-        MONGODB_HOST: localhost
-        MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
-        RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
-        TARGET_PATH: 'docs/source/getting_started.ipynb'
-      run: |
-        . testenv/bin/activate
-        jupyter nbconvert --clear-output --inplace $TARGET_PATH
-        jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
+    # - name: Integration test
+    #   env:
+    #     MONGODB_HOST: localhost
+    #     MONGODB_PORT: ${{ job.services.mongodb.ports[27017] }}
+    #     RADICAL_PILOT_DBURL:  mongodb://localhost:${{ job.services.mongodb.ports[27017] }}/test
+    #     TARGET_PATH: 'docs/source/getting_started.ipynb'
+    #   run: |
+    #     . testenv/bin/activate
+    #     python -m pip install -r requirements-docs.txt
+    #     python -m pip install jupyter
+    #     jupyter nbconvert --clear-output --inplace $TARGET_PATH
+    #     jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
 
 
   analytics:
@@ -153,7 +153,7 @@ jobs:
         ls -la
         cp -R *.png *.stats artifacts
     - name: upload artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
           name: artifacts
           path: artifacts
