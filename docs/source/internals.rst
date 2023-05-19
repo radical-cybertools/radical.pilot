@@ -101,81 +101,10 @@ Task
   "FAILED",                       "Task Manager", "",                 "Task marked as failed. Final state"
 
 
-Task Scheduling
-===============
-
-RP implements client- and agent-level task scheduling. At client-level, RP
-schedules tasks across multiple pilots that, in turn, can run on a single or
-multiple HPC platforms. At agent-level, RP schedules tasks on the resources
-available to a specific pilot. Thus, RP can first schedule tasks across multiple
-pilots/HPC platform, and then schedule tasks for each pilot into available
-resources, e.g., cores and GPUs.
-
-The :class:`radical.pilot.TaskManager` dispatches tasks to available pilots for
-execution. It does so according to some scheduling algorithm, which can be
-selected when constructing an object `radical.pilot.TaskManager`. Currently, RP
-supports two scheduling algorithms: 'Round-Robin' and 'Backfilling'. New
-schedulers can be added to `radical.pilot.TaskManager`. Please Open an issue on
-RP's `issue tracker
-<https://github.com/radical-cybertools/radical.pilot/issues>`_ for support.
-
-Once a pilot agent takes ownership of tasks assigned to it by a task manager,
-the agent scheduler will place tasks on the set of available resources
-(cores/GPUs) that the agent is managing. The agent scheduler can be configured
-via agent and resource configuration files (see :ref:`chapter_supported`).
-
-
-Round-Robin Scheduler
-----------------------
-
-The Round-Robin scheduler (`SCHEDULER_ROUND_ROBIN`) will fairly distribute
-arriving tasks over the set of known pilots, independent of task state, expected
-workload, pilot state or pilot lifetime. As such, it is a fairly simplistic, but
-also a very fast scheduler, which does not impose any additional communication
-round trips between the task manager and pilot agents.
-
-
-Backfilling Scheduler
----------------------
-
-The backfilling scheduler (`SCHEDULER_BACKFILLING`) does a better job at actual
-load balancing, but at the cost of additional communication round trips. It
-depends on the actual application workload if that load balancing is beneficial
-or not.
-
-Backfilling is most beneficial for large numbers of pilots and for relatively
-long-running tasks, where the task runtime is significantly longer than the
-communication round trip time between task manager and pilot agent.
-
-In general, we do *not* recommend to use backfilling for:
-
-- A single pilot;
-- large numbers of short-running tasks.
-
-The backfilling scheduler (BF) will only dispatch tasks to pilot agents once
-the pilot agent is in 'RUNNING' state. The tasks will thus get executed even
-if one of the pilots never reaches that state: the load will be distributed
-between pilots which become 'ACTIVE'.
-
-The BF will only dispatch as many tasks to an agent which the agent can, in
-principle, execute concurrently. No tasks will be waiting in the agent's own
-scheduler queue. The BF will react on task termination events, and will then
-backfill (!) the agent with any remaining tasks. The agent will remain
-under-utilized during that communication.
-
-In order to minimize agent under-utilization, the user can set the environment
-variable `RADICAL_PILOT_BF_OVERSUBSCRIPTION`, which specifies (in percent)
-with how many tasks the BF can overload the pilot agent, without waiting for
-task termination notices. This mechanism effectively hides the communication
-latencies, as long as task runtimes are significantly larger than the
-communication delays. The default over subscription value is '0%', i.e., no
-over subscription.
-
 Advanced Profiling
 ==================
 
-.. note:: This section is for developers, and should be disregarded for production runs and 'normal' users in general.
-
+.. note:: This section is for developers, and should be disregarded for production runs and end-users in general.
 
 RADICAL-Pilot allows to tweak the pilot process behavior in many details, and
 specifically allows to artificially increase the load on individual
