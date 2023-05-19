@@ -5,7 +5,7 @@ Rivanna (UVA)
 Platform user guide
 ===================
 
-https://www.rc.virginia.edu/userinfo/user-guide/
+https://www.rc.virginia.edu/userinfo/rivanna/overview/
 
 General description
 ===================
@@ -15,18 +15,26 @@ General description
 
   * ``uva.rivanna`` - ``SRUN``
 
-* Configuration per node (per queue):
+* Configuration per node
 
-  * ``standard`` (1 node)
+  * CPU-only nodes (520 nodes in total)
 
-  * ``parallel`` (25 nodes)
+    * 16-48 CPU cores
+    * 128-1500 GB of memory
 
-  * ``largemem`` (1 node)
+  * GPU nodes (47 nodes in total)
 
-  * ``dev`` (2 nodes)
+    * 28-128 CPU cores
+    * 4-10 GPUs (A100, P100, V100, K80, RTX2080Ti, RTX3090)
+    * 128-2000 GB of memory
 
-  * ``gpu`` (4 nodes)
+* Available queues
 
+  * ``standard``
+  * ``parallel``
+  * ``largemem``
+  * ``gpu``
+  * ``dev``
 
 .. note::
    Rivanna nodes are heterogeneous and have different node configurations.
