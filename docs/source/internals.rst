@@ -126,7 +126,7 @@ via agent and resource configuration files (see :ref:`chapter_supported`).
 
 
 Round-Robin Scheduler
----------------------
+----------------------
 
 The Round-Robin scheduler (`SCHEDULER_ROUND_ROBIN`) will fairly distribute
 arriving tasks over the set of known pilots, independent of task state, expected
@@ -136,7 +136,7 @@ round trips between the task manager and pilot agents.
 
 
 Backfilling Scheduler
---------------------
+---------------------
 
 The backfilling scheduler (`SCHEDULER_BACKFILLING`) does a better job at actual
 load balancing, but at the cost of additional communication round trips. It
