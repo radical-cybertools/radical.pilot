@@ -22,7 +22,7 @@ General description
     * ``RM`` or ``RM-512`` queues (50 nodes):
 
       * 128 CPU cores (1 thread per core)
-      * 256 GB or 512 GB of memory respectivley
+      * 256 GB or 512 GB of memory respectively
 
     * ``RM-shared`` queue (50 nodes):
 
