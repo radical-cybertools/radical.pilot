@@ -380,14 +380,21 @@ if __name__ == '__main__':
     pilot = pmgr.submit_pilots(pdesc)
 
     tmgr.add_pilots(pilot)
-    pipeline = Pipeline(tmgr)
+    pipeline_1 = Pipeline(tmgr)
+    pipeline_2 = Pipeline(tmgr)
 
     try:
-        print(pipeline.dump(header=True))
-        pipeline.run()
+        out  = pipeline_1.dump(header=True)
+        out += pipeline_2.dump(header=True)
+        print(out)
+
+        pipeline_1.run()
+        pipeline_2.run()
 
         while True:
-            print(pipeline.dump())
+            out  = pipeline_1.dump()
+            out += pipeline_2.dump()
+            print(out)
             time.sleep(1)
 
     finally:
