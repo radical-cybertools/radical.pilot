@@ -55,7 +55,7 @@ class Pipeline(object):
     #       |       |
     #      ...     ...
 
-    # define task types (used as prefix on task-uid)
+    # define task types
     TASK_SIM     = 'simulation'
     TASK_POLICY  = 'policy'
     TASK_PRELIM  = 'preliminary'
@@ -89,8 +89,6 @@ class Pipeline(object):
         self._tmgr = tmgr
 
         self._uid       = ru.generate_id('p.%(item_counter)1d', ru.ID_CUSTOM)
-        self._cores     = 20
-        self._session   = None
         self._iteration = None  # count generation of TASK_SIM instances
 
         # control flow table
@@ -98,11 +96,6 @@ class Pipeline(object):
                           self.TASK_POLICY: self._control_policy,
                           self.TASK_PRELIM: self._control_prelim,
                           self.TASK_TRAIN : self._control_train}
-
-        self._glyphs   = {self.TASK_SIM   : '#',
-                          self.TASK_POLICY: '+',
-                          self.TASK_PRELIM: '=',
-                          self.TASK_TRAIN : '~'}
 
 
         # TASK_TRAIN's have two dependencies: the completed TASK_PRELIM of the
@@ -127,25 +120,9 @@ class Pipeline(object):
 
     # --------------------------------------------------------------------------
     #
-    def __del__(self):
-
-        self.close()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
-
-        if self._session is not None:
-            self._session.close()
-            self._session = None
-
-
-    # --------------------------------------------------------------------------
-    #
     def dump(self, title=False, header=False):
         '''
-        dump a representation of current task set to stdout
+        dump a representation of current task set in a string
         '''
 
         if title:
@@ -154,7 +131,7 @@ class Pipeline(object):
 
         if header:
             out = ' | '
-            for ttype in ['SIM',    'PRELIM', 'POLICY', 'TRAIN']:
+            for ttype in ['SIM', 'PRELIM', 'POLICY', 'TRAIN']:
 
                 out += '% 6s | ' % ttype
 
@@ -181,7 +158,6 @@ class Pipeline(object):
         '''
 
         self._iteration = 0
-      # self.dump(header=True)
 
         # run initial MD_SIM task
         self._submit_task(self.TASK_SIM, self._iteration)
@@ -198,7 +174,7 @@ class Pipeline(object):
     #
     def _get_tinfo(self, task):
         '''
-        get task type from task metadata
+        get task type and iteration from task metadata
         '''
 
         ttype =     task.metadata['type']
@@ -225,7 +201,6 @@ class Pipeline(object):
         td['arguments']        = random.randint(0, 10)
         td['metadata']['iter'] = iteration
 
-
         task = self._tmgr.submit_tasks([td])[0]
         task.register_callback(self._state_cb)
 
@@ -241,43 +216,36 @@ class Pipeline(object):
         '''
 
         try:
-            return self._checked_state_cb(task, state)
+            # this cb will react on task state changes.  Specifically it will watch
+            # out for task completion notification and react on them, depending on
+            # the task type.
+
+            # we only handle final states
+            if state not in rp.FINAL:
+                return
+
+            if state == rp.CANCELED:
+                print('task %s cancelled: stop' % task.uid)
+                self.stop()
+
+            if state == rp.FAILED:
+                print('task %s failed: %s' % (task.uid, task.stderr))
+                self.stop()
+
+            assert state == rp.DONE
+
+
+            # control flow depends on ttype
+            ttype, titer = self._get_tinfo(task)
+            self._stats[ttype]  = None
+            self.dump()
+
+            action = self._protocol[ttype]
+            action(task, titer)
 
         except Exception as e:
             print('\n\n---------\nexception caught: %s\n\n' % repr(e))
             self.stop()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _checked_state_cb(self, task, state):
-
-        # this cb will react on task state changes.  Specifically it will watch
-        # out for task completion notification and react on them, depending on
-        # the task type.
-
-        # we only handle final states
-        if state not in rp.FINAL:
-            return
-
-        if state == rp.CANCELED:
-            print('task %s cancelled: stop' % task.uid)
-            self.stop()
-
-        if state == rp.FAILED:
-            print('task %s failed: %s' % (task.uid, task.stderr))
-            self.stop()
-
-        assert state == rp.DONE
-
-
-        # control flow depends on ttype
-        ttype, titer = self._get_tinfo(task)
-        self._stats[ttype]  = None
-        self.dump()
-
-        action = self._protocol[ttype]
-        action(task, titer)
 
 
     # --------------------------------------------------------------------------
@@ -300,7 +268,7 @@ class Pipeline(object):
           - a training task is started in the same iteration
 
         However, the training task will *only* be started if the training task
-        of the *previous* generation has also completed.
+        of the *previous* iteration has also completed.
         '''
 
         # always start the learning policy task
@@ -355,28 +323,33 @@ if __name__ == '__main__':
     # silence RP reporter
     os.environ['RADICAL_REPORT'] = 'false'
 
-    # RP setup
-    session = rp.Session()
-    pmgr    = rp.PilotManager(session=session)
-    tmgr    = rp.TaskManager(session=session)
+    with rp.Session() as session:
 
-    pdesc = rp.PilotDescription({'resource': 'local.localhost',
-                                 'runtime' : 30,
-                                 'cores'   : 10})
-    pilot = pmgr.submit_pilots(pdesc)
+        # RP setup
+        pmgr    = rp.PilotManager(session=session)
+        tmgr    = rp.TaskManager(session=session)
 
-    tmgr.add_pilots(pilot)
-    pipeline_1 = Pipeline(tmgr)
-    pipeline_2 = Pipeline(tmgr)
+        pdesc = rp.PilotDescription({'resource': 'local.localhost',
+                                     'runtime' : 30,
+                                     'cores'   : 10})
+        pilot = pmgr.submit_pilots(pdesc)
 
-    try:
+        tmgr.add_pilots(pilot)
+
+        # create pipelines
+        pipeline_1 = Pipeline(tmgr)
+        pipeline_2 = Pipeline(tmgr)
+
         out  = pipeline_1.dump(title=True)
         out += pipeline_2.dump(title=True)
         print(out)
 
+        # start pipelines
         pipeline_1.run()
         pipeline_2.run()
 
+
+        # run them forever (well, until the pilot dies...
         i = 0
         while True:
 
@@ -391,10 +364,6 @@ if __name__ == '__main__':
 
             time.sleep(1)
             i += 1
-
-    finally:
-        pipeline_1.close()
-        pipeline_2.close()
 
 
 # ------------------------------------------------------------------------------
