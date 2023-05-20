@@ -4,7 +4,12 @@
 Supported HPC Platforms
 =======================
 
-.. csv-table:: Department of Energy (DOE) HPC Platforms
+RADICAL-Pilot supports a variety of high performance computing (HPC) platforms, across the Department of Energy and the National Science Foundation.
+
+Department of Energy (DOE) HPC Platforms
+----------------------------------------
+
+.. csv-table:: 
    :header: "Name", "FQDN", "Launch Method", "Configuration File"
    :widths: auto
 
@@ -18,8 +23,10 @@ Supported HPC Platforms
    "`Summit    <https://docs.olcf.ornl.gov/systems/summit_user_guide.html>`_",           "summit.olcf.ornl.gov",      "``jsrun``, ``mpirun``, ``ssh``, ``prte``", "`resource_ornl.json      <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_ornl.json>`_"
    "`Theta     <https://docs.alcf.anl.gov/theta/hardware-overview/machine-overview/>`_", "theta.alcf.anl.gov",        "``aprun``, ``mpirun``, ``ssh``",           "`resource_anl.json       <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_anl.json>`_"
 
+National Science Foundation (NSF) HPC Platforms
+-----------------------------------------------
 
-.. csv-table:: National Science Foundation (NSF) HPC Platforms
+.. csv-table:: 
    :header: "Name", "FQDN", "Launch Method", "Configuration File"
    :widths: auto
 
@@ -28,8 +35,10 @@ Supported HPC Platforms
    "`Frontera  <https://frontera-portal.tacc.utexas.edu/user-guide/>`_",                 "frontera.tacc.utexas.edu",  "``mpirun``, ``ssh``, ``srun``, ``prte``",  "`resource_tacc.json     <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_tacc.json>`_"
    "`Stampede2 <https://docs.tacc.utexas.edu/hpc/stampede2/>`_",                         "stampede2.tacc.utexas.edu", "``fork``, ``ibrun``, ``mpirun``, ``ssh``", "`resource_access.json   <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_access.json>`_"
 
+Campus HPC Platforms
+--------------------
 
-.. csv-table:: Campus HPC Platforms
+.. csv-table::
    :header: "Name", "FQDN", "Launch Method", "Configuration File"
    :widths: auto
 

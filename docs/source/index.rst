@@ -8,8 +8,8 @@ RADICAL-Pilot
 .. image:: https://img.shields.io/pypi/l/radical_pilot.svg
    :target: https://pypi.python.org/pypi/radical_pilot/
    :alt: License
-.. image:: https://readthedocs.org/projects/radicalanalytics/badge/?version=latest
-   :target: http://radicalanalytics.readthedocs.io/en/latest/?badge=latest
+.. image:: https://readthedocs.org/projects/radicalpilot/badge/?version=devel
+   :target: http://radicalpilot.readthedocs.io/en/devel/?badge=devel
    :alt: Documentation Status
 
 RADICAL-Pilot (RP) is a
