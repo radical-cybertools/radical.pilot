@@ -19,6 +19,7 @@
 import os
 import copy
 import time
+import random
 
 from collections import defaultdict
 
@@ -78,22 +79,18 @@ class Pipeline(object):
 
     TASK_TYPES   = [TASK_SIM, TASK_POLICY, TASK_PRELIM, TASK_TRAIN]
 
-    task_sim     = rp.TaskDescription({'executable' : 'sleep',
-                                       'arguments'  : ['1'],
-                                       'metadata'   : {'type': TASK_SIM,
-                                                       'iter': None}})
-    task_policy  = rp.TaskDescription({'executable' : 'sleep',
-                                       'arguments'  : ['1'],
-                                       'metadata'   : {'type': TASK_POLICY,
-                                                       'iter': None}})
-    task_prelim  = rp.TaskDescription({'executable' : 'sleep',
-                                       'arguments'  : ['1'],
-                                       'metadata'   : {'type': TASK_PRELIM,
-                                                       'iter': None}})
-    task_train   = rp.TaskDescription({'executable' : 'sleep',
-                                       'arguments'  : ['20'],
-                                       'metadata'   : {'type': TASK_TRAIN,
-                                                       'iter': None}})
+    task_sim     = rp.TaskDescription({'executable': 'sleep',
+                                       'metadata'  : {'type': TASK_SIM,
+                                                      'iter': None}})
+    task_policy  = rp.TaskDescription({'executable': 'sleep',
+                                       'metadata'  : {'type': TASK_POLICY,
+                                                      'iter': None}})
+    task_prelim  = rp.TaskDescription({'executable': 'sleep',
+                                       'metadata'  : {'type': TASK_PRELIM,
+                                                      'iter': None}})
+    task_train   = rp.TaskDescription({'executable': 'sleep',
+                                       'metadata'  : {'type': TASK_TRAIN,
+                                                      'iter': None}})
 
     # condition indexes -- see `self._cond_train`
     COND_PRELIM = 0  # a dependent preliminary task has completed
@@ -107,7 +104,7 @@ class Pipeline(object):
 
         self._tmgr = tmgr
 
-        self._uid       = ru.generate_id('pipe')
+        self._uid       = ru.generate_id('p.%(item_counter)1d', ru.ID_CUSTOM)
         self._cores     = 20
         self._session   = None
         self._iteration = None  # count generation of TASK_SIM instances
@@ -162,16 +159,20 @@ class Pipeline(object):
 
     # --------------------------------------------------------------------------
     #
-    def dump(self, header=False):
+    def dump(self, title=False, header=False):
         '''
         dump a representation of current task set to stdout
         '''
+
+        if title:
+            out = ' | %-33s | ' % self._uid
+            return out
 
         if header:
             out = ' | '
             for ttype in ['SIM',    'PRELIM', 'POLICY', 'TRAIN']:
 
-                out += '%-6s | ' % ttype
+                out += '% 6s | ' % ttype
 
             return out
 
@@ -236,7 +237,8 @@ class Pipeline(object):
         elif ttype == self.TASK_TRAIN : td = copy.deepcopy(self.task_train)
         else: raise ValueError('no such task type %s' % ttype)
 
-        td['uid'] = '%s.%03d' % (ttype, iteration)
+        td['uid']              = '%s.%s.%03d' % (self._uid, ttype, iteration)
+        td['arguments']        = random.randint(0, 10)
         td['metadata']['iter'] = iteration
 
 
@@ -384,21 +386,31 @@ if __name__ == '__main__':
     pipeline_2 = Pipeline(tmgr)
 
     try:
-        out  = pipeline_1.dump(header=True)
-        out += pipeline_2.dump(header=True)
+        out  = pipeline_1.dump(title=True)
+        out += pipeline_2.dump(title=True)
         print(out)
 
         pipeline_1.run()
         pipeline_2.run()
 
+        i = 0
         while True:
+
+            if not i % 30:
+                out  = pipeline_1.dump(header=True)
+                out += pipeline_2.dump(header=True)
+                print(out)
+
             out  = pipeline_1.dump()
             out += pipeline_2.dump()
             print(out)
+
             time.sleep(1)
+            i += 1
 
     finally:
-        pipeline.close()
+        pipeline_1.close()
+        pipeline_2.close()
 
 
 # ------------------------------------------------------------------------------
