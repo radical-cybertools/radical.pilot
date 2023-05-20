@@ -103,10 +103,9 @@ class Pipeline(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, tmgr, rep):
+    def __init__(self, tmgr):
 
         self._tmgr = tmgr
-        self._rep  = rep
 
         self._uid       = ru.generate_id('pipe')
         self._cores     = 20
@@ -163,7 +162,7 @@ class Pipeline(object):
 
     # --------------------------------------------------------------------------
     #
-    def dump(self, task=None, msg='', header=False):
+    def dump(self, header=False):
         '''
         dump a representation of current task set to stdout
         '''
@@ -174,8 +173,7 @@ class Pipeline(object):
 
                 out += '%-6s | ' % ttype
 
-            print(out)
-            return
+            return out
 
         out = ' | '
         for ttype in [self.TASK_SIM,    self.TASK_PRELIM,
@@ -187,7 +185,7 @@ class Pipeline(object):
             else:
                 out += '%6d | ' % self._stats[ttype]
 
-        print(out, msg)
+        return out
 
 
     # --------------------------------------------------------------------------
@@ -198,7 +196,7 @@ class Pipeline(object):
         '''
 
         self._iteration = 0
-        self.dump(header=True)
+      # self.dump(header=True)
 
         # run initial MD_SIM task
         self._submit_task(self.TASK_SIM, self._iteration)
@@ -246,7 +244,7 @@ class Pipeline(object):
         task.register_callback(self._state_cb)
 
         self._stats[ttype] = iteration
-        self.dump(task, 'started   %s' % task.uid)
+        self.dump()
 
 
     # --------------------------------------------------------------------------
@@ -260,7 +258,7 @@ class Pipeline(object):
             return self._checked_state_cb(task, state)
 
         except Exception as e:
-            self._rep.error('\n\n---------\nexception caught: %s\n\n' % repr(e))
+            print('\n\n---------\nexception caught: %s\n\n' % repr(e))
             self.stop()
 
 
@@ -277,11 +275,11 @@ class Pipeline(object):
             return
 
         if state == rp.CANCELED:
-            self._rep.error('task %s cancelled: stop' % task.uid)
+            print('task %s cancelled: stop' % task.uid)
             self.stop()
 
         if state == rp.FAILED:
-            self._rep.error('task %s failed: %s' % (task.uid, task.stderr))
+            print('task %s failed: %s' % (task.uid, task.stderr))
             self.stop()
 
         assert state == rp.DONE
@@ -289,8 +287,8 @@ class Pipeline(object):
 
         # control flow depends on ttype
         ttype, titer = self._get_tinfo(task)
-        self.dump(task, 'completed %s' % task.uid)
         self._stats[ttype]  = None
+        self.dump()
 
         action = self._protocol[ttype]
         action(task, titer)
@@ -368,10 +366,8 @@ class Pipeline(object):
 #
 if __name__ == '__main__':
 
-    # silence RP reporter, use own
+    # silence RP reporter
     os.environ['RADICAL_REPORT'] = 'false'
-    rep = ru.Reporter('tianle')
-    rep.title('Pipeline')
 
     # RP setup
     session = rp.Session()
@@ -384,12 +380,14 @@ if __name__ == '__main__':
     pilot = pmgr.submit_pilots(pdesc)
 
     tmgr.add_pilots(pilot)
-    pipeline = Pipeline(tmgr, rep)
+    pipeline = Pipeline(tmgr)
 
     try:
+        print(pipeline.dump(header=True))
         pipeline.run()
 
         while True:
+            print(pipeline.dump())
             time.sleep(1)
 
     finally:
