@@ -1,21 +1,5 @@
 #!/usr/bin/env python3
 
-
-# Changing the ratio among types of tasks at runtime.
-# Algorithmically:
-# - Start MD simulation tasks, use all the available resources
-# - upon termination of an MD sim task:
-#   - if the aggregation threshold is reached, kill a sim task and
-#     launch an Aggregation task
-#   - else, launch a new sim task
-# - upon termination of an Aggregation task, launch a ML training task (possibly
-#   killing some of the sim tasks if it requires more resource)
-# - upon termination of an ML training task:
-#   - if learning threshold is reached, launch an Agent task;
-#   - else, launch a sim task
-# - Upon termination of an Agent task, kill all the tasks and goto i.
-
-
 import os
 import copy
 import time
