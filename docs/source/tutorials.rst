@@ -9,18 +9,14 @@ focuses on a specific topic, covering simple and more advanced details. Before
 dwelling into these tutorials, you should be comfortable with our
 `getting started <getting_started.ipynb>`_ example application.
 
-
-Running the Tutorials
----------------------
-
 Tutorials can be run via our self-contained Docker container or independently.
 To run the tutorials in our Docker container:
 
 1. clone the tutorials repository:
 
-  ```shell
-  git clone git@github.com:radical-cybertools/tutorials.git
-  ```
+  .. code-block:: bash
+  
+     git clone git@github.com:radical-cybertools/tutorials.git
 
 2. Follow the instructions in the `README.md
    <https://github.com/radical-cybertools/tutorials/blob/main/README.md>`_,
@@ -32,10 +28,6 @@ To run the tutorials in our Docker container:
    browser.
 5. Once finished, stop all the containers you started to execute the tutorial.
 
-
-
-List of Tutorials
------------------
 
 .. toctree::
    :maxdepth: 2
