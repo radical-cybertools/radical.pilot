@@ -421,8 +421,7 @@ class Component(object):
         self._ctype = "%s.%s" % (self.__class__.__module__,
                                  self.__class__.__name__)
 
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr,
-                                          pwd=self._sid)
+        self._reg = self._session._reg
 
         self._inputs     = dict()       # queues to get things from
         self._outputs    = dict()       # queues to send things to
