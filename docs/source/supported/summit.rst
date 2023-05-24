@@ -22,7 +22,7 @@ General description
 
   * Regular nodes (4,674 nodes)
 
-    * 44 CPU cores (Power9), each core has 4 hwthreads (``SMT=4``)
+    * 44 CPU cores (Power9), each core has 4 hardware-threads (``SMT=4``)
 
       * 2 cores are blocked for users (reserved for system processes)
 
@@ -36,10 +36,10 @@ General description
 
 .. note::
 
-   Launch method ``MPIRUN`` is able to see only one hwthread per core, thus make
-   sure that ``SMT`` level is set to ``1`` with a corresponding platform ID
-   either with "``export RADICAL_SMT=1``" (before running the application) or
-   follow the steps below:
+   Launch method ``MPIRUN`` is able to see only one hardware-thread per core,
+   thus make sure that ``SMT`` level is set to ``1`` with a corresponding 
+   platform ID either with "``export RADICAL_SMT=1``" (before running the
+   application) or follow the steps below:
 
    .. code-block:: bash
 
