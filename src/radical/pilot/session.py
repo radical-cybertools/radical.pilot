@@ -228,6 +228,8 @@ class Session(rs.Session):
         if self._role == self._PRIMARY:
             self._rep.ok('>>ok\n')
 
+        self._reg.dump('sinit.%s' % self._role)
+
 
     # --------------------------------------------------------------------------
     #
@@ -401,8 +403,6 @@ class Session(rs.Session):
         self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
-        self._log.debug('=== Session(%s, %s)', self._uid, self._role)
-
         self._prof.prof('session_start', uid=self._uid)
 
         self._rep.info ('<<new session: ')
@@ -414,7 +414,8 @@ class Session(rs.Session):
     def _init_cfg_from_registry(self):
 
         # fetch config settings from the registry
-        self._cfg = ru.Config(cfg=self._reg['cfg'])
+        self._cfg   = ru.Config(cfg=self._reg['cfg'])
+        self._rcfgs = ru.Config(cfg=self._reg['rcfgs'])
 
         # change RU defaults to point logfiles etc. to the session sandbox
         # NOTE: this is racey: the first session in this process will win
@@ -441,20 +442,23 @@ class Session(rs.Session):
     #
     def _publish_cfg(self):
 
-        # the primary session and agent_0 push their configs into the registry
+        # The primary session and agent_0 push their configs into the registry.
+        # NOTE: proxy channels populate the registrie's `bridges` section
 
         assert self._role in [self._PRIMARY, self._AGENT_0]
 
         # push proxy, bridges, components and heartbeat subsections separately
         flat_cfg = copy.deepcopy(self._cfg)
+        proxy_cfg = self._cfg.proxy
+
         del flat_cfg['bridges']
         del flat_cfg['components']
 
         self._reg['cfg']        = flat_cfg
-        self._reg['bridges']    = {}
+        self._reg['bridges']    = proxy_cfg
         self._reg['components'] = {}
-        self._reg.dump('stored')
         self._reg['rcfgs']      = self._rcfgs
+
 
     # --------------------------------------------------------------------------
     #
@@ -518,10 +522,11 @@ class Session(rs.Session):
         # query the proxy service to fetch proxy cfg created by primary session
         self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
         proxy_cfg   = self._proxy.request('lookup', {'sid': self._uid})
-
-        # push the proxy config to the agent_0 registry
-        self._reg['proxy'] = proxy_cfg
         self._log.debug('proxy response: %s', proxy_cfg)
+
+        # push the proxy config as bridge to the agent_0 registry
+        for channel in proxy_cfg:
+            self._reg['bridges.%s' % channel] = proxy_cfg[channel]
 
 
     # --------------------------------------------------------------------------

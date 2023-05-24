@@ -101,6 +101,8 @@ class TaskManager(rpu.Component):
 
         """
 
+        assert session._role == session._PRIMARY, 'tmgr needs primary session'
+
         # initialize the base class (with no intent to fork)
         if uid:
             self._reconnect = True

@@ -88,7 +88,7 @@ class PilotManager(rpu.Component):
 
         """
 
-        assert session.primary, 'pmgr needs primary session'
+        assert session._role == session._PRIMARY, 'pmgr needs primary session'
 
         # initialize the base class (with no intent to fork)
         if uid:

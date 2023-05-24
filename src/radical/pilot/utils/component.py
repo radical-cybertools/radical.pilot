@@ -76,6 +76,8 @@ class ComponentManager(object):
 
         self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
 
+        self._log.debug('=== cmgr %s (%s)', self._uid, self._owner)
+
         # Every ComponentManager runs a HB pubsub bridge in a separate thread.
         # That HB channel should be used by all components and bridges created
         # under this CMGR.
@@ -230,11 +232,11 @@ class ComponentManager(object):
                                      ru.ID_CUSTOM, ns=self._sid)
                 ccfg.uid       = uid
                 ccfg.kind      = cname
+                ccfg.owner     = self._owner
                 ccfg.sid       = self._cfg.sid
                 ccfg.cmgr      = self._cfg.uid
                 ccfg.base      = self._cfg.base
                 ccfg.path      = self._cfg.path
-                ccfg.owner     = self._cfg.owner
                 ccfg.reg_addr  = self._cfg.reg_addr
                 ccfg.proxy_url = self._cfg.proxy_url
                 ccfg.heartbeat = self._cfg.heartbeat
@@ -813,6 +815,7 @@ class Component(object):
 
         cfg = self._reg['bridges'][qname]
 
+        self._log.debug('====== get input ep: %s', qname)
         return ru.zmq.Getter(qname, url=cfg['get'])
 
 
@@ -1048,15 +1051,19 @@ class Component(object):
         # TODO: should a poller over all inputs, or better yet register
         #       a callback
 
+        # import pprint
+        # pprint.pprint(self._inputs)
+
         for name in self._inputs:
 
+            qname  = self._inputs[name]['qname']
             queue  = self._inputs[name]['queue']
             states = self._inputs[name]['states']
 
             # FIXME: a simple, 1-thing caching mechanism would likely
             #        remove the req/res overhead completely (for any
             #        non-trivial worker).
-            things = queue.get_nowait(qname=name, timeout=200)   # microseconds
+            things = queue.get_nowait(qname=qname, timeout=200)   # microseconds
           # self._log.debug('work_cb %s: %s %s %d', name, queue.channel,
           #                                         qname, len(things))
             things = ru.as_list(things)
@@ -1243,37 +1250,37 @@ class Component(object):
               # ts = time.time()
                 if _state in rps.FINAL:
                     # things in final state are dropped
-                  # for thing in _things:
-                  #     self._log.debug('=== final %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        self._log.debug('=== final %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if _state not in self._outputs:
                     # unknown target state -- error
-                  # for thing in _things:
-                  #     self._log.debug("lost  %s [%s] : %s", thing['uid'],
-                  #             _state, self._outputs)
-                  #     self._prof.prof('lost', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        self._log.debug("lost  %s [%s] : %s", thing['uid'],
+                                _state, self._outputs)
+                        self._prof.prof('lost', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 if not self._outputs[_state]:
                     # empty output -- drop thing
-                  # for thing in _things:
-                  #     self._log.debug('=== drop  %s [%s]', thing['uid'], _state)
-                  #     self._prof.prof('drop', uid=thing['uid'], state=_state,
-                  #                     ts=ts)
+                    for thing in _things:
+                        self._log.debug('=== drop  %s [%s]', thing['uid'], _state)
+                        self._prof.prof('drop', uid=thing['uid'], state=_state,
+                                        ts=ts)
                     continue
 
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-              # self._log.debug('=== put bulk %s: %s: %s', _state, len(_things),
-              #         output.channel)
+                self._log.debug('=== put bulk %s: %s: %s', _state, len(_things),
+                        output.channel)
                 output.put(_things, qname=qname)
 
-                ts = time.time()
+              # ts = time.time()
               # for thing in _things:
               #     self._prof.prof('put', uid=thing['uid'], state=_state,
               #                     msg=output.name, ts=ts)

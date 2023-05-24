@@ -214,6 +214,8 @@ class Default(TMGRStagingInputComponent):
             if False or len(task_sboxes) >= self._mkdir_threshold:
                 self._log.debug('tar %d sboxes', len(task_sboxes))
 
+                session_sbox = self._session._get_session_sandbox(pilot)
+
                 # no matter the bulk mechanism, we need a SAGA handle to the
                 # remote FS
                 sbox_fs      = ru.Url(session_sbox)  # deep copy
@@ -292,17 +294,18 @@ class Default(TMGRStagingInputComponent):
             self._advance_tasks(no_staging_tasks[pid], pid)
 
         to_fail = list()
-        for task,actionables in staging_tasks:
-            try:
-                self._handle_task(task, actionables)
-                self._advance_tasks([task], pid)
+        for pid in staging_tasks:
+            for task,actionables in staging_tasks[pid]:
+                try:
+                    self._handle_task(task, actionables)
+                    self._advance_tasks([task], pid)
 
-            except Exception as e:
-                # staging failed - do not pass task to agent
-                task['control']          = 'tmgr'
-                task['exception']        = repr(e)
-                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
-                to_fail.append(task)
+                except Exception as e:
+                    # staging failed - do not pass task to agent
+                    task['control']          = 'tmgr'
+                    task['exception']        = repr(e)
+                    task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+                    to_fail.append(task)
 
         self._advance_tasks(to_fail, state=rps.FAILED, push=False)
 

@@ -1,7 +1,6 @@
 
 registry = {
     'cfg'        : { ... },  # session config for this module
-    'proxy'      : { ... },  # proxy config for this run
     'rm_info'    : { ... },  # only for agent modules
     'heartbeat' : {
         'addr_pub': ... ,
