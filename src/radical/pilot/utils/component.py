@@ -97,8 +97,6 @@ class ComponentManager(object):
         self._cfg.heartbeat = hb_cfg
         self._reg['cfg.heartbeat'] = hb_cfg
 
-        self._reg.dump(self._uid)
-
         # runs a HB monitor on that channel
         self._hb = ru.Heartbeat(uid=self.uid,
                                 timeout=hb_cfg['timeout'],
@@ -158,7 +156,7 @@ class ComponentManager(object):
         #       terminate and suicidally kill the very process it is living in.
         #       Make sure all required cleanup is done at this point!
 
-        return None
+        return False
 
 
     # --------------------------------------------------------------------------
@@ -171,9 +169,6 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def start_bridges(self, bridges):
-
-        if 'bridges' not in self._reg:
-            self._reg['bridges'] = dict()
 
         self._prof.prof('start_bridges_start', uid=self._uid)
 
@@ -223,12 +218,7 @@ class ComponentManager(object):
     #
     def start_components(self, components, cfg = None):
 
-        if 'components' not in self._reg:
-            self._reg['components'] = dict()
-
         self._prof.prof('start_components_start: %s', uid=self._uid)
-        import pprint
-        self._log.debug('=== cmgr: %s', pprint.pformat(self._cfg.as_dict()))
 
         timeout = self._cfg.heartbeat.timeout
 

@@ -249,22 +249,11 @@ class Session(rs.Session):
         self._start_registry()
         self._connect_registry()
 
-        # cfg and reg setup is complete - push cfg to the registry - but push
-        # bridges, components and heartbeat subsections separately
-        flat_cfg = copy.deepcopy(self._cfg)
-        del flat_cfg['bridges']
-        del flat_cfg['components']
-        del flat_cfg['heartbeat']
-
-        self._reg['cfg']        = flat_cfg
-        self._reg['bridges']    = self._cfg.bridges
-        self._reg['components'] = self._cfg.components
-        self._reg['heartbeat']  = self._cfg.heartbeat
-        self._reg['rcfgs']      = self._rcfgs
-        self._reg.dump('first')
-
         # only primary sessions start and initialize the proxy service
         self._start_proxy()
+
+        # push the session config into the registry
+        self._publish_cfg()
 
         # start bridges and components
         self._init_components()
@@ -450,6 +439,25 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _publish_cfg(self):
+
+        # the primary session and agent_0 push their configs into the registry
+
+        assert self._role in [self._PRIMARY, self._AGENT_0]
+
+        # push proxy, bridges, components and heartbeat subsections separately
+        flat_cfg = copy.deepcopy(self._cfg)
+        del flat_cfg['bridges']
+        del flat_cfg['components']
+
+        self._reg['cfg']        = flat_cfg
+        self._reg['bridges']    = {}
+        self._reg['components'] = {}
+        self._reg.dump('stored')
+        self._reg['rcfgs']      = self._rcfgs
+
+    # --------------------------------------------------------------------------
+    #
     def _start_proxy(self):
 
         # A primary session will start a ZMQ proxy via which agents can connect
@@ -489,9 +497,9 @@ class Session(rs.Session):
             self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
             proxy_cfg   = self._proxy.request('register', {'sid': self._uid})
 
-            # push the config to the registry
-            self._reg.put('proxy', proxy_cfg)
-            self._log.debug('proxy config: %s', proxy_cfg)
+            self._cfg.proxy = ru.Config(cfg=proxy_cfg)
+
+            self._log.debug('proxy config: %s', self._cfg.proxy)
 
         except:
             self._log.exception('%s: failed to start proxy', self._role)
@@ -534,15 +542,24 @@ class Session(rs.Session):
         # make sure we send heartbeats to the proxy
         self._run_proxy_hb()
 
-        pwd = self._cfg.path
-
         # forward any control messages to the proxy
         def fwd_control(topic, msg):
             self._log.debug('=== fwd control %s: %s', topic, msg)
             self._proxy_ctrl_pub.put(rpc.PROXY_CONTROL_PUBSUB, msg)
 
-        self._proxy_ctrl_pub = ru.zmq.Publisher(rpc.PROXY_CONTROL_PUBSUB, path=pwd)
-        self._ctrl_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, path=pwd)
+        ru.write_json(fname='foo.json', data=self._reg['bridges'])
+        ru.write_json(fname='cfg.json', data=self._cfg)
+
+        self._proxy_ctrl_pub = ru.zmq.Publisher(
+                channel=rpc.PROXY_CONTROL_PUBSUB,
+                url=self._cfg.proxy.proxy_control_pubsub.pub,
+                path=self._cfg.path)
+
+        self._ctrl_sub = ru.zmq.Subscriber(
+                channel=rpc.CONTROL_PUBSUB,
+                url=self._reg['bridges.control_pubsub.sub'],
+                path=self._cfg.path)
+
         self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB, fwd_control)
 
         # collect any state updates from the proxy
@@ -550,8 +567,16 @@ class Session(rs.Session):
             self._log.debug('=== fwd state   %s: %s', topic, msg)
             self._state_pub.put(topic, msg)
 
-        self._state_pub = ru.zmq.Publisher(rpc.STATE_PUBSUB, path=pwd)
-        self._proxy_state_sub = ru.zmq.Subscriber(rpc.PROXY_STATE_PUBSUB, path=pwd)
+        self._state_pub = ru.zmq.Publisher(
+                channel=rpc.STATE_PUBSUB,
+                url=self._reg['bridges.state_pubsub.pub'],
+                path=self._cfg.path)
+
+        self._proxy_state_sub = ru.zmq.Subscriber(
+                channel=rpc.PROXY_STATE_PUBSUB,
+                url=self._cfg.proxy.proxy_state_pubsub.sub,
+                path=self._cfg.path)
+
         self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
 
 
