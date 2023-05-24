@@ -214,17 +214,17 @@ class Proxy(ru.zmq.Server):
         proc.start()
 
         try:
-            data = q.get(timeout=10)
+            cfg = q.get(timeout=10)
         except queue.Empty as e:
             proc.terminate()
             raise RuntimeError('worker startup failed') from e
 
         self._clients[sid] = {'proc': proc,
                               'term': term,
-                              'data': data,
+                              'cfg' : cfg,
                               'hb'  : time.time()}
 
-        return self._clients[sid]['data']
+        return self._clients[sid]['cfg']
 
 
     # --------------------------------------------------------------------------
@@ -260,7 +260,7 @@ class Proxy(ru.zmq.Server):
             proxy_sp.start()
             proxy_aq.start()
 
-            data = {'proxy_control_pubsub': {'pub': str(proxy_cp.addr_pub),
+            cfg = {'proxy_control_pubsub': {'pub': str(proxy_cp.addr_pub),
                                              'sub': str(proxy_cp.addr_sub)},
                     'proxy_state_pubsub'  : {'pub': str(proxy_sp.addr_pub),
                                              'sub': str(proxy_sp.addr_sub)},
@@ -268,7 +268,7 @@ class Proxy(ru.zmq.Server):
                                              'get': str(proxy_aq.addr_get)}}
 
             # inform service about endpoint details
-            q.put(data)
+            q.put(cfg)
 
             # we run forever until we receive a termination command
             log.info('work')
@@ -297,7 +297,7 @@ class Proxy(ru.zmq.Server):
             if sid not in self._clients:
                 raise RuntimeError('client %s not registered' % sid)
 
-            return self._clients[sid]['data']
+            return self._clients[sid]['cfg']
 
 
     # --------------------------------------------------------------------------
@@ -327,7 +327,7 @@ class Proxy(ru.zmq.Server):
         with self._lock:
 
             if sid not in self._clients:
-                raise RuntimeError('client %s not registered' % sid)
+                raise RuntimeError('client %s not ' % sid)
 
             self._clients[sid]['hb'] = now
 

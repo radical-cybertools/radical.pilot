@@ -80,7 +80,8 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     spt.setproctitle('rp.%s' % uid)
 
     # start a non-primary session
-    session = rp.Session(cfg=ccfg, _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
+    session = rp.Session(uid=sid, cfg=ccfg,
+                         _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
 
     # create the component and begin to work
     comp = rp.utils.Component.create(ccfg, session)

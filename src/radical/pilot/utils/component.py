@@ -192,7 +192,7 @@ class ComponentManager(object):
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
-            self._reg.put('bridge.%s' % bname, bcfg)
+          # self._reg.put('bridge.%s' % bname, bcfg)
 
             self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
 
