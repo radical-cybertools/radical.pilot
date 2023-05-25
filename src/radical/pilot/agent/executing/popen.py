@@ -650,11 +650,8 @@ class Popen(AgentExecutingComponent):
         if n_ranks > 1:
 
             # make sure that RP_RANK is known (otherwise task fails silently)
-            ret += 'test -z "$RP_RANK" && echo "Cannot determine rank"\n'
-            ret += 'test -z "$RP_RANK" && exit 1\n'
-
-        else:
-            ret += 'test -z "$RP_RANK" && export RP_RANK=0\n'
+            if 'export RP_RANK=' not in ret:
+                raise RuntimeError('launch method does not export RP_RANK')
 
         # also define a method to sync all ranks on certain events
         ret += '\nrp_sync_ranks() {\n'
