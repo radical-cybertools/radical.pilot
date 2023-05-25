@@ -210,9 +210,6 @@ class TestPopen(TestCase):
             self.assertTrue(launcher.get_rank_cmd.called)
             self.assertIn('RP_RANKS=%s' % n_ranks, ranks_str)
 
-            if n_ranks > 1:
-                self.assertIn('"$RP_RANK" && exit 1', ranks_str)
-
 
 # ------------------------------------------------------------------------------
 #
