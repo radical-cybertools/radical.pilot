@@ -7,7 +7,6 @@ __license__   = 'MIT'
 
 import os
 import queue
-import pytest
 
 import threading as mt
 
@@ -215,7 +214,7 @@ class TestPopen(TestCase):
         launcher.get_rank_cmd = mock.Mock(
             return_value='test -z "$MPI_RANK" || echo "who cares"\n')
 
-        with pytest.raises(RuntimeError):
+        with self.assertRaises(RuntimeError):
             ranks_str = pex._get_rank_ids(n_ranks=2, launcher=launcher)
 
 
