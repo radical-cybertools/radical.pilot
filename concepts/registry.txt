@@ -1,46 +1,42 @@
 
 registry = {
-    '<sid>' : {
-        '<SUB_REGISTRY>'
-        'heartbeat'  : { ... },
-        'pilot.0000': {
-            'description': { ... },
-            'rm_info'    : { ... },
-            'agent.0'    : { '<SUB_REGISTRY>' }
-            'cfg'        : { ... },
-            'rcfg'       : { ... }
+    'cfg'        : { ... },  # session config for this module
+    'rm_info'    : { ... },  # only for agent modules
+    'heartbeat' : {
+        'addr_pub': ... ,
+        'addr_sub': ... ,
+        'cfg'     : {
+            'interval': ... ,
+            'timeout' : ...
         }
-    }
-}
-
-SUB_REGISTRY = {
-    'cmgr.0000' : {
-        'heartbeat' : {
+    },
+    'bridges'   : {
+        'abc_pubsub': {
             'addr_pub': ... ,
             'addr_sub': ... ,
             'cfg'     : {
-                'interval': ... ,
-                'timeout' : ...
+                'log_lvl'  : ... ,
+                'hwm'      : ... ,
+                'bulk_size': ...
             }
         },
-        'bridges'   : {
-            'state_pubsub': {
-                'addr_pub': ... ,
-                'addr_sub': ... ,
-                'cfg'     : {
-                    'log_lvl'  : ...,
-                    'hwm'      : ...,
-                    'bulk_size': ...
-                }
+        'xyz_queue': {
+            'addr_put': ... ,
+            'addr_get': ... ,
+            'cfg'     : {
+                'log_lvl'  : ... ,
+                'hwm'      : ... ,
+                'bulk_size': ...
             }
-        },
-        'components': {
-            'staging.0001': {
-                'cfg': {
-                    'log_lvl': ...
-                }
+        }
+    },
+    'components': {
+        'staging.0001': {
+            'cfg': {
+                'log_lvl': ...
             }
         }
     }
+    'rcfgs' : { ... }
 }
 
