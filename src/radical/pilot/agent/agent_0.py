@@ -40,7 +40,7 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg: ru.Config, session: Session):
+    def __init__(self, cfg: ru.Config):
 
         self._uid     = 'agent.0'
         self._pid     = cfg.pid
@@ -48,23 +48,13 @@ class Agent_0(rpu.Worker):
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
 
-        self._session = session
+        self._session = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_0)
+        self._cfg     = self._session._cfg
+        self._rcfg    = self._session._rcfg
         self._log     = ru.Logger(self._uid, ns='radical.pilot')
 
         self._starttime   = time.time()
         self._final_cause = None
-
-        # pick up proxy config from session
-        self._cfg.proxy = self._session._cfg.proxy
-
-        # extract bridges, components and resource_cfg subsections from the cfg
-        self._bcfg = cfg.bridges
-        self._ccfg = cfg.components
-        self._rcfg = cfg.resource_cfg
-
-        del cfg['bridges']
-        del cfg['components']
-        del cfg['resource_cfg']
 
         # keep some state about service startups
         self._service_uids_launched = list()
@@ -76,11 +66,7 @@ class Agent_0(rpu.Worker):
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
         # init the worker / component base classes, connects registry
-        rpu.Worker.__init__(self, cfg, session)
-
-        # store the agent config in the registry
-        self._reg['cfg'] = self._cfg
-        self._reg['rcfg'] = self._rcfg
+        rpu.Worker.__init__(self, cfg, self._session)
 
         # configure ResourceManager before component startup, as components need
         # ResourceManager information for function (scheduler, executor)
@@ -88,16 +74,6 @@ class Agent_0(rpu.Worker):
 
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
-
-        # ready to configure agent components
-        self._cmgr = rpu.ComponentManager(self._cfg.sid, self._cfg.reg_addr,
-                                          self._uid)
-
-        self._cmgr.start_bridges(self._bcfg)
-        self._cmgr.start_components(self._ccfg)
-
-        # connect to proxy communication channels, maybe
-        self._connect_proxy()
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors or RP service tasks
@@ -148,6 +124,9 @@ class Agent_0(rpu.Worker):
 
         # as long as we are alive, we also want to keep the proxy alive
         self._session._run_proxy_hb()
+
+        # all set up - connect to proxy to fetch / push tasks
+        self._connect_proxy()
 
 
     # --------------------------------------------------------------------------
@@ -258,7 +237,7 @@ class Agent_0(rpu.Worker):
         # use for sub-agent startup.  Add the remaining ResourceManager
         # information to the config, for the benefit of the scheduler).
 
-        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
+        self._rm = ResourceManager.create(name=self._rcfg.resource_manager,
                                           cfg=self._cfg, rcfg=self._rcfg,
                                           log=self._log, prof=self._prof)
 
@@ -273,29 +252,27 @@ class Agent_0(rpu.Worker):
         # channels, merge those into the agent config
         #
         # FIXME: this needs to start the app_comm bridges
-        app_comm = self._cfg.get('app_comm')
+        app_comm = self._rcfg.get('app_comm')
         if app_comm:
+
+            # bridge addresses also need to be exposed to the workload
+            if 'task_environment' not in self._rcfg:
+                self._rcfg['task_environment'] = dict()
+
             if isinstance(app_comm, list):
                 app_comm = {ac: {'bulk_size': 0,
                                  'stall_hwm': 1,
                                  'log_level': 'error'} for ac in app_comm}
             for ac in app_comm:
-                if ac in self._cfg['bridges']:
+                AC = ac.upper()
+
+                if ac in self._reg['bridges']:
                     raise ValueError('reserved app_comm name %s' % ac)
-                self._cfg['bridges'][ac] = app_comm[ac]
 
+                self._reg['bridges.%s' % ac] = app_comm[ac]
 
-        # some of the bridge addresses also need to be exposed to the workload
-        if app_comm:
-            if 'task_environment' not in self._cfg:
-                self._cfg['task_environment'] = dict()
-            for ac in app_comm:
-                if ac not in self._cfg['bridges']:
-                    raise RuntimeError('missing app_comm %s' % ac)
-                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
-                        self._cfg['bridges'][ac]['addr_in']
-                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
-                        self._cfg['bridges'][ac]['addr_out']
+                self._rcfg['task_environment']['RP_%s_IN'  % AC] = ac['addr_in']
+                self._rcfg['task_environment']['RP_%s_OUT' % AC] = ac['addr_out']
 
 
     # --------------------------------------------------------------------------
@@ -408,13 +385,13 @@ class Agent_0(rpu.Worker):
         # sub-agent config files.
 
         # write deep-copies of the config for each sub-agent (sans from agent.0)
-        for sa in self._cfg.get('agents', {}):
+        for sa in self._rcfg.get('agents', {}):
 
             assert (sa != 'agent.0'), 'expect subagent, not agent.0'
 
             # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
-            tmp_cfg = copy.deepcopy(self._cfg)
+            tmp_cfg = copy.deepcopy(self._session._cfg)
             tmp_cfg['agents']     = dict()
             tmp_cfg['components'] = dict()
             tmp_cfg['bridges']    = dict()
@@ -431,7 +408,7 @@ class Agent_0(rpu.Worker):
     #
     def _start_services(self):
 
-        service_descriptions = self._cfg.services
+        service_descriptions = self._rcfg.services
         if not service_descriptions:
             return
         self._log.info('starting agent services')

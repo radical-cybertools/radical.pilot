@@ -537,7 +537,9 @@ class Component(object):
         assert cfg.kind in comp, '%s not in %s (%s)' % (cfg.kind,
                 list(comp.keys()), cfg.uid)
 
-        session._log.debug('create 1 %s: %s', cfg.kind, comp[cfg.kind])
+        import pprint
+        session._log.debug('create 1 %s: %s', cfg.kind,
+                pprint.pformat(cfg.as_dict()))
         return comp[cfg.kind].create(cfg, session)
 
 

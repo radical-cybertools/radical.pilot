@@ -50,7 +50,7 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
 
-        name = session._reg['rcfg.agent_spawner']
+        name = session._rcfg['agent_spawner']
 
         from .popen    import Popen
         from .flux     import Flux
