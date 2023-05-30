@@ -854,7 +854,7 @@ class TaskManager(rpu.Component):
 
         # keep tasks around
         with self._tasks_lock:
-            for task in tasks:
+            for task in ret:
                 self._tasks[task.uid] = task
 
         self._rep.progress_done()
