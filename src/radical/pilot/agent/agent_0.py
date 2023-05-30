@@ -75,12 +75,6 @@ class Agent_0(rpu.Worker):
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
 
-        # before we run any tasks, prepare a named_env `rp` for tasks which use
-        # the pilot's own environment, such as raptors or RP service tasks
-        env_spec = {'type': os.environ['RP_VENV_TYPE'],
-                    'path': os.environ['RP_VENV_PATH']}
-        self._prepare_env('rp', env_spec)
-
         # start any services if they are requested
         self._start_services()
 
@@ -150,9 +144,9 @@ class Agent_0(rpu.Worker):
     #
     def _connect_proxy(self):
 
-        # write config files for proxy channels
-        for p in self._cfg.proxy:
-            ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
+      # # write config files for proxy channels
+      # for p in self._cfg.proxy:
+      #     ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
 
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -237,6 +231,7 @@ class Agent_0(rpu.Worker):
         # use for sub-agent startup.  Add the remaining ResourceManager
         # information to the config, for the benefit of the scheduler).
 
+        self._cfg.reg_addr = self._session.reg_addr
         self._rm = ResourceManager.create(name=self._rcfg.resource_manager,
                                           cfg=self._cfg, rcfg=self._rcfg,
                                           log=self._log, prof=self._prof)
