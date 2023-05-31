@@ -3,7 +3,6 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
-import pytest
 
 import threading            as mt
 import radical.utils        as ru
@@ -66,7 +65,7 @@ class TestBaseScheduling(TestCase):
             sched._cfg = ru.Config(from_dict=c['config'])
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:
-                    with pytest.raises(RuntimeError):
+                    with self.assertRaises(RuntimeError):
                         sched.initialize()
                 else:
                     sched.initialize()
