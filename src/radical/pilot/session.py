@@ -484,7 +484,7 @@ class Session(rs.Session):
         self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
-        self._log.debug('=== Session(%s, %s)', self._uid, self._role)
+        self._log.debug('Session(%s, %s)', self._uid, self._role)
         self._prof.prof('session_start', uid=self._uid)
 
 
@@ -587,6 +587,8 @@ class Session(rs.Session):
 
         assert self._role in [self._PRIMARY, self._AGENT_0, self._AGENT_N]
 
+        self._reg.dump('init')
+
         # primary sessions and agents have a component manager which also
         # manages heartbeat.  'self._cmgr.close()` should be called during
         # termination
@@ -608,7 +610,7 @@ class Session(rs.Session):
 
         # forward any control messages to the proxy
         def fwd_control(topic, msg):
-            self._log.debug('=== fwd control %s: %s', topic, msg)
+            self._log.debug('fwd control %s: %s', topic, msg)
             self._proxy_ctrl_pub.put(rpc.PROXY_CONTROL_PUBSUB, msg)
 
         ru.write_json(fname='foo.json', data=self._reg['bridges'])
@@ -628,7 +630,7 @@ class Session(rs.Session):
 
         # collect any state updates from the proxy
         def fwd_state(topic, msg):
-            self._log.debug('=== fwd state   %s: %s', topic, msg)
+            self._log.debug('fwd state   %s: %s', topic, msg)
             self._state_pub.put(topic, msg)
 
         self._state_pub = ru.zmq.Publisher(

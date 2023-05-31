@@ -34,250 +34,6 @@ def _atfork_child():
 ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 
-# ------------------------------------------------------------------------------
-#
-class ComponentManager(object):
-    '''
-    RP spans a hierarchy of component instances: the application has a pmgr and
-    tmgr, and the tmgr has a staging component and a scheduling component, and
-    the pmgr has a launching component, and components also can have bridges,
-    etc. This ComponentManager centralises the code needed to spawn, manage and
-    terminate such components. Any code which needs to create component should
-    create a ComponentManager instance and pass the required component and
-    bridge layout and configuration.  Callng `stop()` on the cmgr will terminate
-    the components and brisged.
-    '''
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, sid, reg_addr, owner):
-
-        # register for at-fork hooks
-        _components.append(self)
-
-        # create a registry client to obtain the session config and to store
-        # component and bridge configs
-
-        self._sid      = sid
-        self._reg_addr = reg_addr
-        self._owner    = owner
-
-        self._reg  = ru.zmq.RegistryClient(url=self._reg_addr)
-        self._cfg  = ru.Config(from_dict=self._reg['cfg'])
-
-        self._uid  = ru.generate_id('cmgr.%(item_counter)04d',
-                                    ru.ID_CUSTOM, ns=self._sid)
-        self._uids = [self._uid]  # uids to track hartbeats for (incl. own)
-
-        self._prof = ru.Profiler(self._uid, ns='radical.pilot',
-                                 path=self._cfg.path)
-        self._log  = ru.Logger(self._uid, ns='radical.pilot',
-                               path=self._cfg.path)
-
-        self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
-
-        self._log.debug('=== cmgr %s (%s)', self._uid, self._owner)
-
-        # Every ComponentManager runs a HB pubsub bridge in a separate thread.
-        # That HB channel should be used by all components and bridges created
-        # under this CMGR.
-        bcfg = ru.Config(cfg={'channel'    : 'heartbeat',
-                              'type'       : 'pubsub',
-                              'uid'        : self._uid + '.hb',
-                              'stall_hwm'  : 1,
-                              'bulk_size'  : 0,
-                              'reg_addr'   : self._cfg.reg_addr,
-                              'path'       : self._cfg.path})
-        self._hb_bridge = ru.zmq.PubSub(channel='heartbeat', cfg=bcfg)
-        self._hb_bridge.start()
-
-        hb_cfg = ru.TypedDict(self._reg['cfg.heartbeat'])
-        hb_cfg.addr_pub = str(self._hb_bridge.addr_pub)
-        hb_cfg.addr_sub = str(self._hb_bridge.addr_sub)
-
-        # publish heartbeat information in registry
-        self._cfg.heartbeat = hb_cfg
-        self._reg['cfg.heartbeat'] = hb_cfg
-
-        # runs a HB monitor on that channel
-        self._hb = ru.Heartbeat(uid=self.uid,
-                                timeout=hb_cfg['timeout'],
-                                interval=hb_cfg['interval'],
-                                beat_cb=self._hb_beat_cb,  # on every heartbeat
-                                term_cb=self._hb_term_cb,  # on termination
-                                log=self._log)
-
-        self._hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg['addr_pub'],
-                                        log=self._log, prof=self._prof)
-        self._hb_sub = ru.zmq.Subscriber('heartbeat', hb_cfg['addr_sub'],
-                                         topic='heartbeat', cb=self._hb_sub_cb,
-                                         log=self._log, prof=self._prof)
-
-
-        # confirm the bridge being usable by listening to our own heartbeat
-        self._hb.start()
-        self._hb.wait_startup(self._uid, hb_cfg['timeout'])
-        self._log.info('heartbeat system up')
-
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_sub_cb(self, topic, msg):
-        '''
-        keep track of heartbeats for all bridges/components we know
-        '''
-
-      # self._log.debug('hb_sub %s: get %s check', self.uid, msg['uid'])
-        if msg['uid'] in self._uids:
-          # self._log.debug('hb_sub %s: get %s used', self.uid, msg['uid'])
-            self._hb.beat(uid=msg['uid'])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_beat_cb(self):
-        '''
-        publish own heartbeat on the hb channel
-        '''
-
-        self._hb_pub.put('heartbeat', msg={'uid' : self.uid})
-      # self._log.debug('hb_cb %s: put %s', self.uid, self.uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_term_cb(self, uid=None):
-
-        self._log.debug('hb_term %s: %s died', self.uid, uid)
-        self._prof.prof('term', uid=self._uid)
-
-        # FIXME: restart goes here
-
-        # NOTE: returning `False` indicates failure to recover.  The HB will
-        #       terminate and suicidally kill the very process it is living in.
-        #       Make sure all required cleanup is done at this point!
-
-        return False
-
-
-    # --------------------------------------------------------------------------
-    #
-    @property
-    def uid(self):
-        return self._uid
-
-
-    # --------------------------------------------------------------------------
-    #
-    def start_bridges(self, bridges):
-
-        self._prof.prof('start_bridges_start', uid=self._uid)
-
-        timeout = self._cfg.heartbeat.timeout
-
-        for bname, bcfg in bridges.items():
-
-            bcfg.uid       = bname
-            bcfg.channel   = bname
-            bcfg.cmgr      = self.uid
-            bcfg.owner     = self._owner
-            bcfg.sid       = self._cfg.sid
-            bcfg.path      = self._cfg.path
-            bcfg.reg_addr  = self._cfg.reg_addr
-            bcfg.heartbeat = self._cfg.heartbeat
-
-            self._reg['bridges.%s.cfg' % bname] = bcfg
-
-          # self._reg.put('bridge.%s' % bname, bcfg)
-
-            self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
-
-            cmd = 'radical-pilot-bridge %s %s %s' \
-                % (self._sid, self._reg.url, bname)
-            out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
-
-            self._log.debug('bridge startup out: %s', out)
-            self._log.debug('bridge startup err: %s', err)
-
-            if ret:
-                raise RuntimeError('bridge startup failed')
-
-            self._uids.append(bname)
-            self._log.info('created bridge %s [%s]', bname, bname)
-
-        # all bridges are started, wait for their heartbeats
-      # self._log.debug('wait   for %s', self._uids)
-        failed = self._hb.wait_startup(self._uids, timeout=timeout)
-      # self._log.debug('waited for %s: %s', self._uids, failed)
-        if failed:
-            raise RuntimeError('could not start all bridges %s' % failed)
-
-        self._prof.prof('start_bridges_stop', uid=self._uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def start_components(self, components, cfg = None):
-
-        self._prof.prof('start_components_start: %s', uid=self._uid)
-
-        timeout = self._cfg.heartbeat.timeout
-
-        for cname, ccfg in components.items():
-
-            for _ in range(ccfg.get('count', 1)):
-
-                uid = ru.generate_id(cname + '.%(item_counter)04d',
-                                     ru.ID_CUSTOM, ns=self._sid)
-                ccfg.uid       = uid
-                ccfg.kind      = cname
-                ccfg.owner     = self._owner
-                ccfg.sid       = self._cfg.sid
-                ccfg.cmgr      = self._cfg.uid
-                ccfg.base      = self._cfg.base
-                ccfg.path      = self._cfg.path
-                ccfg.reg_addr  = self._cfg.reg_addr
-                ccfg.proxy_url = self._cfg.proxy_url
-                ccfg.heartbeat = self._cfg.heartbeat
-
-                if cfg:
-                    ru.dict_merge(ccfg, cfg, ru.OVERWRITE)
-
-                self._reg['components.%s.cfg' % uid] = ccfg
-
-                self._log.info('create  component %s [%s]', cname, uid)
-
-                cmd = 'radical-pilot-component %s %s %s' \
-                    % (self._sid, self._reg.url, uid)
-                out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
-
-                self._log.debug('component startup out: %s' , out)
-                self._log.debug('component startup err: %s' , err)
-
-                if ret:
-                    raise RuntimeError('component startup failed')
-
-                self._uids.append(uid)
-                self._log.info('created component %s [%s]', cname, uid)
-
-        # all components should start now, for their heartbeats
-        # to appear.
-        failed = self._hb.wait_startup(self._uids, timeout=timeout * 10)
-        if failed:
-            raise RuntimeError('could not start all components %s' % failed)
-
-        self._prof.prof('start_components_stop', uid=self._uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def close(self):
-
-        self._prof.prof('close', uid=self._uid)
-
-        self._hb_bridge.stop()
-        self._hb.stop()
 
 
 # ------------------------------------------------------------------------------
@@ -343,18 +99,11 @@ class Component(object):
     to a file name to be opened as `ru.Config`, or as a pre-populated
     `ru.Config` instance).  That config MUST contain a session ID (`sid`) for
     the session under which to run this component, and a uid for the component
-    itself which MUST be unique within the scope of the given session.  It MUST
-    further contain information about the session's heartbeat ZMQ pubsub channel
-    (`hb_pub`, `hb_sub`) on which heartbeats are sent and received for lifetime
-    management.  All components and the session will continuously sent heartbeat
-    messages on that channel - missing heartbeats will by default lead to
-    session termination.
+    itself which MUST be unique within the scope of the given session.
 
-    The config MAY contain `bridges` and `component` sections.  If those exist,
-    the component will start the communication bridges and the components
-    specified therein, and is then considered an owner of those components and
-    bridges.  As such, it much watch the HB channel for heartbeats from those
-    components, and must terminate itself if those go AWOL.
+    All components and the component managers will continuously sent heartbeat
+    messages on the control pubsub - missing heartbeats will by default lead to
+    component termination.
 
     Further, the class must implement the registered work methods, with a
     signature of::
@@ -406,6 +155,9 @@ class Component(object):
         Constructors of inheriting components *may* call start() in their
         constructor.
         '''
+
+        # register for at-fork hooks
+        _components.append(self)
 
         # NOTE: a fork will not duplicate any threads of the parent process --
         #       but it will duplicate any locks which are shared between the
@@ -462,8 +214,21 @@ class Component(object):
     #
     def start(self):
 
+        # start heartbeat monitor
+        self._hb = ru.Heartbeat(uid=self.uid,
+                                timeout=self._reg['cfg.heartbeat.timeout'],
+                                interval=self._reg['cfg.heartbeat.interval'],
+                                beat_cb=self._hb_beat_cb,  # on every heartbeat
+                                term_cb=self._hb_term_cb,  # on termination
+                                log=self._log)
+
+        # heartbeat watches our own cmgr
+        self._log.debug('=== hb watch %s', self._owner)
+        self._hb.beat(self._uid)
+
+        # start worker thread
         sync = mt.Event()
-        self._thread = mt.Thread(target=self._worker_thread, args=[sync])
+        self._thread = mt.Thread(target=self._work_loop, args=[sync])
         self._thread.daemon = True
         self._thread.start()
 
@@ -479,7 +244,33 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def _worker_thread(self, sync):
+    def _hb_beat_cb(self):
+        '''
+        publish own heartbeat in the registry and check owner's heartbeat
+        '''
+
+        tstamp = time.time()
+        self._reg['heartbeats.timestamps.%s' % self._uid] = tstamp
+        self._log.debug('=== hb_beat %s: put %.1f', self.uid, tstamp)
+
+        tstamp = self._reg['heartbeats.timestamps.%s' % self._owner]
+        self._hb.beat(self._owner, timestamp=tstamp)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _hb_term_cb(self, uid=None):
+
+        self._log.debug('=== hb_term %s: %s died', self.uid, uid)
+        self._prof.prof('term', uid=self._uid)
+
+        # cmgr is gone, no restart possible - terminate
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _work_loop(self, sync):
 
         try:
             self._initialize()
@@ -817,7 +608,7 @@ class Component(object):
 
         cfg = self._reg['bridges'][qname]
 
-        self._log.debug('====== get input ep: %s', qname)
+        self._log.debug('get input ep: %s', qname)
         return ru.zmq.Getter(qname, url=cfg['get'])
 
 
@@ -1074,7 +865,7 @@ class Component(object):
                 # next input
                 continue
 
-          # self._log.debug('work_cb ===== : %d', len(things))
+          # self._log.debug('work_cb: %d', len(things))
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
@@ -1253,7 +1044,7 @@ class Component(object):
                 if _state in rps.FINAL:
                     # things in final state are dropped
                     for thing in _things:
-                        self._log.debug('=== final %s [%s]', thing['uid'], _state)
+                      # self._log.debug('final %s [%s]', thing['uid'], _state)
                         self._prof.prof('drop', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1261,8 +1052,8 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                        self._log.debug("lost  %s [%s] : %s", thing['uid'],
-                                _state, self._outputs)
+                      # self._log.debug("lost  %s [%s] : %s", thing['uid'],
+                      #         _state, self._outputs)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1270,7 +1061,7 @@ class Component(object):
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
-                        self._log.debug('=== drop  %s [%s]', thing['uid'], _state)
+                      # self._log.debug('drop  %s [%s]', thing['uid'], _state)
                         self._prof.prof('drop', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1278,7 +1069,7 @@ class Component(object):
                 output = self._outputs[_state]
 
                 # push the thing down the drain
-                self._log.debug('=== put bulk %s: %s: %s', _state, len(_things),
+                self._log.debug('put bulk %s: %s: %s', _state, len(_things),
                         output.channel)
                 output.put(_things, qname=qname)
 

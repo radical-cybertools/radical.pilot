@@ -211,7 +211,7 @@ class Agent_0(rpu.Worker):
     def _proxy_output_cb(self, msg):
 
         # we just forward the tasks to the task proxy queue
-        self._log.debug('=== proxy output cb: %s', len(msg))
+        self._log.debug('proxy output cb: %s', len(msg))
         self.advance(msg, publish=False, push=True, qname=self._sid)
 
 
@@ -649,7 +649,7 @@ class Agent_0(rpu.Worker):
 
             env_spec = arg
             for env_id in env_spec:
-                # ensure we have a hb period
+                # ensure we have a full hb period for the prep_env call
                 self._hb.beat(uid=self._pmgr)
                 self._prepare_env(env_id, env_spec[env_id])
             return True

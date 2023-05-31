@@ -24,19 +24,22 @@ if os.uname()[0] == 'Darwin':
         import resource
         _limits    = list(resource.getrlimit(resource.RLIMIT_NOFILE))
         _limits[0] = 512
-        resource.setrlimit(resource.RLIMIT_NOFILE, _limits)
+        resource.setrlimit(resource.RLIMIT_NOFILE, tuple(_limits))
+
     except:
         pass
 
 
 # ------------------------------------------------------------------------------
 #
-from .db_utils     import *
-from .prof_utils   import *
-from .misc         import *
-from .session      import *
-from .component    import *
-from .serializer   import *
+from .db_utils          import *
+from .prof_utils        import *
+from .misc              import *
+from .session           import *
+from .component         import *
+from .component_manager import *
+from .serializer        import *
+
 
 # ------------------------------------------------------------------------------
 

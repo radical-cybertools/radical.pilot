@@ -60,14 +60,14 @@ if __name__ == '__main__':
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'cores'         : config.get('cores', 1),
+                   'cores'         : 1024,
                    'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024  # number of tasks to run
+        n = 16 * 1024  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.

@@ -283,8 +283,6 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def work(self, pilots):
 
-        self._log.debug('==== %s', pilots)
-
         if not isinstance(pilots, list):
             pilots = [pilots]
 
