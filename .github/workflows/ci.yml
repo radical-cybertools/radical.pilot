@@ -29,7 +29,7 @@ jobs:
       - name: Lint with flake8 and pylint
         run: |
           . testenv/bin/activate
-          LOG=`git log -n 1 | grep Merge`
+          LOG=`git log -n 1 | grep Merge` || echo 'no merging' && exit 0
           NEW=`echo $LOG | cut -d ' ' -f2`
           OLD=`echo $LOG | cut -d ' ' -f3`
           (test -z "$NEW" || test -z "$OLD") && echo 'nothing to lint' && exit 0
