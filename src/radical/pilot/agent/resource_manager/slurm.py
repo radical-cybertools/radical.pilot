@@ -17,13 +17,14 @@ class Slurm(ResourceManager):
     #
     def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
-        nodelist = os.environ.get('SLURM_NODELIST')
+        nodelist = os.environ.get('SLURM_NODELIST') or \
+                   os.environ.get('SLURM_JOB_NODELIST')
         if nodelist is None:
-            raise RuntimeError('$SLURM_NODELIST not set')
+            raise RuntimeError('$SLURM_*NODELIST not set')
 
         # Parse SLURM nodefile environment variable
         node_names = ru.get_hostlist(nodelist)
-        self._log.info('found SLURM_NODELIST %s. Expanded to: %s',
+        self._log.info('found nodelist %s. Expanded to: %s',
                        nodelist, node_names)
 
         if not rm_info.cores_per_node:

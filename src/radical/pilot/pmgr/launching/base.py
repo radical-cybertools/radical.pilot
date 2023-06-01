@@ -158,13 +158,23 @@ class PMGRLaunchingComponent(rpu.Component):
             RP_UL_NAME_PSI_J: PilotLauncherPSIJ
         }
 
+        exceptions = dict()
         for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
             try:
                 ctor = impl[name]
                 self._launchers[name] = ctor(name, self._log, self._prof,
                                              self._state_cb)
-            except:
-                self._log.exception('skip launcher %s' % name)
+            except Exception as e:
+                self._log.warn('skip launcher %s' % name)
+                exceptions[name] = e
+
+        # if no launcher is usable, log the found exceptions
+        if not self._launchers:
+            for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
+                e = exceptions.get(name)
+                if e:
+                    try   : raise e
+                    except: self._log.exception('launcher %s unusable' % name)
 
 
     # --------------------------------------------------------------------------
