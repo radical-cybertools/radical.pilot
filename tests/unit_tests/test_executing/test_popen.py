@@ -210,8 +210,12 @@ class TestPopen(TestCase):
             self.assertTrue(launcher.get_rank_cmd.called)
             self.assertIn('RP_RANKS=%s' % n_ranks, ranks_str)
 
-            if n_ranks > 1:
-                self.assertIn('"$RP_RANK" && exit 1', ranks_str)
+        launcher = mock.Mock()
+        launcher.get_rank_cmd = mock.Mock(
+            return_value='test -z "$MPI_RANK" || echo "who cares"\n')
+
+        with self.assertRaises(RuntimeError):
+            ranks_str = pex._get_rank_ids(n_ranks=2, launcher=launcher)
 
 
 # ------------------------------------------------------------------------------

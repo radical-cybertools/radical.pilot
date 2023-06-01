@@ -60,6 +60,14 @@ class SlurmTestCase(TestCase):
         # 4 GPUs within 2 nodes (list of nodes is in SLURM_NODELIST)
         self.assertEqual(rm_info.gpus_per_node, 2)
 
+        # test env variable "SLURM_JOB_NODELIST"
+        if 'SLURM_NODELIST' in os.environ:
+            del os.environ['SLURM_NODELIST']
+        os.environ['SLURM_JOB_NODELIST'] = 'node-[5-7]'
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None}))
+        node_names = sorted([n['node_name'] for n in rm_info.node_list])
+        self.assertEqual(node_names, ['node-5', 'node-6', 'node-7'])
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Slurm, '__init__', return_value=None)
@@ -77,6 +85,8 @@ class SlurmTestCase(TestCase):
 
         if 'SLURM_NODELIST' in os.environ:
             del os.environ['SLURM_NODELIST']
+        if 'SLURM_JOB_NODELIST' in os.environ:
+            del os.environ['SLURM_JOB_NODELIST']
         with self.assertRaises(RuntimeError):
             rm_slurm._init_from_scratch(RMInfo())
 
