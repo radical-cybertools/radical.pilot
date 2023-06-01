@@ -835,6 +835,7 @@ class PilotManager(rpu.Component):
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
+        time.sleep(20)
 
         # inform pmgr.launcher - it will force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
