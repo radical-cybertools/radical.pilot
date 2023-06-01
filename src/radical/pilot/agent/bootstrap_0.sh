@@ -1650,10 +1650,10 @@ get_tunnel(){
 
     if test -z "$BIND_ADDRESS"
     then
-        BIND_ADDRESS=$(ip addr
-                     | grep 'state UP' -A2
-                     | grep 'inet'
-                     | awk '{print $2}'
+        BIND_ADDRESS=$(ip addr             \
+                     | grep 'state UP' -A2 \
+                     | grep 'inet'         \
+                     | awk '{print $2}'    \
                      | cut -f1 -d'/')
       # BIND_ADDRESS="127.0.0.1"
     fi
