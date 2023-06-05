@@ -33,8 +33,8 @@ def main(sid, reg_addr, uid):
 
         {
           'from'    : 'uid',
-          'pub'     : 'addr_pub',
-          'sub'     : 'addr_sub',
+          'addr_pub': 'addr_pub',
+          'addr_sub': 'addr_sub',
           'interval': <float>,
           'timeout' : <float>
         }
@@ -74,21 +74,22 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     term = mt.Event()
     reg  = ru.zmq.RegistryClient(url=reg_addr)
-    scfg = ru.TypedDict(reg['cfg'])
-    ccfg = ru.TypedDict(reg['components.%s.cfg' % uid])
+
+    hb_cfg = ru.TypedDict(reg['heartbeat'])
+    c_cfg  = ru.TypedDict(reg['components.%s.cfg' % uid])
 
     spt.setproctitle('rp.%s' % uid)
 
     # start a non-primary session
-    session = rp.Session(uid=sid, cfg=ccfg,
+    session = rp.Session(uid=sid, cfg=c_cfg,
                          _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
 
     # create the component and begin to work
-    comp = rp.utils.Component.create(ccfg, session)
+    comp = rp.utils.Component.create(c_cfg, session)
     comp.start()
 
     # component runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', scfg.heartbeat.addr_pub)
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub)
                             # log=session._log, prof=session._prof)
 
     def hb_beat_cb():
@@ -99,23 +100,23 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=ccfg.uid,
-                      timeout=scfg.heartbeat.timeout,
-                      interval=scfg.heartbeat.interval,
+    hb = ru.Heartbeat(uid=c_cfg.uid,
+                      timeout=hb_cfg.timeout,
+                      interval=hb_cfg.interval,
                       beat_cb=hb_beat_cb,
                       term_cb=hb_term_cb,
                       log=log)
     hb.start()
 
     # register cmgr heartbeat by beating once
-    hb.beat(uid=ccfg.cmgr)
+    hb.beat(uid=c_cfg.cmgr)
 
     # record cmgr heartbeats
     def hb_sub_cb(topic, msg):
-        if msg['uid'] == ccfg.cmgr:
-            hb.beat(uid=ccfg.cmgr)
+        if msg['uid'] == c_cfg.cmgr:
+            hb.beat(uid=c_cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', scfg.heartbeat.addr_sub,
+    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
                       topic='heartbeat', cb=hb_sub_cb,
                       log=log, prof=prof)
 

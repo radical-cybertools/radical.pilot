@@ -609,7 +609,7 @@ class Component(object):
         cfg = self._reg['bridges'][qname]
 
         self._log.debug('get input ep: %s', qname)
-        return ru.zmq.Getter(qname, url=cfg['get'])
+        return ru.zmq.Getter(qname, url=cfg['addr_get'])
 
 
     # --------------------------------------------------------------------------
@@ -621,7 +621,7 @@ class Component(object):
 
         cfg = self._reg['bridges'][qname]
 
-        return ru.zmq.Putter(qname, url=cfg['put'])
+        return ru.zmq.Putter(qname, url=cfg['addr_put'])
 
 
     # --------------------------------------------------------------------------
@@ -783,10 +783,12 @@ class Component(object):
         '''
 
         assert pubsub not in self._publishers
+        cfg = self._reg['bridges.%s' % pubsub]
 
-        cfg = self._reg['bridges'][pubsub]
+        import pprint
+        self._log.debug('===>> %s', pprint.pformat(cfg))
         self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
-                                                    url=cfg['pub'],
+                                                    url=cfg['addr_pub'],
                                                     log=self._log,
                                                     prof=self._prof)
 
@@ -816,7 +818,7 @@ class Component(object):
 
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,
-                                                          url=cfg['sub'],
+                                                          url=cfg['addr_sub'],
                                                           log=self._log,
                                                           prof=self._prof)
 

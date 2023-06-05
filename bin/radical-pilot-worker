@@ -29,8 +29,8 @@ def main(cfg):
 
         {
           'from'    : 'uid',
-          'pub'     : 'addr_pub',
-          'sub'     : 'addr_sub',
+          'addr_pub': 'addr_pub',
+          'addr_sub': 'addr_sub',
           'interval': <float>,
           'timeout' : <float>
         }

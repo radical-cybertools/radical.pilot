@@ -260,12 +260,12 @@ class Proxy(ru.zmq.Server):
             proxy_sp.start()
             proxy_aq.start()
 
-            cfg = {'proxy_control_pubsub': {'pub': str(proxy_cp.addr_pub),
-                                             'sub': str(proxy_cp.addr_sub)},
-                    'proxy_state_pubsub'  : {'pub': str(proxy_sp.addr_pub),
-                                             'sub': str(proxy_sp.addr_sub)},
-                    'proxy_task_queue'    : {'put': str(proxy_aq.addr_put),
-                                             'get': str(proxy_aq.addr_get)}}
+            cfg = {'proxy_control_pubsub': {'addr_pub': str(proxy_cp.addr_pub),
+                                            'addr_sub': str(proxy_cp.addr_sub)},
+                    'proxy_state_pubsub' : {'addr_pub': str(proxy_sp.addr_pub),
+                                            'addr_sub': str(proxy_sp.addr_sub)},
+                    'proxy_task_queue'   : {'addr_put': str(proxy_aq.addr_put),
+                                            'addr_get': str(proxy_aq.addr_get)}}
 
             # inform service about endpoint details
             q.put(cfg)

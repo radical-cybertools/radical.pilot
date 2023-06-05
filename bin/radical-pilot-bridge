@@ -30,8 +30,8 @@ def main(sid, reg_addr, uid):
 
         {
           'from'    : 'uid',
-          'pub'     : 'addr_pub',
-          'sub'     : 'addr_sub',
+          'addr_pub': 'addr_pub',
+          'addr_sub': 'addr_sub',
           'interval': <float>,
           'timeout' : <float>
         }
@@ -55,13 +55,13 @@ def main(sid, reg_addr, uid):
     pubsub and queue type bridges):
 
         {
-          'pub': '$addr_pub',
-          'sub': '$addr_sub'
+          'addr_pub': '$addr_pub',
+          'addr_sub': '$addr_sub'
         }
 
         {
-          'put': '$addr_put',
-          'get': '$addr_get'
+          'addr_put': '$addr_put',
+          'addr_get': '$addr_get'
         }
 
     That config is formed so that any publishers, subscribers, putters or getters
@@ -97,21 +97,22 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     term = mt.Event()
     reg  = ru.zmq.RegistryClient(url=reg_addr)
-    scfg = ru.TypedDict(reg['cfg'])
-    bcfg = ru.TypedDict(reg['bridges.%s.cfg' % uid])
+
+    hb_cfg = ru.TypedDict(reg['heartbeat'])
+    b_cfg  = ru.TypedDict(reg['bridges.%s.cfg' % uid])
 
     spt.setproctitle('rp.%s' % uid)
 
     # create the bridge, store connection addresses in FS, and begin to work
-    bridge = ru.zmq.Bridge.create(uid, cfg=bcfg)
+    bridge = ru.zmq.Bridge.create(uid, cfg=b_cfg)
 
-    reg['bridges.%s.%s' % (uid, bridge.type_in )] = str(bridge.addr_in)
-    reg['bridges.%s.%s' % (uid, bridge.type_out)] = str(bridge.addr_out)
+    reg['bridges.%s.addr_%s' % (uid, bridge.type_in )] = str(bridge.addr_in)
+    reg['bridges.%s.addr_%s' % (uid, bridge.type_out)] = str(bridge.addr_out)
 
     bridge.start()
 
     # bridge runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', scfg.heartbeat.addr_pub,
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub,
                               log=log, prof=prof)
 
     def hb_beat_cb():
@@ -122,23 +123,23 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=bcfg.uid,
-                      timeout=scfg.heartbeat.timeout,
-                      interval=scfg.heartbeat.interval,
+    hb = ru.Heartbeat(uid=b_cfg.uid,
+                      timeout=hb_cfg.timeout,
+                      interval=hb_cfg.interval,
                       beat_cb=hb_beat_cb,
                       term_cb=hb_term_cb,
                       log=log)
     hb.start()
 
     # register cmgr heartbeat by beating once
-    hb.beat(uid=bcfg.cmgr)
+    hb.beat(uid=b_cfg.cmgr)
 
     # react on cmgr heartbeats
     def hb_sub_cb(topic, msg):
-        if msg['uid'] == bcfg.cmgr:
-            hb.beat(uid=bcfg.cmgr)
+        if msg['uid'] == b_cfg.cmgr:
+            hb.beat(uid=b_cfg.cmgr)
 
-    ru.zmq.Subscriber('heartbeat', scfg.heartbeat.addr_sub,
+    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
                       topic='heartbeat', cb=hb_sub_cb,
                       log=log, prof=prof)
 

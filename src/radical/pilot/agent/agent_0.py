@@ -117,7 +117,7 @@ class Agent_0(rpu.Worker):
         self.register_timed_cb(self._check_lifetime, timer=10)
 
         # as long as we are alive, we also want to keep the proxy alive
-        self._session._run_proxy_hb()
+      # self._session._run_proxy_hb()
 
         # all set up - connect to proxy to fetch / push tasks
         self._connect_proxy()

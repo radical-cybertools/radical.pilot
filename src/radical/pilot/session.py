@@ -255,11 +255,14 @@ class Session(rs.Session):
         # only primary sessions start and initialize the proxy service
         self._start_proxy()
 
+        # start heartbeat channel
+        self._start_heartbeat()
+
         # push the session config into the registry
         self._publish_cfg()
 
         # start bridges and components
-        self._init_components()
+        self._start_components()
 
 
     # --------------------------------------------------------------------------
@@ -282,9 +285,10 @@ class Session(rs.Session):
         self._init_cfg_from_dict()
         self._start_registry()
         self._connect_registry()
+        self._start_heartbeat()
         self._publish_cfg()
         self._connect_proxy()
-        self._init_components()
+        self._start_components()
 
 
     # --------------------------------------------------------------------------
@@ -299,7 +303,7 @@ class Session(rs.Session):
 
         self._connect_registry()
         self._init_cfg_from_registry()
-        self._init_components()
+        self._start_components()
 
 
     # --------------------------------------------------------------------------
@@ -490,6 +494,70 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _start_heartbeat(self):
+
+        # only primary and agent_0 sessions manage heartbeats
+        assert self._role in [self._PRIMARY, self._AGENT_0]
+
+        # start the embedded heartbeat pubsub bridge
+        self._hb_pubsub = ru.zmq.PubSub('heartbeat_pubsub',
+                                        cfg={'uid'    : 'heartbeat_pubsub',
+                                             'type'   : 'pubsub',
+                                             'log_lvl': 'debug',
+                                             'path'   : self._cfg.path})
+        self._hb_pubsub.start()
+        time.sleep(1)
+
+        # fill 'cfg.heartbeat' section
+        self._cfg.heartbeat.addr_pub = str(self._hb_pubsub.addr_pub)
+        self._cfg.heartbeat.addr_sub = str(self._hb_pubsub.addr_sub)
+
+        # create a publisher for that channel to publish own heartbeat
+        self._hb_pub = ru.zmq.Publisher(channel='heartbeat_pubsub',
+                                        url=self._cfg.heartbeat.addr_pub,
+                                        log=self._log,
+                                        prof=self._prof)
+
+
+        # start the heartbeat monitor, but first define its callbacks
+        def _hb_beat_cb():
+            # called on every heartbeat: cfg.heartbeat.interval`
+            # publish own heartbeat
+            self._hb_pub.put('heartbeat',
+                             {'cmd' : 'heartbeat',
+                              'args': {'uid': self._uid}})
+            # also update proxy heartbeat
+            self._proxy.request('heartbeat', {'sid': self._uid})
+
+        def _hb_term_cb():
+            # called when some entity misses heartbeats: `cfg.heartbeat.timeout`
+            if self._cmgr:
+                self._cmgr.close()
+            return False
+
+        # create heartbeat manager which monitors all components in this session
+        self._hb = ru.Heartbeat(uid=self._uid,
+                                timeout=self._cfg.heartbeat.timeout,
+                                interval=self._cfg.heartbeat.interval,
+                                beat_cb=_hb_beat_cb,
+                                term_cb=_hb_term_cb,
+                                log=self._log)
+
+        # subscribe to heartbeat messages on the pubsub
+        def _hb_msg_cb(topic, msg):
+            # inform the heartbeat manager about every received heartbeat
+            self._hb.beat(msg['uid'])
+
+        ru.zmq.Subscriber(channel='heartbeat_pubsub',
+                          topic='heartbeat',
+                          url=self._cfg.heartbeat.addr_sub,
+                          cb=_hb_msg_cb,
+                          log=self._log,
+                          prof=self._prof)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _publish_cfg(self):
 
         # The primary session and agent_0 push their configs into the registry.
@@ -500,10 +568,12 @@ class Session(rs.Session):
         # push proxy, bridges, components and heartbeat subsections separately
         flat_cfg = copy.deepcopy(self._cfg)
 
+        del flat_cfg['heartbeat']
         del flat_cfg['bridges']
         del flat_cfg['components']
 
         self._reg['cfg']        = flat_cfg
+        self._reg['heartbeat']  = self._cfg.heartbeat
         self._reg['bridges']    = self._cfg.bridges  # proxy bridges
         self._reg['components'] = {}
 
@@ -583,7 +653,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _init_components(self):
+    def _start_components(self):
 
         assert self._role in [self._PRIMARY, self._AGENT_0, self._AGENT_N]
 
@@ -605,9 +675,6 @@ class Session(rs.Session):
 
         self._reg.dump('%s.bridges' % self._role)
 
-        # make sure we send heartbeats to the proxy
-        self._run_proxy_hb()
-
         # forward any control messages to the proxy
         def fwd_control(topic, msg):
             self._log.debug('fwd control %s: %s', topic, msg)
@@ -618,12 +685,12 @@ class Session(rs.Session):
 
         self._proxy_ctrl_pub = ru.zmq.Publisher(
                 channel=rpc.PROXY_CONTROL_PUBSUB,
-                url=self._reg['bridges.proxy_control_pubsub.pub'],
+                url=self._reg['bridges.proxy_control_pubsub.addr_pub'],
                 path=self._cfg.path)
 
         self._ctrl_sub = ru.zmq.Subscriber(
                 channel=rpc.CONTROL_PUBSUB,
-                url=self._reg['bridges.control_pubsub.sub'],
+                url=self._reg['bridges.control_pubsub.addr_sub'],
                 path=self._cfg.path)
 
         self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB, fwd_control)
@@ -635,12 +702,12 @@ class Session(rs.Session):
 
         self._state_pub = ru.zmq.Publisher(
                 channel=rpc.STATE_PUBSUB,
-                url=self._reg['bridges.state_pubsub.pub'],
+                url=self._reg['bridges.state_pubsub.addr_pub'],
                 path=self._cfg.path)
 
         self._proxy_state_sub = ru.zmq.Subscriber(
                 channel=rpc.PROXY_STATE_PUBSUB,
-                url=self._reg['bridges.proxy_state_pubsub.sub'],
+                url=self._reg['bridges.proxy_state_pubsub.addr_sub'],
                 path=self._cfg.path)
 
         self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
@@ -733,41 +800,14 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_stop", uid=self._uid)
 
         if self._role == self._PRIMARY:
+
+            # dump json
+            self._reg.dump('final')
+
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
                           % (self._t_stop - self._t_start))
             self._rep.ok('>>ok\n')
-
-            # dump json
-            json = {'session' : self.as_dict(),
-                    'pmgr'    : list(),
-                    'pilot'   : list(),
-                    'tmgr'    : list(),
-                    'task'    : list()}
-
-          # json['session']['_id']      = self.uid
-            json['session']['type']     = 'session'
-            json['session']['uid']      = self.uid
-
-            for fname in glob.glob('%s/pmgr.*.json' % self.path):
-                json['pmgr'].append(ru.read_json(fname))
-
-            for fname in glob.glob('%s/pilot.*.json' % self.path):
-                json['pilot'].append(ru.read_json(fname))
-
-            for fname in glob.glob('%s/tmgr.*.json' % self.path):
-                json['tmgr'].append(ru.read_json(fname))
-
-            for fname in glob.glob('%s/tasks.*.json' % self.path):
-                json['task'] += ru.read_json(fname)
-
-            tgt = '%s/%s.json' % (self.path, self.uid)
-            ru.write_json(json, tgt)
-
-        if self._closed and self._created:
-            self._rep.info('<<session lifetime: %.1fs' %
-                           (self._closed - self._created))
-        self._rep.ok('>>ok\n')
 
 
     # --------------------------------------------------------------------------
@@ -788,25 +828,6 @@ class Session(rs.Session):
         finally:
             proxy.stop()
             proxy.wait()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _run_proxy_hb(self):
-
-        self._proxy_heartbeat_thread = mt.Thread(target=self._proxy_hb)
-        self._proxy_heartbeat_thread.daemon = True
-        self._proxy_heartbeat_thread.start()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _proxy_hb(self):
-
-        while True:
-
-            self._proxy.request('heartbeat', {'sid': self._uid})
-            time.sleep(20)
 
 
     # --------------------------------------------------------------------------
