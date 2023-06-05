@@ -132,8 +132,6 @@ Session (Component)
 ::
 
    session_start       : session is being created (not reconnected) (uid: sid)
-   config_parser_start : begin parsing config files                 (uid: sid)
-   config_parser_stop  : stops parsing config files                 (uid: sid)
    session_close       : session close is requested                 (uid: sid)
    session_stop        : session is closed                          (uid: sid)
    session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API])
@@ -227,9 +225,6 @@ bootstrap_0.sh
    ve_setup_stop       : pilot ve setup       stops                 (uid: pilot, [CFG-R])
    ve_activate_start   : pilot ve activation  starts                (uid: pilot, [CFG-R])
    ve_activate_start   : pilot ve activation  stops                 (uid: pilot)
-   client_barrier_start: wait for client signal                     (uid: pilot, [CFG-R])
-   client_barrier_stop : client signal received                     (uid: pilot, [CFG-R])
-   sync_rel            : time sync event                            (uid: pilot, msg: 'agent_0 start')
    cleanup_start       : sandbox deletion     starts                (uid: pilot)
    cleanup_stop        : sandbox deletion     stops                 (uid: pilot)
    bootstrap_0_stop    : pilot bootstrapper 1 stops                 (uid: pilot)
@@ -242,7 +237,6 @@ agent_0 (Component)
 
 ::
 
-   sync_rel            : sync with bootstrapper profile             (uid: pilot, msg: 'agent_0 start')
    hostname            : host or nodename for agent_0               (uid: pilot)
    cmd                 : command received from pmgr                 (uid: pilot, msg: command, [API])
    get                 : tasks   received from task manager         (uid: pilot, msg: 'bulk size: %d')
@@ -255,7 +249,7 @@ agent_0 (Component)
 
 
    partial orders
-   * per instance      : sync_rel, hostname, (cmd | get)*
+   * per instance      : hostname, (cmd | get)*
    * per instance      : dvm_start, dvm_uri, dvm_ready, (dvm_stop | dvm_fail)
 
 AgentStagingInputComponent (Component)
@@ -354,7 +348,7 @@ AgentStagingOutputComponent (Component)
    * per file          : staging_out_skip \
                        | (staging_out_start, (staging_out_fail | staging_out_stop))
 
-UMGRStagingOutputComponent (Component)
+TMGRStagingOutputComponent (Component)
 --------------------------------------
 
 ::
@@ -383,11 +377,10 @@ All profiles
 ::
 
    sync_abs            : sets an absolute, NTP synced time stamp               ([INTERNAL])
-   sync_rel            : sets a *pair* of time stamps considered simultaneous  ([INTERNAL])
    END                 : last entry, profiler is being closed
 
    partial orders
-   * per profile       : (sync_abs | sync_rel), *, END
+   * per profile       : sync_abs, *, END
 
 Conditional events
 ------------------
