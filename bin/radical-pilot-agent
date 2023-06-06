@@ -34,7 +34,8 @@ def bootstrap_3(aid):
 
     print("bootstrap agent %s" % aid)
 
-    agent = None
+    agent       = None
+    reg_service = None
 
     try:
         setproctitle.setproctitle('rp.%s' % aid)
@@ -64,6 +65,9 @@ def bootstrap_3(aid):
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
         print('finalize %s' % aid)
+
+        if reg_service:
+            reg_service.stop()
 
         if agent:
             agent.stop()

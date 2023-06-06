@@ -222,15 +222,29 @@ class Agent_0(rpu.Worker):
                                  'stall_hwm': 1,
                                  'log_level': 'error'} for ac in app_comm}
             for ac in app_comm:
-                AC = ac.upper()
 
                 if ac in self._reg['bridges']:
                     raise ValueError('reserved app_comm name %s' % ac)
 
                 self._reg['bridges.%s' % ac] = app_comm[ac]
 
+                AC = ac.upper()
+
                 self._rcfg['task_environment']['RP_%s_IN'  % AC] = ac['addr_in']
                 self._rcfg['task_environment']['RP_%s_OUT' % AC] = ac['addr_out']
+
+        # some of the bridge addresses also need to be exposed to the workload
+        if app_comm:
+            if 'task_environment' not in self._cfg:
+                self._cfg['task_environment'] = dict()
+            for ac in app_comm:
+                if ac not in self._reg['bridges']:
+                    raise RuntimeError('missing app_comm %s' % ac)
+                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
+                        self._reg['bridges.%s.ac' % ac]['addr_in']
+                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
+                        self._reg['bridges.%s.addr_out' % ac]
+
 
 
     # --------------------------------------------------------------------------
