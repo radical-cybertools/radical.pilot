@@ -849,8 +849,9 @@ class Agent_0(rpu.Worker):
             evers = ''
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s -t %s %s %s %s > env.log 2>&1' \
-               % (rp_cse, ve_path, etype, evers, mods, pre_exec)
+        ve_cmd = '/bin/bash %s -d -p %s -t %s ' % (rp_cse, ve_path, etype) + \
+                 '%s %s %s '                    % (evers, mods, pre_exec)  + \
+                 '-T %s.env > env.log 2>&1'     % ve_local_path
 
         # FIXME: we should export all sandboxes etc. to the prep_env.
         os.environ['RP_RESOURCE_SANDBOX'] = '../../'
@@ -865,14 +866,12 @@ class Agent_0(rpu.Worker):
 
         # if the ve lives outside of the pilot sandbox, link it
         if path:
-            os.symlink(path,          ve_local_path)
-            os.symlink(path + '.env', ve_local_path + '.env')
+            os.symlink(path, ve_local_path)
 
         self._log.debug('ve_path: %s', ve_path)
 
         # prepare the env to be loaded in task exec scripts
-        sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
-        with ru.ru_open(sh_path, 'w') as fout:
+        with ru.ru_open('%s.sh' % ve_local_path, 'w') as fout:
             fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler
