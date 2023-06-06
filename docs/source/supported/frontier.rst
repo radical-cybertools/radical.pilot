@@ -118,7 +118,7 @@ RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<provided_mongodb_uri>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================

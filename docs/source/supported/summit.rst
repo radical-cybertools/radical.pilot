@@ -38,7 +38,7 @@ General description
 
    Launch method ``MPIRUN`` is able to see only one hardware-thread per core,
    thus make sure that ``SMT`` level is set to ``1`` with a corresponding 
-   platform ID either with "``export RADICAL_SMT=1``" (before running the
+   platform ID either with ``export RADICAL_SMT=1`` (before running the
    application) or follow the steps below:
 
    .. code-block:: bash
@@ -133,7 +133,7 @@ RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<provided_mongodb_uri>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
