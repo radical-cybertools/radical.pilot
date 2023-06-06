@@ -141,12 +141,6 @@ if __name__ == '__main__':
         # radical.pilot and radical.utils from sdist archives on the local
         # filesystem. This only works for the default resource, local.localhost.
         report.info('Call pilot.prepare_env()... ')
-        pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type' : 'venv',
-                                    'path' : '/tmp/ve3',
-                                    'setup': [rp.sdist_path,
-                                              ru.sdist_path,
-                                              'mpi4py']})
         report.info('done\n')
 
         # Launch a raptor master task, which will launch workers and self-submit
@@ -164,7 +158,6 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
-            td.named_env      = 'rp'
             td.input_staging  = [{'source': '%s/raptor_master.py' % PWD,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,

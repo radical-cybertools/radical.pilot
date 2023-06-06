@@ -297,7 +297,7 @@ class Default(TMGRStagingInputComponent):
 
         self._prof.prof("create_sandbox_start", uid=uid)
 
-        src_context = {'pwd'      : os.getcwd(),                # !!!
+        src_context = {'pwd'      : task['client_sandbox'],     # !!!
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],

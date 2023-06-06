@@ -42,22 +42,22 @@ class Update(rpu.Worker):
     #
     def initialize(self):
 
-        self._sid        = self._cfg['sid']
-        self._dburl      = self._cfg['dburl']
+        self._sid   = self._cfg['sid']
+        self._dburl = self._reg['cfg.dburl']
 
         # get db handle from a connected, non-primary session
-        self._dbs   = DBSession(self._sid, self._dburl, {}, self._log, connect=True)
+        self._dbs   = DBSession(self._sid, self._dburl, self._log, connect=True)
         self._coll  = self._dbs._c
         self._bulk  = self._coll.initialize_ordered_bulk_op()
         self._last  = time.time()        # time of last bulk push
         self._uids  = list()             # list of collected uids
         self._lock  = ru.Lock()          # protect _bulk
 
-        self._bulk_time = self._cfg.bulk_time
-        self._bulk_size = self._cfg.bulk_size
+        self._db_bulk_time = self._cfg.db_bulk_time
+        self._db_bulk_size = self._cfg.db_bulk_size
 
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
-        self.register_timed_cb(self._idle_cb, timer=self._bulk_time)
+        self.register_timed_cb(self._idle_cb, timer=self._db_bulk_time)
 
 
     # --------------------------------------------------------------------------
@@ -82,8 +82,8 @@ class Update(rpu.Worker):
         # only push if flush is forced, or when collection time or size
         # have been exceeded
         if not flush \
-           and age < self._bulk_time \
-           and len(self._uids) < self._bulk_size:
+           and age < self._db_bulk_time \
+           and len(self._uids) < self._db_bulk_size:
             return False
 
         try:
