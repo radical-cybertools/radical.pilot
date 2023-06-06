@@ -88,23 +88,6 @@ class Agent_0(rpu.Worker):
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
         self.register_subscriber(rpc.STATE_PUBSUB,   self._service_state_cb)
 
-        # run our own slow-paced heartbeat monitor to watch pmgr heartbeats
-        # FIXME: we need to get pmgr freq
-        freq = 100
-        tint = freq / 3
-        tout = freq * 10
-        self._hb = ru.Heartbeat(uid=self._uid,
-                                timeout=tout,
-                                interval=tint,
-                                beat_cb=self._hb_check,  # no own heartbeat(pmgr pulls)
-                                term_cb=self._hb_term_cb,
-                                log=self._log)
-        self._hb.start()
-
-        # register pmgr heartbeat
-        self._log.info('hb init for %s', self._pmgr)
-        self._hb.beat(uid=self._pmgr)
-
         # register the control callback
         self.register_subscriber(rpc.PROXY_CONTROL_PUBSUB,
                                  self._proxy_control_cb)
@@ -116,28 +99,8 @@ class Agent_0(rpu.Worker):
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
 
-        # as long as we are alive, we also want to keep the proxy alive
-      # self._session._run_proxy_hb()
-
         # all set up - connect to proxy to fetch / push tasks
         self._connect_proxy()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_check(self):
-
-        self._log.debug('hb check')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_term_cb(self, msg=None):
-
-        self._session.close()
-        self._log.warn('hb termination: %s', msg)
-
-        return None
 
 
     # --------------------------------------------------------------------------
@@ -368,7 +331,6 @@ class Agent_0(rpu.Worker):
 
         # tear things down in reverse order
         self._rm.stop()
-        self._hb.stop()
         self._session.close()
 
 

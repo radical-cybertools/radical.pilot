@@ -214,18 +214,6 @@ class Component(object):
     #
     def start(self):
 
-        # start heartbeat monitor
-        self._hb = ru.Heartbeat(uid=self.uid,
-                                timeout=self._reg['cfg.heartbeat.timeout'],
-                                interval=self._reg['cfg.heartbeat.interval'],
-                                beat_cb=self._hb_beat_cb,  # on every heartbeat
-                                term_cb=self._hb_term_cb,  # on termination
-                                log=self._log)
-
-        # heartbeat watches our own cmgr
-        self._log.debug('=== hb watch %s', self._owner)
-        self._hb.beat(self._uid)
-
         # start worker thread
         sync = mt.Event()
         self._thread = mt.Thread(target=self._work_loop, args=[sync])
@@ -240,32 +228,6 @@ class Component(object):
             time.sleep(0.01)
 
         assert self._thread.is_alive()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_beat_cb(self):
-        '''
-        publish own heartbeat in the registry and check owner's heartbeat
-        '''
-
-        tstamp = time.time()
-        self._reg['heartbeats.timestamps.%s' % self._uid] = tstamp
-        self._log.debug('=== hb_beat %s: put %.1f', self.uid, tstamp)
-
-        tstamp = self._reg['heartbeats.timestamps.%s' % self._owner]
-        self._hb.beat(self._owner, timestamp=tstamp)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _hb_term_cb(self, uid=None):
-
-        self._log.debug('=== hb_term %s: %s died', self.uid, uid)
-        self._prof.prof('term', uid=self._uid)
-
-        # cmgr is gone, no restart possible - terminate
-        return False
 
 
     # --------------------------------------------------------------------------
