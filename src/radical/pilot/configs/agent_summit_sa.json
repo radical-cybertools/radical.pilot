@@ -43,7 +43,7 @@
     },
 
     "agents": {
-        "agent.1": {
+        "agent_1": {
             "target": "node",
             "components": {
                 "AgentStagingInputComponent"  : {"count" : 1},
@@ -51,7 +51,7 @@
                 "AgentExecutingComponent"     : {"count" : 1}
             }
         },
-        "agent.2": {
+        "agent_2": {
             "target": "node",
             "components": {
                 "AgentStagingInputComponent"  : {"count" : 1},

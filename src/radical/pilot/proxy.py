@@ -235,7 +235,7 @@ class Proxy(ru.zmq.Server):
 
         proxy_cp = None
         proxy_sp = None
-        proxy_aq = None
+        proxy_tq = None
 
         try:
             proxy_cp = ru.zmq.PubSub(channel='proxy_control_pubsub',
@@ -250,7 +250,7 @@ class Proxy(ru.zmq.Server):
                                           'log_lvl': 'debug',
                                           'path'   : sid})
 
-            proxy_aq = ru.zmq.Queue (channel='proxy_task_queue',
+            proxy_tq = ru.zmq.Queue (channel='proxy_task_queue',
                                      cfg={'uid'    : 'proxy_task_queue',
                                           'type'   : 'queue',
                                           'log_lvl': 'debug',
@@ -258,14 +258,14 @@ class Proxy(ru.zmq.Server):
 
             proxy_cp.start()
             proxy_sp.start()
-            proxy_aq.start()
+            proxy_tq.start()
 
             cfg = {'proxy_control_pubsub': {'addr_pub': str(proxy_cp.addr_pub),
                                             'addr_sub': str(proxy_cp.addr_sub)},
                     'proxy_state_pubsub' : {'addr_pub': str(proxy_sp.addr_pub),
                                             'addr_sub': str(proxy_sp.addr_sub)},
-                    'proxy_task_queue'   : {'addr_put': str(proxy_aq.addr_put),
-                                            'addr_get': str(proxy_aq.addr_get)}}
+                    'proxy_task_queue'   : {'addr_put': str(proxy_tq.addr_put),
+                                            'addr_get': str(proxy_tq.addr_get)}}
 
             # inform service about endpoint details
             q.put(cfg)
@@ -282,7 +282,7 @@ class Proxy(ru.zmq.Server):
 
             if proxy_cp: proxy_cp.stop()
             if proxy_sp: proxy_sp.stop()
-            if proxy_aq: proxy_aq.stop()
+            if proxy_tq: proxy_tq.stop()
 
             log.info('terminated')
 

@@ -856,7 +856,11 @@ class PMGRLaunchingComponent(rpu.Component):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
+        agent_cfg['uid']                 = 'agent_0'
+        agent_cfg['sid']                 = sid
+        agent_cfg['pid']                 = pid
         agent_cfg['owner']               = pid
+        agent_cfg['pmgr']                = self._pmgr
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = allocated_cores
@@ -866,10 +870,6 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
         agent_cfg['proxy_url']           = agent_proxy_url
-        agent_cfg['sid']                 = sid
-        agent_cfg['pid']                 = pid
-        agent_cfg['pmgr']                = self._pmgr
-        agent_cfg['logdir']              = '.'
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
@@ -890,13 +890,12 @@ class PMGRLaunchingComponent(rpu.Component):
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
                               'gpu': allocated_gpus}
-        pilot['$set']      = ['resources']
 
 
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent.0.cfg'
+        agent_cfg_name = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 

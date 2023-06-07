@@ -242,7 +242,8 @@ setup_args = {
     'packages'           : find_namespace_packages('src', include=['radical.*']),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
-                            'bin/radical-pilot-agent',
+                            'bin/radical-pilot-agent_0',
+                            'bin/radical-pilot-agent_n',
                           # 'bin/radical-pilot-agent-bridge',
                             'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush',

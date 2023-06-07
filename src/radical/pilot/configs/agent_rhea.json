@@ -32,31 +32,31 @@
     },
 
     "agents": {
-        "agent.1": {
+        "agent_1": {
             "target": "node",
             "components": {
                 "AgentStagingInputComponent"  : {"count" : 1}
             }
         },
-        "agent.2": {
+        "agent_2": {
             "target": "node",
             "components": {
                 "AgentSchedulingComponent"    : {"count" : 1}
             }
         },
-        "agent.3": {
+        "agent_3": {
             "target": "node",
             "components": {
                 "AgentSchedulingComponent"    : {"count" : 1}
             }
         },
-        "agent.4": {
+        "agent_4": {
             "target": "node",
             "components": {
                 "AgentStagingOutputComponent" : {"count" : 1}
             }
         },
-        "agent.5": {
+        "agent_5": {
             "target": "node",
             "components": {
                  "UpdateWorker"               : {"count" : 1}

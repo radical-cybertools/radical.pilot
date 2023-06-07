@@ -232,6 +232,14 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
+    def wait(self):
+
+        while not self._term.is_set():
+            time.sleep(1)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _work_loop(self, sync):
 
         try:
@@ -747,8 +755,6 @@ class Component(object):
         assert pubsub not in self._publishers
         cfg = self._reg['bridges.%s' % pubsub]
 
-        import pprint
-        self._log.debug('===>> %s', pprint.pformat(cfg))
         self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
                                                     url=cfg['addr_pub'],
                                                     log=self._log,

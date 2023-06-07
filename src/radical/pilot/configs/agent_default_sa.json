@@ -4,7 +4,7 @@
 # a functional pilot agent, without any component redundency.
 
 {
-    # agent.0 must always have target 'local' at this point
+    # agent_0 must always have target 'local' at this point
     # mode 'shared'   : local node is also used for CUs
     # mode 'reserved' : local node is reserved for the agent
     # FIXME: mode is unused

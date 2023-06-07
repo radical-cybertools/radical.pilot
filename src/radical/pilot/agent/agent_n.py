@@ -20,7 +20,7 @@ class Agent_n(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg: ru.Config, session):
 
         self._cfg      = cfg
         self._sid      = cfg.sid
@@ -30,7 +30,7 @@ class Agent_n(rpu.Worker):
         self._sid      = cfg.sid
         self._reg_addr = cfg.reg_addr
 
-        self._session  = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_N)
+        self._session  = session
 
         # log / profile via session until component manager is initialized
         self._log     = self._session._log

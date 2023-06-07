@@ -71,7 +71,7 @@
   # },
   #
   # "agents": {
-  #     "agent.1": {
+  #     "agent_1": {
   #         "target": "node",
   #         "components": {
   #             "agent_staging_input"  : {"count" : 1},
@@ -79,7 +79,7 @@
   #             "agent_staging_output" : {"count" : 1}
   #         }
   #     },
-  #     "agent.2": {
+  #     "agent_2": {
   #         "target": "node",
   #         "components": {
   #             "agent_staging_input"  : {"count" : 1},

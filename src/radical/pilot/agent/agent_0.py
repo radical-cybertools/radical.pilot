@@ -40,18 +40,22 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg: ru.Config):
+    def __init__(self):
 
-        self._uid     = 'agent.0'
+        cfg = ru.Config(path='./agent_0.cfg')
+
+        self._uid     = cfg.uid
         self._pid     = cfg.pid
         self._sid     = cfg.sid
+        self._owner   = cfg.owner
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
 
         self._session = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_0)
-        self._cfg     = self._session._cfg
         self._rcfg    = self._session._rcfg
-        self._log     = ru.Logger(self._uid, ns='radical.pilot')
+
+        # init the worker / component base classes, connects registry
+        rpu.Worker.__init__(self, cfg, self._session)
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -62,11 +66,7 @@ class Agent_0(rpu.Worker):
         self._services_setup        = mt.Event()
 
         # this is the earliest point to sync bootstrap and agent profiles
-        self._prof = ru.Profiler(ns='radical.pilot', name=self._uid)
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
-
-        # init the worker / component base classes, connects registry
-        rpu.Worker.__init__(self, cfg, self._session)
 
         # configure ResourceManager before component startup, as components need
         # ResourceManager information for function (scheduler, executor)
@@ -82,6 +82,17 @@ class Agent_0(rpu.Worker):
         self._write_sa_configs()
         self._start_sub_agents()   # TODO: move to cmgr?
 
+        # regularly check for lifetime limit
+        self.register_timed_cb(self._check_lifetime, timer=10)
+
+        # all set up - connect to proxy to fetch / push tasks
+        self._connect_proxy()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _connect_proxy(self):
+
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and components.  We are
         # ready to rumble!
@@ -95,17 +106,6 @@ class Agent_0(rpu.Worker):
         # proxy state updates
         self.register_publisher(rpc.PROXY_STATE_PUBSUB)
         self.register_subscriber(rpc.STATE_PUBSUB, self._proxy_state_cb)
-
-        # regularly check for lifetime limit
-        self.register_timed_cb(self._check_lifetime, timer=10)
-
-        # all set up - connect to proxy to fetch / push tasks
-        self._connect_proxy()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _connect_proxy(self):
 
       # # write config files for proxy channels
       # for p in self._cfg.proxy:
@@ -314,11 +314,11 @@ class Agent_0(rpu.Worker):
 
         out, err, log = '', '', ''
 
-        try   : out = open('./agent.0.out', 'r').read(1024)
+        try   : out = open('./agent_0.out', 'r').read(1024)
         except: pass
-        try   : err = open('./agent.0.err', 'r').read(1024)
+        try   : err = open('./agent_0.err', 'r').read(1024)
         except: pass
-        try   : log = open('./agent.0.log', 'r').read(1024)
+        try   : log = open('./agent_0.log', 'r').read(1024)
         except: pass
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
@@ -355,10 +355,10 @@ class Agent_0(rpu.Worker):
         # we have all information needed by the subagents -- write the
         # sub-agent config files.
 
-        # write deep-copies of the config for each sub-agent (sans from agent.0)
+        # write deep-copies of the config for each sub-agent (sans from agent_0)
         for sa in self._rcfg.get('agents', {}):
 
-            assert (sa != 'agent.0'), 'expect subagent, not agent.0'
+            assert (sa != 'agent_0'), 'expect subagent, not agent_0'
 
             # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
@@ -372,14 +372,14 @@ class Agent_0(rpu.Worker):
 
             tmp_cfg['uid']   = sa
             tmp_cfg['aid']   = sa
-            tmp_cfg['owner'] = 'agent.0'
+            tmp_cfg['owner'] = 'agent_0'
 
 
     # --------------------------------------------------------------------------
     #
     def _start_services(self):
 
-        service_descriptions = self._rcfg.services
+        service_descriptions = self._cfg.services
         if not service_descriptions:
             return
         self._log.info('starting agent services')
@@ -395,7 +395,6 @@ class Agent_0(rpu.Worker):
             cfg = self._cfg
             tid = ru.generate_id('service.%(item_counter)04d',
                                  ru.ID_CUSTOM, ns=self._cfg.sid)
-
             task = dict()
             task['origin']            = 'agent'
             task['description']       = td.as_dict()
@@ -442,7 +441,6 @@ class Agent_0(rpu.Worker):
 
             self._log.debug('service state update %s: %s',
                             service['uid'], service['state'])
-
             if service['state'] != rps.AGENT_EXECUTING:
                 continue
 
