@@ -1526,6 +1526,11 @@ while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
+for name in $(set | grep -e '^[^ ]*conda[^ ]* ()' | cut -f 1 -d ' ')
+do
+    export -f $name
+done
+
 # pre_bootstrap_0 is done at this point, save resulting env
 env_dump -t env/bs0_pre_0.env
 
