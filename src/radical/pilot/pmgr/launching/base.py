@@ -240,9 +240,6 @@ class PMGRLaunchingComponent(rpu.Component):
 
             self._log.info('received "kill_pilots" command (%s)', pids)
 
-            if arg.get('delay'):
-                time.sleep(int(arg['delay']))
-
             self._kill_pilots(pids)
 
         return True

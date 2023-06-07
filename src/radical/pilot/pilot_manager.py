@@ -865,8 +865,7 @@ class PilotManager(rpu.Component):
         # inform pmgr.launcher - it will force-kill the pilots
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
-                                                   'uids' : uids,
-                                                   'delay': _timeout}})
+                                                   'uids' : uids}})
 
         # wait for the kill to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
