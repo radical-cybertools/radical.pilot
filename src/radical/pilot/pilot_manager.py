@@ -831,16 +831,16 @@ class PilotManager(rpu.Component):
 
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
-        # send the cancelation request to the pilots
+        # send the cancellation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
-        time.sleep(_timeout)
 
         # inform pmgr.launcher - it will force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
-                                                   'uids' : uids}})
+                                                   'uids' : uids,
+                                                   'delay': _timeout}})
 
         self.wait_pilots(uids=uids, timeout=_timeout)
 
