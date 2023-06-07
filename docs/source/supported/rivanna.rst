@@ -1,6 +1,6 @@
-====================
+=============
 Rivanna (UVA)
-====================
+=============
 
 Platform user guide
 ===================
@@ -37,10 +37,10 @@ General description
   * ``dev``
 
 .. note::
+
    Rivanna nodes are heterogeneous and have different node configurations.
    Please refer to this `link <https://www.rc.virginia.edu/userinfo/rivanna/overview/#system-details>`_
    for more information about the resources per node.
-
 
 Setup execution environment
 ===========================
@@ -48,8 +48,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** ``venv`` (virtual environment with ``conda`` is
-not provided by the system)
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
@@ -58,19 +57,28 @@ not provided by the system)
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-Install RADICAL-Pilot after activating a corresponding virtual environment.
+Install RADICAL-Pilot after activating a corresponding virtual environment:
+
+.. code-block:: bash
+
+   pip install radical.pilot
+
+.. note::
+
+   Rivanna does not provide virtual environments with ``conda``.
 
 MongoDB
 -------
 
 MongoDB service is **not** provided by UVA, thus, you have to use either your
-running instance of MongoDB service or contact the RADICAL team for a support.
+running instance of MongoDB service or contact the RADICAL team by opening a
+`ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
 RADICAL-Pilot will connect to the MongoDB instance using a corresponding URL.
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<mongodb_url>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
