@@ -55,16 +55,16 @@ class Worker(object):
         state_cfg = self._reg['bridges.%s' % rpc.STATE_PUBSUB]
         ctrl_cfg  = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
 
-        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['sub'],
+        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._state_cb,
                           topic=rpc.STATE_PUBSUB)
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._control_cb,
                           topic=rpc.CONTROL_PUBSUB)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
-                                          url=ctrl_cfg['pub'],
+                                          url=ctrl_cfg['addr_pub'],
                                           log=self._log,
                                           prof=self._prof)
         # let ZMQ settle
@@ -144,27 +144,24 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, topic, msg):
+    def _state_cb(self, topic, things):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        import pprint
+        self._log.debug('=== msg %s: %s', topic, pprint.pformat(things))
 
-        # general task state updates -- check if our master is affected
-        if cmd == 'update':
+        for thing in ru.as_list(things):
 
-            for thing in ru.as_list(arg):
+            uid   = thing['uid']
+            state = thing['state']
 
-                uid   = thing['uid']
-                state = thing['state']
+            if uid == self._raptor_id:
 
-                if uid == self._raptor_id:
-
-                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
-                        # master completed - terminate this worker
-                        self._log.info('master %s final: %s - terminate',
-                                       uid, state)
-                        self.stop()
-                        return False
+                if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                    # master completed - terminate this worker
+                    self._log.info('master %s final: %s - terminate',
+                                   uid, state)
+                    self.stop()
+                    return False
 
         return True
 

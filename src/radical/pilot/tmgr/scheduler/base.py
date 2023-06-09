@@ -306,7 +306,9 @@ class TMGRSchedulingComponent(rpu.Component):
                                 to_cancel[pid] = list()
                             to_cancel[pid].append(uid)
 
-            dbs = self._session._dbs
+          # FIXME: MongoDB
+          # dbs = self._session._dbs
+            dbs = None
 
             if not dbs:
                 # too late, already closing down

@@ -59,7 +59,6 @@ class ComponentManager(object):
         # component managers listen on the heartbeat pubsub to see if spawned
         # components come alive
         self._heartbeats = dict()  # heartbeats we have seen
-        ru.write_json(self._cfg.as_dict(), '%s.json' % self.uid)
         ru.zmq.Subscriber(channel='heartbeat_pubsub',
                           topic='heartbeat',
                           url=self._hb_cfg.addr_sub,

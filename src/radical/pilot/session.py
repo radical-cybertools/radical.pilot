@@ -207,7 +207,7 @@ class Session(rs.Session):
 
         else:
 
-            self._init_secondary()
+            self._init_default()
 
 
         # now we have config and uid - initialize base class (saga session)
@@ -229,7 +229,7 @@ class Session(rs.Session):
         if self._role == self._PRIMARY:
             self._rep.ok('>>ok\n')
 
-        self._reg.dump('sinit.%s' % self._role)
+        assert(self._reg)
 
 
     # --------------------------------------------------------------------------
@@ -264,6 +264,9 @@ class Session(rs.Session):
         # start bridges and components
         self._start_components()
 
+        # crosswire local channels and proxy channels
+        self._crosswire_proxy()
+
 
     # --------------------------------------------------------------------------
     #
@@ -286,9 +289,10 @@ class Session(rs.Session):
         self._start_registry()
         self._connect_registry()
         self._start_heartbeat()
-        self._publish_cfg()
         self._connect_proxy()
+        self._publish_cfg()
         self._start_components()
+        self._crosswire_proxy()
 
 
     # --------------------------------------------------------------------------
@@ -308,7 +312,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _init_secondary(self):
+    def _init_default(self):
 
         # sub-agents and components connect to an existing registry (owned by
         # the `primary` session or `agent_0`) and load config settings from
@@ -336,6 +340,9 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _connect_registry(self):
+
+        if not self._cfg.reg_addr:
+            self._cfg.reg_addr = self._reg_addr
 
         if not self._cfg.reg_addr:
             raise ValueError('session needs a registry address')
@@ -577,6 +584,11 @@ class Session(rs.Session):
         self._reg['bridges']    = self._cfg.bridges  # proxy bridges
         self._reg['components'] = {}
 
+        # if we have proxy channels, publish them in the bridges configs too
+        if self._proxy_cfg:
+            for channel in self._proxy_cfg:
+                self._reg['bridges.%s' % channel] = self._proxy_cfg[channel]
+
         # primary sessions publish all known resource configs under `rcfgs`, the
         # agent_0 only publishes the *current* resource config under `rcfg`.
         if self._role == self._PRIMARY:
@@ -586,8 +598,6 @@ class Session(rs.Session):
         elif self._role == self._AGENT_0:
             self._reg['rcfg']  = self._rcfg
             self._reg['rcfgs'] = dict()
-
-        self._reg.dump('published')
 
 
     # --------------------------------------------------------------------------
@@ -623,13 +633,13 @@ class Session(rs.Session):
         # the proxy url becomes part of the session cfg
         self._cfg.proxy_url = self._proxy_url
 
-        self._rep.info ('<<bridge     : ')
+        self._rep.info ('<<zmq proxy  : ')
         self._rep.plain('[%s]' % self._proxy_url)
 
         # configure proxy channels
         try:
             self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
-            self._proxy_cfg = self._proxy.request('register', {'sid': self._uid})
+            self._proxy_cfg = self._proxy.request('register', {'sid':self._uid})
 
         except:
             self._log.exception('%s: failed to start proxy', self._role)
@@ -651,13 +661,73 @@ class Session(rs.Session):
         self._log.debug('proxy response: %s', self._proxy_cfg)
 
 
+    # ----------------------------------------------------------------------
+    def crosswire_pubsub(self, src, tgt):
+
+        path = self._cfg.path
+        reg  = self._reg
+
+        url     = reg['bridges.%s.addr_pub' % tgt.lower()]
+        self._log.debug('=== cross %s %s', url, tgt)
+        tgt_pub = ru.zmq.Publisher(channel=tgt, path=path,
+                                   url=url)
+
+        def pubsub_fwd(topic, msg):
+            if msg.get('fwd'):  # only forward if requested
+                del msg['fwd']  # only forward once
+                tgt_pub.put(tgt, msg)
+                self._log.debug('=== === fwd %s to %s: %s', src, tgt, msg)
+            else:
+                self._log.debug('=== =!= fwd %s to %s: %s', src, tgt, msg)
+
+        ru.zmq.Subscriber(channel=src, path=path, cb=pubsub_fwd,
+                          url=reg['bridges.%s.addr_sub' % src.lower()])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _crosswire_proxy(self):
+
+        # - forward local ctrl messages to control proxy
+        # - forward local state updates to state proxy
+        # - forward local task queue to proxy task queue
+        #
+        # - forward proxy ctrl messages to local control pubsub
+        # - forward proxy state updates to local state pubsub
+        # - forward proxy task queue messages to local task queue
+        #
+        # The local task queue endpoints differ for primary session and agent_0
+        #
+        # - primary:
+        #   - forward from AGENT_STAGING_INPUT_PENDING_QUEUE
+        #   - forward to   TMGR_STAGING_OUTPUT_PENDING_QUEUE
+        #
+        # - agent_0:
+        #   - forward to   AGENT_STAGING_INPUT_PENDING_QUEUE
+        #   - forward from TMGR_STAGING_OUTPUT_PENDING_QUEUE
+        #
+        # NOTE: the primary session task queues don't live in the session itself
+        #       but are owned by the task manager instead - it will trigger the
+        #       crosswire once the queues are created.
+
+        assert self._role in [self._PRIMARY, self._AGENT_0]
+
+        self.crosswire_pubsub(src=rpc.CONTROL_PUBSUB,
+                              tgt=rpc.PROXY_CONTROL_PUBSUB)
+        self.crosswire_pubsub(src=rpc.PROXY_CONTROL_PUBSUB,
+                              tgt=rpc.CONTROL_PUBSUB)
+
+        self.crosswire_pubsub(src=rpc.STATE_PUBSUB,
+                              tgt=rpc.PROXY_STATE_PUBSUB)
+        self.crosswire_pubsub(src=rpc.PROXY_STATE_PUBSUB,
+                              tgt=rpc.STATE_PUBSUB)
+
+
     # --------------------------------------------------------------------------
     #
     def _start_components(self):
 
         assert self._role in [self._PRIMARY, self._AGENT_0, self._AGENT_N]
-
-        self._reg.dump('init')
 
         # primary sessions and agents have a component manager which also
         # manages heartbeat.  'self._cmgr.close()` should be called during
@@ -665,52 +735,6 @@ class Session(rs.Session):
         self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr, self._uid)
         self._cmgr.start_bridges(self._cfg.bridges)
         self._cmgr.start_components(self._cfg.components)
-
-        # if we have proxy channels, publish them in the bridges configs too
-        # push the proxy config as bridge to the agent_0 registry
-        if self._proxy_cfg:
-            for channel in self._proxy_cfg:
-                self._reg['bridges.%s' % channel] = self._proxy_cfg[channel]
-
-
-        self._reg.dump('%s.bridges' % self._role)
-
-        # forward any control messages to the proxy
-        def fwd_control(topic, msg):
-            self._log.debug('fwd control %s: %s', topic, msg)
-            self._proxy_ctrl_pub.put(rpc.PROXY_CONTROL_PUBSUB, msg)
-
-        ru.write_json(fname='foo.json', data=self._reg['bridges'])
-        ru.write_json(fname='cfg.json', data=self._cfg)
-
-        self._proxy_ctrl_pub = ru.zmq.Publisher(
-                channel=rpc.PROXY_CONTROL_PUBSUB,
-                url=self._reg['bridges.proxy_control_pubsub.addr_pub'],
-                path=self._cfg.path)
-
-        self._ctrl_sub = ru.zmq.Subscriber(
-                channel=rpc.CONTROL_PUBSUB,
-                url=self._reg['bridges.control_pubsub.addr_sub'],
-                path=self._cfg.path)
-
-        self._ctrl_sub.subscribe(rpc.CONTROL_PUBSUB, fwd_control)
-
-        # collect any state updates from the proxy
-        def fwd_state(topic, msg):
-            self._log.debug('fwd state   %s: %s', topic, msg)
-            self._state_pub.put(topic, msg)
-
-        self._state_pub = ru.zmq.Publisher(
-                channel=rpc.STATE_PUBSUB,
-                url=self._reg['bridges.state_pubsub.addr_pub'],
-                path=self._cfg.path)
-
-        self._proxy_state_sub = ru.zmq.Subscriber(
-                channel=rpc.PROXY_STATE_PUBSUB,
-                url=self._reg['bridges.proxy_state_pubsub.addr_sub'],
-                path=self._cfg.path)
-
-        self._proxy_state_sub.subscribe(rpc.PROXY_STATE_PUBSUB, fwd_state)
 
 
     # --------------------------------------------------------------------------
@@ -802,7 +826,7 @@ class Session(rs.Session):
         if self._role == self._PRIMARY:
 
             # dump json
-            self._reg.dump('final')
+            self._reg.dump('registry')
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
@@ -990,7 +1014,7 @@ class Session(rs.Session):
         """Get known PilotManager(s).
 
         Arguments:
-            pmgr_uids (str | list[str]): Unique identifier of the PilotManager we want.
+            pmgr_uids (str | list[str]): uids of the PilotManagers we want.
 
         Returns:
             str | list[str]: One or more `radical.pilot.PilotManager` objects.
@@ -1035,7 +1059,7 @@ class Session(rs.Session):
         instances associated with this session.
 
         Returns:
-            list[str]: A list of :class:`radical.pilot.TaskManager` uids (`list` of `strings`).
+            list[str]: A list of :class:`radical.pilot.TaskManager` uids.
 
         """
 
@@ -1048,7 +1072,7 @@ class Session(rs.Session):
         """Get known TaskManager(s).
 
         Arguments:
-            tmgr_uids (str | list[str]): Unique identifier of the TaskManager we want
+            tmgr_uids (str | list[str]): uids of the TaskManagers we want
 
         Returns:
             radical.pilot.TaskManager | list[radical.pilot.TaskManager]:
@@ -1146,9 +1170,9 @@ class Session(rs.Session):
     def _get_client_sandbox(self):
         """Client sandbox path.
 
-        For the session in the client application, this is `os.getcwd()`.  For the
-        session in any other component, specifically in pilot components, the
-        client sandbox needs to be read from the session config (or pilot
+        For the session in the client application, this is `os.getcwd()`.  For
+        the session in any other component, specifically in pilot components,
+        the client sandbox needs to be read from the session config (or pilot
         config).  The latter is not yet implemented, so the pilot can not yet
         interpret client sandboxes.  Since pilot-side staging to and from the
         client sandbox is not yet supported anyway, this seems acceptable
@@ -1346,7 +1370,7 @@ class Session(rs.Session):
         resource = pilot['description'].get('resource')
 
         if not resource:
-            raise ValueError('Cannot get endpoint filesystem w/o resource target')
+            raise ValueError("Can't get fs-endpoint w/o resource target")
 
         with self._cache_lock:
 
@@ -1398,7 +1422,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _get_jsurl(self, pilot):
-        """Get job service endpoint and hop URL for the pilot's target resource."""
+        """Get job service endpoint and hop URL for pilot's target resource."""
 
         resrc   = pilot['description']['resource']
         schema  = pilot['description']['access_schema']

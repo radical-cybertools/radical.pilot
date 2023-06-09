@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
         # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 1024 * 1024  # number of tasks to run
+        n = 1 * 1024  # number of tasks to run
         report.info('create %d task description(s)\n' % n)
 
         tds = list()

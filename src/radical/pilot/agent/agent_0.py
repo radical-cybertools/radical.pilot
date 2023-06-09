@@ -31,11 +31,7 @@ class Agent_0(rpu.Worker):
     the sub-agents die, it will shut down the other sub-agents and itself.
 
     This class inherits the rpu.Worker, so that it can use its communication
-    bridges and callback mechanisms.  Specifically, it will pull the tasks from
-    the proxy comm channels and forwards them to the agent's component network
-    (see `work()`).  It will also watch the proxy pubsub for any commands to be
-    enacted or forwarded (pilot termination, task cancelation, etc), and will
-    take care of heartbeat messages to be sent to the client.
+    bridges and callback mechanisms.
     '''
 
     # --------------------------------------------------------------------------
@@ -84,54 +80,6 @@ class Agent_0(rpu.Worker):
 
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
-
-        # all set up - connect to proxy to fetch / push tasks
-        self._connect_proxy()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _connect_proxy(self):
-
-        # at this point the session is up and connected, and it should have
-        # brought up all communication bridges and components.  We are
-        # ready to rumble!
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._check_control)
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._service_state_cb)
-
-        # register the control callback
-        self.register_subscriber(rpc.PROXY_CONTROL_PUBSUB,
-                                 self._proxy_control_cb)
-
-        # proxy state updates
-        self.register_publisher(rpc.PROXY_STATE_PUBSUB)
-        self.register_subscriber(rpc.STATE_PUBSUB, self._proxy_state_cb)
-
-      # # write config files for proxy channels
-      # for p in self._cfg.proxy:
-      #     ru.write_json('%s.cfg' % p, self._cfg.proxy[p])
-
-        # listen for new tasks from the client
-        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
-                            rpc.PROXY_TASK_QUEUE,
-                            qname=self._pid,
-                            cb=self._proxy_input_cb)
-
-        # and forward to agent input staging
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
-
-        # listen for completed tasks to foward to client
-        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
-                            rpc.AGENT_COLLECTING_QUEUE,
-                            qname='default',
-                            cb=self._proxy_output_cb)
-
-        # and register output
-        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
-                             rpc.PROXY_TASK_QUEUE)
-
-        # FIXME: register pubsubs
 
 
     # --------------------------------------------------------------------------
@@ -251,6 +199,26 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
+        # listen for new tasks from the client
+        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._pid,
+                            cb=self._proxy_input_cb)
+
+        # and forward to agent input staging
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
+
+        # listen for completed tasks to foward to client
+        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
+                            rpc.AGENT_COLLECTING_QUEUE,
+                            qname='default',
+                            cb=self._proxy_output_cb)
+
+        # and register output
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
+                             rpc.PROXY_TASK_QUEUE)
+
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
         env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
@@ -336,11 +304,12 @@ class Agent_0(rpu.Worker):
                  'stdout' : out,
                  'stderr' : err,
                  'logfile': log,
-                 'state'  : state}
+                 'state'  : state,
+                 'forward': True}
 
         self._log.debug('push final state update')
         self._log.debug('update state: %s: %s', state, self._final_cause)
-        self.publish(rpc.PROXY_STATE_PUBSUB,
+        self.publish(rpc.STATE_PUBSUB,
                      topic=rpc.STATE_PUBSUB, msg=[pilot])
 
         # tear things down in reverse order
@@ -595,16 +564,13 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _proxy_state_cb(self, topic, msg):
-        # no need to check - blindly forward all messages to the proxy
-        self.publish(rpc.PROXY_STATE_PUBSUB, topic=topic, msg=msg)
+    def _control_cb(self, _, msg):
+        '''
+        Check for commands on the control pubsub, mainly waiting for RPC
+        requests to handle.
+        '''
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _proxy_control_cb(self, topic, msg):
-
-        self._log.debug('proxy control: %s', msg)
+        self._log.debug('control: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -615,21 +581,19 @@ class Agent_0(rpu.Worker):
 
         if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
 
-            self._hb.beat(uid=self._pmgr)
+            self._session._hb.beat(uid=self._pmgr)
             return True
 
 
-        if cmd == 'prep_env':
+        elif cmd == 'prep_env':
 
             env_spec = arg
             for env_id in env_spec:
-                # ensure we have a full hb period for the prep_env call
-                self._hb.beat(uid=self._pmgr)
                 self._prepare_env(env_id, env_spec[env_id])
             return True
 
 
-        if cmd == 'cancel_pilots':
+        elif cmd == 'cancel_pilots':
 
             if self._pid not in arg.get('uids'):
                 self._log.debug('ignore cancel %s', msg)
@@ -643,73 +607,45 @@ class Agent_0(rpu.Worker):
             # work is done - unregister this cb
             return False
 
-         ## if cmd != 'rpc_res':
-         ##     # not an rpc responese, keep cb registered
-         ##     return True
-         ##
-         ## if rpc_res['uid'] != rpc_id:
-         ##     # not the right rpc response, keep cb registered
-         ##     return True
 
-        # all other messages (such as cancel_tasks) are forwarded to the agent
-        # control pubsub, to be picked up by the respective target components
-        self._log.debug('fwd control msg %s', msg)
-        self.publish(rpc.CONTROL_PUBSUB, msg)
+        elif cmd == 'rpc_req':
 
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _check_control(self, _, msg):
-        '''
-        Check for commands on the control pubsub, mainly waiting for RPC
-        requests to handle.  We handle two types of RPC requests: `hello` for
-        testing, and `prepare_env` for environment preparation requests.
-        '''
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-
-        if cmd != 'rpc_req':
-            # not an rpc request
-            return True
-
-        req = arg['rpc']
-        if req not in ['hello', 'prepare_env']:
-            # we don't handle that request
-            return True
-
-        rpc_res = {'uid': arg['uid']}
-
-        try:
-            if req == 'hello'   :
-                out = 'hello %s' % ' '.join(arg['arg'])
-
-            elif req == 'prepare_env':
-                env_name = arg['arg']['env_name']
-                env_spec = arg['arg']['env_spec']
-                out      = self._prepare_env(env_name, env_spec)
-
-            else:
-                # unknown command
+            req = arg['rpc']
+            if req not in ['hello', 'prepare_env']:
+                # we don't handle that request
                 return True
 
-            # request succeeded - respond with return value
-            rpc_res['err'] = None
-            rpc_res['out'] = out
-            rpc_res['ret'] = 0
+            rpc_res = {'uid': arg['uid']}
 
-        except Exception as e:
-            # request failed for some reason - indicate error
-            rpc_res['err'] = repr(e)
-            rpc_res['out'] = None
-            rpc_res['ret'] = 1
-            self._log.exception('control cmd failed')
+            try:
+                if req == 'hello'   :
+                    out = 'hello %s' % ' '.join(arg['arg'])
 
-        # publish the response (success or failure)
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                          'arg':  rpc_res})
+                elif req == 'prepare_env':
+                    env_name = arg['arg']['env_name']
+                    env_spec = arg['arg']['env_spec']
+                    out      = self._prepare_env(env_name, env_spec)
+
+                else:
+                    # unknown command
+                    return True
+
+                # request succeeded - respond with return value
+                rpc_res['err'] = None
+                rpc_res['out'] = out
+                rpc_res['ret'] = 0
+
+            except Exception as e:
+                # request failed for some reason - indicate error
+                rpc_res['err'] = repr(e)
+                rpc_res['out'] = None
+                rpc_res['ret'] = 1
+                self._log.exception('control cmd failed')
+
+            # publish the response (success or failure)
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
+                                              'arg':  rpc_res})
+
         return True
 
 

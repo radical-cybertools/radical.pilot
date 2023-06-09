@@ -49,7 +49,6 @@ class Default(AgentStagingOutputComponent):
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
 
-        # we don't need an output queue -- tasks are picked up via mongodb
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_COLLECTING_QUEUE)
 

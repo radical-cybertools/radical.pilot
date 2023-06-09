@@ -336,7 +336,6 @@ class ResourceManager(object):
                     lm_name, lm_cfg, rm_info, self._log, self._prof)
 
             except Exception as e:
-                print(repr(e))
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
 

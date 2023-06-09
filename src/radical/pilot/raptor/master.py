@@ -54,7 +54,8 @@ class Master(rpu.Component):
         self._hb_freq    = 10          # check worker heartbetas every n seconds
         self._hb_timeout = 15          # consider worker dead after 15 seconds
 
-        self._session    = Session(uid=self._sid)
+        self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
+                                   _role=Session._DEFAULT)
 
         self._rpc_handlers = dict()
         self.register_rpc_handler('stop', self.stop)
@@ -268,6 +269,9 @@ class Master(rpu.Component):
                 rpc_res['out'] = ''
                 rpc_res['ret'] = 1
 
+            # inform client side
+            rpc_res['forward'] = True
+
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                               'arg':  rpc_res})
 
@@ -381,6 +385,7 @@ class Master(rpu.Component):
             # the default worker needs it's own task description to derive the
             # amount of available resources
             self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
+            self._reg.dump('raptor_master')
 
             # all workers run in the same sandbox as the master
             task = dict()

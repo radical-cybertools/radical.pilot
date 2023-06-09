@@ -75,7 +75,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, uid=None, cfg='default'):
+    def __init__(self, session, cfg='default'):
         """Creates a new PilotManager and attaches is to the session.
 
         Arguments:
@@ -91,13 +91,8 @@ class PilotManager(rpu.Component):
         assert session._role == session._PRIMARY, 'pmgr needs primary session'
 
         # initialize the base class (with no intent to fork)
-        if uid:
-            self._reconnect = True
-            self._uid       = uid
-        else:
-            self._reconnect = False
-            self._uid       = ru.generate_id('pmgr.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=session.uid)
+        self._uid         = ru.generate_id('pmgr.%(item_counter)04d',
+                                            ru.ID_CUSTOM, ns=session.uid)
 
         self._uids        = list()   # known UIDs
         self._pilots      = dict()
@@ -139,11 +134,7 @@ class PilotManager(rpu.Component):
         self._cmgr.start_bridges(self._cfg.bridges)
         self._cmgr.start_components(self._cfg.components)
 
-        if self._reconnect:
-            self._session._reconnect_pmgr(self)
-            self._reconnect_pilots()
-        else:
-            self._session._register_pmgr(self)
+        self._session._register_pmgr(self)
 
         # The output queue is used to forward submitted pilots to the
         # launching component.
@@ -647,6 +638,7 @@ class PilotManager(rpu.Component):
 
       # self.is_valid()
 
+        # FIXME MONGODB
         pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
         with self._pilots_lock:

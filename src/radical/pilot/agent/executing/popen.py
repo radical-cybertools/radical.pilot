@@ -541,6 +541,7 @@ class Popen(AgentExecutingComponent):
     def _get_rp_env(self, task):
 
         tid  = task['uid']
+        td   = task['description']
         name = task.get('name') or tid
         sbox = os.path.realpath(task['task_sandbox_path'])
 
@@ -558,6 +559,9 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
         ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self._session.reg_addr
+        ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
+        ret += 'export RP_GPUS_PER_RANK=%d\n'      % td['gpus_per_rank']
+
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod

@@ -6,6 +6,7 @@ __license__   = "MIT"
 import os
 import sys
 import time
+import queue
 import threading as mt
 
 import radical.utils as ru
@@ -87,7 +88,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, session, cfg='default', scheduler=None, uid=None):
+    def __init__(self, session, cfg='default', scheduler=None):
         """Create a new TaskManager and attaches it to the session.
 
         Arguments:
@@ -104,13 +105,8 @@ class TaskManager(rpu.Component):
         assert session._role == session._PRIMARY, 'tmgr needs primary session'
 
         # initialize the base class (with no intent to fork)
-        if uid:
-            self._reconnect = True
-            self._uid       = uid
-        else:
-            self._reconnect = False
-            self._uid       = ru.generate_id('tmgr.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=session.uid)
+        self._uid = ru.generate_id('tmgr.%(item_counter)04d',
+                                    ru.ID_CUSTOM, ns=session.uid)
 
         if not scheduler:
             scheduler = rpc.SCHEDULER_ROUND_ROBIN
@@ -162,11 +158,7 @@ class TaskManager(rpu.Component):
         self._cmgr.start_components(self._cfg.components)
 
         # let session know we exist
-        if self._reconnect:
-            self._session._reconnect_tmgr(self)
-            self._reconnect_tasks()
-        else:
-            self._session._register_tmgr(self)
+        self._session._register_tmgr(self)
 
         # The output queue is used to forward submitted tasks to the
         # scheduling component.
@@ -184,6 +176,19 @@ class TaskManager(rpu.Component):
 
         # also listen to the state pubsub for task state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
+
+        # hook into the control pubsub for rpc handling
+        self._rpc_queue = queue.Queue()
+        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
+        ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                          log=self._log, prof=self._prof,
+                          cb=self._control_cb, topic=rpc.CONTROL_PUBSUB)
+
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
+                                          log=self._log, prof=self._prof)
+
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -254,8 +259,7 @@ class TaskManager(rpu.Component):
 
         # dump task json
         json = self._task_info
-
-        tgt = '%s/tasks.%s.json' % (self._session.path, self.uid)
+        tgt  = '%s/tasks.%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
 
 
@@ -636,6 +640,51 @@ class TaskManager(rpu.Component):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids,
                                                    'tmgr'  : self.uid}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'rpc_res':
+
+            self._log.debug('==== rpc res: %s', arg)
+            self._rpc_queue.put(arg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def pilot_rpc(self, pid, cmd, args):
+        '''Remote procedure call.
+
+        Send am RPC command and arguments to the pilot and wait for the
+        response.  This is a synchronous operation at this point, and it is not
+        thread safe to have multiple concurrent RPC calls.
+        '''
+
+        if pid not in self._pilots:
+            raise ValueError('tmgr does not know pilot %s' % uid)
+
+        rpc_id  = ru.generate_id('rpc')
+        rpc_req = {'uid' : rpc_id,
+                   'rpc' : cmd,
+                   'tgt' : pid,
+                   'arg' : args}
+
+        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_req',
+                                                'arg':  rpc_req,
+                                                'fwd': True})
+
+        rpc_res = self._rpc_queue.get()
+        self._log.debug('rpc result: %s', rpc_res['ret'])
+
+        if rpc_res['ret']:
+            raise RuntimeError('rpc failed: %s' % rpc_res['err'])
+
+        return rpc_res['ret']
 
 
     # --------------------------------------------------------------------------

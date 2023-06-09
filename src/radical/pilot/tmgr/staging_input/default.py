@@ -129,6 +129,9 @@ class Default(TMGRStagingInputComponent):
         if not state:
             state = rps.AGENT_STAGING_INPUT_PENDING
 
+        for task in tasks:
+            self._log.debug('=== to PTQ: %s / %s', task['uid'], pid)
+
         # perform and publish state update
         # push to the proxy queue
         self.advance(tasks, state, publish=True, push=push, qname=pid)
