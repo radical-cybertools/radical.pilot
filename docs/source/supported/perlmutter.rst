@@ -61,7 +61,7 @@ Python virtual environment
 
 `Using Python at NERSC <https://docs.nersc.gov/development/languages/python/nersc-python/>`_
 
-**virtual environment with** ``venv``
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
@@ -70,7 +70,7 @@ Python virtual environment
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-**virtual environment with** ``conda``
+OR create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 

@@ -222,7 +222,7 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots.
         if terminate:
-            self.cancel_pilots(_timeout=20)
+            self.cancel_pilots(_timeout=10)
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
 
@@ -826,9 +826,9 @@ class PilotManager(rpu.Component):
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
 
-        self._log.debug('pilot(s).need(s) cancellation %s', uids)
+        self._log.debug('pilot(s).need(s) killing %s', uids)
 
-        # send the cancelation request to the pilots
+        # inform pmgr.launcher - it will force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
