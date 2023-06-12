@@ -57,7 +57,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** with ``venv``
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
@@ -66,7 +66,7 @@ Python virtual environment
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-**virtual environment with** with ``conda``
+OR create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 
@@ -85,14 +85,15 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 MongoDB
 -------
 
-MongoDB service is **not** provided by Bridges2, thus, you have to use either your
-running instance of MongoDB service or contact the RADICAL team for a support.
+MongoDB service is **not** provided by Bridges2, thus, you have to use either
+your running instance of MongoDB service or contact the RADICAL team by opening
+a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
 
-RADICAL-Pilot will connect to the MongoDB instance using a corresponding URL.
+RADICAL-Pilot will connect to the MongoDB instance using a corresponding URI:
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<mongodb_url>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
