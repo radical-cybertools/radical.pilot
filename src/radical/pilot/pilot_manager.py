@@ -226,7 +226,7 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, we cancel all pilots.
         if terminate:
-            self.cancel_pilots(_timeout=20)
+            self.cancel_pilots(_timeout=10)
             # if this cancel op fails and the pilots are s till alive after
             # timeout, the pmgr.launcher termination will kill them
 
@@ -835,6 +835,7 @@ class PilotManager(rpu.Component):
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
+        time.sleep(_timeout)
 
         # inform pmgr.launcher - it will force-kill the pilot after some delay
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
