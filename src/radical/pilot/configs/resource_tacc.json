@@ -141,52 +141,6 @@
         "python_dist"                 : "default",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local"
-    },
-
-    "longhorn": {
-        "description"                 : "The TACC resource 'Longhorn' (https://portal.tacc.utexas.edu/user-guides/longhorn)",
-        "notes"                       : "",
-        "schemas"                     : ["local", "ssh"],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://longhorn.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://longhorn.tacc.utexas.edu/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://longhorn.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://longhorn.tacc.utexas.edu/"
-        },
-        "default_queue"               : "development",
-        "resource_manager"            : "SLURM",
-        "cores_per_node"              : 40,
-        "gpus_per_node"               : 4,
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "launch_methods"              : {
-                                         "order" : ["FORK", "SRUN", "MPIRUN"],
-                                         "FORK"  : {},
-                                         "SRUN"  : {
-                                             "pre_exec_cached": [
-                                                 "module load gcc/7.3.0",
-                                                 "module load openmpi/3.1.2",
-                                                 "module --expert load xl"
-                                             ]
-                                         },
-                                         "MPIRUN": {
-                                             "pre_exec_cached": [
-                                                 "module load gcc/7.3.0",
-                                                 "module load openmpi/3.1.2",
-                                                 "module --expert load xl"
-                                             ]
-                                         }
-                                        },
-        "pre_bootstrap_0"             : [
-                                         "module load python3/3.8.1"
-                                        ],
-        "default_remote_workdir"      : "$SCRATCH",
-        "rp_version"                  : "local",
-        "virtenv_mode"                : "create",
-        "python_dist"                 : "default"
     }
+
 }
