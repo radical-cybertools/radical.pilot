@@ -1526,6 +1526,17 @@ while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     esac
 done
 
+# WORKAROUND for CONDA setup: not all platforms export corresponding bash
+# functions, which could cause an issue during env activation, we ensure
+# that these functions are set within `env`. Platform support team is
+# responsible to set it correctly (e.g., using `module load`)
+for name in $(set | grep -e '^[^ ]*conda[^ ]* ()' | cut -f 1 -d ' ')
+do
+    export -f $name
+done
+test "$(set | grep '__add_sys_prefix_to_path ()')" \
+ && export -f __add_sys_prefix_to_path
+
 # pre_bootstrap_0 is done at this point, save resulting env
 env_dump -t env/bs0_pre_0.env
 
