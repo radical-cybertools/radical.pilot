@@ -226,6 +226,7 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, kill all pilots.
         if terminate:
+            self.cancel_pilots(_timeout=1)
             self.kill_pilots(_timeout=10)
 
         self._terminate.set()
