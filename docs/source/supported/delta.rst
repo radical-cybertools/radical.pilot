@@ -62,7 +62,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-Create a **virtual environment with** ``venv``:
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
