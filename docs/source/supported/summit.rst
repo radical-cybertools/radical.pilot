@@ -38,7 +38,7 @@ General description
 
    Launch method ``MPIRUN`` is able to see only one hardware-thread per core,
    thus make sure that ``SMT`` level is set to ``1`` with a corresponding 
-   platform ID either with "``export RADICAL_SMT=1``" (before running the
+   platform ID either with ``export RADICAL_SMT=1`` (before running the
    application) or follow the steps below:
 
    .. code-block:: bash
@@ -85,7 +85,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** ``venv``
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
@@ -94,7 +94,7 @@ Python virtual environment
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-**virtual environment with** ``conda``
+OR create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 
@@ -103,7 +103,7 @@ Python virtual environment
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
-**virtual environment with** ``conda`` and cloned from the base environment
+OR clone a ``conda`` **virtual environment** from the base environment:
 
 .. code-block:: bash
 
@@ -133,7 +133,7 @@ RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
 
 .. code-block:: bash
 
-   export RADICAL_PILOT_DBURL="<provided_mongodb_uri>"
+   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================

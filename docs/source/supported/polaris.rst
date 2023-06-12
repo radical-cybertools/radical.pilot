@@ -46,7 +46,7 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-**virtual environment with** ``venv``
+Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
@@ -54,7 +54,7 @@ Python virtual environment
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-**virtual environment with** ``conda``
+OR create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 
