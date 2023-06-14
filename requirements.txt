@@ -1,5 +1,4 @@
-
-radical.utils>=1.34
+radical.utils @ git+https://github.com/radical-cybertools/radical.utils@feature/use_registry
 radical.saga>=1.12
 radical.gtod
 setproctitle
