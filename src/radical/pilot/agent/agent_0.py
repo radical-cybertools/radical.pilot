@@ -694,11 +694,24 @@ class Agent_0(rpu.Worker):
         '''
 
         cmd = msg['cmd']
-        arg = msg['arg']
 
-        if cmd != 'rpc_req':
-            # not an rpc request
-            return True
+        if cmd == 'rpc_req':
+            return self._ctrl_rpc(msg)
+
+        elif cmd == 'service_up':
+            self._log.debug('=== got service_up: %s', msg)
+            return self._ctrl_service_up(msg)
+
+        # ignore all other message types
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ctrl_rpc(self, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
 
         req = arg['rpc']
         if req not in ['hello', 'prepare_env']:
@@ -734,6 +747,41 @@ class Agent_0(rpu.Worker):
         # publish the response (success or failure)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                           'arg':  rpc_res})
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ctrl_service_up(self, msg):
+
+        cmd = msg['cmd']
+        uid = msg['arg']['uid']
+
+        # This message signals that an agent service instance is up and running.
+        # We expect to find the service UID in args and can then unblock the
+        # service startup wait for that uid
+
+        if uid not in self._service_uids_launched:
+            # we do not know this service instance
+            self._log.warn('=== ignore service startup signal for %s', uid)
+            return True
+
+        if uid in self._service_uids_running:
+            self._log.warn('=== duplicated service startup signal for %s', uid)
+            return True
+
+        self._log.debug('=== service startup message for %s', uid)
+
+        self._service_uids_running.append(uid)
+        self._log.debug('=== service %s started (%s / %s)', uid,
+                        len(self._service_uids_running),
+                        len(self._service_uids_launched))
+
+        # signal main thread when all services are up
+        if len(self._service_uids_launched) == \
+           len(self._service_uids_running):
+            self._services_setup.set()
+
         return True
 
 
