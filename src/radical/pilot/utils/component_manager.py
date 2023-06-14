@@ -13,6 +13,7 @@ import radical.utils   as ru
 
 from ..          import constants      as rpc
 from ..          import states         as rps
+from ..messages  import HeartbeatMessage
 
 
 # ------------------------------------------------------------------------------
@@ -71,7 +72,8 @@ class ComponentManager(object):
     #
     def _hb_msg_cb(self, topic, msg):
 
-        self._heartbeats[msg['uid']] = time.time()
+        hb_msg = HeartbeatMessage(from_dict=msg)
+        self._heartbeats[hb_msg.uid] = time.time()
 
 
     # --------------------------------------------------------------------------

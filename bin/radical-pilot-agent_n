@@ -15,6 +15,7 @@ import setproctitle  as spt
 import radical.utils as ru
 import radical.pilot as rp
 
+from radical.pilot.messages import HeartbeatMessage
 
 # ------------------------------------------------------------------------------
 #
@@ -42,10 +43,7 @@ def main(sid, reg_addr, uid):
     try:
         prof.prof('comp_start', uid=uid)
         prof.disable()
-        if uid == 'agent_0':
-            wrapped_agent_0(sid, reg_addr, uid, log, prof)
-        else:
-            wrapped_agent_n(sid, reg_addr, uid, log, prof)
+        wrapped_main(sid, reg_addr, uid, log, prof)
 
     finally:
         prof.enable()
@@ -58,6 +56,14 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     spt.setproctitle('rp.%s' % uid)
 
+    term = mt.Event()
+    reg  = ru.zmq.RegistryClient(url=reg_addr)
+
+    hb_cfg = ru.TypedDict(reg['heartbeat'])
+    cfg    = ru.TypedDict(reg['cfg'])
+
+    reg.close()
+
     if uid == 'agent_0':
         agent = run_agent_0(sid, reg_addr, uid, log, prof)
     else:
@@ -69,14 +75,14 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', msg={'uid': uid})
+        hb_pub.put('heartbeat', HeartbeatMessage(uid))
 
     def hb_term_cb(hb_uid):
-        comp.stop()
+        agent.stop()
         term.set()
         return None
 
-    hb = ru.Heartbeat(uid=c_cfg.uid,
+    hb = ru.Heartbeat(uid=cfg.uid,
                       timeout=hb_cfg.timeout,
                       interval=hb_cfg.interval,
                       beat_cb=hb_beat_cb,
@@ -84,12 +90,13 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
                       log=log)
     hb.start()
 
-    # register session heartbeat by beating once
-    hb.beat(uid=sid)
+    # always watch out for session heartbeat
+    hb.watch(uid=sid)
 
     # react on session heartbeats
     def hb_sub_cb(topic, msg):
-        if msg['uid'] == sid:
+        hb_msg = HeartbeatMessage(from_dict=msg)
+        if hb_msg.uid == sid:
             hb.beat(uid=sid)
 
     ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
@@ -115,8 +122,6 @@ def run_agent_0(sid, reg_addr, uid, log, prof):
     reg['agent.%s.cfg' % uid] = a_cfg
 
     reg.close()
-
-
 
     agent = rp.Agent_0(a_cfg, session)
 

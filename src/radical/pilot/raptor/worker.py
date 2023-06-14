@@ -146,9 +146,6 @@ class Worker(object):
     #
     def _state_cb(self, topic, things):
 
-        import pprint
-        self._log.debug('=== msg %s: %s', topic, pprint.pformat(things))
-
         for thing in ru.as_list(things):
 
             uid   = thing['uid']

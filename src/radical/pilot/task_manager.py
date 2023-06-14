@@ -651,7 +651,7 @@ class TaskManager(rpu.Component):
 
         if cmd == 'rpc_res':
 
-            self._log.debug('==== rpc res: %s', arg)
+            self._log.debug('rpc res: %s', arg)
             self._rpc_queue.put(arg)
 
 
@@ -869,8 +869,6 @@ class TaskManager(rpu.Component):
         ret   = list()
         self._rep.progress_tgt(len(descriptions), label='submit')
         for td in descriptions:
-
-            self._rep.progress()
 
             mode = td.mode
 

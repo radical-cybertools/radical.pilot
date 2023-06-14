@@ -16,9 +16,10 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .      import constants as rpc
-from .      import utils     as rpu
-from .proxy import Proxy
+from .         import constants as rpc
+from .         import utils     as rpu
+from .proxy    import Proxy
+from .messages import HeartbeatMessage
 
 
 # ------------------------------------------------------------------------------
@@ -159,9 +160,6 @@ class Session(rs.Session):
                 configurations from there.
         """
         self._t_start = time.time()
-
-        if uid: self._uid = uid
-        else  : self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
 
         self._role          = _role
         self._uid           = uid
@@ -526,34 +524,49 @@ class Session(rs.Session):
                                         prof=self._prof)
 
 
-        # start the heartbeat monitor, but first define its callbacks
+        # --------------------------------------
+        # start the heartbeat monitor, but first
+        # define its callbacks
         def _hb_beat_cb():
             # called on every heartbeat: cfg.heartbeat.interval`
             # publish own heartbeat
-            self._hb_pub.put('heartbeat',
-                             {'cmd' : 'heartbeat',
-                              'args': {'uid': self._uid}})
+            self._hb_pub.put('heartbeat', HeartbeatMessage(self._uid))
+
             # also update proxy heartbeat
             self._proxy.request('heartbeat', {'sid': self._uid})
+        # --------------------------------------
 
+        # --------------------------------------
+        # called when some entity misses
+        # heartbeats: `cfg.heartbeat.timeout`
         def _hb_term_cb():
-            # called when some entity misses heartbeats: `cfg.heartbeat.timeout`
             if self._cmgr:
                 self._cmgr.close()
             return False
+        # --------------------------------------
 
         # create heartbeat manager which monitors all components in this session
+        self._log.debug('=== hb %s from session', self._uid)
         self._hb = ru.Heartbeat(uid=self._uid,
                                 timeout=self._cfg.heartbeat.timeout,
                                 interval=self._cfg.heartbeat.interval,
                                 beat_cb=_hb_beat_cb,
                                 term_cb=_hb_term_cb,
                                 log=self._log)
+        self._hb.start()
 
-        # subscribe to heartbeat messages on the pubsub
+        # --------------------------------------
+        # subscribe to heartbeat msgs and inform
+        # self._hb about every heartbeat
         def _hb_msg_cb(topic, msg):
-            # inform the heartbeat manager about every received heartbeat
-            self._hb.beat(msg['uid'])
+
+            hb_msg = HeartbeatMessage(from_dict=msg)
+
+            self._log.debug('msg: %s', msg)
+
+            if hb_msg.uid != self._uid:
+                self._hb.beat(uid=hb_msg.uid)
+        # --------------------------------------
 
         ru.zmq.Subscriber(channel='heartbeat_pubsub',
                           topic='heartbeat',
@@ -668,7 +681,7 @@ class Session(rs.Session):
         reg  = self._reg
 
         url     = reg['bridges.%s.addr_pub' % tgt.lower()]
-        self._log.debug('=== cross %s %s', url, tgt)
+        self._log.debug('cross %s %s', url, tgt)
         tgt_pub = ru.zmq.Publisher(channel=tgt, path=path,
                                    url=url)
 

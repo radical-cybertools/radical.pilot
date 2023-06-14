@@ -722,7 +722,7 @@ class Pilot(object):
 
         if cmd == 'rpc_res':
 
-            self._log.debug('==== rpc res: %s', arg)
+            self._log.debug('rpc res: %s', arg)
             self._rpc_queue.put(arg)
 
 
