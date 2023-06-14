@@ -31,11 +31,11 @@ jobs:
       matrix:
         tutorial: [
           'configuration.ipynb',
-          # 'debugging.ipynb',
+          'debugging.ipynb',
           'describing_tasks.ipynb',
           'multiple_pilots.ipynb',
-          # 'profiling.ipynb',
-          # 'raptor.ipynb',
+          'profiling.ipynb',
+          'raptor.ipynb',
           'staging_data.ipynb',
           'submission.ipynb'
         ]
