@@ -224,11 +224,10 @@ class PilotManager(rpu.Component):
             for m in rpc.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        # If terminate is set, we cancel all pilots.
+        # If terminate is set, kill all pilots.
         if terminate:
-            self.cancel_pilots(_timeout=10)
-            # if this cancel op fails and the pilots are s till alive after
-            # timeout, the pmgr.launcher termination will kill them
+            self.cancel_pilots(_timeout=1)
+            self.kill_pilots(_timeout=10)
 
         self._terminate.set()
         self._cmgr.close()
@@ -813,7 +812,7 @@ class PilotManager(rpu.Component):
         """Cancel one or more :class:`rp.Pilots`.
 
         Arguments:
-            uids (str | list[str], optional): The IDs of the pilot objects to cancel.
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
 
         """
 
@@ -831,17 +830,45 @@ class PilotManager(rpu.Component):
 
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
-        # send the cancelation request to the pilots
+        # send the cancellation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
-        time.sleep(_timeout)
 
-        # inform pmgr.launcher - it will force-kill the pilot after some delay
+        # wait for the cancel to be enacted
+        self.wait_pilots(uids=uids, timeout=_timeout)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def kill_pilots(self, uids=None, _timeout=None):
+        """Kill one or more :class:`rp.Pilots`
+
+        Arguments:
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
+
+        """
+
+        if not uids:
+            with self._pilots_lock:
+                uids = list(self._pilots.keys())
+
+        if not isinstance(uids, list):
+            uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
+        self._log.debug('pilot(s).need(s) killing %s', uids)
+
+        # inform pmgr.launcher - it will force-kill the pilots
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 
+        # wait for the kill to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
 
 
