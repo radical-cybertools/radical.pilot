@@ -922,19 +922,21 @@ class TaskManager(rpu.Component):
         from .task             import Task
         from .task_description import TaskDescription
 
-        task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
+        # FIXME MongoDB
 
-        with self._tasks_lock:
-
-            for doc in task_docs:
-
-                td = TaskDescription(doc['description'])
-                td.uid = doc['uid']
-
-                task = Task(tmgr=self, descr=td, origin='client')
-                task._update(doc, reconnect=True)
-
-                self._tasks[task.uid] = task
+        # task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
+        #
+        # with self._tasks_lock:
+        #
+        #     for doc in task_docs:
+        #
+        #         td = TaskDescription(doc['description'])
+        #         td.uid = doc['uid']
+        #
+        #         task = Task(tmgr=self, descr=td, origin='client')
+        #         task._update(doc, reconnect=True)
+        #
+        #         self._tasks[task.uid] = task
 
 
     # --------------------------------------------------------------------------

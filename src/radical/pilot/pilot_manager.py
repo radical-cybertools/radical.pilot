@@ -638,15 +638,15 @@ class PilotManager(rpu.Component):
       # self.is_valid()
 
         # FIXME MONGODB
-        pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
+        # pilot_docs = self._session._dbs.get_pilots(pmgr_uid=self.uid)
 
-        with self._pilots_lock:
-            for ud in pilot_docs:
+        # with self._pilots_lock:
+        #     for ud in pilot_docs:
 
-                descr = PilotDescription(ud['description'])
-                pilot = Pilot(pmgr=self, descr=descr)
+        #         descr = PilotDescription(ud['description'])
+        #         pilot = Pilot(pmgr=self, descr=descr)
 
-                self._pilots[pilot.uid] = pilot
+        #         self._pilots[pilot.uid] = pilot
 
 
     # --------------------------------------------------------------------------
@@ -830,7 +830,8 @@ class PilotManager(rpu.Component):
         # send the cancellation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
-        self._session._dbs.pilot_command('cancel_pilot', [], uids)
+        # FIXME: MongoDB
+        # self._session._dbs.pilot_command('cancel_pilot', [], uids)
 
         # wait for the cancel to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
