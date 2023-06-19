@@ -226,7 +226,13 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, kill all pilots.
         if terminate:
+
+            # skip reporting for `wait_pilots`
+            is_rep_enabled = self._rep._enabled
+            self._rep._enabled = False
             self.cancel_pilots(_timeout=1)
+            self._rep._enabled = is_rep_enabled
+
             self.kill_pilots(_timeout=10)
 
         self._terminate.set()
