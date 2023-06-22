@@ -9,6 +9,19 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.34.0 Release                                                    2023-06-22
+
+  - major documentation overhaul
+  - Fixes ticket #1577
+  - Fixes ticket #2553
+  - added tests for PilotManager methods (`cancel_pilots`, `kill_pilots`)
+  - fixed configuration for Perlmutter
+  - fixed env dumping for RP Agent
+  - move timeout into `kill_pilots` method to delay forced termination
+  - re-introduce a `use_mpi` flag
+
+
+--------------------------------------------------------------------------------
 ### 1.33.0 Release                                                    2023-04-25
 
   - add a resource definition for rivanna at UVa.
@@ -1850,4 +1863,6 @@ API Changes:
 ### 0.1.2 Release
 
   - Github only release
+
+--------------------------------------------------------------------------------
 
