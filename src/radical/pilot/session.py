@@ -541,15 +541,15 @@ class Session(rs.Session):
         """Get known PilotManager(s).
 
         Arguments:
-            pmgr_uids (str | list[str]): Unique identifier of the PilotManager we want.
+            pmgr_uids (str | Iterable[str], optional): Unique identifier of the PilotManager(s) we want.
 
         Returns:
-            str | list[str]: One or more `radical.pilot.PilotManager` objects.
+            radical.pilot.PilotManager | list[radical.pilot.PilotManager]: One or more `radical.pilot.PilotManager` objects.
 
         """
 
         return_scalar = False
-        if not isinstance(pmgr_uids, list):
+        if isinstance(pmgr_uids, str):
             pmgr_uids     = [pmgr_uids]
             return_scalar = True
 
