@@ -516,6 +516,31 @@ def get_session_profile(sid, src=None):
     profile           = ru.clean_profile(profile, sid, s.FINAL, s.CANCELED)
     hostmap           = get_hostmap(profile)
 
+    # we sometimes miss the `bootstrap_0_stop` event when the bootstrapper is
+    # killed before being able to terminate nicely.  In that case we use the
+    # last timestamp for that pilot for that event.
+    last_ts = dict()
+    seen_bs = dict()
+    for e in profile:
+        if 'pilot.' in e[4]:
+            pid = e[4]
+            last_ts[pid] = max(last_ts.get(pid, 0), e[0])
+
+            if e[1] == 'bootstrap_0_stop':
+                seen_bs[pid] = True
+
+    for pid in last_ts:
+        if seen_bs.get(pid) is None:
+            profile.append([last_ts[pid],
+                            'bootstrap_0_stop',
+                            'bootstrap_0',
+                            'MainThread',
+                            pid,
+                            'pilot_state',
+                            '',
+                            'pilot'])
+
+
     if not hostmap:
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
@@ -528,17 +553,19 @@ def get_session_profile(sid, src=None):
 def get_session_description(sid, src=None, dburl=None):
     '''
     This will return a description which is usable for radical.analytics
-    evaluation.  It informs about
-      - set of stateful entities
-      - state models of those entities
-      - event models of those entities (maybe)
-      - configuration of the application / module
+    evaluation.  It informs about:
+
+     - set of stateful entities
+     - state models of those entities
+     - event models of those entities (maybe)
+     - configuration of the application / module
 
     If `src` is given, it is interpreted as path to search for session
     information (json dump).  `src` defaults to `$PWD/$sid`.
 
-    if `dburl` is given, its value is used to fetch session information from
-    a database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
+    if `dburl` is given, its value is used to fetch session information from a
+    database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
+
     '''
 
     if not src:
@@ -831,19 +858,21 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     For all ra.pilot or ra.task entities, return the amount and time of
     resources consumed.  A consumed resource is characterized by:
 
-      - a resource type (we know about cores and gpus)
-      - a metric name (what the resource was used for)
-      - a list of 4-tuples of the form: [t0, t1, r0, r1]
-          - t0: time, begin of resource consumption
-          - t1: time, begin of resource consumption
-          - r0: int,  index of resources consumed (min)
-          - r1: int,  index of resources consumed (max)
-        The tuples are formed so that t0 to t1 and r0 to r1 are continuous.
+    - a resource type (we know about cores and gpus)
+    - a metric name (what the resource was used for)
+    - a list of 4-tuples of the form: [t0, t1, r0, r1]
 
-    An entity can consume different resources under different metrics - but the
-    returned consumption specs will never overlap, meaning, that any resource is
+    The tuples are formed so that t0 to t1 and r0 to r1 are continuous:
+
+    - t0: time, begin of resource consumption
+    - t1: time, begin of resource consumption
+    - r0: int,  index of resources consumed (min)
+    - r1: int,  index of resources consumed (max)
+
+    An entity can consume different resources under different metrics, but the
+    returned consumption specs will never overlap. Thus, any resource is
     accounted for exactly one metric at any point in time.  The returned
-    structure has the following overall form:
+    structure has the following overall form::
 
         {
           'metric_1' : {
@@ -1361,4 +1390,3 @@ def get_resource_timelines(task, transitions):
 
 
 # ------------------------------------------------------------------------------
-

@@ -5,7 +5,6 @@ __license__   = 'MIT'
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
-import sys
 import copy
 import time
 
@@ -18,12 +17,9 @@ from ..          import states         as rps
 
 # ------------------------------------------------------------------------------
 #
-def out(msg):
-    sys.stdout.write('%s\n' % msg)
-    sys.stdout.flush()
-
-
-# ------------------------------------------------------------------------------
+# ZMQ subscriber threads will not survive a `fork`.  We register all components
+# for an at-fork hook to reset the list of subscribers, so that the subscriber
+# threads get re-created as needed in the new process.
 #
 _components = list()
 
@@ -45,17 +41,18 @@ class ComponentManager(object):
     RP spans a hierarchy of component instances: the application has a pmgr and
     tmgr, and the tmgr has a staging component and a scheduling component, and
     the pmgr has a launching component, and components also can have bridges,
-    etc. etc.  This ComponentManager centralises the code needed to spawn,
-    manage and terminate such components - any code which needs to create
-    component should create a ComponentManager instance and pass the required
-    component and bridge layout and configuration.  Callng `stop()` on the cmgr
-    will terminate the components and brisged.
+    etc. This ComponentManager centralises the code needed to spawn, manage and
+    terminate such components. Any code which needs to create component should
+    create a ComponentManager instance and pass the required component and
+    bridge layout and configuration.  Callng `stop()` on the cmgr will terminate
+    the components and brisged.
     '''
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg):
 
+        # register for at-fork hooks
         _components.append(self)
 
         self._cfg  = ru.Config('radical.pilot.cmgr', cfg=cfg)
@@ -296,7 +293,7 @@ class Component(object):
       - define notification channels over which messages with other components
         can be exchanged (publish/subscriber channels)
 
-    All low level communication is handled by the base class -- deriving classes
+    All low level communication is handled by the base class. Deriving classes
     will register the respective channels, valid state transitions, and work
     methods.  When a 'thing' is received, the component is assumed to have full
     ownership over it, and that no other component will change the 'thing's
@@ -305,46 +302,42 @@ class Component(object):
     The main event loop of the component -- `work()` -- is executed on `run()`
     and will not terminate on its own, unless it encounters a fatal error.
 
-    Components inheriting this class should attempt not to use shared
-    resources.  That will ensure that multiple instances of the component can
-    coexist for higher overall system throughput.  Should access to shared
-    resources be necessary, it will require some locking mechanism across
-    process boundaries.
+    Components inheriting this class should attempt not to use shared resources.
+    That will ensure that multiple instances of the component can coexist for
+    higher overall system throughput.  Should access to shared resources be
+    necessary, it will require some locking mechanism across process boundaries.
 
     This approach should ensure that
 
-      - 'thing's are always in a well defined state;
-      - components are simple and focus on the semantics of 'thing' state
+    - 'thing's are always in a well defined state;
+    - components are simple and focus on the semantics of 'thing' state
         progression;
-      - no state races can occur on 'thing' state progression;
-      - only valid state transitions can be enacted (given correct declaration
+    - no state races can occur on 'thing' state progression;
+    - only valid state transitions can be enacted (given correct declaration
         of the component's semantics);
-      - the overall system is performant and scalable.
+    - the overall system is performant and scalable.
 
     Inheriting classes SHOULD overload the following methods:
 
-      - `initialize()`:
+    - `initialize()`:
         - set up the component state for operation
         - register input/output/notification channels
         - register work methods
         - register callbacks to be invoked on state notification
         - the component will terminate if this method raises an exception.
-
-      - `work()`
-        - called in the main loop of the component process, on all entities
-          arriving on input channels.  The component will *not* terminate if
-          this method raises an exception.  For termination, `terminate()` must
-          be called.
-
-      - `finalize()`
+    - `work()`
+    - called in the main loop of the component process, on all entities
+        arriving on input channels.  The component will *not* terminate if this
+        method raises an exception.  For termination, `terminate()` must be
+        called.
+    - `finalize()`
         - tear down the component (close threads, unregister resources, etc).
 
-    Inheriting classes MUST call the constructor:
+    Inheriting classes MUST call the constructor::
 
         class StagingComponent(rpu.Component):
             def __init__(self, cfg, session):
                 rpu.Component.__init__(self, cfg, session)
-
 
     A component thus must be passed a configuration (either as a path pointing
     to a file name to be opened as `ru.Config`, or as a pre-populated
@@ -353,9 +346,9 @@ class Component(object):
     itself which MUST be unique within the scope of the given session.  It MUST
     further contain information about the session's heartbeat ZMQ pubsub channel
     (`hb_pub`, `hb_sub`) on which heartbeats are sent and received for lifetime
-    management.  All components and the session will continuously sent
-    heartbeat messages on that channel - missing heartbeats will by default lead
-    to session termination.
+    management.  All components and the session will continuously sent heartbeat
+    messages on that channel - missing heartbeats will by default lead to
+    session termination.
 
     The config MAY contain `bridges` and `component` sections.  If those exist,
     the component will start the communication bridges and the components
@@ -363,14 +356,14 @@ class Component(object):
     bridges.  As such, it much watch the HB channel for heartbeats from those
     components, and must terminate itself if those go AWOL.
 
-    Further, the class must implement the registered work methods, with
-    a signature of:
+    Further, the class must implement the registered work methods, with a
+    signature of::
 
         work(self, things)
 
     The method is expected to change the state of the 'thing's given.  'Thing's
     will not be pushed to outgoing channels automatically -- to do so, the work
-    method has to call (see call documentation for other options):
+    method has to call (see call documentation for other options)::
 
         self.advance(thing)
 
@@ -1162,12 +1155,12 @@ class Component(object):
         state model.  This method will update the thing state, and push it into
         the output queue registered as target for that state.
 
-        things:  list of things to advance
-        state:   new state to set for the things
-        publish: determine if state update notifications should be issued
-        push:    determine if things should be pushed to outputs
-        prof:    determine if state advance creates a profile event
-                 (publish, and push are always profiled)
+         - things:  list of things to advance
+         - state:   new state to set for the things
+         - publish: determine if state update notifications should be issued
+         - push:    determine if things should be pushed to outputs
+         - prof:    determine if state advance creates a profile event
+           (publish, and push are always profiled)
 
         'Things' are expected to be a dictionary, and to have 'state', 'uid' and
         optionally 'type' set.
@@ -1330,4 +1323,3 @@ class Worker(Component):
 
 
 # ------------------------------------------------------------------------------
-

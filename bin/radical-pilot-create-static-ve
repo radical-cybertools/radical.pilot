@@ -27,13 +27,14 @@ pre_exec(){
     echo "pre exec done"
 }
 
-while getopts "e:p:P:v:m:t:d" OPTION; do
+while getopts "e:p:P:v:m:t:T:d" OPTION; do
     case $OPTION in
         p)  PREFIX="$OPTARG"    ;;
         P)  pre_exec "$OPTARG"  ;;
         v)  VERSION="$OPTARG"   ;;
         m)  MODULES="$OPTARG"   ;;
         t)  ETYPE="$OPTARG"     ;;
+        T)  EDUMP="$OPTARG"     ;;
         d)  DEFAULTS=True       ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
@@ -89,6 +90,7 @@ help(){
       -v <version>   - python version to be used
       -m <modules>   - comma separated list of modules to install
       -t <type>      - environment type to create (venv, conda)
+      -T <env_path>  - target file where to dump the environment
       -d             - install default RCT dependencies into the new environment
 
 EOT
@@ -232,16 +234,20 @@ then
     fi
 fi
 
+if test -z "$EDUMP"
+then
+    mkdir -p "$(pwd)/env"
+    EDUMP="$(pwd)/env/$(basename $PREFIX).env"
+fi
 
-
-env_dump -t "$PREFIX.env"
+env_dump -t "$EDUMP"
 
 # print the ve information and stack versions for verification
 echo
 echo "---------------------------------------------------------------------"
 echo
 echo "PWD       : $(pwd)"
-echo "ENV       : $PREFIX.env"
+echo "ENV       : $EDUMP"
 echo "SCRIPT    : $SCRIPT"
 echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"

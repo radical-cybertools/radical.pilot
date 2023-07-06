@@ -33,22 +33,24 @@ def _check_uid(uid):
 # ------------------------------------------------------------------------------
 #
 class Task(object):
-    '''
-    A Task represent a 'task' that is executed on a Pilot.
+    """Represent a 'task' that is executed on a Pilot.
+
     Tasks allow to control and query the state of this task.
 
-    .. note:: A task cannot be created directly. The factory method
-              :meth:`rp.TaskManager.submit_tasks` has to be used instead.
+    Note:
+        A task cannot be created directly. The factory method
+        :func:`rp.TaskManager.submit_tasks` has to be used instead.
 
-                **Example**::
+    Example::
 
-                      tmgr = rp.TaskManager(session=s)
+        tmgr = rp.TaskManager(session=s)
 
-                      ud = rp.TaskDescription()
-                      ud.executable = "/bin/date"
+        ud = rp.TaskDescription()
+        ud.executable = "/bin/date"
 
-                      task = tmgr.submit_tasks(ud)
-    '''
+        task = tmgr.submit_tasks(ud)
+
+    """
     # --------------------------------------------------------------------------
     # In terms of implementation, a Task is not much more than a dict whose
     # content are dynamically updated to reflect the state progression through
@@ -141,10 +143,11 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def _update(self, task_dict, reconnect=False):
-        '''
+        """State change updater.
+
         This will update the facade object after state changes etc, and is
         invoked by whatever component receiving that updated information.
-        '''
+        """
 
         assert task_dict['uid'] == self.uid, 'update called on wrong instance'
 
@@ -180,9 +183,7 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        '''
-        Returns a Python dictionary representation of the object.
-        '''
+        """Returns a Python dictionary representation of the object."""
 
         ret = {
             'type':             'task',
@@ -214,13 +215,7 @@ class Task(object):
     #
     @property
     def session(self):
-        '''
-        Returns the task's session.
-
-        **Returns:**
-            * A :class:`Session`.
-        '''
-
+        """radical.pilot.Session: The task's session."""
         return self._session
 
 
@@ -228,13 +223,7 @@ class Task(object):
     #
     @property
     def tmgr(self):
-        '''
-        Returns the task's manager.
-
-        **Returns:**
-            * A :class:`TaskManager`.
-        '''
-
+        """radical.pilot.TaskManager: The task's manager."""
         return self._tmgr
 
 
@@ -242,14 +231,7 @@ class Task(object):
     #
     @property
     def uid(self):
-        '''
-        Returns the task's unique identifier.
-
-        The uid identifies the task within a :class:`TaskManager`.
-
-        **Returns:**
-            * A unique identifier (string).
-        '''
+        """str: The task's unique identifier within a :class:`TaskManager`."""
         return self._uid
 
 
@@ -257,12 +239,7 @@ class Task(object):
     #
     @property
     def name(self):
-        '''
-        Returns the task's application specified name.
-
-        **Returns:**
-            * A name (string).
-        '''
+        """str: The task's application specified name."""
         return self._descr.get('name')
 
 
@@ -270,12 +247,7 @@ class Task(object):
     #
     @property
     def mode(self):
-        '''
-        Returns the task mode
-
-        **Returns:**
-            * A mode (string).
-        '''
+        """str: The task mode."""
         return self._descr['mode']
 
 
@@ -283,13 +255,7 @@ class Task(object):
     #
     @property
     def origin(self):
-        '''
-        indicates where the task was created
-
-        **Returns:**
-            * string
-        '''
-
+        """str: Indicates where the task was created."""
         return self._origin
 
 
@@ -297,13 +263,7 @@ class Task(object):
     #
     @property
     def state(self):
-        '''
-        Returns the current state of the task.
-
-        **Returns:**
-            * state (string enum)
-        '''
-
+        """str: The current state of the task."""
         return self._state
 
 
@@ -311,14 +271,9 @@ class Task(object):
     #
     @property
     def exit_code(self):
-        '''
-        Returns the exit code of the task, if that is already known, or
+        """int: The exit code of the task, if that is already known, or
         'None' otherwise.
-
-        **Returns:**
-            * exit code (int)
-        '''
-
+        """
         return self._exit_code
 
 
@@ -326,19 +281,15 @@ class Task(object):
     #
     @property
     def stdout(self):
-        '''
-        Returns a snapshot of the executable's STDOUT stream.
+        """str: A snapshot of the executable's STDOUT stream.
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can be inefficient.  Output may be incomplete and/or
-           filtered.
+        Warning:
+            This can be inefficient.  Output may be incomplete and/or filtered.
 
-        **Returns:**
-            * stdout (string)
-        '''
-
+        """
         return self._stdout
 
 
@@ -346,19 +297,15 @@ class Task(object):
     #
     @property
     def stderr(self):
-        '''
-        Returns a snapshot of the executable's STDERR stream.
+        """str: A snapshot of the executable's STDERR stream.
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will return None.
 
-        .. warning: This can be inefficient.  Output may be incomplete and/or
-           filtered.
+        Warning:
+            This can be inefficient.  Output may be incomplete and/or filtered.
 
-        **Returns:**
-            * stderr (string)
-        '''
-
+        """
         return self._stderr
 
 
@@ -366,17 +313,12 @@ class Task(object):
     #
     @property
     def return_value(self):
-        '''
-        Returns the return value for tasks which represent function call (or
+        """Any: The return value for tasks which represent function call (or
         None otherwise).
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will always return None.
-
-        **Returns:**
-            * Any
-        '''
-
+        """
         return self._return_value
 
 
@@ -384,18 +326,13 @@ class Task(object):
     #
     @property
     def exception(self):
-        '''
-        Returns an string representation (`__repr__`) of the exception which
+        """str: A string representation (`__repr__`) of the exception which
         caused the task's `FAILED` state if such one was raised while managing
         or executing the task.
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will always return None.
-
-        **Returns:**
-            * str
-        '''
-
+        """
         return self._exception
 
 
@@ -403,17 +340,12 @@ class Task(object):
     #
     @property
     def exception_detail(self):
-        '''
-        Returns additional information about the exception which caused this
+        """str: Additional information about the exception which caused this
         task to enter FAILED state.
 
         If this property is queried before the task has reached
         'DONE' or 'FAILED' state it will always return None.
-
-        **Returns:**
-            * str
-        '''
-
+        """
         return self._exception_detail
 
 
@@ -421,71 +353,73 @@ class Task(object):
     #
     @property
     def pilot(self):
-        '''
-        Returns the pilot ID of this task, if that is already known, or
+        """str: The pilot ID of this task, if that is already known, or
         'None' otherwise.
-
-        **Returns:**
-            * A pilot ID (string)
-        '''
-
+        """
         return self._pilot
 
 
     # --------------------------------------------------------------------------
     #
     @property
-    def working_directory(self):         # **NOTE:** deprecated, use *`sandbox`*
-        return self.sandbox
-
-
-    @property
     def sandbox(self):
+        """str: An alias for :attr:`~radical.pilot.Task.task_sandbox`."""
         return self.task_sandbox
 
 
     @property
     def task_sandbox(self):
-        '''
-        Returns the full sandbox URL of this task, if that is already
+        """radical.utils.Url: The full sandbox URL of this task, if that is already
         known, or 'None' otherwise.
-
-        **Returns:**
-            * A URL (radical.utils.Url).
-        '''
-
-        # NOTE: The task has a sandbox property, containing the full sandbox
-        #       path, which is used by the tmgr to stage data back and forth.
-        #       However, the full path as visible from the tmgr side might not
-        #       be what the agent is seeing, specifically in the case of
-        #       non-shared filesystems (OSG).  The agent thus uses
-        #       `$PWD/t['uid']` as sandbox, with the assumption that this will
-        #       get mapped to whatever is here returned as sandbox URL.
-        #
-        #       There is thus implicit knowledge shared between the RP client
-        #       and the RP agent on how the sandbox path is formed!
-
+        """
         return self._task_sandbox
 
 
     @property
     def endpoint_fs(self):
+        """radical.utils.Url: The URL which is internally used to access the
+        target resource's root file system.
+        """
         return self._endpoint_fs
+
 
     @property
     def resource_sandbox(self):
+        """radical.utils.Url: The full URL of the path that RP considers the
+        resource sandbox, i.e., the sandbox on the target resource's file system
+        that is shared by all sessions which access that resource.
+        """
         return self._resource_sandbox
+
 
     @property
     def session_sandbox(self):
+        """radical.utils.Url: The full URL of the path that RP considers the
+        session sandbox on the target resource's file system which is shared
+        by all pilots which access that resource in the current session.
+        """
         return self._session_sandbox
+
 
     @property
     def pilot_sandbox(self):
+        """radical.utils.Url: The full URL of the path that RP considers the
+        pilot sandbox on the target resource's file system which is shared
+        by all tasks which are executed by that pilot.
+        """
         return self._pilot_sandbox
+
 
     @property
     def client_sandbox(self):
+        """radical.utils.Url: The full URL of the client sandbox, which is
+        usually the same as the current working directory of the Python script
+        in which the RP Session is instantiated.
+
+        Note that the URL may not be usable to access
+        that sandbox from another machine: RP in general knows nothing about
+        available access endpoints on the local host.
+        """
         return self._client_sandbox
 
 
@@ -493,13 +427,7 @@ class Task(object):
     #
     @property
     def description(self):
-        '''
-        Returns the description the task was started with, as a dictionary.
-
-        **Returns:**
-            * description (dict)
-        '''
-
+        """dict: The description the task was started with, as a dictionary."""
         return copy.deepcopy(self._descr)
 
 
@@ -507,32 +435,33 @@ class Task(object):
     #
     @property
     def metadata(self):
-        '''
-        Returns the metadata field of the task's description
-        '''
-
+        """The metadata field of the task's description."""
         return copy.deepcopy(self._descr.get('metadata'))
 
 
     # --------------------------------------------------------------------------
     #
     def register_callback(self, cb, cb_data=None, metric=None):
-        '''
+        """Add a state-change callback.
+
         Registers a callback function that is triggered every time a
         task's state changes.
 
         All callback functions need to have the same signature::
 
-            def cb(obj, state)
+            def cb(obj, state) -> None:
+                ...
 
-        where ``object`` is a handle to the object that triggered the callback
-        and ``state`` is the new state of that object.  If 'cb_data' is given,
-        then the 'cb' signature changes to
+        where ``obj`` is a handle to the object that triggered the callback
+        and ``state`` is the new state of that object.  If ``cb_data`` is given,
+        then the ``cb`` signature changes to
+        ::
 
-            def cb(obj, state, cb_data)
+            def cb(obj, state, cb_data) -> None:
+                ...
 
-        and 'cb_data' are passed unchanged.
-        '''
+        and ``cb_data`` are passed unchanged.
+        """
 
         if not metric:
             metric = rpc.TASK_STATE
@@ -543,27 +472,26 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def wait(self, state=None, timeout=None):
-        '''
+        """Block for state change.
+
         Returns when the task reaches a specific state or
         when an optional timeout is reached.
 
-        **Arguments:**
+        Arguments:
+            state (str | list[str], optional): The state(s) that task has to reach
+                in order for the call to return.
 
-            * **state** [`list of strings`]
-              The state(s) that task has to reach in order for the
-              call to return.
+                By default `wait` waits for the task to reach a **final**
+                state, which can be one of the following.
 
-              By default `wait` waits for the task to reach a **final**
-              state, which can be one of the following:
+                * :data:`rp.states.DONE`
+                * :data:`rp.states.FAILED`
+                * :data:`rp.states.CANCELED`
+            timeout (float, optional): Optional timeout in seconds before the
+                call returns regardless whether the task has reached the desired
+                state or not.  The default value **None** never times out.
 
-              * :data:`rp.states.DONE`
-              * :data:`rp.states.FAILED`
-              * :data:`rp.states.CANCELED`
-
-            * **timeout** [`float`]
-              Optional timeout in seconds before the call returns regardless
-              whether the task has reached the desired state or not.  The
-              default value **None** never times out.  '''
+        """
 
         if not state:
             states = rps.FINAL
@@ -601,9 +529,7 @@ class Task(object):
     # --------------------------------------------------------------------------
     #
     def cancel(self):
-        '''
-        Cancel the task.
-        '''
+        """Cancel the task."""
 
         self._tmgr.cancel_tasks(self.uid)
 
@@ -611,13 +537,14 @@ class Task(object):
 # ------------------------------------------------------------------------------
 #
 class TaskDict(ru.TypedDict):
-    '''
+    """Dictionary encoded Task.
+
     rp.Task is an API level object and as that is not a useful internal
     representation of an task on the level of RP components and message
     channels.  Instead, a task is there represented as a dictionary.  To
     facilitate a minimum of documentation and type consistency, this class
     defines such task dictionaries as `TypedDict` objects.
-    '''
+    """
 
     _schema = {
             # where the task got created
@@ -645,4 +572,3 @@ class TaskDict(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
-

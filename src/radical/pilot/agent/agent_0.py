@@ -46,6 +46,7 @@ class Agent_0(rpu.Worker):
         self._uid     = 'agent.0'
         self._cfg     = cfg
         self._pid     = cfg.pid
+        self._sid     = cfg.sid
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
 
@@ -63,9 +64,10 @@ class Agent_0(rpu.Worker):
         reg_uid = 'radical.pilot.reg.%s' % self._uid
         self._reg_service = ru.zmq.Registry(uid=reg_uid)
         self._reg_service.start()
+        self._reg_addr = self._reg_service.addr
 
         # let all components know where to look for the registry
-        self._cfg['reg_addr'] = self._reg_service.addr
+        self._cfg['reg_addr'] = self._reg_addr
 
         # connect to MongoDB for state push/pull
         self._connect_db()
@@ -213,6 +215,17 @@ class Agent_0(rpu.Worker):
         # tasks to
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
+
+        # before we run any tasks, prepare a named_env `rp` for tasks which use
+        # the pilot's own environment, such as raptors
+        env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
+                    'path'    : os.environ['RP_VENV_PATH'],
+                    'pre_exec': ['export PYTHONPATH=%s'
+                                 %  os.environ.get('PYTHONPATH', ''),
+                                 'export PATH=%s'
+                                 %  os.environ.get('PATH', '')]
+                   }
+        self._prepare_env('rp', env_spec)
 
         # register the command callback which pulls the DB for commands
         self.register_timed_cb(self._agent_control_cb,
@@ -645,11 +658,11 @@ class Agent_0(rpu.Worker):
             rpc_res = msg['arg']
 
             if cmd != 'rpc_res':
-                # not an rpc responese
+                # not an rpc responese, keep cb registered
                 return True
 
             if rpc_res['uid'] != rpc_id:
-                # not the right rpc response
+                # not the right rpc response, keep cb registered
                 return True
 
             # send the response to the DB
@@ -657,7 +670,7 @@ class Agent_0(rpu.Worker):
                                  'uid'   : self._pid},
                                 {'$set'  : {'rpc_res': rpc_res}})
 
-            # work is done - unregister this temporary cb (rpc_cb)
+            # work is done - unregister this temporary cb
             return False
 
 
@@ -836,8 +849,9 @@ class Agent_0(rpu.Worker):
             evers = ''
 
         rp_cse = ru.which('radical-pilot-create-static-ve')
-        ve_cmd = '/bin/bash %s -d -p %s -t %s %s %s %s > env.log 2>&1' \
-               % (rp_cse, ve_path, etype, evers, mods, pre_exec)
+        ve_cmd = '/bin/bash %s -d -p %s -t %s ' % (rp_cse, ve_path, etype) + \
+                 '%s %s %s '                    % (evers, mods, pre_exec)  + \
+                 '-T %s.env > env.log 2>&1'     % ve_local_path
 
         # FIXME: we should export all sandboxes etc. to the prep_env.
         os.environ['RP_RESOURCE_SANDBOX'] = '../../'
@@ -852,14 +866,12 @@ class Agent_0(rpu.Worker):
 
         # if the ve lives outside of the pilot sandbox, link it
         if path:
-            os.symlink(path,          ve_local_path)
-            os.symlink(path + '.env', ve_local_path + '.env')
+            os.symlink(path, ve_local_path)
 
         self._log.debug('ve_path: %s', ve_path)
 
         # prepare the env to be loaded in task exec scripts
-        sh_path = '%s/env/rp_named_env.%s.sh' % (self._pwd, env_name)
-        with ru.ru_open(sh_path, 'w') as fout:
+        with ru.ru_open('%s.sh' % ve_local_path, 'w') as fout:
             fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler

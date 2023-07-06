@@ -18,7 +18,7 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, raptor_id : str):
 
         # generate a MPI rank dependent UID for each worker process
         # FIXME: this should be delegated to ru.generate_id
@@ -36,22 +36,21 @@ class DefaultWorker(Worker):
         if rank == 0: manager = True
         else        : manager = False
 
-        super().__init__(cfg=cfg, manager=manager, rank=rank)
-
-        # connect to the master queues
-        self._res_put = ru.zmq.Putter('result',  self._cfg.info.res_addr_put)
-        self._req_get = ru.zmq.Getter('request', self._cfg.info.req_addr_get,
-                                                 cb=self.request_cb)
-
-        # keep worker ID and rank
-        self._cfg['rank'] = rank
-        self._cfg['uid']  = '%s.%03d' % (self._cfg['uid'], rank)
-
-        self._n_cores = self._cfg.cores_per_rank
-        self._n_gpus  = self._cfg.gpus_per_rank
-
         self._res_evt = mp.Event()          # set on free resources
         self._my_term = mt.Event()          # for start/stop/join
+
+        super().__init__(manager=manager, rank=rank, raptor_id=raptor_id)
+
+        # connect to the master queues
+        self._res_put = ru.zmq.Putter('result',  self._res_addr_put)
+        self._req_get = ru.zmq.Getter('request', self._req_addr_get,
+                                                 cb=self._request_cb)
+
+        self._descr = ru.read_json('%s.json' % self._uid)
+
+        # keep worker ID and rank
+        self._n_cores =     self._descr.get('cores_per_rank', 1)
+        self._n_gpus  = int(self._descr.get('gpus_per_rank',  0))
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
@@ -179,7 +178,7 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def request_cb(self, tasks):
+    def _request_cb(self, tasks):
         '''
         grep call type from tasks, check if methods are registered, and
         invoke them.
@@ -285,11 +284,18 @@ class DefaultWorker(Worker):
             val = None
             exc = [None, None]
             try:
+
+                sbox = task['task_sandbox_path']
+                ru.rec_makedir(sbox)
+                os.chdir(sbox)
                 dispatcher = self.get_dispatcher(task['description']['mode'])
                 out, err, ret, val, exc = dispatcher(task)
 
             except Exception as e:
                 exc = [repr(e), '\n'.join(ru.get_exception_trace())]
+
+            finally:
+                os.chdir(self._sbox)
 
             res = [task, out, err, ret, val, exc]
 
@@ -405,12 +411,12 @@ class DefaultWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def test(self, idx, seconds):
+    def test(self, msg, sleep):
         # pylint: disable=reimported
         import time
-        print('start idx %6d: %.1f' % (idx, time.time()))
-        time.sleep(seconds)
-        print('stop  idx %6d: %.1f' % (idx, time.time()))
+        print('start idx %s: %.1f' % (msg, time.time()))
+        time.sleep(sleep)
+        print('stop  idx %s: %.1f' % (msg, time.time()))
 
 
 # ------------------------------------------------------------------------------

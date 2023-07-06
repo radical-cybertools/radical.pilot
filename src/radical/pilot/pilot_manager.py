@@ -27,16 +27,16 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 # ------------------------------------------------------------------------------
 #
 class PilotManager(rpu.Component):
-    '''
+    """Manage Pilot instances.
 
     A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
 
-    It is possible to attach one or more :ref:`chapter_machconf` to a
+    It is possible to attach one or more :ref:`chapter_design` to a
     PilotManager to outsource machine specific configuration parameters
     to an external configuration file.
 
-    **Example**::
+    Example::
 
         s = rp.Session(database_url=DBURL)
 
@@ -68,26 +68,25 @@ class PilotManager(rpu.Component):
     state notification arrives, any callback registered for that notification is
     fired.
 
-    NOTE: State notifications can arrive out of order wrt the pilot state model!
-    '''
+    Note:
+        State notifications can arrive out of order wrt the pilot state model!
+
+    """
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, session, uid=None, cfg='default'):
-        '''
-        Creates a new PilotManager and attaches is to the session.
+        """Creates a new PilotManager and attaches is to the session.
 
-        **Arguments:**
-            * session [:class:`rp.Session`]:
-              The session instance to use.
-            * uid (`string`):
-              ID for pilot manager, to be used for reconnect
-            * cfg (`dict` or `string`):
-              The configuration or name of configuration to use.
+        Arguments:
+            session (rp.Session): The session instance to use.
+            uid (str): ID for pilot manager, to be used for reconnect
+            cfg (dict, str): The configuration or name of configuration to use.
 
-        **Returns:**
-            * A new `PilotManager` object [:class:`rp.PilotManager`].
-        '''
+        Returns:
+            rp.PilotManager: A new `PilotManager` object.
+
+        """
 
         assert session.primary, 'pmgr needs primary session'
 
@@ -107,7 +106,6 @@ class PilotManager(rpu.Component):
         self._pcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._rec_id      = 0       # used for session recording
 
         for m in rpc.PMGR_METRICS:
             self._callbacks[m] = dict()
@@ -125,7 +123,6 @@ class PilotManager(rpu.Component):
         cfg.uid            = self._uid
         cfg.owner          = self._uid
         cfg.sid            = session.uid
-        cfg.base           = session.base
         cfg.path           = session.path
         cfg.dburl          = session.dburl
         cfg.heartbeat      = session.cfg.heartbeat
@@ -206,12 +203,14 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def close(self, terminate=True):
-        """
-        Shut down the PilotManager and all its components.
+        """Shut down the PilotManager and all its components.
 
-        **Arguments:**
-            * **terminate** [`bool`]: cancel non-final pilots if True (default)
-              NOTE: pilots cannot be reconnected to after termination
+        Arguments:
+            terminate (bool): cancel non-final pilots if True (default)
+
+                Note:
+                    Pilots cannot be reconnected to after termination.
+
         """
 
         if self._closed:
@@ -225,11 +224,16 @@ class PilotManager(rpu.Component):
             for m in rpc.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        # If terminate is set, we cancel all pilots.
+        # If terminate is set, kill all pilots.
         if terminate:
-            self.cancel_pilots(_timeout=20)
-            # if this cancel op fails and the pilots are s till alive after
-            # timeout, the pmgr.launcher termination will kill them
+
+            # skip reporting for `wait_pilots`
+            is_rep_enabled = self._rep._enabled
+            self._rep._enabled = False
+            self.cancel_pilots(_timeout=1)
+            self._rep._enabled = is_rep_enabled
+
+            self.kill_pilots(_timeout=10)
 
         self._terminate.set()
         self._cmgr.close()
@@ -243,9 +247,7 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def as_dict(self):
-        """
-        Returns a dictionary representation of the PilotManager object.
-        """
+        """Returns a dictionary representation of the PilotManager object."""
 
         ret = {
             'uid': self.uid,
@@ -258,10 +260,7 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __str__(self):
-
-        """
-        Returns a string representation of the PilotManager object.
-        """
+        """Returns a string representation of the PilotManager object."""
 
         return str(self.as_dict())
 
@@ -423,9 +422,7 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _pilot_staging_input(self, sds):
-        '''
-        Run some staging directives for a pilot.
-        '''
+        """Run some staging directives for a pilot."""
 
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(sds)
@@ -470,9 +467,7 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _pilot_staging_output(self, sds):
-        '''
-        Run some staging directives for a pilot.
-        '''
+        """Run some staging directives for a pilot."""
 
         # add uid, ensure its a list, general cleanup
         sds  = expand_staging_directives(sds)
@@ -517,9 +512,7 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _staging_ack_cb(self, topic, msg):
-        '''
-        update staging directive state information
-        '''
+        """Update staging directive state information."""
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -542,21 +535,18 @@ class PilotManager(rpu.Component):
     #
     @property
     def uid(self):
-        """
-        Returns the unique id.
-        """
+        """str: The unique id."""
         return self._uid
 
 
     # --------------------------------------------------------------------------
     #
     def list_pilots(self):
-        """
-        Returns the UIDs of the :class:`rp.Pilots` managed by
-        this pilot manager.
+        """Get the UIDs of the managed :class:`rp.Pilots`.
 
-        **Returns:**
-              * A list of :class:`rp.Pilot` UIDs [`string`].
+        Returns:
+            list[str]: A list of :class:`rp.Pilot` UIDs.
+
         """
 
         with self._pilots_lock:
@@ -568,17 +558,15 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def submit_pilots(self, descriptions):
-        """
-        Submits on or more :class:`rp.Pilot` instances to the
-        pilot manager.
+        """Submit one or more `rp.Pilot` instances to the pilot manager.
 
-        **Arguments:**
-            * **descriptions** [:class:`rp.PilotDescription`
-              or list of :class:`rp.PilotDescription`]: The
-              description of the pilot instance(s) to create.
+        Arguments:
+            descriptions (rp.PilotDescription | list[rp.PilotDescription]):
+                The description of the pilot instance(s) to create.
 
-        **Returns:**
-              * A list of :class:`rp.Pilot` objects.
+        Returns:
+            list[rp.Pilot]: A list of :class:`rp.Pilot` objects.
+
         """
 
         from .pilot import Pilot
@@ -608,14 +596,13 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            if self._session._rec:
-                ru.write_json(pd.as_dict(), "%s/%s.batch.%03d.json"
-                        % (self._session._rec, pilot.uid, self._rec_id))
-
-            self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
-                      (pilot.uid, pd['resource'],
-                       pd.get('cores', 0), pd.get('gpus', 0)))
-
+            if pd.get('nodes'):
+                self._rep.plain('\n\t%s   %-20s %6d nodes' %
+                                (pilot.uid, pd['resource'], pd['nodes']))
+            else:
+                self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
+                                (pilot.uid, pd['resource'],
+                                 pd.get('cores', 0), pd.get('gpus', 0)))
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
@@ -623,9 +610,6 @@ class PilotManager(rpu.Component):
         #        the profile entry for the advance to NEW.  So we here basically
         #        only trigger the profile entry for NEW.
         self.advance(pilot_docs, state=rps.NEW, publish=False, push=False)
-
-        if self._session._rec:
-            self._rec_id += 1
 
         # insert pilots into the database, as a bulk.
         self._session._dbs.insert_pilots(pilot_docs)
@@ -652,10 +636,11 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _reconnect_pilots(self):
-        '''
+        """Restore Pilot info from database.
+
         When reconnecting, we need to dig information about all pilots from the
         DB for which this pmgr is responsible.
-        '''
+        """
 
         from .pilot             import Pilot
         from .pilot_description import PilotDescription
@@ -678,12 +663,12 @@ class PilotManager(rpu.Component):
     def get_pilots(self, uids=None):
         """Returns one or more pilots identified by their IDs.
 
-        **Arguments:**
-            * **uids** [`string` or `list of strings`]: The IDs of the
-              pilot objects to return.
+        Arguments:
+            uids (str | list[str]): The IDs of the pilot objects to return.
 
-        **Returns:**
-              * A list of :class:`rp.Pilot` objects.
+        Returns:
+            list: A list of :class:`rp.Pilot` objects.
+
         """
 
         if not uids:
@@ -711,7 +696,8 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def wait_pilots(self, uids=None, state=None, timeout=None):
-        """
+        """Block for state transition.
+
         Returns when one or more :class:`rp.Pilots` reach a
         specific state.
 
@@ -719,31 +705,25 @@ class PilotManager(rpu.Component):
         Pilots reach the state defined in `state`.  This may include
         pilots which have previously terminated or waited upon.
 
-        **Example**::
-
+        Example:
             # TODO -- add example
 
-        **Arguments:**
+        Arguments:
+            uids (str | list[str], optional): If set, only the Pilots with the
+                specified uids are considered. If `None` (default), all
+                Pilots are considered.
+            state (str | list[str]): The state that Pilots have to reach in order
+                for the call to return.
 
-            * **pilot_uids** [`string` or `list of strings`]
-              If pilot_uids is set, only the Pilots with the specified
-              uids are considered. If pilot_uids is `None` (default), all
-              Pilots are considered.
+                By default `wait_pilots` waits for the Pilots to
+                reach a terminal state, which can be one of the following:
+                * :data:`rp.rps.DONE`
+                * :data:`rp.rps.FAILED`
+                * :data:`rp.rps.CANCELED`
+            timeout (float, optional): Timeout in seconds before the call returns
+                regardless of Pilot
+                state changes. The default value **None** waits forever.
 
-            * **state** [`string`]
-              The state that Pilots have to reach in order for the call
-              to return.
-
-              By default `wait_pilots` waits for the Pilots to
-              reach a terminal state, which can be one of the following:
-
-              * :data:`rp.rps.DONE`
-              * :data:`rp.rps.FAILED`
-              * :data:`rp.rps.CANCELED`
-
-            * **timeout** [`float`]
-              Timeout in seconds before the call returns regardless of Pilot
-              state changes. The default value **None** waits forever.
         """
 
         if not uids:
@@ -817,11 +797,12 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _fail_missing_pilots(self):
-        '''
+        """Advance remaining pilots to failed state.
+
         During termination, fail all pilots for which we did not manage to
         obtain a final state - we trust that they'll follow up on their
         cancellation command in due time, if they can
-        '''
+        """
 
         with self._pilots_lock:
             for pid in self._pilots:
@@ -834,12 +815,11 @@ class PilotManager(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def cancel_pilots(self, uids=None, _timeout=None):
-        """
-        Cancel one or more :class:`rp.Pilots`.
+        """Cancel one or more :class:`rp.Pilots`.
 
-        **Arguments:**
-            * **uids** [`string` or `list of strings`]: The IDs of the
-              pilot objects to cancel.
+        Arguments:
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
+
         """
 
         if not uids:
@@ -856,26 +836,55 @@ class PilotManager(rpu.Component):
 
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
-        # send the cancelation request to the pilots
+        # send the cancellation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
 
-        # inform pmgr.launcher - it will force-kill the pilot after some delay
+        # wait for the cancel to be enacted
+        self.wait_pilots(uids=uids, timeout=_timeout)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def kill_pilots(self, uids=None, _timeout=None):
+        """Kill one or more :class:`rp.Pilots`
+
+        Arguments:
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
+
+        """
+
+        if not uids:
+            with self._pilots_lock:
+                uids = list(self._pilots.keys())
+
+        if not isinstance(uids, list):
+            uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
+        self._log.debug('pilot(s).need(s) killing %s', uids)
+
+        # inform pmgr.launcher - it will force-kill the pilots
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 
+        # wait for the kill to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
 
 
     # --------------------------------------------------------------------------
     #
     def register_callback(self, cb, cb_data=None, metric=rpc.PILOT_STATE):
-        """
-        Registers a new callback function with the PilotManager.  Manager-level
-        callbacks get called if the specified metric changes.  The default
-        metric `PILOT_STATE` fires the callback if any of the Pilots
+        """Registers a new callback function with the PilotManager.
+
+        Manager-level callbacks get called if the specified metric changes.
+        The default metric `PILOT_STATE` fires the callback if any of the Pilots
         managed by the PilotManager change their state.
 
         All callback functions need to have the same signature::
@@ -888,11 +897,12 @@ class PilotManager(rpu.Component):
         object would be the pilot in question, and the value would be the new
         state of the pilot.
 
-        Available metrics are:
+        Available metrics are
 
-          * `PILOT_STATE`: fires when the state of any of the pilots which are
+        * `PILOT_STATE`: fires when the state of any of the pilots which are
             managed by this pilot manager instance is changing.  It communicates
             the pilot object instance and the pilots new state.
+
         """
 
         # FIXME: the signature should be (self, metrics, cb, cb_data)
@@ -950,4 +960,3 @@ class PilotManager(rpu.Component):
 
 
 # ------------------------------------------------------------------------------
-

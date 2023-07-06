@@ -29,7 +29,7 @@
                                         },
         "pre_bootstrap_0"             :["module use /projects/community/modulefiles",
                                         "module load gcc/5.4",
-                                        "module load py-data-science-stack/5.1.0-kp807",
+                                        "module load python/3.9.6-gc563",
                                         "module load intel/17.0.4"
                                         ],
         "default_remote_workdir"      : "/scratch/$USER",

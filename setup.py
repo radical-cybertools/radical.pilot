@@ -188,8 +188,7 @@ class RunTwine(Command):
 # This copies the contents like examples/ dir under sys.prefix/share/$name
 # It needs the MANIFEST.in entries to work.
 base = 'share/%s' % name
-df = [('%s/'                      % base, ['docs/source/events.md']),
-      ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
+df = [('%s/examples'              % base, glob.glob('examples/[01]*.py')),
       ('%s/examples'              % base, glob.glob('examples/hello*')),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
       ('%s/examples/docs'         % base, glob.glob('examples/docs/*.py')),
@@ -260,6 +259,7 @@ setup_args = {
                             'bin/radical-pilot-inspect',
                             'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',
+                            'bin/radical-pilot-raptor-master',
                             'bin/radical-pilot-raptor-worker',
                             'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',

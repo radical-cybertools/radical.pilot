@@ -58,7 +58,7 @@ class _Resources(object):
         self._res_evt   = mt.Event()  # signals free resources
         self._res_lock  = mt.Lock()   # lock resource for alloc / dealloc
         self._resources = {
-                'cores': [0] * self._ranks
+                'cores': [0] * self._ranks,
               # 'gpus' : [0] * self._n_gpus
         }
 
@@ -390,6 +390,7 @@ class MPIWorkerRank(mt.Thread):
         self._log               = log
         self._prof              = prof
         self._base              = base
+        self._sbox              = os.environ['RP_TASK_SANDBOX']
 
 
     # --------------------------------------------------------------------------
@@ -439,6 +440,10 @@ class MPIWorkerRank(mt.Thread):
                     if self._rank not in task['ranks']:
                         raise RuntimeError('inconsistent rank info')
 
+                    sbox = task['task_sandbox_path']
+                    ru.rec_makedir(sbox)
+                    os.chdir(sbox)
+
                     self._prof.prof('exec_start', uid=uid)
                     out, err, ret, val, exc = self._dispatch(task)
                     self._prof.prof('exec_stop', uid=uid)
@@ -463,6 +468,7 @@ class MPIWorkerRank(mt.Thread):
                 finally:
                     # send task back to rank 0
                     # FIXME: task_exec_stop
+                    os.chdir(self._sbox)
                     self._prof.prof('unschedule_start', uid=uid)
                     rank_result_q.put(task)
 
@@ -494,8 +500,8 @@ class MPIWorkerRank(mt.Thread):
                'RP_GTOD'            : os.environ['RP_GTOD'],
                'RP_PROF'            : os.environ['RP_PROF'],
                'RP_PROF_TGT'        : os.environ['RP_PROF_TGT'],
-               'RP_RANKS'           : 1,  # dispatch_mpi will oveerwrite this
-               'RP_RANK'            : 0,  # dispatch_mpi will oveerwrite this
+               'RP_RANKS'           : '1',  # dispatch_mpi will overwrite this
+               'RP_RANK'            : '0',  # dispatch_mpi will overwrite this
                })
 
         if task['description']['ranks'] > 1:
@@ -579,7 +585,7 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, raptor_id: str):
 
         self._my_term = mt.Event()
         self._my_ret  = 0
@@ -597,7 +603,8 @@ class MPIWorker(Worker):
 
         # rank 0 is the manager rank and will register the worker with the
         # master and connect to the task and result queues
-        super().__init__(cfg=cfg, manager=self._manager, rank=self._rank)
+        super().__init__(manager=self._manager, rank=self._rank,
+                         raptor_id=raptor_id)
 
 
         # rank 0 starts two ZMQ queues: one to send tasks to the worker ranks
@@ -606,8 +613,8 @@ class MPIWorker(Worker):
         info = None
         if self._manager:
 
-            self._worker_task_q_get   = self._cfg.info.req_addr_get
-            self._worker_result_q_put = self._cfg.info.res_addr_put
+            self._worker_task_q_get   = self._req_addr_get
+            self._worker_result_q_put = self._res_addr_put
 
             self._rank_task_q   = ru.zmq.Queue(channel='rank_task_q')
             self._rank_result_q = ru.zmq.Queue(channel='rank_result_q')
