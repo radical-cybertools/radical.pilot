@@ -1,0 +1,46 @@
+
+{
+    "task": {
+        "uid"               : "task.000019",
+        "description": {
+            "executable"    : "/bin/sleep",
+            "arguments"     : ["12"],
+            "ranks"         : 4,
+            "cores_per_rank": 2,
+            "threading_type": ""
+        },
+        "task_sandbox_path" : "/tmp"
+    },
+
+    "setup": {
+        "lm": {
+            "slots": {
+                "ranks": [
+                    {
+                        "node_name" : "node1",
+                        "node_id"   : "00001",
+                        "core_map"  : [[0, 1], [2, 3], [4, 5], [6, 7]],
+                        "gpu_map"   : [],
+                        "lfs"       : 0,
+                        "mem"       : 0
+                    }
+                ],
+                "partition_id"   : null,
+                "cores_per_node" : 28,
+                "gpus_per_node"  : 0,
+                "lfs_per_node"   : 0,
+                "mem_per_node"   : 0
+            },
+            "exact": true
+        }
+    },
+
+    "results": {
+        "lm": {
+            "srun": {
+                "launch_cmd" : "srun --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
+                "rank_exec"  : "/bin/sleep \"12\""
+            }
+        }
+    }
+}
