@@ -63,7 +63,7 @@ Task
    :members:
 
 Utilities and helpers
----------------------
+=====================
 .. automodule:: radical.pilot.utils.component
    :members:
 .. automodule:: radical.pilot.utils.db_utils
