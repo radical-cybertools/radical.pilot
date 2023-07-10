@@ -1,3 +1,5 @@
+.. py:module:: radical.pilot
+
 *************
 RADICAL-Pilot
 *************
