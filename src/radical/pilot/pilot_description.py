@@ -66,14 +66,16 @@ class PilotDescription(ru.TypedDict):
             be provided to `radical.saga.job.Description`. If not set then
             :attr:`uid` will be used instead.
         resource (str): The key of a
-            :ref:`chapter_design` entry. If the key exists, the machine-specific
+            :ref:`platform description </tutorials/configuration.ipynb#Platform-description>`
+            entry. If the key exists, the machine-specific
             configuration is loaded from the config file once the `PilotDescription`
             is passed to :meth:`radical.pilot.PilotManager.submit_pilots`. If the
             key doesn't exist, an exception :class:`ValueError` is raised.
         access_schema (str, optional): The key of an access mechanism to use.
-            The valid access mechanism is defined in the resource configuration,
-            see :ref:`chapter_design`. The first one defined there is used by
-            default, if no other is specified.
+            The valid access mechanism is defined in the resource configuration.
+            See :doc:`/tutorials/configuration`. The first ``schema`` defined
+            in the resource configuration is used by
+            default, if no *access_schema* is specified.
         runtime (int, optional): The maximum run time (wall-clock time) in **minutes** of
             the pilot. Default 10.
         sandbox (str, optional): The working ("sandbox") directory of the pilot agent.
