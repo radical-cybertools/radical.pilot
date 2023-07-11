@@ -9,6 +9,18 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.35.0 Release                                                    2023-07-11
+
+  - Improve links to resource definitions.
+  - Improve typing in Session.get_pilot_managers
+  - Provide a target for Sphinx `:py:mod:` role.
+  - Un-hide "Utilities and helpers" section in API reference.
+  - Use a universal and unique identifier for registered callbacks.
+  - added option `--exact` for Rivanna (SRun LM)
+  - fixes tests for PRs from forks (#2969)
+
+
+--------------------------------------------------------------------------------
 ### 1.34.0 Release                                                    2023-06-22
 
   - major documentation overhaul
