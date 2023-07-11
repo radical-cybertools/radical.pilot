@@ -121,6 +121,8 @@ class TestSrun(TestCase):
         test_cases = setUp('lm', 'srun')
         for task, result in test_cases:
 
+            lm_srun._exact = task.get('exact', False)
+
             if result == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
                     lm_srun.get_launch_cmds(task, '')
