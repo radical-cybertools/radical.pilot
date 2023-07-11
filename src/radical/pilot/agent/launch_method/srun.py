@@ -39,6 +39,10 @@ class Srun(LaunchMethod):
 
         self._command : str  = ''
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
+        self._exact   : bool = False
+
+        if 'uva.rivanna' in lm_cfg['resource']:
+            self._exact = True
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -147,13 +151,17 @@ class Srun(LaunchMethod):
             if slots['ranks'][0]['gpu_map']:
                 gpus_per_task = len(slots['ranks'][0]['gpu_map'][0])
 
+        mapping = ''
+        if self._exact:
+            mapping += '--exact '
+
         if self._traverse:
-            mapping = '--ntasks=%d '        % n_tasks \
-                    + '--cpus-per-task=%d ' % n_task_threads \
-                    + '--ntasks-per-core=1 --distribution="arbitrary"'
+            mapping += '--ntasks=%d '        % n_tasks \
+                    +  '--cpus-per-task=%d ' % n_task_threads \
+                    +  '--ntasks-per-core=1 --distribution="arbitrary"'
         else:
-            mapping = '--nodes %d ' % n_nodes \
-                    + '--ntasks %d' % n_tasks
+            mapping += '--nodes %d ' % n_nodes \
+                    +  '--ntasks %d' % n_tasks
 
             if n_task_threads:
                 mapping += ' --cpus-per-task %d' % n_task_threads
