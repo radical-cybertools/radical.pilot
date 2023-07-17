@@ -42,6 +42,13 @@ General description
    Please refer to this `link <https://www.rc.virginia.edu/userinfo/rivanna/overview/#system-details>`_
    for more information about the resources per node.
 
+.. note::
+
+   If you run RADICAL-Pilot in the "interactive" mode
+   (``pilot_description.access_schema = 'interactive'``), make sure that you use
+   option ``--exclusive`` (`SLURM exclusive <https://slurm.schedmd.com/sbatch.html#OPT_exclusive>`_)
+   in your batch script or within a command to start an interactive session.
+
 Setup execution environment
 ===========================
 
