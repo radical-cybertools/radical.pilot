@@ -199,6 +199,9 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
+        # handle pilot commands
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
@@ -242,7 +245,7 @@ class Agent_0(rpu.Worker):
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
-        self.advance(pilot, publish=True, push=False)
+        self.advance(pilot, publish=True, push=False, fwd=True)
 
 
     # --------------------------------------------------------------------------
@@ -612,6 +615,7 @@ class Agent_0(rpu.Worker):
 
             req = arg['rpc']
             if req not in ['hello', 'prepare_env']:
+
                 # we don't handle that request
                 return True
 
@@ -628,6 +632,7 @@ class Agent_0(rpu.Worker):
 
                 else:
                     # unknown command
+                    self._log.info('ignore rpc command: %s', req)
                     return True
 
                 # request succeeded - respond with return value

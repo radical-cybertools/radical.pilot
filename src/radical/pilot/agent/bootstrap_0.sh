@@ -1779,6 +1779,8 @@ fi
 # disable user site packages as those can conflict with our virtualenv
 export PYTHONNOUSERSITE=True
 
+export RP_PILOT_ID="$PILOT_ID"
+
 env_prep -t env/agent.env
 
 # we create a bootstrap_2.sh which sets the environment sub-agents

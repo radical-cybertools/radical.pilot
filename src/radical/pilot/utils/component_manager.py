@@ -135,15 +135,10 @@ class ComponentManager(object):
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
           # self._reg.put('bridge.%s' % bname, bcfg)
-
-            self._log.info('create  bridge %s [%s]', bname, bcfg.uid)
-
             cmd = 'radical-pilot-bridge %s %s %s' \
                 % (self._sid, self._reg.url, bname)
-            out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
 
-            self._log.debug('bridge startup out: %s', out)
-            self._log.debug('bridge startup err: %s', err)
+            out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
 
             if ret:
                 raise RuntimeError('bridge startup failed')

@@ -141,7 +141,7 @@ class Session(rs.Session):
 
             _role (`bool`): only `PRIMARY` sessions created by the original
                 application process (via `rp.Session()`), will create proxies
-                and Registry Serivices.  `AGENT` sessions will also create
+                and Registry Services.  `AGENT` sessions will also create
                 a Registry but no proxies.  All other `DEFAULT` session
                 instances are instantiated internally in processes spawned
                 (directly or indirectly) by the initial session, for example in
@@ -177,6 +177,13 @@ class Session(rs.Session):
         self._pmgrs    = dict()  # map IDs to pmgr instances
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
+
+
+        # this session is either living in the client applicatio or lives in the
+        # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
+        # set - we derive the session module scope from that env variable.
+        self._module = os.environ.get('RP_PILOT_ID', 'client')
+
 
         # non-primary sessions need a uid!
         if self._role != self._PRIMARY and not self._uid:
@@ -261,6 +268,13 @@ class Session(rs.Session):
 
         # start bridges and components
         self._start_components()
+
+        # primary session hooks into the control pubsub
+        bcfg = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
+        self._ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
+                                          url=bcfg['addr_pub'],
+                                          log=self._log,
+                                          prof=self._prof)
 
         # crosswire local channels and proxy channels
         self._crosswire_proxy()
@@ -513,6 +527,10 @@ class Session(rs.Session):
         self._hb_pubsub.start()
         time.sleep(1)
 
+        ru.zmq.test_pubsub(self._hb_pubsub.channel,
+                           self._hb_pubsub.addr_pub,
+                           self._hb_pubsub.addr_sub),
+
         # fill 'cfg.heartbeat' section
         self._cfg.heartbeat.addr_pub = str(self._hb_pubsub.addr_pub)
         self._cfg.heartbeat.addr_sub = str(self._hb_pubsub.addr_sub)
@@ -533,7 +551,8 @@ class Session(rs.Session):
             self._hb_pub.put('heartbeat', HeartbeatMessage(self._uid))
 
             # also update proxy heartbeat
-            self._proxy.request('heartbeat', {'sid': self._uid})
+            if self._proxy:
+                self._proxy.request('heartbeat', {'sid': self._uid})
         # --------------------------------------
 
         # --------------------------------------
@@ -675,26 +694,57 @@ class Session(rs.Session):
 
 
     # ----------------------------------------------------------------------
-    def crosswire_pubsub(self, src, tgt):
+    def crosswire_pubsub(self, src, tgt, from_proxy):
+
+        # we only forward messages which have either no origin set (in this case
+        # this method sets the origin), or whose origin is the same as
+        # configured when crosswiring the channels (either 'client' or the pilot
+        # ID).
 
         path = self._cfg.path
         reg  = self._reg
 
-        url     = reg['bridges.%s.addr_pub' % tgt.lower()]
-        self._log.debug('cross %s %s', url, tgt)
-        tgt_pub = ru.zmq.Publisher(channel=tgt, path=path,
-                                   url=url)
+        url_sub = reg['bridges.%s.addr_sub' % src.lower()]
+        url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
+
+        self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
+        self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+
+        publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub)
 
         def pubsub_fwd(topic, msg):
-            if msg.get('fwd'):  # only forward if requested
-                del msg['fwd']  # only forward once
-                tgt_pub.put(tgt, msg)
-                self._log.debug('=== === fwd %s to %s: %s', src, tgt, msg)
-            else:
-                self._log.debug('=== =!= fwd %s to %s: %s', src, tgt, msg)
 
-        ru.zmq.Subscriber(channel=src, path=path, cb=pubsub_fwd,
-                          url=reg['bridges.%s.addr_sub' % src.lower()])
+            if 'origin' not in msg:
+                msg['origin'] = self._module
+
+          # self._log.debug('XXX =?= fwd %s to %s: %s [%s - %s]', src, tgt, msg,
+          #                 msg['origin'], self._module)
+
+            if from_proxy:
+
+                # all messages *from* the proxy are forwarded - but not the ones
+                # which orginated in *this* module in the first place
+
+                if msg['origin'] == self._module:
+                    self._log.debug('XXX =>! fwd %s to topic:%s: %s', src, tgt, msg)
+
+                else:
+                    self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                    publisher.put(tgt, msg)
+
+            else:
+
+                # *to* proxy: forward all messages which originated in *this*
+                # module
+
+                if msg['origin'] == self._module:
+                    self._log.debug('XXX ==> fwd %s to topic:%s: %s', src, tgt, msg)
+                    publisher.put(tgt, msg)
+
+                else:
+                    self._log.debug('XXX =!> fwd %s to topic:%s: %s', src, tgt, msg)
+
+        ru.zmq.Subscriber(channel=src, topic=src, path=path, cb=pubsub_fwd, url=url_sub)
 
 
     # --------------------------------------------------------------------------
@@ -726,14 +776,18 @@ class Session(rs.Session):
         assert self._role in [self._PRIMARY, self._AGENT_0]
 
         self.crosswire_pubsub(src=rpc.CONTROL_PUBSUB,
-                              tgt=rpc.PROXY_CONTROL_PUBSUB)
+                              tgt=rpc.PROXY_CONTROL_PUBSUB,
+                              from_proxy=False)
         self.crosswire_pubsub(src=rpc.PROXY_CONTROL_PUBSUB,
-                              tgt=rpc.CONTROL_PUBSUB)
+                              tgt=rpc.CONTROL_PUBSUB,
+                              from_proxy=True)
 
         self.crosswire_pubsub(src=rpc.STATE_PUBSUB,
-                              tgt=rpc.PROXY_STATE_PUBSUB)
+                              tgt=rpc.PROXY_STATE_PUBSUB,
+                              from_proxy=False)
         self.crosswire_pubsub(src=rpc.PROXY_STATE_PUBSUB,
-                              tgt=rpc.STATE_PUBSUB)
+                              tgt=rpc.STATE_PUBSUB,
+                              from_proxy=True)
 
 
     # --------------------------------------------------------------------------
@@ -795,6 +849,12 @@ class Session(rs.Session):
 
         options = self._close_options
 
+        if options.terminate:
+            # terminate all components
+            if self._role == self._PRIMARY:
+                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'terminate',
+                                                        'arg': None})
+
         for tmgr_uid, tmgr in self._tmgrs.items():
             self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
             tmgr.close()
@@ -811,8 +871,7 @@ class Session(rs.Session):
         if self._proxy:
             try:
                 self._log.debug("session %s closes service", self._uid)
-                self._proxy.request('unregister',
-                                      {'sid': self._uid})
+                self._proxy.request('unregister', {'sid': self._uid})
             except:
                 pass
 
