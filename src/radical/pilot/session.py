@@ -710,7 +710,8 @@ class Session(rs.Session):
         self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
         self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
-        publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub)
+        publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
+                                     log=self._log, prof=self._prof)
 
         def pubsub_fwd(topic, msg):
 
@@ -744,7 +745,8 @@ class Session(rs.Session):
                 else:
                     self._log.debug('XXX =!> fwd %s to topic:%s: %s', src, tgt, msg)
 
-        ru.zmq.Subscriber(channel=src, topic=src, path=path, cb=pubsub_fwd, url=url_sub)
+        ru.zmq.Subscriber(channel=src, topic=src, path=path, cb=pubsub_fwd,
+                          url=url_sub, log=self._log, prof=self._prof)
 
 
     # --------------------------------------------------------------------------
