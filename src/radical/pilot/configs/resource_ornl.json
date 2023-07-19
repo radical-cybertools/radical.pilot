@@ -185,9 +185,7 @@
                                          "ulimit -u 65536"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local",
+        "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "lfs_path_per_node"           : "/tmp",
@@ -197,7 +195,8 @@
                                          "options"       : ["gpumps", "nvme"],
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
-                                        }
+                                        },
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
     },
 
     "summit_jsrun": {
@@ -233,9 +232,7 @@
                                          "ulimit -u 65536"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
-        "python_dist"                 : "default",
-        "virtenv_mode"                : "create",
-        "rp_version"                  : "local",
+        "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "lfs_path_per_node"           : "/tmp",
@@ -245,7 +242,8 @@
                                          "options"       : ["gpumps", "nvme"],
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
-                                        }
+                                        },
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
     },
 
     "summit_interactive": {
@@ -285,7 +283,8 @@
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 0
+        "lfs_size_per_node"           : 0,
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
     },
 
     "summit_prte": {
