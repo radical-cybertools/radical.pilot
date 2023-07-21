@@ -54,11 +54,16 @@ class SlurmTestCase(TestCase):
         self.assertEqual(rm_info.gpus_per_node, 10)
 
         del os.environ['SLURM_GPUS_ON_NODE']
-        os.environ['SLURM_JOB_GPUS'] = '0,1,2,3'
+        os.environ['SLURM_JOB_GPUS'] = '1,2,3,4'  # 4 allocated GPUs per node
         rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
                                                       'gpus_per_node' : 0}))
-        # 4 GPUs within 2 nodes (list of nodes is in SLURM_NODELIST)
-        self.assertEqual(rm_info.gpus_per_node, 2)
+        self.assertEqual(rm_info.gpus_per_node, 4)
+
+        del os.environ['SLURM_JOB_GPUS']
+        os.environ['GPU_DEVICE_ORDINAL'] = '0,1,2'  # 3 allocated GPUs per node
+        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
+                                                      'gpus_per_node': 0}))
+        self.assertEqual(rm_info.gpus_per_node, 3)
 
         # test env variable "SLURM_JOB_NODELIST"
         if 'SLURM_NODELIST' in os.environ:
