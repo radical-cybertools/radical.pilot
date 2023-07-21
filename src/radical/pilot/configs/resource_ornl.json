@@ -190,6 +190,7 @@
         "rp_version"                  : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
+        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
@@ -238,6 +239,7 @@
         "rp_version"                  : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
+        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
@@ -284,6 +286,7 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
+        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0
     },
@@ -338,6 +341,7 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
+        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {

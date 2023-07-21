@@ -587,6 +587,7 @@ class PMGRLaunchingComponent(rpu.Component):
         virtenv                 = rcfg.get('virtenv',      default_virtenv)
         cores_per_node          = rcfg.get('cores_per_node', 0)
         gpus_per_node           = rcfg.get('gpus_per_node',  0)
+        numa_domains_per_node   = rcfg.get('numa_domains_per_node',  0)
         lfs_path_per_node       = rcfg.get('lfs_path_per_node')
         lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
         python_dist             = rcfg.get('python_dist')
@@ -817,9 +818,9 @@ class PMGRLaunchingComponent(rpu.Component):
         allocated_gpus  = (
             requested_nodes * avail_gpus_per_node)  or requested_gpus
 
-        self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+        self._log.debug('nodes: %s [%s %s %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
-                        allocated_cores, allocated_gpus)
+                        numa_domains_per_node, allocated_cores, allocated_gpus)
 
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
@@ -861,36 +862,37 @@ class PMGRLaunchingComponent(rpu.Component):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
-        agent_cfg['owner']               = 'agent.0'
-        agent_cfg['resource']            = resource
-        agent_cfg['nodes']               = requested_nodes
-        agent_cfg['cores']               = allocated_cores
-        agent_cfg['gpus']                = allocated_gpus
-        agent_cfg['spawner']             = agent_spawner
-        agent_cfg['scheduler']           = agent_scheduler
-        agent_cfg['runtime']             = runtime
-        agent_cfg['app_comm']            = app_comm
-        agent_cfg['dburl']               = str(database_url)
-        agent_cfg['sid']                 = sid
-        agent_cfg['pid']                 = pid
-        agent_cfg['pmgr']                = self._pmgr
-        agent_cfg['logdir']              = '.'
-        agent_cfg['pilot_sandbox']       = pilot_sandbox
-        agent_cfg['session_sandbox']     = session_sandbox
-        agent_cfg['resource_sandbox']    = resource_sandbox
-        agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['cores_per_node']      = cores_per_node
-        agent_cfg['gpus_per_node']       = gpus_per_node
-        agent_cfg['lfs_path_per_node']   = lfs_path_per_node
-        agent_cfg['lfs_size_per_node']   = lfs_size_per_node
-        agent_cfg['task_tmp']            = task_tmp
-        agent_cfg['task_pre_launch']     = task_pre_launch
-        agent_cfg['task_pre_exec']       = task_pre_exec
-        agent_cfg['task_post_launch']    = task_post_launch
-        agent_cfg['task_post_exec']      = task_post_exec
-        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
-        agent_cfg['services']            = services
+        agent_cfg['owner']                 = 'agent.0'
+        agent_cfg['resource']              = resource
+        agent_cfg['nodes']                 = requested_nodes
+        agent_cfg['cores']                 = allocated_cores
+        agent_cfg['gpus']                  = allocated_gpus
+        agent_cfg['spawner']               = agent_spawner
+        agent_cfg['scheduler']             = agent_scheduler
+        agent_cfg['runtime']               = runtime
+        agent_cfg['app_comm']              = app_comm
+        agent_cfg['dburl']                 = str(database_url)
+        agent_cfg['sid']                   = sid
+        agent_cfg['pid']                   = pid
+        agent_cfg['pmgr']                  = self._pmgr
+        agent_cfg['logdir']                = '.'
+        agent_cfg['pilot_sandbox']         = pilot_sandbox
+        agent_cfg['session_sandbox']       = session_sandbox
+        agent_cfg['resource_sandbox']      = resource_sandbox
+        agent_cfg['resource_manager']      = resource_manager
+        agent_cfg['cores_per_node']        = cores_per_node
+        agent_cfg['gpus_per_node']         = gpus_per_node
+        agent_cfg['numa_domains_per_node'] = numa_domains_per_node
+        agent_cfg['lfs_path_per_node']     = lfs_path_per_node
+        agent_cfg['lfs_size_per_node']     = lfs_size_per_node
+        agent_cfg['task_tmp']              = task_tmp
+        agent_cfg['task_pre_launch']       = task_pre_launch
+        agent_cfg['task_pre_exec']         = task_pre_exec
+        agent_cfg['task_post_launch']      = task_post_launch
+        agent_cfg['task_post_exec']        = task_post_exec
+        agent_cfg['resource_cfg']          = copy.deepcopy(rcfg)
+        agent_cfg['debug']                 = self._log.getEffectiveLevel()
+        agent_cfg['services']              = services
 
         # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
