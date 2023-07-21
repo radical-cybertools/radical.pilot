@@ -216,7 +216,7 @@ class ResourceManager(object):
         rm_info.requested_gpus        = self._cfg.gpus
         rm_info.cores_per_node        = self._cfg.cores_per_node
         rm_info.gpus_per_node         = self._cfg.gpus_per_node
-        rm_info.numa_domains_per_node = self._cfg.numa_domains_per_node
+        rm_info.numa_domains_per_node = self._cfg.numa_domains_per_node or 1
         rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
         rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
 
