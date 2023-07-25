@@ -119,8 +119,6 @@ if __name__ == '__main__':
         pd.cores  += nodes_rp * cores_per_node
         pd.gpus   += nodes_rp * gpus_per_node
 
-        pd.runtime = cfg.runtime
-
         pmgr = rp.PilotManager(session=session)
         tmgr = rp.TaskManager(session=session)
         tmgr.register_callback(task_state_cb)
@@ -143,7 +141,6 @@ if __name__ == '__main__':
         report.info('Call pilot.prepare_env()... ')
         pilot.prepare_env(env_name='ve_raptor',
                           env_spec={'type' : 'venv',
-                                    'path' : '/tmp/ve3',
                                     'setup': [rp.sdist_path,
                                               ru.sdist_path,
                                               'mpi4py']})
@@ -190,7 +187,7 @@ if __name__ == '__main__':
             states = tmgr.wait_tasks(
                 uids=[t.uid for t in task],
                 state=rp.FINAL + [rp.AGENT_EXECUTING],
-                timeout=60
+                timeout=300
             )
             logger.info('Master states: %s', str(states))
 
@@ -307,7 +304,7 @@ if __name__ == '__main__':
             tasks = tmgr.submit_tasks(tds)
 
             logger.info('Wait for tasks %s', [t.uid for t in tds])
-            tmgr.wait_tasks(uids=[t.uid for t in tasks], timeout=300)
+            tmgr.wait_tasks(uids=[t.uid for t in tasks], timeout=900)
 
             for task in tasks:
                 report.info('id: %s [%s]:\n    out: %s\n    ret: %s\n'
