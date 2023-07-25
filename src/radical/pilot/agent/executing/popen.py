@@ -694,6 +694,9 @@ class Popen(AgentExecutingComponent):
                     rank_id += 1
             td['pre_exec'].append(rank_env)
 
+        # pre-defined `pre_exec` per platform configuration
+        td['pre_exec'].extend(ru.as_list(self._cfg.get('task_pre_exec')))
+
 
     # --------------------------------------------------------------------------
     #
