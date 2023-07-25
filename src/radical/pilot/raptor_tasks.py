@@ -12,9 +12,9 @@ from .task_description import TaskDescription
 class Raptor(Task):
     '''
     RAPTOR ('RAPid Task executOR') is a task executor which, other than other
-    RADICAL-pilot executors can handle function tasks.
+    RADICAL-Pilot executors can handle function tasks.
 
-    A `Raptor` can be submitted to a pilot.  It will be associated with
+    A `Raptor` must be submitted to a pilot.  It will be associated with
     `RaptorWorker` instances on that pilot and use those workers to rapidly
     execute tasks.  Raptors excel at high throughput execution for large numbers
     of short running tasks.  However, they have limited capabilities with
@@ -22,15 +22,6 @@ class Raptor(Task):
     executables, and tasks with heterogeneous resource requirements.
     '''
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def __init__(self, tmgr: object,
-  #                    descr: Dict[str, Any],
-  #                    origin: str) -> None:
-  #
-  #     super().__init__(tmgr, descr, origin)
-  #
-  #
     # --------------------------------------------------------------------------
     #
     def submit_workers(self, descriptions: List[TaskDescription]) -> List[Task]:
@@ -82,7 +73,7 @@ class Raptor(Task):
         for td in descriptions:
             td.raptor_id = self.uid
 
-        tasks = self._tmgr.submit_tasks(descriptions)
+        return self._tmgr.submit_tasks(descriptions)
 
 
     # --------------------------------------------------------------------------
