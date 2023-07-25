@@ -22,6 +22,15 @@ from ..task_description import RAPTOR_WORKER
 # ------------------------------------------------------------------------------
 #
 class Master(rpu.Component):
+    '''
+    Raptor Master class
+
+    The `rp.raptor.Master` instantiates and orchestrates a set of workers which
+    are used to rapidly and efficiently execute function tasks.  As such the
+    raptor master acts as an RP executor: it hooks into the RP agent
+    communication channels to receive tasks from the RP agent scheduler in order
+    to execute them.
+    '''
 
     NEW    = 'NEW'
     ACTIVE = 'ACTIVE'
