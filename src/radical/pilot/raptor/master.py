@@ -52,8 +52,8 @@ class Master(rpu.Component):
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
-        self._hb_freq    = 10          # check worker heartbetas every n seconds
-        self._hb_timeout = 15          # consider worker dead after 15 seconds
+        self._hb_freq    = 1000        # check worker heartbetas every n seconds
+        self._hb_timeout = 150         # consider worker dead after 150 seconds
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
                                    _primary=False)
