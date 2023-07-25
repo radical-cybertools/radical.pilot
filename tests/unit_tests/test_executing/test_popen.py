@@ -133,6 +133,7 @@ class TestPopen(TestCase):
     def test_extend_pre_exec(self, mocked_init):
 
         pex = Popen(cfg=None, session=None)
+        pex._cfg = {}
 
         td    = {'cores_per_rank': 2,
                  'threading_type': '',
@@ -144,13 +145,16 @@ class TestPopen(TestCase):
 
         pex._extend_pre_exec(td, ranks)
         self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])
+        self.assertFalse(bool(td['pre_exec']))
 
         td.update({'threading_type': rpc.OpenMP,
                    'gpu_type'      : rpc.CUDA})
+        pex._cfg['task_pre_exec'] = ['export TEST_ENV=test']
 
         pex._extend_pre_exec(td, ranks)
         self.assertIn('export OMP_NUM_THREADS=2',             td['pre_exec'])
         self.assertIn({'0': 'export CUDA_VISIBLE_DEVICES=5'}, td['pre_exec'])
+        self.assertIn('export TEST_ENV=test', td['pre_exec'])
 
     # --------------------------------------------------------------------------
     #
