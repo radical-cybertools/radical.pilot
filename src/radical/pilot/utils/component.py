@@ -11,8 +11,10 @@ import time
 import threading       as mt
 import radical.utils   as ru
 
-from ..          import constants      as rpc
-from ..          import states         as rps
+from .. import constants as rpc
+from .. import states    as rps
+
+from .rpc_helper import RPCHelper
 
 
 # ------------------------------------------------------------------------------
