@@ -119,7 +119,6 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     if 'pubsub' in uid:
         d = ru.zmq.test_pubsub(bridge.channel, bridge.addr_pub, bridge.addr_sub)
-        print('%.1f' % time.time(), d)
 
     sys.stdout.flush()
     sys.stderr.flush()

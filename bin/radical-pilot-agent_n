@@ -64,10 +64,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     reg.close()
 
-    if uid == 'agent_0':
-        agent = run_agent_0(sid, reg_addr, uid, log, prof)
-    else:
-        agent = run_agent_n(sid, reg_addr, uid, log, prof)
+    agent = run_agent_n(sid, reg_addr, uid, log, prof)
 
     agent.start()
 
@@ -110,32 +107,13 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
 # ------------------------------------------------------------------------------
 #
-def run_agent_0(sid, reg_addr, uid, log, prof):
-
-    session = rp.Session(uid=sid, cfg=s_cfg,
-                         _role=rp.Session._AGENT_0, _reg_addr=reg_addr)
-
-    # session just started a registry - populate it further with agent related
-    # config sections
-    reg  = ru.zmq.RegistryClient(url=reg_addr)
-
-    reg['agent.%s.cfg' % uid] = a_cfg
-
-    reg.close()
-
-    agent = rp.Agent_0(a_cfg, session)
-
-    return agent
-
-
-# ------------------------------------------------------------------------------
-#
 def run_agent_n(sid, reg_addr, uid, log, prof):
 
     reg  = ru.zmq.RegistryClient(url=reg_addr)
 
-    hb_cfg = ru.TypedDict(reg['heartbeat'])
-    a_cfg  = ru.TypedDict(reg['agent.%s.cfg' % uid])
+    hb_cfg = ru.Config(cfg=reg['heartbeat'])
+    s_cfg  = ru.Config(cfg=reg['cfg'])
+    a_cfg  = ru.Config(cfg=reg['agent.%s.cfg' % uid])
 
     reg.close()
 

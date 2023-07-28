@@ -181,19 +181,6 @@ class Agent_0(rpu.Worker):
                 self._rcfg['task_environment']['RP_%s_IN'  % AC] = ac['addr_in']
                 self._rcfg['task_environment']['RP_%s_OUT' % AC] = ac['addr_out']
 
-        # some of the bridge addresses also need to be exposed to the workload
-        if app_comm:
-            if 'task_environment' not in self._cfg:
-                self._cfg['task_environment'] = dict()
-            for ac in app_comm:
-                if ac not in self._reg['bridges']:
-                    raise RuntimeError('missing app_comm %s' % ac)
-                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
-                        self._reg['bridges.%s.ac' % ac]['addr_in']
-                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
-                        self._reg['bridges.%s.addr_out' % ac]
-
-
 
     # --------------------------------------------------------------------------
     #
@@ -493,7 +480,7 @@ class Agent_0(rpu.Worker):
                         'ranks'         : 1,
                         'cores_per_rank': self._rm.info.cores_per_node,
                         'executable'    : '/bin/sh',
-                        'arguments'     : [bs_name, sa]
+                        'arguments'     : [bs_name, self._sid, self.cfg.reg_addr, sa]
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
@@ -525,7 +512,8 @@ class Agent_0(rpu.Worker):
 
                 tmp  = '#!/bin/sh\n\n'
                 tmp += '. ./env/agent.env\n'
-                tmp += '/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa
+                tmp += '/bin/sh -l ./bootstrap_2.sh %s %s %s\n\n' \
+                     % (self._sid, self.cfg.reg_addr, sa)
 
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
