@@ -191,6 +191,14 @@
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
         "numa_domains_per_node"       : 3,
+        "numa_domain_map"             : {1: {"cores": [00,01,02,03,04,05,06,07,08,09],
+                                             "gpus" : [0,1]}
+                                         2: {"cores": [10,11,12,13,14,15,16,17,18,19],
+                                             "gpus" : [2,3]}
+                                         3: {"cores": [20,21,22,23,24,25,26,27,28,29],
+                                             "gpus" : [4,5]}
+                                        },
+
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
