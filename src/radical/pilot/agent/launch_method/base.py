@@ -39,6 +39,7 @@ class LaunchMethod(object):
     MPI_FLAVOR_OMPI     = 'OMPI'
     MPI_FLAVOR_HYDRA    = 'HYDRA'
     MPI_FLAVOR_SPECTRUM = 'SPECTRUM'
+    MPI_FLAVOR_PALS     = 'PALS'
     MPI_FLAVOR_UNKNOWN  = 'unknown'
 
 

@@ -159,12 +159,14 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _get_host_file(self, slots, uid, sandbox, simple=True):
+    def _get_host_file(self, slots, uid, sandbox, simple=True, mode=0):
         '''
         Host file (simple=True):
             localhost
-        Host file (simple=False):
+        Host file (simple=False, mode=0):
             localhost slots=2
+        Host file (simple=False, mode=1):
+            localhost:2
         '''
         host_slots = defaultdict(int)
         for rank in slots['ranks']:
@@ -173,9 +175,10 @@ class MPIExec(LaunchMethod):
         if simple:
             hf_str = '%s\n' % '\n'.join(list(host_slots.keys()))
         else:
-            hf_str = ''
+            hf_str    = ''
+            slots_ref = ':' if mode else ' slots='
             for host_name, num_slots in host_slots.items():
-                hf_str += '%s slots=%d\n' % (host_name, num_slots)
+                hf_str += '%s%s%d\n' % (host_name, slots_ref, num_slots)
 
         hf_name = '%s/%s.hf' % (sandbox, uid)
         with ru.ru_open(hf_name, 'w') as fout:
@@ -194,23 +197,27 @@ class MPIExec(LaunchMethod):
 
         assert slots.get('ranks'), 'task.slots.ranks not defined'
 
-        cmd_options = '-np %d ' % len(slots['ranks'])
+        n_ranks     = sum([len(slot['core_map']) for slot in slots['ranks']])
+        cmd_options = '-np %d ' % n_ranks
 
         # check that this implementation allows to use `rankfile` option
         has_rf = bool(ru.sh_callout('%s --help |& grep -- "-rf"' %
                                     self._command, shell=True)[0])
         if has_rf:
-            # use rankfile for hosts and cpu-binding
-            hosts = set([r['node_name'] for r in slots['ranks']])
-            cmd_options += '-H %s '  % ','.join(hosts) + \
-                           '-rf %s'  % self._get_rank_file(slots, uid, sbox)
-        else:
-            # FIXME: add check for PALS implementation
-            # use hostfile
+            rankfile     = self._get_rank_file(slots, uid, sbox)
+            hosts        = set([r['node_name'] for r in slots['ranks']])
+            cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
+
+        elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
+            hostfile       = self._get_host_file(slots, uid, sbox)
             cores_per_rank = len(slots['ranks'][0]['core_map'][0])
-            cmd_options += '--hostfile %s ' % \
-                           self._get_host_file(slots, uid, sbox) + \
-                           '--depth=%d --cpu-bind depth' % cores_per_rank
+            cmd_options   += '--hostfile %s '              % hostfile + \
+                             '--depth=%d --cpu-bind depth' % cores_per_rank
+            # FIXME: consider extension with `--cpu-bind list:...`
+
+        else:
+            hostfile     = self._get_host_file(slots, uid, sbox, simple=False)
+            cmd_options += '--hostfile %s' % hostfile
 
         if self._omplace:
             cmd_options += ' %s' % self._omplace
@@ -225,13 +232,17 @@ class MPIExec(LaunchMethod):
 
         # FIXME: we know the MPI flavor, so make this less guesswork
 
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
-        ret += 'test -z "$PMI_ID"    || export RP_RANK=$PMI_ID\n'
-        ret += 'test -z "$PMI_RANK"  || export RP_RANK=$PMI_RANK\n'
+        ret  = 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         if self._mpt:
             ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
+
+        if self._mpi_flavor == self.MPI_FLAVOR_HYDRA:
+            ret += 'test -z "$PMI_ID"       || export RP_RANK=$PMI_ID\n'
+            ret += 'test -z "$PMI_RANK"     || export RP_RANK=$PMI_RANK\n'
+        elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
+            ret += 'test -z "$PALS_RANKID"  || export RP_RANK=$PALS_RANKID\n'
 
         return ret
 
