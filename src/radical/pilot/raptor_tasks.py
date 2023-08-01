@@ -83,6 +83,17 @@ class Raptor(Task):
            ) -> Dict[str, Any]:
         '''
         Send a raptor command, wait for the response, and return the result.
+
+        Args:
+            rpc (str): name of the rpc call to invoke
+            args (Dict[str, Any])): kwargs dict for the rpc call
+
+        Returns:
+            Dict[str, Any]: the returned dictionary has the following fields:
+              - out: captured standard output
+              - err: captured standard error
+              - ret: return value of the call (can be any serializable type)
+              - exc: tuple of exception type (str) and error message (str)
         '''
 
         if not self._pilot:

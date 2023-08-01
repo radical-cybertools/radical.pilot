@@ -210,6 +210,10 @@ class Worker(object):
 
         Note: the `run_task` call is running in a separate thread and will thus
               not block the master's progress.
+
+        Returns:
+            Master: a shim class with only one method: `run_task(td)` where
+                `td` is a `TaskDescription` to run.
         '''
 
         # ----------------------------------------------------------------------
@@ -254,8 +258,15 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_mode(self, name, dispatcher):
-        '''Register a new task execution mode that this worker can handle.
+    def register_mode(self, name, dispatcher) -> None:
+        '''
+        Register a new task execution mode that this worker can handle.
+        The specified dispatcher callable should accept a single argument: the
+        task to execute.
+
+        Args:
+            name (str): name of the mode to register
+            dispatcher (callable): function which implements the execution mode
         '''
 
         if name in self._modes:
@@ -268,6 +279,12 @@ class Worker(object):
     #
     def get_dispatcher(self, name):
         '''Query a registered execution mode.
+
+        Args:
+            name (str): name of execution mode to query for
+
+        Returns:
+            Callable: the dispatcher method for that execution mode
         '''
 
         if name not in self._modes:
@@ -291,13 +308,28 @@ class Worker(object):
         deserialize a PythonTask from *function*. The first non-null resolution
         of *function* is used as the callable.
 
-        Raises
-        ------
-        ValueError
-            if *function* cannot be resolved.
-
         NOTE: MPI function tasks will get a private communicator passed as first
               unnamed argument.
+
+        Args:
+            task (Dict[str, Any]): dictionary representation of the task to
+                execute
+
+        Returns:
+            Tuple[str, str, int, Any, Tuple[str, str]]:
+                - standard output (str)
+                - standard error (str)
+                - exit code (int)
+                - return value (Any)
+                - exception (Tuple[type (str), message (str)])
+
+        Raises:
+            KeyError
+                if the task dictionary misses required entries
+            ValueError
+                if `task['description']['function']` cannot be resolved
+            Assert
+                if `task['description']['function']` is not set
         '''
 
         uid  = task['uid']
