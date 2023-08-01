@@ -31,9 +31,9 @@ class PilotManager(rpu.Component):
 
     A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
-
-    It is possible to attach one or more :ref:`chapter_machconf` to a
-    PilotManager to outsource machine specific configuration parameters
+    It is possible to attach one or more
+    :ref:`HPC resources </tutorials/configuration.ipynb#Platform-description>`
+    to a PilotManager to outsource machine specific configuration parameters
     to an external configuration file.
 
     Example::
@@ -224,11 +224,16 @@ class PilotManager(rpu.Component):
             for m in rpc.PMGR_METRICS:
                 self._callbacks[m] = dict()
 
-        # If terminate is set, we cancel all pilots.
+        # If terminate is set, kill all pilots.
         if terminate:
-            self.cancel_pilots(_timeout=20)
-            # if this cancel op fails and the pilots are s till alive after
-            # timeout, the pmgr.launcher termination will kill them
+
+            # skip reporting for `wait_pilots`
+            is_rep_enabled = self._rep._enabled
+            self._rep._enabled = False
+            self.cancel_pilots(_timeout=1)
+            self._rep._enabled = is_rep_enabled
+
+            self.kill_pilots(_timeout=10)
 
         self._terminate.set()
         self._cmgr.close()
@@ -591,10 +596,13 @@ class PilotManager(rpu.Component):
             with self._pilots_lock:
                 self._pilots[pilot.uid] = pilot
 
-            self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
-                      (pilot.uid, pd['resource'],
-                       pd.get('cores', 0), pd.get('gpus', 0)))
-
+            if pd.get('nodes'):
+                self._rep.plain('\n\t%s   %-20s %6d nodes' %
+                                (pilot.uid, pd['resource'], pd['nodes']))
+            else:
+                self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
+                                (pilot.uid, pd['resource'],
+                                 pd.get('cores', 0), pd.get('gpus', 0)))
 
         # initial state advance to 'NEW'
         # FIXME: we should use update_pilot(), but that will not trigger an
@@ -810,7 +818,7 @@ class PilotManager(rpu.Component):
         """Cancel one or more :class:`rp.Pilots`.
 
         Arguments:
-            uids (str | list[str], optional): The IDs of the pilot objects to cancel.
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
 
         """
 
@@ -828,16 +836,45 @@ class PilotManager(rpu.Component):
 
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
-        # send the cancelation request to the pilots
+        # send the cancellation request to the pilots
         # FIXME: the cancellation request should not go directly to the DB, but
         #        through the DB abstraction layer...
         self._session._dbs.pilot_command('cancel_pilot', [], uids)
 
-        # inform pmgr.launcher - it will force-kill the pilot after some delay
+        # wait for the cancel to be enacted
+        self.wait_pilots(uids=uids, timeout=_timeout)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def kill_pilots(self, uids=None, _timeout=None):
+        """Kill one or more :class:`rp.Pilots`
+
+        Arguments:
+            uids (str | list[str], optional): The IDs of the pilots to cancel.
+
+        """
+
+        if not uids:
+            with self._pilots_lock:
+                uids = list(self._pilots.keys())
+
+        if not isinstance(uids, list):
+            uids = [uids]
+
+        with self._pilots_lock:
+            for uid in uids:
+                if uid not in self._pilots:
+                    raise ValueError('pilot %s not known' % uid)
+
+        self._log.debug('pilot(s).need(s) killing %s', uids)
+
+        # inform pmgr.launcher - it will force-kill the pilots
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'kill_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})
 
+        # wait for the kill to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
 
 

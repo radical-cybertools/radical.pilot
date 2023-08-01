@@ -548,15 +548,15 @@ class Session(rs.Session):
         """Get known PilotManager(s).
 
         Arguments:
-            pmgr_uids (str | list[str]): Unique identifier of the PilotManager we want.
+            pmgr_uids (str | Iterable[str], optional): Unique identifier of the PilotManager(s) we want.
 
         Returns:
-            str | list[str]: One or more `radical.pilot.PilotManager` objects.
+            radical.pilot.PilotManager | list[radical.pilot.PilotManager]: One or more `radical.pilot.PilotManager` objects.
 
         """
 
         return_scalar = False
-        if not isinstance(pmgr_uids, list):
+        if isinstance(pmgr_uids, str):
             pmgr_uids     = [pmgr_uids]
             return_scalar = True
 
@@ -755,11 +755,14 @@ class Session(rs.Session):
                 if '%' in sandbox_raw:
                     # expand from pilot description
                     expand = dict()
-                    for k,v in pilot['description'].items():
+                    for k, v in pilot['description'].items():
                         if v is None:
                             v = ''
-                        if k == 'project' and '_' in v and 'ornl' in resource:
-                            v = v.split('_')[0]
+                        if k == 'project':
+                            if '_' in v and 'ornl' in resource:
+                                v = v.split('_')[0]
+                            elif '-' in v and 'ncsa' in resource:
+                                v = v.split('-')[0]
                         expand['pd.%s' % k] = v
                         if isinstance(v, str):
                             expand['pd.%s' % k.upper()] = v.upper()

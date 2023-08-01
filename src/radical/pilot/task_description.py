@@ -58,6 +58,7 @@ NAMED_ENV        = 'named_env'
 SANDBOX          = 'sandbox'
 
 # resource requirements
+USE_MPI          = 'use_mpi'                  # default `True if RANKS > 1`
 RANKS            = 'ranks'                    # ranks
 CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
 GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
@@ -104,24 +105,25 @@ METADATA         = 'metadata'
 class TaskDescription(ru.TypedDict):
     """Describe the requirements and properties of a Task.
 
-    A TaskDescription object describes the requirements and properties
-    of a :class:`radical.pilot.Task` and is passed as a parameter to
-    :func:`radical.pilot.TaskManager.submit_tasks` to instantiate and run
-    a new task.
+    A TaskDescription object describes the requirements and properties of a
+    :class:`radical.pilot.Task` and is passed as a parameter to
+    :func:`radical.pilot.TaskManager.submit_tasks` to instantiate and run a new
+    task.
 
     Attributes:
         uid (str, optional): A unique ID for the task. This attribute
-            is optional, a unique ID will be assigned by RP if the field is not set.
+            is optional, a unique ID will be assigned by RP if the field is not
+            set.
 
         name (str, optional): A descriptive name for the task. This
-            attribute can be used to map individual tasks back to application level
-            workloads.
+            attribute can be used to map individual tasks back to application
+            level workloads.
 
         mode (str, optional): The execution mode to be used for
             this task. Default "executable". The following modes are accepted.
 
-            - TASK_EXECUTABLE: the task is spawned as an external executable via a
-              resource specific launch method (srun, aprun, mpiexec, etc).
+            - TASK_EXECUTABLE: the task is spawned as an external executable via
+              a resource specific launch method (srun, aprun, mpiexec, etc).
 
               - required attributes: `executable`
               - related  attributes: `arguments`
@@ -169,13 +171,13 @@ class TaskDescription(ru.TypedDict):
               - related  attributes: `raptor_class`
 
             There is a certain overlap between `TASK_EXECUTABLE`, `TASK_SHELL`
-            and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and `TASK_PROC`
-            should be used for short running tasks which require a single core and
-            no additional resources (gpus, storage, memory).  `TASK_EXECUTABLE`
-            should be used for all other tasks and is in fact the default.
-            `TASK_SHELL` should only be used if the command to be run requires shell
-            specific functionality (e.g., pipes, I/O redirection) which cannot easily
-            be mapped to other task attributes.
+            and `TASK_PROC` modes.  As a general rule, `TASK_SHELL` and
+            `TASK_PROC` should be used for short running tasks which require a
+            single core and no additional resources (gpus, storage, memory).
+            `TASK_EXECUTABLE` should be used for all other tasks and is in fact
+            the default.  `TASK_SHELL` should only be used if the command to be
+            run requires shell specific functionality (e.g., pipes, I/O
+            redirection) which cannot easily be mapped to other task attributes.
 
             TASK_RAPTOR_MASTER and TASK_RAPTOR_WORKER are special types of tasks
             that define RAPTOR's master(s) and worker(s) components and their
@@ -183,32 +185,37 @@ class TaskDescription(ru.TypedDict):
             nodes, depending on their requirements.
 
         executable (str): The executable to launch. The executable is
-            expected to be either available via ``$PATH`` on the target resource,
-            or to be an absolute path.
+            expected to be either available via ``$PATH`` on the target
+            resource, or to be an absolute path.
 
         arguments (list[str]): The command line arguments for the given
             `executable` (`list` of `strings`).
 
         code (str): The code to run.  This field is expected to contain valid
-            python code which is executed when the task mode is
-            `TASK_EXEC` or `TASK_EVAL`.
+            python code which is executed when the task mode is `TASK_EXEC` or
+            `TASK_EVAL`.
 
         function (str): The function to run.  This field is expected to contain
-            a python function name which can be resolved in the
-            scope of the respective RP worker implementation (see documentation
-            there).  The task mode must be set to `TASK_FUNCTION`.  `args` and
-            `kwargs` are passed as function parameters.
+            a python function name which can be resolved in the scope of the
+            respective RP worker implementation (see documentation there).  The
+            task mode must be set to `TASK_FUNCTION`.  `args` and `kwargs` are
+            passed as function parameters.
 
-        args (list, optional): Positional arguments to be passed to the `function`
-            (see above).  This field will be serialized  with `msgpack`
-            and can thus contain any serializable data types.
+        args (list, optional): Positional arguments to be passed to the
+            `function` (see above).  This field will be serialized  with
+            `msgpack` and can thus contain any serializable data types.
 
         kwargs (dict, optional): Named arguments to be passed to the `function`
-            (see above).  This field will be serialized  with `msgpack`
-            and can thus contain any serializable data types.
+            (see above).  This field will be serialized  with `msgpack` and can
+            thus contain any serializable data types.
 
         command (str): A shell command to be executed. This attribute is used
             for the `TASK_SHELL` mode.
+
+        use_mpi (bool, optional): flag if the task should be provided an MPI
+            communicator.  Defaults to `True` if more than 1 rank is requested
+            (see `ranks`), otherwise defaults to `False`.  Set this to `True` if
+            you want to enfoce an MPI communicator on single-ranked tasks.
 
         ranks (int, optional): The number of application processes to start
             on CPU cores. Default 1.
@@ -290,8 +297,9 @@ class TaskDescription(ru.TypedDict):
             stage. Default False.
 
         pre_launch (list, optional): Actions (shell commands) to perform
-            before launching (i.e., before LaunchMethod is submitted), potentially
-            on a batch node which is different from the node the task is placed on.
+            before launching (i.e., before LaunchMethod is submitted),
+            potentially on a batch node which is different from the node the
+            task is placed on.
 
             Note that the set of shell commands given here are expected to load
             environments, check for work directories and data, etc. They are not
@@ -342,9 +350,6 @@ class TaskDescription(ru.TypedDict):
             but cannot finish because the pilot fails or is canceled, the task
             can be restarted. Default False.
 
-        scheduler (str, optional): Request the task to be handled by a
-            specific agent scheduler.
-
         tags (dict, optional): Configuration specific tags, which
             influence task scheduling and execution (e.g., tasks co-location).
 
@@ -377,8 +382,8 @@ class TaskDescription(ru.TypedDict):
             if the pilot's own `cleanup` flag is set. Default False.
 
         pilot (str, optional): Pilot `uid`. If specified, the task is
-            submitted to the pilot with the given ID. If that pilot is not known to
-            the TaskManager, an exception is raised.
+            submitted to the pilot with the given ID. If that pilot is not known
+            to the TaskManager, an exception is raised.
 
     **Task Ranks**
 
@@ -388,9 +393,9 @@ class TaskDescription(ru.TypedDict):
     These processes will be near-exact copies of each other: they run in the
     same workdir and the same `environment`, are defined by the same
     `executable` and `arguments`, get the same amount of resources allocated,
-    etc.  Notable exceptions are
+    etc.  Notable exceptions are:
 
-    - rank processes may run on different nodes;
+    - Rank processes may run on different nodes;
     - rank processes can communicate via MPI;
     - each rank process obtains a unique rank ID.
 
@@ -405,8 +410,8 @@ class TaskDescription(ru.TypedDict):
     non-MPI ranks can interfere with each other and invalidate those results.
 
     Also, applications with a single rank cannot make effective use of MPI---
-    depending on the specific resource configuration, RP may launch those
-    tasks without providing an MPI communicator.
+    depending on the specific resource configuration, RP may launch those tasks
+    without providing an MPI communicator.
 
     **Task Environment**
 
@@ -419,17 +424,17 @@ class TaskDescription(ru.TypedDict):
     environment in that context.  It is important to understand the way those
     hooks interact with respect to the environments mentioned above.
 
-    - `pre_launch` directives are set and executed before the task is passed
-      on to the task launch method.  As such, `pre_launch` usually executed
-      on the node where RP's agent is running, and *not* on the tasks target
-      node.  Executing `pre_launch` directives for many tasks can thus
-      negatively impact RP's performance (*).  Note also that `pre_launch`
-      directives can in some cases interfere with the launch method.
+    - `pre_launch` directives are set and executed before the task is passed on
+      to the task launch method.  As such, `pre_launch` usually executed on the
+      node where RP's agent is running, and *not* on the tasks target node.
+      Executing `pre_launch` directives for many tasks can thus negatively
+      impact RP's performance (*).  Note also that `pre_launch` directives can
+      in some cases interfere with the launch method.
 
       Use `pre_launch` directives for rare, heavy-weight operations which
-      prepare the runtime environment for multiple tasks: fetch data from
-      a remote source, unpack input data, create global communication
-      channels, etc.
+      prepare the runtime environment for multiple tasks: fetch data from a
+      remote source, unpack input data, create global communication channels,
+      etc.
     - `pre_exec` directives are set and executed *after* the launch method
       placed the task on the compute nodes and are thus running on the target
       node.  Note that for MPI tasks, the `pre_exec` directives are executed
@@ -500,7 +505,6 @@ class TaskDescription(ru.TypedDict):
 
     - rp.CREATE_PARENTS: create the directory hierarchy for targets on the fly
     - rp.RECURSIVE: if `source` is a directory, handles it recursively
-
     """
 
     _schema = {
@@ -530,6 +534,7 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
 
+        USE_MPI         : bool        ,
         RANKS           : int         ,
         CORES_PER_RANK  : int         ,
         GPUS_PER_RANK   : float       ,
@@ -590,6 +595,7 @@ class TaskDescription(ru.TypedDict):
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
 
+        USE_MPI         : None        ,
         RANKS           : 1           ,
         CORES_PER_RANK  : 1           ,
         GPUS_PER_RANK   : 0.          ,
@@ -704,6 +710,9 @@ class TaskDescription(ru.TypedDict):
         if self.worker_class:
             self.raptor_class = self.worker_class
             self.raptor_class = ''
+
+        if self.use_mpi is None:
+            self.use_mpi = bool(self.ranks - 1)
 
         # deprecated and ignored
         if self.cpu_process_type: pass
