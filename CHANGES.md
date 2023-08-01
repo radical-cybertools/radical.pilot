@@ -9,6 +9,14 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.36.0 Release                                                    2023-08-01
+
+  - added pre-defined `pre_exec` for Summit (preserve `LD_LIBRARY_PATH` from LM)
+  - fixed GPU discovery from SLURM env variables
+  - increase raptor's heartbeat time
+  
+
+--------------------------------------------------------------------------------
 ### 1.35.0 Release                                                    2023-07-11
 
   - Improve links to resource definitions.
