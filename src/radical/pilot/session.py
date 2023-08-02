@@ -14,6 +14,8 @@ import radical.saga.utils.pty_shell as rsup
 from .db        import DBSession
 from .          import utils as rpu
 
+from .resource_description import ResourceDescription
+
 
 # ------------------------------------------------------------------------------
 #
@@ -91,14 +93,28 @@ class Session(rs.Session):
         self._cmgr    = None    # only primary sessions have a cmgr
 
         self._cfg     = ru.Config('radical.pilot.session',  name=name, cfg=cfg)
-        self._rcfgs   = ru.Config('radical.pilot.resource', name='*', expand=False)
+        self._rcfgs   = ru.Config()
+
+        rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+
+        for site in rcfgs:
+            self._rcfgs[site] = ru.Config()
+            for res,rcfg in rcfgs[site].items():
+                self._rcfgs[site][res] = ru.Config()
+                for schema in rcfg['schemas']:
+                    self._rcfgs[site][res][schema] = ru.Config()
+                    self._rcfgs[site][res][schema] = ru.Config(
+                                                     from_dict=rcfgs[site][res])
+                    ru.dict_merge(self._rcfgs[site][res][schema],
+                                  rcfgs[site][res]['schemas'][schema])
+                    del self._rcfgs[site][res][schema]['schemas']
 
         for site in self._rcfgs:
-            for rcfg in self._rcfgs[site].values():
+            for res,rcfg in self._rcfgs[site].items():
                 for schema in rcfg.get('schemas', []):
-                    while isinstance(rcfg.get(schema), str):
-                        tgt = rcfg[schema]
-                        rcfg[schema] = rcfg[tgt]
+                    rd = ResourceDescription(from_dict=rcfg['schemas'][schema])
+                    rd.verify()
+
 
         if _primary:
 
