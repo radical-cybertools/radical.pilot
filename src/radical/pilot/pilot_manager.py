@@ -333,13 +333,9 @@ class PilotManager(rpu.Component):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-
-                # NOTE: we ignore PMGR_ACTIVE updates from the launcher - only
-                #       the pilot itself can know when it is active.
                 if thing['state'] == rps.PMGR_ACTIVE:
-                    del thing['state']
-                self._log.debug('=== url (state sub ): %s : %s',
-                        thing.get('rest_url'), thing['state'])
+                    self._log.debug('pilot rest url (state sub): %s',
+                                    thing.get('rest_url'))
                 if not self._update_pilot(thing, publish=False):
                     return False
 

@@ -244,7 +244,7 @@ class Agent_0(rpu.Worker):
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Update pilot state.
-        self._log.debug('==== set url: %s', self._service.addr)
+        self._log.debug('set rest url: %s', self._service.addr)
         pilot = {'type'             : 'pilot',
                  'uid'              : self._pid,
                  'state'            : rps.PMGR_ACTIVE,
@@ -906,7 +906,7 @@ class Agent_0(rpu.Worker):
     def _ep_submit_tasks(self, request):
 
         import pprint
-        self._log.debug('submit request: %s', pprint.pformat(request))
+        self._log.debug('service request: %s', pprint.pformat(request))
 
         tasks = request['tasks']
 
@@ -929,10 +929,9 @@ class Agent_0(rpu.Worker):
                                          'gpu': td['gpu_processes'] *
                                                 td.get('cpu_processes', 1)}
 
-            # NOTE: the order of insert / state update relies on that order
-            #       being maintained through the component's message push,
-            #       the update worker's message receive up to the insertion
-            #       order into the update worker's DB bulk op.
+            # FIXME: MongoDB: this insert registers the tasks to be visible on
+            #        the client side.  We probably don't want to do this and
+            #        instead limit task visibility to this service endpoint.
             self._log.debug('insert %s', td['uid'])
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
