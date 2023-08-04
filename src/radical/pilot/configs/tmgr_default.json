@@ -21,10 +21,10 @@
         "tmgr_staging_input_queue"  : {"kind": "queue" },
         "tmgr_scheduling_queue"     : {"kind": "queue" },
         "agent_staging_input_queue" : {"kind": "queue" },
-        "tmgr_staging_output_queue" : {"kind": "queue" },
+        "tmgr_staging_output_queue" : {"kind": "queue" }
 
-        "tmgr_unschedule_pubsub"    : {"kind": "pubsub"},
-        "tmgr_reschedule_pubsub"    : {"kind": "pubsub"}
+      # "tmgr_unschedule_pubsub"    : {"kind": "pubsub"},
+      # "tmgr_reschedule_pubsub"    : {"kind": "pubsub"}
     },
 
     "components" : {

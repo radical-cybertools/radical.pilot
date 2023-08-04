@@ -245,7 +245,6 @@ setup_args = {
                             'bin/radical-pilot-agent_0',
                             'bin/radical-pilot-agent_n',
                           # 'bin/radical-pilot-agent-bridge',
-                            'bin/radical-pilot-agent-funcs',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',

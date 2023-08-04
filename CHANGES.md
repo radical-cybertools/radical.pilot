@@ -9,6 +9,39 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.36.0 Release                                                    2023-08-01
+
+  - added pre-defined `pre_exec` for Summit (preserve `LD_LIBRARY_PATH` from LM)
+  - fixed GPU discovery from SLURM env variables
+  - increase raptor's heartbeat time
+  
+
+--------------------------------------------------------------------------------
+### 1.35.0 Release                                                    2023-07-11
+
+  - Improve links to resource definitions.
+  - Improve typing in Session.get_pilot_managers
+  - Provide a target for Sphinx `:py:mod:` role.
+  - Un-hide "Utilities and helpers" section in API reference.
+  - Use a universal and unique identifier for registered callbacks.
+  - added option `--exact` for Rivanna (SRun LM)
+  - fixes tests for PRs from forks (#2969)
+
+
+--------------------------------------------------------------------------------
+### 1.34.0 Release                                                    2023-06-22
+
+  - major documentation overhaul
+  - Fixes ticket #1577
+  - Fixes ticket #2553
+  - added tests for PilotManager methods (`cancel_pilots`, `kill_pilots`)
+  - fixed configuration for Perlmutter
+  - fixed env dumping for RP Agent
+  - move timeout into `kill_pilots` method to delay forced termination
+  - re-introduce a `use_mpi` flag
+
+
+--------------------------------------------------------------------------------
 ### 1.33.0 Release                                                    2023-04-25
 
   - add a resource definition for rivanna at UVa.
@@ -1850,4 +1883,6 @@ API Changes:
 ### 0.1.2 Release
 
   - Github only release
+
+--------------------------------------------------------------------------------
 

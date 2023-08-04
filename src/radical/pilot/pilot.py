@@ -158,15 +158,17 @@ class Pilot(object):
 
         # hook into the control pubsub for rpc handling
         self._rpc_queue = queue.Queue()
-        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
-        ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+        self._ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
+        self._ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_sub,
                           log=self._log, prof=self._prof,
                           cb=self._control_cb, topic=rpc.CONTROL_PUBSUB)
 
-        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_pub,
                                           log=self._log, prof=self._prof)
+
+        ru.zmq.test_pubsub(rpc.CONTROL_PUBSUB, self._ctrl_addr_pub, self._ctrl_addr_sub)
 
 
     # --------------------------------------------------------------------------
@@ -492,9 +494,9 @@ class Pilot(object):
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
         with self._cb_lock:
-            cb_name = cb.__name__
-            self._callbacks[metric][cb_name] = {'cb'      : cb,
-                                                'cb_data' : cb_data}
+            cb_id = id(cb)
+            self._callbacks[metric][cb_id] = {'cb'      : cb,
+                                              'cb_data' : cb_data}
 
 
     # --------------------------------------------------------------------------
@@ -504,23 +506,28 @@ class Pilot(object):
         if metric and metric not in rpc.PMGR_METRICS :
             raise ValueError ("invalid pmgr metric '%s'" % metric)
 
-        if   not metric                  : metrics = rpc.PMGR_METRICS
-        elif not isinstance(metric, list): metrics = [metric]
-        else                             : metrics = metric
+        if not metric:
+            metrics = rpc.PMGR_METRICS
+        elif isinstance(metric, list):
+            metrics =  metric
+        else:
+            metrics = [metric]
 
         with self._cb_lock:
 
             for metric in metrics:
 
-                if cb: to_delete = [cb.__name__]
-                else : to_delete = list(self._callbacks[metric].keys())
+                if cb:
+                    to_delete = [id(cb)]
+                else:
+                    to_delete = list(self._callbacks[metric].keys())
 
-                for cb_name in to_delete:
+                for cb_id in to_delete:
 
-                    if cb_name not in self._callbacks[metric]:
-                        raise ValueError("unknown callback '%s'" % cb_name)
+                    if cb_id not in self._callbacks[metric]:
+                        raise ValueError("unknown callback '%s'" % cb_id)
 
-                    del self._callbacks[metric][cb_name]
+                    del self._callbacks[metric][cb_id]
 
 
     # --------------------------------------------------------------------------
@@ -583,6 +590,15 @@ class Pilot(object):
     def cancel(self):
         """Cancel the pilot."""
 
+        self._finalize()
+
+        self._pmgr.cancel_pilots(self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _finalize(self):
+
         # clean connection cache
         try:
             for key in self._cache:
@@ -591,8 +607,6 @@ class Pilot(object):
 
         except:
             pass
-
-        self._pmgr.cancel_pilots(self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -728,7 +742,7 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, args):
+    def rpc(self, cmd, args=None):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the pilot and wait for the
@@ -736,16 +750,19 @@ class Pilot(object):
         thread safe to have multiple concurrent RPC calls.
         '''
 
+        if not args:
+            args = dict()
+
         rpc_id  = ru.generate_id('rpc')
         rpc_req = {'uid' : rpc_id,
                    'rpc' : cmd,
                    'tgt' : self._uid,
                    'arg' : args}
 
+
         self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_req',
                                                 'arg':  rpc_req,
                                                 'fwd': True})
-
         rpc_res = self._rpc_queue.get()
         self._log.debug('rpc result: %s', rpc_res['ret'])
 

@@ -31,9 +31,9 @@ class PilotManager(rpu.Component):
 
     A PilotManager manages :class:`rp.Pilot` instances that are
     submitted via the :func:`radical.pilot.PilotManager.submit_pilots` method.
-
-    It is possible to attach one or more :ref:`chapter_design` to a
-    PilotManager to outsource machine specific configuration parameters
+    It is possible to attach one or more
+    :ref:`HPC resources </tutorials/configuration.ipynb#Platform-description>`
+    to a PilotManager to outsource machine specific configuration parameters
     to an external configuration file.
 
     Example::
@@ -222,7 +222,13 @@ class PilotManager(rpu.Component):
 
         # If terminate is set, kill all pilots.
         if terminate:
+
+            # skip reporting for `wait_pilots`
+            is_rep_enabled = self._rep._enabled
+            self._rep._enabled = False
             self.cancel_pilots(_timeout=1)
+            self._rep._enabled = is_rep_enabled
+
             self.kill_pilots(_timeout=10)
 
         self._terminate.set()
@@ -795,12 +801,14 @@ class PilotManager(rpu.Component):
         cancellation command in due time, if they can
         """
 
-        with self._pilots_lock:
-            for pid in self._pilots:
-                pilot = self._pilots[pid]
-                if pilot.state not in rps.FINAL:
-                    self.advance(pilot.as_dict(), rps.FAILED,
-                                 publish=True, push=False)
+        pass
+
+      # with self._pilots_lock:
+      #     for pid in self._pilots:
+      #         pilot = self._pilots[pid]
+      #         if pilot.state not in rps.FINAL:
+      #             self.advance(pilot.as_dict(), rps.FAILED,
+      #                          publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -820,21 +828,24 @@ class PilotManager(rpu.Component):
         if not isinstance(uids, list):
             uids = [uids]
 
+        self._log.debug('pilot(s).need(s) cancellation %s', uids)
+
+        # send the cancellation request to the pilots
+        # FIXME: MongoDB
+        # self._session._dbs.pilot_command('cancel_pilot', [], uids)
+        self._log.debug('=== issue cancel_pilots for %s', uids)
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
+                                          'arg' : {'pmgr' : self.uid,
+                                                   'uids' : uids}})
+        # wait for the cancel to be enacted
+        self.wait_pilots(uids=uids, timeout=_timeout)
+
+        # FIXME: only finalize pilots which actually terminated
         with self._pilots_lock:
             for uid in uids:
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
-
-        self._log.debug('pilot(s).need(s) cancellation %s', uids)
-
-        # send the cancellation request to the pilots
-        # FIXME: the cancellation request should not go directly to the DB, but
-        #        through the DB abstraction layer...
-        # FIXME: MongoDB
-        # self._session._dbs.pilot_command('cancel_pilot', [], uids)
-
-        # wait for the cancel to be enacted
-        self.wait_pilots(uids=uids, timeout=_timeout)
+                self._pilots[uid]._finalize()
 
 
     # --------------------------------------------------------------------------

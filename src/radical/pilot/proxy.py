@@ -327,7 +327,8 @@ class Proxy(ru.zmq.Server):
         with self._lock:
 
             if sid not in self._clients:
-                raise RuntimeError('client %s not ' % sid)
+                self._log.warn('client %s not in %s', sid, self._clients)
+                return
 
             self._clients[sid]['hb'] = now
 

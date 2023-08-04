@@ -178,23 +178,13 @@ class Agent_0(rpu.Worker):
                 self._rcfg['task_environment']['RP_%s_IN'  % AC] = ac['addr_in']
                 self._rcfg['task_environment']['RP_%s_OUT' % AC] = ac['addr_out']
 
-        # some of the bridge addresses also need to be exposed to the workload
-        if app_comm:
-            if 'task_environment' not in self._cfg:
-                self._cfg['task_environment'] = dict()
-            for ac in app_comm:
-                if ac not in self._reg['bridges']:
-                    raise RuntimeError('missing app_comm %s' % ac)
-                self._cfg['task_environment']['RP_%s_IN' % ac.upper()] = \
-                        self._reg['bridges.%s.ac' % ac]['addr_in']
-                self._cfg['task_environment']['RP_%s_OUT' % ac.upper()] = \
-                        self._reg['bridges.%s.addr_out' % ac]
-
-
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
+
+        # handle pilot commands
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -258,7 +248,7 @@ class Agent_0(rpu.Worker):
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
-        self.advance(pilot, publish=True, push=False)
+        self.advance(pilot, publish=True, push=False, fwd=True)
 
 
     # --------------------------------------------------------------------------
@@ -510,7 +500,7 @@ class Agent_0(rpu.Worker):
                         'ranks'         : 1,
                         'cores_per_rank': self._rm.info.cores_per_node,
                         'executable'    : '/bin/sh',
-                        'arguments'     : [bs_name, sa]
+                        'arguments'     : [bs_name, self._sid, self.cfg.reg_addr, sa]
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
@@ -542,7 +532,8 @@ class Agent_0(rpu.Worker):
 
                 tmp  = '#!/bin/sh\n\n'
                 tmp += '. ./env/agent.env\n'
-                tmp += '/bin/sh -l ./bootstrap_2.sh %s\n\n' % sa
+                tmp += '/bin/sh -l ./bootstrap_2.sh %s %s %s\n\n' \
+                     % (self._sid, self.cfg.reg_addr, sa)
 
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
@@ -603,13 +594,8 @@ class Agent_0(rpu.Worker):
             self._session._hb.beat(uid=self._pmgr)
             return True
 
-
         elif cmd == 'prep_env':
-            env_spec = arg
-            for env_id in env_spec:
-                self._prepare_env(env_id, env_spec[env_id])
-            return True
-
+            return self._ctrl_prepare_env(msg)
 
         elif cmd == 'cancel_pilots':
             return self._ctrl_cancel_pilots(msg)
@@ -625,7 +611,21 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
+    def _ctrl_prepare_env(self, msg):
+
+        arg = msg['arg']
+
+        for env_id in arg:
+            self._prepare_env(env_id, arg[env_id])
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
     def _ctrl_cancel_pilots(self, msg):
+
+        arg = msg['arg']
 
         if self._pid not in arg.get('uids'):
             self._log.debug('ignore cancel %s', msg)
@@ -665,6 +665,7 @@ class Agent_0(rpu.Worker):
 
             else:
                 # unknown command
+                self._log.info('ignore rpc command: %s', req)
                 return True
 
             # request succeeded - respond with return value

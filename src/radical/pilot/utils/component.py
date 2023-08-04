@@ -11,8 +11,10 @@ import time
 import threading       as mt
 import radical.utils   as ru
 
-from ..          import constants      as rpc
-from ..          import states         as rps
+from .. import constants as rpc
+from .. import states    as rps
+
+from .rpc_helper import RPCHelper
 
 
 # ------------------------------------------------------------------------------
@@ -323,7 +325,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-      # self._log.debug('command incoming: %s', msg)
+        self._log.debug('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -904,7 +906,7 @@ class Component(object):
     # --------------------------------------------------------------------------
     #
     def advance(self, things, state=None, publish=True, push=False, qname=None,
-                              ts=None, prof=True):
+                              ts=None, fwd=False, prof=True):
         '''
         Things which have been operated upon are pushed down into the queues
         again, only to be picked up by the next component, according to their
@@ -990,7 +992,9 @@ class Component(object):
                         del thing['$set']
                     to_publish.append(tmp)
 
-            self.publish(rpc.STATE_PUBSUB, {'cmd': 'update', 'arg': to_publish})
+            self.publish(rpc.STATE_PUBSUB, {'cmd': 'update',
+                                            'arg': to_publish,
+                                            'fwd': fwd})
 
           # ts = time.time()
           # for thing in things:
