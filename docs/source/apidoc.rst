@@ -69,6 +69,13 @@ Raptor
 .. autoclass:: radical.pilot.raptor.Worker
    :members:
 
+A `radical.pilot.Task` managing a `radical.pilot.raptor.Master` instance is created using
+:py:attr:`radical.pilot.TaskDescription.mode` 
+``rp.RAPTOR_MASTER``, or through :py:func:`~radical.pilot.Pilot.submit_raptors()`.
+The object returned to the client is a `Task` subclass with additional features.
+
+.. autoclass:: radical.pilot.raptor_tasks.Raptor
+    :members:
 Utilities and helpers
 =====================
 .. automodule:: radical.pilot.utils.component
