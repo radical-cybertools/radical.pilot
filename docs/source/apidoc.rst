@@ -62,20 +62,28 @@ Task
 .. autoclass:: radical.pilot.Task
    :members:
 
+A :py:class:`radical.pilot.Task` managing a :py:class:`radical.pilot.raptor.Master` instance is created using
+:py:attr:`radical.pilot.TaskDescription.mode` ``rp.RAPTOR_MASTER``,
+or through the :py:func:`~radical.pilot.TaskManager.submit_raptors()` method of either
+:py:class:`radical.pilot.Pilot` or :py:class:`radical.pilot.TaskManager`.
+The object returned to the client is a :py:class:`~radical.pilot.Task` subclass with additional features.
+
+.. autoclass:: radical.pilot.raptor_tasks.Raptor
+    :members:
+
 Raptor
 ------
+
+A :py:attr:`~radical.pilot.TaskDescription.raptor_id` refers to the
+:py:attr:`~radical.pilot.Task.uid` of a :py:class:`radical.pilot.raptor_tasks.Raptor` task
+managing a :py:class:`~radical.pilot.raptor.Master` instance,
+which dispatches tasks to workers that it manages. See :doc:`/tutorials/raptor`.
+
 .. autoclass:: radical.pilot.raptor.Master
    :members:
 .. autoclass:: radical.pilot.raptor.Worker
    :members:
 
-A `radical.pilot.Task` managing a `radical.pilot.raptor.Master` instance is created using
-:py:attr:`radical.pilot.TaskDescription.mode` 
-``rp.RAPTOR_MASTER``, or through :py:func:`~radical.pilot.Pilot.submit_raptors()`.
-The object returned to the client is a `Task` subclass with additional features.
-
-.. autoclass:: radical.pilot.raptor_tasks.Raptor
-    :members:
 Utilities and helpers
 =====================
 .. automodule:: radical.pilot.utils.component
