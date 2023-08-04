@@ -548,6 +548,12 @@ class Popen(AgentExecutingComponent):
         if sbox.startswith(self._pwd):
             sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
 
+        gpr = td['gpus_per_rank']
+        if int(gpr) == gpr:
+            gpr = '%d' % gpr
+        else:
+            gpr = '%f' % gpr
+
         ret  = '\n'
         ret += 'export RP_TASK_ID="%s"\n'          % tid
         ret += 'export RP_TASK_NAME="%s"\n'        % name
@@ -560,7 +566,7 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
         ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self._session.reg_addr
         ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
-        ret += 'export RP_GPUS_PER_RANK=%d\n'      % td['gpus_per_rank']
+        ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
 
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs

@@ -23,24 +23,21 @@
     # stall_hwm and batch_size is 1 (no stalling, no bulking).
     #
     "bridges" : {
-        "agent_staging_input_queue"  : {"kind": "queue", "log_lvl":"debug"},
-        "agent_scheduling_queue"     : {"kind": "queue", "log_lvl":"debug"},
-        "agent_executing_queue"      : {"kind": "queue", "log_lvl":"debug"},
-        "agent_staging_output_queue" : {"kind": "queue", "log_lvl":"debug"},
-        "agent_collecting_queue"     : {"kind": "queue", "log_lvl":"debug"},
+        "agent_staging_input_queue"  : {"kind": "queue", "log_lvl":"error"},
+        "agent_scheduling_queue"     : {"kind": "queue", "log_lvl":"error"},
+        "agent_executing_queue"      : {"kind": "queue", "log_lvl":"error"},
+        "agent_staging_output_queue" : {"kind": "queue", "log_lvl":"error"},
+        "agent_collecting_queue"     : {"kind": "queue", "log_lvl":"error"},
 
-        "funcs_req_queue"            : {"kind": "queue", "log_lvl":"debug"},
-        "funcs_res_queue"            : {"kind": "queue", "log_lvl":"debug"},
+        "raptor_scheduling_queue"    : {"kind": "queue", "log_lvl":"error"},
 
-        "raptor_scheduling_queue"    : {"kind": "queue", "log_lvl":"debug"},
+        "agent_unschedule_pubsub"    : {"kind": "pubsub", "log_lvl":"error"},
+        "agent_schedule_pubsub"      : {"kind": "pubsub", "log_lvl":"error"},
 
-        "agent_unschedule_pubsub"    : {"kind": "pubsub", "log_lvl":"debug"},
-        "agent_schedule_pubsub"      : {"kind": "pubsub", "log_lvl":"debug"},
+        "control_pubsub"             : {"kind": "pubsub", "log_lvl":"error"},
+        "state_pubsub"               : {"kind": "pubsub", "log_lvl":"error"}
 
-        "control_pubsub"             : {"kind": "pubsub", "log_lvl":"debug"},
-        "state_pubsub"               : {"kind": "pubsub", "log_lvl":"debug"}
-
-      # "log_pubsub"                 : {"kind": "pubsub", "log_lvl":"debug"}
+      # "log_pubsub"                 : {"kind": "pubsub", "log_lvl":"error"}
     },
 
     "components" : {

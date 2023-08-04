@@ -31,15 +31,6 @@
                                            "stall_hwm" : 1,
                                            "bulk_size" : 1024},
 
-        "funcs_wrk_queue"              : { "kind"      : "queue",
-                                           "log_level" : "error",
-                                           "stall_hwm" : 1,
-                                           "bulk_size" : 0},
-        "funcs_res_queue"              : { "kind"      : "queue",
-                                           "log_level" : "error",
-                                           "stall_hwm" : 1,
-                                           "bulk_size" : 0},
-
         "agent_unschedule_pubsub"      : { "kind"      : "pubsub",
                                            "log_level" : "error",
                                            "stall_hwm" : 1,
