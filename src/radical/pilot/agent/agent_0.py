@@ -71,9 +71,6 @@ class Agent_0(rpu.Worker):
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
 
-        # start any services if they are requested
-        self._start_services()
-
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
         self._start_sub_agents()   # TODO: move to cmgr?
@@ -219,6 +216,22 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
+        # subscribe for control messages
+        ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB, cb=self._control_cb,
+               url=self._reg['bridges.%s.addr_sub' % rpc.CONTROL_PUBSUB])
+
+
+        if True:
+            time.sleep(1)
+            reg = ru.zmq.RegistryClient(url=self._reg._url)
+            pub = ru.zmq.Publisher('control_pubsub', reg['bridges.control_pubsub.addr_pub'])
+
+            pub.put('control_pubsub', msg={'cmd': 'service_up',
+                                           'uid': 'test.1'})
+
+            # make sure the message goes out
+            time.sleep(1)
+
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
         env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
@@ -229,6 +242,9 @@ class Agent_0(rpu.Worker):
                                  %  os.environ.get('PATH', '')]
                    }
         self._prepare_env('rp', env_spec)
+
+        # start any services if they are requested
+        self._start_services()
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
@@ -348,15 +364,16 @@ class Agent_0(rpu.Worker):
     #
     def _start_services(self):
 
-        service_descriptions = self._cfg.services
-        if not service_descriptions:
+        sds = self._cfg.services
+        if not sds:
             return
+
         self._log.info('starting agent services')
 
         services = list()
-        for service_desc in service_descriptions:
+        for sd in sds:
 
-            td      = TaskDescription(service_desc)
+            td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
             # ensure that the description is viable
             td.verify()
@@ -382,6 +399,9 @@ class Agent_0(rpu.Worker):
 
             self._service_uids_launched.append(tid)
             services.append(task)
+
+            self._log.debug('start service %s: %s', tid, sd)
+
 
         self.advance(services, publish=False, push=True)
 
@@ -570,7 +590,7 @@ class Agent_0(rpu.Worker):
         requests to handle.
         '''
 
-        self._log.debug('control: %s', msg)
+        self._log.debug('==== control: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -580,13 +600,11 @@ class Agent_0(rpu.Worker):
 
 
         if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
-
             self._session._hb.beat(uid=self._pmgr)
             return True
 
 
         elif cmd == 'prep_env':
-
             env_spec = arg
             for env_id in env_spec:
                 self._prepare_env(env_id, env_spec[env_id])
@@ -594,57 +612,109 @@ class Agent_0(rpu.Worker):
 
 
         elif cmd == 'cancel_pilots':
-
-            if self._pid not in arg.get('uids'):
-                self._log.debug('ignore cancel %s', msg)
-
-            self._log.info('cancel pilot cmd')
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
-                                              'arg' : None})
-            self._final_cause = 'cancel'
-            self.stop()
-
-            # work is done - unregister this cb
-            return False
-
+            return self._ctrl_cancel_pilots(msg)
 
         elif cmd == 'rpc_req':
+            return self._ctrl_rpc_req(msg)
 
-            req = arg['rpc']
-            if req not in ['hello', 'prepare_env']:
-                # we don't handle that request
+        elif cmd == 'service_up':
+            return self._ctrl_service_up(msg)
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ctrl_cancel_pilots(self, msg):
+
+        if self._pid not in arg.get('uids'):
+            self._log.debug('ignore cancel %s', msg)
+
+        self._log.info('cancel pilot cmd')
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
+                                          'arg' : None})
+        self._final_cause = 'cancel'
+        self.stop()
+
+        # work is done - unregister this cb
+        return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ctrl_rpc_req(self, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+        req = arg['rpc']
+
+        if req not in ['hello', 'prepare_env']:
+            # we don't handle that request
+            return True
+
+        rpc_res = {'uid': arg['uid']}
+
+        try:
+            if req == 'hello'   :
+                out = 'hello %s' % ' '.join(arg['arg'])
+
+            elif req == 'prepare_env':
+                env_name = arg['arg']['env_name']
+                env_spec = arg['arg']['env_spec']
+                out      = self._prepare_env(env_name, env_spec)
+
+            else:
+                # unknown command
                 return True
 
-            rpc_res = {'uid': arg['uid']}
+            # request succeeded - respond with return value
+            rpc_res['err'] = None
+            rpc_res['out'] = out
+            rpc_res['ret'] = 0
 
-            try:
-                if req == 'hello'   :
-                    out = 'hello %s' % ' '.join(arg['arg'])
+        except Exception as e:
+            # request failed for some reason - indicate error
+            rpc_res['err'] = repr(e)
+            rpc_res['out'] = None
+            rpc_res['ret'] = 1
+            self._log.exception('control cmd failed')
 
-                elif req == 'prepare_env':
-                    env_name = arg['arg']['env_name']
-                    env_spec = arg['arg']['env_spec']
-                    out      = self._prepare_env(env_name, env_spec)
+        # publish the response (success or failure)
+        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
+                                          'arg':  rpc_res})
 
-                else:
-                    # unknown command
-                    return True
 
-                # request succeeded - respond with return value
-                rpc_res['err'] = None
-                rpc_res['out'] = out
-                rpc_res['ret'] = 0
+    # --------------------------------------------------------------------------
+    #
+    def _ctrl_service_up(self, msg):
 
-            except Exception as e:
-                # request failed for some reason - indicate error
-                rpc_res['err'] = repr(e)
-                rpc_res['out'] = None
-                rpc_res['ret'] = 1
-                self._log.exception('control cmd failed')
+        cmd = msg['cmd']
+        uid = msg['arg']['uid']
 
-            # publish the response (success or failure)
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                              'arg':  rpc_res})
+        # This message signals that an agent service instance is up and running.
+        # We expect to find the service UID in args and can then unblock the
+        # service startup wait for that uid
+
+        if uid not in self._service_uids_launched:
+            # we do not know this service instance
+            self._log.warn('=== ignore service startup signal for %s', uid)
+            return True
+
+        if uid in self._service_uids_running:
+            self._log.warn('=== duplicated service startup signal for %s', uid)
+            return True
+
+        self._log.debug('=== service startup message for %s', uid)
+
+        self._service_uids_running.append(uid)
+        self._log.debug('=== service %s started (%s / %s)', uid,
+                        len(self._service_uids_running),
+                        len(self._service_uids_launched))
+
+        # signal main thread when all services are up
+        if len(self._service_uids_launched) == \
+           len(self._service_uids_running):
+            self._services_setup.set()
 
         return True
 

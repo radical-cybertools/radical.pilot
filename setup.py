@@ -266,6 +266,7 @@ setup_args = {
                             'bin/radical-pilot-raptor-worker',
                             'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',
+                            'bin/radical-pilot-service-signal',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-ve',
