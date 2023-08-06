@@ -19,6 +19,7 @@ class MPIExec(LaunchMethod):
 
         self._mpt    : bool  = False
         self._rsh    : bool  = False
+        self._use_rf : bool  = False
         self._ccmrun : str   = ''
         self._dplace : str   = ''
         self._omplace: str   = ''
@@ -45,6 +46,7 @@ class MPIExec(LaunchMethod):
             ]),
             'mpt'    : False,
             'rsh'    : False,
+            'use_rf' : False,
             'ccmrun' : '',
             'dplace' : '',
             'omplace': ''
@@ -73,6 +75,10 @@ class MPIExec(LaunchMethod):
             lm_info['omplace'] = 'omplace'
             lm_info['mpt']     = True
 
+        # check that this implementation allows to use `rankfile` option
+        lm_info['use_rf'] = bool(ru.sh_callout('%s --help |& grep -- "-rf"' %
+                                               lm_info['command'])[0])
+
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
         lm_info['mpi_flavor']   = mpi_flavor
@@ -92,6 +98,7 @@ class MPIExec(LaunchMethod):
 
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
+        self._use_rf      = lm_info['use_rf']
         self._dplace      = lm_info['dplace']
         self._ccmrun      = lm_info['ccmrun']
 
@@ -200,20 +207,22 @@ class MPIExec(LaunchMethod):
         n_ranks     = sum([len(slot['core_map']) for slot in slots['ranks']])
         cmd_options = '-np %d ' % n_ranks
 
-        # check that this implementation allows to use `rankfile` option
-        has_rf = bool(ru.sh_callout('%s --help |& grep -- "-rf"' %
-                                    self._command, shell=True)[0])
-        if has_rf:
+        if self._use_rf:
             rankfile     = self._get_rank_file(slots, uid, sbox)
             hosts        = set([r['node_name'] for r in slots['ranks']])
             cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
-            hostfile       = self._get_host_file(slots, uid, sbox)
-            cores_per_rank = len(slots['ranks'][0]['core_map'][0])
-            cmd_options   += '--hostfile %s '              % hostfile + \
-                             '--depth=%d --cpu-bind depth' % cores_per_rank
-            # FIXME: consider extension with `--cpu-bind list:...`
+            hostfile     = self._get_host_file(slots, uid, sbox)
+            core_ids     = ':'.join([
+                str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
+                for cores in [rank['core_map'][0] for rank in slots['ranks']]])
+            cmd_options += '--hostfile %s '     % hostfile + \
+                           '--cpu-bind list:%s' % core_ids
+            # if over-subscription is allowed,
+            # then the following approach is applicable too:
+            #    cores_per_rank = len(slots['ranks'][0]['core_map'][0])
+            #    cmd_options   += '--depth=%d --cpu-bind depth' % cores_per_rank
 
         else:
             hostfile     = self._get_host_file(slots, uid, sbox, simple=False)
