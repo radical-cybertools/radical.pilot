@@ -76,6 +76,7 @@ The object returned to the client is a `Task` subclass with additional features.
 
 .. autoclass:: radical.pilot.raptor_tasks.Raptor
     :members:
+
 Utilities and helpers
 =====================
 .. automodule:: radical.pilot.utils.component
