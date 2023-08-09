@@ -180,10 +180,12 @@ def get_resource_fs_url(resource: str,
     rcfg = get_resource_config(resource)
 
     if not schema:
-        schema = rcfg['schemas'][0]
+        schema = rcfg['default_schema']
 
     # return a deep copy
-    return ru.Url(rcfg[schema]['filesystem_endpoint'])
+    import pprint
+    pprint.pprint(rcfg.as_dict())
+    return ru.Url(rcfg['schemas'][schema]['filesystem_endpoint'])
 
 
 # ------------------------------------------------------------------------------
