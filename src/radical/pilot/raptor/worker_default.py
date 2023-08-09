@@ -414,6 +414,7 @@ class DefaultWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def test(self, msg, sleep):
+
         # pylint: disable=reimported
         import time
         print('start idx %s: %.1f' % (msg, time.time()))
