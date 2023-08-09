@@ -25,7 +25,7 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
+    @mock.patch.object(rp.Session, '_init_primary', return_value=None)
     @mock.patch.object(rp.Session, '_get_logger')
     @mock.patch.object(rp.Session, '_get_profiler')
     @mock.patch.object(rp.Session, '_get_reporter')

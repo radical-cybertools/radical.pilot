@@ -472,7 +472,9 @@ class Agent_0(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                cmdline = '/bin/sh -l %s/bootstrap_2.sh %s' % (self._pwd, sa)
+                bs_name = '%s/bootstrap_2.sh' % (self._pwd)
+                args    = ' '.join([self._sid, self.cfg.reg_addr, sa])
+                cmdline = '/bin/sh -l %s/%s %s' % (self._pwd, bs_name, args)
 
 
             else:  # target == 'node':
