@@ -22,7 +22,23 @@ from ..task_description import RAPTOR_WORKER
 # ------------------------------------------------------------------------------
 #
 class Master(rpu.Component):
+    '''
+    Raptor Master class
 
+    The `rp.raptor.Master` instantiates and orchestrates a set of workers which
+    are used to rapidly and efficiently execute function tasks.  As such the
+    raptor master acts as an RP executor: it hooks into the RP agent
+    communication channels to receive tasks from the RP agent scheduler in order
+    to execute them.  Once completed tasks are pushed toward the agent output
+    staging component and will then continue their life cycle as all other
+    tasks.
+    '''
+
+    # flags for worker readiness.  These flags have somewhat different meaning
+    # than the worker's task state: the worker reaching `AGENT_EXECUTING` is
+    # necessary, but the worker also needs to perform some setup steps and needs
+    # to hook into the agent's communication channels - only then is the worker
+    # considered `ACTIVE` and ready to receive tasks.
     NEW    = 'NEW'
     ACTIVE = 'ACTIVE'
     DONE   = 'DONE'
@@ -31,6 +47,17 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg=None):
+        '''
+        This raptor master is expected to be hosted in a main thread of a RP
+        task instance.  As such the normal `RP_*` environment variables are
+        expected to be available.
+
+        This c'tor will create communication channels which are later used by
+        workers to communicate with this master instance.
+
+        Args:
+            cfg: session config.  fallback: agent config
+        '''
 
         self._uid        = os.environ['RP_TASK_ID']
         self._pid        = os.environ['RP_PILOT_ID']
@@ -47,8 +74,8 @@ class Master(rpu.Component):
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
-        self._hb_freq    = 1000        # check worker heartbetas every n seconds
-        self._hb_timeout = 150         # consider worker dead after 150 seconds
+        self._hb_freq    = 500         # check worker heartbetas every n seconds
+        self._hb_timeout = 1000        # consider worker dead after 150 seconds
 
         cfg              = self._get_config(cfg)
         self._session    = Session(cfg=cfg, uid=cfg.sid, _primary=False)
@@ -154,9 +181,13 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_rpc_handler(self, cmd, handler):
+    def register_rpc_handler(self, cmd, handler) -> None:
         '''
         register a handler to be invoked on 'cmd' type rpc calls.
+
+        Args:
+            cmd (str): name of the registered rpc call
+            handler (callable): the method which implements the rpc call
         '''
         self._rpc_handlers[cmd] = handler
 
@@ -166,6 +197,9 @@ class Master(rpu.Component):
     def _get_config(self, cfg=None):
         '''
         derive a worker base configuration from the control pubsub configuration
+
+        Args:
+            cfg (Dict[str, Any]): configuration to start from
         '''
 
         # FIXME: use registry for comm EP info exchange, not cfg files
@@ -197,12 +231,19 @@ class Master(rpu.Component):
     #
     @property
     def workers(self):
+        '''
+        task dictionaries representing all currently registered workers
+        '''
         return self._workers
 
 
     # --------------------------------------------------------------------------
     #
     def _control_cb(self, topic, msg):
+        '''
+        listen for `worker_register`, `worker_unregister`,
+        `worker_rank_heartbeat` and `rpc_req` messages.
+        '''
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -298,6 +339,10 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _state_cb(self, topic, msg):
+        '''
+        listen for state updates for tasks executed by raptor workers, but also
+        check for state updates originating directly from our workers.
+        '''
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -343,6 +388,11 @@ class Master(rpu.Component):
         '''
         This callback can be overloaded - it will be invoked whenever the master
         receives a state update for a worker it is connected to.
+
+        args:
+            worker_dict (Dict[str, Any]): a task dictionary representing the
+                worker whose state was updated
+            state (str): new state of the worker
         '''
 
         pass
@@ -367,6 +417,12 @@ class Master(rpu.Component):
         Note that only one worker rank (presumably rank 0) should register with
         the master - the workers are expected to synchronize their ranks as
         needed.
+
+        Args:
+            descriptions (List[TaskDescription]): a list of worker descriptions
+
+        Returns:
+            List[str]: list of uids for submitted worker tasks
         '''
 
         # FIXME registry: use registry instead of config files
@@ -448,7 +504,13 @@ class Master(rpu.Component):
         '''
         Wait for `n` workers, *or* for workers with given UID, *or* for all
         workers to become available, then return.  A worker is considered
-        `available` when it registered with this master.
+        `available` when it registered with this master and get's its status
+        flag set to `ACTIVE`.
+
+        Args:
+
+            count (int): number of workers to wait for
+            uids (List[str]): set of worker UIDs to wait for
         '''
 
         if not uids and not count:
@@ -496,6 +558,9 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def start(self):
+        '''
+        start the main work thread of this master
+        '''
 
         self._thread = mt.Thread(target=self._run)
         self._thread.daemon = True
@@ -505,6 +570,9 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def stop(self):
+        '''
+        stop the main work thread of this master
+        '''
 
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
@@ -517,6 +585,9 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def alive(self):
+        '''
+        check if the main work thread of this master is running
+        '''
 
         if not self._thread or self._term.is_set():
             return False
@@ -526,6 +597,9 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def join(self):
+        '''
+        wait until the main work thread of this master completes
+        '''
 
         if self._thread:
             self._thread.join()
@@ -534,6 +608,9 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _run(self):
+        '''
+        main work threda of this master
+        '''
 
         # wait for the submitted requests to complete
         while True:
@@ -608,13 +685,16 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self, tasks):
+    def submit_tasks(self, tasks) -> None:
         '''
         submit a list of tasks to the task queue
         We expect to get either `TaskDescription` instances which will then get
         converted into task dictionaries and pushed out, or we get task
         dictionaries which are used as is.  Either way, `self.request_cb` will
         be called for all tasks submitted here.
+
+        Args:
+            tasks (List[TaskDescription]): description of tasks to be submitted
         '''
 
         normalized = list()
@@ -632,7 +712,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _submit_tasks(self, tasks):
+    def _submit_tasks(self, tasks) -> None:
         '''
         This is the internal implementation of `self.submit_tasks` which
         performs the actual submission after the tasks passed through the
@@ -670,7 +750,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _submit_raptor_tasks(self, tasks):
+    def _submit_raptor_tasks(self, tasks) -> None:
 
         if tasks:
 
@@ -682,7 +762,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _submit_executable_tasks(self, tasks):
+    def _submit_executable_tasks(self, tasks) -> None:
         '''
         Submit tasks per given task description to the agent this
         master is running in.
@@ -719,7 +799,11 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _request_cb(self, tasks):
+    def _request_cb(self, tasks) -> None:
+        '''
+        This cb will be called for all tasks which are under control of this
+        raptor master, upon receival by the master.
+        '''
 
         tasks = ru.as_list(tasks)
 
@@ -745,6 +829,23 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def request_cb(self, tasks):
+        '''
+        A raptor master implementation can overload this cb to filter all newly
+        submitted tasks: it recieves a list of tasks and returns a potentially
+        different list of tasks which are then executed.  It is up to the master
+        implementation to ensure proper state transition for any tasks which
+        are passed as argument but are not returned by the call and thus are not
+        submitted for execution.
+
+        Args:
+            tasks ([List[Dict[str, ANY]]): list of tasks which this master
+                received for execution
+
+        Returns:
+            tasks ([List[Dict[str, ANY]]): possibly different list of tasks than
+                received
+
+        '''
 
         # FIXME: document task format
         return tasks
@@ -753,6 +854,10 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def _result_cb(self, tasks):
+        '''
+        As pendant to the `_request_cb`, the `_result_cb` is invoked when raptor
+        tasks complete execution.
+        '''
 
         tasks = ru.as_list(tasks)
 
@@ -789,9 +894,17 @@ class Master(rpu.Component):
     # --------------------------------------------------------------------------
     #
     def result_cb(self, tasks):
+        '''
+        A raptor master implementation can overload this cb which get's called
+        when raptor tasks complete execution.
+
+        Args:
+            tasks ([List[Dict[str, ANY]]): list of tasks which this master
+                executed
+
+        '''
 
         # FIXME: document task format
-
         pass
 
 
@@ -799,7 +912,7 @@ class Master(rpu.Component):
     #
     def terminate(self):
         '''
-        terminate all workers
+        terminate all workers and the master's own work loop.
         '''
 
         # unregister input queue
