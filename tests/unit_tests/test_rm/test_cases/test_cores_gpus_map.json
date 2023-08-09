@@ -11,6 +11,7 @@
                     "mem"       : 128
                 }
             ],
+            "cores_per_node"    : 8,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -25,6 +26,7 @@
                     "mem"       : 128
                 }
             ],
+            "cores_per_node"    : 8,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -39,6 +41,7 @@
                     "mem"       : 128
                 }
             ],
+            "cores_per_node"    : 8,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -53,6 +56,7 @@
                     "mem"       : 128
                 }
             ],
+            "cores_per_node"    : 8,
             "agent_node_list"   : [],
             "service_node_list" : []
         }

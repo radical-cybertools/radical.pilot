@@ -45,6 +45,7 @@ class RMBaseTestCase(TestCase):
         c.close()
 
         rm = ResourceManager(cfg=ru.TypedDict({'reg_addr': reg.addr}),
+                             rcfg=ru.TypedDict(),
                              log=mock.Mock(), prof=mock.Mock())
 
         self.assertIsInstance(rm.info, RMInfo)
@@ -71,13 +72,15 @@ class RMBaseTestCase(TestCase):
                              'lfs_size_per_node': 100,
                              'resource_cfg'     : {}})
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
+        rm._rcfg = cfg
         rm._cfg  = cfg
         rm._log  = mock.Mock()
         rm._prof = mock.Mock()
 
         def _init_from_scratch(rm_info):
             rm_info.node_list = rm._get_node_list([('node00', 16)], rm_info)
+            rm_info.cores_per_node = rm_info['cores_per_node']
             return rm_info
 
         # RM specific method (to update node_list and cores_per_node if needed)
@@ -117,13 +120,21 @@ class RMBaseTestCase(TestCase):
                                            tc_map['result']):
 
             def _init_from_scratch(rm_info_tc, rm_info_input):
-                _rm_info = ru.TypedDict(rm_info_tc)
-                _rm_info.update(rm_info_input)
+
+                _rm_info = ru.TypedDict(rm_info_input)
+                _rm_info.update(rm_info_tc)
+
+                # FIXME: why is this not picked up from the test cases?
+                _rm_info.cores_per_node  = 8
+                _rm_info.requested_cores = 8
+                _rm_info.gpus_per_node   = 2
+                _rm_info.requested_gpus  = 2
                 return _rm_info
 
             from functools import partial
 
-            rm._cfg = ru.TypedDict(rm_cfg)
+            rm._cfg  = ru.TypedDict({'nodes': 1})
+            rm._rcfg = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
             if result == 'AssertionError':
@@ -139,7 +150,7 @@ class RMBaseTestCase(TestCase):
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
     def test_set_info(self, mocked_init):
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
 
         with self.assertRaises(KeyError):
             # required attributes are missed
@@ -171,7 +182,8 @@ class RMBaseTestCase(TestCase):
         cfg = ru.TypedDict({
             'cores'        : 16,
             'gpus'         : 2,
-            'resource_cfg' : {
+            })
+        rcfg = ru.TypedDict({
                 'cores_per_node'   : 16,
                 'gpus_per_node'    : 2,
                 'lfs_path_per_node': '${LOCAL}',
@@ -179,9 +191,9 @@ class RMBaseTestCase(TestCase):
                 'launch_methods'   : {
                     'order': ['SRUN'],
                     'SRUN' : {}
-                }}})
+                }})
 
-        rm = ResourceManager.create('FORK', cfg, None, None)
+        rm = ResourceManager.create('FORK', cfg, rcfg, None, None)
 
         rm._launch_order = ['SRUN']
         rm._launchers    = {'SRUN': mocked_lm}

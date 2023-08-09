@@ -35,6 +35,7 @@
                     "mem_per_node"   : 0,
                     "requested_nodes": 1,
                     "requested_cores": 8,
+                    "cores_per_node" : 8,
                     "requested_gpus" : 0
                 }
             },

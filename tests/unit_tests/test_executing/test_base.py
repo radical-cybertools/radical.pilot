@@ -43,7 +43,7 @@ class TestBaseExecuting(TestCase):
 
         for spawner in spawners:
             session = ru.Config(cfg={
-                'cfg': { 'resource_cfg': { 'agent_spawner' : spawner}}})
+                '_rcfg': { 'agent_spawner' : spawner}})
             try:
                 AgentExecutingComponent.create(cfg=spawner, session=session)
             except:
@@ -72,12 +72,12 @@ class TestBaseExecuting(TestCase):
                                  'launch_methods': {'SRUN': {}}}
         })
         ec._reg               = ru.Config(cfg={
-            'cfg': {'resource'        : 'localhost',
-                    'pilot_sandbox'   : '',
-                    'session_sandbox' : '',
-                    'resource_sandbox': '',
-                    'resource_cfg'    : {'resource_manager': 'FORK',
-                                         'agent_spawner'   : 'POPEN'}}})
+            'cfg' : {'resource'        : 'localhost',
+                     'pilot_sandbox'   : '',
+                     'session_sandbox' : '',
+                     'resource_sandbox': ''},
+            'rcfg': {'resource_manager': 'FORK',
+                     'agent_spawner'   : 'POPEN'}})
         ec._log               = ec._prof               = mock.Mock()
         ec.work               = ec.control_cb          = mock.Mock()
         ec.register_input     = ec.register_output     = mock.Mock()

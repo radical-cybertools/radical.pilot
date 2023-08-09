@@ -81,7 +81,8 @@ class TestPopen(TestCase):
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
         pex._log._debug_level = 1
 
-        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
+        pex._reg     = ru.Config(from_dict={'rcfg.new_session_per_task': False})
+        pex._cfg     = dict()
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
@@ -99,7 +100,6 @@ class TestPopen(TestCase):
         pex._handle_task(task)
 
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
-        print(popen_input_kwargs)
         self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh']:
@@ -184,6 +184,7 @@ class TestPopen(TestCase):
         to_watch.append(task)
         to_cancel.append(task['uid'])
         pex._check_running(to_watch, to_cancel)
+        print('to_cancel:', to_cancel)
         self.assertFalse(to_cancel)
 
         # case 2: exit_code == 0

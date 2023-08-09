@@ -657,6 +657,7 @@ class PMGRLaunchingComponent(rpu.Component):
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
+        print('==========', agent_proxy_url)
         tmp = ru.Url(agent_proxy_url)
         if tmp.port:
             hostport = "%s:%d" % (tmp.host, tmp.port)

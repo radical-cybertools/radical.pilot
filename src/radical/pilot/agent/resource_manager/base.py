@@ -265,6 +265,8 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
+        print('========== 1', rm_info)
+
         assert alloc_nodes                          >= rm_info.requested_nodes
         assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
         assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus

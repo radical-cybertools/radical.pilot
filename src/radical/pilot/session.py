@@ -191,12 +191,14 @@ class Session(rs.Session):
 
         # initialization is different for each session type
         # NOTE: we could refactor this to session sub-classes
+        print('=========== here 5', self._uid)
         if self._role == self._PRIMARY:
 
             # if user did not set a uid, we need to generate a new ID
             if not self._uid:
                 self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
 
+            print('=========== here 4', self._uid)
             self._init_primary()
 
 
@@ -251,6 +253,7 @@ class Session(rs.Session):
 
         # we still call `_init_cfg` to complete missing config settings
         # FIXME: completion only needed by `PRIMARY`
+        print('=========== here 3', self._uid)
         self._init_cfg_from_scratch()
 
         # primary sessions create a registry service
@@ -365,6 +368,7 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _init_cfg_from_scratch(self):
+        print('=========== here 2', self._uid)
 
         # A primary session will at this point have a registry client connected
         # to its registry service.  Further, self._cfg will either be a config
@@ -430,10 +434,14 @@ class Session(rs.Session):
         def_cfg.report_dir  = self._cfg.path
         def_cfg.profile_dir = self._cfg.path
 
+        print('=========== here 1', self._uid)
+
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
                                         level=self._cfg.get('debug'))
+
+        print('=================== after: %s' % self._prof)
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)

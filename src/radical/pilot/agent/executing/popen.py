@@ -433,8 +433,8 @@ class Popen(AgentExecutingComponent):
             # poll subprocess object
             exit_code = task['proc'].poll()
 
-            to_advance    = list()
-            to_cancel     = list()
+            tasks_to_advance = list()
+            tasks_to_cancel  = list()
 
             if exit_code is None:
 
@@ -467,7 +467,7 @@ class Popen(AgentExecutingComponent):
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
                     self._prof.prof('unschedule_start', uid=tid)
-                    to_cancel.append(task)
+                    tasks_to_cancel.append(task)
 
             else:
 
@@ -487,7 +487,7 @@ class Popen(AgentExecutingComponent):
                 if tid in to_cancel:
                     to_cancel.remove(tid)
                 del task['proc']  # proc is not json serializable
-                to_advance.append(task)
+                tasks_to_advance.append(task)
 
                 self._prof.prof('unschedule_start', uid=tid)
 
@@ -504,13 +504,15 @@ class Popen(AgentExecutingComponent):
                     # stdout/stderr
                     task['target_state'] = rps.DONE
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_cancel + to_advance)
-            if to_cancel:
-                self.advance(to_cancel, rps.CANCELED,
-                                        publish=True, push=False)
-            if to_advance:
-                self.advance(to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                         publish=True, push=True)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB,
+                         tasks_to_cancel + tasks_to_advance)
+
+            if tasks_to_cancel:
+                self.advance(tasks_to_cancel, rps.CANCELED,
+                                              publish=True, push=False)
+            if tasks_to_advance:
+                self.advance(tasks_to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                               publish=True, push=True)
 
         return action
 
