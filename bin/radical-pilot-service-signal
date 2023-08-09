@@ -25,11 +25,16 @@ import os
 
 import radical.utils as ru
 
-reg = ru.zmq.RegistryClient(url=os.environ['RP_REGISTRY_URL'])
-pub = ru.zmq.Publisher('control_pubsub', reg['bridges.control_pubsub.pub_addr'])
+reg_addr = os.environ['RP_REGISTRY_URL']
+reg      = ru.zmq.RegistryClient(url=reg_addr)
+
+ctr_addr = reg['bridges.control_pubsub.addr_pub']
+task_uid = os.environ['RP_TASK_ID']
+
+pub = ru.zmq.Publisher('control_pubsub', ctr_addr)
 
 pub.put('control_pubsub', msg={'cmd': 'service_up',
-                               'uid': os.environ['RP_TASK_UID']})
+                               'uid': task_uid})
 
 # make sure the message goes out
 time.sleep(1)
@@ -43,4 +48,5 @@ cd $RP_PILOT_SANDBOX
 
 set -x
 echo "$SCRIPT" | python3
+echo "Done"
 
