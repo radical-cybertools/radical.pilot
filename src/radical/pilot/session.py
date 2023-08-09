@@ -53,6 +53,8 @@ class _CloseOptions(ru.TypedDict):
         super().__init__(from_dict)
         self._verify()
 
+from .resource_description import ResourceDescription
+
 
 # ------------------------------------------------------------------------------
 #
@@ -178,12 +180,10 @@ class Session(rs.Session):
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
 
-
         # this session is either living in the client applicatio or lives in the
         # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
         # set - we derive the session module scope from that env variable.
         self._module = os.environ.get('RP_PILOT_ID', 'client')
-
 
         # non-primary sessions need a uid!
         if self._role != self._PRIMARY and not self._uid:
@@ -386,18 +386,28 @@ class Session(rs.Session):
         self._cfg = ru.Config('radical.pilot.session', name=cfg_name,
                                                        cfg=self._cfg)
 
-        # load the resource configs
+        self._rcfgs = ru.Config()
         self._rcfg  = ru.Config()  # the local resource config, if known
-        self._rcfgs = ru.Config('radical.pilot.resource', name='*',
-                                                          expand=False)
-        # expand rcfgs for all schema options
-        # FIXME: this is ugly
+        rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+
+        for site in rcfgs:
+            self._rcfgs[site] = ru.Config()
+            for res,rcfg in rcfgs[site].items():
+                self._rcfgs[site][res] = ru.Config()
+                for schema in rcfg['schemas']:
+                    self._rcfgs[site][res][schema] = ru.Config()
+                    self._rcfgs[site][res][schema] = ru.Config(
+                                                     from_dict=rcfgs[site][res])
+                    ru.dict_merge(self._rcfgs[site][res][schema],
+                                  rcfgs[site][res]['schemas'][schema])
+                    del self._rcfgs[site][res][schema]['schemas']
+
         for site in self._rcfgs:
-            for rcfg in self._rcfgs[site].values():
+            for res,rcfg in self._rcfgs[site].items():
                 for schema in rcfg.get('schemas', []):
-                    while isinstance(rcfg.get(schema), str):
-                        tgt = rcfg[schema]
-                        rcfg[schema] = rcfg[tgt]
+                    rd = ResourceDescription(from_dict=rcfg['schemas'][schema])
+                    rd.verify()
+
 
         # set essential config values for *this* specific session
         self._cfg['sid'] = self._uid

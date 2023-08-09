@@ -2,17 +2,22 @@
 {
     "perlmutter": {
         "description"                 : "CPU nodes: 3072",
-        "schemas"                     : ["local", "interactive", "batch"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://perlmutter-p1.nersc.gov/",
-            "filesystem_endpoint"     : "file://perlmutter-p1.nersc.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://perlmutter-p1.nersc.gov/",
+                "filesystem_endpoint" : "file://perlmutter-p1.nersc.gov/"
+            },
+            "batch"                   :
+            {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            },
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
-        "batch"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "interactive"                 : "batch",
         "default_queue"               : "regular",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
@@ -36,17 +41,21 @@
 
     "perlmutter_gpu": {
         "description"                 : "GPU nodes: 1536 with 40GiB and 256 with 80GiB of GPU-attached memory",
-        "schemas"                     : ["local", "interactive", "batch"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://perlmutter-p1.nersc.gov/",
-            "filesystem_endpoint"     : "file://perlmutter-p1.nersc.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://perlmutter-p1.nersc.gov/",
+                "filesystem_endpoint" : "file://perlmutter-p1.nersc.gov/"
+            },
+            "batch"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            },
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
-        "batch"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "interactive"                 : "batch",
         "default_queue"               : "regular",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
