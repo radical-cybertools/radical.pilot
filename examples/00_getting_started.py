@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import random
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -53,20 +54,19 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 30,  # pilot runtime (min)
+                   'runtime'       : 120,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'cores'         : config.get('cores', 1),
+                   'cores'         : 1024,
                    'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
-        # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 10  # number of tasks to run
+        n = 1024 * 2  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.

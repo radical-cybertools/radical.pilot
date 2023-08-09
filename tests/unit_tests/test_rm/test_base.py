@@ -208,12 +208,10 @@ class RMBaseTestCase(TestCase):
         mocked_lm.create.return_value = mocked_lm
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
-        rm._log = rm._prof = mock.Mock()
-        rm._cfg = ru.TypedDict({'pid'     : None,
-                                'reg_addr': None,
-                                'resource_cfg': {
-                                    'launch_methods': {'SRUN': {}}
-                                }})
+        rm._log     = rm._prof = mock.Mock()
+        rm._cfg     = ru.TypedDict({'pid'     : None,
+                                    'reg_addr': None})
+        rm._rm_info = ru.TypedDict({'launch_methods': {'SRUN': {}}})
 
         # launching order not provided
 
@@ -223,15 +221,15 @@ class RMBaseTestCase(TestCase):
 
         # launching order provided
 
-        rm._cfg.resource_cfg.launch_methods = {'order': ['SSH'],
-                                               'SRUN' : {},
-                                               'SSH'  : {}}
+        rm._rm_info.launch_methods = {'order': ['SSH'],
+                                      'SRUN' : {},
+                                      'SSH'  : {}}
         rm._prepare_launch_methods(None)
         self.assertEqual(rm._launch_order, ['SSH'])
 
         # launching methods not provided
 
-        rm._cfg.resource_cfg.launch_methods = {}
+        rm._rm_info.launch_methods = {}
         with self.assertRaises(RuntimeError):
             rm._prepare_launch_methods(None)
 
@@ -240,7 +238,7 @@ class RMBaseTestCase(TestCase):
         def lm_raise_exception(*args, **kwargs):
             raise Exception('LM Error')
 
-        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        rm._rm_info.launch_methods = {'SRUN': {}, 'SSH': {}}
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception)
         # all LMs will be skipped, thus RuntimeError raised
         with self.assertRaises(RuntimeError):
@@ -259,7 +257,7 @@ class RMBaseTestCase(TestCase):
                 raise Exception('LM Error')
             return mocked_lm
 
-        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        rm._rm_info.launch_methods = {'SRUN': {}, 'SSH': {}}
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception_once)
         rm._prepare_launch_methods(None)
         # only second LM is considered successful

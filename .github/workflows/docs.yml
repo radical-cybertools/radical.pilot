@@ -9,10 +9,10 @@ name: 'Test Jupyter notebooks'
 on:
   push:
     branches:
-      - docs/nb_section3
+      - feature/nodb_2
   pull_request:
     branches:
-      - docs/nb_section3
+      - feature/nodb_2
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
@@ -31,11 +31,11 @@ jobs:
       matrix:
         tutorial: [
           'configuration.ipynb',
-          # 'debugging.ipynb',
+          'debugging.ipynb',
           'describing_tasks.ipynb',
           'multiple_pilots.ipynb',
-          # 'profiling.ipynb',
-          # 'raptor.ipynb',
+          'profiling.ipynb',
+          'raptor.ipynb',
           'staging_data.ipynb',
           'submission.ipynb'
         ]

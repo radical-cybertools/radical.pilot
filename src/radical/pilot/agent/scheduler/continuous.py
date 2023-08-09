@@ -2,8 +2,11 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import math as m
 import pprint
+
+import math as m
+
+import radical.utils as ru
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
@@ -113,7 +116,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_task(self, task):
+    def unschedule_task(self, tasks):
         '''
         This method is called when previously aquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
@@ -121,7 +124,8 @@ class Continuous(AgentSchedulingComponent):
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(task['slots'], rpc.FREE)
+        for task in ru.as_list(tasks):
+            self._change_slot_states(task['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -158,6 +162,8 @@ class Continuous(AgentSchedulingComponent):
                This might best be realized by internally handling SMT as minimal
                thread count and using physical core IDs for process placement?
         '''
+
+      # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
         # check if the node can host the request
         free_cores = node['cores'].count(rpc.FREE)
@@ -319,22 +325,31 @@ class Continuous(AgentSchedulingComponent):
                'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
+        tmp = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
+        tmp.append([cores_per_node, cores_per_slot, slots_per_node])
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(gpus_per_node / gpus_per_slot)))
+        tmp.append([gpus_per_node, gpus_per_slot, slots_per_node])
 
         if lfs_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(lfs_per_node / lfs_per_slot)))
+        tmp.append([lfs_per_node, lfs_per_slot, slots_per_node])
 
         if mem_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(mem_per_node / mem_per_slot)))
+        tmp.append([mem_per_node, mem_per_slot, slots_per_node])
 
         if not mpi and req_slots > slots_per_node:
-            raise ValueError('non-mpi task does not fit on a single node')
+            raise ValueError('non-mpi task does not fit on a single node:'
+                    '%s * %s:%s > %s:%s -- %s > %s [%s %s] %s' % (req_slots,
+                    cores_per_slot, gpus_per_slot,
+                    cores_per_node, gpus_per_node, req_slots,
+                    slots_per_node, cores_per_slot, gpus_per_slot, tmp))
 
         # set conditions to find the first matching node
         is_first = True

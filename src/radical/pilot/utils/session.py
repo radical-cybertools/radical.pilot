@@ -13,8 +13,7 @@ rs_fs = rs.filesystem
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
-               log=None):
+def fetch_json(sid, tgt=None, skip_existing=False, session=None, log=None):
     '''
     Returns:
 
@@ -46,18 +45,11 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
         log.info("session already in %s", dst)
         return dst
 
-    # need to fetch from MongoDB
-    if not dburl:
-        dburl = os.environ.get('RADICAL_PILOT_DBURL')
+    # FIXME: MongoDB
+    raise NotImplementedError('MongoDB missing')
 
-    if not dburl:
-        raise ValueError('need RADICAL_PILOT_DBURL to fetch session')
-
-    mongo, db, _, _, _ = ru.mongodb_connect(dburl)
-
-    json_docs = get_session_docs(sid, db)
+    json_docs = ...
     ru.write_json(json_docs, dst)
-    mongo.close()
 
     log.info("session written to %s", dst)
     rep.ok("+ %s (json)\n" % sid)
@@ -67,7 +59,7 @@ def fetch_json(sid, dburl=None, tgt=None, skip_existing=False, session=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_filetype(ext, name, sid, dburl=None, src=None, tgt=None, access=None,
+def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
     Args:
@@ -143,7 +135,7 @@ def fetch_filetype(ext, name, sid, dburl=None, src=None, tgt=None, access=None,
                 rs_file.close()
 
     # we need the session json for pilot details
-    json_name  = fetch_json(sid, dburl, tgt, skip_existing, session, log)
+    json_name  = fetch_json(sid, tgt, skip_existing, session, log)
     json_docs  = ru.read_json(json_name)
     pilots     = json_docs['pilot']
     num_pilots = len(pilots)
@@ -246,19 +238,19 @@ def fetch_filetype(ext, name, sid, dburl=None, src=None, tgt=None, access=None,
 
 # ------------------------------------------------------------------------------
 #
-def fetch_profiles (sid, dburl=None, src=None, tgt=None, access=None,
+def fetch_profiles (sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
 
-    return fetch_filetype('prof', 'profiles', sid, dburl, src, tgt, access,
+    return fetch_filetype('prof', 'profiles', sid, src, tgt, access,
             session, skip_existing, fetch_client, log)
 
 
 # ------------------------------------------------------------------------------
 #
-def fetch_logfiles (sid, dburl=None, src=None, tgt=None, access=None,
+def fetch_logfiles (sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
 
-    return fetch_filetype('log', 'logfiles', sid, dburl, src, tgt, access,
+    return fetch_filetype('log', 'logfiles', sid, src, tgt, access,
             session, skip_existing, fetch_client, log)
 
 

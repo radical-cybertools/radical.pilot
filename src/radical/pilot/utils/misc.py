@@ -52,7 +52,7 @@ def get_rusage() -> str:
 
 # ------------------------------------------------------------------------------
 #
-def create_tar(tgt: str, dnames: str) -> None:
+def create_tar(tgt: str, dnames: list[str]) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''

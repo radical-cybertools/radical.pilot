@@ -83,7 +83,7 @@ class TestTask(TestCase):
             component._init_from_scratch(None, None)
 
             # FIXME
-            command, _ = component.construct_command(task, None)
+            command, _ = component.get_launch_cmds(task, '.')
 
             p = sp.Popen(command, stdout=sp.PIPE,
                          stderr=sp.PIPE, shell=True)

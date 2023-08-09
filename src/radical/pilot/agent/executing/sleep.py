@@ -39,14 +39,14 @@ class Sleep(AgentExecutingComponent) :
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_UNSCHEDULE_PUBSUB)
 
         self._terminate  = mt.Event()
-        self._tasks_lock = ru.RLock()
+        self._tasks_lock = mt.RLock()
         self._tasks      = list()
-        self._delay      = 0.1
+        self._delay      = 1.0
 
-        self._watcher = mt.Thread(target=self._timed)
+        self._watcher = mt.Thread(target=self._collect)
         self._watcher.daemon = True
         self._watcher.start()
 
@@ -112,29 +112,57 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _timed(self):
+    def _collect(self):
 
         while not self._terminate.is_set():
 
-            time.sleep(self._delay)
+            to_finish   = list()
+            to_continue = list()
+            now         = time.time()
 
             with self._tasks_lock:
-                now = time.time()
-                to_finish   = [t for t in self._tasks if t['to_finish'] <= now]
-                self._tasks = [t for t in self._tasks if t['to_finish'] >  now]
+
+                for task in self._tasks:
+                    if task['deadline'] <= now: to_finish.append(task)
+                    else                      : to_continue.append(task)
+
+                self._tasks = to_continue
+
+            if not to_finish:
+                time.sleep(self._delay)
+                continue
 
             for task in to_finish:
                 uid = task['uid']
                 task['target_state'] = 'DONE'
+
                 self._prof.prof('rank_stop',        uid=uid)
                 self._prof.prof('exec_stop',        uid=uid)
                 self._prof.prof('launch_stop',      uid=uid)
                 self._prof.prof('task_run_stop',    uid=uid)
                 self._prof.prof('unschedule_start', uid=uid)
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
+            self._log.debug('collected                : %d', len(to_finish))
+
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, to_finish)
             self.advance_tasks(to_finish, rps.AGENT_STAGING_OUTPUT_PENDING,
                                           publish=True, push=True)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def control_cb(self, topic, msg):
+
+        self._log.info('control_cb [%s]: %s', topic, msg)
+
+        cmd = msg['cmd']
+
+        if cmd == 'cancel_tasks':
+
+            # FIXME: clarify how to cancel tasks
+            pass
+
+        return True
 
 
 # ------------------------------------------------------------------------------

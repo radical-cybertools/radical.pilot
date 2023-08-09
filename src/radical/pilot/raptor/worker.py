@@ -33,30 +33,38 @@ class Worker(object):
         self._rank      = rank
         self._raptor_id = raptor_id
         self._reg_event = mt.Event()
+        self._reg_addr  = os.environ['RP_REGISTRY_ADDRESS']
         self._sbox      = os.environ['RP_TASK_SANDBOX']
         self._uid       = os.environ['RP_TASK_ID']
+        self._sid       = os.environ['RP_SESSION_ID']
         self._ranks     = int(os.environ['RP_RANKS'])
 
+        self._reg       = ru.zmq.RegistryClient(url=self._reg_addr)
+
+        self._cfg  = ru.Config(cfg=self._reg['cfg'])
+
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
-                               level='DEBUG', targets=['.'], path=self._sbox)
+                               level=self._cfg.log_lvl,
+                               targets=self._cfg.log_tgt,
+                               path=self._cfg.path)
         self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',
-                                 path=self._sbox)
+                                 path=self._cfg.path)
 
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']
-        state_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.STATE_PUBSUB))
-        ctrl_cfg  = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
+        state_cfg = self._reg['bridges.%s' % rpc.STATE_PUBSUB]
+        ctrl_cfg  = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
 
-        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['sub'],
+        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._state_cb,
                           topic=rpc.STATE_PUBSUB)
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._control_cb,
                           topic=rpc.CONTROL_PUBSUB)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
-                                          url=ctrl_cfg['pub'],
+                                          url=ctrl_cfg['addr_pub'],
                                           log=self._log,
                                           prof=self._prof)
         # let ZMQ settle
@@ -136,27 +144,21 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, topic, msg):
+    def _state_cb(self, topic, things):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        for thing in ru.as_list(things):
 
-        # general task state updates -- check if our master is affected
-        if cmd == 'update':
+            uid   = thing['uid']
+            state = thing['state']
 
-            for thing in ru.as_list(arg):
+            if uid == self._raptor_id:
 
-                uid   = thing['uid']
-                state = thing['state']
-
-                if uid == self._raptor_id:
-
-                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
-                        # master completed - terminate this worker
-                        self._log.info('master %s final: %s - terminate',
-                                       uid, state)
-                        self.stop()
-                        return False
+                if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                    # master completed - terminate this worker
+                    self._log.info('master %s final: %s - terminate',
+                                   uid, state)
+                    self.stop()
+                    return False
 
         return True
 

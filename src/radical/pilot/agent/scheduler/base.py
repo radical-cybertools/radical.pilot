@@ -216,8 +216,15 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        self._rm = ResourceManager.create(self._cfg.resource_manager,
-                                          self._cfg, self._log, self._prof)
+        scfg  = ru.Config(cfg=self._reg['cfg'])
+        rcfg = ru.Config(cfg=self._reg['rcfg'])
+
+        # the resource manager needs to connect to the registry
+        rcfg.reg_addr = self._cfg.reg_addr
+
+        rm_name  = rcfg['resource_manager']
+        self._rm = ResourceManager.create(rm_name, scfg, rcfg,
+                                          self._log, self._prof)
 
         self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
 
@@ -286,7 +293,7 @@ class AgentSchedulingComponent(rpu.Component):
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = cfg['scheduler']
+        name = session._reg['rcfg.agent_scheduler']
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
@@ -592,6 +599,11 @@ class AgentSchedulingComponent(rpu.Component):
         incoming tasks to schedule, and a queue of slots freed by finishing
         tasks.
         '''
+
+        # ZMQ endpoints will not have survived the fork. Specifically the
+        # registry client of the component base class will have to reconnect.
+        # FIXME: should be moved into a post-fork hook of the base class
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
 
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
@@ -938,8 +950,8 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._term.is_set():
-                task = self._queue_unsched.get(timeout=0.01)
-                to_unschedule.append(task)
+                tasks = self._queue_unsched.get(timeout=0.01)
+                to_unschedule += ru.as_list(tasks)
                 if len(to_unschedule) > 512:
                     break
 

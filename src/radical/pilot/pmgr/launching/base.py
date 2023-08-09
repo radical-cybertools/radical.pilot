@@ -308,13 +308,6 @@ class PMGRLaunchingComponent(rpu.Component):
 
                     self._start_pilot_bulk(resource, schema, pilots)
 
-                    # Update the Pilots' state to 'PMGR_ACTIVE_PENDING' if job
-                    # submission was successful.  Since the pilot leaves the
-                    # scope of the PMGR for the time being, we update the
-                    # complete DB document
-                    for pilot in pilots:
-                        pilot['$all'] = True
-
                     self.advance(pilots, rps.PMGR_ACTIVE_PENDING,
                                          push=False, publish=True)
 
@@ -473,6 +466,7 @@ class PMGRLaunchingComponent(rpu.Component):
                 cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
                 out, err, ret = ru.sh_callout(cmd, shell=True)
                 if ret:
+                    self._log.debug('cmd: %s', cmd)
                     self._log.debug('out: %s', out)
                     self._log.debug('err: %s', err)
                     raise RuntimeError('callout failed: %s' % cmd)
@@ -483,6 +477,7 @@ class PMGRLaunchingComponent(rpu.Component):
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
+            self._log.debug('cmd: %s', cmd)
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
             raise RuntimeError('callout failed: %s' % cmd)
@@ -547,8 +542,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid          = self._session.uid
-        database_url = self._session.cfg.dburl
+        sid       = self._session.uid
+        proxy_url = self._session.cfg.proxy_url
 
         # some default values are determined at runtime
         default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
@@ -571,7 +566,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
+        agent_proxy_url         = rcfg.get('agent_proxy_url', proxy_url)
         agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
         agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
         agent_scheduler         = rcfg.get('agent_scheduler')
@@ -662,11 +657,11 @@ class PMGRLaunchingComponent(rpu.Component):
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        db_url = ru.Url(agent_dburl)
-        if db_url.port:
-            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+        tmp = ru.Url(agent_proxy_url)
+        if tmp.port:
+            hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
+            raise RuntimeError('service URL needs port number: %s' % tmp)
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -853,7 +848,7 @@ class PMGRLaunchingComponent(rpu.Component):
         # set optional args
         if resource_manager == "CCM": bs_args.extend(['-c'])
         if forward_tunnel_endpoint:   bs_args.extend(['-f', forward_tunnel_endpoint])
-        if forward_tunnel_endpoint:   bs_args.extend(['-h', db_hostport])
+        if forward_tunnel_endpoint:   bs_args.extend(['-h', hostport])
         if python_interpreter:        bs_args.extend(['-i', python_interpreter])
         if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
@@ -861,7 +856,11 @@ class PMGRLaunchingComponent(rpu.Component):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
-        agent_cfg['owner']               = 'agent.0'
+        agent_cfg['uid']                 = 'agent_0'
+        agent_cfg['sid']                 = sid
+        agent_cfg['pid']                 = pid
+        agent_cfg['owner']               = pid
+        agent_cfg['pmgr']                = self._pmgr
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = allocated_cores
@@ -870,11 +869,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
-        agent_cfg['dburl']               = str(database_url)
-        agent_cfg['sid']                 = sid
-        agent_cfg['pid']                 = pid
-        agent_cfg['pmgr']                = self._pmgr
-        agent_cfg['logdir']              = '.'
+        agent_cfg['proxy_url']           = agent_proxy_url
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
@@ -892,17 +887,15 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['debug']               = self._log.getEffectiveLevel()
         agent_cfg['services']            = services
 
-        # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
                               'gpu': allocated_gpus}
-        pilot['$set']      = ['resources']
 
 
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent.0.cfg'
+        agent_cfg_name = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
