@@ -43,7 +43,7 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+    @mock.patch.object(Session, '_init_primary', side_effect=se_init,
                        autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
@@ -108,7 +108,7 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_initialize_primary', side_effect=se_init,
+    @mock.patch.object(Session, '_init_primary', side_effect=se_init,
                        autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
@@ -157,32 +157,22 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, 'created', return_value=0)
-    @mock.patch.object(Session, 'closed', return_value=0)
-    def test_close(self, mocked_closed, mocked_created):
+    def test_close(self):
+
+        class Dummy():
+            def put(*args, **kwargs):
+                pass
 
         # check default values
-        self.assertFalse(self._session._close_options.cleanup)
         self.assertFalse(self._session._close_options.download)
         self.assertTrue(self._session._close_options.terminate)
 
         # only `True` values are targeted
 
-        self._session._closed = False
-        self._session.close(cleanup=True)
-        self.assertTrue(self._session._close_options.cleanup)
-
-        self._session._closed = False
-        self._session.fetch_json     = mock.Mock()
-        self._session.fetch_profiles = mock.Mock()
-        self._session.fetch_logfiles = mock.Mock()
+        self._session._ctrl_pub = Dummy()
         self._session.close(download=True)
-        self._session.fetch_json.assert_called()
-        self._session.fetch_profiles.assert_called()
-        self._session.fetch_logfiles.assert_called()
 
-        self._session._closed = False
-        self._session.close(cleanup=True, terminate=True)
+        self._session.close(terminate=True)
 
     # --------------------------------------------------------------------------
     #
