@@ -642,6 +642,9 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def get_rank_worker(self):
+        '''Return the class type of the worker class which manages each worker
+        rank.
+        '''
 
         return MPIWorkerRank
 
@@ -649,6 +652,9 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def start(self):
+        '''
+        start this worker
+        '''
 
         # all ranks run a worker thread
         # the worker should be started before the managers as the manager
@@ -714,6 +720,9 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def stop(self, ret=0):
+        '''
+        terminate this worker
+        '''
 
         self._log.debug('stop: set term signal')
         self._my_ret = ret
@@ -723,6 +732,9 @@ class MPIWorker(Worker):
     # --------------------------------------------------------------------------
     #
     def join(self):
+        '''
+        block until this worker receives a termination signal
+        '''
 
         # FIXME
         while not self._my_term.is_set():
