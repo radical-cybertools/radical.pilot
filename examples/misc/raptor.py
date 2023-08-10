@@ -134,13 +134,6 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
 
-        # Issue an RPC to provision a Python virtual environment for the later
-        # raptor tasks.  Note that we are telling prepare_env to install
-        # radical.pilot and radical.utils from sdist archives on the local
-        # filesystem. This only works for the default resource, local.localhost.
-        report.info('Call pilot.prepare_env()... ')
-        report.info('done\n')
-
         # Launch a raptor master task, which will launch workers and self-submit
         # some additional tasks for illustration purposes.
 
