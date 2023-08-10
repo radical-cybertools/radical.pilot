@@ -46,7 +46,6 @@ class TestComponent(TestCase):
         # FIXME: heartbeats use the sessions HB channel which we don't have
         return
 
-
         cfg = {
             'path'      : '/tmp',
             'heartbeat' : {'timeout': 10},
