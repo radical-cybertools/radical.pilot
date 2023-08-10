@@ -11,10 +11,6 @@
                     "mem"       : 128
                 }
             ],
-            "requested_cores"   : 8,
-            "requested_gpus"    : 2,
-            "cores_per_node"    : 8,
-            "gpus_per_node"     : 2,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -29,10 +25,6 @@
                     "mem"       : 128
                 }
             ],
-            "requested_cores"   : 8,
-            "requested_gpus"    : 2,
-            "cores_per_node"    : 8,
-            "gpus_per_node"     : 2,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -47,10 +39,6 @@
                     "mem"       : 128
                 }
             ],
-            "requested_cores"   : 8,
-            "requested_gpus"    : 2,
-            "cores_per_node"    : 8,
-            "gpus_per_node"     : 2,
             "agent_node_list"   : [],
             "service_node_list" : []
         },
@@ -65,10 +53,6 @@
                     "mem"       : 128
                 }
             ],
-            "requested_cores"   : 8,
-            "requested_gpus"    : 2,
-            "cores_per_node"    : 8,
-            "gpus_per_node"     : 2,
             "agent_node_list"   : [],
             "service_node_list" : []
         }
