@@ -220,8 +220,8 @@ class ResourceManager(object):
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
-        rm_info.mem_per_node     = self._cfg.mem_per_node or 0
-        system_architecture      = self._cfg.get('system_architecture', {})
+        rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+        system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
 
@@ -264,12 +264,6 @@ class ResourceManager(object):
                     rm_info.requested_gpus / rm_info.gpus_per_node,
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
-
-        print('==== alloc_nodes: %s' % alloc_nodes)
-
-        import pprint
-        pprint.pprint(rm_info.as_dict())
-
 
         assert alloc_nodes                          >= rm_info.requested_nodes
         assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
@@ -327,8 +321,6 @@ class ResourceManager(object):
 
         launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
-        import pprint
-        pprint.pprint(rm_info.as_dict())
         self._launch_order = launch_methods.get('order') or list(launch_methods)
 
         for lm_name in list(self._launch_order):

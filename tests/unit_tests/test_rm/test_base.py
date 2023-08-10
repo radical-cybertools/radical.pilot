@@ -73,8 +73,9 @@ class RMBaseTestCase(TestCase):
                              'resource_cfg'     : {}})
 
         rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
-        rm._rcfg = cfg
         rm._cfg  = cfg
+        rm._rcfg = ru.Config(cfg={})
+
         rm._log  = mock.Mock()
         rm._prof = mock.Mock()
 
@@ -111,7 +112,7 @@ class RMBaseTestCase(TestCase):
 
         tc_map = ru.read_json('%s/test_cases/test_cores_gpus_map.json' % base)
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
         rm._log  = mock.Mock()
         rm._prof = mock.Mock()
 
@@ -120,16 +121,16 @@ class RMBaseTestCase(TestCase):
                                            tc_map['result']):
 
             def _init_from_scratch(rm_info_tc, rm_info_input):
-
-                _rm_info = ru.TypedDict(rm_info_input)
-                _rm_info.update(rm_info_tc)
+                _rm_info = ru.TypedDict(rm_info_tc)
+                _rm_info.update(rm_info_input)
 
                 return _rm_info
 
             from functools import partial
 
-            rm._cfg  = ru.TypedDict(rm_cfg['resource_cfg'])
-            rm._rcfg = ru.TypedDict(rm_cfg)
+            rm._rcfg = ru.TypedDict(rm_cfg['rcfg'])
+            del rm_cfg['rcfg']
+            rm._cfg  = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
             if result == 'AssertionError':

@@ -4,7 +4,7 @@
 import os
 import time
 
-from typing import Union
+from typing import List, Union
 
 import radical.utils as ru
 
@@ -52,7 +52,7 @@ def get_rusage() -> str:
 
 # ------------------------------------------------------------------------------
 #
-def create_tar(tgt: str, dnames: list[str]) -> None:
+def create_tar(tgt: str, dnames: List[str]) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''
