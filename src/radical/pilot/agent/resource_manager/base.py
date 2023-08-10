@@ -265,7 +265,11 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
-        print('========== 1', rm_info)
+        print('==== alloc_nodes: %s' % alloc_nodes)
+
+        import pprint
+        pprint.pprint(rm_info.as_dict())
+
 
         assert alloc_nodes                          >= rm_info.requested_nodes
         assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
@@ -323,6 +327,8 @@ class ResourceManager(object):
 
         launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
+        import pprint
+        pprint.pprint(rm_info.as_dict())
         self._launch_order = launch_methods.get('order') or list(launch_methods)
 
         for lm_name in list(self._launch_order):

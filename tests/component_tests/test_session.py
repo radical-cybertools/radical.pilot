@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 __copyright__ = 'Copyright 2020-2022, The RADICAL-Cybertools Team'
@@ -38,7 +40,6 @@ class TestSession(TestCase):
                         tgt = rcfg[schema]
                         rcfg[schema] = rcfg[tgt]
 
-        print('====', self._rcfgs.keys())
 
     # --------------------------------------------------------------------------
     #
@@ -52,6 +53,7 @@ class TestSession(TestCase):
 
         cls._session = Session()
         cls._cleanup_files.append(cls._session.uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -87,12 +89,14 @@ class TestSession(TestCase):
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)
+
+        default_schema = rcfg.default_schema
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[rcfg.schemas[0]].job_manager_endpoint)
+                         rcfg.schemas[default_schema].job_manager_endpoint)
         new_schema = 'gsissh'
         rcfg = self._session.get_resource_config(rcfg_label, schema=new_schema)
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[new_schema].job_manager_endpoint)
+                         rcfg.schemas[new_schema].job_manager_endpoint)
 
         # check exceptions
 
@@ -119,12 +123,12 @@ class TestSession(TestCase):
         mocked_config.return_value = ru.TypedDict({
             'local': {
                 'test': {
-                    'schemas'           : ['schema_origin',
-                                           'schema_alias',
-                                           'schema_alias_alias'],
-                    'schema_origin'     : {'param_0': 'value_0'},
-                    'schema_alias'      : 'schema_origin',
-                    'schema_alias_alias': 'schema_alias'
+                    'default_schema'    :'schema_origin',
+                    'schemas'           : {
+                        'schema_origin'     : {'param_0': 'value_0'},
+                        'schema_alias'      : 'schema_origin',
+                        'schema_alias_alias': 'schema_alias'
+                    }
                 }
             }
         })
@@ -202,7 +206,6 @@ class TestSession(TestCase):
         self._session._cache['resource_sandbox'] = {}
 
         # NCSA: split `project` by "-"
-        print('====', self._session._rcfgs.keys())
         pilot['description'].update({'resource': 'ncsa.delta',
                                      'project' : 'bbka-delta-cpu'})
         self.assertIn('/bbka/',
@@ -222,6 +225,7 @@ class TestSession(TestCase):
 if __name__ == '__main__':
 
     tc = TestSession()
+    tc.setUpClass()
     tc.test_list_resources()
     tc.test_get_resource_config()
     tc.test_resource_schema_alias()

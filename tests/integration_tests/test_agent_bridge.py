@@ -10,10 +10,10 @@ import radical.utils as ru
 #
 def test_agent_bridge(url=None):
 
-    if url:
-        bridge = ru.zmq.Client(url=url)
-    else:
-        bridge = ru.zmq.Client(server='server.0000')
+    if not url:
+        return
+
+    bridge = ru.zmq.Client(url=url)
 
     sid = 'foo'
 

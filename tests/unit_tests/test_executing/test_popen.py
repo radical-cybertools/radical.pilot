@@ -184,7 +184,6 @@ class TestPopen(TestCase):
         to_watch.append(task)
         to_cancel.append(task['uid'])
         pex._check_running(to_watch, to_cancel)
-        print('to_cancel:', to_cancel)
         self.assertFalse(to_cancel)
 
         # case 2: exit_code == 0

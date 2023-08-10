@@ -72,7 +72,6 @@ class TestTask(TestCase):
             result = test_case['result']
             for i in range(len(result)):
                 if '{node}' in result[i]:
-                    print(result[i])
                     result[i] = result[i].format(node=self.node_name)
 
             log  = mock.Mock()

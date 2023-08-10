@@ -198,9 +198,6 @@ class TestUtils(TestCase):
         # test resource filesystem URL
 
         rfs_url = rpu_misc.get_resource_fs_url('local.localhost')
-        print('==== 1', rfs_url)
-        print('==== 2', str(rfs_url))
-        print('==== 3', rcfg_local.schemas.local.filesystem_endpoint)
         self.assertIsInstance(rfs_url, ru.Url)
         self.assertEqual(str(rfs_url), rcfg_local.schemas.local.filesystem_endpoint)
 

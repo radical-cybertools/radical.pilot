@@ -124,16 +124,11 @@ class RMBaseTestCase(TestCase):
                 _rm_info = ru.TypedDict(rm_info_input)
                 _rm_info.update(rm_info_tc)
 
-                # FIXME: why is this not picked up from the test cases?
-                _rm_info.cores_per_node  = 8
-                _rm_info.requested_cores = 8
-                _rm_info.gpus_per_node   = 2
-                _rm_info.requested_gpus  = 2
                 return _rm_info
 
             from functools import partial
 
-            rm._cfg  = ru.TypedDict({'nodes': 1})
+            rm._cfg  = ru.TypedDict(rm_cfg['resource_cfg'])
             rm._rcfg = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 

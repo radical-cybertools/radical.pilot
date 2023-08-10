@@ -183,13 +183,6 @@ def get_resource_fs_url(resource: str,
         schema = rcfg['default_schema']
 
     # return a deep copy
-    import pprint
-    pprint.pprint(rcfg.as_dict())
-    print(schema)
-    print(1, schema)
-    print(2, rcfg['schemas'][schema])
-    print(3, rcfg['schemas'][schema]['filesystem_endpoint'])
-
     return ru.Url(rcfg['schemas'][schema]['filesystem_endpoint'])
 
 
