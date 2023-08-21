@@ -30,7 +30,8 @@
             },
             "dvm_list"          : {"0": {"dvm_uri": "dvm_uri",
                                          "nodes"  : ["node1"]}},
-            "task_sandbox": "./"
+            "task_sandbox": "./",
+            "mpi_flavor"  : "OMPI"
         }
     },
 
@@ -64,7 +65,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {
-                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "launch_cmd" : "mpiexec -np 1 --hostfile /tmp/task.000005.hf",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
              "prte"   : {
@@ -74,10 +75,12 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: node1; cpu: {0}; gpu: {0} }\n"]
+                           "rank: 0 : { host: node1; cpu: {0}; gpu: {0} }\n"],
+            "mpiexec"   : ["node1 slots=1\n"]
         },
         "resource_filename": {
-            "jsrun_erf" : "rs_layout_task_000005"
+            "jsrun_erf" : "rs_layout_task_000005",
+            "mpiexec"   : "/tmp/task.000005.hf"
         }
     }
 }

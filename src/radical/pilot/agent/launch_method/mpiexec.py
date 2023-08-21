@@ -1,6 +1,8 @@
 
-__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
+
+from collections import defaultdict
 
 import radical.utils as ru
 
@@ -17,6 +19,7 @@ class MPIExec(LaunchMethod):
 
         self._mpt    : bool  = False
         self._rsh    : bool  = False
+        self._use_rf : bool  = False
         self._ccmrun : str   = ''
         self._dplace : str   = ''
         self._omplace: str   = ''
@@ -43,6 +46,7 @@ class MPIExec(LaunchMethod):
             ]),
             'mpt'    : False,
             'rsh'    : False,
+            'use_rf' : False,
             'ccmrun' : '',
             'dplace' : '',
             'omplace': ''
@@ -71,6 +75,10 @@ class MPIExec(LaunchMethod):
             lm_info['omplace'] = 'omplace'
             lm_info['mpt']     = True
 
+        # check that this implementation allows to use `rankfile` option
+        lm_info['use_rf'] = bool(ru.sh_callout('%s --help |& grep -- "-rf"' %
+                                               lm_info['command'])[0])
+
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
         lm_info['mpi_flavor']   = mpi_flavor
@@ -90,6 +98,7 @@ class MPIExec(LaunchMethod):
 
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
+        self._use_rf      = lm_info['use_rf']
         self._dplace      = lm_info['dplace']
         self._ccmrun      = lm_info['ccmrun']
 
@@ -136,78 +145,98 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
+    @staticmethod
+    def _get_rank_file(slots, uid, sandbox):
+        '''
+        Rank file:
+            rank 0=localhost slots=0,1,2,3
+            rank 1=localhost slots=4,5,6,7
+        '''
+        rf_str  = ''
+        rank_id = 0
+
+        for rank in slots['ranks']:
+            for core_map in rank['core_map']:
+                rf_str += ('rank %d=%s ' % (rank_id, rank['node_name']) +
+                           'slots=%s\n' % ','.join([str(c) for c in core_map]))
+                rank_id += 1
+
+        rf_name = '%s/%s.rf' % (sandbox, uid)
+        with ru.ru_open(rf_name, 'w') as fout:
+            fout.write(rf_str)
+
+        return rf_name
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _get_host_file(slots, uid, sandbox, simple=True, mode=0):
+        '''
+        Host file (simple=True):
+            localhost
+        Host file (simple=False, mode=0):
+            localhost slots=2
+        Host file (simple=False, mode=1):
+            localhost:2
+        '''
+        host_slots = defaultdict(int)
+        for rank in slots['ranks']:
+            host_slots[rank['node_name']] += len(rank['core_map'])
+
+        if simple:
+            hf_str = '%s\n' % '\n'.join(list(host_slots.keys()))
+        else:
+            hf_str    = ''
+            slots_ref = ':' if mode else ' slots='
+            for host_name, num_slots in host_slots.items():
+                hf_str += '%s%s%d\n' % (host_name, slots_ref, num_slots)
+
+        hf_name = '%s/%s.hf' % (sandbox, uid)
+        with ru.ru_open(hf_name, 'w') as fout:
+            fout.write(hf_str)
+
+        return hf_name
+
+
+    # --------------------------------------------------------------------------
+    #
     def get_launch_cmds(self, task, exec_path):
 
+        uid   = task['uid']
         slots = task['slots']
+        sbox  = task['task_sandbox_path']
 
-        if 'ranks' not in slots:
-            raise RuntimeError('insufficient information to launch via %s: %s'
-                              % (self.name, slots))
+        assert slots.get('ranks'), 'task.slots.ranks not defined'
 
-        # extract a map of hosts and #slots from slots.  We count cpu
-        # slot sets, but do not account for threads.  Since multiple slots
-        # entries can have the same node names, we *add* new information.
-        host_slots = dict()
-        for rank in slots['ranks']:
-            node_name = rank['node_name']
-            if node_name not in host_slots:
-                host_slots[node_name] = 0
-            host_slots[node_name] += len(rank['core_map'])
+        n_ranks     = sum([len(slot['core_map']) for slot in slots['ranks']])
+        cmd_options = '-np %d ' % n_ranks
 
-        # If we have a Task with many cores, and the compression didn't work
-        # out, we will create a hostfile and pass that as an argument
-        # instead of the individual hosts.  The hostfile has this format:
-        #
-        #   node_name_1 slots=n_1
-        #   node_name_2 slots=n_2
-        #   ...
-        #
-        # where the slot number is the number of processes we intent to spawn.
-        #
-        # For smaller node sets, we construct command line parameters as
-        # clusters of nodes with the same number of processes, like this:
-        #
-        #   -host node_name_1,node_name_2 -n 8 : -host node_name_3 -n 4 : ...
-        #
-        # POSIX defines a min argument limit of 4096 bytes, so we try to
-        # construct a command line, and switch to hostfile if that limit is
-        # exceeded.  We assume that Disk I/O for the hostfile is much larger
-        # than the time needed to construct the command line.
-        arg_max = 4096
+        if self._use_rf:
+            rankfile     = self._get_rank_file(slots, uid, sbox)
+            hosts        = set([r['node_name'] for r in slots['ranks']])
+            cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
 
-        # This is the command w/o the host string
-        cmd_stub = '%s %%s %s %s' % (self._command, self._omplace, exec_path)
+        elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
+            hostfile     = self._get_host_file(slots, uid, sbox)
+            core_ids     = ':'.join([
+                str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
+                for cores in [rank['core_map'][0] for rank in slots['ranks']]])
+            cmd_options += '--hostfile %s '     % hostfile + \
+                           '--cpu-bind list:%s' % core_ids
+            # if over-subscription is allowed,
+            # then the following approach is applicable too:
+            #    cores_per_rank = len(slots['ranks'][0]['core_map'][0])
+            #    cmd_options   += '--depth=%d --cpu-bind depth' % cores_per_rank
 
-        # cluster hosts by number of slots
-        host_string = ''
-        if not self._mpt:
-            for node, nslots in list(host_slots.items()):
-                host_string += '-host '
-                host_string += '%s -n %s ' % (','.join([node] * nslots), nslots)
         else:
-            hosts = list()
-            for node, nslots in list(host_slots.items()):
-                hosts += [node] * nslots
-            host_string += ','.join(hosts)
-            host_string += ' -n 1'
+            hostfile     = self._get_host_file(slots, uid, sbox, simple=False)
+            cmd_options += '--hostfile %s' % hostfile
 
-        cmd = cmd_stub % host_string
+        if self._omplace:
+            cmd_options += ' %s' % self._omplace
 
-        if len(cmd) > arg_max:
-
-            # Create a hostfile from the list of hosts.  We create that in the
-            # task sandbox
-            hostfile = '%s/mpi_hostfile' % task['task_sandbox_path']
-            with ru.ru_open(hostfile, 'w') as f:
-                for node, nslots in list(host_slots.items()):
-                    f.write('%20s \tslots=%s\n' % (node, nslots))
-            host_string = '-hostfile %s' % hostfile
-
-        cmd = cmd_stub % host_string
-
-        self._log.debug('mpiexec cmd: %s', cmd)
-        assert (len(cmd) <= arg_max)
-
+        cmd = '%s %s %s' % (self._command, cmd_options, exec_path)
         return cmd.strip()
 
 
@@ -217,13 +246,17 @@ class MPIExec(LaunchMethod):
 
         # FIXME: we know the MPI flavor, so make this less guesswork
 
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
-        ret += 'test -z "$PMI_ID"    || export RP_RANK=$PMI_ID\n'
-        ret += 'test -z "$PMI_RANK"  || export RP_RANK=$PMI_RANK\n'
+        ret  = 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         if self._mpt:
             ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
+
+        if self._mpi_flavor == self.MPI_FLAVOR_HYDRA:
+            ret += 'test -z "$PMI_ID"       || export RP_RANK=$PMI_ID\n'
+            ret += 'test -z "$PMI_RANK"     || export RP_RANK=$PMI_RANK\n'
+        elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
+            ret += 'test -z "$PALS_RANKID"  || export RP_RANK=$PALS_RANKID\n'
 
         return ret
 
