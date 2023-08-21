@@ -72,7 +72,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', HeartbeatMessage(uid))
+        hb_pub.put('heartbeat', HeartbeatMessage(uid=uid))
 
     def hb_term_cb(hb_uid):
         agent.stop()

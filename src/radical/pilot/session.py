@@ -552,7 +552,7 @@ class Session(rs.Session):
         def _hb_beat_cb():
             # called on every heartbeat: cfg.heartbeat.interval`
             # publish own heartbeat
-            self._hb_pub.put('heartbeat', HeartbeatMessage(self._uid))
+            self._hb_pub.put('heartbeat', HeartbeatMessage(uid=self._uid))
 
             # also update proxy heartbeat
             if self._proxy:
