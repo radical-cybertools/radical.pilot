@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 import os
 import copy
-import glob
 import time
 
 from typing import Optional
@@ -380,28 +379,34 @@ class Session(rs.Session):
         self._cfg = ru.Config('radical.pilot.session', name=cfg_name,
                                                        cfg=self._cfg)
 
-        self._rcfgs = ru.Config()
-        self._rcfg  = ru.Config()  # the local resource config, if known
         rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
+        rcfgs_ext = {}
 
         for site in rcfgs:
-            self._rcfgs[site] = ru.Config()
-            for res,rcfg in rcfgs[site].items():
-                self._rcfgs[site][res] = ru.Config()
-                for schema in rcfg['schemas']:
-                    self._rcfgs[site][res][schema] = ru.Config()
-                    self._rcfgs[site][res][schema] = ru.Config(
-                                                     from_dict=rcfgs[site][res])
-                    ru.dict_merge(self._rcfgs[site][res][schema],
+            rcfgs_ext[site] = {}
+            for res, rcfg in rcfgs[site].items():
+                rcfgs_ext[site][res] = {
+                    'default_schema': rcfg['default_schema'],
+                    'schemas'       : rcfg.get('schemas', {})
+                }
+                for schema in rcfg.get('schemas', {}):
+                    while isinstance(rcfg['schemas'][schema], str):
+                        tgt = rcfg['schemas'][schema]
+                        rcfg['schemas'][schema] = rcfg['schemas'][tgt]
+                for schema in rcfg.get('schemas', {}):
+                    rcfgs_ext[site][res][schema] = rcfgs[site][res].as_dict()
+                    ru.dict_merge(rcfgs_ext[site][res][schema],
                                   rcfgs[site][res]['schemas'][schema])
-                    del self._rcfgs[site][res][schema]['schemas']
+                    del rcfgs_ext[site][res][schema]['default_schema']
 
-        for site in self._rcfgs:
-            for res,rcfg in self._rcfgs[site].items():
-                for schema in rcfg.get('schemas', []):
-                    rd = ResourceDescription(from_dict=rcfg['schemas'][schema])
+        for site in rcfgs_ext:
+            for res, rcfg in rcfgs_ext[site].items():
+                for schema in rcfg.get('schemas', {}):
+                    rd = ResourceDescription(from_dict=rcfg[schema])
                     rd.verify()
 
+        self._rcfgs = ru.Config(from_dict=rcfgs_ext)
+        self._rcfg  = ru.Config()  # the local resource config, if known
 
         # set essential config values for *this* specific session
         self._cfg['sid'] = self._uid
@@ -1206,27 +1211,16 @@ class Session(rs.Session):
         if not schema:
             schema = resource_cfg.get('default_schema')
 
-        while schema:
+        if schema:
 
-            if  schema not in resource_cfg['schemas']:
+            if schema not in resource_cfg['schemas']:
                 raise RuntimeError("schema %s unknown for resource %s"
                                   % (schema, resource))
 
-            cnt = 0
-            val = resource_cfg['schemas'][schema]
-
-            if isinstance(val, str):
-                schema = val
-                cnt += 1
-                if cnt > 10:
-                    break
-                continue
-
-            for key in val:
+            for key in resource_cfg[schema]:
                 # merge schema specific resource keys into the
                 # resource config
-                resource_cfg[key] = val[key]
-            break
+                resource_cfg[key] = resource_cfg[schema][key]
 
         resource_cfg.label = resource
         return resource_cfg

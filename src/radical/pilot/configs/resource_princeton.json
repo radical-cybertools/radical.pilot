@@ -84,12 +84,11 @@
                 "job_manager_endpoint": "slurm://tigercpu.princeton.edu/",
                 "job_manager_hop"     : "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://tigercpu.princeton.edu/",
+                "filesystem_endpoint" : "sftp://tigercpu.princeton.edu/"
             }
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://tigercpu.princeton.edu/",
-            "filesystem_endpoint"     : "sftp://tigercpu.princeton.edu/"
         },
         "default_queue"               : "cpu",
         "resource_manager"            : "SLURM",
@@ -133,12 +132,11 @@
                 "job_manager_endpoint": "slurm://tigercpu.princeton.edu/",
                 "job_manager_hop"     : "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://tigergpu.princeton.edu/",
+                "filesystem_endpoint" : "sftp://tigergpu.princeton.edu/"
             }
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://tigergpu.princeton.edu/",
-            "filesystem_endpoint"     : "sftp://tigergpu.princeton.edu/"
         },
         "default_queue"               : "gpu",
         "resource_manager"            : "SLURM",

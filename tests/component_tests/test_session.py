@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2020-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import glob
@@ -22,38 +22,21 @@ class TestSession(TestCase):
 
     _cleanup_files = []
 
-
-    def se_init(self):
-
-        self._rep   = mock.Mock()
-        self._reg   = mock.Mock()
-        self._log   = mock.Mock()
-        self._prof  = mock.Mock()
-
-        self._rcfgs = ru.Config('radical.pilot.resource', name='*',
-                                expand=False)
-
-        for site in self._rcfgs:
-            for rcfg in self._rcfgs[site].values():
-                for schema in rcfg.get('schemas', []):
-                    while isinstance(rcfg.get(schema), str):
-                        tgt = rcfg[schema]
-                        rcfg[schema] = rcfg[tgt]
-
-
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_init_primary', side_effect=se_init,
-                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs) -> None:
 
-        cls._session = Session()
-        cls._cleanup_files.append(cls._session.uid)
+        def init_primary(self):
+            self._reg = mock.Mock()
+            self._init_cfg_from_scratch()
 
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            cls._session = Session()
+        cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -112,52 +95,61 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_init_primary', side_effect=se_init,
-                       autospec=True)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
-    @mock.patch('radical.pilot.session.ru.Config')
-    def test_resource_schema_alias(self, mocked_config, *args, **kwargs):
+    def test_resource_schema_alias(self, *args, **kwargs):
 
-        mocked_config.return_value = ru.TypedDict({
-            'local': {
-                'test': {
-                    'default_schema'    : 'schema_origin',
-                    'schemas'           : {
-                        'schema_origin'     : {'param_0': 'value_0'},
-                        'schema_alias'      : 'schema_origin',
-                        'schema_alias_alias': 'schema_alias'
-                    }
+        base_dir = os.path.join(os.path.expanduser('~'), '.radical')
+        self._cleanup_files.append(base_dir)
+
+        user_cfg_dir = os.path.join(base_dir, 'pilot', 'configs')
+        ru.rec_makedir(user_cfg_dir)
+
+        facility_cfg = {
+            'test': {
+                'default_schema'    : 'schema_origin',
+                'schemas'           : {
+                    'schema_origin'     : {'job_manager_hop': 'value_0'},
+                    'schema_alias'      : 'schema_origin',
+                    'schema_alias_alias': 'schema_alias'
                 }
             }
-        })
+        }
+        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
 
-        s_alias = Session()
+        def init_primary(self):
+            self._reg = mock.Mock()
+            self._init_cfg_from_scratch()
 
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias)
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias_alias)
-        self.assertEqual(
-            s_alias.get_resource_config('local.test', 'schema_origin'),
-            s_alias.get_resource_config('local.test', 'schema_alias_alias'))
-
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            s_alias = Session()
         self._cleanup_files.append(s_alias.uid)
 
-        with self.assertRaises(KeyError):
-            # schema alias refers to unknown schema
-            mocked_config.return_value = ru.TypedDict({
-                'local': {
-                    'test': {
-                        'schemas'           : ['schema_alias_error'],
-                        'schema_alias_error': 'unknown_schema'
-                    }
+        self.assertEqual(
+            s_alias._rcfgs.facility.test.schema_origin,
+            s_alias._rcfgs.facility.test.schema_alias)
+        self.assertEqual(
+            s_alias._rcfgs.facility.test.schema_origin,
+            s_alias._rcfgs.facility.test.schema_alias_alias)
+        self.assertEqual(
+            s_alias.get_resource_config('facility.test', 'schema_origin'),
+            s_alias.get_resource_config('facility.test', 'schema_alias_alias'))
+
+        # schema alias refers to unknown schema
+        facility_cfg = {
+            'test': {
+                'default_schema': 'schema_alias_error',
+                'schemas': {
+                    'schemas': ['schema_alias_error'],
+                    'schema_alias_error': 'unknown_schema'
                 }
-            })
-            Session()
+            }
+        }
+        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
+        with self.assertRaises(KeyError):
+            with mock.patch.object(Session, '_init_primary', new=init_primary):
+                Session()
 
     # --------------------------------------------------------------------------
     #
