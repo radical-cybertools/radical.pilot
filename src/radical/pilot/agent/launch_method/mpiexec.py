@@ -145,17 +145,21 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _get_rank_file(self, slots, uid, sandbox):
+    @staticmethod
+    def _get_rank_file(slots, uid, sandbox):
         '''
         Rank file:
             rank 0=localhost slots=0,1,2,3
             rank 1=localhost slots=4,5,6,7
         '''
-        rf_str = ''
-        for rank_id, rank in enumerate(slots['ranks']):
-            core_ids = [str(c) for c in rank['core_map'][0]]
-            rf_str += 'rank %d=%s slots=%s\n' % \
-                      (rank_id, rank['node_name'], ','.join(core_ids))
+        rf_str  = ''
+        rank_id = 0
+
+        for rank in slots['ranks']:
+            for core_map in rank['core_map']:
+                rf_str += ('rank %d=%s ' % (rank_id, rank['node_name']) +
+                           'slots=%s\n' % ','.join([str(c) for c in core_map]))
+                rank_id += 1
 
         rf_name = '%s/%s.rf' % (sandbox, uid)
         with ru.ru_open(rf_name, 'w') as fout:
@@ -166,7 +170,8 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _get_host_file(self, slots, uid, sandbox, simple=True, mode=0):
+    @staticmethod
+    def _get_host_file(slots, uid, sandbox, simple=True, mode=0):
         '''
         Host file (simple=True):
             localhost
