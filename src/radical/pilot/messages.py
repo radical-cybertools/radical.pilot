@@ -1,6 +1,6 @@
 
 
-from typing import Optional, Dict, Tuple, Any
+from typing import Any
 
 import radical.utils as ru
 
@@ -9,8 +9,7 @@ import radical.utils as ru
 #
 class HeartbeatMessage(ru.Message):
 
-
-    _schema   = {'uid'      : str  }
+    _schema   = {'uid'      : str}
     _defaults = {'_msg_type': 'heartbeat',
                  'uid'      : None}
 
@@ -35,6 +34,7 @@ class RPCRequestMessage(ru.Message):
                  'args'     : [],
                  'kwargs'   : {}}
 
+
 ru.Message.register_msg_type('rpc_req', RPCRequestMessage)
 
 
@@ -58,7 +58,7 @@ class RPCResultMessage(ru.Message):
     #
     def __init__(self, rpc_req=None, from_dict=None, **kwargs):
 
-        # when constfructed from a request message copy the uid
+        # when constructed from a request message copy the uid
 
         if rpc_req:
             if not from_dict:
