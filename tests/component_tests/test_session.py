@@ -123,7 +123,7 @@ class TestSession(TestCase):
         mocked_config.return_value = ru.TypedDict({
             'local': {
                 'test': {
-                    'default_schema'    :'schema_origin',
+                    'default_schema'    : 'schema_origin',
                     'schemas'           : {
                         'schema_origin'     : {'param_0': 'value_0'},
                         'schema_alias'      : 'schema_origin',
