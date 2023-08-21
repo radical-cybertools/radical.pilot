@@ -18,8 +18,10 @@ import radical.saga.utils.pty_shell as rsup
 
 from .         import constants as rpc
 from .         import utils     as rpu
-from .proxy    import Proxy
-from .messages import HeartbeatMessage
+
+from .messages             import HeartbeatMessage
+from .proxy                import Proxy
+from .resource_description import ResourceDescription
 
 
 # ------------------------------------------------------------------------------
@@ -35,6 +37,8 @@ class _CloseOptions(ru.TypedDict):
 
     """
 
+    _check = True
+
     _schema = {
         'download' : bool,
         'terminate': bool
@@ -44,16 +48,6 @@ class _CloseOptions(ru.TypedDict):
         'download' : False,
         'terminate': True
     }
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, from_dict):
-
-        super().__init__(from_dict)
-        self._verify()
-
-from .resource_description import ResourceDescription
 
 
 # ------------------------------------------------------------------------------
