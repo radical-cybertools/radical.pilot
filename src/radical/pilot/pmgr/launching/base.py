@@ -861,7 +861,7 @@ class PMGRLaunchingComponent(rpu.Component):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
-        agent_cfg['owner']               = 'agent.0'
+        agent_cfg['owner']               = pid
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = allocated_cores

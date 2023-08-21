@@ -115,7 +115,7 @@ class Default(TMGRStagingOutputComponent):
                        'session'  : task['session_sandbox'],
                        'resource' : task['resource_sandbox'],
                        'endpoint' : task['endpoint_fs']}
-        tgt_context = {'pwd'      : os.getcwd(),                # !!!
+        tgt_context = {'pwd'      : task['client_sandbox'],     # !!!
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],

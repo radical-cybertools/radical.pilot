@@ -34,19 +34,26 @@ def bootstrap_3(aid):
 
     print("bootstrap agent %s" % aid)
 
-    agent = None
+    agent       = None
+    reg_service = None
 
     try:
         setproctitle.setproctitle('rp.%s' % aid)
 
         cfg = ru.Config(path='%s.cfg' % aid)
-        cfg.uid  = aid
-        cfg.aid  = aid  # used by executor
-        cfg.path = os.getcwd()
-        cfg.base = os.getcwd()
 
-        # start a non-primary session (the agents will own their cmgrs)
-        session = rp.Session(cfg=cfg, _primary=False)
+        # this script runs the registry for the agent instances
+        reg_service = ru.zmq.Registry(uid=aid + '.reg')
+        reg_service.start()
+
+        cfg.reg_addr = reg_service.addr
+
+        assert cfg.reg_addr
+
+        session = rp.Session(uid=cfg.sid, _reg_addr=cfg.reg_addr, _primary=False)
+
+        cfg.uid = aid
+        cfg.aid = aid  # used by executor
 
         if aid == 'agent.0': agent = rp.Agent_0(cfg, session)
         else               : agent = rp.Agent_n(cfg, session)
@@ -66,6 +73,9 @@ def bootstrap_3(aid):
         # does not mind doing all those things in a finally clause of
         # (essentially) main...
         print('finalize %s' % aid)
+
+        if reg_service:
+            reg_service.stop()
 
         if agent:
             agent.stop()

@@ -125,6 +125,7 @@ class PilotManager(rpu.Component):
         cfg.sid            = session.uid
         cfg.path           = session.path
         cfg.dburl          = session.dburl
+        cfg.reg_addr       = session.reg_addr
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 
@@ -135,9 +136,9 @@ class PilotManager(rpu.Component):
         self._rep.info('<<create pilot manager')
 
         # create pmgr bridges and components, use session cmgr for that
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
+        self._cmgr = rpu.ComponentManager(cfg.sid, cfg.reg_addr, self._uid)
+        self._cmgr.start_bridges(self._cfg.bridges)
+        self._cmgr.start_components(self._cfg.components)
 
         if self._reconnect:
             self._session._reconnect_pmgr(self)

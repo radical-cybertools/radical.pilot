@@ -91,6 +91,7 @@ class TestPopen(TestCase):
         pex.psbox    = ''
         pex.gtod     = ''
         pex.prof     = ''
+        pex._session = ru.Config(cfg={'cfg': {'resource_cfg': {}}})
 
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher
@@ -98,6 +99,7 @@ class TestPopen(TestCase):
         pex._handle_task(task)
 
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
+        print(popen_input_kwargs)
         self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh']:
