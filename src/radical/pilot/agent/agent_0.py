@@ -456,14 +456,14 @@ class Agent_0(rpu.Worker):
 
         # the configs are written, and the sub-agents can be started.  To know
         # how to do that we create the agent launch method, have it creating
-        # the respective command lines per agent instance, and run via
-        # popen.
-        #
+        # the respective command lines per agent instance, and run via popen.
+
+        bs_name = '%s/bootstrap_2.sh'
 
         for idx, sa in enumerate(self._cfg['agents']):
 
             target  = self._cfg['agents'][sa]['target']
-            cmdline = None
+            bs_args = [self._sid, self.cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
 
@@ -472,10 +472,8 @@ class Agent_0(rpu.Worker):
             if target == 'local':
 
                 # start agent locally
-                bs_name = '%s/bootstrap_2.sh' % (self._pwd)
-                args    = ' '.join([self._sid, self.cfg.reg_addr, sa])
-                cmdline = '/bin/sh -l %s/%s %s' % (self._pwd, bs_name, args)
-
+                bs_path = bs_name % self._pwd
+                cmdline = '/bin/sh -l %s' % ' '.join([bs_path] + bs_args)
 
             else:  # target == 'node':
 
@@ -490,7 +488,7 @@ class Agent_0(rpu.Worker):
                 #        out for the moment, which will make this unable to
                 #        work with a number of launch methods.  Can the
                 #        offset computation be moved to the ResourceManager?
-                bs_name       = '%s/bootstrap_2.sh' % (self._pwd)
+
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
@@ -502,7 +500,7 @@ class Agent_0(rpu.Worker):
                         'ranks'         : 1,
                         'cores_per_rank': self._rm.info.cores_per_node,
                         'executable'    : '/bin/sh',
-                        'arguments'     : [bs_name, self._sid, self.cfg.reg_addr, sa]
+                        'arguments'     : [bs_name % self._pwd] + bs_args
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
@@ -534,8 +532,7 @@ class Agent_0(rpu.Worker):
 
                 tmp  = '#!/bin/sh\n\n'
                 tmp += '. ./env/agent.env\n'
-                tmp += '/bin/sh -l ./bootstrap_2.sh %s %s %s\n\n' \
-                     % (self._sid, self.cfg.reg_addr, sa)
+                tmp += '/bin/sh -l %s\n\n' % ' '.join([bs_name % '.'] + bs_args)
 
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
