@@ -40,12 +40,14 @@ class _CloseOptions(ru.TypedDict):
 
     _schema = {
         'download' : bool,
-        'terminate': bool
+        'terminate': bool,
+        'cleanup'  : bool  # FIXME: to be removed
     }
 
     _defaults = {
         'download' : False,
-        'terminate': True
+        'terminate': True,
+        'cleanup'  : True  # FIXME: to be removed
     }
 
 
