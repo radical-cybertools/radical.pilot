@@ -61,6 +61,11 @@ class ResourceDescription(ru.TypedDict):
         DEFAULT_SCHEMA         : str        ,
         SCHEMAS                : {str: AccessSchema},
 
+        # FIXME: AM - need to resolve since in Session it is moved into RD
+        #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`
+        JOB_MANAGER_ENDPOINT   : str,
+        FILESYSTEM_ENDPOINT    : str,
+
         DEFAULT_REMOTE_WORKDIR : str        ,
         DEFAULT_QUEUE          : str        ,
         RESOURCE_MANAGER       : str        ,
@@ -89,6 +94,11 @@ class ResourceDescription(ru.TypedDict):
         NOTES                  : ''          ,
         DEFAULT_SCHEMA         : ''          ,
         SCHEMAS                : list()      ,
+
+        # FIXME: AM - need to resolve since in Session it is moved into RD
+        #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`
+        JOB_MANAGER_ENDPOINT   : None,
+        FILESYSTEM_ENDPOINT    : None,
 
         DEFAULT_REMOTE_WORKDIR : ''          ,
         DEFAULT_QUEUE          : ''          ,
