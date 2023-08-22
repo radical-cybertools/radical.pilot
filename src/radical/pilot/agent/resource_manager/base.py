@@ -71,6 +71,7 @@ class RMInfo(ru.TypedDict):
             'threads_per_core' : 1,
             'gpus_per_node'    : 0,
             'threads_per_gpu'  : 1,
+            'launch_methods'   : {}
     }
 
 
@@ -156,7 +157,7 @@ class ResourceManager(object):
         self._set_info(rm_info)
 
         # set up launch methods even when initialized from registry info
-        self._prepare_launch_methods(rm_info)
+        self._prepare_launch_methods()
 
 
     # --------------------------------------------------------------------------
@@ -220,8 +221,8 @@ class ResourceManager(object):
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
-        rm_info.mem_per_node     = self._cfg.mem_per_node or 0
-        system_architecture      = self._cfg.get('system_architecture', {})
+        rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+        system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
 
@@ -317,7 +318,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_launch_methods(self, rm_info):
+    def _prepare_launch_methods(self):
 
         launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
@@ -333,10 +334,9 @@ class ResourceManager(object):
                 lm_cfg.reg_addr      = self._cfg.reg_addr
                 lm_cfg.resource      = self._cfg.resource
                 self._launchers[lm_name] = rpa.LaunchMethod.create(
-                    lm_name, lm_cfg, rm_info, self._log, self._prof)
+                    lm_name, lm_cfg, self._rm_info, self._log, self._prof)
 
             except Exception as e:
-                print(repr(e))
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
 

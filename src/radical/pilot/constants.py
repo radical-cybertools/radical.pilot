@@ -6,8 +6,6 @@
 MASTER                         = 'master'
 WORKER                         = 'worker'
 
-UPDATE_WORKER                  = 'update'
-
 STAGER_WORKER                  = 'stager'
 STAGER_REQUEST_QUEUE           = 'stager_request_queue'
 STAGER_RESPONSE_PUBSUB         = 'stager_response_pubsub'
@@ -23,10 +21,12 @@ TMGR_SCHEDULING_COMPONENT      = 'tmgr_scheduling'
 TMGR_STAGING_INPUT_COMPONENT   = 'tmgr_staging_input'
 TMGR_STAGING_OUTPUT_COMPONENT  = 'tmgr_staging_output'
 
+AGENT_STAGING_INPUT_PUBSUB     = 'agent_staging_input_pubsub'
 AGENT_STAGING_INPUT_QUEUE      = 'agent_staging_input_queue'
 AGENT_SCHEDULING_QUEUE         = 'agent_scheduling_queue'
 AGENT_EXECUTING_QUEUE          = 'agent_executing_queue'
 AGENT_STAGING_OUTPUT_QUEUE     = 'agent_staging_output_queue'
+AGENT_COLLECTING_QUEUE         = 'agent_collecting_queue'
 
 RAPTOR_SCHEDULING_QUEUE        = 'raptor_scheduling_queue'
 
@@ -44,6 +44,10 @@ AGENT_SCHEDULE_PUBSUB          = 'agent_schedule_pubsub'
 CONTROL_PUBSUB                 = 'control_pubsub'
 STATE_PUBSUB                   = 'state_pubsub'
 LOG_PUBSUB                     = 'log_pubsub'
+
+PROXY_CONTROL_PUBSUB           = 'proxy_control_pubsub'
+PROXY_STATE_PUBSUB             = 'proxy_state_pubsub'
+PROXY_TASK_QUEUE               = 'proxy_task_queue'
 
 
 # ------------------------------------------------------------------------------

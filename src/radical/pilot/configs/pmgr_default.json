@@ -4,18 +4,21 @@
 # a functional pilot manager.
 {
     # time to sleep between database polls (seconds)
+
+    "heartbeat"    : {
+        "interval" :  3.0,
+        "timeout"  : 10.0
+    },
+
     "db_poll_sleeptime" : 1.0,
 
     "bridges" : {
-        "pmgr_launching_queue" : {"kind"      : "queue",
-                                  "log_level" : "error",
-                                  "stall_hwm" : 0,
-                                  "bulk_size" : 0}
+        "pmgr_launching_queue" : {"kind": "queue"}
     },
 
     "components" : {
         # how many instances of the respective components should be started
-        "pmgr_launching" : {"count" : 1}
+        "pmgr_launching" : {"count": 1}
     }
 }
 

@@ -505,7 +505,7 @@ class Task(object):
             # we will never see another state progression.  Raise an error
             # (unless we waited for this)
             if self.state in states:
-                return
+                return self.state
 
             # FIXME: do we want a raise here, really?  This introduces a race,
             #        really, on application level

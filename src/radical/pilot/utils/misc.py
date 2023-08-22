@@ -4,7 +4,7 @@
 import os
 import time
 
-from typing import Union
+from typing import List, Union
 
 import radical.utils as ru
 
@@ -52,7 +52,7 @@ def get_rusage() -> str:
 
 # ------------------------------------------------------------------------------
 #
-def create_tar(tgt: str, dnames: str) -> None:
+def create_tar(tgt: str, dnames: List[str]) -> None:
     '''
     Create a tarball on the file system which contains all given directories
     '''
@@ -180,10 +180,10 @@ def get_resource_fs_url(resource: str,
     rcfg = get_resource_config(resource)
 
     if not schema:
-        schema = rcfg['schemas'][0]
+        schema = rcfg['default_schema']
 
     # return a deep copy
-    return ru.Url(rcfg[schema]['filesystem_endpoint'])
+    return ru.Url(rcfg['schemas'][schema]['filesystem_endpoint'])
 
 
 # ------------------------------------------------------------------------------
@@ -213,10 +213,10 @@ def get_resource_job_url(resource: str,
     rcfg = get_resource_config(resource)
 
     if not schema:
-        schema = rcfg['schemas'][0]
+        schema = rcfg['default_schema']
 
     # return a deep copy
-    return ru.Url(rcfg[schema]['job_manager_endpoint'])
+    return ru.Url(rcfg.schemas[schema]['job_manager_endpoint'])
 
 
 # ------------------------------------------------------------------------------

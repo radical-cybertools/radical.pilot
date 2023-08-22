@@ -1,0 +1,99 @@
+
+{
+    "staging_area"         : "staging_area",
+    "staging_schema"       : "staging",
+    "max_io_loglength"     : 1024,
+
+    "bulk_time"    : 10.0,
+    "bulk_size"    : 4096,
+
+    "heartbeat"    : {
+        "interval" : 10.0,
+        "timeout"  : 30.0
+    },
+
+    "target"  : "local",
+    "bridges" : {
+        "agent_staging_input_queue"    : { "kind"      : "queue",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "agent_scheduling_queue"       : { "kind"      : "queue",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "agent_executing_queue"        : { "kind"      : "queue",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "agent_staging_output_queue"   : { "kind"      : "queue",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+
+        "agent_unschedule_pubsub"      : { "kind"      : "pubsub",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "agent_schedule_pubsub"        : { "kind"      : "pubsub",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+
+        "control_pubsub"               : { "kind"      : "pubsub",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "state_pubsub"                 : { "kind"      : "pubsub",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024},
+        "log_pubsub"                   : { "kind"      : "pubsub",
+                                           "log_level" : "error",
+                                           "stall_hwm" : 1,
+                                           "bulk_size" : 1024}
+    },
+
+    "components" : {
+        "agent_staging_input"          : {"count" : 4},
+        "agent_scheduling"             : {"count" : 1},
+        "agent_executing"              : {"count" : 4},
+        "agent_staging_output"         : {"count" : 4}
+  # },
+  #
+  # "agents": {
+  #     "agent_1": {
+  #         "target": "node",
+  #         "components": {
+  #             "agent_staging_input"  : {"count" : 1},
+  #             "agent_executing"      : {"count" : 1},
+  #             "agent_staging_output" : {"count" : 1}
+  #         }
+  #     },
+  #     "agent_2": {
+  #         "target": "node",
+  #         "components": {
+  #             "agent_staging_input"  : {"count" : 1},
+  #             "agent_executing"      : {"count" : 1},
+  #             "agent_staging_output" : {"count" : 1}
+  #         }
+  #     },
+  #     "agent_3": {
+  #         "target": "node",
+  #         "components": {
+  #             "agent_staging_input"  : {"count" : 1},
+  #             "agent_executing"      : {"count" : 1},
+  #             "agent_staging_output" : {"count" : 1}
+  #         }
+  #     },
+  #     "agent_4": {
+  #         "target": "node",
+  #         "components": {
+  #             "agent_staging_input"  : {"count" : 1},
+  #             "agent_executing"      : {"count" : 1},
+  #             "agent_staging_output" : {"count" : 1}
+  #         }
+  #     }
+    }
+}
+

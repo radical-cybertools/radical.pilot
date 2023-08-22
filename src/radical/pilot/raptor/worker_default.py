@@ -47,11 +47,12 @@ class DefaultWorker(Worker):
                                                  cb=self._request_cb)
 
         # the master should have stored our own task description in the registry
+        self._reg.dump('raptor_worker')
         self._descr = self._reg['raptor.%s.cfg' % self._uid]
 
         # keep worker ID and rank
-        self._n_cores =     self._descr.get('cores_per_rank', 1)
-        self._n_gpus  = int(self._descr.get('gpus_per_rank',  0))
+        self._n_cores = int(os.environ.get('cores_per_rank', 1))
+        self._n_gpus  = int(os.environ.get('gpus_per_rank',  0))
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.

@@ -22,13 +22,20 @@ class TestComponent(TestCase):
 
     _cleanup_files = []
 
+    def _init_primary_side_effect(self):
+
+        self._log  = mock.MagicMock()
+        self._prof = mock.MagicMock()
+        self._rep  = mock.MagicMock()
+        self._reg  = mock.MagicMock()
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
-    @mock.patch.object(rp.Session, '_get_logger')
-    @mock.patch.object(rp.Session, '_get_profiler')
-    @mock.patch.object(rp.Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_init_primary',
+                       side_effect=_init_primary_side_effect,
+                       autospec=True)
     def setUpClass(cls, *args, **kwargs) -> None:
 
         cls._session = rp.Session()
@@ -52,7 +59,7 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_check_control(self, mocked_init):
+    def test_check_control_cb(self, mocked_init):
 
         global_control = []
 
@@ -66,6 +73,8 @@ class TestComponent(TestCase):
         agent_cmp = Agent_0(ru.Config(), self._session)
 
         agent_cmp._log         = mock.Mock()
+        agent_cmp._prof        = mock.Mock()
+        agent_cmp._pid         = 'pilot.0000'
         agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
         agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepenv_effect)
 
@@ -73,21 +82,21 @@ class TestComponent(TestCase):
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'bye'}
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertTrue(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0001',
                        'rpc': 'bye'}
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertTrue(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0002',
                        'rpc': 'hello'}
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertIn(global_control[0], [('control_pubsub',
                                            {'cmd': 'rpc_res',
                                             'arg': {'uid': 'rpc.0002',
@@ -108,7 +117,7 @@ class TestComponent(TestCase):
                        'rpc': 'hello',
                        'arg': ['World']}
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control[1], ('control_pubsub',
                                              {'cmd': 'rpc_res',
                                               'arg': {'uid': 'rpc.0003',
@@ -124,7 +133,7 @@ class TestComponent(TestCase):
                                'env_spec': 'spec'}
                       }
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control[2], ('control_pubsub',
                                              {'cmd': 'rpc_res',
                                               'arg': {'uid': 'rpc.0004',
@@ -146,6 +155,7 @@ class TestComponent(TestCase):
         agent_0 = Agent_0(ru.Config(), self._session)
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
+        agent_0._sid = 'rp.session.0'
         agent_0._cfg = ru.Config(from_dict={
             'agents': {
                 'agent_1': {'target'    : 'node',
@@ -254,28 +264,28 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_service_state_cb(self, mocked_init):
+    def test_ctrl_service_up(self, mocked_init):
 
         agent_0 = Agent_0(ru.Config(), self._session)
         agent_0._service_uids_launched = ['101', '102']
         agent_0._service_uids_running  = []
 
-        agent_0._log = mock.Mock()
+        agent_0._pid  = 'pilot_test.0000'
+        agent_0._log  = mock.Mock()
+        agent_0._prof = mock.Mock()
 
         agent_0._services_setup = mt.Event()
 
         topic = 'test_topic'
-        msg   = {'cmd': 'update',
-                 'arg': []}
+        msg   = {'cmd': 'service_up',
+                 'arg': {}}
 
-        msg['arg'].append({'uid'  : '101',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '101'
+        agent_0._control_cb(topic, msg)
         self.assertFalse(agent_0._services_setup.is_set())
 
-        msg['arg'].append({'uid'  : '102',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '102'
+        agent_0._control_cb(topic, msg)
         self.assertTrue(agent_0._services_setup.is_set())
 
 
@@ -284,10 +294,10 @@ class TestComponent(TestCase):
 if __name__ == '__main__':
 
     tc = TestComponent()
-    tc.test_check_control()
+    tc.test_check_control_cb()
     tc.test_start_sub_agents()
     tc.test_start_services()
-    tc.test_service_state_cb()
+    tc.test_ctrl_service_up()
 
 
 # ------------------------------------------------------------------------------

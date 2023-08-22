@@ -242,7 +242,9 @@ setup_args = {
     'packages'           : find_namespace_packages('src', include=['radical.*']),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
-                            'bin/radical-pilot-agent',
+                            'bin/radical-pilot-agent_0',
+                            'bin/radical-pilot-agent_n',
+                          # 'bin/radical-pilot-agent-bridge',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
                             'bin/radical-pilot-bson2json',
@@ -263,6 +265,7 @@ setup_args = {
                             'bin/radical-pilot-raptor-worker',
                             'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',
+                            'bin/radical-pilot-service-signal',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-ve',
