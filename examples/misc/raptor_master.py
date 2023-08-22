@@ -295,9 +295,7 @@ if __name__ == '__main__':
     master.start()
     master.submit()
 
-    # let some time pass for client side tasks to complete
-    time.sleep(60)
-
+    out('stop')
     # TODO: can be run from thread?
     master.stop()
 
