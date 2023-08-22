@@ -264,28 +264,28 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_service_state_cb(self, mocked_init):
+    def test_ctrl_service_up(self, mocked_init):
 
         agent_0 = Agent_0(ru.Config(), self._session)
         agent_0._service_uids_launched = ['101', '102']
         agent_0._service_uids_running  = []
 
-        agent_0._log = mock.Mock()
+        agent_0._pid  = 'pilot_test.0000'
+        agent_0._log  = mock.Mock()
+        agent_0._prof = mock.Mock()
 
         agent_0._services_setup = mt.Event()
 
         topic = 'test_topic'
-        msg   = {'cmd': 'update',
-                 'arg': []}
+        msg   = {'cmd': 'service_up',
+                 'arg': {}}
 
-        msg['arg'].append({'uid'  : '101',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '101'
+        agent_0._control_cb(topic, msg)
         self.assertFalse(agent_0._services_setup.is_set())
 
-        msg['arg'].append({'uid'  : '102',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '102'
+        agent_0._control_cb(topic, msg)
         self.assertTrue(agent_0._services_setup.is_set())
 
 
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     tc.test_check_control_cb()
     tc.test_start_sub_agents()
     tc.test_start_services()
-    tc.test_service_state_cb()
+    tc.test_ctrl_service_up()
 
 
 # ------------------------------------------------------------------------------

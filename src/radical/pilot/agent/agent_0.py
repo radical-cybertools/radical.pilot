@@ -206,21 +206,9 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        # subscribe for control messages
-        ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB, cb=self._control_cb,
-               url=self._reg['bridges.%s.addr_sub' % rpc.CONTROL_PUBSUB])
-
-
-        if True:
-            time.sleep(1)
-            reg = ru.zmq.RegistryClient(url=self._reg._url)
-            pub = ru.zmq.Publisher('control_pubsub', reg['bridges.control_pubsub.addr_pub'])
-
-            pub.put('control_pubsub', msg={'cmd': 'service_up',
-                                           'uid': 'test.1'})
-
-            # make sure the message goes out
-            time.sleep(1)
+        # subscribe for control messages # FIXME: to be removed (duplication)
+        # ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB, cb=self._control_cb,
+        #        url=self._reg['bridges.%s.addr_sub' % rpc.CONTROL_PUBSUB])
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
@@ -400,37 +388,6 @@ class Agent_0(rpu.Worker):
             raise RuntimeError('Unable to start services')
 
         self._log.info('all agent services started')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _service_state_cb(self, topic, msg):  # pylint: disable=unused-argument
-
-        cmd   = msg['cmd']
-        tasks = msg['arg']
-
-        if cmd != 'update':
-            return
-
-        for service in ru.as_list(tasks):
-
-            if service['uid'] not in self._service_uids_launched or \
-                    service['uid'] in self._service_uids_running:
-                continue
-
-            self._log.debug('service state update %s: %s',
-                            service['uid'], service['state'])
-            if service['state'] != rps.AGENT_EXECUTING:
-                continue
-
-            self._service_uids_running.append(service['uid'])
-            self._log.debug('service %s started (%s / %s)', service['uid'],
-                            len(self._service_uids_running),
-                            len(self._service_uids_launched))
-
-            if len(self._service_uids_launched) == \
-                    len(self._service_uids_running):
-                self._services_setup.set()
 
 
     # --------------------------------------------------------------------------
@@ -688,7 +645,6 @@ class Agent_0(rpu.Worker):
     #
     def _ctrl_service_up(self, msg):
 
-        cmd = msg['cmd']
         uid = msg['arg']['uid']
 
         # This message signals that an agent service instance is up and running.
