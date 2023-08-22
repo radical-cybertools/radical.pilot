@@ -5,6 +5,7 @@ __license__   = "MIT"
 
 import copy
 import time
+import queue
 
 import radical.utils as ru
 
@@ -155,6 +156,20 @@ class Pilot(object):
         self._session_sandbox .path  = self._session_sandbox .path % expand
         self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
 
+        # hook into the control pubsub for rpc handling
+        self._rpc_queue = queue.Queue()
+        self._ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
+        self._ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_sub,
+                          log=self._log, prof=self._prof,
+                          cb=self._control_cb, topic=rpc.CONTROL_PUBSUB)
+
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_pub,
+                                          log=self._log, prof=self._prof)
+
+        ru.zmq.test_pubsub(rpc.CONTROL_PUBSUB, self._ctrl_addr_pub, self._ctrl_addr_sub)
+
 
     # --------------------------------------------------------------------------
     #
@@ -178,6 +193,17 @@ class Pilot(object):
         state = self.state
 
         self._log.info("[Callback]: pilot %s state: %s.", uid, state)
+
+        if state in rps.FINAL:
+            # dump json
+            json = self.as_dict()
+          # json['_id']  = self.uid
+            json['type'] = 'pilot'
+            json['uid']  = self.uid
+
+            tgt = '%s/%s.json' % (self._session.path, self.uid)
+            ru.write_json(json, tgt)
+
 
         if state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
@@ -564,6 +590,15 @@ class Pilot(object):
     def cancel(self):
         """Cancel the pilot."""
 
+        self._finalize()
+
+        self._pmgr.cancel_pilots(self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _finalize(self):
+
         # clean connection cache
         try:
             for key in self._cache:
@@ -572,8 +607,6 @@ class Pilot(object):
 
         except:
             pass
-
-        self._pmgr.cancel_pilots(self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -670,20 +703,6 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, rpc, args):
-        """Remote procedure call.
-
-        Send a pilot command, wait for the response, and return the result.
-        This is basically an RPC into the pilot.
-        """
-
-        reply = self._session._dbs.pilot_rpc(self.uid, self.uid, rpc, args)
-
-        return reply
-
-
-    # --------------------------------------------------------------------------
-    #
     def stage_in(self, sds):
         """Stage files "in".
 
@@ -706,6 +725,51 @@ class Pilot(object):
         self._pmgr._pilot_staging_input(sds)
 
         return [sd['target'] for sd in sds]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
+
+        cmd = msg['cmd']
+        arg = msg['arg']
+
+        if cmd == 'rpc_res':
+
+            self._log.debug('rpc res: %s', arg)
+            self._rpc_queue.put(arg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def rpc(self, cmd, args=None):
+        '''Remote procedure call.
+
+        Send am RPC command and arguments to the pilot and wait for the
+        response.  This is a synchronous operation at this point, and it is not
+        thread safe to have multiple concurrent RPC calls.
+        '''
+
+        if not args:
+            args = dict()
+
+        rpc_id  = ru.generate_id('rpc')
+        rpc_req = {'uid' : rpc_id,
+                   'rpc' : cmd,
+                   'tgt' : self._uid,
+                   'arg' : args}
+
+
+        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_req',
+                                                'arg':  rpc_req,
+                                                'fwd': True})
+        rpc_res = self._rpc_queue.get()
+        self._log.debug('rpc result: %s', rpc_res['ret'])
+
+        if rpc_res['ret']:
+            raise RuntimeError('rpc failed: %s' % rpc_res['err'])
+
+        return rpc_res['ret']
 
 
     # --------------------------------------------------------------------------

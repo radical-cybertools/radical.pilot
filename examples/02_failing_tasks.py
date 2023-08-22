@@ -142,7 +142,7 @@ if __name__ == '__main__':
         # not.  This will kill all remaining pilots.
         report.header('finalize')
         if session:
-            session.close(cleanup=False)
+            session.close()
 
     report.header()
 

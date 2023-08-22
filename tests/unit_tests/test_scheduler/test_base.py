@@ -63,7 +63,8 @@ class TestBaseScheduling(TestCase):
 
             mock_get   = partial(_mock_get, c)
             sched._cfg = ru.Config(from_dict={'reg_addr': 'addr'})
-            sched._reg = ru.Config(from_dict=c['config'])
+            sched._reg = ru.Config(from_dict={'cfg': c['config'],
+                                              'rcfg': c['config']['resource_cfg']})
 
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:

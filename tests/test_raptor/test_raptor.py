@@ -17,10 +17,10 @@ import radical.pilot as rp
 class TestWorker(TestCase):
 
     def read_json_side_effect(self, fname=None):
-        return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+        return {'addr_sub': '', 'addr_pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
 
     def dict_merge_side_effect(self, fname=None):
-        return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+        return {'addr_sub': '', 'addr_pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
 
     class MyConfig(ru.TypedDict):
         def __init__(self, cfg=None, from_dict=None):
@@ -29,17 +29,17 @@ class TestWorker(TestCase):
 
     class MyRegistry(ru.TypedDict):
 
-        def __init__(self, url, pwd):
+        def __init__(self, url):
 
             data = {
                        'cfg': {},
                        'bridges.state_pubsub': {
-                           'sub': 'tcp://localhost:10000',
-                           'pub': 'tcp://localhost:10001'
+                           'addr_sub': 'tcp://localhost:10000',
+                           'addr_pub': 'tcp://localhost:10001'
                        },
                        'bridges.control_pubsub': {
-                           'sub': 'tcp://localhost:10000',
-                           'pub': 'tcp://localhost:10001'
+                           'addr_sub': 'tcp://localhost:10000',
+                           'addr_pub': 'tcp://localhost:10001'
                        },
                        'raptor.task.000000.cfg': {
                            'cores_per_rank': 8,
@@ -48,6 +48,8 @@ class TestWorker(TestCase):
                    }
 
             super().__init__(from_dict=data)
+
+        def dump(self, *args, **kwargs): pass
 
 
     @mock.patch('radical.utils.zmq.RegistryClient', MyRegistry)
@@ -81,6 +83,8 @@ class TestWorker(TestCase):
         rp.raptor.Worker._res_addr_put    = 'tcp://localhost:2'
         rp.raptor.Worker._req_addr_get    = 'tcp://localhost:3'
 
+        os.environ['cores_per_rank']      = '8'
+        os.environ['gpus_per_rank']       = '2'
         os.environ['RP_TASK_ID']          = 'task.000000'
         os.environ['RP_TASK_SANDBOX']     = '/tmp'
         os.environ['RP_PILOT_SANDBOX']    = '/tmp'

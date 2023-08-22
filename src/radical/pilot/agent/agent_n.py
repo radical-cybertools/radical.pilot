@@ -5,7 +5,9 @@ __license__   = "MIT"
 import time
 import radical.utils  as ru
 
-from ..  import utils as rpu
+from .. import utils as rpu
+
+from .. import Session
 
 
 # ------------------------------------------------------------------------------
@@ -18,7 +20,7 @@ class Agent_n(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, cfg: ru.Config, session):
 
         self._cfg      = cfg
         self._sid      = cfg.sid
@@ -28,11 +30,11 @@ class Agent_n(rpu.Worker):
         self._sid      = cfg.sid
         self._reg_addr = cfg.reg_addr
 
+        self._session  = session
 
         # log / profile via session until component manager is initialized
-        self._session = session
-        self._log     = session._log
-        self._prof    = session._prof
+        self._log     = self._session._log
+        self._prof    = self._session._prof
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -44,7 +46,7 @@ class Agent_n(rpu.Worker):
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and components.  We are
         # ready to rumble!
-        rpu.Worker.__init__(self, self._cfg, session)
+        rpu.Worker.__init__(self, self._cfg, self._session)
 
 
     # --------------------------------------------------------------------------

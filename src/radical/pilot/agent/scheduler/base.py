@@ -603,7 +603,7 @@ class AgentSchedulingComponent(rpu.Component):
         # ZMQ endpoints will not have survived the fork. Specifically the
         # registry client of the component base class will have to reconnect.
         # FIXME: should be moved into a post-fork hook of the base class
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr, pwd=self._sid)
+        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
 
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
@@ -950,8 +950,8 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._term.is_set():
-                task = self._queue_unsched.get(timeout=0.01)
-                to_unschedule.append(task)
+                tasks = self._queue_unsched.get(timeout=0.01)
+                to_unschedule += ru.as_list(tasks)
                 if len(to_unschedule) > 512:
                     break
 

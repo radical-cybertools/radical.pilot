@@ -435,7 +435,7 @@ def get_hostmap(profile):
     '''
     We abuse the profile combination to also derive a pilot-host map, which
     will tell us on what exact host each pilot has been running.  To do so, we
-    check for the PMGR_ACTIVE advance event in agent.0.prof, and use the NTP
+    check for the PMGR_ACTIVE advance event in agent_0.prof, and use the NTP
     sync info to associate a hostname.
     '''
     # FIXME: This should be replaced by proper hostname logging
@@ -471,7 +471,7 @@ def get_hostmap_deprecated(profiles):
 
         for row in prof:
 
-            if 'agent.0.prof' in pname    and \
+            if 'agent_0.prof' in pname    and \
                 row[ru.EVENT] == 'advance' and \
                 row[ru.STATE] == s.PMGR_ACTIVE:
                 hostmap[row[ru.UID]] = host_id
@@ -550,7 +550,7 @@ def get_session_profile(sid, src=None):
 
 # ------------------------------------------------------------------------------
 #
-def get_session_description(sid, src=None, dburl=None):
+def get_session_description(sid, src=None):
     '''
     This will return a description which is usable for radical.analytics
     evaluation.  It informs about:
@@ -562,20 +562,12 @@ def get_session_description(sid, src=None, dburl=None):
 
     If `src` is given, it is interpreted as path to search for session
     information (json dump).  `src` defaults to `$PWD/$sid`.
-
-    if `dburl` is given, its value is used to fetch session information from a
-    database.  The dburl value defaults to `RADICAL_PILOT_DBURL`.
-
     '''
 
     if not src:
         src = '%s/%s' % (os.getcwd(), sid)
 
-    if os.path.isfile('%s/%s.json' % (src, sid)):
-        json = ru.read_json('%s/%s.json' % (src, sid))
-    else:
-        ftmp = fetch_json(sid=sid, dburl=dburl, tgt=src, skip_existing=True)
-        json = ru.read_json(ftmp)
+    json = ru.read_json('%s/%s.json' % (src, sid))
 
     # make sure we have uids
     # FIXME v0.47: deprecate
@@ -634,11 +626,12 @@ def get_session_description(sid, src=None, dburl=None):
         tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
-        uid  = pilot['uid']
-        pmgr = pilot['pmgr']
-        pilot['cfg']['resource_details'] = pilot['resource_details']
-        tree[pmgr]['children'].append(uid)
-        tree[uid] = {'uid'        : uid,
+        pid     = pilot['uid']
+        pmgr    = pilot['pmgr']
+        details = ru.read_json('%s/%s.resources.json' % (src, pid))
+        pilot['cfg']['resource_details'] = details
+        tree[pmgr]['children'].append(pid)
+        tree[pid] = {'uid'        : pid,
                      'etype'      : 'pilot',
                      'cfg'        : pilot['cfg'],
                      'resources'  : pilot['resources'],

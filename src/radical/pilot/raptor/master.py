@@ -70,8 +70,7 @@ class Master(rpu.Component):
         self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
-        self._reg        = ru.zmq.RegistryClient(url=self._reg_addr,
-                                                 pwd=self._sid)
+        self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
 
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
@@ -83,7 +82,7 @@ class Master(rpu.Component):
         self._hb_timeout = 1000        # consider worker dead after 150 seconds
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
-                                   _primary=False)
+                                   _role=Session._DEFAULT)
 
         self._rpc_handlers = dict()
         self.register_rpc_handler('stop', self.stop)
@@ -308,6 +307,9 @@ class Master(rpu.Component):
                 rpc_res['out'] = ''
                 rpc_res['ret'] = 1
 
+            # inform client side
+            rpc_res['forward'] = True
+
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                               'arg':  rpc_res})
 
@@ -436,6 +438,7 @@ class Master(rpu.Component):
             # the default worker needs it's own task description to derive the
             # amount of available resources
             self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
+            self._reg.dump('raptor_master')
 
             # all workers run in the same sandbox as the master
             task = dict()

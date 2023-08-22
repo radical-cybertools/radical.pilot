@@ -1,10 +1,11 @@
 {
     "user_resource": {
-        "schemas"                     : ["local"],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local" : {
+                "job_manager_endpoint": "fork://localhost",
+                "filesystem_endpoint" : "file://localhost"
+            }
         },
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
