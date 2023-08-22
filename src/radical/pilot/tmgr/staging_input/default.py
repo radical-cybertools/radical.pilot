@@ -205,7 +205,7 @@ class Default(TMGRStagingInputComponent):
 
             if not pilot:
                 # we don't feel inclined to optimize for unknown pilots
-                self._log.debug('pid unknown - skip optimizion', pid)
+                self._log.debug('pid unknown - skip optimization', pid)
                 continue
 
             task_sboxes  = sboxes[pid]
@@ -288,13 +288,13 @@ class Default(TMGRStagingInputComponent):
 
 
         if no_staging_tasks:
-
-            # nothing to stage, push to the agent
-            self._advance_tasks(no_staging_tasks[pid], pid)
+            for pid in no_staging_tasks:
+                # nothing to stage, push to the agent
+                self._advance_tasks(no_staging_tasks[pid], pid)
 
         to_fail = list()
         for pid in staging_tasks:
-            for task,actionables in staging_tasks[pid]:
+            for task, actionables in staging_tasks[pid]:
                 try:
                     self._handle_task(task, actionables)
                     self._advance_tasks([task], pid)
