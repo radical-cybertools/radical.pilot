@@ -569,7 +569,7 @@ class Session(rs.Session):
         # --------------------------------------
         # called when some entity misses
         # heartbeats: `cfg.heartbeat.timeout`
-        def _hb_term_cb():
+        def _hb_term_cb(hb_uid):
             if self._cmgr:
                 self._cmgr.close()
             return False

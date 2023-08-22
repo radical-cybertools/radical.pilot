@@ -77,7 +77,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     def hb_term_cb(hb_uid):
         agent.stop()
         term.set()
-        return None
+        return False
 
     hb = ru.Heartbeat(uid=cfg.uid,
                       timeout=hb_cfg.timeout,
