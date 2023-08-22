@@ -196,10 +196,9 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
-        # listen for completed tasks to foward to client
+        # listen for completed tasks to forward to client
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
-                            qname='default',
                             cb=self._proxy_output_cb)
 
         # and register output

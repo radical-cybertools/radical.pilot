@@ -360,7 +360,7 @@ class Default(AgentStagingOutputComponent):
 
         # all agent staging is done -- pass on to tmgr output staging
         self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
-                           publish=True, push=False)
+                           publish=True, push=True)
 
 
 # ------------------------------------------------------------------------------
