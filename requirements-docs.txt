@@ -8,7 +8,7 @@ nbsphinx==0.8.12
 python-dotenv[cli]
 sphinx_copybutton
 sphinx_rtd_theme>=0.5.1
-radical.pilot @ git+https://github.com/radical-cybertools/radical.pilot@feature/nodb_2
+radical.pilot @ git+https://github.com/radical-cybertools/radical.pilot@devel_nodb_2
 myst_parser
 docutils==0.17.1
 

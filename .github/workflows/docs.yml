@@ -9,10 +9,10 @@ name: 'Test Jupyter notebooks'
 on:
   push:
     branches:
-      - feature/nodb_2
+      - devel_nodb_2
   pull_request:
     branches:
-      - feature/nodb_2
+      - devel_nodb_2
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
