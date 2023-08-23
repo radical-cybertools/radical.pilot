@@ -1,7 +1,0 @@
-
--r requirements.txt
--r requirements-docs.txt
--r requirements-tests.txt
-
-jupyter
-
