@@ -8,11 +8,9 @@ name: 'Test Jupyter notebooks'
 
 on:
   push:
-    branches:
-      - devel_nodb_2
+    branches:  [ devel ]
   pull_request:
-    branches:
-      - devel_nodb_2
+    branches:  [ devel ]
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
@@ -24,6 +22,7 @@ jobs:
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: 3.7
+      requirements-file: 'requirements-docs-ci.txt'
       notebook-name: 'getting_started.ipynb'
 
   test-tutorials:
@@ -42,5 +41,7 @@ jobs:
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: 3.7
+      requirements-file: 'requirements-docs-ci.txt'
       notebook-name: ${{ matrix.tutorial }}
       notebook-path: 'tutorials'
+
