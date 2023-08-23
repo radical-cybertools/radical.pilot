@@ -9,7 +9,8 @@ radical.saga @ git+https://github.com/radical-cybertools/radical.saga@devel
 radical.gtod @ git+https://github.com/radical-cybertools/radical.gtod@devel
 radical.analytics @ git+https://github.com/radical-cybertools/radical.analytics.git@devel
 
--e .
+# RP from the current branch
+.
 
 setproctitle
 dill
