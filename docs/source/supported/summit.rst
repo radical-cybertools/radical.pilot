@@ -37,7 +37,7 @@ General description
 .. note::
 
    Launch method ``MPIRUN`` is able to see only one hardware-thread per core,
-   thus make sure that ``SMT`` level is set to ``1`` with a corresponding 
+   thus make sure that ``SMT`` level is set to ``1`` with a corresponding
    platform ID either with ``export RADICAL_SMT=1`` (before running the
    application) or follow the steps below:
 
@@ -120,21 +120,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
    # OR in case of conda environment
    conda install -c conda-forge radical.pilot
 
-MongoDB
--------
-
-OLCF provides a MongoDB service via
-`Slate <https://docs.olcf.ornl.gov/services_and_applications/slate/index.html>`_,
-an infrastructure built on Kubernetes and OpenShift. Please ask the RADICAL team for a
-corresponding MongoDB URI by opening a
-`ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
-
-RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="<mongodb_uri>"
-
 Launching script example
 ========================
 
@@ -151,7 +136,6 @@ launching command for the application itself.
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
-   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
