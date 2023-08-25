@@ -735,7 +735,7 @@ class Session(rs.Session):
             if from_proxy:
 
                 # all messages *from* the proxy are forwarded - but not the ones
-                # which orginated in *this* module in the first place
+                # which originated in *this* module in the first place
 
                 if msg['origin'] == self._module:
                     self._log.debug('XXX =>! fwd %s to topic:%s: %s', src, tgt, msg)

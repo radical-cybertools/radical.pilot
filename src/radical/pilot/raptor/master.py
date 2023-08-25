@@ -307,9 +307,6 @@ class Master(rpu.Component):
                 rpc_res['out'] = ''
                 rpc_res['ret'] = 1
 
-            # inform client side
-            rpc_res['forward'] = True
-
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
                                               'arg':  rpc_res})
 
