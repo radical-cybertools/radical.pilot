@@ -5,7 +5,6 @@ __license__   = 'MIT'
 
 import os
 import sys
-import random
 
 import radical.pilot as rp
 import radical.utils as ru
@@ -32,7 +31,7 @@ if __name__ == '__main__':
 
 
     # Create a new session. No need to try/except this: if session creation
-    # fails, there is not much we can do anyways...
+    # fails, there is not much we can do anyway...
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -42,8 +41,8 @@ if __name__ == '__main__':
     try:
 
         # read the config used for resource details
-        config = ru.read_json('%s/config.json'
-                            % os.path.dirname(__file__)).get(resource, {})
+        config = ru.read_json('%s/config.json' %
+                              os.path.dirname(__file__)).get(resource, {})
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -54,19 +53,20 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 600,  # pilot runtime (min)
+                   'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'cores'         : 1024,
+                   'cores'         : config.get('cores', 1),
                    'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
+        # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1024 * 1024  # number of tasks to run
+        n = 10  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable     = '/bin/true'
+            td.executable     = '/bin/date'
             td.ranks          = 1
             td.cores_per_rank = 1
 
