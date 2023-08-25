@@ -220,7 +220,7 @@ create_gtod()
          | cut -f1 -d' ')
     printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
-        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        "$pilot_state" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
 }
 
@@ -268,7 +268,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "$pilot_state" "$msg" \
         >> "$PROFILE"
 }
 
@@ -1565,7 +1565,7 @@ echo "# -------------------------------------------------------------------"
 touch "$LOGFILES_TARBALL"
 touch "$PROFILES_TARBALL"
 
-
+pilot_state="PMGR_ACTIVE_PENDING"
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
@@ -1573,7 +1573,6 @@ touch "$PROFILES_TARBALL"
 echo 'create gtod, prof'
 create_gtod
 create_prof
-pilot_state="PMGR_ACTIVE_PENDING"
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
