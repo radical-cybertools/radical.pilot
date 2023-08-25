@@ -287,8 +287,8 @@ class Default(TMGRStagingInputComponent):
                   #         j.exit_code)
 
 
-        if no_staging_tasks:
-            for pid in no_staging_tasks:
+        for pid in no_staging_tasks:
+            if no_staging_tasks[pid]:
                 # nothing to stage, push to the agent
                 self._advance_tasks(no_staging_tasks[pid], pid)
 
