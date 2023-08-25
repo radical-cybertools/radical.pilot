@@ -223,7 +223,7 @@ class RMBaseTestCase(TestCase):
 
         # launching order not provided
 
-        rm._prepare_launch_methods(None)
+        rm._prepare_launch_methods()
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
         self.assertEqual(rm._launch_order, ['SRUN'])
 
@@ -232,14 +232,14 @@ class RMBaseTestCase(TestCase):
         rm._rm_info.launch_methods = {'order': ['SSH'],
                                       'SRUN' : {},
                                       'SSH'  : {}}
-        rm._prepare_launch_methods(None)
+        rm._prepare_launch_methods()
         self.assertEqual(rm._launch_order, ['SSH'])
 
         # launching methods not provided
 
         rm._rm_info.launch_methods = {}
         with self.assertRaises(RuntimeError):
-            rm._prepare_launch_methods(None)
+            rm._prepare_launch_methods()
 
         # raise exception for every launch method
 
@@ -250,7 +250,7 @@ class RMBaseTestCase(TestCase):
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception)
         # all LMs will be skipped, thus RuntimeError raised
         with self.assertRaises(RuntimeError):
-            rm._prepare_launch_methods(None)
+            rm._prepare_launch_methods()
         # check that exception was logged (sign that LM exception was raised)
         self.assertTrue(rm._log.exception.called)
 
@@ -267,7 +267,7 @@ class RMBaseTestCase(TestCase):
 
         rm._rm_info.launch_methods = {'SRUN': {}, 'SSH': {}}
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception_once)
-        rm._prepare_launch_methods(None)
+        rm._prepare_launch_methods()
         # only second LM is considered successful
         self.assertEqual(rm._launch_order, ['SSH'])
         self.assertEqual(len(rm._launchers), 1)
