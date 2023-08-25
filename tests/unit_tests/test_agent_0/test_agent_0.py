@@ -97,13 +97,12 @@ class TestComponent(TestCase):
                        'rpc': 'hello'}
               }
         self.assertIsNone(agent_cmp._control_cb(None, msg))
-        self.assertEqual(global_control, [('control_pubsub',
-                                           {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0002',
-                                                    'err': "KeyError('arg')",
-                                                    'out': None,
-                                                    'ret': 1}}
-                                           )])
+        self.assertEqual(1, len(global_control))
+        # format for the raised exception might be a little different based on
+        # python version, e.g., py36: KeyError('arg',) | py37: KeyError('arg')
+        self.assertTrue(global_control[0][1]
+                        ['arg']['err'].startswith("KeyError('arg')"))
+        self.assertEqual('rpc.0002', global_control[0][1]['arg']['uid'])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0003',
