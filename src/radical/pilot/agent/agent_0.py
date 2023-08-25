@@ -347,7 +347,9 @@ class Agent_0(rpu.Worker):
 
         self._log.info('starting agent services')
 
-        services = list()
+        startup_files = {}
+        services      = []
+
         for sd in sds:
 
             td      = TaskDescription(sd)
@@ -362,7 +364,6 @@ class Agent_0(rpu.Worker):
             task['origin']            = 'agent'
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['status']            = 'NEW'
             task['type']              = 'service_task'
             task['uid']               = tid
             task['pilot_sandbox']     = cfg.pilot_sandbox
@@ -377,17 +378,58 @@ class Agent_0(rpu.Worker):
             self._service_uids_launched.append(tid)
             services.append(task)
 
-            self._log.debug('start service %s: %s', tid, sd)
-
+            if 'soma' in td.executable.lower():
+                startup_files[tid] = 'soma.txt'
 
         self.advance(services, publish=False, push=True)
 
-        # Waiting 2mins for all services to launch
+        if startup_files:
+            self.register_timed_cb(cb=self._soma_service_state_cb,
+                                   cb_data={'name': 'soma',
+                                            'startup_files': startup_files},
+                                   timer=2)
+
+        # waiting 2 mins for all services to launch
         if not self._services_setup.wait(timeout=60 * 2):
             raise RuntimeError('Unable to start services')
 
+        if startup_files:
+            self.unregister_timed_cb(self._soma_service_state_cb)
+
         self._log.info('all agent services started')
 
+    def _soma_service_state_cb(self, cb_data):
+
+        name = cb_data.get('name')
+        startup_files = cb_data.get('startup_files', {})
+
+        reg = None
+        for tid in list(startup_files):
+            file = startup_files[tid]
+            if file and os.path.isfile(file):
+
+                service_urls = {}
+                with ru.ru_open(file, 'r') as fin:
+                    for line in fin.readlines():
+                        parts = line.split()
+                        if len(parts) > 1 and '://' in parts[1]:
+                            service_urls[parts[0]] = parts[1]
+
+                if service_urls:
+                    if reg is None:
+                        reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+                    service_key = 'service.%s' % name
+                    for idx, url in service_urls.items():
+                        reg['%s.%s' % (service_key, idx)] = {'url': url}
+
+                    self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
+                                                      'arg': {'uid': tid}})
+                    del startup_files[tid]
+
+        if reg is not None:
+            reg.close()
+
+        return True
 
     # --------------------------------------------------------------------------
     #
