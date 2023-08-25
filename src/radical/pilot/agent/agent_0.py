@@ -419,7 +419,7 @@ class Agent_0(rpu.Worker):
         for idx, sa in enumerate(self._cfg['agents']):
 
             target  = self._cfg['agents'][sa]['target']
-            bs_args = [self._sid, self.cfg.reg_addr, sa]
+            bs_args = [self._sid, self._cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
 
