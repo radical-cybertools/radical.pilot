@@ -101,7 +101,7 @@ class TestComponent(TestCase):
         # format for the raised exception might be a little different based on
         # python version, e.g., py36: KeyError('arg',) | py37: KeyError('arg')
         self.assertTrue(global_control[0][1]
-                        ['arg']['err'].startswith("KeyError('arg')"))
+                        ['arg']['err'].startswith("KeyError('arg'"))
         self.assertEqual('rpc.0002', global_control[0][1]['arg']['uid'])
 
         msg = {'cmd': 'rpc_req',
