@@ -196,7 +196,6 @@ class ComponentManager(object):
                 if ret:
                     raise RuntimeError('component startup failed')
 
-                cuids.append(uid)
                 self._log.info('created component %s [%s]', cname, uid)
 
         # all components should start now, wait for heartbeats to appear.

@@ -881,12 +881,22 @@ class Session(rs.Session):
         if self._cmgr:
             self._cmgr.close()
 
+        # stop heartbeats
+        self._hb.stop()
+        self._hb_pubsub.stop()
+
         if self._proxy:
-            try:
-                self._log.debug("session %s closes service", self._uid)
-                self._proxy.request('unregister', {'sid': self._uid})
-            except:
-                pass
+
+            if self._role == self._PRIMARY:
+                try:
+                    self._log.debug('session %s closes service', self._uid)
+                    self._proxy.request('unregister', {'sid': self._uid})
+                except:
+                    pass
+
+            if self._role in [self._PRIMARY, self._AGENT_0]:
+                self._proxy.close()
+                self._proxy = None
 
         self._log.debug("session %s closed", self._uid)
         self._prof.prof("session_stop", uid=self._uid)
@@ -910,8 +920,9 @@ class Session(rs.Session):
 
         if self._role == self._PRIMARY:
 
-            # dump json
-            self._reg.dump('registry')
+            # stop registry
+            self._reg.close()
+            self._reg_service.stop()  # this will dump registry
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
@@ -923,7 +934,7 @@ class Session(rs.Session):
     #
     def _run_proxy(self):
 
-        proxy = Proxy()
+        proxy = Proxy(path=self._cfg.path)
 
         try:
             proxy.start()
