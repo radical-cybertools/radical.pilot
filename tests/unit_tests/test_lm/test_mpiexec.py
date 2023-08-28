@@ -1,9 +1,15 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
+import os
+
+import radical.utils as ru
+
 from unittest import mock, TestCase
 
 from .test_common import setUp
 from radical.pilot.agent.launch_method.mpiexec import MPIExec
+
+MPI_INFO = ['1.1.1', 'OMPI']
 
 
 # ------------------------------------------------------------------------------
@@ -13,11 +19,12 @@ class TestMPIExec(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIExec, '__init__', return_value=None)
-    @mock.patch.object(MPIExec, '_get_mpi_info', return_value=['1.1.1', 'OMPI'])
+    @mock.patch.object(MPIExec, '_get_mpi_info', return_value=MPI_INFO)
     @mock.patch('radical.utils.which', return_value='/bin/mpiexec')
     @mock.patch('radical.utils.get_hostname', return_value='localhost')
-    def test_init_from_scratch(self, mocked_hostname, mocked_which,
-                               mocked_mpi_info, mocked_init):
+    @mock.patch('radical.utils.sh_callout', return_value=['-rf <msg>'])
+    def test_init_from_scratch(self, mocked_sh_callout, mocked_hostname,
+                               mocked_which, mocked_mpi_info, mocked_init):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
         lm_mpiexec.name = 'mpiexec'
@@ -31,6 +38,7 @@ class TestMPIExec(TestCase):
         self.assertEqual(lm_info['command'], mocked_which())
         self.assertFalse(lm_info['mpt'])
         self.assertFalse(lm_info['rsh'])
+        self.assertTrue(lm_info['use_rf'])
         self.assertFalse(lm_info['ccmrun'])
         self.assertFalse(lm_info['dplace'])
         self.assertFalse(lm_info['omplace'])
@@ -40,10 +48,12 @@ class TestMPIExec(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(MPIExec, '__init__', return_value=None)
-    @mock.patch.object(MPIExec, '_get_mpi_info', return_value=['1.1.1', 'OMPI'])
+    @mock.patch.object(MPIExec, '_get_mpi_info', return_value=MPI_INFO)
     @mock.patch('radical.utils.which', return_value='/bin/mpiexec')
     @mock.patch('radical.utils.get_hostname', return_value='localhost')
-    def test_init_from_scratch_with_name(self, mocked_hostname, mocked_which,
+    @mock.patch('radical.utils.sh_callout', return_value=[''])
+    def test_init_from_scratch_with_name(self, mocked_sh_callout,
+                                         mocked_hostname, mocked_which,
                                          mocked_mpi_info, mocked_init):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
@@ -82,6 +92,7 @@ class TestMPIExec(TestCase):
             'command'    : '/bin/mpiexec',
             'mpt'        : True,
             'rsh'        : False,
+            'use_rf'     : True,
             'ccmrun'     : '/bin/ccmrun',
             'dplace'     : '/bin/dplace',
             'omplace'    : '/bin/omplace',
@@ -94,6 +105,7 @@ class TestMPIExec(TestCase):
         self.assertEqual(lm_mpiexec._command,     lm_info['command'])
         self.assertEqual(lm_mpiexec._mpt,         lm_info['mpt'])
         self.assertEqual(lm_mpiexec._rsh,         lm_info['rsh'])
+        self.assertEqual(lm_mpiexec._use_rf,      lm_info['use_rf'])
         self.assertEqual(lm_mpiexec._ccmrun,      lm_info['ccmrun'])
         self.assertEqual(lm_mpiexec._dplace,      lm_info['dplace'])
         self.assertEqual(lm_mpiexec._omplace,     'omplace')
@@ -132,6 +144,104 @@ class TestMPIExec(TestCase):
 
     # --------------------------------------------------------------------------
     #
+    @mock.patch.object(MPIExec, '__init__', return_value=None)
+    def test_host_file(self, mocked_init):
+
+        uid     = 'test_task.hf.0000'
+        sandbox = './'
+        slots   = {
+            'ranks': [
+                {'node_name': 'node_A',
+                 'node_id'  : '1',
+                 'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
+                 'gpu_map'  : [],
+                 'lfs'      : 0,
+                 'mem'      : 0},
+                {'node_name': 'node_B',
+                 'node_id'  : '2',
+                 'core_map' : [[0, 1, 2, 3]],
+                 'gpu_map'  : [],
+                 'lfs'      : 0,
+                 'mem'      : 0}
+            ]
+        }
+
+        lm_mpiexec = MPIExec('', {}, None, None, None)
+
+        host_file_expected = '%s/%s.hf' % (sandbox, uid)
+        self.assertFalse(os.path.isfile(host_file_expected))
+
+        host_file = lm_mpiexec._get_host_file(slots, uid, sandbox)
+        self.assertEqual(host_file_expected, host_file)
+        self.assertTrue(os.path.isfile(host_file))
+
+        # simple host file
+        with ru.ru_open(host_file) as hfd:
+            hfd_content = hfd.read()
+        self.assertEqual(hfd_content, 'node_A\nnode_B\n')
+
+        # host file with "slots=" as delimiter for ranks
+        lm_mpiexec._get_host_file(slots, uid, sandbox, simple=False, mode=0)
+        with ru.ru_open(host_file) as hfd:
+            hfd_content = hfd.read()
+        self.assertEqual(hfd_content, 'node_A slots=2\nnode_B slots=1\n')
+
+        # host file with ":" as delimiter for ranks
+        lm_mpiexec._get_host_file(slots, uid, sandbox, simple=False, mode=1)
+        with ru.ru_open(host_file) as hfd:
+            hfd_content = hfd.read()
+        self.assertEqual(hfd_content, 'node_A:2\nnode_B:1\n')
+
+        os.unlink(host_file)
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(MPIExec, '__init__', return_value=None)
+    def test_rank_file(self, mocked_init):
+
+        uid     = 'test_task.rf.0001'
+        sandbox = './'
+        slots   = {
+            'ranks': [
+                {'node_name': 'node_A',
+                 'node_id'  : '1',
+                 'core_map' : [[0, 1], [2, 3], [4, 5], [6, 7]],
+                 'gpu_map'  : [],
+                 'lfs'      : 0,
+                 'mem'      : 0},
+                {'node_name': 'node_B',
+                 'node_id'  : '2',
+                 'core_map' : [[0, 1], [2, 3]],
+                 'gpu_map'  : [],
+                 'lfs'      : 0,
+                 'mem'      : 0}
+            ]
+
+        }
+
+        lm_mpiexec = MPIExec('', {}, None, None, None)
+
+        rank_file_expected = '%s/%s.rf' % (sandbox, uid)
+        self.assertFalse(os.path.isfile(rank_file_expected))
+
+        rank_file = lm_mpiexec._get_rank_file(slots, uid, sandbox)
+        self.assertEqual(rank_file_expected, rank_file)
+        self.assertTrue(os.path.isfile(rank_file))
+
+        with ru.ru_open(rank_file) as rfd:
+            rfd_content = rfd.read()
+        self.assertEqual(rfd_content,
+                         'rank 0=node_A slots=0,1\n'
+                         'rank 1=node_A slots=2,3\n'
+                         'rank 2=node_A slots=4,5\n'
+                         'rank 3=node_A slots=6,7\n'
+                         'rank 4=node_B slots=0,1\n'
+                         'rank 5=node_B slots=2,3\n')
+
+        os.unlink(rank_file)
+
+    # --------------------------------------------------------------------------
+    #
     @mock.patch.object(MPIExec, '__init__',   return_value=None)
     @mock.patch('radical.utils.Logger')
     def test_get_launch_rank_cmds(self, mocked_logger, mocked_init):
@@ -140,17 +250,31 @@ class TestMPIExec(TestCase):
         lm_mpiexec.name     = 'mpiexec'
         lm_mpiexec._command = 'mpiexec'
         lm_mpiexec._mpt     = False
+        lm_mpiexec._use_rf  = False
         lm_mpiexec._omplace = ''
         lm_mpiexec._log     = mocked_logger
 
         test_cases = setUp('lm', 'mpiexec')
-        for task, result in test_cases:
+        for test_case in test_cases:
+
+            task   = test_case[0]
+            result = test_case[1]
+
+            lm_mpiexec._mpi_flavor = task.get(
+                'mpi_flavor', lm_mpiexec.MPI_FLAVOR_UNKNOWN)
 
             command = lm_mpiexec.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
             command = lm_mpiexec.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])
+
+            if len(test_case) > 2:
+                f_layout = test_case[2]
+                f_name   = test_case[3]
+                with ru.ru_open(f_name) as fd:
+                    self.assertEqual(fd.readlines(), f_layout)
+                os.unlink(f_name)
 
     # --------------------------------------------------------------------------
     #
@@ -159,11 +283,13 @@ class TestMPIExec(TestCase):
     def test_get_launch_rank_cmds_mpt(self, mocked_logger, mocked_init):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
-        lm_mpiexec.name     = 'mpiexec_mpt'
-        lm_mpiexec._command = 'mpiexec_mpt'
-        lm_mpiexec._mpt     = True
-        lm_mpiexec._omplace = 'omplace'
-        lm_mpiexec._log     = mocked_logger
+        lm_mpiexec.name        = 'mpiexec_mpt'
+        lm_mpiexec._command    = 'mpiexec_mpt'
+        lm_mpiexec._mpt        = True
+        lm_mpiexec._use_rf     = False
+        lm_mpiexec._omplace    = 'omplace'
+        lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_OMPI
+        lm_mpiexec._log        = mocked_logger
 
         test_cases = setUp('lm', 'mpiexec_mpt')
         for task, result in test_cases:
@@ -181,17 +307,26 @@ class TestMPIExec(TestCase):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
         lm_mpiexec._mpt = False
+        lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_OMPI
 
         command = lm_mpiexec.get_rank_cmd()
         self.assertIn('$MPI_RANK',  command)
         self.assertIn('$PMIX_RANK', command)
+
+        self.assertNotIn('$PMI_ID', command)
+        lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_HYDRA
+        command = lm_mpiexec.get_rank_cmd()
         self.assertIn('$PMI_ID',    command)
         self.assertIn('$PMI_RANK',  command)
-        self.assertNotIn('$MPT_MPI_RANK', command)
+
+        self.assertNotIn('$PALS_RANKID', command)
+        lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_PALS
+        command = lm_mpiexec.get_rank_cmd()
+        self.assertIn('$PALS_RANKID', command)
 
         # special case - MPT
+        self.assertNotIn('$MPT_MPI_RANK', command)
         lm_mpiexec._mpt = True
-
         command = lm_mpiexec.get_rank_cmd()
         self.assertIn('$MPT_MPI_RANK', command)
 

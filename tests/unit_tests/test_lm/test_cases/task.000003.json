@@ -27,7 +27,8 @@
                                     "gpu_map"   : [],
                                     "lfs"       : 0}]
             },
-            "task_sandbox": "./"
+            "task_sandbox": "./",
+            "mpi_flavor"  : "PALS"
         }
     },
 
@@ -65,16 +66,18 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {
-                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "launch_cmd" : "mpiexec -np 1 --hostfile /tmp/task.000003.hf --cpu-bind list:0-3",
                 "rank_exec"  : "/bin/sleep \"10\""
             }
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0,1,2,3} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0,1,2,3} }\n"],
+            "mpiexec"   : ["node1\n"]
         },
         "resource_filename": {
-            "jsrun_erf" : "rs_layout_task_000003"
+            "jsrun_erf" : "rs_layout_task_000003",
+            "mpiexec"   : "/tmp/task.000003.hf"
         }
     }
 }
