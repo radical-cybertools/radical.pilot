@@ -23,20 +23,27 @@
                                     "core_map"  : [[0]],
                                     "gpu_map"   : [],
                                     "lfs"       : 0}]
-            }
+            },
+            "mpi_flavor"  : "OMPI"
         }
     },
 
     "results": {
         "lm": {
             "mpiexec"     : {
-                "launch_cmd" : "mpiexec -host node1 -n 1",
+                "launch_cmd" : "mpiexec -np 1 --hostfile /tmp/task.000009.hf",
                 "rank_exec"  : "/bin/sleep"
             },
             "mpiexec_mpt" : {
-                "launch_cmd" : "mpiexec_mpt node1 -n 1 omplace",
+                "launch_cmd" : "mpiexec_mpt -np 1 --hostfile /tmp/task.000009.hf omplace",
                 "rank_exec"  : "/bin/sleep"
             }
+        },
+        "resource_file": {
+            "mpiexec"     : ["node1 slots=1\n"]
+        },
+        "resource_filename": {
+            "mpiexec"     : "/tmp/task.000009.hf"
         }
     }
 }

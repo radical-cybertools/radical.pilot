@@ -1,7 +1,7 @@
 
 # pylint: disable=protected-access
 
-__copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -39,6 +39,7 @@ class LaunchMethod(object):
     MPI_FLAVOR_OMPI     = 'OMPI'
     MPI_FLAVOR_HYDRA    = 'HYDRA'
     MPI_FLAVOR_SPECTRUM = 'SPECTRUM'
+    MPI_FLAVOR_PALS     = 'PALS'
     MPI_FLAVOR_UNKNOWN  = 'unknown'
 
 
@@ -255,49 +256,48 @@ class LaunchMethod(object):
 
         version, flavor = None, None
 
-        out, _, ret = ru.sh_callout('%s -V' % exe)
+        for info_opts in ['-V', '--version', '-info']:
+            out, _, ret = ru.sh_callout('%s %s' % (exe, info_opts))
+            if not ret:
+                break
 
         if ret:
-            out, _, ret = ru.sh_callout('%s --version' % exe)
-
-        if ret:
-            out, _, ret = ru.sh_callout('%s -info' % exe)
-
-        if not ret:
-            for line in out.splitlines():
-
-                if 'intel(r) mpi library for linux' in line.lower():
-                    # Intel MPI is hydra based
-                    version = line.split(',')[1].strip()
-                    flavor = self.MPI_FLAVOR_HYDRA
-
-                elif 'hydra build details:' in line.lower():
-                    version = line.split(':', 1)[1].strip()
-                    flavor  = self.MPI_FLAVOR_HYDRA
-
-                elif 'mvapich2' in line.lower():
-                    version = line.strip()
-                    flavor  = self.MPI_FLAVOR_HYDRA
-
-                elif '(open mpi)' in line.lower():
-                    version = line.split(')', 1)[1].strip()
-                    flavor  = self.MPI_FLAVOR_OMPI
-
-                elif 'ibm spectrum mpi' in line.lower():
-                    version = line.split(')', 1)[1].strip()
-                    flavor  = self.MPI_FLAVOR_SPECTRUM
-
-                elif 'version' in line.lower():
-                    version = line.lower().split('version')[1].\
-                              replace(':', '').strip()
-                    if not flavor:
-                        flavor = self.MPI_FLAVOR_OMPI
-
-                if version:
-                    break
-
-        else:
             raise RuntimeError('cannot identify MPI flavor [%s]' % exe)
+
+        if 'pals' in exe.lower():
+            flavor = self.MPI_FLAVOR_PALS
+
+        for line in out.splitlines():
+
+            if 'intel(r) mpi library for linux' in line.lower():
+                # Intel MPI is hydra based
+                version = line.split(',')[1].strip()
+                flavor = self.MPI_FLAVOR_HYDRA
+
+            elif 'hydra build details:' in line.lower():
+                version = line.split(':', 1)[1].strip()
+                flavor  = self.MPI_FLAVOR_HYDRA
+
+            elif 'mvapich2' in line.lower():
+                version = line.strip()
+                flavor  = self.MPI_FLAVOR_HYDRA
+
+            elif '(open mpi)' in line.lower():
+                version = line.split(')', 1)[1].strip()
+                flavor  = self.MPI_FLAVOR_OMPI
+
+            elif 'ibm spectrum mpi' in line.lower():
+                version = line.split(')', 1)[1].strip()
+                flavor  = self.MPI_FLAVOR_SPECTRUM
+
+            elif 'version' in line.lower():
+                version = line.lower().split('version')[1].\
+                          replace(':', '').strip()
+                if not flavor:
+                    flavor = self.MPI_FLAVOR_OMPI
+
+            if version:
+                break
 
         if not flavor:
             flavor = self.MPI_FLAVOR_UNKNOWN

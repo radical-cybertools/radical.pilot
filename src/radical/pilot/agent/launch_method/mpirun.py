@@ -224,11 +224,17 @@ class MPIRun(LaunchMethod):
 
         # FIXME: we know the MPI flavor, so make this less guesswork
 
-        ret  = 'test -z "$MPI_RANK"  || export RP_RANK=$MPI_RANK\n'
-        ret += 'test -z "$PMIX_RANK" || export RP_RANK=$PMIX_RANK\n'
+        ret  = 'test -z "$MPI_RANK"     || export RP_RANK=$MPI_RANK\n'
+        ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         if self._mpt:
             ret += 'test -z "$MPT_MPI_RANK" || export RP_RANK=$MPT_MPI_RANK\n'
+
+        if self._mpi_flavor == self.MPI_FLAVOR_HYDRA:
+            ret += 'test -z "$PMI_ID"       || export RP_RANK=$PMI_ID\n'
+            ret += 'test -z "$PMI_RANK"     || export RP_RANK=$PMI_RANK\n'
+        elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
+            ret += 'test -z "$PALS_RANKID"  || export RP_RANK=$PALS_RANKID\n'
 
         return ret
 
