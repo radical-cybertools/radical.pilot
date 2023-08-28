@@ -172,16 +172,27 @@ class TestMPIRun(TestCase):
     def test_get_rank_cmd(self, mocked_init):
 
         lm_mpirun = MPIRun('', {}, None, None, None)
-        lm_mpirun._mpt = False
+        lm_mpirun._mpt        = False
+        lm_mpirun._mpi_flavor = lm_mpirun.MPI_FLAVOR_OMPI
 
         command = lm_mpirun.get_rank_cmd()
         self.assertIn('$MPI_RANK', command)
         self.assertIn('$PMIX_RANK', command)
-        self.assertNotIn('$MPT_MPI_RANK', command)
+
+        self.assertNotIn('$PMI_ID', command)
+        lm_mpirun._mpi_flavor = lm_mpirun.MPI_FLAVOR_HYDRA
+        command = lm_mpirun.get_rank_cmd()
+        self.assertIn('$PMI_ID', command)
+        self.assertIn('$PMI_RANK', command)
+
+        self.assertNotIn('$PALS_RANKID', command)
+        lm_mpirun._mpi_flavor = lm_mpirun.MPI_FLAVOR_PALS
+        command = lm_mpirun.get_rank_cmd()
+        self.assertIn('$PALS_RANKID', command)
 
         # special case - MPT
+        self.assertNotIn('$MPT_MPI_RANK', command)
         lm_mpirun._mpt = True
-
         command = lm_mpirun.get_rank_cmd()
         self.assertIn('$MPT_MPI_RANK', command)
 
