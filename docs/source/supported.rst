@@ -4,7 +4,8 @@
 Supported HPC Platforms
 =======================
 
-RADICAL-Pilot supports a variety of high performance computing (HPC) platforms, across the Department of Energy and the National Science Foundation.
+RADICAL-Pilot (RP) supports a variety of high performance computing (HPC) platforms, across the Department of Energy and the National Science Foundation.
+RP utilizes json configuration files to store the parameters specific to each platform. See the configuration `tutorial https://radicalpilot.readthedocs.io/en/stable/tutorials/configuration.html#Platform-description`_ for more information about how to write a configuration file for a new platform. You can also see the current configuration file for each of the supported platforms in the tables below.
 
 Department of Energy (DOE) HPC Platforms
 ----------------------------------------
