@@ -28,7 +28,7 @@
         "default_remote_workdir"      : "/scratch/project_%(pd.project)s",
 
         "pre_bootstrap_0"             : [
-                                        "module load tykky",
+                                        "module load tykky"
                                         ],
         "launch_methods"              : {
                                          "order"  : ["SRUN"],
