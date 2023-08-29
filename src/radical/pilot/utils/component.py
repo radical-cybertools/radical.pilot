@@ -198,7 +198,6 @@ class Component(object):
             self._owner = 'root'
 
         self._prof = self._session._get_profiler(name=self.uid)
-        self._rep  = self._session._get_reporter(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
                                                  level=self._debug)
 

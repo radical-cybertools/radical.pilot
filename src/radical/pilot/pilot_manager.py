@@ -127,6 +127,8 @@ class PilotManager(rpu.Component):
         self.start()
 
         self._log.info('started pmgr %s', self._uid)
+
+        self._rep = self._session._get_reporter(name=self._uid)
         self._rep.info('<<create pilot manager')
 
         # create pmgr bridges and components, use session cmgr for that

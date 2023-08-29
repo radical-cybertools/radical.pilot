@@ -146,6 +146,8 @@ class TaskManager(rpu.Component):
         self.start()
 
         self._log.info('started tmgr %s', self._uid)
+
+        self._rep = self._session._get_reporter(name=self._uid)
         self._rep.info('<<create task manager')
 
         # overwrite the scheduler from the config file

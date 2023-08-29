@@ -120,43 +120,37 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     if 'pubsub' in uid:
         d = ru.zmq.test_pubsub(bridge.channel, bridge.addr_pub, bridge.addr_sub)
 
-    sys.stdout.flush()
-    sys.stderr.flush()
+    # bridge runs - send heartbeats so that cmgr knows about it
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
 
-  # if hb_cfg:
-  #
-  #     # bridge runs - send heartbeats so that cmgr knows about it
-  #     # component runs - send heartbeats so that session knows about it
-  #     hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
-  #
-  #     def hb_beat_cb():
-  #         hb_pub.put('heartbeat', HeartbeatMessage(b_cfg.uid))
-  #
-  #     def hb_term_cb(hb_uid):
-  #         bridge.stop()
-  #         term.set()
-  #         return None
-  #
-  #     hb = ru.Heartbeat(uid=b_cfg.uid,
-  #                       timeout=hb_cfg.timeout,
-  #                       interval=hb_cfg.interval,
-  #                       beat_cb=hb_beat_cb,
-  #                       term_cb=hb_term_cb,
-  #                       log=log)
-  #     hb.start()
-  #
-  #     # always watch out for session heartbeat
-  #     hb.watch(uid=sid)
-  #
-  #     # react on session heartbeats
-  #     def hb_sub_cb(topic, msg):
-  #         hb_msg = HeartbeatMessage(from_dict=msg)
-  #         if hb_msg.uid == sid:
-  #             hb.beat(uid=sid)
-  #
-  #     ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
-  #                       topic='heartbeat', cb=hb_sub_cb,
-  #                       log=log, prof=prof)
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', HeartbeatMessage(uid=uid))
+
+    def hb_term_cb(hb_uid):
+        bridge.stop()
+        term.set()
+        return False
+
+    hb = ru.Heartbeat(uid=uid,
+                      timeout=hb_cfg.timeout,
+                      interval=hb_cfg.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # always watch out for session heartbeat
+    hb.watch(uid=sid)
+
+    # react on session heartbeats
+    def hb_sub_cb(topic, msg):
+        hb_msg = HeartbeatMessage(from_dict=msg)
+        if hb_msg.uid == sid:
+            hb.beat(uid=sid)
+
+    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
+                      topic='heartbeat', cb=hb_sub_cb,
+                      log=log, prof=prof)
 
     # all is set up - we can sit idle 'til end of time.
     while not term.is_set():
