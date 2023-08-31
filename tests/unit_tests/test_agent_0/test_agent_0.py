@@ -68,9 +68,9 @@ class TestComponent(TestCase):
             global_control.append((publish_type, cmd))
 
         def _prepenv_effect(env_id, spec):
-            return (env_id, spec)
+            return env_id, spec
 
-        agent_cmp = Agent_0(ru.Config(), self._session)
+        agent_cmp = Agent_0()
 
         agent_cmp._log         = mock.Mock()
         agent_cmp._prof        = mock.Mock()
@@ -97,20 +97,12 @@ class TestComponent(TestCase):
                        'rpc': 'hello'}
               }
         self.assertIsNone(agent_cmp._control_cb(None, msg))
-        self.assertIn(global_control[0], [('control_pubsub',
-                                           {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0002',
-                                                    'err': "KeyError('arg')",
-                                                    'out': None,
-                                                    'ret': 1}
-                                           }),
-                                          ('control_pubsub',
-                                           {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0002',
-                                                    'err': "KeyError('arg',)",
-                                                    'out': None,
-                                                    'ret': 1}
-                                           })])
+        self.assertEqual(1, len(global_control))
+        # format for the raised exception might be a little different based on
+        # python version, e.g., py36: KeyError('arg',) | py37: KeyError('arg')
+        self.assertTrue(global_control[0][1]
+                        ['arg']['err'].startswith("KeyError('arg'"))
+        self.assertEqual('rpc.0002', global_control[0][1]['arg']['uid'])
 
         msg = {'cmd': 'rpc_req',
                'arg': {'uid': 'rpc.0003',
@@ -150,9 +142,10 @@ class TestComponent(TestCase):
     @mock.patch('radical.utils.env_prep')
     @mock.patch('radical.utils.sh_callout_bg')
     def test_start_sub_agents(self, mocked_run_sh_callout, mocked_ru_env_prep,
-                              mocked_init):
+                                    mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0 = Agent_0()
+
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
         agent_0._sid = 'rp.session.0'
@@ -160,7 +153,8 @@ class TestComponent(TestCase):
             'agents': {
                 'agent_1': {'target'    : 'node',
                             'components': {'agent_executing': {'count': 1}}}
-            }
+            },
+            'reg_addr': 'tcp://location'
         })
 
         agent_0._rm = mock.Mock()
@@ -195,12 +189,12 @@ class TestComponent(TestCase):
         agent_0._rm.find_launcher.return_value = launcher
 
         agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
-        self.assertEqual(len(agent_files), 0)
+        self.assertEqual(0, len(agent_files))
 
         agent_0._start_sub_agents()
 
         agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
-        self.assertEqual(len(agent_files), 2)
+        self.assertEqual(2, len(agent_files))
         for agent_file in agent_files:
             os.unlink(agent_file)
 

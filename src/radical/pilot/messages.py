@@ -4,14 +4,32 @@ from typing import Any
 
 import radical.utils as ru
 
+# ------------------------------------------------------------------------------
+#
+class RPBaseMessage(ru.Message):
+
+    # rpc distinguishes messages which are forwarded to the proxy bridge and
+    # those which are not and thus remain local to the module they originate in.
+
+    _schema   = {'fwd'      : bool}
+    _defaults = {'_msg_type': 'rp_msg',
+                 'fwd'      : False}
+
+
+    # we do not register this message type - it is not supposed to be used
+    # directly.
+
 
 # ------------------------------------------------------------------------------
 #
-class HeartbeatMessage(ru.Message):
+class HeartbeatMessage(RPBaseMessage):
+
+    # heartbeat messages are never forwarded
 
     _schema   = {'uid'      : str}
     _defaults = {'_msg_type': 'heartbeat',
-                 'uid'      : None}
+                 'uid'      : None,
+                 'fwd'      : False}
 
 
 ru.Message.register_msg_type('heartbeat', HeartbeatMessage)
@@ -19,7 +37,7 @@ ru.Message.register_msg_type('heartbeat', HeartbeatMessage)
 
 # ------------------------------------------------------------------------------
 #
-class RPCRequestMessage(ru.Message):
+class RPCRequestMessage(RPBaseMessage):
 
     _schema   = {'uid'      : str,   # uid of message
                  'addr'     : str,   # who is expected to act on the request
@@ -32,7 +50,9 @@ class RPCRequestMessage(ru.Message):
                  'addr'     : None,
                  'cmd'      : None,
                  'args'     : [],
-                 'kwargs'   : {}}
+                 'kwargs'   : {},
+                 'fwd'      : True}
+
 
 
 ru.Message.register_msg_type('rpc_req', RPCRequestMessage)
@@ -40,7 +60,7 @@ ru.Message.register_msg_type('rpc_req', RPCRequestMessage)
 
 # ------------------------------------------------------------------------------
 #
-class RPCResultMessage(ru.Message):
+class RPCResultMessage(RPBaseMessage):
 
     _schema   = {'uid'      : str,  # uid of rpc call
                  'val'      : Any,  # return value (`None` by default)
@@ -52,7 +72,8 @@ class RPCResultMessage(ru.Message):
                  'val'      : None,
                  'out'      : None,
                  'err'      : None,
-                 'exc'      : None}
+                 'exc'      : None,
+                 'fwd'      : True}
 
     # --------------------------------------------------------------------------
     #

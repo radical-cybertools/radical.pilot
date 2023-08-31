@@ -296,13 +296,11 @@ class Agent_0(rpu.Worker):
                  'stdout' : out,
                  'stderr' : err,
                  'logfile': log,
-                 'state'  : state,
-                 'forward': True}
+                 'state'  : state}
 
         self._log.debug('push final state update')
         self._log.debug('update state: %s: %s', state, self._final_cause)
-        self.publish(rpc.STATE_PUBSUB,
-                     topic=rpc.STATE_PUBSUB, msg=[pilot])
+        self.advance(pilot, publish=True, push=False)
 
         # tear things down in reverse order
         self._rm.stop()
@@ -485,7 +483,7 @@ class Agent_0(rpu.Worker):
         for idx, sa in enumerate(self._cfg['agents']):
 
             target  = self._cfg['agents'][sa]['target']
-            bs_args = [self._sid, self.cfg.reg_addr, sa]
+            bs_args = [self._sid, self._cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
 

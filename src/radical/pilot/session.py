@@ -576,7 +576,7 @@ class Session(rs.Session):
         # --------------------------------------
 
         # create heartbeat manager which monitors all components in this session
-        self._log.debug('=== hb %s from session', self._uid)
+      # self._log.debug('=== hb %s from session', self._uid)
         self._hb = ru.Heartbeat(uid=self._uid,
                                 timeout=self._cfg.heartbeat.timeout,
                                 interval=self._cfg.heartbeat.interval,
@@ -591,8 +591,6 @@ class Session(rs.Session):
         def _hb_msg_cb(topic, msg):
 
             hb_msg = HeartbeatMessage(from_dict=msg)
-
-            self._log.debug('msg: %s', msg)
 
             if hb_msg.uid != self._uid:
                 self._hb.beat(uid=hb_msg.uid)
@@ -710,7 +708,7 @@ class Session(rs.Session):
         # we only forward messages which have either no origin set (in this case
         # this method sets the origin), or whose origin is the same as
         # configured when crosswiring the channels (either 'client' or the pilot
-        # ID).
+        # ID).  Also, the messages need to have the `forward` flag set.
 
         path = self._cfg.path
         reg  = self._reg
@@ -729,32 +727,38 @@ class Session(rs.Session):
             if 'origin' not in msg:
                 msg['origin'] = self._module
 
-          # self._log.debug('XXX =?= fwd %s to %s: %s [%s - %s]', src, tgt, msg,
-          #                 msg['origin'], self._module)
-
             if from_proxy:
 
                 # all messages *from* the proxy are forwarded - but not the ones
-                # which orginated in *this* module in the first place
+                # which originated in *this* module in the first place.
 
                 if msg['origin'] == self._module:
-                    self._log.debug('XXX =>! fwd %s to topic:%s: %s', src, tgt, msg)
+                  # self._log.debug('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
+                    return
 
-                else:
-                    self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
-                    publisher.put(tgt, msg)
+              # self._log.debug('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
+                publisher.put(tgt, msg)
 
             else:
 
-                # *to* proxy: forward all messages which originated in *this*
-                # module
+                # only forward messages which have the respective flag set
+                if not msg.get('fwd'):
+                  # self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]', src,
+                  #                 tgt, msg, msg['origin'], self._module)
+                    return
 
-                if msg['origin'] == self._module:
-                    self._log.debug('XXX ==> fwd %s to topic:%s: %s', src, tgt, msg)
-                    publisher.put(tgt, msg)
+                # avoid message loops (forward only once)
+                msg['fwd'] = False
 
-                else:
-                    self._log.debug('XXX =!> fwd %s to topic:%s: %s', src, tgt, msg)
+                # only forward all messages which originated in *this* module.
+
+                if not msg['origin'] == self._module:
+                  # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
+                    return
+
+              # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                publisher.put(tgt, msg)
+
 
         ru.zmq.Subscriber(channel=src, topic=src, path=path, cb=pubsub_fwd,
                           url=url_sub, log=self._log, prof=self._prof)
@@ -881,12 +885,22 @@ class Session(rs.Session):
         if self._cmgr:
             self._cmgr.close()
 
+        # stop heartbeats
+        self._hb.stop()
+        self._hb_pubsub.stop()
+
         if self._proxy:
-            try:
-                self._log.debug("session %s closes service", self._uid)
-                self._proxy.request('unregister', {'sid': self._uid})
-            except:
-                pass
+
+            if self._role == self._PRIMARY:
+                try:
+                    self._log.debug('session %s closes service', self._uid)
+                    self._proxy.request('unregister', {'sid': self._uid})
+                except:
+                    pass
+
+            if self._role in [self._PRIMARY, self._AGENT_0]:
+                self._proxy.close()
+                self._proxy = None
 
         self._log.debug("session %s closed", self._uid)
         self._prof.prof("session_stop", uid=self._uid)
@@ -910,8 +924,9 @@ class Session(rs.Session):
 
         if self._role == self._PRIMARY:
 
-            # dump json
-            self._reg.dump('registry')
+            # stop registry
+            self._reg.close()
+            self._reg_service.stop()  # this will dump registry
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
@@ -923,7 +938,7 @@ class Session(rs.Session):
     #
     def _run_proxy(self):
 
-        proxy = Proxy()
+        proxy = Proxy(path=self._cfg.path)
 
         try:
             proxy.start()

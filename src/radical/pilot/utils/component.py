@@ -198,7 +198,6 @@ class Component(object):
             self._owner = 'root'
 
         self._prof = self._session._get_profiler(name=self.uid)
-        self._rep  = self._session._get_reporter(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
                                                  level=self._debug)
 
@@ -325,7 +324,7 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-        self._log.debug('command incoming: %s', msg)
+        self._log.debug_9('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']

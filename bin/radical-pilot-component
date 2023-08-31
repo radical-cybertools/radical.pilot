@@ -100,7 +100,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
         term.set()
         return False
 
-    hb = ru.Heartbeat(uid=c_cfg.uid,
+    hb = ru.Heartbeat(uid=uid,
                       timeout=hb_cfg.timeout,
                       interval=hb_cfg.interval,
                       beat_cb=hb_beat_cb,

@@ -225,7 +225,7 @@ class PMGRLaunchingComponent(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('launcher got %s', msg)
+        self._log.debug_9('launcher got %s', msg)
 
         if cmd == 'kill_pilots':
 

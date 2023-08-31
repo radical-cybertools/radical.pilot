@@ -163,11 +163,13 @@ class TestSession(TestCase):
         self.assertFalse(self._session._close_options.download)
         self.assertTrue(self._session._close_options.terminate)
 
+        self._session._ctrl_pub    = Dummy()
+        self._session._hb          = mock.Mock()
+        self._session._hb_pubsub   = mock.Mock()
+        self._session._reg_service = mock.Mock()
+
         # only `True` values are targeted
-
-        self._session._ctrl_pub = Dummy()
         self._session.close(download=True)
-
         self._session.close(terminate=True)
 
     # --------------------------------------------------------------------------

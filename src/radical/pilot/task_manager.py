@@ -146,6 +146,8 @@ class TaskManager(rpu.Component):
         self.start()
 
         self._log.info('started tmgr %s', self._uid)
+
+        self._rep = self._session._get_reporter(name=self._uid)
         self._rep.info('<<create task manager')
 
         # overwrite the scheduler from the config file
@@ -660,31 +662,15 @@ class TaskManager(rpu.Component):
     def pilot_rpc(self, pid, cmd, args):
         '''Remote procedure call.
 
-        Send am RPC command and arguments to the pilot and wait for the
+        Send an RPC command and arguments to the pilot and wait for the
         response.  This is a synchronous operation at this point, and it is not
         thread safe to have multiple concurrent RPC calls.
         '''
 
         if pid not in self._pilots:
-            raise ValueError('tmgr does not know pilot %s' % uid)
+            raise ValueError('tmgr does not know pilot %s' % pid)
 
-        rpc_id  = ru.generate_id('rpc')
-        rpc_req = {'uid' : rpc_id,
-                   'rpc' : cmd,
-                   'tgt' : pid,
-                   'arg' : args}
-
-        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_req',
-                                                'arg':  rpc_req,
-                                                'fwd': True})
-
-        rpc_res = self._rpc_queue.get()
-        self._log.debug('rpc result: %s', rpc_res['ret'])
-
-        if rpc_res['ret']:
-            raise RuntimeError('rpc failed: %s' % rpc_res['err'])
-
-        return rpc_res['ret']
+        return self._pilots[pid].rpc(cmd=cmd, args=args)
 
 
     # --------------------------------------------------------------------------
