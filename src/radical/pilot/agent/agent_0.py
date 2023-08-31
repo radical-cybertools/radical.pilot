@@ -15,7 +15,6 @@ import radical.utils       as ru
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
-from ..   import TaskDescription
 from ..   import Session
 from ..   import TaskDescription, AGENT_SERVICE
 
@@ -347,8 +346,9 @@ class Agent_0(rpu.Worker):
 
         self._log.info('starting agent services')
 
-        startup_files = {}
+        cfg           = self._cfg
         services      = []
+        services_data = {}
 
         for sd in sds:
 
@@ -357,74 +357,98 @@ class Agent_0(rpu.Worker):
             # ensure that the description is viable
             td.verify()
 
-            cfg = self._cfg
             tid = ru.generate_id('service.%(item_counter)04d',
-                                 ru.ID_CUSTOM, ns=self._cfg.sid)
+                                 ru.ID_CUSTOM, ns=cfg.sid)
             task = dict()
+            task['uid']               = tid
+            task['type']              = 'service_task'
             task['origin']            = 'agent'
+            task['pilot']             = cfg.pid
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['type']              = 'service_task'
-            task['uid']               = tid
             task['pilot_sandbox']     = cfg.pilot_sandbox
             task['task_sandbox']      = cfg.pilot_sandbox + task['uid'] + '/'
             task['task_sandbox_path'] = cfg.pilot_sandbox + task['uid'] + '/'
             task['session_sandbox']   = cfg.session_sandbox
             task['resource_sandbox']  = cfg.resource_sandbox
-            task['pilot']             = cfg.pid
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
+
+            # TODO: use `type='service_task'` in RADICAL-Analytics
+
+            # TaskDescription.metadata will contain service related data:
+            # "name" (unique), "startup_file"
 
             self._service_uids_launched.append(tid)
             services.append(task)
 
-            if 'soma' in td.executable.lower():
-                startup_files[tid] = 'soma.txt'
+            services_data[tid] = {}
+            if td.metadata.get('startup_file'):
+                n = td.metadata.get('name')
+                services_data[tid]['name'] = 'service.%s' % n if n else tid
+                services_data[tid]['startup_file'] = td.metadata['startup_file']
 
         self.advance(services, publish=False, push=True)
 
-        if startup_files:
-            self.register_timed_cb(cb=self._soma_service_state_cb,
-                                   cb_data={'name': 'soma',
-                                            'startup_files': startup_files},
-                                   timer=2)
+        self.register_timed_cb(cb=self._services_startup_cb,
+                               cb_data=services_data,
+                               timer=2)
 
-        # waiting 2 mins for all services to launch
-        if not self._services_setup.wait(timeout=60 * 2):
+        # waiting for all services to start (max waiting time 2 mins)
+        if not self._services_setup.wait(timeout=120):
             raise RuntimeError('Unable to start services')
 
-        if startup_files:
-            self.unregister_timed_cb(self._soma_service_state_cb)
+        self.unregister_timed_cb(self._services_startup_cb)
 
         self._log.info('all agent services started')
 
-    def _soma_service_state_cb(self, cb_data):
-
-        name = cb_data.get('name')
-        startup_files = cb_data.get('startup_files', {})
+    def _services_startup_cb(self, cb_data):
 
         reg = None
-        for tid in list(startup_files):
-            file = startup_files[tid]
-            if file and os.path.isfile(file):
+        for tid in list(cb_data):
 
+            service_up   = False
+            startup_file = cb_data[tid].get('startup_file')
+
+            if not startup_file:
+                service_up = True
+                # FIXME: at this point we assume that since "startup_file" is
+                #        not provided, then we don't wait - this will be
+                #        replaced with another callback (Component.advance will
+                #        publish control command "service_up" for service tasks)
+
+            elif os.path.isfile(startup_file):
+                # if file exists then service is up (general approach)
+                service_up = True
+
+                # collect data from the startup file: at this point we look
+                # for URLs only
                 service_urls = {}
-                with ru.ru_open(file, 'r') as fin:
+                with ru.ru_open(startup_file, 'r') as fin:
                     for line in fin.readlines():
+                        if '://' not in line:
+                            continue
                         parts = line.split()
-                        if len(parts) > 1 and '://' in parts[1]:
-                            service_urls[parts[0]] = parts[1]
+                        if len(parts) == 1:
+                            idx, url = '', parts[0]
+                        elif '://' in parts[1]:
+                            idx, url = parts[0], parts[1]
+                        else:
+                            continue
+                        service_urls[idx] = url
 
                 if service_urls:
                     if reg is None:
                         reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-                    service_key = 'service.%s' % name
+                    service_key = cb_data[tid]['name']
                     for idx, url in service_urls.items():
-                        reg['%s.%s' % (service_key, idx)] = {'url': url}
+                        idx = '.%s' % idx if idx else ''
+                        reg['%s%s' % (service_key, idx)] = {'url': url}
 
-                    self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
-                                                      'arg': {'uid': tid}})
-                    del startup_files[tid]
+            if service_up:
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
+                                                  'arg': {'uid': tid}})
+                del cb_data[tid]
 
         if reg is not None:
             reg.close()
@@ -700,8 +724,6 @@ class Agent_0(rpu.Worker):
         if uid in self._service_uids_running:
             self._log.warn('=== duplicated service startup signal for %s', uid)
             return True
-
-        self._log.debug('=== service startup message for %s', uid)
 
         self._service_uids_running.append(uid)
         self._log.debug('=== service %s started (%s / %s)', uid,
