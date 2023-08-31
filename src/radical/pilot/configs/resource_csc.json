@@ -3,18 +3,18 @@
     {
         "description"                 : "1404 CPU nodes",
 
-        "schemas"                     : ["local", "batch", "interactive"],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://mahti.csc.fi/",
-            "filesystem_endpoint"     : "file://mahti.csc.fi/"
-        },
-        "batch"                       : "interactive",
-        "interactive"                 :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://mahti.csc.fi/",
+                "filesystem_endpoint" : "file://mahti.csc.fi/"
+            },
+            "batch"                   : "interactive",
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+	}
 
         "default_queue"               : "test",
         "resource_manager"            : "SLURM",
@@ -31,12 +31,10 @@
                                         "module load tykky"
                                         ],
         "launch_methods"              : {
-                                         "order"  : ["SRUN"],
-                                         "SRUN" : {
-                                         }
+                                         "order" : ["SRUN"],
+                                         "SRUN"  : {}
                                         },
 
-        "python_dist"                 : "default",
         "virtenv_mode"                : "local"
     }
 }
