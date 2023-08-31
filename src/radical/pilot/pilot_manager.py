@@ -330,7 +330,7 @@ class PilotManager(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('got control cmd %s: %s', cmd, arg)
+        self._log.debug_9('got control cmd %s: %s', cmd, arg)
 
         if cmd == 'pilot_activate':
             pilot = arg['pilot']
