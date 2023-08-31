@@ -208,7 +208,7 @@
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
                                         },
-        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
     },
 
     "summit_jsrun": {
@@ -257,7 +257,7 @@
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
                                         },
-        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
     },
 
     "summit_interactive": {
