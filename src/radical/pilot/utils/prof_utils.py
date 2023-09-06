@@ -635,7 +635,7 @@ def get_session_description(sid, src=None):
         pid     = pilot['uid']
         pmgr    = pilot['pmgr']
 
-        details = pilot['descriptioa']
+        details = pilot['description']
         details = ru.dict_merge(details, pilot['resource_details'])
 
         pilot['cfg']                                = details
