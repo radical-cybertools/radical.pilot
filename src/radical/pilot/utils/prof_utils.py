@@ -7,7 +7,6 @@ import radical.utils as ru
 
 from ..                 import states as s
 from ..task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE
-from .session           import fetch_json
 
 _debug      = os.environ.get('RP_PROF_DEBUG')
 _node_index = dict()
