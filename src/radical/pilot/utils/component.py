@@ -299,9 +299,6 @@ class Component(object):
         assert cfg.kind in comp, '%s not in %s (%s)' % (cfg.kind,
                 list(comp.keys()), cfg.uid)
 
-        import pprint
-        session._log.debug('create 1 %s: %s', cfg.kind,
-                pprint.pformat(cfg.as_dict()))
         return comp[cfg.kind].create(cfg, session)
 
 
@@ -815,9 +812,6 @@ class Component(object):
         # TODO: should a poller over all inputs, or better yet register
         #       a callback
 
-        # import pprint
-        # pprint.pprint(self._inputs)
-
         for name in self._inputs:
 
             qname  = self._inputs[name]['qname']
@@ -972,23 +966,23 @@ class Component(object):
             # If '$set' is set, we also publish all keys listed in there.
             # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
+
+                self._log.debug('=== 1 %s %s: %s', thing['uid'], thing['state'], thing.get('resources'))
+
                 if '$all' in thing:
                     del thing['$all']
-                    if '$set' in thing:
-                        del thing['$set']
                     to_publish.append(thing)
+                    self._log.debug('=== 1 %s %s all', thing['uid'], thing['state'])
 
                 elif thing['state'] in rps.FINAL:
+                    self._log.debug('=== 1 %s %s final', thing['uid'], thing['state'])
                     to_publish.append(thing)
 
                 else:
                     tmp = {'uid'   : thing['uid'],
                            'type'  : thing['type'],
                            'state' : thing['state']}
-                    if '$set' in thing:
-                        for key in thing['$set']:
-                            tmp[key] = thing[key]
-                        del thing['$set']
+                    self._log.debug('=== 1 %s %s tmp', thing['uid'], thing['state'])
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update',

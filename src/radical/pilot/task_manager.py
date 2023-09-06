@@ -119,7 +119,7 @@ class TaskManager(rpu.Component):
         self._tcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._task_info   = list()
+        self._task_info   = dict()
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
@@ -252,16 +252,12 @@ class TaskManager(rpu.Component):
 
         # dump json
         json = self.as_dict()
-      # json['_id']  = self.uid
-        json['type'] = 'tmgr'
-        json['uid']  = self.uid
+      # json['_id']   = self.uid
+        json['type']  = 'tmgr'
+        json['uid']   = self.uid
+        json['tasks'] = self._task_info
 
         tgt = '%s/%s.json' % (self._session.path, self.uid)
-        ru.write_json(json, tgt)
-
-        # dump task json
-        json = self._task_info
-        tgt  = '%s/tasks.%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
 
 
@@ -411,8 +407,7 @@ class TaskManager(rpu.Component):
                     self._tasks[uid]._update(task_dict)
                     to_notify.append([task, s])
 
-                if task_dict['state'] in rps.FINAL:
-                    self._task_info.append(task_dict)
+                self._task_info[uid] = task_dict
 
         if to_notify:
             if _USE_BULK_CB:
