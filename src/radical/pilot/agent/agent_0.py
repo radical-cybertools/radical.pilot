@@ -227,7 +227,8 @@ class Agent_0(rpu.Worker):
         rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
 
-        pilot = {'type'     : 'pilot',
+        pilot = {'$all'     : True,              # pass full info to client side
+                 'type'     : 'pilot',
                  'uid'      : self._pid,
                  'state'    : rps.PMGR_ACTIVE,
                  'resources': {'rm_info': rm_info,

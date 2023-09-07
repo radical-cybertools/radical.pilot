@@ -244,13 +244,13 @@ class PilotManager(rpu.Component):
 
         # dump json
         json = self.as_dict()
-      # json['_id']  = self.uid
-        json['type'] = 'pmgr'
-        json['uid']  = self.uid
+      # json['_id']    = self.uid
+        json['type']   = 'pmgr'
+        json['uid']    = self.uid
+        json['pilots'] = [pilot.as_dict() for pilot in self._pilots.values()]
 
         tgt = '%s/%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
-
 
 
     # --------------------------------------------------------------------------
@@ -310,8 +310,8 @@ class PilotManager(rpu.Component):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
-                self._log.debug('state push: %s: %s', thing['uid'],
-                                                      thing['state'])
+                self._log.debug('state push: %s: %s %s', thing['uid'],
+                                                      thing['state'], thing.get('resources'))
 
                 # we got the state update from the state callback - don't
                 # publish it again

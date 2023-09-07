@@ -13,52 +13,6 @@ rs_fs = rs.filesystem
 
 # ------------------------------------------------------------------------------
 #
-def fetch_json(sid, tgt=None, skip_existing=False, session=None, log=None):
-    '''
-    Returns:
-
-        file name.
-
-    '''
-
-    if not log and session:
-        log = session._log
-    elif not log:
-        log = ru.Logger('radical.pilot.utils')
-
-    if session:
-        rep = session._rep
-    else:
-        rep = ru.Reporter('radical.pilot.utils')
-
-    if not tgt:
-        tgt = os.getcwd()
-
-    if tgt.startswith('/'):
-        dst = '%s/%s/%s.json' % (tgt, sid, sid)
-    else:
-        dst = '%s/%s/%s/%s.json' % (os.getcwd(), tgt, sid, sid)
-
-    ru.rec_makedir(os.path.dirname(dst))
-
-    if skip_existing and os.path.isfile(dst) and os.path.getsize(dst):
-        log.info("session already in %s", dst)
-        return dst
-
-    # FIXME: MongoDB
-    raise NotImplementedError('MongoDB missing')
-
-    json_docs = ...
-    ru.write_json(json_docs, dst)
-
-    log.info("session written to %s", dst)
-    rep.ok("+ %s (json)\n" % sid)
-
-    return dst
-
-
-# ------------------------------------------------------------------------------
-#
 def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         session=None, skip_existing=False, fetch_client=False, log=None):
     '''
@@ -135,9 +89,11 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 rs_file.close()
 
     # we need the session json for pilot details
-    json_name  = fetch_json(sid, tgt, skip_existing, session, log)
-    json_docs  = ru.read_json(json_name)
-    pilots     = json_docs['pilot']
+    pilots = list()
+    for fname in glob.glob('%s/pmgr.*.json' % sid):
+        json_doc = ru.read_json(fname)
+        pilots.extend(json_doc['pilots'])
+
     num_pilots = len(pilots)
 
     log.debug("Session: %s", sid)

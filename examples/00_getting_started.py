@@ -81,7 +81,8 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable     = '/bin/date'
+            td.executable     = '/bin/sleep'
+            td.arguments      = ['1']
             td.ranks          = 1
             td.cores_per_rank = 1
 
