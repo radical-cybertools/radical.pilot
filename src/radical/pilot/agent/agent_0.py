@@ -338,17 +338,15 @@ class Agent_0(rpu.Worker):
     #
     def _start_services(self):
 
-        sds = self._cfg.services
-        if not sds:
+        if not self.session.cfg.services:
             return
 
         self._log.info('starting agent services')
 
-        cfg           = self._cfg
         services      = []
         services_data = {}
 
-        for sd in sds:
+        for sd in self.session.cfg.services:
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
@@ -356,21 +354,23 @@ class Agent_0(rpu.Worker):
             td.verify()
 
             tid = ru.generate_id('service.%(item_counter)04d',
-                                 ru.ID_CUSTOM, ns=cfg.sid)
+                                 ru.ID_CUSTOM, ns=self.session.uid)
             task = dict()
             task['uid']               = tid
             task['type']              = 'service_task'
             task['origin']            = 'agent'
-            task['pilot']             = cfg.pid
+            task['pilot']             = self.session.cfg.pid
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['pilot_sandbox']     = cfg.pilot_sandbox
-            task['task_sandbox']      = cfg.pilot_sandbox + task['uid'] + '/'
-            task['task_sandbox_path'] = cfg.pilot_sandbox + task['uid'] + '/'
-            task['session_sandbox']   = cfg.session_sandbox
-            task['resource_sandbox']  = cfg.resource_sandbox
+            task['pilot_sandbox']     = self.session.cfg.pilot_sandbox
+            task['session_sandbox']   = self.session.cfg.session_sandbox
+            task['resource_sandbox']  = self.session.cfg.resource_sandbox
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
+
+            task_sandbox = self.session.cfg.pilot_sandbox + tid + '/'
+            task['task_sandbox']      = task_sandbox
+            task['task_sandbox_path'] = task_sandbox
 
             # TODO: use `type='service_task'` in RADICAL-Analytics
 
@@ -402,7 +402,6 @@ class Agent_0(rpu.Worker):
 
     def _services_startup_cb(self, cb_data):
 
-        reg = None
         for tid in list(cb_data):
 
             service_up   = False
@@ -436,20 +435,15 @@ class Agent_0(rpu.Worker):
                         service_urls[idx] = url
 
                 if service_urls:
-                    if reg is None:
-                        reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
                     service_key = cb_data[tid]['name']
                     for idx, url in service_urls.items():
-                        idx = '.%s' % idx if idx else ''
-                        reg['%s%s' % (service_key, idx)] = {'url': url}
+                        key = '%s%s' % (service_key, '.%s' % idx if idx else '')
+                        self.session._reg[key] = {'url': url}
 
             if service_up:
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
                                                   'arg': {'uid': tid}})
                 del cb_data[tid]
-
-        if reg is not None:
-            reg.close()
 
         return True
 
