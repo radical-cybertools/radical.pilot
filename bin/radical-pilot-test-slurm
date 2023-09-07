@@ -68,7 +68,6 @@ fi
 
 EOT
 
-echo sbatch /tmp/$$.slurm
-cat /tmp/$$.slurm
-
+echo "submitting /tmp/$$.slurm"
+sbatch /tmp/$$.slurm
 
