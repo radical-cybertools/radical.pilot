@@ -435,10 +435,12 @@ class Agent_0(rpu.Worker):
                         service_urls[idx] = url
 
                 if service_urls:
-                    service_key = cb_data[tid]['name']
+                    key = cb_data[tid]['name']
                     for idx, url in service_urls.items():
-                        key = '%s%s' % (service_key, '.%s' % idx if idx else '')
-                        self.session._reg[key] = {'url': url}
+                        if idx:
+                            key += '.%s' % idx
+                        key += '.url'
+                        self.session._reg[key] = url
 
             if service_up:
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
