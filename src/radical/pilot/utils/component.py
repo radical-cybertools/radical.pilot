@@ -967,22 +967,17 @@ class Component(object):
             # In all other cases, we only send 'uid', 'type' and 'state'.
             for thing in things:
 
-                self._log.debug('=== 1 %s %s: %s', thing['uid'], thing['state'], thing.get('resources'))
-
                 if '$all' in thing:
                     del thing['$all']
                     to_publish.append(thing)
-                    self._log.debug('=== 1 %s %s all', thing['uid'], thing['state'])
 
                 elif thing['state'] in rps.FINAL:
-                    self._log.debug('=== 1 %s %s final', thing['uid'], thing['state'])
                     to_publish.append(thing)
 
                 else:
                     tmp = {'uid'   : thing['uid'],
                            'type'  : thing['type'],
                            'state' : thing['state']}
-                    self._log.debug('=== 1 %s %s tmp', thing['uid'], thing['state'])
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update',

@@ -1012,6 +1012,20 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     @property
+    def rcfgs(self):
+        return self._rcfgs
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def rcfg(self):
+        return self._rcfg
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
     def cmgr(self):
         return self._cmgr
 
