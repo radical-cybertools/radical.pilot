@@ -194,17 +194,6 @@ class Pilot(object):
 
         self._log.info("[Callback]: pilot %s state: %s.", uid, state)
 
-        if state in rps.FINAL:
-            # dump json
-            json = self.as_dict()
-          # json['_id']  = self.uid
-            json['type'] = 'pilot'
-            json['uid']  = self.uid
-
-            tgt = '%s/%s.json' % (self._session.path, self.uid)
-            ru.write_json(json, tgt)
-
-
         if state == rps.FAILED and self._exit_on_error:
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
 
@@ -252,7 +241,14 @@ class Pilot(object):
         self._state = target
 
         # keep all information around
-        self._pilot_dict = copy.deepcopy(pilot_dict)
+        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
+
+        # FIXME MONGODB
+        resources = self._pilot_dict.get('resources') or {}
+        rm_info   = resources.get('rm_info')
+        if rm_info:
+            del self._pilot_dict['resources']['rm_info']
+            self._pilot_dict['resource_details'] = rm_info
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
@@ -291,6 +287,7 @@ class Pilot(object):
                'stdout'           : self.stdout,
                'stderr'           : self.stderr,
                'resource'         : self.resource,
+               'resources'        : self.resources,
                'endpoint_fs'      : str(self._endpoint_fs),
                'resource_sandbox' : str(self._resource_sandbox),
                'session_sandbox'  : str(self._session_sandbox),
@@ -403,6 +400,15 @@ class Pilot(object):
         """str: The resource tag of this pilot."""
 
         return self._descr.get('resource')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def resources(self):
+        """str: The amount of resources used by this pilot."""
+
+        return self._pilot_dict.get('resources')
 
 
     # --------------------------------------------------------------------------

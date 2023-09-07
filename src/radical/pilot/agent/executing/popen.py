@@ -64,7 +64,7 @@ class Popen(AgentExecutingComponent):
 
         self._watch_queue = queue.Queue()
 
-        self._pid = self._reg['cfg.pid']
+        self._pid = self.session.cfg.pid
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
@@ -343,7 +343,7 @@ class Popen(AgentExecutingComponent):
 
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
-        _start_new_session = self._reg['rcfg.new_session_per_task'] or False
+        _start_new_session = self.session.rcfg.new_session_per_task or False
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -566,7 +566,7 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
-        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self._session.reg_addr
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self.session.reg_addr
         ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
         ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
 
@@ -708,7 +708,7 @@ class Popen(AgentExecutingComponent):
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration
-        td['pre_exec'].extend(ru.as_list(self.session.cfg.get('task_pre_exec')))
+        td['pre_exec'].extend(ru.as_list(self.session.rcfg.get('task_pre_exec')))
 
 
     # --------------------------------------------------------------------------

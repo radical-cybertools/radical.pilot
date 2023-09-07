@@ -7,7 +7,6 @@ import radical.utils as ru
 
 from ..                 import states as s
 from ..task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE
-from .session           import fetch_json
 
 _debug      = os.environ.get('RP_PROF_DEBUG')
 _node_index = dict()
@@ -567,30 +566,35 @@ def get_session_description(sid, src=None):
     if not src:
         src = '%s/%s' % (os.getcwd(), sid)
 
-    json = ru.read_json('%s/%s.json' % (src, sid))
+    # construct session json from registry dump, tmgr and pmgr json files, and
+    # pilot and task json files
 
-    # make sure we have uids
-    # FIXME v0.47: deprecate
-    def fix_json(json):
-        def fix_uids(json):
-            if isinstance(json, list):
-                for elem in json:
-                    fix_uids(elem)
-            elif isinstance(json, dict):
-                if 'taskmanager' in json and 'tmgr' not in json:
-                    json['tmgr'] = json['taskmanager']
-                if 'pilotmanager' in json and 'pmgr' not in json:
-                    json['pmgr'] = json['pilotmanager']
-                if '_id' in json and 'uid' not in json:
-                    json['uid'] = json['_id']
-                    if 'cfg' not in json:
-                        json['cfg'] = dict()
-                for v in json.values():
-                    fix_uids(v)
-        fix_uids(json)
-    fix_json(json)
+    json = dict()
 
-    assert sid == json['session'][0]['uid'], 'sid inconsistent'
+    reg = ru.read_json('%s/%s.reg.json' % (src, sid))
+    del reg['rcfgs']
+
+    json['session'] = [ reg ]
+    json['tmgr']    = list()
+    json['pmgr']    = list()
+    json['pilot']   = list()
+    json['task']    = list()
+
+    for fname in glob.glob(str('%s/tmgr.*.json' % src)):
+        json['tmgr'].append(ru.read_json(fname))
+
+    for fname in glob.glob(str('%s/pmgr.*.json' % src)):
+        json['pmgr'].append(ru.read_json(fname))
+
+    for tmgr in json['tmgr']:
+        json['task'].extend(tmgr['tasks'].values())
+        del tmgr['tasks']
+
+    for pmgr in json['pmgr']:
+        json['pilot'].extend(pmgr['pilots'])
+        del pmgr['pilots']
+
+    json['session'][0]['uid'] = sid
 
     ret             = dict()
     ret['entities'] = dict()
@@ -608,7 +612,7 @@ def get_session_description(sid, src=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'pmgr',
-                     'cfg'      : pmgr['cfg'],
+                     'cfg'      : pmgr.get('cfg', {}),
                      'has'      : ['pilot'],
                      'children' : list()
                     }
@@ -618,7 +622,7 @@ def get_session_description(sid, src=None):
         tree[sid]['children'].append(uid)
         tree[uid] = {'uid'      : uid,
                      'etype'    : 'tmgr',
-                     'cfg'      : tmgr['cfg'],
+                     'cfg'      : tmgr.get('cfg', {}),
                      'has'      : ['task'],
                      'children' : list()
                     }
@@ -626,10 +630,17 @@ def get_session_description(sid, src=None):
         tree[uid]['description'] = dict()
 
     for pilot in sorted(json['pilot'], key=lambda k: k['uid']):
+
         pid     = pilot['uid']
         pmgr    = pilot['pmgr']
-        details = ru.read_json('%s/%s.resources.json' % (src, pid))
-        pilot['cfg']['resource_details'] = details
+
+        details = pilot['description']
+        details = ru.dict_merge(details, pilot['resource_details'])
+
+        pilot['cfg']                                = details
+        pilot['cfg']['resource_details']            = details
+        pilot['cfg']['resource_details']['rm_info'] = details
+
         tree[pmgr]['children'].append(pid)
         tree[pid] = {'uid'        : pid,
                      'etype'      : 'pilot',
