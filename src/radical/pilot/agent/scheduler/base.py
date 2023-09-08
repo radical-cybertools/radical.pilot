@@ -216,14 +216,10 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        scfg  = ru.Config(cfg=self._reg['cfg'])
-        rcfg = ru.Config(cfg=self._reg['rcfg'])
-
-        # the resource manager needs to connect to the registry
-        rcfg.reg_addr = self._cfg.reg_addr
-
-        rm_name  = rcfg['resource_manager']
-        self._rm = ResourceManager.create(rm_name, scfg, rcfg,
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(rm_name,
+                                          self.session.cfg,
+                                          self.session.rcfg,
                                           self._log, self._prof)
 
         self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
@@ -293,7 +289,7 @@ class AgentSchedulingComponent(rpu.Component):
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = session._reg['rcfg.agent_scheduler']
+        name = session.rcfg.agent_scheduler
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
@@ -602,8 +598,12 @@ class AgentSchedulingComponent(rpu.Component):
 
         # ZMQ endpoints will not have survived the fork. Specifically the
         # registry client of the component base class will have to reconnect.
-        # FIXME: should be moved into a post-fork hook of the base class
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        # Note that `self._reg` of the base class is a *pointer* to the sesison
+        # registry.
+        #
+        # FIXME: should be moved into a post-fork hook of the session
+        #
+        self._reg = ru.zmq.RegistryClient(url=self.session.cfg.reg_addr)
 
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()

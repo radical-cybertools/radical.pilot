@@ -72,10 +72,11 @@ class Flux(AgentSchedulingComponent):
         cfg     = self._reg['bridges.%s' % qname]
         self._q = ru.zmq.Putter(qname, cfg['put'])
 
-        lm_cfg  = self._reg['rcfg.launch_methods'].get('FLUX')
-        lm_cfg['pid']       = self._cfg.pid
-        lm_cfg['reg_addr']  = self._cfg.reg_addr
-        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+        lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self.session.cfg.pid
+        lm_cfg['reg_addr']  = self.session.cfg.reg_addr
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg,
+                                                  self.session.cfg,
                                                   self._log, self._prof)
 
 

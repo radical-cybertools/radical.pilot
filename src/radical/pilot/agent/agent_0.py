@@ -47,7 +47,6 @@ class Agent_0(rpu.Worker):
         self._pwd     = cfg.pilot_sandbox
 
         self._session = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_0)
-        self._rcfg    = self._session._rcfg
 
         # init the worker / component base classes, connects registry
         rpu.Worker.__init__(self, cfg, self._session)
@@ -89,12 +88,12 @@ class Agent_0(rpu.Worker):
         for task in msg:
 
             # make sure the tasks obtain env settings (if needed)
-            if 'task_environment' in self._cfg:
+            if 'task_environment' in self.session.rcfg:
 
                 if not task['description'].get('environment'):
                     task['description']['environment'] = dict()
 
-                for k,v in self._cfg['task_environment'].items():
+                for k,v in self.session.rcfg.task_environment.items():
                     # FIXME: this might overwrite user specified env
                     task['description']['environment'][k] = v
 
@@ -138,9 +137,10 @@ class Agent_0(rpu.Worker):
         # use for sub-agent startup.  Add the remaining ResourceManager
         # information to the config, for the benefit of the scheduler).
 
-        self._cfg.reg_addr = self._session.reg_addr
-        self._rm = ResourceManager.create(name=self._rcfg.resource_manager,
-                                          cfg=self._cfg, rcfg=self._rcfg,
+        rname    = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(name=rname,
+                                          cfg=self.session.cfg,
+                                          rcfg=self.session.rcfg,
                                           log=self._log, prof=self._prof)
 
         self._log.debug(pprint.pformat(self._rm.info))
@@ -154,12 +154,12 @@ class Agent_0(rpu.Worker):
         # channels, merge those into the agent config
         #
         # FIXME: this needs to start the app_comm bridges
-        app_comm = self._rcfg.get('app_comm')
+        app_comm = self.session.rcfg.get('app_comm')
         if app_comm:
 
             # bridge addresses also need to be exposed to the workload
-            if 'task_environment' not in self._rcfg:
-                self._rcfg['task_environment'] = dict()
+            if 'task_environment' not in self.session.rcfg:
+                self.session.rcfg['task_environment'] = dict()
 
             if isinstance(app_comm, list):
                 app_comm = {ac: {'bulk_size': 0,
@@ -174,8 +174,8 @@ class Agent_0(rpu.Worker):
 
                 AC = ac.upper()
 
-                self._rcfg['task_environment']['RP_%s_IN'  % AC] = ac['addr_in']
-                self._rcfg['task_environment']['RP_%s_OUT' % AC] = ac['addr_out']
+                self.session.rcfg.task_environment['RP_%s_IN'  % AC] = ac['addr_in']
+                self.session.rcfg.task_environment['RP_%s_OUT' % AC] = ac['addr_out']
 
 
     # --------------------------------------------------------------------------
@@ -316,19 +316,19 @@ class Agent_0(rpu.Worker):
         # sub-agent config files.
 
         # write deep-copies of the config for each sub-agent (sans from agent_0)
-        for sa in self._rcfg.get('agents', {}):
+        for sa in self.session.cfg.get('agents', {}):
 
             assert (sa != 'agent_0'), 'expect subagent, not agent_0'
 
             # use our own config sans agents/components/bridges as a basis for
             # the sub-agent config.
-            tmp_cfg = copy.deepcopy(self._session._cfg)
+            tmp_cfg = copy.deepcopy(self.session.cfg)
             tmp_cfg['agents']     = dict()
             tmp_cfg['components'] = dict()
             tmp_cfg['bridges']    = dict()
 
             # merge sub_agent layout into the config
-            ru.dict_merge(tmp_cfg, self._cfg['agents'][sa], ru.OVERWRITE)
+            ru.dict_merge(tmp_cfg, self.session.cfg['agents'][sa], ru.OVERWRITE)
 
             tmp_cfg['uid']   = sa
             tmp_cfg['aid']   = sa
@@ -461,10 +461,14 @@ class Agent_0(rpu.Worker):
 
         # FIXME: reroute to agent daemonizer
 
-        if not self._cfg.get('agents'):
+        if not self.session.cfg.get('agents'):
             return
 
-        assert (len(self._rm.info.agent_node_list) >= len(self._cfg['agents']))
+        n_agents      = len(self.session.cfg['agents'])
+        n_agent_nodes = len(self._rm.info.agent_node_list)
+
+        assert n_agent_nodes >= n_agents
+
 
         self._log.debug('start_sub_agents')
 
@@ -477,10 +481,10 @@ class Agent_0(rpu.Worker):
 
         bs_name = '%s/bootstrap_2.sh'
 
-        for idx, sa in enumerate(self._cfg['agents']):
+        for idx, sa in enumerate(self.session.cfg['agents']):
 
-            target  = self._cfg['agents'][sa]['target']
-            bs_args = [self._sid, self._cfg.reg_addr, sa]
+            target  = self.session.cfg['agents'][sa]['target']
+            bs_args = [self._sid, self.session.cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
 
@@ -577,11 +581,13 @@ class Agent_0(rpu.Worker):
     def _check_lifetime(self):
 
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
-        if self._cfg.runtime:
+        if self.session.cfg.runtime:
 
-            if time.time() >= self._starttime +  (int(self._cfg.runtime) * 60):
+            if time.time() >= self._starttime + \
+                                           (int(self.session.cfg.runtime) * 60):
 
-                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
+                self._log.info('runtime limit (%ss).',
+                               self.session.cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done

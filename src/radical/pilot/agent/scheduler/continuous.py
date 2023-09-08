@@ -96,7 +96,7 @@ class Continuous(AgentSchedulingComponent):
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
-        self._scattered = self._cfg.get('scattered', False)
+        self._scattered = self.session.rcfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
