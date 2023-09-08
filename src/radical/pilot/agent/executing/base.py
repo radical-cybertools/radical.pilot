@@ -50,7 +50,7 @@ class AgentExecutingComponent(rpu.Component):
         if cls != AgentExecutingComponent:
             raise TypeError('Factory only available to base class!')
 
-        name = session._rcfg['agent_spawner']
+        name = session.rcfg.agent_spawner
 
         from .popen    import Popen
         from .flux     import Flux
@@ -72,25 +72,25 @@ class AgentExecutingComponent(rpu.Component):
     #
     def initialize(self):
 
-        scfg = ru.Config(cfg=self._reg['cfg'])
-        rcfg = ru.Config(cfg=self._reg['rcfg'])
 
-        rm_name  = rcfg['resource_manager']
-        self._rm = rpa.ResourceManager.create(rm_name, scfg, rcfg,
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = rpa.ResourceManager.create(rm_name,
+                                              self.session.cfg,
+                                              self.session.rcfg,
                                               self._log, self._prof)
 
         self._pwd      = os.path.realpath(os.getcwd())
-        self.sid       = self._cfg['sid']
-        self.resource  = scfg['resource']
-        self.rsbox     = scfg['resource_sandbox']
-        self.ssbox     = scfg['session_sandbox']
-        self.psbox     = scfg['pilot_sandbox']
+        self.sid       = self.session.uid
+        self.resource  = self.session.cfg.resource
+        self.rsbox     = self.session.cfg.resource_sandbox
+        self.ssbox     = self.session.cfg.session_sandbox
+        self.psbox     = self.session.cfg.pilot_sandbox
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
 
         # if so configured, let the tasks know what to use as tmp dir
-        self._task_tmp = rcfg.get('task_tmp',
-                                          os.environ.get('TMP', '/tmp'))
+        self._task_tmp = self.session.rcfg.get('task_tmp',
+                                               os.environ.get('TMP', '/tmp'))
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
