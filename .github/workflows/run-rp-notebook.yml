@@ -53,13 +53,15 @@ jobs:
           . testenv/bin/activate
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
-          SID=$(ls -rt | grep rp.session)
-          echo "$SID: $SID"
+          SIDCLIENT=$(ls -rt | grep rp.session)
+          SIDAGENT=~/radical.pilot.sandbox/$SIDCLIENT
           mkdir session
-          ls -la
-          cp -R $SID session
+          tar cvfj $SIDCLIENT.tar.bz2 $SIDCLENT
+          tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
+          cp -R $SIDCLIENT.tar.bz2 $SIDAGENT.tar.bz2 session
       - name: upload session
         uses: actions/upload-artifact@v3
         with:
             name: session
             path: session
+            retention-days: 5
