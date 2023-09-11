@@ -49,14 +49,17 @@ jobs:
       - name: Run Jupyter Notebook
         env:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
+        timeout-minutes: 5
         run: |
           . testenv/bin/activate
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
+      - name: Collect session
+        run: |
           SIDCLIENT=$(ls -rt | grep rp.session)
-          # SIDAGENT="~/radical.pilot.sandbox/$SIDCLIENT"
+          SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
           # ls $SIDCLIENT
-          # ls $SIDAGENT
+          ls $SIDAGENT
           mkdir session
           tar cvfj $SIDCLIENT.tar.bz2 $SIDCLIENT
           # tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
