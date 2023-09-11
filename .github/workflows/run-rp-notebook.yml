@@ -54,7 +54,10 @@ jobs:
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
           SIDCLIENT=$(ls -rt | grep rp.session)
-          SIDAGENT=~/radical.pilot.sandbox/$SIDCLIENT
+          SIDAGENT="~/radical.pilot.sandbox/$SIDCLIENT"
+          ls $SIDCLIENT
+          ls ~/radical.pilot.sandbox/
+          ls $SIDAGENT
           mkdir session
           tar cvfj $SIDCLIENT.tar.bz2 $SIDCLENT
           tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
