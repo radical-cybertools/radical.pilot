@@ -50,12 +50,13 @@ jobs:
         env:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
         timeout-minutes: 5
-        continue-on-error: true
+        # continue-on-error: true
         run: |
           . testenv/bin/activate
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
       - name: Collect session
+        if: always()
         run: |
           SIDCLIENT=$(ls -rt | grep rp.session)
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
@@ -69,6 +70,7 @@ jobs:
             cp -R $AGENTNAME.tar.bz2 session
           fi
       - name: upload session
+        if: always()
         uses: actions/upload-artifact@v3
         with:
             name: session
