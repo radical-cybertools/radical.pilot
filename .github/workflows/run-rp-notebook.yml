@@ -53,4 +53,13 @@ jobs:
           . testenv/bin/activate
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
-
+          SID=$(ls -rt | grep rp.session)
+          echo "$SID: $SID"
+          mkdir session
+          ls -la
+          cp -R $SID session
+      - name: upload session
+        uses: actions/upload-artifact@v3
+        with:
+            name: session
+            path: session
