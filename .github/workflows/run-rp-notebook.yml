@@ -58,12 +58,14 @@ jobs:
         run: |
           SIDCLIENT=$(ls -rt | grep rp.session)
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
-          # ls $SIDCLIENT
-          ls $SIDAGENT
           mkdir session
           tar cvfj $SIDCLIENT.tar.bz2 $SIDCLIENT
-          # tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
           cp -R $SIDCLIENT.tar.bz2 session
+          if [ -d "$SIDAGENT" ]; then
+            ls $SIDAGENT
+            tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
+            cp -R $SIDAGENT.tar.bz2 session
+          fi
       - name: upload session
         uses: actions/upload-artifact@v3
         with:
