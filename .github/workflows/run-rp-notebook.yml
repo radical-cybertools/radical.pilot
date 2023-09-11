@@ -55,10 +55,10 @@ jobs:
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
           SIDCLIENT=$(ls -rt | grep rp.session)
           # SIDAGENT="~/radical.pilot.sandbox/$SIDCLIENT"
-          ls $SIDCLIENT
+          # ls $SIDCLIENT
           # ls $SIDAGENT
           mkdir session
-          tar cvfj $SIDCLIENT.tar.bz2 $SIDCLENT
+          tar cvfj $SIDCLIENT.tar.bz2 $SIDCLIENT
           # tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
           cp -R $SIDCLIENT.tar.bz2 session
       - name: upload session
