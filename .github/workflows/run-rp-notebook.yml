@@ -49,7 +49,7 @@ jobs:
       - name: Run Jupyter Notebook
         env:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
-        timeout-minutes: 10
+        timeout-minutes: 5
         continue-on-error: true
         run: |
           . testenv/bin/activate
@@ -59,12 +59,14 @@ jobs:
         run: |
           SIDCLIENT=$(ls -rt | grep rp.session)
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
+          CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
+          AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
           mkdir session
-          tar cvfj $SIDCLIENT.tar.bz2 $SIDCLIENT
-          cp -R $SIDCLIENT.tar.bz2 session
+          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          cp -R $CLIENTNAME.tar.bz2 session
           if [ -d "$SIDAGENT" ]; then
-            tar cvfj $SIDAGENT.tar.bz2 $SIDAGENT
-            cp -R $SIDAGENT.tar.bz2 session
+            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
+            cp -R $AGENTNAME.tar.bz2 session
           fi
       - name: upload session
         uses: actions/upload-artifact@v3
