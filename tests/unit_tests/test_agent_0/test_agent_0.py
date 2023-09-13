@@ -149,7 +149,9 @@ class TestComponent(TestCase):
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
         agent_0._sid = 'rp.session.0'
-        agent_0._cfg = ru.Config(from_dict={
+
+        agent_0._session     = mock.Mock()
+        agent_0._session.cfg = ru.Config(from_dict={
             'agents': {
                 'agent_1': {'target'    : 'node',
                             'components': {'agent_executing': {'count': 1}}}
@@ -199,7 +201,7 @@ class TestComponent(TestCase):
             os.unlink(agent_file)
 
         # incorrect config setup for agent ('target' is in ['local', 'node'])
-        agent_0._cfg['agents']['agent_1']['target'] = 'incorrect_target'
+        agent_0._session.cfg['agents']['agent_1']['target'] = 'incorrect_target'
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
