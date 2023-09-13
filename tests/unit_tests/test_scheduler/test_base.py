@@ -54,6 +54,8 @@ class TestBaseScheduling(TestCase):
         sched.nodes               = []
         sched._partitions         = {}
 
+        sched._session = mock.Mock()
+
         for c in self._test_cases['initialize']:
 
             def _mock_get(_c, name):
@@ -62,9 +64,10 @@ class TestBaseScheduling(TestCase):
             from functools import partial
 
             mock_get   = partial(_mock_get, c)
-            sched._cfg = ru.Config(from_dict={'reg_addr': 'addr'})
-            sched._reg = ru.Config(from_dict={'cfg': c['config'],
-                                              'rcfg': c['config']['resource_cfg']})
+            sched._session.cfg  = ru.Config(
+                from_dict=c['config'])
+            sched._session.rcfg = ru.Config(
+                from_dict=c['config']['resource_cfg'])
 
             with mock.patch.object(ru.zmq.RegistryClient, 'get', mock_get):
                 if 'RuntimeError' in c['result']:
