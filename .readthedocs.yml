@@ -4,7 +4,6 @@ version: 2
 formats: [htmlzip]
 
 python:
-  system_packages: true
   version: 3.7
   install:
     - requirements: requirements-docs.txt
