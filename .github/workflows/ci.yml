@@ -3,9 +3,11 @@ name: CI
 
 on:
   push:
-    branches: [ devel ]
+    branches:
+      - 'devel*'
   pull_request:
-    branches: [ devel ]
+    branches:
+      - 'devel*'
 
 jobs:
 
