@@ -360,6 +360,11 @@ class Popen(AgentExecutingComponent):
         # store pid for last-effort termination
         _pids.append(task['proc'].pid)
 
+        # keep process ID within metadata in the task description
+        if not task['description'].get('metadata'):
+            task['description']['metadata'] = {}
+        task['description']['metadata']['process_id'] = task['proc'].pid
+
         # handle task timeout if needed
         self.handle_timeout(task)
 
