@@ -161,9 +161,6 @@ class PilotManager(rpu.Component):
         # also listen to the state pubsub for pilot state changes
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_sub_cb)
 
-        # also listen to the state control for pilot activation
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_sub_cb)
-
         # let session know we exist
         self._session._register_pmgr(self)
 
@@ -311,7 +308,7 @@ class PilotManager(rpu.Component):
             if 'type' in thing and thing['type'] == 'pilot':
 
                 self._log.debug('state push: %s: %s %s', thing['uid'],
-                                                      thing['state'], thing.get('resources'))
+                                thing['state'], thing.get('resources'))
 
                 # we got the state update from the state callback - don't
                 # publish it again
@@ -322,7 +319,7 @@ class PilotManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_sub_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
         if self._terminate.is_set():
             return False

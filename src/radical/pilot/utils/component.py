@@ -4,7 +4,9 @@ __license__   = 'MIT'
 
 # pylint: disable=global-statement   # W0603 global `_components`
 
+import io
 import os
+import sys
 import copy
 import time
 
@@ -14,7 +16,7 @@ import radical.utils   as ru
 from .. import constants as rpc
 from .. import states    as rps
 
-from .rpc_helper import RPCHelper
+from ..messages  import RPCRequestMessage, RPCResultMessage
 
 
 # ------------------------------------------------------------------------------
@@ -184,15 +186,15 @@ class Component(object):
 
         self._reg = self._session._reg
 
-        self._inputs     = dict()       # queues to get things from
-        self._outputs    = dict()       # queues to send things to
-        self._workers    = dict()       # methods to work on things
-        self._publishers = dict()       # channels to send notifications to
-        self._threads    = dict()       # subscriber and idler threads
-        self._cb_lock    = mt.RLock()   # guard threaded callback invokations
-        self._work_lock  = mt.RLock()   # guard threaded callback invokations
-
-        self._subscribers = dict()      # ZMQ Subscriber classes
+        self._inputs       = dict()       # queues to get things from
+        self._outputs      = dict()       # queues to send things to
+        self._workers      = dict()       # methods to work on things
+        self._publishers   = dict()       # channels to send notifications to
+        self._threads      = dict()       # subscriber and idler threads
+        self._cb_lock      = mt.RLock()   # guard threaded callback invokations
+        self._rpc_lock     = mt.RLock()   # guard threaded rpc calls
+        self._rpc_handlers = dict()       # RPC handler methods
+        self._subscribers  = dict()       # ZMQ Subscriber classes
 
         if self._owner == self.uid:
             self._owner = 'root'
@@ -310,10 +312,25 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def _cancel_monitor_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
+        '''
+        This callback can be overloaded by the component to handle any control
+        message which is not already handled by the component base class.
+        '''
+        cmd = msg['cmd']
+        self._log.debug('=== got cmd %s - ignored', cmd)
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
         '''
         We listen on the control channel for cancel requests, and append any
-        found UIDs to our cancel list.
+        found UIDs to our cancel list.  We also listen for RPC requests and
+        handle any registered RPC handlers.  All other control messages are
+        passed on to the `control_cb` handler which can be overloaded by
+        component implementations.
         '''
 
         # FIXME: We do not check for types of things to cancel - the UIDs are
@@ -321,7 +338,14 @@ class Component(object):
         #        currently have no abstract 'cancel' command, but instead use
         #        'cancel_tasks'.
 
-        self._log.debug_9('command incoming: %s', msg)
+        # try to handle message as RPC message
+        if self._handle_zmq_msg(msg):
+
+            # handled successfully
+            return
+
+        # handle any other message types
+        self._log.debug('=== command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -338,14 +362,86 @@ class Component(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
-        if cmd == 'terminate':
+        elif cmd == 'terminate':
             self._log.info('got termination command')
             self.stop()
 
-      # else:
-      #     self._log.debug('command ignored: %s', cmd)
+        else:
+            self._log.debug('command handled by implementation: %s', cmd)
+            self.control_cb(topic, msg)
 
         return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_zmq_msg(self, msg_data):
+
+        try:
+            msg = ru.zmq.Message.deserialize(msg_data)
+            self._log.debug('deserialized msg type: %s', type(msg))
+
+        except Exception as e:
+            self._log.debug('no zmq msg type: %s', msg_data)
+            return False
+
+        if isinstance(msg, RPCRequestMessage):
+            self._handle_rpc_msg(msg)
+            return True
+
+        else:
+            # we do not handle other message types right now
+            return False
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _handle_rpc_msg(self, msg):
+
+        bakout = sys.stdout
+        bakerr = sys.stderr
+
+        strout = None
+        strerr = None
+
+        val    = None
+        out    = None
+        err    = None
+        exc    = None
+
+        if msg.cmd not in self._rpc_handlers:
+            # this RPC message is *silently* ignored
+            self._log.debug('no rpc handler for [%s])', msg.cmd)
+            return
+
+        try:
+            self._log.debug('rpc handler for %s: %s(%s, %s)', msg.cmd,
+                            self._rpc_handlers[msg.cmd],
+                            *msg.args, **msg.kwargs)
+
+            sys.stdout = strout = io.StringIO()
+            sys.stderr = strerr = io.StringIO()
+
+            val = self._rpc_handlers[msg.cmd](*msg.args, **msg.kwargs)
+            out = strout.getvalue()
+            err = strerr.getvalue()
+
+        except Exception as e:
+            self._log.exception('rpc call failed: %s' % (msg))
+            val = None
+            out = strout.getvalue()
+            err = strerr.getvalue()
+            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
+
+        finally:
+            # restore stdio
+            sys.stdout = bakout
+            sys.stderr = bakerr
+
+        rep = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
+        self._log.debug('rpc reply: %s', rep)
+
+        return rep
 
 
     # --------------------------------------------------------------------------
@@ -379,10 +475,10 @@ class Component(object):
         self.register_publisher(rpc.STATE_PUBSUB)
         self.register_publisher(rpc.CONTROL_PUBSUB)
 
-        # set controller callback to handle cancellation requests
+        # set controller callback to handle cancellation requests and RPCs
         self._cancel_list = list()
         self._cancel_lock = mt.RLock()
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._cancel_monitor_cb)
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # call component level initialize
         self.initialize()
@@ -875,8 +971,7 @@ class Component(object):
                   # for thing in things:
                   #     self._log.debug('got %s (%s)', thing['uid'], state)
 
-                    with self._work_lock:
-                        self._workers[state](things)
+                    self._workers[state](things)
 
                 except Exception as e:
 

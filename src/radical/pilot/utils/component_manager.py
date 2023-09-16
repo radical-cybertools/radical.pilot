@@ -72,6 +72,7 @@ class ComponentManager(object):
     #
     def _hb_msg_cb(self, topic, msg):
 
+        self._log.debug('==== got hb msg %s', msg)
         hb_msg = HeartbeatMessage(from_dict=msg)
         self._heartbeats[hb_msg.uid] = time.time()
 
@@ -102,6 +103,8 @@ class ComponentManager(object):
                 raise RuntimeError('uids %s not found' % nok)
 
             time.sleep(0.25)
+
+        self._log.debug('===== wait for done: %s', ok)
 
 
     # --------------------------------------------------------------------------

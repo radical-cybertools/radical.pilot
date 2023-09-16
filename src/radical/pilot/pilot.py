@@ -161,17 +161,11 @@ class Pilot(object):
 
         # hook into the control pubsub for rpc handling
         self._rpc_reqs = dict()
-        self._ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
-        self._ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+        ctrl_addr_sub  = self._session._reg['bridges.control_pubsub.addr_sub']
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_sub,
-                          log=self._log, prof=self._prof,
-                          cb=self._control_cb, topic=rpc.CONTROL_PUBSUB)
-
-        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=self._ctrl_addr_pub,
-                                          log=self._log, prof=self._prof)
-
-        ru.zmq.test_pubsub(rpc.CONTROL_PUBSUB, self._ctrl_addr_pub, self._ctrl_addr_sub)
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                          log=self._log, prof=self._prof, cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
 
 
     # --------------------------------------------------------------------------
@@ -756,7 +750,7 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, args=None):
+    def rpc(self, cmd, args=None, kwargs=None):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the pilot and wait for the

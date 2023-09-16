@@ -134,9 +134,6 @@ class PMGRLaunchingComponent(rpu.Component):
 
         self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
 
-        # we listen for pilot cancel commands
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
-
         # also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
         self._active_sds = dict()
@@ -220,7 +217,7 @@ class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pmgr_control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
         cmd = msg['cmd']
         arg = msg['arg']
