@@ -7,12 +7,15 @@ import copy
 import time
 import queue
 
+import threading     as mt
+
 import radical.utils as ru
 
 from . import PilotManager
 from . import states    as rps
 from . import constants as rpc
 
+from .messages           import RPCRequestMessage, RPCResultMessage
 from .staging_directives import complete_url
 
 
@@ -157,7 +160,7 @@ class Pilot(object):
         self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
 
         # hook into the control pubsub for rpc handling
-        self._rpc_queue = queue.Queue()
+        self._rpc_reqs = dict()
         self._ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
         self._ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
 
@@ -735,15 +738,20 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def _control_cb(self, topic, msg_data):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        # we only listen for RPCResponse messages
 
-        if cmd == 'rpc_res':
+        try:
+            msg = ru.zmq.Message.deserialize(msg_data)
+            self._log.debug('=== rpc res: %s', msg)
 
-            self._log.debug('rpc res: %s', arg)
-            self._rpc_queue.put(arg)
+            if msg.uid in self._rpc_reqs:
+                self._rpc_reqs[msg.uid]['res'] = msg
+                self._rpc_reqs[msg.uid]['evt'].set()
+
+        except:
+            self._log.debug('=== ignore msg %s', msg_data)
 
 
     # --------------------------------------------------------------------------
@@ -756,26 +764,37 @@ class Pilot(object):
         thread safe to have multiple concurrent RPC calls.
         '''
 
+        self._log.debug('=== pilot in %s state', self.state)
+        self.wait(rps.PMGR_ACTIVE)
+        self._log.debug('=== pilot now in %s state', self.state)
+
         if not args:
             args = dict()
 
-        rpc_id  = ru.generate_id('rpc')
-        rpc_req = {'uid' : rpc_id,
-                   'rpc' : cmd,
-                   'tgt' : self._uid,
-                   'arg' : args}
+        rpc_id  = ru.generate_id('%s.rpc' % self._uid)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args)
 
+        self._rpc_reqs[rpc_id] = {
+                'req': rpc_req,
+                'res': None,
+                'evt': mt.Event(),
+                'time': time.time(),
+                }
 
-        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_req',
-                                                'arg':  rpc_req,
-                                                'fwd': True})
-        rpc_res = self._rpc_queue.get()
-        self._log.debug('rpc result: %s', rpc_res['ret'])
+        self._log.debug('=== wait for rpc request %s', rpc_req)
+        while True:
 
-        if rpc_res['ret']:
-            raise RuntimeError('rpc failed: %s' % rpc_res['err'])
+            if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=10):
+                self._log.debug('=== still waiting for rpc request %s', rpc_id)
+                continue
 
-        return rpc_res['ret']
+            rpc_res = self._rpc_reqs[rpc_id]['res']
+            self._log.debug('=== rpc result: %s', rpc_res)
+
+            if rpc_res.exc:
+                raise RuntimeError('=== rpc failed: %s' % rpc_res.exc)
+
+            return rpc_res.val
 
 
     # --------------------------------------------------------------------------

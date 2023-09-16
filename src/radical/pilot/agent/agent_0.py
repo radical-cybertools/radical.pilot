@@ -573,6 +573,8 @@ class Agent_0(rpu.Worker):
     #
     def _ctrl_prepare_env(self, msg):
 
+        self._log.debug('=== control prep env')
+
         arg = msg['arg']
 
         for env_id in arg:
