@@ -1,0 +1,73 @@
+#!/bin/sh
+
+ACCOUNT=
+PARTITION=
+EXCLUSIVE=''
+
+NNODES=1
+NTASKS=2
+CPT=1
+MEM=0
+NODELIST=
+
+
+while getopts "a:p:e" OPTION; do
+    case $OPTION in
+        a)  ACCOUNT="$OPTARG"      ;;
+        p)  PARTITION="$OPTARG"    ;;
+        e)  EXCLUSIVE=1            ;;
+        *)  echo "Unknown option: '$OPTION'='$OPTARG'"
+            return 1;;
+    esac
+done
+
+echo "cmd -a $ACCOUNT -p $PARTITION -e $EXCLUSIVE"
+
+if test "$EXCLUSIVE" = "1"
+then
+    SBATCH_EXCLUSIVE='#SBATCH --exclusive'
+    SRUN_EXCLUSIVE='--exact'
+fi
+
+
+cat > /tmp/$$.slurm <<EOT
+#!/bin/sh
+
+$SBATCH_EXCLUSIVE
+#SBATCH --nodes     "$NNODES"
+#SBATCH --account   "$ACCOUNT"
+#SBATCH --partition "$PARTITION"
+#SBATCH --time      "00:05:00"
+
+runtime=30
+noise=5
+
+nodelist=\$SLURM_NODELIST
+test -z "\$nodelist" && nodelist=\$SLURM_JOB_NODELIST
+test -z "\$nodelist" && exit -1
+
+node_1=\$(echo \$nodelist | cut -f 1 -d ,)
+options="--nodes=1 --ntasks=1 --cpus-per-task=1 --mem=0 --nodelist='\$node_1'"
+
+start=\$(date "+%s")
+srun \$options $SRUN_EXCLUSIVE /bin/sleep \$runtime &
+srun \$options $SRUN_EXCLUSIVE /bin/sleep \$runtime &
+wait
+stop=\$(date "+%s")
+
+duration=\$((stop - start))
+
+if test \$duration -gt \$((2 * runtime - noise))
+then
+    echo "duration too long, no concurrency"
+    exit 1
+else
+    echo "duration consistent with concurrent execution"
+    exit 0
+fi
+
+EOT
+
+echo "submitting /tmp/$$.slurm"
+sbatch /tmp/$$.slurm
+
