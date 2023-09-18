@@ -82,7 +82,7 @@ class Agent_0(rpu.Worker):
     #
     def _proxy_input_cb(self, msg):
 
-        self._log.debug('====== proxy input cb: %s', len(msg))
+        self._log.debug_8('proxy input cb: %s', len(msg))
 
         to_advance = list()
 
@@ -202,16 +202,7 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        # hook into the control pubsub for rpc handling
-        ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
-        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
-
-        self._rpc_helper = rpu.RPCHelper(owner=self._uid,
-                                         ctrl_addr_pub=ctrl_addr_pub,
-                                         ctrl_addr_sub=ctrl_addr_sub,
-                                         log=self._log, prof=self._prof)
-
-        self._rpc_helper.add_handler('prepare_env', self._prepare_env)
+        self.register_rpc_handler('prepare_env', self._prepare_env)
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
@@ -222,7 +213,9 @@ class Agent_0(rpu.Worker):
                                  'export PATH=%s'
                                  %  os.environ.get('PATH', '')]
                    }
-        self._rpc_helper.request('prepare_env', env_name='rp', env_spec=env_spec)
+
+
+        self.rpc('prepare_env', env_name='rp', env_spec=env_spec)
 
         # start any services if they are requested
         self._start_services()
@@ -231,6 +224,8 @@ class Agent_0(rpu.Worker):
         # ready to roll!  Send state update
         rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
+
+        self._log.debug('advance to PMGR_ACTIVE')
 
         pilot = {'$all'     : True,              # pass full info to client side
                  'type'     : 'pilot',
@@ -545,14 +540,13 @@ class Agent_0(rpu.Worker):
         requests to handle.
         '''
 
-        self._log.debug('==== %s: %s', topic, msg)
+        self._log.debug_1('control msg %s: %s', topic, msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
         self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
-
 
         if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
             self._session._hb.beat(uid=self._pmgr)
@@ -598,17 +592,17 @@ class Agent_0(rpu.Worker):
 
         if uid not in self._service_uids_launched:
             # we do not know this service instance
-            self._log.warn('=== ignore service startup signal for %s', uid)
+            self._log.warn('ignore service startup signal for %s', uid)
             return True
 
         if uid in self._service_uids_running:
-            self._log.warn('=== duplicated service startup signal for %s', uid)
+            self._log.warn('duplicated service startup signal for %s', uid)
             return True
 
-        self._log.debug('=== service startup message for %s', uid)
+        self._log.debug('service startup message for %s', uid)
 
         self._service_uids_running.append(uid)
-        self._log.debug('=== service %s started (%s / %s)', uid,
+        self._log.debug('service %s started (%s / %s)', uid,
                         len(self._service_uids_running),
                         len(self._service_uids_launched))
 

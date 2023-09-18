@@ -832,7 +832,7 @@ class PilotManager(rpu.Component):
         # send the cancellation request to the pilots
         # FIXME: MongoDB
         # self._session._dbs.pilot_command('cancel_pilot', [], uids)
-        self._log.debug('=== issue cancel_pilots for %s', uids)
+        self._log.debug('issue cancel_pilots for %s', uids)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,
                                                    'uids' : uids}})

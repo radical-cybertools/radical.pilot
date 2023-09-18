@@ -886,7 +886,8 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['log_lvl']             = self._log.level
+        agent_cfg['debug_lvl']           = self._log.debug_level
         agent_cfg['services']            = services
 
         pilot['cfg']       = agent_cfg

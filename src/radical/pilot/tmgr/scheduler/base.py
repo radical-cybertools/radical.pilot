@@ -205,7 +205,7 @@ class TMGRSchedulingComponent(rpu.Component):
 
         cmd = msg['cmd']
 
-        self._log.debug('=== got cmd %s', cmd)
+        self._log.debug('got cmd %s', cmd)
 
         if cmd not in ['add_pilots', 'remove_pilots', 'cancel_tasks']:
             return True

@@ -326,6 +326,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         if cmd == 'register_named_env':
 
+
             env_name = arg['env_name']
             self._named_envs.append(env_name)
 
@@ -655,6 +656,9 @@ class AgentSchedulingComponent(rpu.Component):
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
+
+        # re-register the control callback in this subprocess
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         self._publishers = dict()
         self.register_publisher(rpc.STATE_PUBSUB)

@@ -162,6 +162,10 @@ class Pilot(object):
         # hook into the control pubsub for rpc handling
         self._rpc_reqs = dict()
         ctrl_addr_sub  = self._session._reg['bridges.control_pubsub.addr_sub']
+        ctrl_addr_pub  = self._session._reg['bridges.control_pubsub.addr_pub']
+
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
+                                          log=self._log, prof=self._prof)
 
         ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
                           log=self._log, prof=self._prof, cb=self._control_cb,
@@ -700,8 +704,7 @@ class Pilot(object):
 
         """
 
-        self.rpc('prepare_env', {'env_name': env_name,
-                                 'env_spec': env_spec})
+        self.rpc('prepare_env', env_name=env_name, env_spec=env_spec)
 
 
     # --------------------------------------------------------------------------
@@ -738,19 +741,22 @@ class Pilot(object):
 
         try:
             msg = ru.zmq.Message.deserialize(msg_data)
-            self._log.debug('=== rpc res: %s', msg)
 
-            if msg.uid in self._rpc_reqs:
-                self._rpc_reqs[msg.uid]['res'] = msg
-                self._rpc_reqs[msg.uid]['evt'].set()
+            if isinstance(msg, RPCResultMessage):
+
+                self._log.debug_4('handle rpc result %s', msg)
+
+                if msg.uid in self._rpc_reqs:
+                    self._rpc_reqs[msg.uid]['res'] = msg
+                    self._rpc_reqs[msg.uid]['evt'].set()
 
         except:
-            self._log.debug('=== ignore msg %s', msg_data)
+            pass
 
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, args=None, kwargs=None):
+    def rpc(self, cmd, *args, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the pilot and wait for the
@@ -758,15 +764,13 @@ class Pilot(object):
         thread safe to have multiple concurrent RPC calls.
         '''
 
-        self._log.debug('=== pilot in %s state', self.state)
+        # RPC's can only be handled in `PMGR_ACTIVE` state
+        # FIXME: RPCs will hang vorever if the pilot dies after sending the msg
         self.wait(rps.PMGR_ACTIVE)
-        self._log.debug('=== pilot now in %s state', self.state)
-
-        if not args:
-            args = dict()
 
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
-        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args,
+                                    kwargs=kwargs)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,
@@ -775,18 +779,18 @@ class Pilot(object):
                 'time': time.time(),
                 }
 
-        self._log.debug('=== wait for rpc request %s', rpc_req)
+        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, rpc_req)
+
         while True:
 
-            if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=10):
-                self._log.debug('=== still waiting for rpc request %s', rpc_id)
+            if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=60):
+                self._log.debug('still waiting for rpc request %s', rpc_id)
                 continue
 
             rpc_res = self._rpc_reqs[rpc_id]['res']
-            self._log.debug('=== rpc result: %s', rpc_res)
 
             if rpc_res.exc:
-                raise RuntimeError('=== rpc failed: %s' % rpc_res.exc)
+                raise RuntimeError('rpc failed: %s' % rpc_res.exc)
 
             return rpc_res.val
 

@@ -179,7 +179,6 @@ class Component(object):
         assert self._uid, 'Component needs a uid (%s)' % type(self)
 
         # state we carry over the fork
-        self._debug = self._cfg.get('debug')
         self._owner = self._cfg.get('owner', self.uid)
         self._ctype = "%s.%s" % (self.__class__.__module__,
                                  self.__class__.__name__)
@@ -193,6 +192,7 @@ class Component(object):
         self._threads      = dict()       # subscriber and idler threads
         self._cb_lock      = mt.RLock()   # guard threaded callback invokations
         self._rpc_lock     = mt.RLock()   # guard threaded rpc calls
+        self._rpc_reqs     = dict()       #  currently active RPC requests
         self._rpc_handlers = dict()       # RPC handler methods
         self._subscribers  = dict()       # ZMQ Subscriber classes
 
@@ -201,7 +201,8 @@ class Component(object):
 
         self._prof = self._session._get_profiler(name=self.uid)
         self._log  = self._session._get_logger  (name=self.uid,
-                                                 level=self._debug)
+                                                 level=self._cfg.get('log_lvl'),
+                                                 debug=self._cfg.get('debug_lvl'))
 
         self._q    = None
         self._in   = None
@@ -317,8 +318,6 @@ class Component(object):
         This callback can be overloaded by the component to handle any control
         message which is not already handled by the component base class.
         '''
-        cmd = msg['cmd']
-        self._log.debug('=== got cmd %s - ignored', cmd)
         pass
 
 
@@ -339,13 +338,17 @@ class Component(object):
         #        'cancel_tasks'.
 
         # try to handle message as RPC message
-        if self._handle_zmq_msg(msg):
-
+        try:
+            self._handle_zmq_msg(msg)
             # handled successfully
             return
 
+        except:
+            # coult not be handled - fall through to legacy handlers
+            pass
+
         # handle any other message types
-        self._log.debug('=== command incoming: %s', msg)
+        self._log.debug_5('command incoming: %s', msg)
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -367,7 +370,7 @@ class Component(object):
             self.stop()
 
         else:
-            self._log.debug('command handled by implementation: %s', cmd)
+            self._log.debug_1('command handled by implementation: %s', cmd)
             self.control_cb(topic, msg)
 
         return True
@@ -377,26 +380,29 @@ class Component(object):
     #
     def _handle_zmq_msg(self, msg_data):
 
-        try:
-            msg = ru.zmq.Message.deserialize(msg_data)
-            self._log.debug('deserialized msg type: %s', type(msg))
-
-        except Exception as e:
-            self._log.debug('no zmq msg type: %s', msg_data)
-            return False
+        msg = ru.zmq.Message.deserialize(msg_data)
 
         if isinstance(msg, RPCRequestMessage):
+            self._log.debug_4('handle rpc request %s', msg)
             self._handle_rpc_msg(msg)
-            return True
+
+        elif isinstance(msg, RPCResultMessage):
+
+            if msg.uid in self._rpc_reqs:
+                self._log.debug_4('handle rpc result %s', msg)
+                self._rpc_reqs[msg.uid]['res'] = msg
+                self._rpc_reqs[msg.uid]['evt'].set()
 
         else:
-            # we do not handle other message types right now
-            return False
+            raise ValueError('message type not handled')
+
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_rpc_msg(self, msg):
+
+        self._log.debug('handle rpc request: %s', msg)
 
         bakout = sys.stdout
         bakerr = sys.stderr
@@ -415,9 +421,8 @@ class Component(object):
             return
 
         try:
-            self._log.debug('rpc handler for %s: %s(%s, %s)', msg.cmd,
-                            self._rpc_handlers[msg.cmd],
-                            *msg.args, **msg.kwargs)
+            self._log.debug('rpc handler for %s: %s',
+                            msg.cmd, self._rpc_handlers[msg.cmd])
 
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
@@ -438,10 +443,58 @@ class Component(object):
             sys.stdout = bakout
             sys.stderr = bakerr
 
-        rep = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
-        self._log.debug('rpc reply: %s', rep)
+        rpc_rep = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
+        self._log.debug_3('rpc reply: %s', rpc_rep)
 
-        return rep
+        self.publish(rpc.CONTROL_PUBSUB, rpc_rep)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_rpc_handler(self, cmd, handler):
+
+        self._rpc_handlers[cmd] = handler
+
+
+    # --------------------------------------------------------------------------
+    #
+    def rpc(self, cmd, *args, **kwargs):
+        '''Remote procedure call.
+
+        Send am RPC command and arguments to the control pubsub and wait for the
+        response.  This is a synchronous operation at this point, and it is not
+        thread safe to have multiple concurrent RPC calls.
+        '''
+
+        self._log.debug_5('rpc call %s(%s, %s)', cmd, args, kwargs)
+
+        rpc_id  = ru.generate_id('%s.rpc' % self._uid)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd,
+                                    args=args, kwargs=kwargs)
+
+        self._rpc_reqs[rpc_id] = {
+                'req': rpc_req,
+                'res': None,
+                'evt': mt.Event(),
+                'time': time.time(),
+                }
+        self.publish(rpc.CONTROL_PUBSUB, rpc_req)
+
+        while True:
+
+            if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=60):
+                self._log.debug_4('still waiting for rpc request %s', rpc_id)
+                continue
+
+            rpc_res = self._rpc_reqs[rpc_id]['res']
+            self._log.debug_4('rpc result: %s', rpc_res)
+
+            del self._rpc_reqs[rpc_id]
+
+            if rpc_res.exc:
+                raise RuntimeError('rpc failed: %s' % rpc_res.exc)
+
+            return rpc_res.val
 
 
     # --------------------------------------------------------------------------

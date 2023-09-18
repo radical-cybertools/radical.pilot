@@ -45,6 +45,7 @@ class Worker(object):
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level=self._cfg.log_lvl,
+                               debug=self._cfg.debug_lvl,
                                targets=self._cfg.log_tgt,
                                path=self._cfg.path)
         self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',

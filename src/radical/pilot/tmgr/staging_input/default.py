@@ -128,7 +128,7 @@ class Default(TMGRStagingInputComponent):
         # perform and publish state update
         # push to the proxy queue
         for task in tasks:
-            self._log.debug('====== push to proxy: %s', task['uid'])
+            self._log.debug_8('push to proxy: %s', task['uid'])
 
         self.advance(tasks, state, publish=True, push=push, qname=pid)
 
