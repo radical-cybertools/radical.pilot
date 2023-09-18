@@ -186,29 +186,10 @@ class Session(rs.Session):
 
         # initialization is different for each session type
         # NOTE: we could refactor this to session sub-classes
-        if self._role == self._PRIMARY:
-
-            # if user did not set a uid, we need to generate a new ID
-            if not self._uid:
-                self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
-
-            self._init_primary()
-
-
-        elif self._role == self._AGENT_0:
-
-            self._init_agent_0()
-
-
-        elif self._role == self._AGENT_N:
-
-            self._init_agent_n()
-
-
-        else:
-
-            self._init_default()
-
+        if   self._role == self._PRIMARY: self._init_primary()
+        elif self._role == self._AGENT_0: self._init_agent_0()
+        elif self._role == self._AGENT_N: self._init_agent_n()
+        else                            : self._init_default()
 
         # now we have config and uid - initialize base class (saga session)
         rs.Session.__init__(self, uid=self._uid)
@@ -243,6 +224,10 @@ class Session(rs.Session):
         #   - pushes the configs into that registry
         #   - pushes bridge and component configs into that registry
         #   - starts a ZMQ proxy (or ensures one is up and running)
+
+        # if user did not set a uid, we need to generate a new ID
+        if not self._uid:
+            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
 
         # we still call `_init_cfg` to complete missing config settings
         # FIXME: completion only needed by `PRIMARY`
@@ -434,7 +419,8 @@ class Session(rs.Session):
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('debug'))
+                                        level=self._cfg.get('log_lvl'),
+                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -482,7 +468,8 @@ class Session(rs.Session):
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('debug'))
+                                        level=self._cfg.get('log_lvl'),
+                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -511,7 +498,8 @@ class Session(rs.Session):
         self._prof = self._get_profiler(name=self._uid)
         self._rep  = self._get_reporter(name=self._uid)
         self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('debug'))
+                                        level=self._cfg.get('log_lvl'),
+                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -576,7 +564,7 @@ class Session(rs.Session):
         # --------------------------------------
 
         # create heartbeat manager which monitors all components in this session
-      # self._log.debug('=== hb %s from session', self._uid)
+      # self._log.debug('hb %s from session', self._uid)
         self._hb = ru.Heartbeat(uid=self._uid,
                                 timeout=self._cfg.heartbeat.timeout,
                                 interval=self._cfg.heartbeat.interval,
@@ -1032,14 +1020,16 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_logger(self, name, level=None):
+    def _get_logger(self, name, level=None, debug=None):
         """Get the Logger instance.
 
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-        return ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
-                         targets=['.'], level=level)
+        log = ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
+                         targets=['.'], level=level, debug=debug)
+
+        return log
 
 
     # --------------------------------------------------------------------------

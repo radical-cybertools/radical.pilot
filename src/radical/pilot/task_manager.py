@@ -181,15 +181,10 @@ class TaskManager(rpu.Component):
 
         # hook into the control pubsub for rpc handling
         self._rpc_queue = queue.Queue()
-        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
         ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
-                          log=self._log, prof=self._prof,
-                          cb=self._control_cb, topic=rpc.CONTROL_PUBSUB)
-
-        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
-                                          log=self._log, prof=self._prof)
+        self._ctrl_pub  = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
+                                           log=self._log, prof=self._prof)
 
 
         self._prof.prof('setup_done', uid=self._uid)
@@ -641,7 +636,8 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    # FIXME RPC
+    def control_cb(self, topic, msg):
 
         cmd = msg['cmd']
         arg = msg['arg']

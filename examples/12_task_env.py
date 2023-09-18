@@ -69,8 +69,10 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
+        report.header('prepare task env')
         pilot.prepare_env('numpy_env', {'type' : 'virtualenv',
                                         'setup': ['numpy']})
+        report.ok('ok')
 
         report.header('submit tasks')
 

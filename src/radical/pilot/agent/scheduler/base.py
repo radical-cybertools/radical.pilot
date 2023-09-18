@@ -316,7 +316,7 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
         '''
         listen on the control channel for raptor queue registration commands
         '''
@@ -325,6 +325,7 @@ class AgentSchedulingComponent(rpu.Component):
         arg = msg['arg']
 
         if cmd == 'register_named_env':
+
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
@@ -386,6 +387,7 @@ class AgentSchedulingComponent(rpu.Component):
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
 
+        # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
             uids = arg['uids']
@@ -651,12 +653,12 @@ class AgentSchedulingComponent(rpu.Component):
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
 
-        #  subscribe to control messages, e.g., to register raptor queues
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
+
+        # re-register the control callback in this subprocess
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         self._publishers = dict()
         self.register_publisher(rpc.STATE_PUBSUB)

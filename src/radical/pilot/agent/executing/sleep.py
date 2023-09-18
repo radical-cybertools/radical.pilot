@@ -157,6 +157,7 @@ class Sleep(AgentExecutingComponent) :
 
         cmd = msg['cmd']
 
+        # FIXME RPC: already handled in the component base class
         if cmd == 'cancel_tasks':
 
             # FIXME: clarify how to cancel tasks

@@ -51,7 +51,9 @@ class ComponentManager(object):
         self._prof   = ru.Profiler(self._uid, ns='radical.pilot',
                                    path=self._cfg.path)
         self._log    = ru.Logger(self._uid, ns='radical.pilot',
-                                 path=self._cfg.path)
+                                 path=self._cfg.path,
+                                 level=self._cfg.log_lvl,
+                                 debug=self._cfg.debug_lvl)
 
         self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
 
@@ -103,6 +105,8 @@ class ComponentManager(object):
 
             time.sleep(0.25)
 
+        self._log.debug('wait for done: %s', ok)
+
 
     # --------------------------------------------------------------------------
     #
@@ -130,6 +134,8 @@ class ComponentManager(object):
             bcfg.sid       = self._cfg.sid
             bcfg.path      = self._cfg.path
             bcfg.reg_addr  = self._cfg.reg_addr
+            bcfg.log_lvl   = self._cfg.log_lvl
+            bcfg.debug_lvl = self._cfg.debug_lvl
             bcfg.heartbeat = self._hb_cfg
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
@@ -177,6 +183,8 @@ class ComponentManager(object):
                 ccfg.path      = self._cfg.path
                 ccfg.reg_addr  = self._cfg.reg_addr
                 ccfg.proxy_url = self._cfg.proxy_url
+                ccfg.log_lvl   = self._cfg.log_lvl
+                ccfg.debug_lvl = self._cfg.debug_lvl
                 ccfg.heartbeat = self._hb_cfg
 
                 if cfg:
