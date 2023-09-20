@@ -25,8 +25,9 @@ class RPCHelper(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, ctrl_addr_pub, ctrl_addr_sub, log, prof):
+    def __init__(self, owner, ctrl_addr_pub, ctrl_addr_sub, log, prof):
 
+        self._owner    = owner          # used for uid scope
         self._addr_pub = ctrl_addr_pub
         self._addr_sub = ctrl_addr_sub
 
@@ -52,7 +53,7 @@ class RPCHelper(object):
     #
     def request(self, cmd, *args, **kwargs):
 
-        rid = ru.generate_id('rpc')
+        rid = ru.generate_id('%s.rpc' % self._owner)
         req = RPCRequestMessage(uid=rid, cmd=cmd, args=args, kwargs=kwargs)
 
         self._active = rid
@@ -117,7 +118,7 @@ class RPCHelper(object):
 
                 with self._lock:
                     if msg.cmd in self._handlers:
-                        rep = self._handle_request(msg)
+                        rep = self.handle_request(msg)
                         pub.put(CONTROL_PUBSUB, rep)
                     else:
                         self._log.debug_2('no rpc handler for %s', msg.cmd)
@@ -130,47 +131,6 @@ class RPCHelper(object):
                 if self._active and msg.uid == self._active:
                     self._active = None
                     self._queue.put(msg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_request(self, msg):
-
-        bakout = sys.stdout
-        bakerr = sys.stderr
-
-        strout = None
-        strerr = None
-
-        val    = None
-        out    = None
-        err    = None
-        exc    = None
-
-        try:
-            self._log.debug_2('rpc handler: %s(%s, %s)',
-                              self._handlers[msg.cmd], *msg.args, **msg.kwargs)
-
-            sys.stdout = strout = io.StringIO()
-            sys.stderr = strerr = io.StringIO()
-
-            val = self._handlers[msg.cmd](*msg.args, **msg.kwargs)
-            out = strout.getvalue()
-            err = strerr.getvalue()
-
-        except Exception as e:
-            self._log.exception('rpc call failed: %s' % (msg))
-            val = None
-            out = strout.getvalue()
-            err = strerr.getvalue()
-            exc = (repr(e), '\n'.join(ru.get_exception_trace()))
-
-        finally:
-            # restore stdio
-            sys.stdout = bakout
-            sys.stderr = bakerr
-
-        return RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
 
 
     # --------------------------------------------------------------------------

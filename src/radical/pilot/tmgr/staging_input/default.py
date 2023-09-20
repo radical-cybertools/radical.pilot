@@ -68,10 +68,6 @@ class Default(TMGRStagingInputComponent):
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        # we subscribe to the command channel to learn about pilots being added
-        # to this task manager.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
                                              TASK_BULK_MKDIR_THRESHOLD)
 
@@ -86,7 +82,7 @@ class Default(TMGRStagingInputComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
         # keep track of `add_pilots` commands and updates self._pilots
         # accordingly.
@@ -131,6 +127,9 @@ class Default(TMGRStagingInputComponent):
 
         # perform and publish state update
         # push to the proxy queue
+        for task in tasks:
+            self._log.debug_8('push to proxy: %s', task['uid'])
+
         self.advance(tasks, state, publish=True, push=push, qname=pid)
 
 

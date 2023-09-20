@@ -231,6 +231,7 @@ class Proxy(ru.zmq.Server):
     #
     def _worker(self, sid, q, term):
 
+        # FIXME: log level etc
         log = ru.Logger('radical.pilot.bridge', level='debug', path=sid)
 
         proxy_cp = None

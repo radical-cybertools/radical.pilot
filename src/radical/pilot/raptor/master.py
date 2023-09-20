@@ -175,7 +175,6 @@ class Master(rpu.Component):
 
         # everything is set up - we can serve messages on the pubsubs also
         self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
@@ -214,7 +213,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
         '''
         listen for `worker_register`, `worker_unregister`,
         `worker_rank_heartbeat` and `rpc_req` messages.
@@ -275,6 +274,7 @@ class Master(rpu.Component):
             self._workers[uid]['status'] = self.DONE
 
 
+        # FIXME RPC
         elif cmd == 'rpc_req':
 
             if arg['tgt'] != self._uid:

@@ -28,8 +28,8 @@ class HeartbeatMessage(RPBaseMessage):
 
     _schema   = {'uid'      : str}
     _defaults = {'_msg_type': 'heartbeat',
-                 'uid'      : None,
-                 'fwd'      : False}
+                 'fwd'      : False,
+                 'uid'      : None}
 
 
 ru.Message.register_msg_type('heartbeat', HeartbeatMessage)
@@ -46,12 +46,12 @@ class RPCRequestMessage(RPBaseMessage):
                  'kwargs'   : dict}  # rpc command named arguments
     _defaults = {
                  '_msg_type': 'rpc_req',
+                 'fwd'      : True,
                  'uid'      : None,
                  'addr'     : None,
                  'cmd'      : None,
                  'args'     : [],
-                 'kwargs'   : {},
-                 'fwd'      : True}
+                 'kwargs'   : {}}
 
 
 
@@ -68,12 +68,12 @@ class RPCResultMessage(RPBaseMessage):
                  'err'      : str,  # stderr
                  'exc'      : str}  # raised exception representation
     _defaults = {'_msg_type': 'rpc_res',
+                 'fwd'      : True,
                  'uid'      : None,
                  'val'      : None,
                  'out'      : None,
                  'err'      : None,
-                 'exc'      : None,
-                 'fwd'      : True}
+                 'exc'      : None}
 
     # --------------------------------------------------------------------------
     #
