@@ -84,7 +84,7 @@ class TestComponent(TestCase):
         agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
         agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepenv_effect)
 
-        agent_cmp._rpc_handlers = {'prepare_env': agent_cmp._prepare_env}
+        agent_cmp._rpc_handlers = {'prepare_env': (agent_cmp._prepare_env, None)}
 
         msg = {'cmd': 'test',
                'arg': {'uid': 'rpc.0000',

@@ -543,7 +543,7 @@ class Agent_0(rpu.Worker):
         self._log.debug_1('control msg %s: %s', topic, msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
         self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)

@@ -351,7 +351,7 @@ class Component(object):
         self._log.debug_5('command incoming: %s', msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         if cmd == 'cancel_tasks':
 
@@ -419,7 +419,7 @@ class Component(object):
 
         if msg.cmd not in self._rpc_handlers:
             # this RPC message is *silently* ignored
-            self._log.debug('no rpc handler for [%s])', msg.cmd)
+            self._log.debug('no rpc handler for [%s]', msg.cmd)
             return
 
         rpc_handler, addr = self._rpc_handlers[msg.cmd]
@@ -427,7 +427,6 @@ class Component(object):
         if msg.addr and msg.addr != addr:
             self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
             return
-
 
         try:
             self._log.debug('rpc handler for %s: %s',
@@ -452,10 +451,10 @@ class Component(object):
             sys.stdout = bakout
             sys.stderr = bakerr
 
-        rpc_rep = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
-        self._log.debug_3('rpc reply: %s', rpc_rep)
+        rpc_res = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
+        self._log.debug_3('rpc reply: %s', rpc_res)
 
-        self.publish(rpc.CONTROL_PUBSUB, rpc_rep)
+        self.publish(rpc.CONTROL_PUBSUB, rpc_res)
 
 
     # --------------------------------------------------------------------------
