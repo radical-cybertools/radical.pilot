@@ -317,8 +317,6 @@ class TMGRSchedulingComponent(rpu.Component):
               #                                  arg={'uids' : to_cancel[pid]},
               #                                  pids=pid)
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #

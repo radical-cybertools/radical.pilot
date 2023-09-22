@@ -558,8 +558,6 @@ class Agent_0(rpu.Worker):
         elif cmd == 'service_up':
             return self._ctrl_service_up(msg)
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #

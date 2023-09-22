@@ -137,8 +137,6 @@ class AgentExecutingComponent(rpu.Component):
             for tid in arg['uids']:
                 self.cancel_task(tid)
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #

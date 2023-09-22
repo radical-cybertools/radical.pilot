@@ -321,6 +321,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         listen on the control channel for raptor queue registration commands
         '''
+        print('----- b', msg)
 
         # only the scheduler process listens for control messages
         if not self._scheduler_process:
@@ -399,6 +400,7 @@ class AgentSchedulingComponent(rpu.Component):
             to_cancel = list()
             with self._lock:
                 for uid in uids:
+                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
@@ -419,8 +421,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
-
-        return True
 
 
     # --------------------------------------------------------------------------

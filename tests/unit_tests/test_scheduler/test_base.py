@@ -53,6 +53,7 @@ class TestBaseScheduling(TestCase):
         sched.register_subscriber = mock.Mock()
         sched.nodes               = []
         sched._partitions         = {}
+        sched._scheduler_process  = False
 
         sched._session = mock.Mock()
 
@@ -164,9 +165,12 @@ class TestBaseScheduling(TestCase):
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._log = mock.Mock()
         sched._log.debug.side_effect = _log_debug
+        sched._scheduler_process = True
 
         sched._lock         = mt.Lock()
         sched._raptor_lock  = mt.Lock()
+        sched._cancel_lock  = mt.RLock()
+        sched._cancel_list  = list()
 
         task0000            = {}
         sched._waitpool     = {'task.0000': task0000}

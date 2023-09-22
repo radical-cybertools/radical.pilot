@@ -9,6 +9,8 @@ import threading as mt
 
 from unittest import mock, TestCase
 
+from radical.pilot.messages import RPCRequestMessage, RPCResultMessage
+
 import radical.utils as ru
 import radical.pilot as rp
 
@@ -47,6 +49,8 @@ class TestComponent(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if p is None:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -65,10 +69,12 @@ class TestComponent(TestCase):
 
         def _publish_effect(publish_type, cmd):
             nonlocal global_control
+            import pprint
+            print('=============== pub', pprint.pformat(cmd))
             global_control.append((publish_type, cmd))
 
-        def _prepenv_effect(env_id, spec):
-            return env_id, spec
+        def _prepenv_effect(env_name, env_spec):
+            return env_name, env_spec
 
         agent_cmp = Agent_0()
 
@@ -78,62 +84,29 @@ class TestComponent(TestCase):
         agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
         agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepenv_effect)
 
+        agent_cmp._rpc_handlers = {'prepare_env': agent_cmp._prepare_env}
+
         msg = {'cmd': 'test',
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'bye'}
               }
-        self.assertTrue(agent_cmp._control_cb(None, msg))
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0001',
-                       'rpc': 'bye'}
-              }
-        self.assertTrue(agent_cmp._control_cb(None, msg))
+        msg = RPCRequestMessage({'cmd': 'bye', 'kwargs': {'uid': 'rpc.0001'}})
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0002',
-                       'rpc': 'hello'}
-              }
+        msg = RPCRequestMessage({'cmd'   : 'prepare_env',
+                                 'uid'   : 'rpc.0004',
+                                 'kwargs': {'env_name': 'radical',
+                                            'env_spec': 'spec'}})
         self.assertIsNone(agent_cmp._control_cb(None, msg))
-        self.assertEqual(1, len(global_control))
-        # format for the raised exception might be a little different based on
-        # python version, e.g., py36: KeyError('arg',) | py37: KeyError('arg')
-        self.assertTrue(global_control[0][1]
-                        ['arg']['err'].startswith("KeyError('arg'"))
-        self.assertEqual('rpc.0002', global_control[0][1]['arg']['uid'])
-
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0003',
-                       'rpc': 'hello',
-                       'arg': ['World']}
-              }
-        self.assertIsNone(agent_cmp._control_cb(None, msg))
-        self.assertEqual(global_control[1], ('control_pubsub',
-                                             {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0003',
-                                                      'err': None,
-                                                      'out': 'hello World',
-                                                      'ret': 0}
-                                             }))
-
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0004',
-                       'rpc': 'prepare_env',
-                       'arg': {'env_name': 'radical',
-                               'env_spec': 'spec'}
-                      }
-              }
-        self.assertIsNone(agent_cmp._control_cb(None, msg))
-        self.assertEqual(global_control[2], ('control_pubsub',
-                                             {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0004',
-                                                      'err': None,
-                                                      'out': ('radical',
-                                                              'spec'),
-                                                      'ret': 0}
-                                             }))
+        print('====', global_control, '====')
+        self.assertEqual(global_control[0],
+                         ('control_pubsub',
+                          RPCResultMessage({'uid': 'rpc.0004',
+                                            'val': ('radical', 'spec')})))
 
 
     # --------------------------------------------------------------------------

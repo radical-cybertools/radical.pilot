@@ -344,7 +344,7 @@ class Component(object):
             return
 
         except:
-            # coult not be handled - fall through to legacy handlers
+            # could not be handled - fall through to legacy handlers
             pass
 
         # handle any other message types
@@ -365,6 +365,10 @@ class Component(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
+            # FIXME RPC: scheduler handles cancelation itself
+            if 'AgentSchedulingComponent' in repr(self):
+                self.control_cb(topic, msg)
+
         elif cmd == 'terminate':
             self._log.info('got termination command')
             self.stop()
@@ -372,8 +376,6 @@ class Component(object):
         else:
             self._log.debug_1('command handled by implementation: %s', cmd)
             self.control_cb(topic, msg)
-
-        return True
 
 
     # --------------------------------------------------------------------------
