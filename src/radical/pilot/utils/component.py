@@ -467,7 +467,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, *args, **kwargs):
+    def rpc(self, cmd, addr=None, *args, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the control pubsub and wait for the
@@ -479,7 +479,8 @@ class Component(object):
 
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
         rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd,
-                                    args=args, kwargs=kwargs)
+                                    args=args, kwargs=kwargs,
+                                    addr=addr)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,
