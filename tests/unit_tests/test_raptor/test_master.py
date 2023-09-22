@@ -27,6 +27,7 @@ class RaptorMasterTC(TestCase):
         self._prof = mock.MagicMock()
         self._rep  = mock.MagicMock()
         self._reg  = mock.MagicMock()
+        self._uid  = 'session.001'
 
 
     # --------------------------------------------------------------------------
@@ -46,6 +47,8 @@ class RaptorMasterTC(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if p is None:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:

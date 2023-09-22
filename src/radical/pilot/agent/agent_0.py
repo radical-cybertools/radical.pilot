@@ -202,7 +202,8 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        self.register_rpc_handler('prepare_env', self._prepare_env)
+        self.register_rpc_handler('prepare_env', self._prepare_env,
+                                                 addr=self._pid)
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
@@ -213,9 +214,8 @@ class Agent_0(rpu.Worker):
                                  'export PATH=%s'
                                  %  os.environ.get('PATH', '')]
                    }
-
-
-        self.rpc('prepare_env', env_name='rp', env_spec=env_spec)
+        self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
+                                addr=self._pid)
 
         # start any services if they are requested
         self._start_services()
@@ -543,7 +543,7 @@ class Agent_0(rpu.Worker):
         self._log.debug_1('control msg %s: %s', topic, msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
         self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
@@ -557,8 +557,6 @@ class Agent_0(rpu.Worker):
 
         elif cmd == 'service_up':
             return self._ctrl_service_up(msg)
-
-        return True
 
 
     # --------------------------------------------------------------------------

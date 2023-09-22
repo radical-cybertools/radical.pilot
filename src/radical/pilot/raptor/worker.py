@@ -145,21 +145,29 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, topic, things):
+    def _state_cb(self, topic, msgs):
 
-        for thing in ru.as_list(things):
+        for msg in ru.as_list(msgs):
 
-            uid   = thing['uid']
-            state = thing['state']
+            cmd = msg['cmd']
+            arg = msg['arg']
 
-            if uid == self._raptor_id:
+            if cmd != 'update':
+                continue
 
-                if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
-                    # master completed - terminate this worker
-                    self._log.info('master %s final: %s - terminate',
-                                   uid, state)
-                    self.stop()
-                    return False
+            for thing in arg:
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid == self._raptor_id:
+
+                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                        # master completed - terminate this worker
+                        self._log.info('master %s final: %s - terminate',
+                                       uid, state)
+                        self.stop()
+                        return False
 
         return True
 

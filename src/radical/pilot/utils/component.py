@@ -344,14 +344,14 @@ class Component(object):
             return
 
         except:
-            # coult not be handled - fall through to legacy handlers
+            # could not be handled - fall through to legacy handlers
             pass
 
         # handle any other message types
         self._log.debug_5('command incoming: %s', msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         if cmd == 'cancel_tasks':
 
@@ -365,6 +365,10 @@ class Component(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
+            # FIXME RPC: scheduler handles cancelation itself
+            if 'AgentSchedulingComponent' in repr(self):
+                self.control_cb(topic, msg)
+
         elif cmd == 'terminate':
             self._log.info('got termination command')
             self.stop()
@@ -372,8 +376,6 @@ class Component(object):
         else:
             self._log.debug_1('command handled by implementation: %s', cmd)
             self.control_cb(topic, msg)
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -417,7 +419,13 @@ class Component(object):
 
         if msg.cmd not in self._rpc_handlers:
             # this RPC message is *silently* ignored
-            self._log.debug('no rpc handler for [%s])', msg.cmd)
+            self._log.debug('no rpc handler for [%s]', msg.cmd)
+            return
+
+        rpc_handler, addr = self._rpc_handlers[msg.cmd]
+
+        if msg.addr and msg.addr != addr:
+            self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
             return
 
         try:
@@ -427,7 +435,7 @@ class Component(object):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            val = self._rpc_handlers[msg.cmd](*msg.args, **msg.kwargs)
+            val = rpc_handler(*msg.args, **msg.kwargs)
             out = strout.getvalue()
             err = strerr.getvalue()
 
@@ -443,22 +451,22 @@ class Component(object):
             sys.stdout = bakout
             sys.stderr = bakerr
 
-        rpc_rep = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
-        self._log.debug_3('rpc reply: %s', rpc_rep)
+        rpc_res = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
+        self._log.debug_3('rpc reply: %s', rpc_res)
 
-        self.publish(rpc.CONTROL_PUBSUB, rpc_rep)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def register_rpc_handler(self, cmd, handler):
-
-        self._rpc_handlers[cmd] = handler
+        self.publish(rpc.CONTROL_PUBSUB, rpc_res)
 
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, *args, **kwargs):
+    def register_rpc_handler(self, cmd, handler, addr=None):
+
+        self._rpc_handlers[cmd] = [handler, addr]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def rpc(self, cmd, addr=None, *args, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the control pubsub and wait for the
@@ -470,7 +478,8 @@ class Component(object):
 
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
         rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd,
-                                    args=args, kwargs=kwargs)
+                                    args=args, kwargs=kwargs,
+                                    addr=addr)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,

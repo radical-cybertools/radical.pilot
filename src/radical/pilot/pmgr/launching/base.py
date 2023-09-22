@@ -239,8 +239,6 @@ class PMGRLaunchingComponent(rpu.Component):
 
             self._kill_pilots(pids)
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #

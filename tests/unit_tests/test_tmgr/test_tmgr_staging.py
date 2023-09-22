@@ -53,6 +53,7 @@ class TMGRStagingTC(TestCase):
     def test_si_work(self, mocked_si_init):
 
         tmgr_si = StageInDefault(cfg={}, session=None)
+        tmgr_si._log = mock.Mock()
         tmgr_si._session_sbox = '/tmp'
 
         def _mocked_advance(things, state, publish, push, qname=None):
