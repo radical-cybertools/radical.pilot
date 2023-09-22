@@ -259,6 +259,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # start a process to host the actual scheduling algorithm
+        self._scheduler_process = False
         self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
@@ -320,6 +321,10 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         listen on the control channel for raptor queue registration commands
         '''
+
+        # only the scheduler process listens for control messages
+        if not self._scheduler_process:
+            return
 
         cmd = msg['cmd']
         arg = msg['arg']
@@ -597,6 +602,8 @@ class AgentSchedulingComponent(rpu.Component):
         incoming tasks to schedule, and a queue of slots freed by finishing
         tasks.
         '''
+
+        self._scheduler_process = True
 
         # ZMQ endpoints will not have survived the fork. Specifically the
         # registry client of the component base class will have to reconnect.
