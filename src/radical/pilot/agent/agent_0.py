@@ -202,7 +202,8 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        self.register_rpc_handler('prepare_env', self._prepare_env)
+        self.register_rpc_handler('prepare_env', self._prepare_env,
+                                                 addr=self._pid)
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
@@ -213,8 +214,6 @@ class Agent_0(rpu.Worker):
                                  'export PATH=%s'
                                  %  os.environ.get('PATH', '')]
                    }
-
-
         self.rpc('prepare_env', env_name='rp', env_spec=env_spec)
 
         # start any services if they are requested

@@ -422,6 +422,13 @@ class Component(object):
             self._log.debug('no rpc handler for [%s])', msg.cmd)
             return
 
+        rpc_handler, addr = self._rpc_handlers[msg.cmd]
+
+        if msg.addr and msg.addr != addr:
+            self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
+            return
+
+
         try:
             self._log.debug('rpc handler for %s: %s',
                             msg.cmd, self._rpc_handlers[msg.cmd])
@@ -429,7 +436,7 @@ class Component(object):
             sys.stdout = strout = io.StringIO()
             sys.stderr = strerr = io.StringIO()
 
-            val = self._rpc_handlers[msg.cmd](*msg.args, **msg.kwargs)
+            val = rpc_handler(*msg.args, **msg.kwargs)
             out = strout.getvalue()
             err = strerr.getvalue()
 
@@ -453,9 +460,9 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_rpc_handler(self, cmd, handler):
+    def register_rpc_handler(self, cmd, handler, addr=None):
 
-        self._rpc_handlers[cmd] = handler
+        self._rpc_handlers[cmd] = [handler, addr]
 
 
     # --------------------------------------------------------------------------
