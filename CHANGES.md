@@ -9,6 +9,23 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.37.0 Release                                                    2023-09-23
+
+  - fix `default_remote_workdir` for `csc.mahti` platform
+  - add README to description for pypi
+  - link config tutorial
+  - add raptor to API docs
+  - add MPI flavor `MPI_FLAVOR_PALS`
+  - add cpu-binding for LM MPIEXEC with the `MPI_FLAVOR_PALS` flavor
+  - clean up Polaris config
+  - fix raptor master hb_freq and hb_timeout
+  - fix test for MPIRUN LM
+  - fix tests for MPIEXEC LM
+  - add csc.mahti resource config
+  - add slurm inspection test
+
+
+--------------------------------------------------------------------------------
 ### 1.36.0 Release                                                    2023-08-01
 
   - added pre-defined `pre_exec` for Summit (preserve `LD_LIBRARY_PATH` from LM)
