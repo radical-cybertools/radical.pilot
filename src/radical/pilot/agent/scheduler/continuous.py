@@ -93,7 +93,8 @@ class Continuous(AgentSchedulingComponent):
         #   this option is set.  This implementation is not optimized for the
         #   scattered mode!  The default is 'False'.
         #
-        self._scattered = self._cfg.get('scattered', False)
+        self._scattered = self._cfg.get('scattered', True)
+        self._log.debug('scattered: %s', self._scattered)
 
 
     # --------------------------------------------------------------------------
@@ -368,8 +369,8 @@ class Continuous(AgentSchedulingComponent):
             node_name = node['node_name']
 
             self._log.debug_3('next %s : %s', node_id, node_name)
-            self._log.debug_3('req1: %s = %s + %s', req_slots, rem_slots,
-                                                  len(alc_slots))
+            self._log.debug_3('req1: %s = %s + %s [%s]', req_slots, rem_slots,
+                                                  len(alc_slots), task['uid'])
 
             # Check if a task is tagged to use this node.  This means we check
             #   - if a "colocate" tag exists
@@ -461,9 +462,10 @@ class Continuous(AgentSchedulingComponent):
             rem_slots -= len(new_slots)
             alc_slots.extend(new_slots)
 
-            self._log.debug_3('new slots: %s', pprint.pformat(new_slots))
-            self._log.debug_3('req2: %s = %s + %s <> %s', req_slots, rem_slots,
-                                                  len(new_slots), len(alc_slots))
+            self._log.debug_9('new slots %d: %s', len(new_slots),
+                                                  pprint.pformat(new_slots))
+            self._log.debug_3('req2: %s = %s + %s?', req_slots,
+                                                  len(alc_slots), rem_slots)
 
             # we are young only once.  kinda...
             is_first = False
@@ -474,6 +476,8 @@ class Continuous(AgentSchedulingComponent):
 
         # if we did not find enough, there is not much we can do at this point
         if  rem_slots > 0:
+            self._log.debug('req : %s %s %s %s %s -> ---- %s', req_slots, cores_per_slot,
+                            gpus_per_slot, lfs_per_slot, mem_per_slot, colo_tag)
             return None  # signal failure
 
         slots = {'ranks'       : alc_slots,
@@ -486,6 +490,9 @@ class Continuous(AgentSchedulingComponent):
             self._colo_history[colo_tag] = [node['node_id']
                                             for node in slots['ranks']]
             self._tagged_nodes.update(self._colo_history[colo_tag])
+
+        self._log.debug('req : %s %s %s %s %s -> #### %s', req_slots, cores_per_slot,
+                        gpus_per_slot, lfs_per_slot, mem_per_slot, colo_tag)
 
         # this should be nicely filled out now - return
         return slots

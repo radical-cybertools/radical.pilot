@@ -66,13 +66,13 @@ def _pilot_state_progress(pid, current, target):
     # first handle final state corrections
     if current == CANCELED:
         if target in [DONE, FAILED, CANCELED]:
-            return [target, []]
+            return target, []
 
     # allow to transition from FAILED to DONE (done gets picked up from DB,
     # sometimes after pilot watcher detects demise)
     if current == FAILED:
         if target in [DONE, FAILED]:
-            return [target, []]
+            return target, []
 
     if current in FINAL and target != current:
         if target in FINAL:
@@ -128,6 +128,8 @@ TMGR_SCHEDULING_PENDING      = 'TMGR_SCHEDULING_PENDING'
 TMGR_SCHEDULING              = 'TMGR_SCHEDULING'
 TMGR_STAGING_INPUT_PENDING   = 'TMGR_STAGING_INPUT_PENDING'
 TMGR_STAGING_INPUT           = 'TMGR_STAGING_INPUT'
+AGENT_RESOLVING_PENDING      = 'AGENT_RESOLVING_PENDING'
+AGENT_RESOLVING              = 'AGENT_RESOLVING'
 AGENT_STAGING_INPUT_PENDING  = 'AGENT_STAGING_INPUT_PENDING'
 AGENT_STAGING_INPUT          = 'AGENT_STAGING_INPUT'
 AGENT_SCHEDULING_PENDING     = 'AGENT_SCHEDULING_PENDING'
@@ -148,19 +150,21 @@ _task_state_values = {
         TMGR_SCHEDULING              :  2,
         TMGR_STAGING_INPUT_PENDING   :  3,
         TMGR_STAGING_INPUT           :  4,
-        AGENT_STAGING_INPUT_PENDING  :  5,
-        AGENT_STAGING_INPUT          :  6,
-        AGENT_SCHEDULING_PENDING     :  7,
-        AGENT_SCHEDULING             :  8,
-        AGENT_EXECUTING_PENDING      :  9,
-        AGENT_EXECUTING              : 10,
-        AGENT_STAGING_OUTPUT_PENDING : 11,
-        AGENT_STAGING_OUTPUT         : 12,
-        TMGR_STAGING_OUTPUT_PENDING  : 13,
-        TMGR_STAGING_OUTPUT          : 14,
-        DONE                         : 15,
-        FAILED                       : 15,
-        CANCELED                     : 15}
+        AGENT_RESOLVING_PENDING      :  5,
+        AGENT_RESOLVING              :  6,
+        AGENT_STAGING_INPUT_PENDING  :  7,
+        AGENT_STAGING_INPUT          :  8,
+        AGENT_SCHEDULING_PENDING     :  9,
+        AGENT_SCHEDULING             : 10,
+        AGENT_EXECUTING_PENDING      : 11,
+        AGENT_EXECUTING              : 12,
+        AGENT_STAGING_OUTPUT_PENDING : 13,
+        AGENT_STAGING_OUTPUT         : 14,
+        TMGR_STAGING_OUTPUT_PENDING  : 15,
+        TMGR_STAGING_OUTPUT          : 16,
+        DONE                         : 17,
+        FAILED                       : 17,
+        CANCELED                     : 17}
 _task_state_inv = {_v: _k for _k, _v in _task_state_values.items()}
 _task_state_inv_full = dict()
 for _st,_v in _task_state_values.items():
@@ -218,7 +222,7 @@ def _task_state_progress(uid, current, target):
     # first handle final state corrections
     if current == CANCELED:
         if target in [DONE, FAILED, CANCELED]:
-            return [target, []]
+            return target, []
 
     if current in FINAL:
         if target in FINAL:
@@ -230,7 +234,7 @@ def _task_state_progress(uid, current, target):
 
     if cur >= tgt:
         # nothing to do, a similar or better progression happened earlier
-        return [current, []]
+        return current, []
 
     # dig out all intermediate states, skip current
     passed = list()
