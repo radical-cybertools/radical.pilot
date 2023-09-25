@@ -114,8 +114,17 @@ jobs:
         run: |
           . testenv/bin/activate
           ./examples/00_getting_started.py local.localhost
-          SID=$(ls -rt | grep rp.session)
-          echo "$SID: $SID"
+          SIDCLIENT=$(ls -rt | grep rp.session)
+          SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
+          CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
+          AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
+          mkdir sessions
+          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          cp -R $CLIENTNAME.tar.bz2 sessions
+          if [ -d "$SIDAGENT" ]; then
+            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
+            cp -R $AGENTNAME.tar.bz2 sessions
+          fi
           radical-analytics-inspect "$SID"
           mkdir artifacts
           ls -la
@@ -125,4 +134,11 @@ jobs:
         with:
             name: artifacts
             path: artifacts
+            retention-days: 5
+      - name: upload sessions
+        uses: actions/upload-artifact@v3
+        with:
+            name: sessions
+            path: sessions
+            retention-days: 5
 
