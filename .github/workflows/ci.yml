@@ -109,20 +109,6 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
-      - name: Collect session
-        if: always()
-        run: |
-          SIDCLIENT=$(ls -rt | grep rp.session)
-          SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
-          CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
-          AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
-          mkdir sessions
-          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
-          cp -R $CLIENTNAME.tar.bz2 sessions
-          if [ -d "$SIDAGENT" ]; then
-            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
-            cp -R $AGENTNAME.tar.bz2 sessions
-          fi
       - name: analyze example session
         timeout-minutes: 5
         if: always()
@@ -134,6 +120,20 @@ jobs:
           mkdir artifacts
           ls -la
           cp -R *.png *.stats artifacts
+      - name: Collect session
+        if: always()
+        run: |
+          SIDCLIENT=$(ls -rt | grep rp.session)
+          SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
+          CLIENTNAME="analytics_client_$SIDCLIENT"
+          AGENTNAME="analytics_agent_$SIDCLIENT"
+          mkdir sessions
+          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          cp -R $CLIENTNAME.tar.bz2 sessions
+          if [ -d "$SIDAGENT" ]; then
+            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
+            cp -R $AGENTNAME.tar.bz2 sessions
+          fi
       - name: upload artifacts
         if: always()
         uses: actions/upload-artifact@v3
