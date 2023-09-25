@@ -125,7 +125,7 @@ jobs:
             tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
             cp -R $AGENTNAME.tar.bz2 sessions
           fi
-          radical-analytics-inspect "$SID"
+          radical-analytics-inspect "$SIDCLIENT"
           mkdir artifacts
           ls -la
           cp -R *.png *.stats artifacts
