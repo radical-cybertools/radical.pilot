@@ -59,14 +59,15 @@ jobs:
         if: always()
         run: |
           SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
+          echo "SIDCLIENT collect session : $SIDCLIENT"
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
           CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
           AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
           mkdir sessions_notebooks
-          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          tar cvfj $CLIENTNAME.tar.bz2 `find $SIDCLIENT -type d -print`
           cp -R $CLIENTNAME.tar.bz2 sessions_notebooks
           if [ -d "$SIDAGENT" ]; then
-            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
+            tar cvfj $AGENTNAME.tar.bz2 `find $SIDAGENT -type d -print`
             cp -R $AGENTNAME.tar.bz2 sessions_notebooks
           fi
       - name: upload session
