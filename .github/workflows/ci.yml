@@ -115,7 +115,7 @@ jobs:
         run: |
           . testenv/bin/activate
           ./examples/00_getting_started.py local.localhost
-          SID=$(ls -rt | grep rp.session)
+          SID=$(find . -name "rp.session*" -type d -print)
           echo "SID analyse example session: $SID"
           radical-analytics-inspect "$SID"
           mkdir artifacts
@@ -124,13 +124,14 @@ jobs:
       - name: Collect session
         if: always()
         run: |
-          SIDCLIENT=$(ls -rt | grep rp.session)
+          SIDCLIENT=$(find . -name "rp.session*" -type d -print)
           echo "SIDCLIENT collect session : $SIDCLIENT"
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
           CLIENTNAME="analytics_client_$SIDCLIENT"
           AGENTNAME="analytics_agent_$SIDCLIENT"
           mkdir sessions_analytics
           tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          tar cvfj $CLIENTNAME.tar.bz2 `find SIDCLIENT -type d -print`
           cp -R $CLIENTNAME.tar.bz2 sessions_analytics
           if [ -d "$SIDAGENT" ]; then
             tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
