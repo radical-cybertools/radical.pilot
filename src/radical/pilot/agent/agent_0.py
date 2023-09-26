@@ -81,7 +81,7 @@ class Agent_0(rpu.Worker):
     #
     def _proxy_input_cb(self, msg):
 
-        self._log.debug('proxy input cb: %s', len(msg))
+        self._log.debug_8('proxy input cb: %s', len(msg))
 
         to_advance = list()
 
@@ -182,9 +182,6 @@ class Agent_0(rpu.Worker):
     #
     def initialize(self):
 
-        # handle pilot commands
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
@@ -204,9 +201,8 @@ class Agent_0(rpu.Worker):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
-        # subscribe for control messages # FIXME: to be removed (duplication)
-        # ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB, cb=self._control_cb,
-        #        url=self._reg['bridges.%s.addr_sub' % rpc.CONTROL_PUBSUB])
+        self.register_rpc_handler('prepare_env', self._prepare_env,
+                                                 addr=self._pid)
 
         # before we run any tasks, prepare a named_env `rp` for tasks which use
         # the pilot's own environment, such as raptors
@@ -217,7 +213,8 @@ class Agent_0(rpu.Worker):
                                  'export PATH=%s'
                                  %  os.environ.get('PATH', '')]
                    }
-        self._prepare_env('rp', env_spec)
+        self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
+                                addr=self._pid)
 
         # start any services if they are requested
         self._start_services()
@@ -226,6 +223,8 @@ class Agent_0(rpu.Worker):
         # ready to roll!  Send state update
         rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
+
+        self._log.debug('advance to PMGR_ACTIVE')
 
         pilot = {'$all'     : True,              # pass full info to client side
                  'type'     : 'pilot',
@@ -597,50 +596,29 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, _, msg):
+    def control_cb(self, topic, msg):
         '''
         Check for commands on the control pubsub, mainly waiting for RPC
         requests to handle.
         '''
 
-        self._log.debug('==== control: %s', msg)
+        self._log.debug_1('control msg %s: %s', topic, msg)
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
         self._prof.prof('cmd', msg="%s : %s" %  (cmd, arg), uid=self._pid)
-
 
         if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
             self._session._hb.beat(uid=self._pmgr)
             return True
 
-        elif cmd == 'prep_env':
-            return self._ctrl_prepare_env(msg)
-
         elif cmd == 'cancel_pilots':
             return self._ctrl_cancel_pilots(msg)
 
-        elif cmd == 'rpc_req':
-            return self._ctrl_rpc_req(msg)
-
         elif cmd == 'service_up':
             return self._ctrl_service_up(msg)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _ctrl_prepare_env(self, msg):
-
-        arg = msg['arg']
-
-        for env_id in arg:
-            self._prepare_env(env_id, arg[env_id])
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -664,51 +642,6 @@ class Agent_0(rpu.Worker):
 
     # --------------------------------------------------------------------------
     #
-    def _ctrl_rpc_req(self, msg):
-
-        cmd = msg['cmd']
-        arg = msg['arg']
-        req = arg['rpc']
-
-        if req not in ['hello', 'prepare_env']:
-            # we don't handle that request
-            return True
-
-        rpc_res = {'uid': arg['uid']}
-
-        try:
-            if req == 'hello'   :
-                out = 'hello %s' % ' '.join(arg['arg'])
-
-            elif req == 'prepare_env':
-                env_name = arg['arg']['env_name']
-                env_spec = arg['arg']['env_spec']
-                out      = self._prepare_env(env_name, env_spec)
-
-            else:
-                # unknown command
-                self._log.info('ignore rpc command: %s', req)
-                return True
-
-            # request succeeded - respond with return value
-            rpc_res['err'] = None
-            rpc_res['out'] = out
-            rpc_res['ret'] = 0
-
-        except Exception as e:
-            # request failed for some reason - indicate error
-            rpc_res['err'] = repr(e)
-            rpc_res['out'] = None
-            rpc_res['ret'] = 1
-            self._log.exception('control cmd failed')
-
-        # publish the response (success or failure)
-        self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                          'arg':  rpc_res})
-
-
-    # --------------------------------------------------------------------------
-    #
     def _ctrl_service_up(self, msg):
 
         uid = msg['arg']['uid']
@@ -719,15 +652,15 @@ class Agent_0(rpu.Worker):
 
         if uid not in self._service_uids_launched:
             # we do not know this service instance
-            self._log.warn('=== ignore service startup signal for %s', uid)
+            self._log.warn('ignore service startup signal for %s', uid)
             return True
 
         if uid in self._service_uids_running:
-            self._log.warn('=== duplicated service startup signal for %s', uid)
+            self._log.warn('duplicated service startup signal for %s', uid)
             return True
 
         self._service_uids_running.append(uid)
-        self._log.debug('=== service %s started (%s / %s)', uid,
+        self._log.debug('service %s started (%s / %s)', uid,
                         len(self._service_uids_running),
                         len(self._service_uids_launched))
 
@@ -743,7 +676,7 @@ class Agent_0(rpu.Worker):
     #
     def _prepare_env(self, env_name, env_spec):
 
-        self._log.debug('env_spec: %s', env_spec)
+        self._log.debug('env_spec %s: %s', env_name, env_spec)
 
         etype = env_spec.get('type', 'venv')
         evers = env_spec.get('version')

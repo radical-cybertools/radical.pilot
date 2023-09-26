@@ -106,7 +106,6 @@ class AgentExecutingComponent(rpu.Component):
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self.control_cb)
 
         self._to_tasks  = list()
         self._to_lock   = mt.Lock()
@@ -131,13 +130,12 @@ class AgentExecutingComponent(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
+        # FIXME RPC: already handled in the component base class
         if cmd == 'cancel_tasks':
 
             self._log.info('cancel_tasks command (%s)', arg)
             for tid in arg['uids']:
                 self.cancel_task(tid)
-
-        return True
 
 
     # --------------------------------------------------------------------------

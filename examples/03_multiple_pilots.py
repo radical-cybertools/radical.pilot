@@ -71,6 +71,10 @@ if __name__ == '__main__':
         # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)
 
+        for pilot in pilots:
+            pilot.prepare_env('numpy_env', {'type' : 'virtualenv',
+                                            'setup': ['numpy']})
+
 
         for gen in range(1):
 

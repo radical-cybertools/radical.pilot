@@ -45,9 +45,11 @@ class Worker(object):
 
         self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
                                level=self._cfg.log_lvl,
+                               debug=self._cfg.debug_lvl,
                                targets=self._cfg.log_tgt,
                                path=self._cfg.path)
-        self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',
+        self._prof = ru.Profiler(name='%s.%04d' % (self._uid, self._rank),
+                                 ns='radical.pilot.worker',
                                  path=self._cfg.path)
 
         # register for lifetime management messages on the control pubsub
@@ -144,21 +146,29 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, topic, things):
+    def _state_cb(self, topic, msgs):
 
-        for thing in ru.as_list(things):
+        for msg in ru.as_list(msgs):
 
-            uid   = thing['uid']
-            state = thing['state']
+            cmd = msg['cmd']
+            arg = msg['arg']
 
-            if uid == self._raptor_id:
+            if cmd != 'update':
+                continue
 
-                if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
-                    # master completed - terminate this worker
-                    self._log.info('master %s final: %s - terminate',
-                                   uid, state)
-                    self.stop()
-                    return False
+            for thing in arg:
+
+                uid   = thing['uid']
+                state = thing['state']
+
+                if uid == self._raptor_id:
+
+                    if state in rps.FINAL + [rps.AGENT_STAGING_OUTPUT_PENDING]:
+                        # master completed - terminate this worker
+                        self._log.info('master %s final: %s - terminate',
+                                       uid, state)
+                        self.stop()
+                        return False
 
         return True
 

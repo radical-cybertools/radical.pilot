@@ -70,10 +70,6 @@ class TMGRSchedulingComponent(rpu.Component):
         # don't.  Either way, we here subscribe to state updates.
         self.register_subscriber(rpc.STATE_PUBSUB, self._base_state_cb)
 
-        # Schedulers use that command channel to get information about
-        # pilots being added or removed.
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._base_control_cb)
-
         # cache the local client sandbox to avoid repeated os calls
         self._client_sandbox = os.getcwd()
 
@@ -199,7 +195,7 @@ class TMGRSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _base_control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
         # we'll wait for commands from the tmgr, to learn about pilots we can
         # use or we should stop using. We also track task cancelation, as all
@@ -214,8 +210,8 @@ class TMGRSchedulingComponent(rpu.Component):
         if cmd not in ['add_pilots', 'remove_pilots', 'cancel_tasks']:
             return True
 
-        arg   = msg['arg']
-        tmgr  = arg['tmgr']
+        arg  = msg['arg']
+        tmgr = arg['tmgr']
 
         self._log.info('scheduler command: %s: %s' % (cmd, arg))
 
@@ -320,8 +316,6 @@ class TMGRSchedulingComponent(rpu.Component):
               # self._session._dbs.pilot_command(cmd='cancel_tasks',
               #                                  arg={'uids' : to_cancel[pid]},
               #                                  pids=pid)
-
-        return True
 
 
     # --------------------------------------------------------------------------
