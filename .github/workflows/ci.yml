@@ -131,7 +131,7 @@ jobs:
           AGENTNAME="analytics_agent_$SIDCLIENT"
           mkdir sessions_analytics
           tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
-          tar cvfj $CLIENTNAME.tar.bz2 `find SIDCLIENT -type d -print`
+          tar cvfj $CLIENTNAME.tar.bz2 `find $SIDCLIENT -type d -print`
           cp -R $CLIENTNAME.tar.bz2 sessions_analytics
           if [ -d "$SIDAGENT" ]; then
             tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
