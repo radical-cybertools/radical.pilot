@@ -94,8 +94,9 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, ccfg, self._session)
 
-        self.register_publisher(rpc.STATE_PUBSUB)
-        self.register_publisher(rpc.CONTROL_PUBSUB)
+        # we never run `self.start()` which is ok - but it means we miss out on
+        # some of the component initialization.  Call it manually thus
+        self._initialize()
 
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,

@@ -49,10 +49,10 @@ class TestPopen(TestCase):
         pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
-        self.assertTrue(pex.control_cb(topic=None, msg=msg))
+        self.assertIsNone(pex.control_cb(topic=None, msg=msg))
 
         msg['cmd'] = 'cancel_tasks'
-        self.assertTrue(pex.control_cb(topic=None, msg=msg))
+        self.assertIsNone(pex.control_cb(topic=None, msg=msg))
         for uid in msg['arg']['uids']:
             mode, tid = pex._watch_queue.get()
             self.assertEqual(mode, pex.TO_CANCEL)

@@ -163,8 +163,6 @@ class Sleep(AgentExecutingComponent) :
             # FIXME: clarify how to cancel tasks
             pass
 
-        return True
-
 
 # ------------------------------------------------------------------------------
 

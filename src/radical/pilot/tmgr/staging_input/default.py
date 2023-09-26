@@ -115,8 +115,6 @@ class Default(TMGRStagingInputComponent):
             self.publish(rpc.CONTROL_PUBSUB, msg={'cmd': 'pilot_register_ok',
                                                   'arg': {'pid': pid}})
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #

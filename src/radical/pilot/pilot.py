@@ -770,7 +770,7 @@ class Pilot(object):
 
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
         rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args,
-                                    kwargs=kwargs)
+                                    kwargs=kwargs, addr=self.uid)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,
