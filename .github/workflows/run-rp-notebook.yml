@@ -55,24 +55,24 @@ jobs:
           . testenv/bin/activate
           jupyter nbconvert --clear-output --inplace $TARGET_PATH
           jupyter nbconvert --to notebook --execute --inplace $TARGET_PATH
-      - name: Collect session
+      - name: Collect sessions
         if: always()
         run: |
-          SIDCLIENT=$(ls -rt | grep rp.session)
+          SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
           CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
           AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
-          mkdir session
+          mkdir sessions_notebooks
           tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
-          cp -R $CLIENTNAME.tar.bz2 session
+          cp -R $CLIENTNAME.tar.bz2 sessions_notebooks
           if [ -d "$SIDAGENT" ]; then
             tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
-            cp -R $AGENTNAME.tar.bz2 session
+            cp -R $AGENTNAME.tar.bz2 sessions_notebooks
           fi
       - name: upload session
         if: always()
         uses: actions/upload-artifact@v3
         with:
-            name: session
-            path: session
+            name: sessions_notebooks
+            path: sessions_notebooks
             retention-days: 5
