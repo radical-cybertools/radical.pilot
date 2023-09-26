@@ -48,7 +48,8 @@ class Worker(object):
                                debug=self._cfg.debug_lvl,
                                targets=self._cfg.log_tgt,
                                path=self._cfg.path)
-        self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',
+        self._prof = ru.Profiler(name='%s.%04d' % (self._uid, self._rank),
+                                 ns='radical.pilot.worker',
                                  path=self._cfg.path)
 
         # register for lifetime management messages on the control pubsub
