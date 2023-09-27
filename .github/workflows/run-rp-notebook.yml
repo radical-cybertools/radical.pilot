@@ -41,6 +41,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install dependencies
         run: |
+          sudo apt update -y && sudo apt install -y mpich
           python -m venv testenv
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
