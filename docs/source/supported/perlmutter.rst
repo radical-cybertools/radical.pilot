@@ -86,19 +86,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
    # OR in case of conda environment
    conda install -c conda-forge radical.pilot
 
-MongoDB
--------
-
-NERSC provides `database services <https://docs.nersc.gov/services/databases/>`_,
-including MongoDB. You need to fill out a form to request a database instance -
-https://docs.nersc.gov/services/databases/#requesting-a-database.
-
-RADICAL-Pilot will connect to the MongoDB instance using a corresponding URI:
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="<mongodb_uri>"
-
 Launching script example
 ========================
 
@@ -114,7 +101,6 @@ launching command for the application itself.
    module load python
    source ve.rp/bin/activate
 
-   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG

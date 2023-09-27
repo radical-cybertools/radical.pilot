@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import os
+from re import S
+import sys
+import time
+
+import threading     as mt
+import setproctitle  as spt
+
+import radical.utils as ru
+import radical.pilot as rp
+
+from radical.pilot.messages import HeartbeatMessage
+
+# ------------------------------------------------------------------------------
+#
+def main(sid, reg_addr, uid):
+    '''
+    This method continues where the bootstrap_0/1/2 left off, and will now pass
+    control to the Agent class which will spawn the functional components.
+    Before doing so, we will check if we happen to be agent instance zero.  If
+    that is the case, some additional python level bootstrap routines kick in,
+    to set the stage for component and sub-agent spawning.
+
+    The agent interprets a config file, which will specify in an 'agents'
+    section:
+      - what nodes should be used for sub-agent startup
+      - what bridges should be started
+      - what are the endpoints for bridges which are not started
+      - what components should be started
+    agent_0 will create derived config files for all sub-agents.
+    '''
+
+    # basic setup: logger and profiler
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
+
+    try:
+        prof.prof('comp_start', uid=uid)
+        prof.disable()
+        wrapped_main(sid, reg_addr, uid, log, prof)
+
+    finally:
+        prof.enable()
+        prof.prof('comp_stop', uid=uid)
+
+
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof):
+
+    spt.setproctitle('rp.%s' % uid)
+
+    term = mt.Event()
+    reg  = ru.zmq.RegistryClient(url=reg_addr)
+
+    hb_cfg = ru.TypedDict(reg['heartbeat'])
+    cfg    = ru.TypedDict(reg['cfg'])
+
+    reg.close()
+
+    agent = run_agent_n(sid, reg_addr, uid, log, prof)
+
+    agent.start()
+
+    # agent runs - send heartbeats so that session knows about it
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
+
+    def hb_beat_cb():
+        hb_pub.put('heartbeat', HeartbeatMessage(uid=uid))
+
+    def hb_term_cb(hb_uid):
+        agent.stop()
+        term.set()
+        return False
+
+    hb = ru.Heartbeat(uid=cfg.uid,
+                      timeout=hb_cfg.timeout,
+                      interval=hb_cfg.interval,
+                      beat_cb=hb_beat_cb,
+                      term_cb=hb_term_cb,
+                      log=log)
+    hb.start()
+
+    # always watch out for session heartbeat
+    hb.watch(uid=sid)
+
+    # react on session heartbeats
+    def hb_sub_cb(topic, msg):
+        hb_msg = HeartbeatMessage(from_dict=msg)
+        if hb_msg.uid == sid:
+            hb.beat(uid=sid)
+
+    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
+                      topic='heartbeat', cb=hb_sub_cb,
+                      log=log, prof=prof)
+
+    # all is set up - we can sit idle 'til end of time.
+    while not term.is_set():
+        time.sleep(1)
+
+
+# ------------------------------------------------------------------------------
+#
+def run_agent_n(sid, reg_addr, uid, log, prof):
+
+    reg  = ru.zmq.RegistryClient(url=reg_addr)
+
+    hb_cfg = ru.Config(cfg=reg['heartbeat'])
+    s_cfg  = ru.Config(cfg=reg['cfg'])
+    a_cfg  = ru.Config(cfg=reg['agent.%s.cfg' % uid])
+
+    reg.close()
+
+    session = rp.Session(uid=sid, cfg=s_cfg,
+                         _role=rp.Session._AGENT_N, _reg_addr=reg_addr)
+    agent = rp.Agent_n(a_cfg, session)
+
+    return agent
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 4:
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <sid> <reg_addr> <uid>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
+
+    ru.daemonize(main=main, args=[sid, reg_addr, uid],
+                 stdout='%s.out' % uid, stderr='%s.err' % uid)
+    sys.exit(0)
+
+
+# ------------------------------------------------------------------------------
+

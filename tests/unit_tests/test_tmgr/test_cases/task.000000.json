@@ -1,6 +1,7 @@
 
 {
     "task": {
+        "pilot"             : "pilot.0000",
         "uid"               : "task.000000",
         "description": {
             "input_staging": [

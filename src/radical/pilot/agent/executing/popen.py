@@ -19,8 +19,6 @@ from ...  import constants as rpc
 
 from .base import AgentExecutingComponent
 
-from ...task_description import RAPTOR_MASTER, RAPTOR_WORKER
-
 
 # ------------------------------------------------------------------------------
 # ensure tasks are killed on termination
@@ -66,7 +64,7 @@ class Popen(AgentExecutingComponent):
 
         self._watch_queue = queue.Queue()
 
-        self._pid = self._cfg['pid']
+        self._pid = self.session.cfg.pid
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
@@ -227,9 +225,6 @@ class Popen(AgentExecutingComponent):
 
         ru.rec_makedir(sbox)
 
-        if td['mode'] in [RAPTOR_MASTER, RAPTOR_WORKER]:
-            ru.write_json('%s/%s.json' % (sbox, tid), td)
-
         with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
 
             tmp  = ''
@@ -345,10 +340,10 @@ class Popen(AgentExecutingComponent):
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
-        _start_new_session = self._cfg['resource_cfg'].\
-            get('new_session_per_task', True)
+        _start_new_session = self.session.rcfg.new_session_per_task or False
 
         self._prof.prof('task_run_start', uid=tid)
         task['proc'] = sp.Popen(args              = cmdline,
@@ -438,6 +433,9 @@ class Popen(AgentExecutingComponent):
             # poll subprocess object
             exit_code = task['proc'].poll()
 
+            tasks_to_advance = list()
+            tasks_to_cancel  = list()
+
             if exit_code is None:
 
                 # process is still running - cancel if needed
@@ -469,9 +467,7 @@ class Popen(AgentExecutingComponent):
                     self._prof.prof('task_run_cancel_stop', uid=tid)
 
                     self._prof.prof('unschedule_start', uid=tid)
-                    self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-                    self.advance_tasks(task, rps.CANCELED, publish=True,
-                                                           push=False)
+                    tasks_to_cancel.append(task)
 
             else:
 
@@ -491,9 +487,9 @@ class Popen(AgentExecutingComponent):
                 if tid in to_cancel:
                     to_cancel.remove(tid)
                 del task['proc']  # proc is not json serializable
+                tasks_to_advance.append(task)
 
                 self._prof.prof('unschedule_start', uid=tid)
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
                 if exit_code != 0:
                     # task failed - fail after staging output
@@ -508,8 +504,15 @@ class Popen(AgentExecutingComponent):
                     # stdout/stderr
                     task['target_state'] = rps.DONE
 
-                self.advance_tasks(task, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                         publish=True, push=True)
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB,
+                         tasks_to_cancel + tasks_to_advance)
+
+            if tasks_to_cancel:
+                self.advance(tasks_to_cancel, rps.CANCELED,
+                                              publish=True, push=False)
+            if tasks_to_advance:
+                self.advance(tasks_to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
+                                               publish=True, push=True)
 
         return action
 
@@ -540,11 +543,18 @@ class Popen(AgentExecutingComponent):
     def _get_rp_env(self, task):
 
         tid  = task['uid']
+        td   = task['description']
         name = task.get('name') or tid
         sbox = os.path.realpath(task['task_sandbox_path'])
 
         if sbox.startswith(self._pwd):
             sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
+
+        gpr = td['gpus_per_rank']
+        if int(gpr) == gpr:
+            gpr = '%d' % gpr
+        else:
+            gpr = '%f' % gpr
 
         ret  = '\n'
         ret += 'export RP_TASK_ID="%s"\n'          % tid
@@ -556,11 +566,14 @@ class Popen(AgentExecutingComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self.session.reg_addr
+        ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
+        ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
+
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
-      # ret += 'export RP_REGISTRY_URL="%s"\n'     % self.reg_addr
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
@@ -695,7 +708,7 @@ class Popen(AgentExecutingComponent):
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration
-        td['pre_exec'].extend(ru.as_list(self._cfg.get('task_pre_exec')))
+        td['pre_exec'].extend(ru.as_list(self.session.rcfg.get('task_pre_exec')))
 
 
     # --------------------------------------------------------------------------

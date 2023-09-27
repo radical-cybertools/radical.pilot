@@ -215,7 +215,11 @@ def complete_url(path   : str,
 
         # we expect hostname elements to be absent for schemas we expand
         if purl.host:
-            raise ValueError('URLs cannot specify `host` for expanded schemas')
+            try:
+                raise ValueError('URLs cannot specify `host` for expanded schemas')
+            except:
+                log.exception('purl host: %s' % str(purl))
+                raise
 
         if purl.schema == 'file':
             # we leave `file://` URLs unaltered

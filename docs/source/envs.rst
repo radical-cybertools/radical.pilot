@@ -24,9 +24,6 @@ End user
     * - .. envvar:: RADICAL_BASE
       - Root directory where to save temporary state files
       - `$HOME/.radical/`
-    * - .. envvar:: RADICAL_PILOT_DBURL
-      - MongoDB URI string. Mandatory for RP to work
-      - {NOT_SET}
     * - .. envvar:: RADICAL_UTILS_NTPHOST
       - NTP host used for profile syncing
       - `0.pool.ntp.org`
