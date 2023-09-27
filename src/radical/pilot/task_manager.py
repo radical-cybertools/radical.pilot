@@ -557,7 +557,6 @@ class TaskManager(rpu.Component):
                 pilot_docs.append(pilot_dict)
 
         # publish to the command channel for the scheduler to pick up
-        pilot_docs = [pilot.as_dict() for pilot in pilots]
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'add_pilots',
                                           'arg' : {'pilots': pilot_docs,
                                                    'tmgr'  : self.uid}})
