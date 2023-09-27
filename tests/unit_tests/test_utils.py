@@ -199,30 +199,30 @@ class TestUtils(TestCase):
 
         rfs_url = rpu_misc.get_resource_fs_url('local.localhost')
         self.assertIsInstance(rfs_url, ru.Url)
-        self.assertEqual(str(rfs_url), rcfg_local.local.filesystem_endpoint)
+        self.assertEqual(str(rfs_url), rcfg_local.schemas.local.filesystem_endpoint)
 
         # switched default access schema, which is the first in the list
-        rpu_misc._rcfgs.local.localhost.schemas = ['ssh', 'local']
+        rpu_misc._rcfgs.local.localhost.default_schema = 'ssh'
         rfs_url = rpu_misc.get_resource_fs_url('local.localhost')
-        self.assertEqual(str(rfs_url), rcfg_local.ssh.filesystem_endpoint)
+        self.assertEqual(str(rfs_url), rcfg_local.schemas.ssh.filesystem_endpoint)
 
         rfs_url = rpu_misc.get_resource_fs_url(resource='access.bridges2',
                                                schema='gsissh')
         self.assertEqual(str(rfs_url),
-                         rcfgs.access.bridges2.gsissh.filesystem_endpoint)
+                         rcfgs.access.bridges2.schemas.gsissh.filesystem_endpoint)
 
         # test resource job URL
 
         rj_url = rpu_misc.get_resource_job_url('local.localhost')
         self.assertIsInstance(rj_url, ru.Url)
-        schema_default = rpu_misc._rcfgs.local.localhost.schemas[0]
+        schema_default = rpu_misc._rcfgs.local.localhost.default_schema
         self.assertEqual(str(rj_url),
-                         rcfg_local[schema_default].job_manager_endpoint)
+                         rcfg_local.schemas[schema_default].job_manager_endpoint)
 
         rj_url = rpu_misc.get_resource_job_url(resource='access.bridges2',
                                                schema='gsissh')
         self.assertEqual(str(rj_url),
-                         rcfgs.access.bridges2.gsissh.job_manager_endpoint)
+                         rcfgs.access.bridges2.schemas.gsissh.job_manager_endpoint)
 
 
 # ------------------------------------------------------------------------------

@@ -18,7 +18,7 @@ class DBSession(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, sid, dburl, cfg, log, connect=True):
+    def __init__(self, sid, dburl, log, connect=True):
         '''
         Creates a new session
 
@@ -32,15 +32,16 @@ class DBSession(object):
         tasks   : document describing a rp.Task
         '''
 
-        self._dburl      = dburl
-        self._log        = log
-        self._mongo      = None
-        self._db         = None
-        self._created    = time.time()
-        self._connected  = None
-        self._closed     = None
-        self._c          = None
-        self._can_remove = False
+        self._dburl       = dburl
+        self._log         = log
+        self._mongo       = None
+        self._db          = None
+        self._created     = time.time()
+        self._connected   = None
+        self._reconnected = None
+        self._closed      = None
+        self._c           = None
+        self._can_remove  = False
 
         if not connect:
             return
@@ -72,10 +73,10 @@ class DBSession(object):
             self._c.insert({'type'      : 'session',
                             '_id'       : sid,
                             'uid'       : sid,
-                            'cfg'       : cfg.as_dict(),
                             'created'   : self._created,
                             'connected' : self._connected})
-            self._can_remove = True
+            self._can_remove  = True
+            self._reconnected = False
 
         else:
             docs = self._c.find({'type' : 'session',
@@ -84,9 +85,10 @@ class DBSession(object):
                 raise ValueError('cannot reconnect to session %s' % sid)
 
             doc = docs[0]
-            self._can_delete = False
-            self._created    = doc['created']
-            self._connected  = time.time()
+            self._can_delete  = False
+            self._created     = doc['created']
+            self._connected   = time.time()
+            self._reconnected = True
 
             # FIXME: get bridge addresses from DB?  If not, from where?
 
@@ -128,6 +130,16 @@ class DBSession(object):
         Returns the connection time
         '''
         return self._connected
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def reconnected(self):
+        '''
+        Returns boolean indicating if the session was reconnected (vs. created)
+        '''
+        return self._reconnected
 
 
     # --------------------------------------------------------------------------

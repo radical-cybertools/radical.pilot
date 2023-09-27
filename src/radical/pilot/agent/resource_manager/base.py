@@ -61,7 +61,7 @@ class RMInfo(ru.TypedDict):
             'mem_per_node'     : int,           # memory per node (MB)
 
             'details'          : {None: None},  # dict of launch method info
-            'lm_info'          : {str: None},   # dict of launch method info
+            'launch_methods'   : {str: None},   # dict of launch method info
     }
 
     _defaults = {
@@ -71,6 +71,7 @@ class RMInfo(ru.TypedDict):
             'threads_per_core' : 1,
             'gpus_per_node'    : 0,
             'threads_per_gpu'  : 1,
+            'launch_methods'   : {}
     }
 
 
@@ -123,10 +124,11 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, log, prof):
+    def __init__(self, cfg, rcfg, log, prof):
 
         self.name  = type(self).__name__
         self._cfg  = cfg
+        self._rcfg = rcfg
         self._log  = log
         self._prof = prof
 
@@ -151,11 +153,11 @@ class ResourceManager(object):
             # have a valid info - store in registry and complete initialization
             reg.put('rm.%s' % self.name.lower(), rm_info.as_dict())
 
-        # set up launch methods even when initialized from registry info
-        self._prepare_launch_methods(rm_info)
-
         reg.close()
         self._set_info(rm_info)
+
+        # set up launch methods even when initialized from registry info
+        self._prepare_launch_methods()
 
 
     # --------------------------------------------------------------------------
@@ -219,11 +221,8 @@ class ResourceManager(object):
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
-
-        rcfg                     = self._cfg.resource_cfg
-        rm_info.mem_per_node     = rcfg.mem_per_node or 0
-
-        system_architecture      = rcfg.get('system_architecture', {})
+        rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+        system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
 
@@ -311,31 +310,33 @@ class ResourceManager(object):
         if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
+        # add launch method information to rm_info
+        rm_info.launch_methods = self._rcfg.launch_methods
+
         return rm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def _prepare_launch_methods(self, rm_info):
+    def _prepare_launch_methods(self):
 
-        launch_methods  = self._cfg.resource_cfg.launch_methods
-
+        launch_methods     = self._rm_info.launch_methods
         self._launchers    = {}
         self._launch_order = launch_methods.get('order') or list(launch_methods)
 
         for lm_name in list(self._launch_order):
 
-            lm_cfg = launch_methods[lm_name]
+            lm_cfg = ru.Config(launch_methods[lm_name])
 
             try:
                 self._log.debug('prepare lm %s', lm_name)
-                lm_cfg['pid']         = self._cfg.pid
-                lm_cfg['reg_addr']    = self._cfg.reg_addr
-                lm_cfg['resource']    = self._cfg.resource
+                lm_cfg.pid           = self._cfg.pid
+                lm_cfg.reg_addr      = self._cfg.reg_addr
+                lm_cfg.resource      = self._cfg.resource
                 self._launchers[lm_name] = rpa.LaunchMethod.create(
-                    lm_name, lm_cfg, rm_info, self._log, self._prof)
+                    lm_name, lm_cfg, self._rm_info, self._log, self._prof)
 
-            except:
+            except Exception as e:
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
 
@@ -365,7 +366,7 @@ class ResourceManager(object):
     # ResourceManager.
     #
     @classmethod
-    def create(cls, name, cfg, log, prof):
+    def create(cls, name, cfg, rcfg, log, prof):
 
         from .ccm         import CCM
         from .fork        import Fork
@@ -396,7 +397,7 @@ class ResourceManager(object):
         if name not in impl:
             raise RuntimeError('ResourceManager %s unknown' % name)
 
-        return impl[name](cfg, log, prof)
+        return impl[name](cfg, rcfg, log, prof)
 
 
 

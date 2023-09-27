@@ -66,8 +66,8 @@ if __name__ == '__main__':
                     td.arguments  = [p, s, t, 10]
                     td.ranks      = 1
                     td.tags       = {'order': {'ns'   : p,
-                                                'order': s,
-                                                'size' : n_tasks}}
+                                               'order': s,
+                                               'size' : n_tasks}}
                     td.name       =  'p%03d-s%03d-t%03d' % (p, s, t)
                     tds.append(td)
                     report.progress()

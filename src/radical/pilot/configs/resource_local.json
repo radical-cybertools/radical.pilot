@@ -3,16 +3,16 @@
     "localhost": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "ssh://localhost",
+                "filesystem_endpoint" : "sftp://localhost"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost",
+                "filesystem_endpoint" : "file://localhost"
+            }
         },
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
@@ -41,11 +41,12 @@
     "localhost_test": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local"],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
@@ -71,16 +72,16 @@
     "localhost_anaconda": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
-        "schemas"                     : ["local", "ssh"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "ssh://localhost/",
-            "filesystem_endpoint"     : "sftp://localhost/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "ssh://localhost/",
+                "filesystem_endpoint" : "sftp://localhost/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
