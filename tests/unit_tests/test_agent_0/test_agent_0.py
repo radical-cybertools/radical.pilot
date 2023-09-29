@@ -190,7 +190,8 @@ class TestComponent(TestCase):
             nonlocal advanced_services
             advanced_services = things
 
-        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0 = Agent_0()
+        agent_0._session               = self._session
         agent_0.advance                = local_advance
         agent_0._log                   = mock.Mock()
         agent_0._service_uids_launched = list()
@@ -235,7 +236,9 @@ class TestComponent(TestCase):
     @mock.patch.object(Agent_0, '__init__', return_value=None)
     def test_ctrl_service_up(self, mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0 = Agent_0()
+        agent_0._cfg                   = ru.Config()
+        agent_0._session               = self._session
         agent_0._service_uids_launched = ['101', '102']
         agent_0._service_uids_running  = []
 
