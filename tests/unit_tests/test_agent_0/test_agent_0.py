@@ -69,8 +69,6 @@ class TestComponent(TestCase):
 
         def _publish_effect(publish_type, cmd):
             nonlocal global_control
-            import pprint
-            print('=============== pub', pprint.pformat(cmd))
             global_control.append((publish_type, cmd))
 
         def _prepenv_effect(env_name, env_spec):
@@ -102,7 +100,6 @@ class TestComponent(TestCase):
                                  'kwargs': {'env_name': 'radical',
                                             'env_spec': 'spec'}})
         self.assertIsNone(agent_cmp._control_cb(None, msg))
-        print('====', global_control, '====')
         self.assertEqual(global_control[0],
                          ('control_pubsub',
                           RPCResultMessage({'uid': 'rpc.0004',
@@ -191,29 +188,35 @@ class TestComponent(TestCase):
             advanced_services = things
 
         agent_0 = Agent_0()
-        agent_0._session               = self._session
-        agent_0.advance                = local_advance
+        agent_0._uid                   = 'agent_0'
+        agent_0._cb_lock               = mt.RLock()
+        agent_0._threads               = dict()
         agent_0._log                   = mock.Mock()
         agent_0._service_uids_launched = list()
         agent_0._services_setup        = mock.Mock()
 
-        agent_0._cfg = ru.Config(from_dict={'pid'          : 12,
-                                            'pilot_sandbox': '/',
-                                            'services'     : []})
+        agent_0.advance = local_advance
 
-        agent_0._cfg.services = [{}]
+        agent_0._session = self._session
+        agent_0._session._cfg = ru.Config(from_dict={'pid'          : 12,
+                                                     'pilot_sandbox': '/',
+                                                     'services'     : []})
+
+        agent_0._session._cfg.services = [{}]
         with self.assertRaises(ValueError):
             # no executable provided
             agent_0._start_services()
 
-        agent_0._cfg.services = [{'executable': 'test', 'ranks': 'zero'}]
+        agent_0._session._cfg.services = [{'executable': 'test',
+                                           'ranks'     : 'zero'}]
         with self.assertRaises(TypeError):
             # type mismatch
             agent_0._start_services()
 
-        services = [{'executable': '/bin/ls',
-                     'cores_per_rank': '3'}]
-        agent_0._cfg.services = services
+        services = [{'executable'    : '/bin/ls',
+                     'cores_per_rank': '3',
+                     'metadata'      : {}}]
+        agent_0._session._cfg.services = services
 
         agent_0._services_setup.wait = mock.Mock(return_value=True)
         agent_0._start_services()
