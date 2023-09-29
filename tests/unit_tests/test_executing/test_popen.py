@@ -97,7 +97,12 @@ class TestPopen(TestCase):
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher
 
+        type(mocked_sp_popen.return_value).pid = \
+            mock.PropertyMock(return_value=123)
+
         pex._handle_task(task)
+
+        self.assertEqual(task['description']['metadata']['process_id'], 123)
 
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]
         self.assertFalse(popen_input_kwargs['start_new_session'])
