@@ -26,7 +26,8 @@ class ForkTestCase(TestCase):
                                mocked_init):
 
         rm_fork = Fork(cfg=None, log=None, prof=None)
-        rm_fork._cfg = ru.TypedDict({'resource_cfg': {}})
+        rm_fork._cfg  = ru.TypedDict({'resource_cfg': {}})
+        rm_fork._rcfg = ru.TypedDict()
         rm_fork._log = mocked_logger
 
         rm_fork._cfg.resource_cfg.fake_resources = False
@@ -58,10 +59,11 @@ class ForkTestCase(TestCase):
             rm_fork._init_from_scratch(rm_info)
 
         # fake/virtual resource, request more cores than available/detected
-        rm_fork._cfg.resource_cfg.fake_resources = True
+        rm_fork._rcfg.fake_resources = True
 
         rm_info.requested_nodes = 0  # will be calculated during init
         rm_info.requested_cores = mocked_mp_cpu_count() * 10
+
         rm_info = rm_fork._init_from_scratch(rm_info)
         self.assertGreater(rm_info.requested_cores, mocked_mp_cpu_count())
         self.assertGreater(rm_info.requested_nodes, 1)

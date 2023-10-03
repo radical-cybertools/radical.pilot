@@ -4,6 +4,7 @@ __copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
+import os
 import sys
 import time
 
@@ -13,12 +14,11 @@ import setproctitle  as spt
 import radical.utils as ru
 import radical.pilot as rp
 
-dh = ru.DebugHelper()
-
+from radical.pilot.messages import HeartbeatMessage
 
 # ------------------------------------------------------------------------------
 #
-def main(cfg):
+def main(sid, reg_addr, uid):
     '''
     This thin wrapper starts a RCT component It expects a single argument:
     a config to use for the component's configuration.  The config must contain:
@@ -32,8 +32,8 @@ def main(cfg):
 
         {
           'from'    : 'uid',
-          'pub'     : 'addr_pub',
-          'sub'     : 'addr_sub',
+          'addr_pub': 'addr_pub',
+          'addr_sub': 'addr_sub',
           'interval': <float>,
           'timeout' : <float>
         }
@@ -53,60 +53,71 @@ def main(cfg):
     and are interpreted by the component implementation.
     '''
 
-    # basic setup: cfg, logger and profiler
-    log  = ru.Logger(name=cfg.uid, ns='radical.pilot', path=cfg.path)
-    prof = ru.Profiler(name=cfg.uid, ns='radical.pilot', path=cfg.path)
+    # basic setup: logger and profiler
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
 
     try:
-        prof.prof('comp_start', uid=cfg.uid)
+        prof.prof('comp_start', uid=uid)
         prof.disable()
-        wrapped_main(cfg, log, prof)
+        wrapped_main(sid, reg_addr, uid, log, prof)
+
     finally:
         prof.enable()
-        prof.prof('comp_stop', uid=cfg.uid)
+        prof.prof('comp_stop', uid=uid)
 
 
-def wrapped_main(cfg, log, prof):
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof):
+
+    spt.setproctitle('rp.%s' % uid)
 
     term = mt.Event()
+    reg  = ru.zmq.RegistryClient(url=reg_addr)
 
-    spt.setproctitle('rp.%s' % cfg.uid)
+    hb_cfg = ru.TypedDict(reg['heartbeat'])
+    c_cfg  = ru.TypedDict(reg['components.%s.cfg' % uid])
+
+    reg.close()
 
     # start a non-primary session
-    session = rp.Session(cfg=cfg, _primary=False)
+    session = rp.Session(uid=sid, cfg=c_cfg,
+                         _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
 
-    # create the component and begin to work
-    comp = rp.utils.Component.create(cfg, session)
+    # create the instance and begin to work
+    comp = rp.utils.Component.create(c_cfg, session)
     comp.start()
 
-    # component runs - send heartbeats so that cmgr knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', cfg.heartbeat.addr_pub)  #, log=log)
+    # component runs - send heartbeats so that session knows about it
+    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
 
     def hb_beat_cb():
-        hb_pub.put('heartbeat', msg={'uid': cfg.uid})
+        hb_pub.put('heartbeat', HeartbeatMessage(uid=uid))
 
     def hb_term_cb(hb_uid):
         comp.stop()
         term.set()
-        return None
+        return False
 
-    hb = ru.Heartbeat(uid=cfg.uid,
-                      timeout=cfg.heartbeat.timeout,
-                      interval=cfg.heartbeat.interval,
+    hb = ru.Heartbeat(uid=uid,
+                      timeout=hb_cfg.timeout,
+                      interval=hb_cfg.interval,
                       beat_cb=hb_beat_cb,
                       term_cb=hb_term_cb,
                       log=log)
     hb.start()
 
-    # register cmgr heartbeat by beating once
-    hb.beat(uid=cfg.cmgr)
+    # always watch out for session heartbeat
+    hb.watch(uid=sid)
 
-    # record cmgr heartbeats
+    # react on session heartbeats
     def hb_sub_cb(topic, msg):
-        if msg['uid'] == cfg.cmgr:
-            hb.beat(uid=cfg.cmgr)
+        hb_msg = HeartbeatMessage(from_dict=msg)
+        if hb_msg.uid == sid:
+            hb.beat(uid=sid)
 
-    ru.zmq.Subscriber('heartbeat', cfg.heartbeat.addr_sub,
+    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
                       topic='heartbeat', cb=hb_sub_cb,
                       log=log, prof=prof)
 
@@ -119,17 +130,17 @@ def wrapped_main(cfg, log, prof):
 #
 if __name__ == "__main__":
 
-    if len(sys.argv) != 2:
+    if len(sys.argv) != 4:
         sys.stderr.write('error: invalid arguments\n'
-                         'usage: %s <cfg_file>\n'  % sys.argv[0])
+                         'usage: %s <sid> <reg_addr> <uid>\n'  % sys.argv[0])
         raise RuntimeError('invalid arguments: %s' % sys.argv)
 
-    fname = sys.argv[1]
-    cfg   = ru.Config(path=fname)
-    path  = '%s/%s' % (cfg.path, cfg.uid)
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
 
-    ru.daemonize(main=main, args=[cfg], stdout='%s.out' % path,
-                                        stderr='%s.err' % path)
+    ru.daemonize(main=main, args=[sid, reg_addr, uid],
+                 stdout='%s.out' % uid, stderr='%s.err' % uid)
     sys.exit(0)
 
 
