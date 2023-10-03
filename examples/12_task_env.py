@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 __copyright__ = 'Copyright 2013-2014, http://radical.rutgers.edu'
 __license__   = 'MIT'
@@ -69,10 +69,10 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        pilot.prepare_env('numpy_env', {'type'   : 'virtualenv',
-                                        'version': '3.7',
-                                        'setup'  : ['numpy']})
-
+        report.header('prepare task env')
+        pilot.prepare_env('numpy_env', {'type' : 'virtualenv',
+                                        'setup': ['numpy']})
+        report.ok('ok')
 
         report.header('submit tasks')
 

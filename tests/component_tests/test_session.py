@@ -1,6 +1,8 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2020-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import glob
@@ -23,13 +25,17 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs) -> None:
 
-        cls._session = Session()
+        def init_primary(self):
+            self._reg = mock.Mock()
+            self._init_cfg_from_scratch()
+
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            cls._session = Session()
         cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
@@ -38,6 +44,8 @@ class TestSession(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if not p:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -64,12 +72,14 @@ class TestSession(TestCase):
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)
+
+        default_schema = rcfg.default_schema
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[rcfg.schemas[0]].job_manager_endpoint)
+                         rcfg.schemas[default_schema].job_manager_endpoint)
         new_schema = 'gsissh'
         rcfg = self._session.get_resource_config(rcfg_label, schema=new_schema)
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[new_schema].job_manager_endpoint)
+                         rcfg.schemas[new_schema].job_manager_endpoint)
 
         # check exceptions
 
@@ -85,80 +95,82 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
-    @mock.patch('radical.pilot.session.ru.Config')
-    def test_resource_schema_alias(self, mocked_config, *args, **kwargs):
+    def test_resource_schema_alias(self, *args, **kwargs):
 
-        mocked_config.return_value = ru.TypedDict({
-            'local': {
-                'test': {
-                    'schemas'           : ['schema_origin',
-                                           'schema_alias',
-                                           'schema_alias_alias'],
-                    'schema_origin'     : {'param_0': 'value_0'},
+        base_dir = os.path.join(os.path.expanduser('~'), '.radical')
+        self._cleanup_files.append(base_dir)
+
+        user_cfg_dir = os.path.join(base_dir, 'pilot', 'configs')
+        ru.rec_makedir(user_cfg_dir)
+
+        facility_cfg = {
+            'test': {
+                'default_schema'    : 'schema_origin',
+                'schemas'           : {
+                    'schema_origin'     : {'job_manager_hop': 'value_0'},
                     'schema_alias'      : 'schema_origin',
                     'schema_alias_alias': 'schema_alias'
                 }
             }
-        })
+        }
+        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
 
-        s_alias = Session()
+        def init_primary(self):
+            self._reg = mock.Mock()
+            self._init_cfg_from_scratch()
 
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias)
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias_alias)
-        self.assertEqual(
-            s_alias.get_resource_config('local.test', 'schema_origin'),
-            s_alias.get_resource_config('local.test', 'schema_alias_alias'))
-
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            s_alias = Session()
         self._cleanup_files.append(s_alias.uid)
 
-        with self.assertRaises(KeyError):
-            # schema alias refers to unknown schema
-            mocked_config.return_value = ru.TypedDict({
-                'local': {
-                    'test': {
-                        'schemas'           : ['schema_alias_error'],
-                        'schema_alias_error': 'unknown_schema'
-                    }
+        self.assertEqual(
+            s_alias._rcfgs.facility.test.schema_origin,
+            s_alias._rcfgs.facility.test.schema_alias)
+        self.assertEqual(
+            s_alias._rcfgs.facility.test.schema_origin,
+            s_alias._rcfgs.facility.test.schema_alias_alias)
+        self.assertEqual(
+            s_alias.get_resource_config('facility.test', 'schema_origin'),
+            s_alias.get_resource_config('facility.test', 'schema_alias_alias'))
+
+        # schema alias refers to unknown schema
+        facility_cfg = {
+            'test': {
+                'default_schema': 'schema_alias_error',
+                'schemas': {
+                    'schemas': ['schema_alias_error'],
+                    'schema_alias_error': 'unknown_schema'
                 }
-            })
-            Session()
+            }
+        }
+        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
+        with self.assertRaises(KeyError):
+            with mock.patch.object(Session, '_init_primary', new=init_primary):
+                Session()
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, 'created', return_value=0)
-    @mock.patch.object(Session, 'closed', return_value=0)
-    def test_close(self, mocked_closed, mocked_created):
+    def test_close(self):
+
+        class Dummy():
+            def put(*args, **kwargs):
+                pass
 
         # check default values
-        self.assertFalse(self._session._close_options.cleanup)
         self.assertFalse(self._session._close_options.download)
         self.assertTrue(self._session._close_options.terminate)
 
+        self._session._ctrl_pub    = Dummy()
+        self._session._hb          = mock.Mock()
+        self._session._hb_pubsub   = mock.Mock()
+        self._session._reg_service = mock.Mock()
+
         # only `True` values are targeted
-
-        self._session._closed = False
-        self._session.close(cleanup=True)
-        self.assertTrue(self._session._close_options.cleanup)
-
-        self._session._closed = False
-        self._session.fetch_json     = mock.Mock()
-        self._session.fetch_profiles = mock.Mock()
-        self._session.fetch_logfiles = mock.Mock()
         self._session.close(download=True)
-        self._session.fetch_json.assert_called()
-        self._session.fetch_profiles.assert_called()
-        self._session.fetch_logfiles.assert_called()
-
-        self._session._closed = False
-        self._session.close(cleanup=True, terminate=True)
+        self._session.close(terminate=True)
 
     # --------------------------------------------------------------------------
     #
@@ -207,6 +219,7 @@ class TestSession(TestCase):
 if __name__ == '__main__':
 
     tc = TestSession()
+    tc.setUpClass()
     tc.test_list_resources()
     tc.test_get_resource_config()
     tc.test_resource_schema_alias()

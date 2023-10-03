@@ -25,13 +25,14 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
+    resource = None
     if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
     elif len(sys.argv) == 2: resource = sys.argv[1]
     else                   : resource = 'local.localhost'
 
 
     # Create a new session. No need to try/except this: if session creation
-    # fails, there is not much we can do anyways...
+    # fails, there is not much we can do anyway...
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -41,8 +42,8 @@ if __name__ == '__main__':
     try:
 
         # read the config used for resource details
-        config = ru.read_json('%s/config.json'
-                            % os.path.dirname(__file__)).get(resource, {})
+        config = ru.read_json('%s/config.json' %
+                              os.path.dirname(__file__)).get(resource, {})
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
@@ -53,7 +54,7 @@ if __name__ == '__main__':
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 30,  # pilot runtime (min)
+                   'runtime'       : 15,  # pilot runtime (min)
                    'exit_on_error' : True,
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
@@ -81,7 +82,8 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable     = '/bin/date'
+            td.executable     = '/bin/sleep'
+            td.arguments      = ['1']
             td.ranks          = 1
             td.cores_per_rank = 1
 

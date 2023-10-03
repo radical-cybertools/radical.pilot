@@ -15,9 +15,11 @@ class PMGRTestCase(TestCase):
     #
     @mock.patch.object(PilotManager, '__init__', return_value=None)
     @mock.patch.object(PilotManager, 'wait_pilots', return_value=None)
-    def test_cancel_pilots(self, mocked_wait_pilots, mocked_init):
+    @mock.patch.object(PilotManager, 'publish', return_value=None)
+    def test_cancel_pilots(self, mocked_publish, mocked_wait_pilots, mocked_init):
 
         pmgr = PilotManager(session=None)
+        pmgr._uid         = 'pmgr.0000'
         pmgr._pilots_lock = mt.RLock()
         pmgr._log         = mock.Mock()
         pmgr._session     = mock.Mock()
@@ -28,12 +30,8 @@ class PMGRTestCase(TestCase):
 
         pmgr.cancel_pilots()
 
-        self.assertTrue(pmgr._session._dbs.pilot_command.called)
         self.assertTrue(mocked_wait_pilots.called)
 
-        args, kwargs = pmgr._session._dbs.pilot_command.call_args_list[0]
-        self.assertEqual('cancel_pilot', args[0])
-        self.assertIn('pilot.0000', args[2])  # pilot UIDs
 
     # --------------------------------------------------------------------------
     #

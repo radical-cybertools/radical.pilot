@@ -3,10 +3,12 @@
     "andes": {
         "description"                 : "704 compute nodes",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://andes.olcf.ornl.gov/",
-            "filesystem_endpoint"     : "file://andes.olcf.ornl.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://andes.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://andes.olcf.ornl.gov/"
+            }
         },
         "forward_tunnel_endpoint"     : "andes.olcf.ornl.gov",
         "default_queue"               : "batch",
@@ -28,10 +30,12 @@
     "andes_gpu": {
         "description"                 : "9 gpu nodes",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://andes.olcf.ornl.gov/",
-            "filesystem_endpoint"     : "file://andes.olcf.ornl.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://andes.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://andes.olcf.ornl.gov/"
+            }
         },
         "forward_tunnel_endpoint"     : "andes.olcf.ornl.gov",
         "default_queue"               : "gpu",
@@ -55,10 +59,12 @@
     "crusher": {
         "description"                 : "2 cabinets: (1) 128 compute nodes; (2) 64 compute nodes",
         "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://crusher.olcf.ornl.gov/",
-            "filesystem_endpoint"     : "file://crusher.olcf.ornl.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://crusher.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://crusher.olcf.ornl.gov/"
+            }
         },
         "default_queue"               : "batch",
         "resource_manager"            : "SLURM",
@@ -91,10 +97,12 @@
     "frontier": {
         "description"                 : "74 cabinets: 128 compute nodes",
         "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://frontier.olcf.ornl.gov/",
-            "filesystem_endpoint"     : "file://frontier.olcf.ornl.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
+            }
         },
         "default_queue"               : "batch",
         "resource_manager"            : "SLURM",
@@ -123,10 +131,12 @@
     "spock": {
         "description"                 : "3 cabinets: each containing 12 compute nodes",
         "notes"                       : "",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_endpoint"    : "slurm://spock.olcf.ornl.gov/",
-            "filesystem_endpoint"     : "file://spock.olcf.ornl.gov/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://spock.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://spock.olcf.ornl.gov/"
+            }
         },
         "default_queue"               : "ecp",
         "resource_manager"            : "SLURM",
@@ -159,11 +169,13 @@
     "summit": {
         "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "lsf://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "default_queue"               : "batch",
         "resource_manager"            : "LSF",
@@ -196,17 +208,19 @@
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
                                         },
-        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
     },
 
     "summit_jsrun": {
         "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "lsf://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "default_queue"               : "batch",
         "resource_manager"            : "LSF",
@@ -243,16 +257,18 @@
                                          "blocked_cores" : [],
                                          "blocked_gpus"  : []
                                         },
-        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
+        "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:$LD_LIBRARY_PATH"]
     },
 
     "summit_interactive": {
         "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "interactive job https://docs.olcf.ornl.gov/systems/summit_user_guide.html",
-        "schemas"                     : ["interactive"],
-        "interactive"                 : {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "interactive",
+        "schemas"                     : {
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "resource_manager"            : "LSF",
         "agent_config"                : "default",
@@ -290,11 +306,13 @@
     "summit_prte": {
         "description"                 : "4608 nodes with 2 IBM POWER9 CPUs and 6 NVIDIA Volta V100 GPUs",
         "notes"                       : "Requires RSA SecurID and uses local virtual env",
-        "schemas"                     : ["local"],
-        "local"                       : {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "lsf://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
         "default_queue"               : "batch",
         "resource_manager"            : "LSF",

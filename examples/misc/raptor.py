@@ -151,7 +151,6 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
-            td.named_env      = 'rp'
             td.input_staging  = [{'source': '%s/raptor_master.py' % PWD,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,

@@ -5,6 +5,7 @@ __license__   = 'MIT'
 
 import os
 import sys
+import time
 
 verbose  = os.environ.get('RADICAL_PILOT_VERBOSE', 'REPORT')
 os.environ['RADICAL_PILOT_VERBOSE'] = verbose
@@ -45,53 +46,54 @@ if __name__ == '__main__':
 
         # read the config used for resource details
         report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
+        config = ru.read_json('%s/config.json' % os.path.dirname(__file__))
         report.ok('>>ok\n')
 
         report.header('submit pilots')
 
         # Add a PilotManager. PilotManagers manage one or more pilots.
         pmgr = rp.PilotManager(session=session)
+        tmgr = rp.TaskManager(session=session)
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
         pd_init = {'resource'      : resource,
-                   'runtime'       : 15,  # pilot runtime (min)
+                   'runtime'       : 300,
                    'exit_on_error' : True,
                    'project'       : config[resource].get('project', None),
                    'queue'         : config[resource].get('queue', None),
                    'access_schema' : config[resource].get('schema', None),
-                   'cores'         : config[resource].get('cores', 1),
+                   'cores'         : 1024 * 16,
                    'gpus'          : config[resource].get('gpus', 0),
                    }
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
-
-
+      # pmgr.wait_pilots(uids=pilot.uid, state=rp.PMGR_ACTIVE)
         report.header('submit tasks')
 
         # Register the pilot in a TaskManager object.
-        tmgr = rp.TaskManager(session=session)
         tmgr.add_pilots(pilot)
 
         # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 128  # number of tasks to run
-        report.info('create %d task description(s)\n\t' % n)
+        n = 1 * 1024  # number of tasks to run
+        report.info('create %d task description(s)\n' % n)
 
         tds = list()
+        report.progress_tgt(n, label='create')
         for i in range(0, n):
 
             # create a new task description, and fill it.
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable = '/bin/date'
+            td.sandbox    = 'task_sandbox'
             tds.append(td)
             report.progress()
 
-        report.ok('>>ok\n')
+        report.progress_done()
 
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
@@ -103,10 +105,10 @@ if __name__ == '__main__':
         tmgr.wait_tasks()
 
         report.info('\n')
-        for task in tasks:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n'
+        for task in tasks[:10]:
+            report.plain('  * %s: %s, exit: %3s, out: %s'
                     % (task.uid, task.state[:4],
-                        task.exit_code, task.stdout[:35]))
+                        task.exit_code, task.stdout))
 
         # get some more details for one task:
         task_dict = tasks[0].as_dict()
@@ -114,13 +116,6 @@ if __name__ == '__main__':
         report.plain("pilot id     : %s\n" % task_dict['pilot'])
         report.plain("exit code    : %s\n" % task_dict['exit_code'])
         report.plain("stdout       : %s\n" % task_dict['stdout'])
-
-        # get some more details for one task:
-        task_dict = tasks[1].as_dict()
-        report.plain("task workdir : %s\n" % task_dict['task_sandbox'])
-        report.plain("pilot id     : %s\n" % task_dict['pilot'])
-        report.plain("exit code    : %s\n" % task_dict['exit_code'])
-        report.plain("exit stdout  : %s\n" % task_dict['stdout'])
 
 
     except Exception as e:
@@ -139,7 +134,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close()
+        session.close(download=True)
 
     report.header()
 

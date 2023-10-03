@@ -100,25 +100,10 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 .. code-block:: bash
 
    pip install radical.pilot
-   
+
 .. note::
 
    Frontier does not provide virtual environments with ``conda``.
-
-MongoDB
--------
-
-OLCF provides a MongoDB service via 
-`Slate <https://docs.olcf.ornl.gov/services_and_applications/slate/index.html>`_,
-an infrastructure built on Kubernetes and OpenShift. Please ask the RADICAL team for a
-corresponding MongoDB URI by opening a 
-`ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
-
-RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
@@ -135,7 +120,6 @@ launching command for the application itself.
    module load cray-python
    source ve.rp/bin/activate
 
-   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG

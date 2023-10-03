@@ -1,9 +1,9 @@
 
-import datetime
-import json
 import os
 import sys
+import json
 import time
+import datetime
 
 import radical.utils as ru
 
@@ -18,7 +18,7 @@ def bson2json (bson_data):
     # http://stackoverflow.com/questions/16586180/ \
     #                          typeerror-objectid-is-not-json-serializable
 
-    from   bson.objectid import ObjectId
+    from bson.objectid import ObjectId
 
     class MyJSONEncoder (json.JSONEncoder):
         def default (self, o):
