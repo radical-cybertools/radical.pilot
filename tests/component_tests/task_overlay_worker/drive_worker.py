@@ -29,9 +29,9 @@ if __name__ == '__main__':
                 } for i in range(n)]
              ])
 
-    for i in range(n):
-        for res in q_out.get():
-            print('%s: %s' % (res['req'], res['out']))
+  # for i in range(n):
+  #     for res in q_out.get():
+  #         print('%s: %s' % (res['req'], res['out']))
 
 
 # ------------------------------------------------------------------------------

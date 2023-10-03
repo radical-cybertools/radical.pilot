@@ -40,7 +40,9 @@ class Default(TMGRStagingOutputComponent):
         self._cache = dict()
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
-                            rpc.TMGR_STAGING_OUTPUT_QUEUE, self.work)
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._session.uid,
+                            cb=self.work)
 
         # we don't need an output queue -- tasks will be final
 
@@ -115,7 +117,7 @@ class Default(TMGRStagingOutputComponent):
                        'session'  : task['session_sandbox'],
                        'resource' : task['resource_sandbox'],
                        'endpoint' : task['endpoint_fs']}
-        tgt_context = {'pwd'      : os.getcwd(),                # !!!
+        tgt_context = {'pwd'      : task['client_sandbox'],     # !!!
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],

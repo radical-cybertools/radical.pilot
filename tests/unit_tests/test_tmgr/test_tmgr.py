@@ -46,7 +46,6 @@ class TMGRTestCase(TestCase):
         global_pilots = []
 
         def publish_side_effect(rpc, pilot):
-            print(type(pilot), pilot)
             nonlocal global_pilots
             global_pilots.append(pilot)
 

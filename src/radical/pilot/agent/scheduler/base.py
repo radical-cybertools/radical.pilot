@@ -216,8 +216,11 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        self._rm = ResourceManager.create(self._cfg.resource_manager,
-                                          self._cfg, self._log, self._prof)
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(rm_name,
+                                          self.session.cfg,
+                                          self.session.rcfg,
+                                          self._log, self._prof)
 
         self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
 
@@ -256,6 +259,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # start a process to host the actual scheduling algorithm
+        self._scheduler_process = False
         self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
@@ -286,7 +290,7 @@ class AgentSchedulingComponent(rpu.Component):
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = cfg['scheduler']
+        name = session.rcfg.agent_scheduler
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
@@ -313,15 +317,21 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
         '''
         listen on the control channel for raptor queue registration commands
         '''
+        print('----- b', msg)
+
+        # only the scheduler process listens for control messages
+        if not self._scheduler_process:
+            return
 
         cmd = msg['cmd']
         arg = msg['arg']
 
         if cmd == 'register_named_env':
+
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
@@ -383,12 +393,14 @@ class AgentSchedulingComponent(rpu.Component):
                     self.advance(tasks, state=rps.FAILED,
                                         publish=True, push=False)
 
+        # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
             uids = arg['uids']
             to_cancel = list()
             with self._lock:
                 for uid in uids:
+                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
@@ -409,8 +421,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -593,6 +603,17 @@ class AgentSchedulingComponent(rpu.Component):
         tasks.
         '''
 
+        self._scheduler_process = True
+
+        # ZMQ endpoints will not have survived the fork. Specifically the
+        # registry client of the component base class will have to reconnect.
+        # Note that `self._reg` of the base class is a *pointer* to the sesison
+        # registry.
+        #
+        # FIXME: should be moved into a post-fork hook of the session
+        #
+        self._reg = ru.zmq.RegistryClient(url=self.session.cfg.reg_addr)
+
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
 
@@ -639,12 +660,12 @@ class AgentSchedulingComponent(rpu.Component):
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
 
-        #  subscribe to control messages, e.g., to register raptor queues
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
+
+        # re-register the control callback in this subprocess
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         self._publishers = dict()
         self.register_publisher(rpc.STATE_PUBSUB)
@@ -938,8 +959,8 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._term.is_set():
-                task = self._queue_unsched.get(timeout=0.01)
-                to_unschedule.append(task)
+                tasks = self._queue_unsched.get(timeout=0.01)
+                to_unschedule += ru.as_list(tasks)
                 if len(to_unschedule) > 512:
                     break
 

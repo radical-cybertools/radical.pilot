@@ -94,7 +94,6 @@ class TestRaptorWorker(TestCase):
       # component._log = mocked_Logger
       # data = {'code': '2 + 5'}
       # out, err, ret, val = component._exec(data)
-      # print('===', [out, err, ret, val])
       #
       # self.assertEqual(ret, 0)
       # self.assertEqual(val, {7})

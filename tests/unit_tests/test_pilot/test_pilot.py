@@ -5,6 +5,7 @@ import time
 from   unittest import mock
 from   unittest import TestCase
 
+import radical.utils as ru
 import radical.pilot as rp
 
 
@@ -20,7 +21,14 @@ class TestPilot(TestCase):
         pmgr._uid     = 'pmgr.0000'
         pmgr._log     = mock.Mock()
         pmgr._prof    = mock.Mock()
-        pmgr._session = mock.Mock()
+        pmgr._session = ru.Config(from_dict={'_reg': {
+            'bridges.control_pubsub.addr_sub': 'tcp://localhost',
+            'bridges.control_pubsub.addr_pub': 'tcp://localhost'}})
+
+        ru.zmq.Subscriber  = mock.Mock()
+        ru.zmq.Publisher   = mock.Mock()
+        ru.zmq.test_pubsub = mock.Mock()
+
         pmgr._session.uid = str(time.time())  # restart uid counter
         sandbox_url = mock.Mock()
         sandbox_url.path = './'

@@ -1,8 +1,6 @@
-
-radical.utils>=1.12
+radical.utils @ git+https://github.com/radical-cybertools/radical.utils@devel
 radical.saga>=1.12
 radical.gtod
-pymongo<4
 setproctitle
 dill
 

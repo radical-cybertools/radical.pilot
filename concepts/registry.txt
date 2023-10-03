@@ -1,0 +1,42 @@
+
+registry = {
+    'cfg'        : { ... },  # session config for this module
+    'rm_info'    : { ... },  # only for agent modules
+    'heartbeat' : {
+        'addr_pub': ... ,
+        'addr_sub': ... ,
+        'cfg'     : {
+            'interval': ... ,
+            'timeout' : ...
+        }
+    },
+    'bridges'   : {
+        'abc_pubsub': {
+            'addr_pub': ... ,
+            'addr_sub': ... ,
+            'cfg'     : {
+                'log_lvl'  : ... ,
+                'hwm'      : ... ,
+                'bulk_size': ...
+            }
+        },
+        'xyz_queue': {
+            'addr_put': ... ,
+            'addr_get': ... ,
+            'cfg'     : {
+                'log_lvl'  : ... ,
+                'hwm'      : ... ,
+                'bulk_size': ...
+            }
+        }
+    },
+    'components': {
+        'staging.0001': {
+            'cfg': {
+                'log_lvl': ...
+            }
+        }
+    }
+    'rcfgs' : { ... }
+}
+
