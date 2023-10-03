@@ -46,6 +46,11 @@ class TestLauncher(TestCase):
         cls._session = Session()
         cls._configs = ru.Config('radical.pilot.resource', name='*')
 
+        for site in cls._configs:
+            for k,v in cls._configs[site].items():
+                v['agent_proxy_url'] = 'tcp://localhost:1024'
+
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(PMGRLaunchingComponent, '__init__', return_value=None)

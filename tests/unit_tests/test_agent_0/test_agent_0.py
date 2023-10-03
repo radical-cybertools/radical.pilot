@@ -9,6 +9,8 @@ import threading as mt
 
 from unittest import mock, TestCase
 
+from radical.pilot.messages import RPCRequestMessage, RPCResultMessage
+
 import radical.utils as ru
 import radical.pilot as rp
 
@@ -22,13 +24,20 @@ class TestComponent(TestCase):
 
     _cleanup_files = []
 
+    def _init_primary_side_effect(self):
+
+        self._log  = mock.MagicMock()
+        self._prof = mock.MagicMock()
+        self._rep  = mock.MagicMock()
+        self._reg  = mock.MagicMock()
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
-    @mock.patch.object(rp.Session, '_get_logger')
-    @mock.patch.object(rp.Session, '_get_profiler')
-    @mock.patch.object(rp.Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_init_primary',
+                       side_effect=_init_primary_side_effect,
+                       autospec=True)
     def setUpClass(cls, *args, **kwargs) -> None:
 
         cls._session = rp.Session()
@@ -40,6 +49,8 @@ class TestComponent(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if p is None:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -52,7 +63,7 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_check_control(self, mocked_init):
+    def test_check_control_cb(self, mocked_init):
 
         global_control = []
 
@@ -60,79 +71,39 @@ class TestComponent(TestCase):
             nonlocal global_control
             global_control.append((publish_type, cmd))
 
-        def _prepenv_effect(env_id, spec):
-            return (env_id, spec)
+        def _prepenv_effect(env_name, env_spec):
+            return env_name, env_spec
 
-        agent_cmp = Agent_0(ru.Config(), self._session)
+        agent_cmp = Agent_0()
 
         agent_cmp._log         = mock.Mock()
+        agent_cmp._prof        = mock.Mock()
+        agent_cmp._pid         = 'pilot.0000'
         agent_cmp.publish      = mock.MagicMock(side_effect=_publish_effect)
         agent_cmp._prepare_env = mock.MagicMock(side_effect=_prepenv_effect)
+
+        agent_cmp._rpc_handlers = {'prepare_env': (agent_cmp._prepare_env, None)}
 
         msg = {'cmd': 'test',
                'arg': {'uid': 'rpc.0000',
                        'rpc': 'bye'}
               }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0001',
-                       'rpc': 'bye'}
-              }
-        self.assertTrue(agent_cmp._check_control(None, msg))
+        msg = RPCRequestMessage({'cmd': 'bye', 'kwargs': {'uid': 'rpc.0001'}})
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
         self.assertEqual(global_control, [])
 
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0002',
-                       'rpc': 'hello'}
-              }
-        self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertIn(global_control[0], [('control_pubsub',
-                                           {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0002',
-                                                    'err': "KeyError('arg')",
-                                                    'out': None,
-                                                    'ret': 1}
-                                           }),
-                                          ('control_pubsub',
-                                           {'cmd': 'rpc_res',
-                                            'arg': {'uid': 'rpc.0002',
-                                                    'err': "KeyError('arg',)",
-                                                    'out': None,
-                                                    'ret': 1}
-                                           })])
-
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0003',
-                       'rpc': 'hello',
-                       'arg': ['World']}
-              }
-        self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[1], ('control_pubsub',
-                                             {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0003',
-                                                      'err': None,
-                                                      'out': 'hello World',
-                                                      'ret': 0}
-                                             }))
-
-        msg = {'cmd': 'rpc_req',
-               'arg': {'uid': 'rpc.0004',
-                       'rpc': 'prepare_env',
-                       'arg': {'env_name': 'radical',
-                               'env_spec': 'spec'}
-                      }
-              }
-        self.assertTrue(agent_cmp._check_control(None, msg))
-        self.assertEqual(global_control[2], ('control_pubsub',
-                                             {'cmd': 'rpc_res',
-                                              'arg': {'uid': 'rpc.0004',
-                                                      'err': None,
-                                                      'out': ('radical',
-                                                              'spec'),
-                                                      'ret': 0}
-                                             }))
+        msg = RPCRequestMessage({'cmd'   : 'prepare_env',
+                                 'uid'   : 'rpc.0004',
+                                 'kwargs': {'env_name': 'radical',
+                                            'env_spec': 'spec'}})
+        self.assertIsNone(agent_cmp._control_cb(None, msg))
+        self.assertEqual(global_control[0],
+                         ('control_pubsub',
+                          RPCResultMessage({'uid': 'rpc.0004',
+                                            'val': ('radical', 'spec')})))
 
 
     # --------------------------------------------------------------------------
@@ -141,16 +112,21 @@ class TestComponent(TestCase):
     @mock.patch('radical.utils.env_prep')
     @mock.patch('radical.utils.sh_callout_bg')
     def test_start_sub_agents(self, mocked_run_sh_callout, mocked_ru_env_prep,
-                              mocked_init):
+                                    mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0 = Agent_0()
+
         agent_0._pwd = tempfile.gettempdir()
         agent_0._log = mock.Mock()
-        agent_0._cfg = ru.Config(from_dict={
+        agent_0._sid = 'rp.session.0'
+
+        agent_0._session     = mock.Mock()
+        agent_0._session.cfg = ru.Config(from_dict={
             'agents': {
                 'agent_1': {'target'    : 'node',
                             'components': {'agent_executing': {'count': 1}}}
-            }
+            },
+            'reg_addr': 'tcp://location'
         })
 
         agent_0._rm = mock.Mock()
@@ -185,17 +161,17 @@ class TestComponent(TestCase):
         agent_0._rm.find_launcher.return_value = launcher
 
         agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
-        self.assertEqual(len(agent_files), 0)
+        self.assertEqual(0, len(agent_files))
 
         agent_0._start_sub_agents()
 
         agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
-        self.assertEqual(len(agent_files), 2)
+        self.assertEqual(2, len(agent_files))
         for agent_file in agent_files:
             os.unlink(agent_file)
 
         # incorrect config setup for agent ('target' is in ['local', 'node'])
-        agent_0._cfg['agents']['agent_1']['target'] = 'incorrect_target'
+        agent_0._session.cfg['agents']['agent_1']['target'] = 'incorrect_target'
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
@@ -211,29 +187,36 @@ class TestComponent(TestCase):
             nonlocal advanced_services
             advanced_services = things
 
-        agent_0 = Agent_0(ru.Config(), self._session)
-        agent_0.advance                = local_advance
+        agent_0 = Agent_0()
+        agent_0._uid                   = 'agent_0'
+        agent_0._cb_lock               = mt.RLock()
+        agent_0._threads               = dict()
         agent_0._log                   = mock.Mock()
         agent_0._service_uids_launched = list()
         agent_0._services_setup        = mock.Mock()
 
-        agent_0._cfg = ru.Config(from_dict={'pid'          : 12,
-                                            'pilot_sandbox': '/',
-                                            'services'     : []})
+        agent_0.advance = local_advance
 
-        agent_0._cfg.services = [{}]
+        agent_0._session = self._session
+        agent_0._session._cfg = ru.Config(from_dict={'pid'          : 12,
+                                                     'pilot_sandbox': '/',
+                                                     'services'     : []})
+
+        agent_0._session._cfg.services = [{}]
         with self.assertRaises(ValueError):
             # no executable provided
             agent_0._start_services()
 
-        agent_0._cfg.services = [{'executable': 'test', 'ranks': 'zero'}]
+        agent_0._session._cfg.services = [{'executable': 'test',
+                                           'ranks'     : 'zero'}]
         with self.assertRaises(TypeError):
             # type mismatch
             agent_0._start_services()
 
-        services = [{'executable': '/bin/ls',
-                     'cores_per_rank': '3'}]
-        agent_0._cfg.services = services
+        services = [{'executable'    : '/bin/ls',
+                     'cores_per_rank': '3',
+                     'metadata'      : {}}]
+        agent_0._session._cfg.services = services
 
         agent_0._services_setup.wait = mock.Mock(return_value=True)
         agent_0._start_services()
@@ -254,28 +237,30 @@ class TestComponent(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_service_state_cb(self, mocked_init):
+    def test_ctrl_service_up(self, mocked_init):
 
-        agent_0 = Agent_0(ru.Config(), self._session)
+        agent_0 = Agent_0()
+        agent_0._cfg                   = ru.Config()
+        agent_0._session               = self._session
         agent_0._service_uids_launched = ['101', '102']
         agent_0._service_uids_running  = []
 
-        agent_0._log = mock.Mock()
+        agent_0._pid  = 'pilot_test.0000'
+        agent_0._log  = mock.Mock()
+        agent_0._prof = mock.Mock()
 
         agent_0._services_setup = mt.Event()
 
         topic = 'test_topic'
-        msg   = {'cmd': 'update',
-                 'arg': []}
+        msg   = {'cmd': 'service_up',
+                 'arg': {}}
 
-        msg['arg'].append({'uid'  : '101',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '101'
+        agent_0._control_cb(topic, msg)
         self.assertFalse(agent_0._services_setup.is_set())
 
-        msg['arg'].append({'uid'  : '102',
-                           'state': 'AGENT_EXECUTING'})
-        agent_0._service_state_cb(topic, msg)
+        msg['arg']['uid'] = '102'
+        agent_0._control_cb(topic, msg)
         self.assertTrue(agent_0._services_setup.is_set())
 
 
@@ -284,10 +269,10 @@ class TestComponent(TestCase):
 if __name__ == '__main__':
 
     tc = TestComponent()
-    tc.test_check_control()
+    tc.test_check_control_cb()
     tc.test_start_sub_agents()
     tc.test_start_services()
-    tc.test_service_state_cb()
+    tc.test_ctrl_service_up()
 
 
 # ------------------------------------------------------------------------------

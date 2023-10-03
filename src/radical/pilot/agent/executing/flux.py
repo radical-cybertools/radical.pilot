@@ -56,12 +56,11 @@ class Flux(AgentExecutingComponent) :
                           }
 
         # we get an instance of the resource manager (init from registry info)
-        self._rm = ResourceManager.create(name=self._cfg.resource_manager,
-                                          cfg=self._cfg, log=self._log,
-                                          prof=self._prof)
-
-      # assert self._rm.from_info
-
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(rm_name,
+                                          self.session.cfg,
+                                          self.session.rcfg,
+                                          self._log, self._prof)
 
         # thread termination signal
         self._term = mt.Event()
@@ -120,10 +119,11 @@ class Flux(AgentExecutingComponent) :
     #
     def _listen(self):
 
-        lm_cfg  = self._cfg.resource_cfg.launch_methods.get('FLUX')
-        lm_cfg['pid']       = self._cfg.pid
-        lm_cfg['reg_addr']  = self._cfg.reg_addr
-        lm                  = LaunchMethod.create('FLUX', lm_cfg, self._cfg,
+        lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self.session.cfg.pid
+        lm_cfg['reg_addr']  = self.session.cfg.reg_addr
+        lm                  = LaunchMethod.create('FLUX', lm_cfg,
+                                                  self.session.cfg,
                                                   self._log, self._prof)
         flux_handle = None
         try:

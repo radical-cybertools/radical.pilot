@@ -65,7 +65,7 @@ class MyMaster(rp.raptor.Master):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg):
+    def __init__(self, cfg: ru.Config):
 
         self._cnt = 0
         self._submitted = defaultdict(int)
@@ -73,9 +73,11 @@ class MyMaster(rp.raptor.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
+        ru.write_json('m1.json', cfg)
         super().__init__(cfg=cfg)
+        ru.write_json('m2.json', self._cfg)
 
-        self._sleep = self._cfg.sleep
+        self._sleep = self._raptor_cfg.sleep
 
 
     # --------------------------------------------------------------------------
@@ -266,7 +268,6 @@ if __name__ == '__main__':
     cores_per_node   = cfg.cores_per_node
     gpus_per_node    = cfg.gpus_per_node
     descr            = cfg.worker_descr
-    pwd              = os.getcwd()
 
     # one node is used by master.  Alternatively (and probably better), we could
     # reduce one of the worker sizes by one core.  But it somewhat depends on
@@ -280,7 +281,6 @@ if __name__ == '__main__':
     # insert `n` worker tasks into the agent.  The agent will schedule (place)
     # those workers and execute them.  Insert one smaller worker (see above)
     # NOTE: this assumes a certain worker size / layout
-    out('workers: %d' % n_workers)
     descr['ranks']         = nodes_per_worker * cores_per_node
     descr['gpus_per_rank'] = nodes_per_worker * gpus_per_node
     worker_ids = master.submit_workers(
@@ -292,19 +292,15 @@ if __name__ == '__main__':
     # FIXME
     master.wait_workers(count=1)
 
-    out('start')
     master.start()
-    out('submit')
     master.submit()
 
     out('stop')
     # TODO: can be run from thread?
     master.stop()
-    out('join')
 
     # TODO: worker state callback
     master.join()
-    out('done')
 
     # TODO: expose RPC hooks
 

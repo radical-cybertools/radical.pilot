@@ -20,7 +20,7 @@ class Fork(ResourceManager):
         if not rm_info.cores_per_node:
             rm_info.cores_per_node = detected_cores
 
-        if self._cfg.resource_cfg.fake_resources:
+        if self._rcfg.fake_resources:
             self._log.info(
                 'virtual resource with %d cores per node (%d detected cores)' %
                 (rm_info.cores_per_node, detected_cores))
