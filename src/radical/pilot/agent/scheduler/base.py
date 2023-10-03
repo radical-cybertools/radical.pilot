@@ -27,6 +27,7 @@ from ..resource_manager  import ResourceManager
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
+SCHEDULER_NAME_CONTINUOUS_DDMD    = "CONTINUOUS_DDMD"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
@@ -294,6 +295,7 @@ class AgentSchedulingComponent(rpu.Component):
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
+        from .continuous_ddmd    import ContinuousDDMD
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .flux               import Flux
@@ -303,6 +305,7 @@ class AgentSchedulingComponent(rpu.Component):
 
             SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
             SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS_DDMD    : ContinuousDDMD,
             SCHEDULER_NAME_CONTINUOUS         : Continuous,
             SCHEDULER_NAME_HOMBRE             : Hombre,
             SCHEDULER_NAME_FLUX               : Flux,
