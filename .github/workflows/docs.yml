@@ -9,10 +9,10 @@ name: 'Test Jupyter notebooks'
 on:
   push:
     branches:
-      - docs/nb_section3
+      - 'devel*'
   pull_request:
     branches:
-      - docs/nb_section3
+      - 'devel*'
 
 # This allows a subsequently queued workflow run to interrupt previous runs
 concurrency:
@@ -24,6 +24,7 @@ jobs:
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: 3.7
+      requirements-file: 'requirements-docs-ci.txt'
       notebook-name: 'getting_started.ipynb'
 
   test-tutorials:
@@ -31,16 +32,18 @@ jobs:
       matrix:
         tutorial: [
           'configuration.ipynb',
-          # 'debugging.ipynb',
+          'debugging.ipynb',
           'describing_tasks.ipynb',
           'multiple_pilots.ipynb',
-          # 'profiling.ipynb',
-          # 'raptor.ipynb',
+          'profiling.ipynb',
+          'raptor.ipynb',
           'staging_data.ipynb',
           'submission.ipynb'
         ]
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: 3.7
+      requirements-file: 'requirements-docs-ci.txt'
       notebook-name: ${{ matrix.tutorial }}
       notebook-path: 'tutorials'
+

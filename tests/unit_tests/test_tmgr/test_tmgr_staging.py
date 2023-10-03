@@ -53,8 +53,12 @@ class TMGRStagingTC(TestCase):
     def test_si_work(self, mocked_si_init):
 
         tmgr_si = StageInDefault(cfg={}, session=None)
+        tmgr_si._log = mock.Mock()
+        tmgr_si._session_sbox = '/tmp'
 
-        def _mocked_advance(things, state, publish, push):
+        def _mocked_advance(things, state, publish, push, qname=None):
+            if not things:
+                return
             nonlocal global_things
             nonlocal global_state
             global_things.append(things)
@@ -77,13 +81,13 @@ class TMGRStagingTC(TestCase):
             if not tc.get('task'):
                 continue
 
-            tmgr_si.work(dict(tc['task']))
+            tmgr_si.work([dict(tc['task'])])
 
             for tasks in global_things:
                 # there were only one task per call
                 self.assertEqual(tasks[0]['control'], 'tmgr')
             # advanced is called 2 times for the provided inputs
-            self.assertEqual(len(global_things), 2)
+            self.assertEqual(2, len(global_things))
             self.assertEqual(global_state, [rps.TMGR_STAGING_INPUT, rps.FAILED])
 
 # ------------------------------------------------------------------------------

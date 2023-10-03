@@ -71,6 +71,10 @@ if __name__ == '__main__':
         # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)
 
+        for pilot in pilots:
+            pilot.prepare_env('numpy_env', {'type' : 'virtualenv',
+                                            'setup': ['numpy']})
+
 
         for gen in range(1):
 
@@ -135,7 +139,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(cleanup=False)
+        session.close()
 
     report.header()
 

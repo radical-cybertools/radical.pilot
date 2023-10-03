@@ -18,6 +18,7 @@ from .constants  import *
 # import API
 from .session                   import Session
 from .context                   import Context
+from .proxy                     import Proxy
 
 from .task_manager              import TaskManager
 from .task                      import Task

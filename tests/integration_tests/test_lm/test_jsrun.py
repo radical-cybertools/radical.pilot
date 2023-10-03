@@ -72,7 +72,6 @@ class TestTask(TestCase):
             result = test_case['result']
             for i in range(len(result)):
                 if '{node}' in result[i]:
-                    print(result[i])
                     result[i] = result[i].format(node=self.node_name)
 
             log  = mock.Mock()
@@ -83,7 +82,7 @@ class TestTask(TestCase):
             component._init_from_scratch(None, None)
 
             # FIXME
-            command, _ = component.construct_command(task, None)
+            command, _ = component.get_launch_cmds(task, '.')
 
             p = sp.Popen(command, stdout=sp.PIPE,
                          stderr=sp.PIPE, shell=True)
