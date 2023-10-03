@@ -4,11 +4,8 @@
         {
             "config": {
                 "pid"             : "pid.0003",
-                "resource_manager": "FORK",
                 "resource_cfg" : {
-                    "launch_methods" : {
-                        "FORK": {}
-                    }
+                    "resource_manager": "FORK"
                 }
             },
             "registry": {
@@ -35,7 +32,10 @@
                     "mem_per_node"   : 0,
                     "requested_nodes": 1,
                     "requested_cores": 8,
-                    "requested_gpus" : 0
+                    "requested_gpus" : 0,
+                    "launch_methods" : {
+                        "FORK": {}
+                    }
                 }
             },
             "result": [

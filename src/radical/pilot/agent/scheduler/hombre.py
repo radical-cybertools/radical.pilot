@@ -49,7 +49,7 @@ class Hombre(AgentSchedulingComponent):
         #   `oversubscribe` is set to False (which is the default for now),
         #   we'll prevent that behavior by allocating one additional CPU core
         #   for each set of requested GPU processes.
-        self._oversubscribe = self._cfg.get('oversubscribe', True)
+        self._oversubscribe = self.session.rcfg.get('oversubscribe', True)
 
         if not self._oversubscribe:
             raise ValueError('HOMBRE needs oversubscription enabled')

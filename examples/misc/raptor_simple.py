@@ -41,9 +41,10 @@ if __name__ == '__main__':
         tmgr.wait_tasks(task.uid)
         print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
 
-        raptor.rpc('stop')
-        tmgr.wait_tasks(raptor.uid)
-        print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
+      # FIXME: MongoDB
+      # raptor.rpc('stop')
+      # tmgr.wait_tasks(raptor.uid)
+      # print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
 
     finally:
         session.close(download=False)

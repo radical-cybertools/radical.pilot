@@ -3,16 +3,16 @@
     "expanse": {
         "description"                 : "(https://www.sdsc.edu/support/user_guides/expanse.html).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
-        "schemas"                     : ["local", "ssh"],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://expanse.sdsc.xsede.org",
-            "filesystem_endpoint"     : "file://expanse.sdsc.xsede.org"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://expanse.sdsc.xsede.org",
-            "filesystem_endpoint"     : "sftp://expanse.sdsc.xsede.org"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint"    : "slurm://expanse.sdsc.xsede.org",
+                "filesystem_endpoint"     : "file://expanse.sdsc.xsede.org"
+            },
+            "ssh"                         : {
+                "job_manager_endpoint"    : "slurm+ssh://expanse.sdsc.xsede.org",
+                "filesystem_endpoint"     : "sftp://expanse.sdsc.xsede.org"
+            }
         },
         "default_remote_workdir"      :  "/expanse/lustre/scratch/$USER/temp_project",
         "default_queue"               : "compute",
@@ -41,22 +41,21 @@
     "stampede2_ssh": {
         "description"                 : "The ACCESS 'Stampede' cluster at TACC (https://docs.tacc.utexas.edu/hpc/stampede2/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "slurm://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "file://stampede2.tacc.utexas.edu/"
+            }
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
@@ -89,22 +88,21 @@
     "stampede2_mpirun": {
         "description"                 : "The ACCESS 'Stampede' cluster at TACC (https://docs.tacc.utexas.edu/hpc/stampede2/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "slurm://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "file://stampede2.tacc.utexas.edu/"
+            }
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
@@ -133,22 +131,21 @@
     "stampede2_ibrun_repex": {
         "description"                 : "The ACCESS 'Stampede' cluster at TACC (https://docs.tacc.utexas.edu/hpc/stampede2/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "slurm://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "file://stampede2.tacc.utexas.edu/"
+            }
         },
         "cores_per_node"              : 68,
         "default_queue"               : "normal",
@@ -181,22 +178,21 @@
     "stampede2_ibrun": {
         "description"                 : "The ACCESS 'Stampede' cluster at TACC (https://docs.tacc.utexas.edu/hpc/stampede2/).",
         "notes"                       : "Always set the ``project`` attribute in the ComputePilotDescription or the pilot will fail.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "slurm://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "file://stampede2.tacc.utexas.edu/"
+            }
         },
         "cores_per_node"              : 68,
         "default_queue"               : "normal",
@@ -226,22 +222,21 @@
     "stampede2_srun": {
         "description"                 : "The ACCESS 'Stampede' cluster at TACC (https://docs.tacc.utexas.edu/hpc/stampede2/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
-        "schemas"                     : ["local", "gsissh", "ssh"],
         "mandatory_args"              : ["project"],
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
-            "filesystem_endpoint"     : "gsisftp://stampede2.tacc.utexas.edu:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "sftp://stampede2.tacc.utexas.edu/"
-        },
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://stampede2.tacc.utexas.edu/",
-            "filesystem_endpoint"     : "file://stampede2.tacc.utexas.edu/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://stampede2.tacc.utexas.edu:2222/",
+                "filesystem_endpoint" : "gsisftp://stampede2.tacc.utexas.edu:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "sftp://stampede2.tacc.utexas.edu/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "slurm://stampede2.tacc.utexas.edu/",
+                "filesystem_endpoint" : "file://stampede2.tacc.utexas.edu/"
+            }
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
@@ -271,12 +266,13 @@
     "comet": {
         "description"                 : "The retired Comet HPC resource at SDSC 'HPC for the 99%%' (https://www.sdsc.edu/support/user_guides/comet.html).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription or the pilot will fail.",
-        "schemas"                     : ["ssh"],
         "mandatory_args"              : ["project"],
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://comet.sdsc.xsede.org/",
-            "filesystem_endpoint"     : "sftp://comet.sdsc.xsede.org/"
+        "default_schema"              : "ssh",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://comet.sdsc.xsede.org/",
+                "filesystem_endpoint" : "sftp://comet.sdsc.xsede.org/"
+            }
         },
         "default_queue"               : "compute",
         "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
@@ -306,27 +302,25 @@
     "bridges2": {
         "description"                 : "The ACCESS 'Bridges2' cluster at PSC (https://www.psc.edu/resources/bridges-2/user-guide-2-2/).",
         "notes"                       : "Always set the ``project`` attribute in the PilotDescription.",
-        "schemas"                     : ["local", "interactive", "gsissh", "ssh"],
       # "mandatory_args"              : [],
-        "local"                       :
-        {
-            "job_manager_endpoint"    : "slurm://bridges2.psc.xsede.org/",
-            "filesystem_endpoint"     : "file://bridges2.psc.xsede.org/"
-        },
-        "interactive"                 :
-        {
-            "job_manager_endpoint"    : "fork://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
-        },
-        "gsissh"                      :
-        {
-            "job_manager_endpoint"    : "slurm+gsissh://bridges2.psc.xsede.org:2222/",
-            "filesystem_endpoint"     : "gsisftp://bridges2.psc.xsede.org:2222/"
-        },
-        "ssh"                         :
-        {
-            "job_manager_endpoint"    : "slurm+ssh://bridges2.psc.xsede.org/",
-            "filesystem_endpoint"     : "sftp://bridges2.psc.xsede.org/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://bridges2.psc.xsede.org/",
+                "filesystem_endpoint" : "file://bridges2.psc.xsede.org/"
+            },
+            "interactive"             : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            },
+            "gsissh"                  : {
+                "job_manager_endpoint": "slurm+gsissh://bridges2.psc.xsede.org:2222/",
+                "filesystem_endpoint" : "gsisftp://bridges2.psc.xsede.org:2222/"
+            },
+            "ssh"                     : {
+                "job_manager_endpoint": "slurm+ssh://bridges2.psc.xsede.org/",
+                "filesystem_endpoint" : "sftp://bridges2.psc.xsede.org/"
+            }
         },
         "default_queue"               : "RM",
         "resource_manager"            : "SLURM",

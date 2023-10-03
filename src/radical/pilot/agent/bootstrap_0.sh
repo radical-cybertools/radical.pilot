@@ -90,7 +90,7 @@ SDISTS=
 RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
-CCM=
+LAUNCHER=
 PILOT_ID=
 RP_VERSION=
 PYTHON=
@@ -220,7 +220,7 @@ create_gtod()
          | cut -f1 -d' ')
     printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
-        "PMGR_ACTIVE_PENDING" "$(hostname):$ip:$now:$now:$now" \
+        "$pilot_state" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
 }
 
@@ -268,7 +268,7 @@ profile_event()
     # MSG    = 6  # message describing the event                optional
     # ENTITY = 7  # type of entity involved                     optional
     printf "%.6f,%s,%s,%s,%s,%s,%s\n" \
-        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "pilot_state" "$msg" \
+        "$now" "$event" "bootstrap_0" "MainThread" "$PILOT_ID" "$pilot_state" "$msg" \
         >> "$PROFILE"
 }
 
@@ -1450,16 +1450,6 @@ $cmd"
 
 # -------------------------------------------------------------------------------
 #
-# Build the PREBOOTSTRAP2 variable to pass down to sub-agents
-#
-add_services()
-{
-    echo "$* &" >> ./services
-}
-
-
-# -------------------------------------------------------------------------------
-#
 # untar the pilot sandbox
 #
 untar()
@@ -1500,17 +1490,16 @@ untar()
 #
 # NOTE: -z makes some assumptions on sandbox and tarball location
 #
-while getopts "a:b:cd:e:f:h:i:j:m:p:r:s:t:v:w:x:y:z:" OPTION; do
+while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
     case $OPTION in
         a)  SESSION_SANDBOX="$OPTARG"         ;;
         b)  PYTHON_DIST="$OPTARG"             ;;
-        c)  CCM='TRUE'                        ;;
+        c)  LAUNCHER='ccmrun'                 ;;
         d)  SDISTS="$OPTARG"                  ;;
         e)  pre_bootstrap_0 "$OPTARG"         ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
         h)  HOSTPORT="$OPTARG"                ;;
         i)  PYTHON="$OPTARG"                  ;;
-        j)  add_services "$OPTARG"            ;;
         m)  VIRTENV_MODE="$OPTARG"            ;;
         p)  PILOT_ID="$OPTARG"                ;;
         r)  RP_VERSION="$OPTARG"              ;;
@@ -1576,19 +1565,7 @@ echo "# -------------------------------------------------------------------"
 touch "$LOGFILES_TARBALL"
 touch "$PROFILES_TARBALL"
 
-
-# At this point, all pre_bootstrap_0 commands have been executed.  We copy the
-# resulting PATH and LD_LIBRARY_PATH, and apply that in bootstrap_2.sh, so that
-# the sub-agents start off with the same env (or at least the relevant parts of
-# it).
-#
-# This assumes that the env is actually transferable.  If that assumption
-# breaks at some point, we'll have to either only transfer the incremental env
-# changes, or reconsider the approach to pre_bootstrap_x commands altogether --
-# see comment in the pre_bootstrap_0 function.
-PB1_PATH="$PATH"
-PB1_LDLB="$LD_LIBRARY_PATH"
-
+pilot_state="PMGR_ACTIVE_PENDING"
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.
 #        "bootstrap start" is here so that $PILOT_ID is known.
@@ -1596,7 +1573,6 @@ PB1_LDLB="$LD_LIBRARY_PATH"
 echo 'create gtod, prof'
 create_gtod
 create_prof
-pilot_state="PMGR_ACTIVE_PENDING"
 profile_event 'bootstrap_0_start'
 
 # NOTE: if the virtenv path contains a symbolic link element, then distutil will
@@ -1739,24 +1715,6 @@ create_deactivate
 # ------------------------------------------------------------------------------
 # launch the radical agent
 #
-# the actual agent script lives in PWD if it was staged -- otherwise we use it
-# from the virtenv
-# NOTE: For some reasons, I have seen installations where 'scripts' go into
-#       bin/, and some where setuptools only changes them in place.  For now,
-#       we allow for both -- but eventually (once the agent itself is small),
-#       we may want to move it to bin ourself.  At that point, we probably
-#       have re-implemented pip... :/
-# FIXME: the second option should use $RP_MOD_PATH, or should derive the path
-#       from the imported rp modules __file__.
-PILOT_SCRIPT=`which radical-pilot-agent`
-
-if test -z "$PILOT_SCRIPT"
-then
-    echo "ERROR: rp installation incomplete?"
-    env_dump > env.rp.error
-    exit 1
-fi
-
 
 # after all is said and done, we should end up with a usable python version.
 # Verify it
@@ -1766,15 +1724,12 @@ verify_install
 # is independent of its location in the pilot VE
 test -z $(which radical-gtod) || cp $(which radical-gtod) ./gtod
 
-AGENT_CMD="$PYTHON $PILOT_SCRIPT"
-
 verify_rp_install
 
 # TODO: (re)move this output?
 echo
 echo "# -------------------------------------------------------------------"
 echo "# Launching radical-pilot-agent "
-echo "# CMDLINE: $AGENT_CMD"
 
 # At this point we expand the variables in $PREBOOTSTRAP2 to pick up the
 # changes made by the environment by pre_bootstrap_0.
@@ -1820,79 +1775,42 @@ else
     BS_SHELL='/bin/sh'
 fi
 
-cat > bootstrap_2.sh <<EOT
-#!$BS_SHELL
-
 # disable user site packages as those can conflict with our virtualenv
 export PYTHONNOUSERSITE=True
 
-# make sure we use the correct sandbox
-cd $PILOT_SANDBOX
+export RP_PILOT_ID="$PILOT_ID"
 
-# apply some env settings as stored after running pre_bootstrap_0 commands
-export PATH="$PB1_PATH"
-export LD_LIBRARY_PATH="$PB1_LDLB"
+env_prep -t env/agent.env
 
-# activate virtenv
-if test "$PYTHON_DIST" = "anaconda" && ! test -z "\$(which conda)"
-then
-    eval "\$(conda shell.posix hook)"
-    conda activate $VIRTENV
-else
-    . $VIRTENV/bin/activate
-fi
+# we create a bootstrap_2.sh which sets the environment sub-agents
+cat > bootstrap_2.sh <<EOT
+#!$BS_SHELL
 
-# make sure rp_install is used
-export PYTHONPATH=$PYTHONPATH
-export PATH=$PATH
+sid=\$1
+reg_addr=\$2
+uid=\$3
 
-# run agent in debug mode
-# FIXME: make option again?
-export RADICAL_VERBOSE=DEBUG
-export RADICAL_UTIL_VERBOSE=DEBUG
-export RADICAL_PILOT_VERBOSE=DEBUG
-
-# the agent will *always* use the dburl from the config file, not from the env
-# FIXME: can we better define preference in the session ctor?
-unset RADICAL_PILOT_DBURL
-
-# avoid ntphost lookups on compute nodes
-export RADICAL_PILOT_NTPHOST=$RADICAL_PILOT_NTPHOST
+# activate python environment
+. env/agent.env
 
 # pass environment variables down so that module load becomes effective at
 # the other side too (e.g. sub-agents).
 $PREBOOTSTRAP2_EXPANDED
 
-# start services and agent, forward arguments
-# NOTE: exec only makes sense in the last line of the script
-if test "\$1" = 'services'
-then
-    # start the services script
-    exec ./services 1>> services.out 2>> services.err
-else
-    # start a sub-agent
-    exec $AGENT_CMD "\$1" 1>>"\$1.out" 2>>"\$1.err"
-fi
+# start (sub) agent
+exec radical-pilot-agent_n "\$sid" "\$reg_addr" "\$uid" \\
+                   1>>"bootstrap_2.\$uid.out" \\
+                   2>>"bootstrap_2.\$uid.err"
 
 EOT
 chmod 0755 bootstrap_2.sh
 # ------------------------------------------------------------------------------
 
-# add a `wait` to the services script
-test -f ./services && echo 'wait' >> ./services
-test -f ./services && chmod 0755     ./services
-
-# start the master agent instance (zero)
+# start the master agent instance (agent_0) in the bs0 environment
 profile_event 'bootstrap_0_ok'
-if test -z "$CCM"; then
-    ./bootstrap_2.sh 'agent.0'    \
-                   1>> agent.0.bootstrap_2.out \
-                   2>> agent.0.bootstrap_2.err &
-else
-    ccmrun ./bootstrap_2.sh 'agent.0'    \
-                   1>> agent.0.bootstrap_2.out \
-                   2>> agent.0.bootstrap_2.err &
-fi
+
+$LAUNCHER radical-pilot-agent_0 1>>agent_0.out 2>>agent_0.err &
+
 AGENT_PID=$!
 pilot_state="PMGR_ACTIVE"
 
@@ -1901,7 +1819,6 @@ do
     sleep 3
     if kill -0 $AGENT_PID 2>/dev/null
     then
-        echo -n '.'
         if test -e "./killme.signal"
         then
             profile_event 'killme' "`date --rfc-3339=ns | cut -c -23`"
@@ -1916,7 +1833,6 @@ do
             kill  -9 $AGENT_PID
         fi
     else
-        echo
         profile_event 'agent_gone' "`date --rfc-3339=ns | cut -c -23`"
         echo "agent $AGENT_PID is gone"
         break
@@ -1946,7 +1862,7 @@ echo "# CLEANUP: $CLEANUP"
 echo "#"
 
 profile_event 'cleanup_start'
-contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent.*"
+contains $CLEANUP 'l' && rm -r "$PILOT_SANDBOX/agent_*"
 contains $CLEANUP 'u' && rm -r "$PILOT_SANDBOX/task.*"
 contains $CLEANUP 'v' && rm -r "$VIRTENV/" # FIXME: in what cases?
 contains $CLEANUP 'e' && rm -r "$PILOT_SANDBOX/"
@@ -2037,13 +1953,6 @@ then
     final_state='FAILED'
 fi
 
-echo "# -------------------------------------------------------------------"
-echo "# push final pilot state: $SESSION_ID $PILOT_ID $final_state"
-sp=$(which radical-pilot-agent-statepush)
-test -z "$sp" && echo "statepush not found"
-test -z "$sp" || $PYTHON "$sp" agent.0.cfg "$final_state"
-
-echo
 echo "# -------------------------------------------------------------------"
 echo "#"
 echo "# Done, exiting ($AGENT_EXITCODE)"

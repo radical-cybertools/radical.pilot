@@ -2,12 +2,13 @@
     "lassen": {
         "description"                 : "Unclassified Sierra system (arch: IBM Power9, NVIDIA TeslaV100)",
         "notes"                       : "A dedicated local instance of MongoDB should be used",
-        "schemas"                     : ["local"],
-        "local"                       :
-        {
-            "job_manager_hop"         : "fork://localhost/",
-            "job_manager_endpoint"    : "lsf://localhost/",
-            "filesystem_endpoint"     : "file://localhost/"
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_hop"     : "fork://localhost/",
+                "job_manager_endpoint": "lsf://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
         },
       # "forward_tunnel_endpoint"     : "`hostname -f`",
         "default_queue"               : "pbatch",
