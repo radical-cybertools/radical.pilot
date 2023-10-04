@@ -324,13 +324,10 @@ class AgentSchedulingComponent(rpu.Component):
         '''
         listen on the control channel for raptor queue registration commands
         '''
-        print('----- b', msg)
 
         # only the scheduler process listens for control messages
         if not self._scheduler_process:
             return
-
-        self._log.debug('=== %s', msg)
 
         cmd = msg['cmd']
         arg = msg.get('arg')
@@ -620,7 +617,6 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         self._scheduler_process = True
-        self._configure_scheduler_process()
 
         # ZMQ endpoints will not have survived the fork. Specifically the
         # registry client of the component base class will have to reconnect.
@@ -633,6 +629,20 @@ class AgentSchedulingComponent(rpu.Component):
 
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
+        self._publishers  = dict()
+
+        self.register_publisher(rpc.STATE_PUBSUB)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
+
+        # register task output channels
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        # re-register the control callback in this subprocess
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+
+        # allow derived schedulers to configure the scheduler process
+        self._configure_scheduler_process()
 
         # The loop alternates between
         #
@@ -676,16 +686,6 @@ class AgentSchedulingComponent(rpu.Component):
         self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
-
-        # register task output channels
-        self.register_output(rps.AGENT_EXECUTING_PENDING,
-                             rpc.AGENT_EXECUTING_QUEUE)
-
-        # re-register the control callback in this subprocess
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
-        self._publishers = dict()
-        self.register_publisher(rpc.STATE_PUBSUB)
 
         resources = True  # fresh start, all is free
         while not self._term.is_set():

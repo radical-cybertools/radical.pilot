@@ -22,7 +22,6 @@ class ContinuousDDMD(Continuous):
 
         self._task_types = dict()
 
-        self.register_publisher(rpc.CONTROL_PUBSUB)
         self.register_rpc_handler('ddmd_deprecate', self._rpc_deprecate,
                                   addr=self.session.cfg.pid)
 

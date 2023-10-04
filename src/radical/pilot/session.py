@@ -721,7 +721,7 @@ class Session(rs.Session):
                 # which originated in *this* module in the first place.
 
                 if msg['origin'] == self._module:
-                  # self._log.debug('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
+                    self._log.debug_8('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
               # self._log.debug('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
@@ -731,8 +731,8 @@ class Session(rs.Session):
 
                 # only forward messages which have the respective flag set
                 if not msg.get('fwd'):
-                  # self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]', src,
-                  #                 tgt, msg, msg['origin'], self._module)
+                    self._log.debug_8('XXX =>! fwd %s to %s: %s [%s - %s]', src,
+                                      tgt, msg, msg['origin'], self._module)
                     return
 
                 # avoid message loops (forward only once)
@@ -741,10 +741,10 @@ class Session(rs.Session):
                 # only forward all messages which originated in *this* module.
 
                 if not msg['origin'] == self._module:
-                  # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
+                    self._log.debug_8('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
-              # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                self._log.debug_8('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
 
 

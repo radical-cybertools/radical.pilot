@@ -738,19 +738,22 @@ class Pilot(object):
     def _control_cb(self, topic, msg_data):
 
         # we only listen for RPCResponse messages
+        self._log.debug_8('pilot control message cb: %s', msg_data)
 
         try:
             msg = ru.zmq.Message.deserialize(msg_data)
 
             if isinstance(msg, RPCResultMessage):
 
-                self._log.debug_4('handle rpc result %s', msg)
+                self._log.debug_4('handle rpc result %s: %s', msg,
+                                  self._rpc_reqs[msg.uid]['evt'])
 
                 if msg.uid in self._rpc_reqs:
                     self._rpc_reqs[msg.uid]['res'] = msg
                     self._rpc_reqs[msg.uid]['evt'].set()
 
-        except:
+        except Exception as e:
+            self._log.debug_9('pilot message error: %s', repr(e))
             pass
 
 
@@ -784,15 +787,15 @@ class Pilot(object):
         while True:
 
             if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=60):
-                self._log.debug('=== still waiting for rpc request %s', rpc_id)
+                self._log.debug_8('still waiting for rpc request %s', rpc_id)
                 continue
 
             rpc_res = self._rpc_reqs[rpc_id]['res']
 
             if rpc_res.exc:
-                raise RuntimeError('=== rpc failed: %s' % rpc_res.exc)
+                raise RuntimeError('rpc failed: %s' % rpc_res.exc)
 
-            self._log.debug('=== rpc completed: %s' % rpc_res)
+            self._log.debug('rpc completed: %s' % rpc_res)
             return rpc_res.val
 
 

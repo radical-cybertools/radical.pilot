@@ -343,9 +343,11 @@ class Component(object):
             # handled successfully
             return
 
-        except:
+        except Exception as e:
             # could not be handled - fall through to legacy handlers
-            pass
+            # That's usually happening because it is not a ru.Message type, thus
+            # the low log level.
+            self._log.debug_9('zmq handling error: %s' % repr(e))
 
         # handle any other message types
         self._log.debug_5('command incoming: %s', msg)
@@ -391,7 +393,8 @@ class Component(object):
         elif isinstance(msg, RPCResultMessage):
 
             if msg.uid in self._rpc_reqs:
-                self._log.debug_4('handle rpc result %s', msg)
+                self._log.debug_4('handle rpc result %s: %s', msg,
+                                  self._rpc_reqs[msg.uid]['evt'])
                 self._rpc_reqs[msg.uid]['res'] = msg
                 self._rpc_reqs[msg.uid]['evt'].set()
 
@@ -425,11 +428,11 @@ class Component(object):
         rpc_handler, addr = self._rpc_handlers[msg.cmd]
 
         if msg.addr and msg.addr != addr:
-            self._log.debug('=== ignore rpc handler for [%s] [%s])', msg, addr)
+            self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
             return
 
         try:
-            self._log.debug('=== rpc handler for %s: %s',
+            self._log.debug('rpc handler for %s: %s',
                             msg.cmd, self._rpc_handlers[msg.cmd])
 
             sys.stdout = strout = io.StringIO()
@@ -440,7 +443,7 @@ class Component(object):
             err = strerr.getvalue()
 
         except Exception as e:
-            self._log.exception('=== rpc call failed: %s' % (msg))
+            self._log.exception('rpc call failed: %s' % (msg))
             val = None
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -452,7 +455,7 @@ class Component(object):
             sys.stderr = bakerr
 
         rpc_res = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
-        self._log.debug('=== rpc response: %s', rpc_res)
+        self._log.debug_9('rpc response: %s', rpc_res)
 
         self.publish(rpc.CONTROL_PUBSUB, rpc_res)
 
@@ -916,7 +919,7 @@ class Component(object):
                                                     log=self._log,
                                                     prof=self._prof)
 
-        self._log.debug('registered publisher for %s', pubsub)
+        self._log.debug('registered publisher for %s: %s', pubsub, self._publishers)
 
 
     # --------------------------------------------------------------------------
@@ -1206,7 +1209,8 @@ class Component(object):
         '''
 
         if not self._publishers.get(pubsub):
-            raise RuntimeError("no msg route for '%s': %s" % (pubsub, msg))
+            raise RuntimeError("no msg route for '%s': %s : %s" % (pubsub, msg,
+                                                                   self._publishers))
 
         if not topic:
             topic = pubsub
