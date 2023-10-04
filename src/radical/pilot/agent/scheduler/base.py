@@ -76,7 +76,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #     - make sure that the base class configuration is usable
 #     - do any additional configuration
 #
-#   _schecule_task(task):
+#   _schedule_task(task):
 #     - given a task (incl. description), find and return a suitable allocation
 #
 #   unschedule_task(task):
@@ -330,8 +330,10 @@ class AgentSchedulingComponent(rpu.Component):
         if not self._scheduler_process:
             return
 
+        self._log.debug('=== %s', msg)
+
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         if cmd == 'register_named_env':
 
@@ -598,6 +600,17 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _configure_scheduler_process(self):
+        '''
+        deriving classes can overload this method to configure the scheduler
+        process
+        '''
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
     def _schedule_tasks(self):
         '''
         This method runs in a separate process and hosts the actual scheduling
@@ -607,6 +620,7 @@ class AgentSchedulingComponent(rpu.Component):
         '''
 
         self._scheduler_process = True
+        self._configure_scheduler_process()
 
         # ZMQ endpoints will not have survived the fork. Specifically the
         # registry client of the component base class will have to reconnect.

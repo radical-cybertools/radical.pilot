@@ -425,11 +425,11 @@ class Component(object):
         rpc_handler, addr = self._rpc_handlers[msg.cmd]
 
         if msg.addr and msg.addr != addr:
-            self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
+            self._log.debug('=== ignore rpc handler for [%s] [%s])', msg, addr)
             return
 
         try:
-            self._log.debug('rpc handler for %s: %s',
+            self._log.debug('=== rpc handler for %s: %s',
                             msg.cmd, self._rpc_handlers[msg.cmd])
 
             sys.stdout = strout = io.StringIO()
@@ -440,7 +440,7 @@ class Component(object):
             err = strerr.getvalue()
 
         except Exception as e:
-            self._log.exception('rpc call failed: %s' % (msg))
+            self._log.exception('=== rpc call failed: %s' % (msg))
             val = None
             out = strout.getvalue()
             err = strerr.getvalue()
@@ -452,7 +452,7 @@ class Component(object):
             sys.stderr = bakerr
 
         rpc_res = RPCResultMessage(rpc_req=msg, val=val, out=out, err=err, exc=exc)
-        self._log.debug_3('rpc reply: %s', rpc_res)
+        self._log.debug('=== rpc response: %s', rpc_res)
 
         self.publish(rpc.CONTROL_PUBSUB, rpc_res)
 

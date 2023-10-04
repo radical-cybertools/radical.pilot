@@ -16,13 +16,15 @@ class ContinuousDDMD(Continuous):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def _configure_scheduler_process(self):
 
-        Continuous._configure(self)
+        Continuous._configure_scheduler_process(self)
 
         self._task_types = dict()
 
-        self.register_rpc_handler('ddmd_deprecate', self._rpc_deprecate)
+        self.register_publisher(rpc.CONTROL_PUBSUB)
+        self.register_rpc_handler('ddmd_deprecate', self._rpc_deprecate,
+                                  addr=self.session.cfg.pid)
 
 
     # --------------------------------------------------------------------------

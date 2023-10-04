@@ -784,14 +784,15 @@ class Pilot(object):
         while True:
 
             if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=60):
-                self._log.debug('still waiting for rpc request %s', rpc_id)
+                self._log.debug('=== still waiting for rpc request %s', rpc_id)
                 continue
 
             rpc_res = self._rpc_reqs[rpc_id]['res']
 
             if rpc_res.exc:
-                raise RuntimeError('rpc failed: %s' % rpc_res.exc)
+                raise RuntimeError('=== rpc failed: %s' % rpc_res.exc)
 
+            self._log.debug('=== rpc completed: %s' % rpc_res)
             return rpc_res.val
 
 

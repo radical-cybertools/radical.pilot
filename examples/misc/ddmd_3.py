@@ -15,7 +15,7 @@ if __name__ == '__main__':
         pmgr   = rp.PilotManager(session=session)
         tmgr   = rp.TaskManager(session=session)
 
-        pd_init = {'resource': 'local.localhost',
+        pd_init = {'resource': 'local.debug',
                    'runtime' : 15,
                    'cores'   : 64}
         pdesc = rp.PilotDescription(pd_init)
@@ -39,11 +39,8 @@ if __name__ == '__main__':
         tmgr.wait_tasks()
 
     finally:
-        pass
-        # session.close(download=False)
+        session.close(download=False)
 
-
-# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 
