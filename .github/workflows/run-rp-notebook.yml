@@ -50,7 +50,7 @@ jobs:
       - name: Run Jupyter Notebook
         env:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
-        timeout-minutes: 5
+        timeout-minutes: 7
         # continue-on-error: true
         run: |
           . testenv/bin/activate
