@@ -509,10 +509,10 @@ class Popen(AgentExecutingComponent):
 
             if tasks_to_cancel:
                 self.advance(tasks_to_cancel, rps.CANCELED,
-                                              publish=True, push=False)
+                             publish=True, push=False, fwd=True)
             if tasks_to_advance:
                 self.advance(tasks_to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                               publish=True, push=True)
+                             publish=True, push=True)
 
         return action
 

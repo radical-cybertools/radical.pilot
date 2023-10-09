@@ -10,6 +10,8 @@ import sys
 import copy
 import time
 
+from typing import List
+
 import threading       as mt
 import radical.utils   as ru
 
@@ -323,6 +325,16 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
+    def _cancel_tasks(self, uids: List[str]) -> List[str] :
+        '''
+        This method can be overloaded by the component to handle any task
+        cancellation request immediately.
+        '''
+        return uids
+
+
+    # --------------------------------------------------------------------------
+    #
     def _control_cb(self, topic, msg):
         '''
         We listen on the control channel for cancel requests, and append any
@@ -365,11 +377,12 @@ class Component(object):
             self._log.debug('register for cancellation: %s', uids)
 
             with self._cancel_lock:
-                self._cancel_list += uids
 
-            # FIXME RPC: scheduler handles cancelation itself
-            if 'AgentSchedulingComponent' in repr(self):
-                self.control_cb(topic, msg)
+                # component may want to take immediate action
+                uids = self._cancel_tasks(uids)
+
+                # all uids not handled above get added to the cancel filter
+                self._cancel_list += uids
 
         elif cmd == 'terminate':
             self._log.info('got termination command')
@@ -1027,9 +1040,10 @@ class Component(object):
 
                         if to_cancel:
                             # only advance stateful entities, otherwise just drop
+                            # FIXME: fwd should only happen in agent components
                             if state:
                                 self.advance(to_cancel, rps.CANCELED,
-                                             publish=True, push=False)
+                                             publish=True, push=False, fwd=True)
 
 
                   # self._log.debug('== got %d things (%s)', len(things), state)
@@ -1049,8 +1063,9 @@ class Component(object):
                             thing['exception']        = repr(e)
                             thing['exception_detail'] = \
                                              '\n'.join(ru.get_exception_trace())
+                        # FIXME: fwd should only happen in agent components
                         self.advance(things, rps.FAILED, publish=True,
-                                                         push=False)
+                                                         push=False, fwd=True)
 
         # keep work_cb registered
         return True

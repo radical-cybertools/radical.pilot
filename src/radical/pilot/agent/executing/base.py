@@ -5,6 +5,8 @@ __license__   = 'MIT'
 import os
 import time
 
+from typing import List
+
 import threading          as mt
 
 import radical.utils      as ru
@@ -130,12 +132,18 @@ class AgentExecutingComponent(rpu.Component):
         cmd = msg['cmd']
         arg = msg['arg']
 
-        # FIXME RPC: already handled in the component base class
-        if cmd == 'cancel_tasks':
 
-            self._log.info('cancel_tasks command (%s)', arg)
-            for tid in arg['uids']:
-                self.cancel_task(tid)
+    # --------------------------------------------------------------------------
+    #
+    def _cancel_tasks(self, uids: List[str]) -> List[str]:
+
+        self._log.info('cancel_tasks %s', uids)
+        for uid in uids:
+            self.cancel_task(uid)
+
+        # add *all* uids to the cancel watch list as the exewcutor
+        # implementation does not report back what tasks got actually killed.
+        return uids
 
 
     # --------------------------------------------------------------------------
@@ -218,7 +226,7 @@ class AgentExecutingComponent(rpu.Component):
                         buckets['raptor'].append(task)
 
         if buckets['client']:
-            self.advance(buckets['client'], state=state,
+            self.advance(buckets['client'], state=state, fwd=True,
                                             publish=publish, push=push, ts=ts)
 
         if buckets['raptor']:

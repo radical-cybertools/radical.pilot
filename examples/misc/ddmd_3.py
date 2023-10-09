@@ -23,20 +23,32 @@ if __name__ == '__main__':
         tmgr.add_pilots(pilot)
 
         tds = list()
-        for i in range(10):
+        for i in range(30):
 
             td = rp.TaskDescription({'executable': '/bin/sleep',
-                                     'arguments' : ['10'],
+                                     'arguments' : [str(i)],
                                      'metadata'  : {'task_type': 'type_1'}})
             tds.append(td)
 
 
         pmgr.wait_pilots(state=rp.PMGR_ACTIVE)
-        tmgr.submit_tasks(tds)
-        time.sleep(3)
+        tasks = tmgr.submit_tasks(tds)
+        time.sleep(15)
 
         pilot.rpc('ddmd_deprecate', 'type_1')
         tmgr.wait_tasks()
+
+        for task in tasks:
+            print(task.uid, task.state)
+
+
+
+        tasks = tmgr.submit_tasks(tds)
+        tmgr.wait_tasks()
+
+        for task in tasks:
+            print(task.uid, task.state)
+
 
     finally:
         session.close(download=False)

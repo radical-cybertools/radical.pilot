@@ -801,7 +801,7 @@ class Master(rpu.Component):
 
         except:
             self._log.exception('request cb failed')
-            self.advance(tasks, rps.FAILED, publish=True, push=False)
+            self.advance(tasks, rps.FAILED, publish=True, push=False, fwd=True)
 
 
     # --------------------------------------------------------------------------

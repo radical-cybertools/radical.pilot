@@ -6,6 +6,7 @@ import copy
 import time
 import queue
 
+from typing      import List
 from collections import defaultdict
 
 import threading          as mt
@@ -236,6 +237,11 @@ class AgentSchedulingComponent(rpu.Component):
         self._active_cnt = 0          # count of currently scheduled tasks
         self._named_envs = list()     # record available named environments
 
+        # keep a backlog of raptor tasks until their queues are registered
+        self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
+        self._raptor_tasks  = dict()           # raptor_master_id : [task]
+        self._raptor_lock   = mt.Lock()        # lock for the above
+
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
         self._queue_sched   = mp.Queue()
@@ -393,36 +399,43 @@ class AgentSchedulingComponent(rpu.Component):
                         task['exception_detail'] = 'raptor queue disappeared'
 
                     self.advance(tasks, state=rps.FAILED,
-                                        publish=True, push=False)
-
-        # FIXME: RPC: this is caught in the base class handler already
-        elif cmd == 'cancel_tasks':
-
-            uids = arg['uids']
-            to_cancel = list()
-            with self._lock:
-                for uid in uids:
-                    print('---------- cancel', uid)
-                    if uid in self._waitpool:
-                        to_cancel.append(self._waitpool[uid])
-                        del self._waitpool[uid]
-
-            with self._raptor_lock:
-                for queue in self._raptor_tasks:
-                    matches = [t for t in self._raptor_tasks[queue]
-                                       if t['uid'] in uids]
-                    for task in matches:
-                        to_cancel.append(task)
-                        self._raptor_tasks[queue].remove(task)
-
-            for task in to_cancel:
-                task['target_state'] = rps.CANCELED
-                task['control']      = 'tmgr_pending'
-                task['$all']         = True
-            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
+                                        publish=True, push=False, fwd=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _cancel_tasks(self, uids: List[str]) -> List[str]:
+
+        to_cancel  = list()
+        to_decline = list()
+
+        with self._lock:
+            for uid in uids:
+                self._log.debug_3('=== cancel %s', uid)
+                if uid in self._waitpool:
+                    to_cancel.append(self._waitpool[uid])
+                    del self._waitpool[uid]
+
+        with self._raptor_lock:
+            for queue in self._raptor_tasks:
+                matches = [t for t in self._raptor_tasks[queue]
+                                   if t['uid'] in uids]
+                for task in matches:
+                    to_cancel.append(task)
+                    self._raptor_tasks[queue].remove(task)
+
+        for task in to_cancel:
+            task['target_state'] = rps.CANCELED
+            task['control']      = 'tmgr_pending'
+            task['$all']         = True
+        self.advance(to_cancel, rps.CANCELED, push=False, publish=True, fwd=True)
+
+        # return all uids which could not be cancelled by the actions above
+        cancelled = [t['uid'] for t in to_cancel]
+        return [uid for uid in uids if uid not in cancelled]
 
 
     # --------------------------------------------------------------------------
@@ -682,15 +695,10 @@ class AgentSchedulingComponent(rpu.Component):
         #     free_slot(slot)
         #     resources = True  # maybe we can place a task now
 
-        # keep a backlog of raptor tasks until their queues are registered
-        self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
-        self._raptor_tasks  = dict()           # raptor_master_id : [task]
-        self._raptor_lock   = mt.Lock()        # lock for the above
-
         resources = True  # fresh start, all is free
         while not self._term.is_set():
 
-            self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
+            self._log.debug_8('schedule tasks 0: %s, w: %d', resources,
                     len(self._waitpool))
 
             active = 0  # see if we do anything in this iteration
@@ -700,14 +708,14 @@ class AgentSchedulingComponent(rpu.Component):
             if resources:
                 r_wait, a = self._schedule_waitpool()
                 active += int(a)
-                self._log.debug_3('schedule tasks w: %s %s', r_wait, a)
+                self._log.debug_8('schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
             r_inc, a = self._schedule_incoming()
             active += int(a)
-            self._log.debug_3('schedule tasks i: %s %s', r_inc, a)
+            self._log.debug_8('schedule tasks i: %s %s', r_inc, a)
 
             # if we had resources, but could not schedule any incoming not any
             # waiting, then we effectively ran out of *useful* resources
@@ -722,12 +730,12 @@ class AgentSchedulingComponent(rpu.Component):
             if not resources and r:
                 resources = True
             active += int(a)
-            self._log.debug_3('schedule tasks c: %s %s', r, a)
+            self._log.debug_8('schedule tasks c: %s %s', r, a)
 
             if not active:
                 time.sleep(0.1)  # FIXME: configurable
 
-            self._log.debug_3('schedule tasks x: %s %s', resources, active)
+            self._log.debug_8('schedule tasks x: %s %s', resources, active)
 
 
     # --------------------------------------------------------------------------
@@ -784,7 +792,8 @@ class AgentSchedulingComponent(rpu.Component):
             task['$all']         = True
 
             self._log.error('bisect failed on %s: %s', task['uid'], error)
-            self.advance(scheduled, rps.FAILED, publish=True, push=False)
+            self.advance(scheduled, rps.FAILED,
+                         publish=True, push=False, fwd=True)
 
         self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
@@ -809,6 +818,17 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _filter_incoming(self, tasks):
+        '''
+        This method can be overloaded by deriving schedulers to filter the
+        incoming task list
+        '''
+
+        return tasks
+
+
+    # --------------------------------------------------------------------------
+    #
     def _schedule_incoming(self):
 
         # fetch all tasks from the queue
@@ -818,12 +838,14 @@ class AgentSchedulingComponent(rpu.Component):
 
             while not self._term.is_set():
 
-                data = self._queue_sched.get(timeout=0.001)
+                tasks = self._queue_sched.get(timeout=0.001)
 
-                if not isinstance(data, list):
-                    data = [data]
+                if not isinstance(tasks, list):
+                    tasks = [tasks]
 
-                for task in data:
+                tasks = self._filter_incoming(tasks)
+
+                for task in tasks:
 
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
@@ -936,7 +958,8 @@ class AgentSchedulingComponent(rpu.Component):
 
                 self._log.exception('scheduling failed for %s', task['uid'])
 
-                self.advance(task, rps.FAILED, publish=True, push=False)
+                self.advance(task, rps.FAILED,
+                             publish=True, push=False, fwd=True)
 
 
         # all tasks which could not be scheduled are added to the waitpool
