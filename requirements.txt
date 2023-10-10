@@ -1,5 +1,5 @@
-radical.utils @ git+https://github.com/radical-cybertools/radical.utils@devel
-radical.saga>=1.12
+radical.utils>=1.40
+radical.saga>=1.37
 radical.gtod
 setproctitle
 dill
