@@ -6,8 +6,6 @@ import tarfile
 import radical.saga  as rs
 import radical.utils as ru
 
-from   .db_utils import get_session_docs
-
 rs_fs = rs.filesystem
 
 
