@@ -51,26 +51,3 @@ All `[nn]_*.py` examples accept resource targets.  To simplify the
 examples, some resource configuration details are moved to a config file
 (`config.json`).  Please make sure that it contains valid settings for the
 target resources.
-
-All examples assume password-less ssh access to be configured out-of-band (or
-gsissh if so indicated in the resource config).
-
-RP requires a MongoDB instance as storage backend.  Please set the environment
-variable `RADICAL_PILOT_DBURL` to point to a valid MongoDB.  The value should
-have the form:
-
-```
-  export RADICAL_PILOT_DBURL="mongodb://some.host.ne:port/database_name/"
-```
-
-The specified database does not not need to exist, but is created on the fly.
-For MongoDB instances which require user/pass authentication, use
-
-```
-  export RADICAL_PILOT_DBURL="mongodb://user:pass@some.host.ne:port/database_name/"
-```
-
-Other MongoDB authentication methods are currently not supported.  *Note that
-unsecured databases are open to man-in-the-middle attacks!*
-
-
