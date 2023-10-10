@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2013-2022, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+
+import sys
+import time
+
+import radical.utils as ru
+import radical.pilot as rp
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    bridge = rp.Proxy()
+
+    try:
+        sys.stdout.write('uid : %s\n' % bridge.uid)
+        sys.stdout.flush()
+
+        bridge.start()
+
+        sys.stdout.write('addr: %s\n' % bridge.addr)
+        ru.write_json('%s.cfg' % bridge.uid, {'addr': bridge.addr})
+
+        # run forever until process is interrupted or killed
+        while True:
+            time.sleep(1)
+
+    finally:
+        bridge.stop()
+        bridge.wait()
+
+
+# ------------------------------------------------------------------------------
+

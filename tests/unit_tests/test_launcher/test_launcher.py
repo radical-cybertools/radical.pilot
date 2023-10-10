@@ -24,7 +24,7 @@ class TestLauncher(TestCase):
             def __init__(self):
                 self.uid = 'uid.0'
                 self.sid = 'sid.0'
-                self.cfg = ru.Config(cfg={'dburl': 'db://'})
+                self.cfg = ru.Config(cfg={})
 
             def _get_endpoint_fs(self, pilot):
                 return ru.Url(pilot['description'].get('endpoint_fs') or '/')
@@ -45,6 +45,11 @@ class TestLauncher(TestCase):
 
         cls._session = Session()
         cls._configs = ru.Config('radical.pilot.resource', name='*')
+
+        for site in cls._configs:
+            for k,v in cls._configs[site].items():
+                v['agent_proxy_url'] = 'tcp://localhost:1024'
+
 
     # --------------------------------------------------------------------------
     #

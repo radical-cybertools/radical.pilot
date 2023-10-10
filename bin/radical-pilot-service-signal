@@ -1,0 +1,56 @@
+#!/bin/sh
+
+HELP=$(cat <<EOT
+
+Usage: $0 <uid>
+
+  uid: UID of the service whose startup completed
+
+
+This script is expected to be executed by a service instance which was started
+by the pilot agent.  The agent will block any further activity until all started
+services signal theor readiness.  A service specification may define a timeout
+after which the startup is declaired as failed and the agent will abort.
+
+Internally the script will activate the agent's virtualenv and then run a small
+embedded Python script which sends a message to the Agent's control channel,
+informing it about the service startup.
+EOT
+)
+
+SCRIPT=$(cat <<EOT
+
+import time
+import os
+
+import radical.utils as ru
+
+reg_addr = os.environ['RP_REGISTRY_ADDRESS']
+reg      = ru.zmq.RegistryClient(url=reg_addr)
+
+ctr_addr = reg['bridges.control_pubsub.addr_pub']
+task_uid = os.environ['RP_TASK_ID']
+
+print('reg_addr: %s' % reg_addr)
+print('ctr_addr: %s' % ctr_addr)
+print('task_uid: %s' % task_uid)
+
+pub = ru.zmq.Publisher('control_pubsub', ctr_addr)
+
+pub.put('control_pubsub', msg={'cmd': 'service_up',
+                               'uid': task_uid})
+
+# make sure the message goes out
+time.sleep(1)
+
+EOT
+)
+
+
+cd $RP_PILOT_SANDBOX
+. env/rp_named_env.rp.sh
+
+set -x
+echo "$SCRIPT" | python3
+echo "Done"
+

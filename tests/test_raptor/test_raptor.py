@@ -17,22 +17,56 @@ import radical.pilot as rp
 class TestWorker(TestCase):
 
     def read_json_side_effect(self, fname=None):
-        return {'sub': '', 'pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+        return {'addr_sub': '', 'addr_pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+
+    def dict_merge_side_effect(self, fname=None):
+        return {'addr_sub': '', 'addr_pub': '', 'cores_per_rank': 8, 'gpus_per_rank': 2}
+
+    class MyConfig(ru.TypedDict):
+        def __init__(self, cfg=None, from_dict=None):
+            if cfg: super().__init__(from_dict=cfg)
+            else  : super().__init__(from_dict=from_dict)
+
+    class MyRegistry(ru.TypedDict):
+
+        def __init__(self, url):
+
+            data = {
+                       'cfg': {},
+                       'bridges.state_pubsub': {
+                           'addr_sub': 'tcp://localhost:10000',
+                           'addr_pub': 'tcp://localhost:10001'
+                       },
+                       'bridges.control_pubsub': {
+                           'addr_sub': 'tcp://localhost:10000',
+                           'addr_pub': 'tcp://localhost:10001'
+                       },
+                       'raptor.task.000000.cfg': {
+                           'cores_per_rank': 8,
+                           'gpus_per_rank' : 2
+                       }
+                   }
+
+            super().__init__(from_dict=data)
+
+        def dump(self, *args, **kwargs): pass
 
 
+    @mock.patch('radical.utils.zmq.RegistryClient', MyRegistry)
     @mock.patch('radical.utils.zmq.Subscriber')
     @mock.patch('radical.utils.zmq.Publisher')
     @mock.patch('radical.utils.zmq.Putter')
     @mock.patch('radical.utils.read_json', side_effect=read_json_side_effect)
+    @mock.patch('radical.utils.Config', MyConfig)
     @mock.patch('threading.Event')
     @mock.patch('threading.Thread')
-    def test_alloc(self, mock_1, mock_2, mock_3, mock_4, mock_5, mock_6):
+    def test_alloc(self, *args):
 
-        cfg = ru.Config(cfg={'uid'           : 'worker.0000',
-                             'sid'           : str(time.time()),
-                             'info'          : {},
-                             'cores_per_rank': 8,
-                             'gpus_per_rank' : 2})
+        cfg = ru.Config(from_dict={'uid'           : 'worker.0000',
+                                   'sid'           : str(time.time()),
+                                   'info'          : {},
+                                   'cores_per_rank': 8,
+                                   'gpus_per_rank' : 2})
 
         ru.zmq.Subscriber = mock.Mock()
         ru.zmq.Publisher  = mock.Mock()
@@ -44,21 +78,21 @@ class TestWorker(TestCase):
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
 
-        rp.raptor.Worker.publish       = mock.Mock()
-        rp.raptor.Worker._ts_addr      = 'tcp://localhost:1'
-        rp.raptor.Worker._res_addr_put = 'tcp://localhost:2'
-        rp.raptor.Worker._req_addr_get = 'tcp://localhost:3'
+        rp.raptor.Worker.publish          = mock.Mock()
+        rp.raptor.Worker._ts_addr         = 'tcp://localhost:1'
+        rp.raptor.Worker._res_addr_put    = 'tcp://localhost:2'
+        rp.raptor.Worker._req_addr_get    = 'tcp://localhost:3'
 
-        os.environ['RP_TASK_ID']       = 'task.000000'
-        os.environ['RP_TASK_SANDBOX']  = '/tmp'
-        os.environ['RP_PILOT_SANDBOX'] = '/tmp'
-        os.environ['RP_RANKS']         = str(8)
+        os.environ['cores_per_rank']      = '8'
+        os.environ['gpus_per_rank']       = '2'
+        os.environ['RP_TASK_ID']          = 'task.000000'
+        os.environ['RP_TASK_SANDBOX']     = '/tmp'
+        os.environ['RP_PILOT_SANDBOX']    = '/tmp'
+        os.environ['RP_RANKS']            = str(8)
+        os.environ['RP_SESSION_ID']       = 'foo'
+        os.environ['RP_REGISTRY_ADDRESS'] = 'tcp://localhost:10001'
 
-        with ru.ru_open('/tmp/control_pubsub.cfg', 'w') as fout:
-            fout.write('{"sub": "tcp://localhost:10000", '
-                       ' "pub": "tcp://localhost:10001"}\n')
-
-        worker = rp.raptor.DefaultWorker(cfg)
+        worker = rp.raptor.DefaultWorker('master.0000')
 
         task_1 = {'uid': 'task.0000', 'cores': 1, 'gpus' : 1}
         task_2 = {'uid': 'task.0001', 'cores': 2, 'gpus' : 1}
@@ -98,8 +132,6 @@ class TestWorker(TestCase):
         worker._dealloc(task_3)
         self.assertEqual(worker._resources['cores'], [0, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [0, 0])
-
-        os.unlink('/tmp/control_pubsub.cfg')
 
 
 # ------------------------------------------------------------------------------

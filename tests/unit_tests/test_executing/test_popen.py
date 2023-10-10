@@ -49,10 +49,10 @@ class TestPopen(TestCase):
         pex._watch_queue     = queue.Queue()
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
-        self.assertTrue(pex.control_cb(topic=None, msg=msg))
+        self.assertIsNone(pex.control_cb(topic=None, msg=msg))
 
         msg['cmd'] = 'cancel_tasks'
-        self.assertTrue(pex.control_cb(topic=None, msg=msg))
+        self.assertIsNone(pex.control_cb(topic=None, msg=msg))
         for uid in msg['arg']['uids']:
             mode, tid = pex._watch_queue.get()
             self.assertEqual(mode, pex.TO_CANCEL)
@@ -81,7 +81,6 @@ class TestPopen(TestCase):
         pex._log = pex._prof = pex._watch_queue = mock.Mock()
         pex._log._debug_level = 1
 
-        pex._cfg     = {'resource_cfg': {'new_session_per_task': False}}
         pex._pwd     = ''
         pex._pid     = 'pilot.0000'
         pex.sid      = 'session.0000'
@@ -91,6 +90,9 @@ class TestPopen(TestCase):
         pex.psbox    = ''
         pex.gtod     = ''
         pex.prof     = ''
+
+        pex._session      = mock.Mock()
+        pex._session.rcfg = ru.Config(from_dict={'new_session_per_task': False})
 
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher
@@ -133,7 +135,9 @@ class TestPopen(TestCase):
     def test_extend_pre_exec(self, mocked_init):
 
         pex = Popen(cfg=None, session=None)
-        pex._cfg = {}
+
+        pex._session      = mock.Mock()
+        pex._session.rcfg = {}
 
         td    = {'cores_per_rank': 2,
                  'threading_type': '',
@@ -149,7 +153,9 @@ class TestPopen(TestCase):
 
         td.update({'threading_type': rpc.OpenMP,
                    'gpu_type'      : rpc.CUDA})
-        pex._cfg['task_pre_exec'] = ['export TEST_ENV=test']
+
+        # we target attribute "task_pre_exec"
+        pex._session.rcfg = {'task_pre_exec': ['export TEST_ENV=test']}
 
         pex._extend_pre_exec(td, ranks)
         self.assertIn('export OMP_NUM_THREADS=2',             td['pre_exec'])

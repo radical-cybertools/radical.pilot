@@ -169,7 +169,7 @@ version, version_detail, sdist_name, path = get_version(mod_root)
 
 # ------------------------------------------------------------------------------
 # check python version, should be >= 3.7
-if sys.hexversion < 0x03060000:
+if sys.hexversion < 0x03070000:
     raise RuntimeError('ERROR: %s requires Python 3.7 or newer' % name)
 
 
@@ -251,27 +251,21 @@ setup_args = {
     'packages'           : find_namespace_packages('src', include=['radical.*']),
     'package_dir'        : {'': 'src'},
     'scripts'            : [
-                            'bin/radical-pilot-agent',
+                            'bin/radical-pilot-agent_0',
+                            'bin/radical-pilot-agent_n',
                             'bin/radical-pilot-agent-statepush',
                             'bin/radical-pilot-bridge',
-                            'bin/radical-pilot-bson2json',
-                            'bin/radical-pilot-cleanup',
-                            'bin/radical-pilot-close-session',
                             'bin/radical-pilot-component',
                             'bin/radical-pilot-create-static-ve',
                             'bin/radical-pilot-deploy-ompi.sh',
-                            'bin/radical-pilot-fetch-db',
-                            'bin/radical-pilot-fetch-json',
-                            'bin/radical-pilot-fetch-logfiles',
-                            'bin/radical-pilot-fetch-profiles',
                             'bin/radical-pilot-hello.sh',
-                            'bin/radical-pilot-inspect',
                             'bin/radical-pilot-limits.py',
                             'bin/radical-pilot-prte2prof',
                             'bin/radical-pilot-raptor-master',
                             'bin/radical-pilot-raptor-worker',
                             'bin/radical-pilot-resources',
                             'bin/radical-pilot-run-session',
+                            'bin/radical-pilot-service-signal',
                             'bin/radical-pilot-stats',
                             'bin/radical-pilot-stats.plot',
                             'bin/radical-pilot-ve',

@@ -5,6 +5,9 @@ __license__   = "MIT"
 
 import copy
 import time
+import queue
+
+import threading     as mt
 
 import radical.utils as ru
 
@@ -12,6 +15,7 @@ from . import PilotManager
 from . import states    as rps
 from . import constants as rpc
 
+from .messages           import RPCRequestMessage, RPCResultMessage
 from .staging_directives import complete_url
 
 
@@ -155,6 +159,18 @@ class Pilot(object):
         self._session_sandbox .path  = self._session_sandbox .path % expand
         self._pilot_sandbox   .path  = self._pilot_sandbox   .path % expand
 
+        # hook into the control pubsub for rpc handling
+        self._rpc_reqs = dict()
+        ctrl_addr_sub  = self._session._reg['bridges.control_pubsub.addr_sub']
+        ctrl_addr_pub  = self._session._reg['bridges.control_pubsub.addr_pub']
+
+        self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
+                                          log=self._log, prof=self._prof)
+
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                          log=self._log, prof=self._prof, cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
+
 
     # --------------------------------------------------------------------------
     #
@@ -226,7 +242,14 @@ class Pilot(object):
         self._state = target
 
         # keep all information around
-        self._pilot_dict = copy.deepcopy(pilot_dict)
+        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
+
+        # FIXME MONGODB
+        resources = self._pilot_dict.get('resources') or {}
+        rm_info   = resources.get('rm_info')
+        if rm_info:
+            del self._pilot_dict['resources']['rm_info']
+            self._pilot_dict['resource_details'] = rm_info
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
@@ -265,6 +288,7 @@ class Pilot(object):
                'stdout'           : self.stdout,
                'stderr'           : self.stderr,
                'resource'         : self.resource,
+               'resources'        : self.resources,
                'endpoint_fs'      : str(self._endpoint_fs),
                'resource_sandbox' : str(self._resource_sandbox),
                'session_sandbox'  : str(self._session_sandbox),
@@ -377,6 +401,15 @@ class Pilot(object):
         """str: The resource tag of this pilot."""
 
         return self._descr.get('resource')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def resources(self):
+        """str: The amount of resources used by this pilot."""
+
+        return self._pilot_dict.get('resources')
 
 
     # --------------------------------------------------------------------------
@@ -564,6 +597,15 @@ class Pilot(object):
     def cancel(self):
         """Cancel the pilot."""
 
+        self._finalize()
+
+        self._pmgr.cancel_pilots(self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _finalize(self):
+
         # clean connection cache
         try:
             for key in self._cache:
@@ -572,8 +614,6 @@ class Pilot(object):
 
         except:
             pass
-
-        self._pmgr.cancel_pilots(self.uid)
 
 
     # --------------------------------------------------------------------------
@@ -664,22 +704,7 @@ class Pilot(object):
 
         """
 
-        self.rpc('prepare_env', {'env_name': env_name,
-                                 'env_spec': env_spec})
-
-
-    # --------------------------------------------------------------------------
-    #
-    def rpc(self, rpc, args):
-        """Remote procedure call.
-
-        Send a pilot command, wait for the response, and return the result.
-        This is basically an RPC into the pilot.
-        """
-
-        reply = self._session._dbs.pilot_rpc(self.uid, self.uid, rpc, args)
-
-        return reply
+        self.rpc('prepare_env', env_name=env_name, env_spec=env_spec)
 
 
     # --------------------------------------------------------------------------
@@ -706,6 +731,68 @@ class Pilot(object):
         self._pmgr._pilot_staging_input(sds)
 
         return [sd['target'] for sd in sds]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg_data):
+
+        # we only listen for RPCResponse messages
+
+        try:
+            msg = ru.zmq.Message.deserialize(msg_data)
+
+            if isinstance(msg, RPCResultMessage):
+
+                self._log.debug_4('handle rpc result %s', msg)
+
+                if msg.uid in self._rpc_reqs:
+                    self._rpc_reqs[msg.uid]['res'] = msg
+                    self._rpc_reqs[msg.uid]['evt'].set()
+
+        except:
+            pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def rpc(self, cmd, *args, **kwargs):
+        '''Remote procedure call.
+
+        Send am RPC command and arguments to the pilot and wait for the
+        response.  This is a synchronous operation at this point, and it is not
+        thread safe to have multiple concurrent RPC calls.
+        '''
+
+        # RPC's can only be handled in `PMGR_ACTIVE` state
+        # FIXME: RPCs will hang vorever if the pilot dies after sending the msg
+        self.wait(rps.PMGR_ACTIVE)
+
+        rpc_id  = ru.generate_id('%s.rpc' % self._uid)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args,
+                                    kwargs=kwargs, addr=self.uid)
+
+        self._rpc_reqs[rpc_id] = {
+                'req': rpc_req,
+                'res': None,
+                'evt': mt.Event(),
+                'time': time.time(),
+                }
+
+        self._ctrl_pub.put(rpc.CONTROL_PUBSUB, rpc_req)
+
+        while True:
+
+            if not self._rpc_reqs[rpc_id]['evt'].wait(timeout=60):
+                self._log.debug('still waiting for rpc request %s', rpc_id)
+                continue
+
+            rpc_res = self._rpc_reqs[rpc_id]['res']
+
+            if rpc_res.exc:
+                raise RuntimeError('rpc failed: %s' % rpc_res.exc)
+
+            return rpc_res.val
 
 
     # --------------------------------------------------------------------------

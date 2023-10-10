@@ -73,91 +73,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
    # OR in case of conda environment
    conda install -c conda-forge radical.pilot
 
-MongoDB
--------
-
-Local installation
-^^^^^^^^^^^^^^^^^^
-
-If MongoDB was already setup and initialized then just run its instance
-(see `Run MongoDB instance <#run-mongodb-instance>`_ subsection).
-
-.. code-block:: bash
-
-   cd $HOME
-   wget https://downloads.mongodb.com/linux/mongodb-linux-x86_64-enterprise-suse15-4.4.0.tgz
-   tar -zxf mongodb-linux-x86_64-enterprise-suse15-4.4.0.tgz
-   mv mongodb-linux-x86_64-enterprise-suse15-4.4.0 mongo
-   mkdir -p mongo/data mongo/etc mongo/var/log mongo/var/run
-   touch mongo/var/log/mongodb.log
-
-Config setup
-^^^^^^^^^^^^
-
-Description of the MongoDB setup is provided in this
-`user guide <https://docs.alcf.anl.gov/theta/data-science-workflows/mongo-db/>`_,
-which is the same for all ALCF platforms.
-
-.. code-block:: bash
-
-   cat > mongo/etc/mongodb.polaris.conf <<EOF
-
-   processManagement:
-     fork: true
-     pidFilePath: $HOME/mongo/var/run/mongod.pid
-
-   storage:
-     dbPath: $HOME/mongo/data
-
-   systemLog:
-     destination: file
-     path: $HOME/mongo/var/log/mongodb.log
-     logAppend: true
-
-   net:
-     bindIp: 0.0.0.0
-     port: 54937
-   EOF
-
-*"Each server instance of MongoDB should have a unique port number, and this
-should be changed to a sensible number"*, then assigned port is
-``54937``, which is a random number.
-
-Run MongoDB instance
-^^^^^^^^^^^^^^^^^^^^
-
-.. code-block:: bash
-
-   # launch the server
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf
-   # shutdown the server
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf --shutdown
-
-.. warning::
-
-   The instance of MongoDB runs on a login node. Please, make sure to terminate
-   it after every run.
-
-MongoDB initialization
-^^^^^^^^^^^^^^^^^^^^^^
-
-Initialization of the MongoDB instance should be done **ONLY** once, thus if a
-corresponding instance is already running, then it means that this step was
-completed.
-
-.. code-block:: bash
-
-   $HOME/mongo/bin/mongo --host `hostname -f` --port 54937
-    > use rct_db
-    > db.createUser({user: "rct", pwd: "jdWeRT634k", roles: ["readWrite"]})
-    > exit
-
-RADICAL-Pilot will connect to the MongoDB instance using the following URI.
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
-
 Launching script example
 ========================
 
@@ -175,18 +90,12 @@ environment with ``conda``.
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf
-
-   export RADICAL_PILOT_DBURL="mongodb://rct:jdWeRT634k@`hostname -f`:54937/rct_db"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
 
    # - run -
    python <rp_application>
-
-   # - post run -
-   $HOME/mongo/bin/mongod -f $HOME/mongo/etc/mongodb.polaris.conf --shutdown
 
 Execute launching script as ``./rp_launcher.sh`` or run it in the background:
 

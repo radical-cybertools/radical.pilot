@@ -99,9 +99,14 @@ class Raptor(Task):
         if not self._pilot:
             raise RuntimeError('not assoigned to a pilot yet, cannot run rpc')
 
-        reply = self._session._dbs.pilot_rpc(self._pilot, self.uid, rpc, args)
+        cmd = 'raptor_rpc'
 
-        return reply
+        if not args:
+            args = dict()
+
+        args['raptor_cmd'] = rpc
+
+        return self._tmgr.pilot_rpc(self._pilot, cmd, args)
 
 
 # ------------------------------------------------------------------------------
