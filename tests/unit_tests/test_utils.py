@@ -11,7 +11,6 @@ from unittest import TestCase
 import radical.utils        as ru
 import radical.pilot.states as rps
 
-import radical.pilot.utils.db_utils   as rpu_db
 import radical.pilot.utils.prof_utils as rpu_prof
 import radical.pilot.utils.misc       as rpu_misc
 
@@ -23,7 +22,6 @@ base = os.path.abspath(os.path.dirname(__file__))
 class TestUtils(TestCase):
 
     _cleanup_files = []
-
 
     # --------------------------------------------------------------------------
     #
@@ -113,10 +111,10 @@ class TestUtils(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    def test_get_session_docs(self):
+    def test_get_session_json(self):
 
         with self.assertRaises(AssertionError):
-            rpu_db.get_session_docs('unknown_sid', db=None, cachedir=None)
+            rpu_prof.get_session_json('unknown_sid', cachedir=None)
 
         sid = 'rp.session.test_rputils.0001'
         ru.rec_makedir(sid)
@@ -129,15 +127,15 @@ class TestUtils(TestCase):
         ru.write_json(session_json, session_file)
         self.assertTrue(os.path.exists(session_file))
 
-        cache = os.path.join(rpu_db._CACHE_BASEDIR, '%s.json' % sid)
+        cache = os.path.join(rpu_prof._CACHE_BASEDIR, '%s.json' % sid)
 
         # no cache file
         self.assertFalse(os.path.exists(cache))
         # if cache dir doesn't exist then set it for "cleanup"
-        if not os.path.exists(rpu_db._CACHE_BASEDIR):
-            self._cleanup_files.append(rpu_db._CACHE_BASEDIR)
+        if not os.path.exists(rpu_prof._CACHE_BASEDIR):
+            self._cleanup_files.append(rpu_prof._CACHE_BASEDIR)
 
-        json_data = rpu_db.get_session_docs(sid, db=None, cachedir=None)
+        json_data = rpu_prof.get_session_json(sid, cachedir=None)
 
         # cache file was created
         self.assertTrue(os.path.isfile(cache))
@@ -148,7 +146,7 @@ class TestUtils(TestCase):
         self.assertIn('task_ids', json_data['pilot'][0])
 
         # read from cache
-        self.assertEqual(json_data, rpu_db.get_session_docs(sid))
+        self.assertEqual(json_data, rpu_prof.get_session_json(sid))
 
         # set dirs and files for cleanup
         self._cleanup_files.extend([sid, cache])
@@ -168,7 +166,6 @@ class TestUtils(TestCase):
                 break
 
         assert found_bs0_stop
-
 
     # --------------------------------------------------------------------------
     #
@@ -232,7 +229,7 @@ if __name__ == '__main__':
     tc = TestUtils()
     tc.test_convert_sdurations()
     tc.test_expand_sduration()
-    tc.test_get_session_docs()
+    tc.test_get_session_json()
     tc.test_get_session_profile()
     tc.test_resource_cfg()
 

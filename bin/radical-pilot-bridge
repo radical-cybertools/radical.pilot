@@ -117,8 +117,9 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
     reg.close()
     bridge.start()
 
-    if 'pubsub' in uid:
-        d = ru.zmq.test_pubsub(bridge.channel, bridge.addr_pub, bridge.addr_sub)
+    # re-enable the test below if timing issues crop up
+  # if 'pubsub' in uid:
+  #     d = ru.zmq.test_pubsub(bridge.channel, bridge.addr_pub, bridge.addr_sub)
 
     # bridge runs - send heartbeats so that cmgr knows about it
     hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)

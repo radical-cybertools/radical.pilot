@@ -81,8 +81,6 @@ Utilities and helpers
 =====================
 .. automodule:: radical.pilot.utils.component
    :members:
-.. automodule:: radical.pilot.utils.db_utils
-   :members:
 .. automodule:: radical.pilot.utils.prof_utils
    :members:
 .. automodule:: radical.pilot.utils.serializer

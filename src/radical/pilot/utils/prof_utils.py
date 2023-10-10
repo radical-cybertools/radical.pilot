@@ -1,7 +1,9 @@
 # pylint: disable=protected-access,unused-argument
 
-import os
 import glob
+import json
+import os
+import sys
 
 import radical.utils as ru
 
@@ -10,6 +12,8 @@ from ..task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_EXECUTABLE
 
 _debug      = os.environ.get('RP_PROF_DEBUG')
 _node_index = dict()
+
+_CACHE_BASEDIR = '/tmp/rp_cache_%d/' % os.getuid()
 
 
 # ------------------------------------------------------------------------------
@@ -1391,6 +1395,48 @@ def get_resource_timelines(task, transitions):
         ret.append([t0, t1, metric, tid])
 
     return ret
+
+
+# ------------------------------------------------------------------------------
+#
+def get_session_json(sid, cachedir=None):
+
+    # Session may have been cached in /tmp/rp_cache_<uid>/<sid>.json
+    # An optional cachdir parameter changes that default location.
+
+    if not cachedir:
+        cachedir = _CACHE_BASEDIR
+
+    cache = os.path.join(cachedir, '%s.json' % sid)
+    try:
+        if os.path.isfile(cache):
+            return ru.read_json(cache)
+    except Exception as e:
+        # continue w/o cache
+        sys.stderr.write('cannot read session cache from %s: %s\n' % (cache, e))
+
+    jsons = glob.glob('%s/r[ep].session.*.json' % os.path.abspath(sid))
+    assert jsons, 'session missed, check <sid>/<sid>.json'
+    session_json = jsons[0]
+    with ru.ru_open(session_json, 'r') as f:
+        json_data = json.load(f)
+
+    # we want to add a list of handled tasks to each pilot doc
+    for pilot in json_data['pilot']:
+
+        pilot['task_ids'] = list()
+        for task in json_data['task']:
+            if task['pilot'] == pilot['uid']:
+                pilot['task_ids'].append(task['uid'])
+
+    try:
+        os.system('mkdir -p %s' % cachedir)
+        ru.write_json(json_data, cache)
+    except:
+        # we can live without cache, no problem...
+        pass
+
+    return json_data
 
 
 # ------------------------------------------------------------------------------
