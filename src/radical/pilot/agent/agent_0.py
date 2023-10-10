@@ -15,7 +15,6 @@ import radical.utils       as ru
 from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
-from ..   import TaskDescription
 from ..   import Session
 from ..   import TaskDescription, AGENT_SERVICE
 
@@ -339,53 +338,116 @@ class Agent_0(rpu.Worker):
     #
     def _start_services(self):
 
-        sds = self._cfg.services
-        if not sds:
+        if not self.session.cfg.services:
             return
 
         self._log.info('starting agent services')
 
-        services = list()
-        for sd in sds:
+        services      = []
+        services_data = {}
+
+        for sd in self.session.cfg.services:
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
             # ensure that the description is viable
             td.verify()
 
-            cfg = self._cfg
             tid = ru.generate_id('service.%(item_counter)04d',
-                                 ru.ID_CUSTOM, ns=self._cfg.sid)
+                                 ru.ID_CUSTOM, ns=self.session.uid)
             task = dict()
+            task['uid']               = tid
+            task['type']              = 'service_task'
             task['origin']            = 'agent'
+            task['pilot']             = self.session.cfg.pid
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['status']            = 'NEW'
-            task['type']              = 'service_task'
-            task['uid']               = tid
-            task['pilot_sandbox']     = cfg.pilot_sandbox
-            task['task_sandbox']      = cfg.pilot_sandbox + task['uid'] + '/'
-            task['task_sandbox_path'] = cfg.pilot_sandbox + task['uid'] + '/'
-            task['session_sandbox']   = cfg.session_sandbox
-            task['resource_sandbox']  = cfg.resource_sandbox
-            task['pilot']             = cfg.pid
+            task['pilot_sandbox']     = self.session.cfg.pilot_sandbox
+            task['session_sandbox']   = self.session.cfg.session_sandbox
+            task['resource_sandbox']  = self.session.cfg.resource_sandbox
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
+
+            task_sandbox = self.session.cfg.pilot_sandbox + tid + '/'
+            task['task_sandbox']      = task_sandbox
+            task['task_sandbox_path'] = task_sandbox
+
+            # TODO: use `type='service_task'` in RADICAL-Analytics
+
+            # TaskDescription.metadata will contain service related data:
+            # "name" (unique), "startup_file"
 
             self._service_uids_launched.append(tid)
             services.append(task)
 
-            self._log.debug('start service %s: %s', tid, sd)
-
+            services_data[tid] = {}
+            if td.metadata.get('startup_file'):
+                n = td.metadata.get('name')
+                services_data[tid]['name'] = 'service.%s' % n if n else tid
+                services_data[tid]['startup_file'] = td.metadata['startup_file']
 
         self.advance(services, publish=False, push=True)
 
-        # Waiting 2mins for all services to launch
-        if not self._services_setup.wait(timeout=60 * 2):
+        self.register_timed_cb(cb=self._services_startup_cb,
+                               cb_data=services_data,
+                               timer=2)
+
+        # waiting for all services to start (max waiting time 2 mins)
+        if not self._services_setup.wait(timeout=120):
             raise RuntimeError('Unable to start services')
+
+        self.unregister_timed_cb(self._services_startup_cb)
 
         self._log.info('all agent services started')
 
+    def _services_startup_cb(self, cb_data):
+
+        for tid in list(cb_data):
+
+            service_up   = False
+            startup_file = cb_data[tid].get('startup_file')
+
+            if not startup_file:
+                service_up = True
+                # FIXME: at this point we assume that since "startup_file" is
+                #        not provided, then we don't wait - this will be
+                #        replaced with another callback (Component.advance will
+                #        publish control command "service_up" for service tasks)
+
+            elif os.path.isfile(startup_file):
+                # if file exists then service is up (general approach)
+                service_up = True
+
+                # collect data from the startup file: at this point we look
+                # for URLs only
+                service_urls = {}
+                with ru.ru_open(startup_file, 'r') as fin:
+                    for line in fin.readlines():
+                        if '://' not in line:
+                            continue
+                        parts = line.split()
+                        if len(parts) == 1:
+                            idx, url = '', parts[0]
+                        elif '://' in parts[1]:
+                            idx, url = parts[0], parts[1]
+                        else:
+                            continue
+                        service_urls[idx] = url
+
+                if service_urls:
+                    key = cb_data[tid]['name']
+                    for idx, url in service_urls.items():
+                        if idx:
+                            key += '.%s' % idx
+                        key += '.url'
+                        self.session._reg[key] = url
+
+            if service_up:
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
+                                                  'arg': {'uid': tid}})
+                del cb_data[tid]
+
+        return True
 
     # --------------------------------------------------------------------------
     #
@@ -596,8 +658,6 @@ class Agent_0(rpu.Worker):
         if uid in self._service_uids_running:
             self._log.warn('duplicated service startup signal for %s', uid)
             return True
-
-        self._log.debug('service startup message for %s', uid)
 
         self._service_uids_running.append(uid)
         self._log.debug('service %s started (%s / %s)', uid,
