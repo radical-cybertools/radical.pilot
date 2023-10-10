@@ -1057,9 +1057,6 @@ class TaskManager(rpu.Component):
 
             time.sleep (0.1)
 
-            # FIXME: print percentage...
-          # print 'wait tasks: %s' % [[u.uid, u.state] for u in to_check]
-
             check_again = list()
             for task in to_check:
 

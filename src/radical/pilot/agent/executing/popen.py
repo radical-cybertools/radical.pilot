@@ -451,8 +451,13 @@ class Popen(AgentExecutingComponent):
                     # method)
                     try:
                         # kill the whole process group
-                        pgrp = os.getpgid(task['proc'].pid)
-                        os.killpg(pgrp, signal.SIGKILL)
+                        pid  = task['proc'].pid
+
+                        # NOTE: when `Popen` is used with `preexec_fn=os.setsid`
+                        #       then we should kill `pgrp` ID instead of the pid
+                      # pgrp = os.getpgid(pid)
+
+                        os.killpg(pid, signal.SIGKILL)
                     except OSError:
                         # lost race: task is already gone, we ignore this
                         # FIXME: collect and move to DONE/FAILED
@@ -465,8 +470,7 @@ class Popen(AgentExecutingComponent):
                     del task['proc']  # proc is not json serializable
 
                     self._prof.prof('task_run_cancel_stop', uid=tid)
-
-                    self._prof.prof('unschedule_start', uid=tid)
+                    self._prof.prof('unschedule_start',     uid=tid)
                     tasks_to_cancel.append(task)
 
             else:
