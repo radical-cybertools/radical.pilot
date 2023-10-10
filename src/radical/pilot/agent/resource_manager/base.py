@@ -326,7 +326,7 @@ class ResourceManager(object):
 
         for lm_name in list(self._launch_order):
 
-            lm_cfg = ru.Config(launch_methods[lm_name])
+            lm_cfg = ru.Config(from_dict=launch_methods[lm_name])
 
             try:
                 self._log.debug('prepare lm %s', lm_name)

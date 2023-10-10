@@ -219,7 +219,11 @@ class RMBaseTestCase(TestCase):
         rm._log     = rm._prof = mock.Mock()
         rm._cfg     = ru.TypedDict({'pid'     : None,
                                     'reg_addr': None})
-        rm._rm_info = ru.TypedDict({'launch_methods': {'SRUN': {}}})
+        rm._rm_info = ru.TypedDict({
+            'launch_methods': {
+                'SRUN': {'pre_exec_cached': []}
+            }
+        })
 
         # launching order not provided
 
