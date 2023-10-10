@@ -97,9 +97,6 @@ def main(sid, reg_addr, uid):
 #
 def wrapped_main(sid, reg_addr, uid, log, prof):
 
-    sys.stdout = ru.ru_open('/tmp/%s.out' % uid, 'w')
-    sys.stderr = ru.ru_open('/tmp/%s.err' % uid, 'w')
-
     spt.setproctitle('rp.%s' % uid)
 
     term = mt.Event()
