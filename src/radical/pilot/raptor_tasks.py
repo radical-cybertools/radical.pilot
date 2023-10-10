@@ -78,9 +78,7 @@ class Raptor(Task):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, rpc: str,
-                  args: Optional[Dict[str, Any]] = None
-           ) -> Dict[str, Any]:
+    def rpc(self, cmd, *args, **kwargs):
         '''
         Send a raptor command, wait for the response, and return the result.
 
@@ -97,16 +95,12 @@ class Raptor(Task):
         '''
 
         if not self._pilot:
-            raise RuntimeError('not assoigned to a pilot yet, cannot run rpc')
+            raise RuntimeError('not assigned to a pilot yet, cannot run rpc')
 
-        cmd = 'raptor_rpc'
+        kwargs['raptor_cmd'] = cmd
 
-        if not args:
-            args = dict()
-
-        args['raptor_cmd'] = rpc
-
-        return self._tmgr.pilot_rpc(self._pilot, cmd, args)
+        return self._tmgr.pilot_rpc(self._pilot, 'raptor_rpc', *args,
+                                    rpc_addr=self.uid, **kwargs)
 
 
 # ------------------------------------------------------------------------------
