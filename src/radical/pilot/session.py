@@ -526,9 +526,10 @@ class Session(rs.Session):
         self._hb_pubsub.start()
         time.sleep(1)
 
-        ru.zmq.test_pubsub(self._hb_pubsub.channel,
-                           self._hb_pubsub.addr_pub,
-                           self._hb_pubsub.addr_sub),
+        # re-enable the test below if timing issues crop up
+      # ru.zmq.test_pubsub(self._hb_pubsub.channel,
+      #                    self._hb_pubsub.addr_pub,
+      #                    self._hb_pubsub.addr_sub),
 
         # fill 'cfg.heartbeat' section
         self._cfg.heartbeat.addr_pub = str(self._hb_pubsub.addr_pub)

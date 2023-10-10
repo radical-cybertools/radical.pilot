@@ -164,12 +164,6 @@ then
                     ;;
             esac
         done
-
-        if ! test -z "$MODULES"
-        then
-            echo -n "install pymongo<4 "
-            conda install 'pymongo<4'
-        fi
     fi
 
 elif test "$ETYPE" = 'venv'
@@ -225,12 +219,6 @@ then
             echo -n "install $mod with pip"
             pip install --no-cache-dir "$mod" || exit 1
         done
-
-        if ! test -z "$MODULES"
-        then
-            echo -n "install pymongo<4 "
-            pip install --no-cache-dir 'pymongo<4'
-        fi
     fi
 fi
 
