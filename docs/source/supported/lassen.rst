@@ -75,8 +75,10 @@ Create a **virtual environment** with ``venv``:
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
+   module load python/3.8.2
    python3 -m venv ve.rp
    source ve.rp/bin/activate
+   pip install -U pip setuptools wheel
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
@@ -100,6 +102,7 @@ launching command for the application itself.
    #!/bin/sh
 
    # - pre run -
+   module load python/3.8.2
    source ve.rp/bin/activate
 
    export RADICAL_PROFILE=TRUE
