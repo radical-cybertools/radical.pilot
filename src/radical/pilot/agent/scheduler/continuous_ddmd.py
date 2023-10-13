@@ -33,20 +33,22 @@ class ContinuousDDMD(Continuous):
 
     # --------------------------------------------------------------------------
     #
-    def _rpc_deprecate(self, task_type):
+    def _rpc_deprecate(self, task_type, cancel=False):
 
         self._log.debug('=== deprecate task type %s', task_type)
 
         self._deprecated_tags.append(task_type)
 
-        # cancel all known tasks of that type
-        to_cancel = self._task_types[task_type]
+        if cancel:
 
-        if to_cancel:
-            # cancel via control message so that also tasks are being cancelled
-            # which are currently executing etc.
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'cancel_tasks',
-                                              'arg': {'uids': to_cancel}})
+            # cancel all known tasks of that type
+            to_cancel = self._task_types[task_type]
+
+            if to_cancel:
+                # cancel via control message so that also tasks are being cancelled
+                # which are currently executing etc.
+                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'cancel_tasks',
+                                                  'arg': {'uids': to_cancel}})
 
 
     # --------------------------------------------------------------------------
