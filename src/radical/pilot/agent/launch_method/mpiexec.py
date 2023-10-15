@@ -77,14 +77,14 @@ class MPIExec(LaunchMethod):
             lm_info['mpt']     = True
 
         # check that this implementation allows to use `rankfile` option
-        lm_info['use_rf'] = self._check_rank_host_file(lm_info['command'],
-                                                       '-rf')
+        lm_info['use_rf'] = self._check_available_lm_options(
+            lm_info['command'], '-rf')
 
         # if we fail, then check if this implementation allows to use
         # `host names` option
         if not lm_info['use_rf']:
-            lm_info['use_hf'] = self._check_rank_host_file(lm_info['command'],
-                                                           '-f')
+            lm_info['use_hf'] = self._check_available_lm_options(
+                lm_info['command'], '-f')
 
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
@@ -94,9 +94,9 @@ class MPIExec(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _check_rank_host_file(self, lm_cmd, param):
-        check = bool(ru.sh_callout('%s --help | grep -- "%s"' %
-                                  (lm_cmd, param), shell=True)[0])
+    def _check_available_lm_options(self, lm_cmd, option):
+        check = bool(ru.sh_callout('%s --help | grep -e "%s\\>"' %
+                                  (lm_cmd, option), shell=True)[0])
 
         return check
 
