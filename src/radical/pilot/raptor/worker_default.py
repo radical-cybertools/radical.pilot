@@ -411,16 +411,5 @@ class DefaultWorker(Worker):
         raise RuntimeError(error)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def test(self, msg, sleep):
-
-        # pylint: disable=reimported
-        import time
-        print('start idx %s: %.1f' % (msg, time.time()))
-        time.sleep(sleep)
-        print('stop  idx %s: %.1f' % (msg, time.time()))
-
-
 # ------------------------------------------------------------------------------
 
