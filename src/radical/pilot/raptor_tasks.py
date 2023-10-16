@@ -84,7 +84,8 @@ class Raptor(Task):
 
         Args:
             rpc (str): name of the rpc call to invoke
-            args (Dict[str, Any])): kwargs dict for the rpc call
+            *args (*List[Any]): unnamed arguments
+            **kwargs (**Dict[str, Any])): named arguments
 
         Returns:
             Dict[str, Any]: the returned dictionary has the following fields:
