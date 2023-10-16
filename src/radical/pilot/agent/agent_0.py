@@ -71,7 +71,7 @@ class Agent_0(rpu.Worker):
 
         # create the sub-agent configs and start the sub agents
         self._write_sa_configs()
-        self._start_sub_agents()   # TODO: move to cmgr?
+        self._start_sub_agents()
 
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
@@ -515,6 +515,9 @@ class Agent_0(rpu.Worker):
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
+                node_cores = [cid for cid, cstate in enumerate(node['cores'])
+                              if cstate == rpc.FREE]
+
                 agent_task = {
                     'uid'               : sa,
                     'task_sandbox_path' : self._pwd,
@@ -527,7 +530,7 @@ class Agent_0(rpu.Worker):
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
-                                            'core_map' : [node['cores']],
+                                            'core_map' : [node_cores],
                                             'gpu_map'  : [],
                                             'lfs'      : 0,
                                             'mem'      : 0}]}

@@ -137,7 +137,8 @@ class TestComponent(TestCase):
             agent_0._start_sub_agents()
 
         agent_0._rm.info = RMInfo({
-            'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000'}],
+            'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000',
+                                  'cores': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}],
             'cores_per_node'  : 10,
             'threads_per_core': 2})
 
