@@ -14,7 +14,6 @@ radical.analytics @ git+https://github.com/radical-cybertools/radical.analytics.
 
 setproctitle
 dill
-mpi4py
 
 pytest
 pytest-timeout
