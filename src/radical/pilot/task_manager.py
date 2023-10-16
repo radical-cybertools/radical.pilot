@@ -660,7 +660,7 @@ class TaskManager(rpu.Component):
         if pid not in self._pilots:
             raise ValueError('tmgr does not know pilot %s' % pid)
 
-        return self._pilots[pid].rpc(cmd=cmd, *args, rpc_addr=rpc_addr, **kwargs)
+        return self._pilots[pid].rpc(cmd, *args, rpc_addr=rpc_addr, **kwargs)
 
 
     # --------------------------------------------------------------------------
