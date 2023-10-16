@@ -17,7 +17,7 @@
                                          "order" : ["JSRUN"],
                                          "JSRUN" : {}
                                         },
-        "pre_bootstrap_0"             : ["module load jsrun"],
+        "pre_bootstrap_0"             : ["module load jsrun python/3.8.2"],
         "default_remote_workdir"      : "/p/gpfs1/$USER",
         "virtenv_mode"                : "local",
         "cores_per_node"              : 40,
