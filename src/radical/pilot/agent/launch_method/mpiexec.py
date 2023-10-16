@@ -20,6 +20,7 @@ class MPIExec(LaunchMethod):
         self._mpt    : bool  = False
         self._rsh    : bool  = False
         self._use_rf : bool  = False
+        self._use_hf : bool  = False
         self._ccmrun : str   = ''
         self._dplace : str   = ''
         self._omplace: str   = ''
@@ -76,8 +77,14 @@ class MPIExec(LaunchMethod):
             lm_info['mpt']     = True
 
         # check that this implementation allows to use `rankfile` option
-        lm_info['use_rf'] = bool(ru.sh_callout('%s --help |& grep -- "-rf"' %
-                                               lm_info['command'])[0])
+        lm_info['use_rf'] = self._check_available_lm_options(
+            lm_info['command'], '-rf')
+
+        # if we fail, then check if this implementation allows to use
+        # `host names` option
+        if not lm_info['use_rf']:
+            lm_info['use_hf'] = self._check_available_lm_options(
+                lm_info['command'], '-f')
 
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
@@ -85,6 +92,13 @@ class MPIExec(LaunchMethod):
 
         return lm_info
 
+    # --------------------------------------------------------------------------
+    #
+    def _check_available_lm_options(self, lm_cmd, option):
+        check = bool(ru.sh_callout('%s --help | grep -e "%s\\>"' %
+                                  (lm_cmd, option), shell=True)[0])
+
+        return check
 
     # --------------------------------------------------------------------------
     #
@@ -99,6 +113,7 @@ class MPIExec(LaunchMethod):
         self._mpt         = lm_info['mpt']
         self._rsh         = lm_info['rsh']
         self._use_rf      = lm_info['use_rf']
+        self._use_hf      = lm_info['use_hf']
         self._dplace      = lm_info['dplace']
         self._ccmrun      = lm_info['ccmrun']
 
@@ -242,6 +257,10 @@ class MPIExec(LaunchMethod):
             #    cores_per_rank = len(slots['ranks'][0]['core_map'][0])
             #    cmd_options   += '--depth=%d --cpu-bind depth' % cores_per_rank
 
+        elif self._use_hf:
+            hostfile = self._get_host_file(slots, uid, sbox, simple=False,
+                                           mode=1)
+            cmd_options += '-f %s' % hostfile
         else:
             hostfile     = self._get_host_file(slots, uid, sbox, simple=False)
             cmd_options += '--hostfile %s' % hostfile
