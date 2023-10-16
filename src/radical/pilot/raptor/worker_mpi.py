@@ -812,20 +812,11 @@ class MPIWorker(Worker):
 
     # --------------------------------------------------------------------------
     #
-    def hello(self, msg, sleep=0):
-
-        print('hello: %s' % msg)
-        time.sleep(sleep)
-        return 'hello retval'
-
-
-    # --------------------------------------------------------------------------
-    #
     def hello_mpi(self, comm, msg, sleep=0):
 
-        print('hello %d/%d: %s' % (comm.rank, comm.size, msg))
-        time.sleep(sleep)
-        return 'hello_mpi retval'
+        msg = '%s [%d/%d]' % (msg, comm.rank, comm.size)
+
+        return self.hello(msg, sleep)
 
 
 # ------------------------------------------------------------------------------
