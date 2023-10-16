@@ -466,7 +466,7 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, rpc_addr=None, *args, **kwargs):
+    def rpc(self, cmd, *args, rpc_addr=None, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the control pubsub and wait for the
