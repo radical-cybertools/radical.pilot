@@ -333,6 +333,8 @@ class Agent_0(rpu.Worker):
             tmp_cfg['aid']   = sa
             tmp_cfg['owner'] = 'agent_0'
 
+            self._reg['agents.%s.cfg' % sa] = tmp_cfg
+
 
     # --------------------------------------------------------------------------
     #
@@ -472,6 +474,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('start_sub_agents')
 
         # store the current environment as the sub-agents will use the same
+        # (it will be called within "bootstrap_2.sh")
         ru.env_prep(os.environ, script_path='./env/agent.env')
 
         # the configs are written, and the sub-agents can be started.  To know
@@ -524,7 +527,7 @@ class Agent_0(rpu.Worker):
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
-                                            'core_map' : [[0]],
+                                            'core_map' : [node['cores']],
                                             'gpu_map'  : [],
                                             'lfs'      : 0,
                                             'mem'      : 0}]}
@@ -545,15 +548,11 @@ class Agent_0(rpu.Worker):
 
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
                 tmp += '%s\nexit $?\n\n' % cmds
-
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
 
-
                 tmp  = '#!/bin/sh\n\n'
-                tmp += '. ./env/agent.env\n'
                 tmp += '/bin/sh -l %s\n\n' % ' '.join([bs_name % '.'] + bs_args)
-
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
 
@@ -566,11 +565,10 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
-            self._log.info ('create sub-agent %s: %s', sa, cmdline)
+            self._log.info('create sub-agent %s: %s', sa, cmdline)
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
-                                      stderr='%s.err' % sa)
-
-            # FIXME: register heartbeats?
+                                      stderr='%s.err' % sa,
+                                      cwd=self._pwd)
 
         self._log.debug('start_sub_agents done')
 
