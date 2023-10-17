@@ -9,8 +9,9 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
-### 1.40.0 Release                                                    2023-10-17
+### 1.41.0 Release                                                    2023-10-17
 
+  - fix RTD
   - replace MongoDB with ZMQ messaging
   - adapt resource config for `ccs.mahti` to the new structure
   - add description about input staging data
