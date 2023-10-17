@@ -138,7 +138,7 @@ class TestComponent(TestCase):
 
         agent_0._rm.info = RMInfo({
             'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000',
-                                  'cores': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}],
+                                  'cores': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}],
             'cores_per_node'  : 10,
             'threads_per_core': 2})
 
@@ -154,6 +154,9 @@ class TestComponent(TestCase):
             # check "cores_per_rank" attribute
             self.assertEqual(agent_td.cores_per_rank,
                              agent_0._rm.info.cores_per_node)
+            self.assertEqual(
+                len(agent_task['slots']['ranks'][0]['core_map'][0]),
+                agent_0._rm.info.cores_per_node)
             return ''
 
         launcher = mock.Mock()
