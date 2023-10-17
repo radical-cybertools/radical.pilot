@@ -540,20 +540,20 @@ class TaskManager(rpu.Component):
 
                 if isinstance(pilot, dict):
                     pilot_dict = pilot
+
                 else:
-                    # let the pilot know that we own it now
+                    # let pilot know we own it and subscribe for state updates
                     # FIXME: this is not working for pilot dicts (ENTK)
                     pilot.attach_tmgr(self)
 
                     pilot_dict = pilot.as_dict()
-                    # real object: subscribe for state updates
                     pilot.register_callback(self._pilot_state_cb)
 
                 pid = pilot_dict['uid']
 
                 if pid in self._pilots:
                     raise ValueError('pilot %s already added' % pid)
-                self._pilots[pid] = pilot_dict
+                self._pilots[pid] = pilot
                 pilot_docs.append(pilot_dict)
 
         # publish to the command channel for the scheduler to pick up
@@ -649,7 +649,7 @@ class TaskManager(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def pilot_rpc(self, pid, cmd, args):
+    def pilot_rpc(self, pid, cmd, *args, rpc_addr=None, **kwargs):
         '''Remote procedure call.
 
         Send an RPC command and arguments to the pilot and wait for the
@@ -660,7 +660,7 @@ class TaskManager(rpu.Component):
         if pid not in self._pilots:
             raise ValueError('tmgr does not know pilot %s' % pid)
 
-        return self._pilots[pid].rpc(cmd=cmd, args=args)
+        return self._pilots[pid].rpc(cmd, *args, rpc_addr=rpc_addr, **kwargs)
 
 
     # --------------------------------------------------------------------------

@@ -12,6 +12,17 @@ def task_state_cb(task, state):
 
 # ------------------------------------------------------------------------------
 #
+@rp.pythontask
+def hello_world(msg, sleep):
+    import time
+    print('hello %s: %.3f' % (msg, time.time()))
+    time.sleep(sleep)
+    print('hello %s: %.3f' % (msg, time.time()))
+    return 'hello %s' % msg
+
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
 
     session = rp.Session()
@@ -34,17 +45,22 @@ if __name__ == '__main__':
         worker = raptor.submit_workers(rp.TaskDescription(
             {'mode': rp.RAPTOR_WORKER}))[0]
 
-        task = raptor.submit_tasks(rp.TaskDescription(
-            {'mode': rp.TASK_PROC,
-             'executable': 'date'}))[0]
+        td_func_1 = rp.TaskDescription({'mode': rp.TASK_FUNCTION,
+                                        'function': hello_world('client', 3)})
 
-        tmgr.wait_tasks(task.uid)
-        print('%s [%s]: %s' % (task.uid, task.state, task.stdout))
+        td_func_2 = rp.TaskDescription({'mode': rp.TASK_FUNCTION,
+                                        'function': 'hello',
+                                        'args'    : ['raptor', 3]})
+        tasks = raptor.submit_tasks([td_func_1, td_func_2])
 
-      # FIXME: MongoDB
-      # raptor.rpc('stop')
-      # tmgr.wait_tasks(raptor.uid)
-      # print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
+        tmgr.wait_tasks([task.uid for task in tasks])
+
+        for task in tasks:
+            print('%s [%s]:\n%s' % (task.uid, task.state, task.stdout))
+
+        raptor.rpc('stop')
+        tmgr.wait_tasks(raptor.uid)
+        print('%s [%s]: %s' % (raptor.uid, raptor.state, raptor.stdout))
 
     finally:
         session.close(download=False)

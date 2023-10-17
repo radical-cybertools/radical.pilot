@@ -84,9 +84,6 @@ class Master(rpu.Component):
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
                                    _role=Session._DEFAULT)
 
-        self._rpc_handlers = dict()
-        self.register_rpc_handler('stop', self.stop)
-
         ccfg = ru.Config(from_dict={'uid'     : self._uid,
                                     'sid'     : self._sid,
                                     'owner'   : self._pid,
@@ -97,6 +94,10 @@ class Master(rpu.Component):
         # we never run `self.start()` which is ok - but it means we miss out on
         # some of the component initialization.  Call it manually thus
         self._initialize()
+
+        # register termination handler
+        self.register_rpc_handler('raptor_rpc', self._raptor_rpc,
+                                  rpc_addr=self.uid)
 
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
@@ -191,25 +192,24 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_rpc_handler(self, cmd, handler) -> None:
-        '''
-        register a handler to be invoked on 'cmd' type rpc calls.
-
-        Args:
-            cmd (str): name of the registered rpc call
-            handler (callable): the method which implements the rpc call
-        '''
-        self._rpc_handlers[cmd] = handler
-
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def workers(self):
         '''
         task dictionaries representing all currently registered workers
         '''
         return self._workers
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _raptor_rpc(self, *args, **kwargs):
+
+        self._log.debug('r rpc (%s, %s)', args, kwargs)
+
+        raptor_cmd = kwargs.get('raptor_cmd')
+
+        if raptor_cmd == 'stop':
+            self.stop()
 
 
     # --------------------------------------------------------------------------
@@ -221,7 +221,7 @@ class Master(rpu.Component):
         '''
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         if cmd == 'worker_register':
 
@@ -274,42 +274,6 @@ class Master(rpu.Component):
 
             self._workers[uid]['status'] = self.DONE
 
-
-        # FIXME RPC
-        elif cmd == 'rpc_req':
-
-            if arg['tgt'] != self._uid:
-                return
-
-            self._log.debug('handle rpc %s', arg)
-
-            rpc_res  = {'uid': arg['uid']}
-            rpc_cmd  = arg['rpc']
-            rpc_args = arg['arg']
-
-            rpc_handler = self._rpc_handlers.get(rpc_cmd)
-            if rpc_handler:
-                try:
-                    # FIXME: capture stdout/stderr
-                    if rpc_args is not None:
-                        rpc_handler(arg['arg'])
-                    else:
-                        rpc_handler()
-                    rpc_res['err'] = ''
-                    rpc_res['out'] = ''
-                    rpc_res['ret'] = 0
-
-                except Exception as e:
-                    rpc_res['err'] = repr(e)
-                    rpc_res['out'] = ''
-                    rpc_res['ret'] = 1
-            else:
-                rpc_res['err'] = 'unknown rpc command'
-                rpc_res['out'] = ''
-                rpc_res['ret'] = 1
-
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                              'arg':  rpc_res})
 
 
     # --------------------------------------------------------------------------
@@ -585,16 +549,13 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _run(self):
+    def _hb_thread(self):
         '''
         main work threda of this master
         '''
 
         # wait for the submitted requests to complete
-        while True:
-
-            if self._term.is_set():
-                break
+        while not self._term.is_set():
 
             self._log.debug('still alive')
 
@@ -614,6 +575,23 @@ class Master(rpu.Component):
                                                   'arg': {'uid': uid}})
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'cancel_tasks',
                                                   'arg': {'uids': [uid]}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _run(self):
+        '''
+        main work threda of this master
+        '''
+
+        hb_thread = mt.Thread(target=self._hb_thread)
+        hb_thread.daemon = True
+        hb_thread.start()
+
+        # wait for the submitted requests to complete
+        while not self._term.is_set():
+            time.sleep(1)
+
         self._log.debug('terminate run loop')
 
 
