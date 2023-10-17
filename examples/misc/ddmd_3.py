@@ -4,6 +4,26 @@ import time
 import radical.pilot as rp
 
 
+# - initial ML force field exists
+# - while iteration < 1000 (configurable):
+#   - start model training task (ModelTrain) e.g. CVAE
+#   - start force field training task (FFTrain)
+#   - start MD simulation tasks, use all the available resources (MDSim)
+#   - for any MD that completes
+#     - start UncertaintyCheck test for it (UCCheck)
+#     - if uncertainty > threshold:
+#       - ADAPTIVITY GOES HERE
+#       - run DFT task
+#       - DFT task output -> input to FFTrain task
+#         - FFTrain task has some conversion criteria.
+#           If met, FFTrain task goes away
+#           - kill MDSim tasks from previous iteration
+#           -> CONTINUE WHILE (with new force field)
+#     - else (uncertainty <= threshold):
+#       - MD output -> input to ModelTrain task
+#       - run new MD task / run multiple MD tasks for each structure (configurable)
+
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
