@@ -177,8 +177,8 @@ class Worker(object):
     #
     def _control_cb(self, topic, msg):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'worker_registered':
 
@@ -382,7 +382,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-          # self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
@@ -655,6 +655,16 @@ class Worker(object):
       # os.environ = old_env
 
         return out, err, ret, None, exc
+
+
+    # --------------------------------------------------------------------------
+    #
+    def hello(self, msg, sleep=0):
+
+        print('hello %s: %.3f' % (msg, time.time()))
+        time.sleep(sleep)
+        print('hello %s: %.3f' % (msg, time.time()))
+        return 'hello %s' % msg
 
 
 # ------------------------------------------------------------------------------
