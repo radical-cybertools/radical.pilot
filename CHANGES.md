@@ -9,6 +9,43 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.41.0 Release                                                    2023-10-17
+
+  - fix RTD
+  - replace MongoDB with ZMQ messaging
+  - adapt resource config for `ccs.mahti` to the new structure
+  - add description about input staging data
+  - add method to track startup file with service URL (special case - SOMA)
+  - add package `mpich` into CU and docs dependencies
+  - add resource_description class
+  - check agent sandbox existence
+  - clean RPC handling
+  - clean raptor RPC
+  - deprecated `python.system_packages`
+  - enable testing of all notebooks
+  - enable tests for all devel-branches
+  - fix heartbeat management
+  - fix LM config initialization
+  - fix RM LSF for Lassen (+ add platform config)
+  - fix Session close options
+  - fix TMGR Staging Input
+  - fix `pilot_state` in bootstrapping
+  - fix `task_pre_exec` configurable parameter for Popen
+  - fix bootstrapping for sub-agents
+  - keep pilot RPCs local
+  - raptor worker: one profile per rank
+  - let raptor use registry
+  - shield agains missing mpi
+  - sub-schema for `schemas`
+  - switch to registry configs instead of config files
+  - update testes
+  - update handling of the service startup process
+  - upload session when testing notebooks
+  - use hb msg class type
+  - version RP devel/nodb temporary
+
+
+--------------------------------------------------------------------------------
 ### 1.37.0 Release                                                    2023-09-23
 
   - fix `default_remote_workdir` for `csc.mahti` platform

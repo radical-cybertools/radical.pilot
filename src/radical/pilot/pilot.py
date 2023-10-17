@@ -759,7 +759,7 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, *args, **kwargs):
+    def rpc(self, cmd, *args, rpc_addr=None, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the pilot and wait for the
@@ -771,9 +771,12 @@ class Pilot(object):
         # FIXME: RPCs will hang vorever if the pilot dies after sending the msg
         self.wait(rps.PMGR_ACTIVE)
 
+        if rpc_addr is None:
+            rpc_addr = self.uid
+
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
-        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, args=args,
-                                    kwargs=kwargs, addr=self.uid)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, addr=rpc_addr,
+                                    args=args, kwargs=kwargs)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,
