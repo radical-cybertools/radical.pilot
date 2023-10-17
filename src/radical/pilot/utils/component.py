@@ -194,7 +194,7 @@ class Component(object):
         self._threads      = dict()       # subscriber and idler threads
         self._cb_lock      = mt.RLock()   # guard threaded callback invokations
         self._rpc_lock     = mt.RLock()   # guard threaded rpc calls
-        self._rpc_reqs     = dict()       #  currently active RPC requests
+        self._rpc_reqs     = dict()       # currently active RPC requests
         self._rpc_handlers = dict()       # RPC handler methods
         self._subscribers  = dict()       # ZMQ Subscriber classes
 
@@ -438,10 +438,10 @@ class Component(object):
             self._log.debug('no rpc handler for [%s]', msg.cmd)
             return
 
-        rpc_handler, addr = self._rpc_handlers[msg.cmd]
+        rpc_handler, rpc_addr = self._rpc_handlers[msg.cmd]
 
-        if msg.addr and msg.addr != addr:
-            self._log.debug('ignore rpc handler for [%s] [%s])', msg, addr)
+        if msg.addr and msg.addr != rpc_addr:
+            self._log.debug('ignore rpc handler for [%s] [%s])', msg, rpc_addr)
             return
 
         try:
@@ -475,14 +475,14 @@ class Component(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_rpc_handler(self, cmd, handler, addr=None):
+    def register_rpc_handler(self, cmd, handler, rpc_addr=None):
 
-        self._rpc_handlers[cmd] = [handler, addr]
+        self._rpc_handlers[cmd] = [handler, rpc_addr]
 
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, cmd, addr=None, *args, **kwargs):
+    def rpc(self, cmd, *args, rpc_addr=None, **kwargs):
         '''Remote procedure call.
 
         Send am RPC command and arguments to the control pubsub and wait for the
@@ -493,9 +493,8 @@ class Component(object):
         self._log.debug_5('rpc call %s(%s, %s)', cmd, args, kwargs)
 
         rpc_id  = ru.generate_id('%s.rpc' % self._uid)
-        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd,
-                                    args=args, kwargs=kwargs,
-                                    addr=addr)
+        rpc_req = RPCRequestMessage(uid=rpc_id, cmd=cmd, addr=rpc_addr,
+                                    args=args, kwargs=kwargs)
 
         self._rpc_reqs[rpc_id] = {
                 'req': rpc_req,
