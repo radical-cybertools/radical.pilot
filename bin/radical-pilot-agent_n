@@ -22,17 +22,6 @@ def main(sid, reg_addr, uid):
     '''
     This method continues where the bootstrap_0/1/2 left off, and will now pass
     control to the Agent class which will spawn the functional components.
-    Before doing so, we will check if we happen to be agent instance zero.  If
-    that is the case, some additional python level bootstrap routines kick in,
-    to set the stage for component and sub-agent spawning.
-
-    The agent interprets a config file, which will specify in an 'agents'
-    section:
-      - what nodes should be used for sub-agent startup
-      - what bridges should be started
-      - what are the endpoints for bridges which are not started
-      - what components should be started
-    agent_0 will create derived config files for all sub-agents.
     '''
 
     # basic setup: logger and profiler
@@ -55,54 +44,9 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     spt.setproctitle('rp.%s' % uid)
 
-    term = mt.Event()
-    reg  = ru.zmq.RegistryClient(url=reg_addr)
-
-    hb_cfg = ru.TypedDict(reg['heartbeat'])
-    a_cfg  = ru.Config(cfg=reg['agents.%s.cfg' % uid])
-
-    reg.close()
-
-    session = rp.Session(uid=sid, cfg=a_cfg,
-                         _role=rp.Session._AGENT_N, _reg_addr=reg_addr)
-    agent   = rp.Agent_n(a_cfg, session)
+    agent = rp.Agent_n(sid, reg_addr, uid)
     agent.start()
-
-    # agent runs - send heartbeats so that session knows about it
-    hb_pub = ru.zmq.Publisher('heartbeat', hb_cfg.addr_pub, log=log, prof=prof)
-
-    def hb_beat_cb():
-        hb_pub.put('heartbeat', HeartbeatMessage(uid=uid))
-
-    def hb_term_cb(hb_uid):
-        agent.stop()
-        term.set()
-        return False
-
-    hb = ru.Heartbeat(uid=uid,
-                      timeout=hb_cfg.timeout,
-                      interval=hb_cfg.interval,
-                      beat_cb=hb_beat_cb,
-                      term_cb=hb_term_cb,
-                      log=log)
-    hb.start()
-
-    # always watch out for session heartbeat
-    hb.watch(uid=sid)
-
-    # react on session heartbeats
-    def hb_sub_cb(topic, msg):
-        hb_msg = HeartbeatMessage(from_dict=msg)
-        if hb_msg.uid == sid:
-            hb.beat(uid=sid)
-
-    ru.zmq.Subscriber('heartbeat', hb_cfg.addr_sub,
-                      topic='heartbeat', cb=hb_sub_cb,
-                      log=log, prof=prof)
-
-    # all is set up - we can sit idle 'til end of time.
-    while not term.is_set():
-        time.sleep(1)
+    agent.wait()
 
 
 # ------------------------------------------------------------------------------

@@ -69,8 +69,7 @@ class Agent_0(rpu.Worker):
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
 
-        # create the sub-agent configs and start the sub agents
-        self._write_sa_configs()
+        # start the sub agents
         self._start_sub_agents()
 
         # regularly check for lifetime limit
@@ -305,35 +304,6 @@ class Agent_0(rpu.Worker):
         # tear things down in reverse order
         self._rm.stop()
         self._session.close()
-
-
-    # --------------------------------------------------------------------
-    #
-    def _write_sa_configs(self):
-
-        # we have all information needed by the subagents -- write the
-        # sub-agent config files.
-
-        # write deep-copies of the config for each sub-agent (sans from agent_0)
-        for sa in self.session.cfg.get('agents', {}):
-
-            assert (sa != 'agent_0'), 'expect subagent, not agent_0'
-
-            # use our own config sans agents/components/bridges as a basis for
-            # the sub-agent config.
-            tmp_cfg = copy.deepcopy(self.session.cfg)
-            tmp_cfg['agents']     = dict()
-            tmp_cfg['components'] = dict()
-            tmp_cfg['bridges']    = dict()
-
-            # merge sub_agent layout into the config
-            ru.dict_merge(tmp_cfg, self.session.cfg['agents'][sa], ru.OVERWRITE)
-
-            tmp_cfg['uid']   = sa
-            tmp_cfg['aid']   = sa
-            tmp_cfg['owner'] = 'agent_0'
-
-            self._reg['agents.%s.cfg' % sa] = tmp_cfg
 
 
     # --------------------------------------------------------------------------
