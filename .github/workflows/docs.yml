@@ -37,6 +37,7 @@ jobs:
           'multiple_pilots.ipynb',
           'profiling.ipynb',
           'raptor.ipynb',
+          'raptor_mpi.ipynb',
           'staging_data.ipynb',
           'submission.ipynb'
         ]
