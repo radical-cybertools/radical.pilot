@@ -39,6 +39,28 @@ FORWARD_TUNNEL_ENDPOINT = 'forward_tunnel_endpoint'
 NEW_SESSION_PER_TASK   = 'new_session_per_task'
 TASK_PRE_EXEC          = 'task_pre_exec'
 
+RAPTOR                 = 'raptor'
+RAPTOR_HB_DELAY        = 'hb_delay'
+RAPTOR_HB_TIMEOUT      = 'hb_timeout'
+RAPTOR_HB_FREQUENCY    = 'hb_frequency'
+
+
+# ------------------------------------------------------------------------------
+#
+class RaptorConfig(ru.TypedDict):
+
+    _schema = {
+        RAPTOR_HB_DELAY    : int,
+        RAPTOR_HB_TIMEOUT  : int,
+        RAPTOR_HB_FREQUENCY: int,
+    }
+
+    _defaults = {
+        RAPTOR_HB_DELAY    : 5,
+        RAPTOR_HB_TIMEOUT  : 500,
+        RAPTOR_HB_FREQUENCY: 1000,
+    }
+
 
 # ------------------------------------------------------------------------------
 #
@@ -69,6 +91,7 @@ class ResourceDescription(ru.TypedDict):
         NOTES                  : str        ,
         DEFAULT_SCHEMA         : str        ,
         SCHEMAS                : {str: AccessSchema},
+        RAPTOR                 : RaptorConfig,
 
         # FIXME: AM - need to resolve since in Session it is moved into RD
         #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`
@@ -109,6 +132,7 @@ class ResourceDescription(ru.TypedDict):
         NOTES                  : ''          ,
         DEFAULT_SCHEMA         : ''          ,
         SCHEMAS                : list()      ,
+        RAPTOR                 : RaptorConfig(),
 
         # FIXME: AM - need to resolve since in Session it is moved into RD
         #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`

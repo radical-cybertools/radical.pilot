@@ -36,6 +36,10 @@
         "lfs_size_per_node"           : 1024,
         "mem_per_node"                : 4096,
         "fake_resources"              : true
+        "raptor"                      : {
+                                         "hb_delay"     : 100,
+                                         "hb_timeout"   : 400,
+                                         "hb_frequency" : 100}
     },
 
     "localhost_test": {
