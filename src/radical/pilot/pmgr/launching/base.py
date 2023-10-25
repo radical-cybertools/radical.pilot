@@ -594,6 +594,7 @@ class PMGRLaunchingComponent(rpu.Component):
         mandatory_args          = rcfg.get('mandatory_args', [])
         system_architecture     = rcfg.get('system_architecture', {})
         services               += rcfg.get('services', [])
+        raptor_cfg              = rcfg.get('raptor')
 
         # part of the core specialization settings
         blocked_cores           = system_architecture.get('blocked_cores', [])
@@ -887,6 +888,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['log_lvl']             = self._log.level
         agent_cfg['debug_lvl']           = self._log.debug_level
         agent_cfg['services']            = services
+        agent_cfg['raptor']              = raptor_cfg
 
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,

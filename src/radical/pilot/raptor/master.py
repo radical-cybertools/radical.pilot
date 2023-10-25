@@ -70,7 +70,7 @@ class Master(rpu.Component):
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
         self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
-      # self._reg.dump(self._uid)
+        self._reg.dump(self._uid)
 
         # get hb configs
         self._hb_freq = self._reg['rcfg.raptor.hb_frequency']
@@ -92,8 +92,8 @@ class Master(rpu.Component):
 
         rpu.Component.__init__(self, ccfg, self._session)
 
-      # self._log.debug('=== hb freq: %s', self._hb_freq)
-      # self._log.debug('=== hb tout: %s', self._hb_tout)
+        self._log.debug('hb freq: %s', self._hb_freq)
+        self._log.debug('hb tout: %s', self._hb_tout)
 
         # we never run `self.start()` which is ok - but it means we miss out on
         # some of the component initialization.  Call it manually thus
@@ -404,7 +404,7 @@ class Master(rpu.Component):
             # the default worker needs it's own task description to derive the
             # amount of available resources
             self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
-            self._reg.dump('raptor_master')
+          # self._reg.dump('raptor_master')
 
             # all workers run in the same sandbox as the master
             task = dict()

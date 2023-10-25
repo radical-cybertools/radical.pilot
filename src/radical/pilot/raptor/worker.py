@@ -76,7 +76,7 @@ class Worker(object):
         time.sleep(1)
 
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
-      # self._log.debug('=== hb delay: %s', self._hb_delay)
+        self._log.debug('hb delay: %s', self._hb_delay)
         self._hb_thread = mt.Thread(target=self._hb_worker)
         self._hb_thread.daemon = True
         self._hb_thread.start()

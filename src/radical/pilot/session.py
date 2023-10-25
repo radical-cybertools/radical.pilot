@@ -386,13 +386,16 @@ class Session(rs.Session):
                                   rcfgs[site][res]['schemas'][schema])
                     del rcfgs_ext[site][res][schema]['default_schema']
 
+        # apply the rcfg schema so that default can kick in
         for site in rcfgs_ext:
             for res, rcfg in rcfgs_ext[site].items():
                 for schema in rcfg.get('schemas', {}):
                     rd = ResourceDescription(from_dict=rcfg[schema])
                     rd.verify()
+                    rcfgs_ext[site][res][schema] = rd
 
         self._rcfgs = ru.Config(from_dict=rcfgs_ext)
+
         self._rcfg  = ru.Config()  # the local resource config, if known
 
         # set essential config values for *this* specific session
