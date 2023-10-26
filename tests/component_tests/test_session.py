@@ -35,8 +35,8 @@ class TestSession(TestCase):
             self._init_cfg_from_scratch()
 
         with mock.patch.object(Session, '_init_primary', new=init_primary):
-            cls._session = Session()
-        cls._cleanup_files.append(cls._session.uid)
+            cls._session = Session(uid='rp.session.cls_test')
+            cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -212,6 +212,29 @@ class TestSession(TestCase):
         self.assertNotIn('/bbka/',
                          self._session._get_resource_sandbox(pilot).path)
         self._session._cache['resource_sandbox'] = {}
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Session, '_get_reporter')
+    def test_paths(self, mocked_reporter):
+
+        def init_primary(session):
+            session._reg = mock.Mock()
+            session._init_cfg_from_scratch()
+
+        s_uid = 'test.session.0000'
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            s0 = Session(uid=s_uid)
+            self._cleanup_files.append(s0.path)
+
+        self.assertEqual(s0.uid, s_uid)
+        self.assertEqual(s0.base, os.getcwd())
+
+        for path_key in ['base', 'path', 'client_sandbox']:
+            with mock.patch.object(Session, '_init_primary', new=init_primary):
+                s = Session(uid=s_uid, cfg={path_key: 'random_dir'})
+                self.assertEqual(s.cfg[path_key], '%s/random_dir' % os.getcwd())
+        self._cleanup_files.append('%s/random_dir' % os.getcwd())
 
 
 # ------------------------------------------------------------------------------
