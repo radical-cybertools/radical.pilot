@@ -8,6 +8,7 @@ __license__   = 'MIT'
 import glob
 import os
 import shutil
+import tempfile
 
 import radical.utils as ru
 
@@ -216,7 +217,11 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Session, '_get_reporter')
-    def test_paths(self, mocked_reporter):
+    @mock.patch('os.getcwd', return_value=tempfile.mkdtemp())
+    def test_paths(self, mocked_getcwd, mocked_reporter):
+
+        work_dir = mocked_getcwd()
+        self._cleanup_files.append(work_dir)
 
         def init_primary(session):
             session._reg = mock.Mock()
@@ -224,17 +229,18 @@ class TestSession(TestCase):
 
         s_uid = 'test.session.0000'
         with mock.patch.object(Session, '_init_primary', new=init_primary):
-            s0 = Session(uid=s_uid)
-            self._cleanup_files.append(s0.path)
+            s0 = Session(uid=s_uid, cfg={'base': ''})
 
         self.assertEqual(s0.uid, s_uid)
-        self.assertEqual(s0.base, os.getcwd())
+        self.assertEqual(s0.base, work_dir)
 
         for path_key in ['base', 'path', 'client_sandbox']:
             with mock.patch.object(Session, '_init_primary', new=init_primary):
+
                 s = Session(uid=s_uid, cfg={path_key: 'random_dir'})
                 self.assertEqual(s.cfg[path_key], '%s/random_dir' % os.getcwd())
-        self._cleanup_files.append('%s/random_dir' % os.getcwd())
+
+                self._cleanup_files.append(s.path)
 
 
 # ------------------------------------------------------------------------------
