@@ -367,34 +367,22 @@ class Session(rs.Session):
                                                        cfg=self._cfg)
 
         rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
-        rcfgs_ext = {}
+        self._rcfgs = ru.Config()
 
         for site in rcfgs:
-            rcfgs_ext[site] = {}
+            self._rcfgs[site] = ru.Config()
             for res, rcfg in rcfgs[site].items():
-                rcfgs_ext[site][res] = {
-                    'default_schema': rcfg['default_schema'],
-                    'schemas'       : rcfg.get('schemas', {})
-                }
-                for schema in rcfg.get('schemas', {}):
-                    while isinstance(rcfg['schemas'][schema], str):
-                        tgt = rcfg['schemas'][schema]
-                        rcfg['schemas'][schema] = rcfg['schemas'][tgt]
-                for schema in rcfg.get('schemas', {}):
-                    rcfgs_ext[site][res][schema] = rcfgs[site][res].as_dict()
-                    ru.dict_merge(rcfgs_ext[site][res][schema],
-                                  rcfgs[site][res]['schemas'][schema])
-                    del rcfgs_ext[site][res][schema]['default_schema']
+                self._rcfgs[site][res] = ResourceDescription(rcfg)
 
-        # apply the rcfg schema so that default can kick in
-        for site in rcfgs_ext:
-            for res, rcfg in rcfgs_ext[site].items():
-                for schema in rcfg.get('schemas', {}):
-                    rd = ResourceDescription(from_dict=rcfg[schema])
-                    rd.verify()
-                    rcfgs_ext[site][res][schema] = rd
+                # resolve schema aliases
+                for schema, tgt in rcfg.get('schemas', {}).items():
+                    alias = False
+                    while isinstance(tgt, str):
+                        alias = True
+                        tgt = rcfg['schemas'].get(tgt)
+                    if alias:
+                        rcfg['schemas'][schema] = tgt
 
-        self._rcfgs = ru.Config(from_dict=rcfgs_ext)
 
         self._rcfg  = ru.Config()  # the local resource config, if known
 
@@ -490,6 +478,7 @@ class Session(rs.Session):
         self._cfg   = ru.Config(cfg=self._reg['cfg'])
         self._rcfg  = ru.Config(cfg=self._reg['rcfg'])
         self._rcfgs = ru.Config(cfg=self._reg['rcfgs'])
+        print(' ===== 2', self._rcfgs['access']['bridges2']['default_schema'])
 
         # change RU defaults to point logfiles etc. to the session sandbox
         # NOTE: this is racey: the first session in this process will win
@@ -631,6 +620,9 @@ class Session(rs.Session):
         elif self._role == self._AGENT_0:
             self._reg['rcfg']  = self._rcfg
             self._reg['rcfgs'] = dict()
+
+
+        print(' ===== 3', self._rcfgs['access']['bridges2']['default_schema'])
 
 
     # --------------------------------------------------------------------------
@@ -1224,31 +1216,32 @@ class Session(rs.Session):
     def get_resource_config(self, resource, schema=None):
         """Returns a dictionary of the requested resource config."""
 
-        domain, host = resource.split('.', 1)
-        if domain not in self._rcfgs:
-            raise RuntimeError("Resource domain '%s' is unknown." % domain)
+        site, res = resource.split('.', 1)
+        if site not in self._rcfgs:
+            raise RuntimeError("Resource site '%s' is unknown." % site)
 
-        if host not in self._rcfgs[domain]:
-            raise RuntimeError("Resource host '%s' unknown." % host)
-
-        resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
+        if res not in self._rcfgs[site]:
+            raise RuntimeError("Resource label '%s' unknown." % res)
 
         if not schema:
-            schema = resource_cfg.get('default_schema')
+            schema = self._rcfgs[site][res]['default_schema']
 
-        if schema:
+        if not schema:
+            from_dict = self._rcfgs[site][res]
+            from_dict.label = resource
+            return ResourceDescription(from_dict=from_dict)
 
-            if schema not in resource_cfg['schemas']:
-                raise RuntimeError("schema %s unknown for resource %s"
-                                  % (schema, resource))
+        if schema not in self._rcfgs[site][res]['schemas']:
+            raise RuntimeError("schema %s unknown for resource %s"
+                              % (schema, resource))
 
-            for key in resource_cfg[schema]:
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
+        rcfg = ResourceDescription(from_dict=self._rcfgs[site][res])
+        scfg = rcfg['schemas'][schema]
 
-        resource_cfg.label = resource
-        return resource_cfg
+        ru.dict_merge(rcfg, scfg, ru.OVERWRITE)
+        rcfg.verify()
+
+        return rcfg
 
 
 
