@@ -402,6 +402,8 @@ class Session(rs.Session):
 
         if not self._cfg.base:
             self._cfg.base = pwd
+        else:
+            self._cfg.base = os.path.abspath(self._cfg.base)
 
         if not self._cfg.path:
             self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
@@ -455,6 +457,8 @@ class Session(rs.Session):
 
         if not self._cfg.base:
             self._cfg.base = pwd
+        else:
+            self._cfg.base = os.path.abspath(self._cfg.base)
 
         if not self._cfg.path:
             self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
