@@ -407,10 +407,13 @@ class Session(rs.Session):
 
         if not self._cfg.path:
             self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
+        else:
+            self._cfg.path = os.path.abspath(self._cfg.path)
 
         if not self._cfg.client_sandbox:
             self._cfg.client_sandbox = pwd
-
+        else:
+            self._cfg.client_sandbox = os.path.abspath(self._cfg.client_sandbox)
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -462,6 +465,8 @@ class Session(rs.Session):
 
         if not self._cfg.path:
             self._cfg.path = pwd
+        else:
+            self._cfg.path = os.path.abspath(self._cfg.path)
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
