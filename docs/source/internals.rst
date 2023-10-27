@@ -130,7 +130,7 @@ Session (Component)
 
 ::
 
-   session_start       : session is being created (not reconnected) (uid: sid)        -- agent; client (rp.session.<SID>.prof)
+   session_start       : session is being created (not reconnected) (uid: sid)        -- agent; client (rp.session.*.prof)
    session_close       : session close is requested                 (uid: sid)        --  ()
    session_stop        : session is closed                          (uid: sid)        --  ()
    session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API]) --  ()
@@ -168,9 +168,9 @@ Pilot (in session profile, all optional)
 
 ::
 
-   staging_in_start    : pilot level staging request starts         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.<SID>.prof)
-   staging_in_fail     : pilot level staging request failed         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.<SID>.prof)
-   staging_in_stop     : pilot level staging request stops          (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.<SID>.prof)
+   staging_in_start    : pilot level staging request starts         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
+   staging_in_fail     : pilot level staging request failed         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
+   staging_in_stop     : pilot level staging request stops          (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
 
    partial orders
    * per file          : staging_in_start, (staging_in_fail | staging_in_stop)
