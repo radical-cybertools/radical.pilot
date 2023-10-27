@@ -9,6 +9,12 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.39.0 Release                                                    2023-10-27
+
+  - last release before MongoDB removal
+
+
+--------------------------------------------------------------------------------
 ### 1.37.0 Release                                                    2023-09-23
 
   - fix `default_remote_workdir` for `csc.mahti` platform
