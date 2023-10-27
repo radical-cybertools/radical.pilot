@@ -41,8 +41,7 @@ class Srun(LaunchMethod):
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
         self._exact   : bool = False
 
-        if 'uva.rivanna'    in lm_cfg['resource'] or \
-           'rutgers.amarel' in lm_cfg['resource']:
+        if rm_info.sys_arch.get('exclusive'):
             self._exact = True
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
