@@ -22,6 +22,9 @@ from .messages             import HeartbeatMessage
 from .proxy                import Proxy
 from .resource_description import ResourceDescription
 
+ENDPOINTS_DEFAULT = {'job_manager_endpoint': 'fork://localhost/',
+                     'filesystem_endpoint' : 'file://localhost/'}
+
 
 # ------------------------------------------------------------------------------
 #
@@ -1227,7 +1230,7 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def get_resource_config(self, resource, schema=None):
+    def get_resource_config(self, resource):
         """Returns a dictionary of the requested resource config."""
 
         domain, host = resource.split('.', 1)
@@ -1238,22 +1241,15 @@ class Session(rs.Session):
             raise RuntimeError("Resource host '%s' unknown." % host)
 
         resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
-
-        if not schema:
-            schema = resource_cfg.get('default_schema')
-
-        if schema:
-
-            if schema not in resource_cfg['schemas']:
-                raise RuntimeError("schema %s unknown for resource %s"
-                                  % (schema, resource))
-
-            for key in resource_cfg[schema]:
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
-
         resource_cfg.label = resource
+
+        if bool(os.getenv('SLURM_JOB_ID') or
+                os.getenv('PBS_JOBID')    or
+                os.getenv('LSB_JOBID')    or
+                os.getenv('COBALT_JOBID')):
+            # batch startup mode
+            resource_cfg.update(ENDPOINTS_DEFAULT)
+
         return resource_cfg
 
 
@@ -1311,7 +1307,6 @@ class Session(rs.Session):
         # FIXME: this should get 'resource, schema=None' as parameters
 
         resource = pilot['description'].get('resource')
-        schema   = pilot['description'].get('access_schema')
 
         if not resource:
             raise ValueError('Cannot get pilot sandbox w/o resource target')
@@ -1323,7 +1318,7 @@ class Session(rs.Session):
             if resource not in self._cache['resource_sandbox']:
 
                 # cache miss -- determine sandbox and fill cache
-                rcfg   = self.get_resource_config(resource, schema)
+                rcfg   = self.get_resource_config(resource)
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
@@ -1365,7 +1360,7 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    shell = self.get_js_shell(resource, schema)
+                    shell = self.get_js_shell(resource)
                     ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
                                                  sandbox_raw)
                     if ret or 'WORKDIR:' not in out:
@@ -1386,18 +1381,14 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def get_js_shell(self, resource, schema):
+    def get_js_shell(self, resource):
 
         if resource not in self._cache['js_shells']:
             self._cache['js_shells'][resource] = dict()
 
-        if schema not in self._cache['js_shells'][resource]:
-
-            rcfg   = self.get_resource_config(resource, schema)
-
-            js_url = rcfg['job_manager_endpoint']
-            js_url = rcfg.get('job_manager_hop', js_url)
-            js_url = rs.Url(js_url)
+            rcfg   = self.get_resource_config(resource)
+            js_url = rs.Url(rcfg.get('job_manager_hop') or
+                            rcfg['job_manager_endpoint'])
 
             elems  = js_url.schema.split('+')
 
@@ -1412,9 +1403,9 @@ class Session(rs.Session):
 
             self._log.debug("rsup.PTYShell('%s')", js_url)
             shell = rsup.PTYShell(js_url, self)
-            self._cache['js_shells'][resource][schema] = shell
+            self._cache['js_shells'][resource] = shell
 
-        return self._cache['js_shells'][resource][schema]
+        return self._cache['js_shells'][resource]
 
 
     # --------------------------------------------------------------------------
@@ -1542,8 +1533,7 @@ class Session(rs.Session):
         """Get job service endpoint and hop URL for pilot's target resource."""
 
         resrc   = pilot['description']['resource']
-        schema  = pilot['description']['access_schema']
-        rcfg    = self.get_resource_config(resrc, schema)
+        rcfg    = self.get_resource_config(resrc)
 
         js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
         js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
