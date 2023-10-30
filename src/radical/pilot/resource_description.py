@@ -6,8 +6,6 @@ import radical.utils as ru
 
 DESCRIPTION            = 'description'
 NOTES                  = 'notes'
-DEFAULT_SCHEMA         = 'default_schema'
-SCHEMAS                = 'schemas'
 JOB_MANAGER_ENDPOINT   = 'job_manager_endpoint'
 JOB_MANAGER_HOP        = 'job_manager_hop'
 FILESYSTEM_ENDPOINT    = 'filesystem_endpoint'
@@ -42,23 +40,6 @@ TASK_PRE_EXEC          = 'task_pre_exec'
 
 # ------------------------------------------------------------------------------
 #
-class AccessSchema(ru.TypedDict):
-
-    _schema = {
-        JOB_MANAGER_ENDPOINT: str,
-        JOB_MANAGER_HOP     : str,
-        FILESYSTEM_ENDPOINT : str,
-    }
-
-    _defaults = {
-        JOB_MANAGER_ENDPOINT: None,
-        JOB_MANAGER_HOP     : None,
-        FILESYSTEM_ENDPOINT : None,
-    }
-
-
-# ------------------------------------------------------------------------------
-#
 class ResourceDescription(ru.TypedDict):
     '''
     docstrings goes here
@@ -67,11 +48,7 @@ class ResourceDescription(ru.TypedDict):
     _schema = {
         DESCRIPTION            : str        ,
         NOTES                  : str        ,
-        DEFAULT_SCHEMA         : str        ,
-        SCHEMAS                : {str: AccessSchema},
 
-        # FIXME: AM - need to resolve since in Session it is moved into RD
-        #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`
         JOB_MANAGER_ENDPOINT   : str        ,
         JOB_MANAGER_HOP        : str        ,
         FILESYSTEM_ENDPOINT    : str        ,
@@ -107,11 +84,7 @@ class ResourceDescription(ru.TypedDict):
     _defaults = {
         DESCRIPTION            : ''          ,
         NOTES                  : ''          ,
-        DEFAULT_SCHEMA         : ''          ,
-        SCHEMAS                : list()      ,
 
-        # FIXME: AM - need to resolve since in Session it is moved into RD
-        #        `_get_resource_sandbox` -> `KeyError: 'filesystem_endpoint'`
         JOB_MANAGER_ENDPOINT   : None        ,
         JOB_MANAGER_HOP        : None        ,
         FILESYSTEM_ENDPOINT    : None        ,

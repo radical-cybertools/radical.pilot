@@ -11,7 +11,6 @@ from .task_description import TaskDescription
 
 UID               = 'uid'
 RESOURCE          = 'resource'
-ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
 JOB_NAME          = 'job_name'
 PROJECT           = 'project'
@@ -71,11 +70,6 @@ class PilotDescription(ru.TypedDict):
             configuration is loaded from the config file once the `PilotDescription`
             is passed to :meth:`radical.pilot.PilotManager.submit_pilots`. If the
             key doesn't exist, an exception :class:`ValueError` is raised.
-        access_schema (str, optional): The key of an access mechanism to use.
-            The valid access mechanism is defined in the resource configuration.
-            See :doc:`/tutorials/configuration`. The first ``schema`` defined
-            in the resource configuration is used by
-            default, if no *access_schema* is specified.
         runtime (int, optional): The maximum run time (wall-clock time) in **minutes** of
             the pilot. Default 10.
         sandbox (str, optional): The working ("sandbox") directory of the pilot agent.
@@ -157,7 +151,6 @@ class PilotDescription(ru.TypedDict):
     _schema = {
         UID             : str        ,
         RESOURCE        : str        ,
-        ACCESS_SCHEMA   : str        ,
         RUNTIME         : int        ,
         APP_COMM        : [str]      ,
         SANDBOX         : str        ,
@@ -181,7 +174,6 @@ class PilotDescription(ru.TypedDict):
     _defaults = {
         UID             : None       ,
         RESOURCE        : None       ,
-        ACCESS_SCHEMA   : None       ,
         RUNTIME         : 10         ,
         APP_COMM        : []         ,
         SANDBOX         : None       ,
