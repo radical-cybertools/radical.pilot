@@ -210,7 +210,7 @@ class Proxy(ru.zmq.Server):
 
         q = mp.Queue()
         term = mp.Event()
-        proc = mp.Process(target=self._worker, args=(sid, q, term))
+        proc = mp.Process(target=self._worker, args=(sid, q, term, self._path))
         proc.start()
 
         try:
@@ -229,10 +229,10 @@ class Proxy(ru.zmq.Server):
 
     # --------------------------------------------------------------------------
     #
-    def _worker(self, sid, q, term):
+    def _worker(self, sid, q, term, path):
 
         # FIXME: log level etc
-        log = ru.Logger('radical.pilot.bridge', level='debug', path=sid)
+        log = ru.Logger('%s.proxy' % sid, level='debug', path=path)
 
         proxy_cp = None
         proxy_sp = None
@@ -243,19 +243,19 @@ class Proxy(ru.zmq.Server):
                                      cfg={'uid'    : 'proxy_control_pubsub',
                                           'type'   : 'pubsub',
                                           'log_lvl': 'debug',
-                                          'path'   : sid})
+                                          'path'   : path})
 
             proxy_sp = ru.zmq.PubSub(channel='proxy_state_pubsub',
                                      cfg={'uid'    : 'proxy_state_pubsub',
                                           'type'   : 'pubsub',
                                           'log_lvl': 'debug',
-                                          'path'   : sid})
+                                          'path'   : path})
 
             proxy_tq = ru.zmq.Queue (channel='proxy_task_queue',
                                      cfg={'uid'    : 'proxy_task_queue',
                                           'type'   : 'queue',
                                           'log_lvl': 'debug',
-                                          'path'   : sid})
+                                          'path'   : path})
 
             proxy_cp.start()
             proxy_sp.start()
