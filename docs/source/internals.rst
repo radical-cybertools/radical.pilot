@@ -44,43 +44,43 @@ Pilot
 -----
 
 .. csv-table:: Pilot States
-  :header: "State Name",    "Module",        "Component",      "Action"
+  :header: "State Name",    "Module",        "Component",      "Action",                                              "Sandbox", "Prof file"
   :widths: auto
 
-  "NEW",                    "Pilot Manager", "",               "Creating a pilot"
-  "PMGR_LAUNCHING_PENDING", "Pilot Manager", "Launcher queue", "Pilot waits for submission"
-  "PMGR_LAUNCHING",         "Pilot Manager", "Pilot Launcher", "Submit a pilot to the batch system"
-  "PMGR_ACTIVE_PENDING",    "LRM",           "",               "Pilot is waiting in the batch queue or bootstrapping"
-  "PMGR_ACTIVE",            "LRM",           "",               "Pilot is active on the cluster resources"
-  "DONE",                   "Pilot Manager", "",               "Pilot marked as done. Final state"
-  "CANCELED",               "Pilot Manager", "",               "Pilot marked as cancelled. Final state"
-  "FAILED",                 "Pilot Manager", "",               "Pilot marked as failed. Final state"
+  "NEW",                    "Pilot Manager", "",               "Creating a pilot",                                     "client", "pmgr.0000.prof"
+  "PMGR_LAUNCHING_PENDING", "Pilot Manager", "Launcher queue", "Pilot waits for submission",                           "client", "pmgr.0000.prof"
+  "PMGR_LAUNCHING",         "Pilot Manager", "Pilot Launcher", "Submit a pilot to the batch system",                   "client", "pmgr.0000.prof, pmgr_launching.0000.prof"
+  "PMGR_ACTIVE_PENDING",    "LRM",           "",               "Pilot is waiting in the batch queue or bootstrapping", "client", "pmgr.0000.prof, pmgr_launching.0000.prof"
+  "PMGR_ACTIVE",            "LRM",           "",               "Pilot is active on the cluster resources",             "client", "pmgr.0000.prof, pmgr_launching.0000.prof"
+  "DONE",                   "Pilot Manager", "",               "Pilot marked as done. Final state",                    "client", "pmgr_launching.0000.prof"
+  "CANCELED",               "Pilot Manager", "",               "Pilot marked as cancelled. Final state",               "client", "pmgr_launching.0000.prof"
+  "FAILED",                 "Pilot Manager", "",               "Pilot marked as failed. Final state",                  "client", "pmgr_launching.0000.prof"
 
 Task
 ----
 
 .. csv-table:: Task States
-  :header: "State Name",          "Module",       "Component",        "Action"
+  :header: "State Name",          "Module",       "Component",        "Action",                                                                                    "Sandbox", "Prof file"
   :widths: auto
 
-  "NEW",                          "Task Manager", "",                 "Creating a task"
-  "TMGR_SCHEDULING_PENDING",      "Task Manager", "Scheduler queue",  "Task queued for scheduling on a pilot"
-  "TMGR_SCHEDULING",              "Task Manager", "Scheduler",        "Assigning task to a pilot"
-  "TMGR_STAGING_INPUT_PENDING",   "Task Manager", "Stager In queue",  "Task queued for data staging"
-  "TMGR_STAGING_INPUT",           "Task Manager", "Stager In",        "Staging task's files to the target platform (if any)"
-  "AGENT_STAGING_INPUT_PENDING",  "Agent",        "Stager In queue",  "Task waiting to be picked up by Agent"
-  "AGENT_STAGING_INPUT",          "Agent",        "Stager In",        "Staging task's files inside the target platform, making available within the task sandbox"
-  "AGENT_SCHEDULING_PENDING",     "Agent",        "Scheduler queue",  "Task waiting for scheduling on resources, i.e., cores and/or GPUs"
-  "AGENT_SCHEDULING",             "Agent",        "Scheduler",        "Assign cores and/or GPUs to the task"
-  "AGENT_EXECUTING_PENDING",      "Agent",        "Executor queue",   "Cores and/or GPUs are assigned, wait for execution"
-  "AGENT_EXECUTING",              "Agent",        "Executor",         "Executing tasks on assigned cores and/or GPUs. Available resources are utilized"
-  "AGENT_STAGING_OUTPUT_PENDING", "Agent",        "Stager Out queue", "Task completed and waits for output staging"
-  "AGENT_STAGING_OUTPUT",         "Agent",        "Stager Out",       "Staging out task files within the platform (if any)"
-  "TMGR_STAGING_OUTPUT_PENDING",  "Task Manager", "Stager Out queue", "Waiting for Task Manager to pick up Task again"
-  "TMGR_STAGING_OUTPUT",          "Task Manager", "Stager Out",       "Task's files staged from remote to local resource (if any)"
-  "DONE",                         "Task Manager", "",                 "Task marked as done. Final state"
-  "CANCELED",                     "Task Manager", "",                 "Task marked as cancelled. Final state"
-  "FAILED",                       "Task Manager", "",                 "Task marked as failed. Final state"
+  "NEW",                          "Task Manager", "",                 "Creating a task",                                                                           "client",        "tmgr.0000.prof"
+  "TMGR_SCHEDULING_PENDING",      "Task Manager", "Scheduler queue",  "Task queued for scheduling on a pilot",                                                     "client",        "tmgr.0000.prof"
+  "TMGR_SCHEDULING",              "Task Manager", "Scheduler",        "Assigning task to a pilot",                                                                 "client",        "tmgr_scheduling.0000.prof"
+  "TMGR_STAGING_INPUT_PENDING",   "Task Manager", "Stager In queue",  "Task queued for data staging",                                                              "client",        "tmgr_scheduling.0000.prof"
+  "TMGR_STAGING_INPUT",           "Task Manager", "Stager In",        "Staging task's files to the target platform (if any)",                                      "client",        "tmgr_staging_input.0000.prof"
+  "AGENT_STAGING_INPUT_PENDING",  "Agent",        "Stager In queue",  "Task waiting to be picked up by Agent",                                                     "client, agent", "tmgr_staging_input.0000.prof, agent_0.prof"
+  "AGENT_STAGING_INPUT",          "Agent",        "Stager In",        "Staging task's files inside the target platform, making available within the task sandbox", "agent",         "agent_staging_input.0000.prof"
+  "AGENT_SCHEDULING_PENDING",     "Agent",        "Scheduler queue",  "Task waiting for scheduling on resources, i.e., cores and/or GPUs",                         "agent",         "agent_staging_input.0000.prof"
+  "AGENT_SCHEDULING",             "Agent",        "Scheduler",        "Assign cores and/or GPUs to the task",                                                      "agent",         "agent_scheduling.0000.prof"
+  "AGENT_EXECUTING_PENDING",      "Agent",        "Executor queue",   "Cores and/or GPUs are assigned, wait for execution",                                        "agent",         "agent_scheduling.0000.prof"
+  "AGENT_EXECUTING",              "Agent",        "Executor",         "Executing tasks on assigned cores and/or GPUs. Available resources are utilized",           "agent",         "agent_executing.0000.prof"
+  "AGENT_STAGING_OUTPUT_PENDING", "Agent",        "Stager Out queue", "Task completed and waits for output staging",                                               "agent",         "agent_executing.0000.prof"
+  "AGENT_STAGING_OUTPUT",         "Agent",        "Stager Out",       "Staging out task files within the platform (if any)",                                       "agent",         "agent_staging_output.0000.prof"
+  "TMGR_STAGING_OUTPUT_PENDING",  "Task Manager", "Stager Out queue", "Waiting for Task Manager to pick up Task again",                                            "agent",         "agent_0.prof, agent_staging_output.0000.prof"
+  "TMGR_STAGING_OUTPUT",          "Task Manager", "Stager Out",       "Task's files staged from remote to local resource (if any)",                                "client",        "tmgr_staging_output.0000.prof"
+  "DONE",                         "Task Manager", "",                 "Task marked as done. Final state",                                                          "client",        "tmgr_staging_output.0000.prof"
+  "CANCELED",                     "Task Manager", "",                 "Task marked as cancelled. Final state",                                                     "client",        "tmgr_staging_output.0000.prof"
+  "FAILED",                       "Task Manager", "",                 "Task marked as failed. Final state",                                                        "client",        "tmgr_staging_output.0000.prof"
 
 
 Event Model
@@ -104,7 +104,7 @@ Format of this file
 
 ::
 
-   event_name          : semantic event description (details on 'uid', 'msg', 'state' fields)
+   event_name          : semantic event description (details on 'uid', 'msg', 'state' fields) -- Sandbox (prof file name)
 
 
 All Components
@@ -112,15 +112,14 @@ All Components
 
 ::
 
-   get                 : component receives an entity               (uid: eid, state: estate)
-   advance             : component advances  entity state           (uid: eid, state: estate)
-   publish             : component publishes entity state           (uid: eid, state: estate)
-   put                 : component pushes an entity out             (uid: eid, state: estate, msg: channel)
-   lost                : component lost   an entity (state error)   (uid: eid, state: estate)
-   drop                : component drops  an entity (final state)   (uid: eid, state: estate)
-   component_init      : component child  initializes after start()
-   component_init      : component parent initializes after start()
-   component_final     : component finalizes
+   get                 : component receives an entity               (uid: eid, state: estate)               -- agent; client (agent_scheduling_queue.get.0000.prof, pmgr_launching_queue.get.0000.prof, stager_request_queue.get.0000.prof; tmgr_scheduling_queue.get.0000.prof)
+   advance             : component advances  entity state           (uid: eid, state: estate)               -- agent; client (agent_0.prof, agent_executing.0000.prof, agent_scheduling.0000.prof, agent_staging_input.0000.prof, agent_staging_output.0000.prof; pmgr.0000.prof, pmgr_launching.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
+   publish             : component publishes entity state           (uid: eid, state: estate)               --  ()
+   put                 : component pushes an entity out             (uid: eid, state: estate, msg: channel) --  ()
+   lost                : component lost   an entity (state error)   (uid: eid, state: estate)               --  ()
+   drop                : component drops  an entity (final state)   (uid: eid, state: estate)               -- client (tmgr_staging_output.0000.prof)
+   component_init      : component child  initializes after start() ()                                      -- agent; client (agent_0.prof, agent_executing.0000.prof, agent_scheduling.0000.prof, agent_staging_input.0000.prof, agent_staging_output.0000.prof; pmgr.0000.prof, pmgr_launching.0000.prof, stager.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
+   component_final     : component finalizes ()                                                             -- client (pmgr.0000.prof, pmgr_launching.0000.prof, stager.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
 
    partial orders
    * per component     : component_init, *, component_final
@@ -131,11 +130,11 @@ Session (Component)
 
 ::
 
-   session_start       : session is being created (not reconnected) (uid: sid)
-   session_close       : session close is requested                 (uid: sid)
-   session_stop        : session is closed                          (uid: sid)
-   session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API])
-   session_fetch_stop  : stops fetching logs/profs/json after close (uid: sid, [API])
+   session_start       : session is being created (not reconnected) (uid: sid)        -- agent; client (rp.session.*.prof)
+   session_close       : session close is requested                 (uid: sid)        --  ()
+   session_stop        : session is closed                          (uid: sid)        --  ()
+   session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API]) --  ()
+   session_fetch_stop  : stops fetching logs/profs/json after close (uid: sid, [API]) --  ()
 
    partial orders
    * per session       : session_start, config_parser_start, \
@@ -148,17 +147,17 @@ PilotManager (Component)
 
 ::
 
-   setup_done          : manager has bootstrapped                   (uid: pmgr)
+   setup_done          : manager has bootstrapped                   (uid: pmgr) -- client (pmgr.0000.prof)
 
 PMGRLaunchingComponent (Component)
 ----------------------------------
 
 ::
 
-   staging_in_start    : pilot sandbox staging starts               (uid: pilot)
-   staging_in_stop     : pilot sandbox staging stops                (uid: pilot)
-   submission_start    : pilot job submission starts                (uid: pilot)
-   submission_stop     : pilot job submission stops                 (uid: pilot)
+   staging_in_start    : pilot sandbox staging starts               (uid: pilot) -- client (pmgr_launching.0000.prof)
+   staging_in_stop     : pilot sandbox staging stops                (uid: pilot) -- client (pmgr_launching.0000.prof)
+   submission_start    : pilot job submission starts                (uid: pilot) -- client (pmgr_launching.0000.prof)
+   submission_stop     : pilot job submission stops                 (uid: pilot) -- client (pmgr_launching.0000.prof)
 
    partial orders
    * per pilot         : staging_in_start, staging_in_stop, \
@@ -169,9 +168,9 @@ Pilot (in session profile, all optional)
 
 ::
 
-   staging_in_start    : pilot level staging request starts         (uid: pilot, msg: did, [PILOT-DS])
-   staging_in_fail     : pilot level staging request failed         (uid: pilot, msg: did, [PILOT-DS])
-   staging_in_stop     : pilot level staging request stops          (uid: pilot, msg: did, [PILOT-DS])
+   staging_in_start    : pilot level staging request starts         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
+   staging_in_fail     : pilot level staging request failed         (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
+   staging_in_stop     : pilot level staging request stops          (uid: pilot, msg: did, [PILOT-DS]) -- agent; client (rp.session.*.prof)
 
    partial orders
    * per file          : staging_in_start, (staging_in_fail | staging_in_stop)
@@ -181,9 +180,9 @@ TaskManager (Component)
 
 ::
 
-   setup_done          : manager has bootstrapped                   (uid: tmgr)
-   get                 : tasks   received from application          (uid: tmgr, msg: 'bulk size: %d')
-   get                 : task    received from application          (uid: task)
+   setup_done          : manager has bootstrapped                   (uid: tmgr)                       -- client (tmgr.0000.prof)
+   get                 : tasks   received from application          (uid: tmgr, msg: 'bulk size: %d') --  ()
+   get                 : task    received from application          (uid: task)                       --  ()
 
 TMGRSchedulingComponent (Component)
 -----------------------------------
@@ -193,12 +192,12 @@ TMGRStagingInputComponent (Component)
 
 ::
 
-   create_sandbox_start: create_task_sandbox starts                 (uid: task, [Task-DS])
-   create_sandbox_stop : create_task_sandbox stops                  (uid: task, [Task-DS])
-   staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS])
-   staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS])
-   staging_in_tar_start: tar optimization starts                    (uid: task, msg: did, [Task-DS])
-   staging_in_tar_stop : tar optimization stops                     (uid: task, msg: did, [Task-DS])
+   create_sandbox_start: create_task_sandbox starts                 (uid: task, [Task-DS])           --  ()
+   create_sandbox_stop : create_task_sandbox stops                  (uid: task, [Task-DS])           --  ()
+   staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS]) -- client (pmgr_launching.0000.prof)
+   staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS]) -- client (pmgr_launching.0000.prof)
+   staging_in_tar_start: tar optimization starts                    (uid: task, msg: did, [Task-DS]) --  ()
+   staging_in_tar_stop : tar optimization stops                     (uid: task, msg: did, [Task-DS]) --  ()
 
    partial orders
    * per task          : create_sandbox_start, create_sandbox_stop,
@@ -210,24 +209,24 @@ bootstrap_0.sh
 
 ::
 
-   bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pilot)
+   bootstrap_0_start   : pilot bootstrapper 1 starts                (uid: pilot)          -- agent (bootstrap_0.prof)
    tunnel_setup_start  : setting up tunnel    starts                (uid: pilot)
    tunnel_setup_stop   : setting up tunnel    stops                 (uid: pilot, [CFG-R])
-   ve_setup_start      : pilot ve setup       starts                (uid: pilot)
-   ve_create_start     : pilot ve creation    starts                (uid: pilot, [CFG-R])
-   ve_activate_start   : pilot ve activation  starts                (uid: pilot, [CFG-R])
-   ve_activate_start   : pilot ve activation  stops                 (uid: pilot, [CFG-R])
+   ve_setup_start      : pilot ve setup       starts                (uid: pilot)          -- agent (bootstrap_0.prof)
+   ve_create_start     : pilot ve creation    starts                (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   ve_activate_start   : pilot ve activation  starts                (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   ve_activate_stop    : pilot ve activation  stops                 (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
    ve_update_start     : pilot ve update      starts                (uid: pilot, [CFG-R])
    ve_update_start     : pilot ve update      stops                 (uid: pilot, [CFG-R])
-   ve_create_stop      : pilot ve creation    stops                 (uid: pilot, [CFG-R])
-   rp_install_start    : rp stack install     starts                (uid: pilot, [CFG-R])
-   rp_install_stop     : rp stack install     stops                 (uid: pilot, [CFG-R])
-   ve_setup_stop       : pilot ve setup       stops                 (uid: pilot, [CFG-R])
-   ve_activate_start   : pilot ve activation  starts                (uid: pilot, [CFG-R])
-   ve_activate_start   : pilot ve activation  stops                 (uid: pilot)
+   ve_create_stop      : pilot ve creation    stops                 (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   rp_install_start    : rp stack install     starts                (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   rp_install_stop     : rp stack install     stops                 (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   ve_setup_stop       : pilot ve setup       stops                 (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   ve_activate_start   : pilot ve activation  starts                (uid: pilot, [CFG-R]) -- agent (bootstrap_0.prof)
+   ve_activate_stop    : pilot ve activation  stops                 (uid: pilot)          -- agent (bootstrap_0.prof)
    cleanup_start       : sandbox deletion     starts                (uid: pilot)
    cleanup_stop        : sandbox deletion     stops                 (uid: pilot)
-   bootstrap_0_stop    : pilot bootstrapper 1 stops                 (uid: pilot)
+   bootstrap_0_stop    : pilot bootstrapper 1 stops                 (uid: pilot)          -- agent (bootstrap_0.prof)
 
    partial orders
    * as above
@@ -237,15 +236,15 @@ agent_0 (Component)
 
 ::
 
-   hostname            : host or nodename for agent_0               (uid: pilot)
-   cmd                 : command received from pmgr                 (uid: pilot, msg: command, [API])
-   get                 : tasks   received from task manager         (uid: pilot, msg: 'bulk size: %d')
-   get                 : task    received from task manager         (uid: task)
-   dvm_start           : DVM startup by launch method               (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
-   dvm_uri             : DVM URI is set successfully                (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
-   dvm_ready           : DVM is ready for execution                 (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
-   dvm_stop            : DVM terminated                             (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
-   dvm_fail            : DVM termination failed                     (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM])
+   hostname            : host or nodename for agent_0               (uid: pilot)                              -- agent (agent_0.prof)
+   cmd                 : command received from pmgr                 (uid: pilot, msg: command, [API]).        -- agent (agent_0.prof)
+   get                 : tasks   received from task manager         (uid: pilot, msg: 'bulk size: %d')        --  ()
+   get                 : task    received from task manager         (uid: task)                               --  ()
+   dvm_start           : DVM startup by launch method               (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM]) --  ()
+   dvm_uri             : DVM URI is set successfully                (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM]) --  ()
+   dvm_ready           : DVM is ready for execution                 (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM]) --  ()
+   dvm_stop            : DVM terminated                             (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM]) --  ()
+   dvm_fail            : DVM termination failed                     (uid: pilot, msg: 'dvm_id=%d') [CFG-DVM]) --  ()
 
 
    partial orders
@@ -257,10 +256,10 @@ AgentStagingInputComponent (Component)
 
 ::
 
-   staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS])
-   staging_in_skip     : staging request is not handled here        (uid: task, msg: did, [Task-DS])
-   staging_in_fail     : staging request failed                     (uid: task, msg: did, [Task-DS])
-   staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS])
+   staging_in_start    : staging request starts                     (uid: task, msg: did, [Task-DS]) -- client (pmgr_launching.0000.prof)
+   staging_in_skip     : staging request is not handled here        (uid: task, msg: did, [Task-DS]) --  ()
+   staging_in_fail     : staging request failed                     (uid: task, msg: did, [Task-DS]) --  ()
+   staging_in_stop     : staging request stops                      (uid: task, msg: did, [Task-DS]) -- client (pmgr_launching.0000.prof)
 
    partial orders
    * per file          : staging_in_skip
@@ -271,12 +270,11 @@ AgentSchedulingComponent (Component)
 
 ::
 
-   schedule_try        : search for task resources starts           (uid: task)
-   schedule_fail       : search for task resources failed           (uid: task, [RUNTIME])
-   schedule_ok         : search for task resources succeeded        (uid: task)
-
-   unschedule_start    : task resource freeing starts               (uid: task)
-   unschedule_stop     : task resource freeing stops                (uid: task)
+   schedule_try        : search for task resources starts           (uid: task)            --  ()
+   schedule_fail       : search for task resources failed           (uid: task, [RUNTIME]) --  ()
+   schedule_ok         : search for task resources succeeded        (uid: task)            -- agent (agent_scheduling.0000.prof)
+   unschedule_start    : task resource freeing starts               (uid: task)            -- agent (agent_scheduling.0000.prof)
+   unschedule_stop     : task resource freeing stops                (uid: task)            -- agent (agent_scheduling.0000.prof)
 
    partial orders
    * per task          : schedule_try, schedule_fail*, schedule_ok, \
@@ -287,30 +285,29 @@ AgentExecutingComponent: (Component)
 
 ::
 
-   task_start          : task handling process starts               (uid: task)
-   task_mkdir          : creation of sandbox requested              (uid: task)
-   task_mkdir_done     : creation of sandbox completed              (uid: task)
-   task_run_start      : pass to executing layer (ssh, mpi...)      (uid: task)
-   task_run_ok         : executing layer accepted task              (uid: task)
-   launch_start        : task launch script: starts                 (uid: task)
-   launch_pre          : task launch script: pre-submission         (uid: task)
-   launch_submit       : task launch script: launch method starts   (uid: task)
-   exec_start          : task exec script: starts [per rank]        (uid: task)
-   exec_pre            : task exec script: pre-exec starts          (uid: task)
-   rank_start          : task exec script: executable started       (uid: task)
-   app_start           : application executable started             (uid: task, [APP])
-   app_*               : application specific events                (uid: task, [APP], optional)
-   app_stop            : application executable stops               (uid: task, [APP])
-   rank_stop           : task exec script: executable stopped       (uid: task)
-   exec_post           : task exec script: post-exec starts         (uid: task)
-   exec_stop           : task exec script: stopped                  (uid: task)
-   launch_collect      : task launch script: launch method returned (uid: task)
-   launch_post         : task launch script: post-submission        (uid: task)
-   launch_stop         : task launch script: completes              (uid: task)
-   task_run_stop       : exec layer passed back control             (uid: task)
-
-   task_run_cancel_start: try to cancel task via exec layer (kill)  (uid: task, [API])
-   task_run_cancel_stop : did cancel    task via exec layer (kill)  (uid: task, [API])
+   task_start          : task handling process starts               (uid: task)                  -- agent (agent_executing.0000.prof)
+   task_mkdir          : creation of sandbox requested              (uid: task)                  -- agent (agent_executing.0000.prof)
+   task_mkdir_done     : creation of sandbox completed              (uid: task)                  -- agent (agent_executing.0000.prof)
+   task_run_start      : pass to executing layer (ssh, mpi...)      (uid: task)                  -- agent (agent_executing.0000.prof)
+   task_run_ok         : executing layer accepted task              (uid: task)                  -- agent (agent_executing.0000.prof)
+   launch_start        : task launch script: starts                 (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   launch_pre          : task launch script: pre-submission         (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   launch_submit       : task launch script: launch method starts   (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   exec_start          : task exec script: starts [per rank]        (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   exec_pre            : task exec script: pre-exec starts          (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   rank_start          : task exec script: executable started       (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   app_start           : application executable started             (uid: task, [APP])           -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   app_*               : application specific events                (uid: task, [APP], optional) --  ()
+   app_stop            : application executable stops               (uid: task, [APP])           -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   rank_stop           : task exec script: executable stopped       (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   exec_post           : task exec script: post-exec starts         (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   exec_stop           : task exec script: stopped                  (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   launch_collect      : task launch script: launch method returned (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   launch_post         : task launch script: post-submission        (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   launch_stop         : task launch script: completes              (uid: task)                  -- agent (task.<TASK_NUMBER>.prof, agent_staging_output.0000.prof)
+   task_run_stop       : exec layer passed back control             (uid: task)                  -- agent (agent_staging_output.0000.prof)
+   task_run_cancel_start: try to cancel task via exec layer (kill)  (uid: task, [API])           --  ()
+   task_run_cancel_stop : did cancel    task via exec layer (kill)  (uid: task, [API])           --  ()
 
    partial orders
    * per task          : task_start, task_run_start, task_run_ok,
@@ -330,16 +327,16 @@ AgentStagingOutputComponent (Component)
 
 ::
 
-   staging_stdout_start: reading task stdout starts                 (uid: task)
-   staging_stdout_stop : reading task stdout stops                  (uid: task)
-   staging_stderr_start: reading task stderr starts                 (uid: task)
-   staging_stderr_stop : reading task stderr stops                  (uid: task)
-   staging_uprof_start : reading task profile starts                (uid: task, [APP])
-   staging_uprof_stop  : reading task profile stops                 (uid: task, [APP])
-   staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS])
-   staging_out_skip    : staging request is not handled here        (uid: task, msg: did, [Task-DS])
-   staging_out_fail    : staging request failed                     (uid: task, msg: did, [Task-DS])
-   staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS])
+   staging_stdout_start: reading task stdout starts                 (uid: task)                      -- agent (agent_staging_output.0000.prof)
+   staging_stdout_stop : reading task stdout stops                  (uid: task)                      -- agent (agent_staging_output.0000.prof)
+   staging_stderr_start: reading task stderr starts                 (uid: task)                      -- agent (agent_staging_output.0000.prof)
+   staging_stderr_stop : reading task stderr stops                  (uid: task)                      -- agent (agent_staging_output.0000.prof)
+   staging_uprof_start : reading task profile starts                (uid: task, [APP])               -- agent (agent_staging_output.0000.prof)
+   staging_uprof_stop  : reading task profile stops                 (uid: task, [APP])               -- agent (agent_staging_output.0000.prof)
+   staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS]) --  ()
+   staging_out_skip    : staging request is not handled here        (uid: task, msg: did, [Task-DS]) --  ()
+   staging_out_fail    : staging request failed                     (uid: task, msg: did, [Task-DS]) --  ()
+   staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS]) --  ()
 
    partial orders
    * per task          : staging_stdout_start, staging_stdout_stop,
@@ -353,8 +350,8 @@ TMGRStagingOutputComponent (Component)
 
 ::
 
-   staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS])
-   staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS])
+   staging_out_start   : staging request starts                     (uid: task, msg: did, [Task-DS]) --  ()
+   staging_out_stop    : staging request stops                      (uid: task, msg: did, [Task-DS]) --  ()
 
    partial orders
    * per file          : staging_out_start, staging_out_stop
@@ -364,9 +361,9 @@ UpdateWorker (Component)
 
 ::
 
-   update_request      : a state update is requested                (uid: task, msg: state)
-   update_pushed       : bulk state update has been sent            (           msg: 'bulk size: %d')
-   update_pushed       : a state update has been send               (uid: task, msg: state)
+   update_request      : a state update is requested                (uid: task, msg: state)           --  ()
+   update_pushed       : bulk state update has been sent            (           msg: 'bulk size: %d') --  ()
+   update_pushed       : a state update has been send               (uid: task, msg: state)           --  ()
 
    partial orders
    * per state update  : update_request, update_pushed
