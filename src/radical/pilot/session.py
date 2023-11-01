@@ -421,11 +421,9 @@ class Session(rs.Session):
         def_cfg.report_dir  = self._cfg.path
         def_cfg.profile_dir = self._cfg.path
 
-        self._prof = self._get_profiler(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid, cfg=self._cfg)
+        self._prof = self._get_profiler(name=self._uid, cfg=self._cfg)
         self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('log_lvl'),
-                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -474,11 +472,9 @@ class Session(rs.Session):
         def_cfg.report_dir  = self._cfg.path
         def_cfg.profile_dir = self._cfg.path
 
-        self._prof = self._get_profiler(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid, cfg=self._cfg)
+        self._prof = self._get_profiler(name=self._uid, cfg=self._cfg)
         self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('log_lvl'),
-                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -504,11 +500,9 @@ class Session(rs.Session):
         def_cfg.report_dir  = self._cfg.path
         def_cfg.profile_dir = self._cfg.path
 
-        self._prof = self._get_profiler(name=self._uid)
+        self._log  = self._get_logger  (name=self._uid, cfg=self._cfg)
+        self._prof = self._get_profiler(name=self._uid, cfg=self._cfg)
         self._rep  = self._get_reporter(name=self._uid)
-        self._log  = self._get_logger  (name=self._uid,
-                                        level=self._cfg.get('log_lvl'),
-                                        debug=self._cfg.get('debug_lvl'))
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
@@ -1030,16 +1024,17 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_logger(self, name, level=None, debug=None):
+    @staticmethod
+    def _get_logger(name, cfg, level=None, debug=None):
         """Get the Logger instance.
 
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-        log = ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
-                         targets=['.'], level=level, debug=debug)
-
-        return log
+        return ru.Logger(name=name, ns='radical.pilot',
+                         path=cfg.path, targets=['.'],
+                         level=level or cfg.get('log_lvl'),
+                         debug=debug or cfg.get('debug_lvl'))
 
 
     # --------------------------------------------------------------------------
@@ -1059,16 +1054,14 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
-    def _get_profiler(self, name):
+    @staticmethod
+    def _get_profiler(name, cfg):
         """Get the Profiler instance.
 
         This is a thin wrapper around `ru.Profiler()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
-
-        return prof
+        return ru.Profiler(name=name, ns='radical.pilot', path=cfg.path)
 
 
     # --------------------------------------------------------------------------

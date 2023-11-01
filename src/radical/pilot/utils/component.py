@@ -199,10 +199,8 @@ class Component(object):
         if self._owner == self.uid:
             self._owner = 'root'
 
-        self._prof = self._session._get_profiler(name=self.uid)
-        self._log  = self._session._get_logger  (name=self.uid,
-                                                 level=self._cfg.get('log_lvl'),
-                                                 debug=self._cfg.get('debug_lvl'))
+        self._prof = self._session._get_profiler(name=self.uid, cfg=self._cfg)
+        self._log  = self._session._get_logger  (name=self.uid, cfg=self._cfg)
 
         self._q    = None
         self._in   = None
