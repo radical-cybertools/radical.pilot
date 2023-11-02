@@ -27,7 +27,6 @@
                                          "SRUN" : {}
                                         },
         "pre_bootstrap_0"             : [
-                                         "module load mongodb",
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "$PSCRATCH",
@@ -65,7 +64,6 @@
                                          "SRUN"  : {}
                                         },
         "pre_bootstrap_0"             : [
-                                         "module load mongodb",
                                          "module load python"
                                         ],
         "default_remote_workdir"      : "$PSCRATCH",
