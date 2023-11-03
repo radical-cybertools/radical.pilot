@@ -39,7 +39,7 @@ class Srun(LaunchMethod):
 
         self._command : str  = ''
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
-        self._exact   : bool = rm_info.detail.get('exact', False)
+        self._exact   : bool = rm_info.details.get('exact', False)
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
