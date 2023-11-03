@@ -137,8 +137,10 @@ if __name__ == "__main__":
     reg_addr = sys.argv[2]
     uid      = sys.argv[3]
 
-    ru.daemonize(main=main, args=[sid, reg_addr, uid],
-                 stdout='%s.out' % uid, stderr='%s.err' % uid)
+    main(sid, reg_addr, uid)
+
+  # ru.daemonize(main=main, args=[sid, reg_addr, uid],
+  #              stdout='%s.out' % uid, stderr='%s.err' % uid)
     sys.exit(0)
 
 

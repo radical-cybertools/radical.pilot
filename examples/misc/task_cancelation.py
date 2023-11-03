@@ -38,7 +38,7 @@ if __name__ == '__main__':
         for _ in range(32):
 
             td = rp.TaskDescription()
-            td.executable = '%s/examples/hello_rp.sh' % os.getcwd()
+            td.executable = '%s/bin/radical-pilot-hello.sh' % os.getcwd()
             td.arguments  = [10]
             tds.append(td)
 
