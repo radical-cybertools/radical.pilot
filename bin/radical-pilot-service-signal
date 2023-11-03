@@ -38,7 +38,7 @@ print('task_uid: %s' % task_uid)
 pub = ru.zmq.Publisher('control_pubsub', ctr_addr)
 
 pub.put('control_pubsub', msg={'cmd': 'service_up',
-                               'uid': task_uid})
+                               'arg': {'uid': task_uid}})
 
 # make sure the message goes out
 time.sleep(1)

@@ -43,6 +43,42 @@ signal.signal(signal.SIGTERM, _kill)
 signal.signal(signal.SIGINT,  _kill)
 # ------------------------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+#
+class Multiplex_Profiler(object):
+
+    # --------------------------------------------------------------------------
+    def __init__(self, zmq_pub_addr, prof, log):
+
+        self._log     = log
+        self._prof    = prof
+        self._zmq_pub = ru.zmq.Publisher(channel='tracer_pubsub',
+                                         url=zmq_pub_addr, log=log, prof=prof)
+
+
+    # --------------------------------------------------------------------------
+    def prof(self, event, uid=None, state=None, msg=None, ts=None, comp=None,
+                   tid=None):
+
+        if not ts:
+            ts = time.time()
+
+        self._prof.prof(event, uid, state, msg, ts, comp, tid)
+
+        msg = {'cmd' :  'profile_event',
+               'args': {'event': event, 'uid': uid, 'state': state,
+                        'msg'  : msg,   'ts' : ts,  'comp' : comp,
+                        'tid'  : tid}}
+
+        self._log.debug('=== send %s', msg)
+        self._zmq_pub.put('tracer_pubsub', msg)
+
+
+    @property
+    def enabled(self):
+
+        return self._prof.enabled
+
 
 # ------------------------------------------------------------------------------
 #
@@ -62,13 +98,17 @@ class Popen(AgentExecutingComponent):
       # self._log.debug('popen initialize start')
         AgentExecutingComponent.initialize(self)
 
+        # exchange the default profiler with a multiplexer (zmq + file)
+        zmq_pub_addr = self._reg['bridges.tracer_pubsub']['addr_pub']
+        self._prof = Multiplex_Profiler(zmq_pub_addr, self._prof, self._log)
+
         self._watch_queue = queue.Queue()
 
         self._pid = self.session.cfg.pid
 
         # run watcher thread
         self._watcher = mt.Thread(target=self._watch)
-      # self._watcher.daemon = True
+        self._watcher.daemon = True
         self._watcher.start()
 
       # self._log.debug('popen initialize stop')

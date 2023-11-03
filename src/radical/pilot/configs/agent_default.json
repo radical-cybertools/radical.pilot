@@ -35,8 +35,9 @@
         "agent_schedule_pubsub"      : {"kind": "pubsub", "log_lvl":"error"},
 
         "control_pubsub"             : {"kind": "pubsub", "log_lvl":"error"},
-        "state_pubsub"               : {"kind": "pubsub", "log_lvl":"error"}
+        "state_pubsub"               : {"kind": "pubsub", "log_lvl":"error"},
 
+        "tracer_pubsub"              : {"kind": "pubsub", "log_lvl":"error"}
       # "log_pubsub"                 : {"kind": "pubsub", "log_lvl":"error"}
     },
 
