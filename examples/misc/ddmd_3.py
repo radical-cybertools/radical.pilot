@@ -166,7 +166,7 @@ class DDMD(object):
     #
     def _next_iteration(self):
 
-        if self._iter > 1:
+        if self._iter > 3:
             self.stop()
 
         self._iter += 1
@@ -255,19 +255,20 @@ class DDMD(object):
             ttype = self._get_ttype(uid)
             task  = self._tasks[ttype][uid]
             tasks.append(task)
+            task.cancel()
 
         # FIXME: does not work
         print('=== cancel %s' % uids)
         print([t.state for t in tasks])
 
-        self._tmgr.cancel_tasks(uids)
+      # self._tmgr.cancel_tasks(uids)
 
-        print('wait')
-        while True:
-            time.sleep(1)
-            print([t.state for t in tasks])
-        self._tmgr.wait_tasks(uids)
-        print('waited')
+      # print('wait')
+      # while True:
+      #     time.sleep(1)
+      #     print([t.state for t in tasks])
+      # self._tmgr.wait_tasks(uids)
+      # print('waited')
         self.dump(msg='==== canceled')
 
 
