@@ -61,7 +61,6 @@ class RMInfo(ru.TypedDict):
             'mem_per_node'     : int,           # memory per node (MB)
 
             'details'          : {None: None},  # dict of launch method info
-            'sys_arch'         : {str: None},   # system architecture flags
             'launch_methods'   : {str: None},   # dict of launch method info
     }
 
@@ -72,7 +71,7 @@ class RMInfo(ru.TypedDict):
             'threads_per_core' : 1,
             'gpus_per_node'    : 0,
             'threads_per_gpu'  : 1,
-            'sys_arch'         : {},
+            'details'          : {},
             'launch_methods'   : {}
     }
 
@@ -224,9 +223,11 @@ class ResourceManager(object):
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
-        rm_info.sys_arch         = self._rcfg.get('system_architecture', {})
+
+        system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
-                                       rm_info.sys_arch.get('smt', 1))
+                                       system_architecture.get('smt', 1))
+        rm_info.details['exact'] = bool(system_architecture.get('exclusive'))
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)
@@ -237,8 +238,8 @@ class ResourceManager(object):
 
         # the config can override core and gpu detection,
         # and decide to block some resources (part of the core specialization)
-        blocked_cores = rm_info.sys_arch.get('blocked_cores', [])
-        blocked_gpus  = rm_info.sys_arch.get('blocked_gpus',  [])
+        blocked_cores = system_architecture.get('blocked_cores', [])
+        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
