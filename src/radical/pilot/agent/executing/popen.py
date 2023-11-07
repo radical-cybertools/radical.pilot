@@ -523,9 +523,9 @@ class Popen(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     # pylint: disable=unused-argument
-    def _get_prof(self, event, tid, msg=None):
+    def _get_prof(self, event, tid, msg=''):
 
-        return '$RP_PROF %s%s\n' % (event, ' %s' % msg if msg else '')
+        return '$RP_PROF %s "%s"\n' % (event, msg)
 
 
     # --------------------------------------------------------------------------
