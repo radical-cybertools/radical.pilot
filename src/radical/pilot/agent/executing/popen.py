@@ -764,13 +764,11 @@ class Popen(AgentExecutingComponent):
 
         # FIXME: core pinning goes here
 
-        ret  = ''
-
-        for cmd in ru.as_list(launcher.get_exec(task)):
-            ret += '%s &\n' % cmd
-            # collect rank PID
-            ret += 'RP_RANK_PID=$!\n'
-            ret += 'wait $RP_RANK_PID\n'
+        ret  = '%s &\n' % launcher.get_exec(task)
+        # collect rank PID
+        ret += 'RP_RANK_PID=$!\n'
+        ret += 'wait $RP_RANK_PID\n'
+        # set output
         ret += 'RP_RET=$?\n'
 
         return ret
