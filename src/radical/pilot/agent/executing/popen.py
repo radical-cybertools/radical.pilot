@@ -252,7 +252,9 @@ class Popen(AgentExecutingComponent):
             tmp += '# launch commands\n'
             tmp += self._get_prof('launch_submit', tid)
             tmp += self._get_launch(task, launcher, exec_path)
-            tmp += self._get_prof('launch_collect', tid)
+            tmp += self._get_prof('launch_collect', tid,
+                                  msg='RP_LAUNCH_PID=$RP_LAUNCH_PID:'
+                                      'RP_EXEC_PID=$RP_EXEC_PID')
 
             tmp += self._separator
             tmp += '# post-launch commands\n'
@@ -302,7 +304,8 @@ class Popen(AgentExecutingComponent):
             tmp += '# execute rank\n'
             tmp += self._get_prof('rank_start', tid)
             tmp += self._get_exec(task, launcher)
-            tmp += self._get_prof('rank_stop', tid)
+            tmp += self._get_prof('rank_stop', tid,
+                                  msg='RP_RANK_PID=$RP_RANK_PID')
 
             tmp += self._separator
             tmp += '# post-exec commands\n'
@@ -520,9 +523,9 @@ class Popen(AgentExecutingComponent):
     # --------------------------------------------------------------------------
     #
     # pylint: disable=unused-argument
-    def _get_prof(self, event, tid, msg=''):
+    def _get_prof(self, event, tid, msg=None):
 
-        return '$RP_PROF %s\n' % event
+        return '$RP_PROF %s%s\n' % (event, ' %s' % msg if msg else '')
 
 
     # --------------------------------------------------------------------------
@@ -622,9 +625,11 @@ class Popen(AgentExecutingComponent):
         for cmd in ru.as_list(launcher.get_launch_cmds(task, exec_path)):
             ret += '  %s \\\n' % cmd
 
-        ret += ') 1> %s \\\n  2> %s\n' % (task['stdout_file_short'],
-                                          task['stderr_file_short'])
-        ret += 'RP_RET=$?\n'
+        ret += ') 1> %s \\\n  2> %s &\n' % (task['stdout_file_short'],
+                                            task['stderr_file_short'])
+        # collect task scripts PIDs
+        ret += '\nRP_LAUNCH_PID=$$\nRP_EXEC_PID=$!\n\n'
+        ret += 'wait $RP_EXEC_PID\nRP_RET=$?\n'
 
         return ret
 
@@ -762,7 +767,10 @@ class Popen(AgentExecutingComponent):
         ret  = ''
 
         for cmd in ru.as_list(launcher.get_exec(task)):
-            ret += '%s\n' % cmd
+            ret += '%s &\n' % cmd
+            # collect rank PID
+            ret += 'RP_RANK_PID=$!\n'
+            ret += 'wait $RP_RANK_PID\n'
         ret += 'RP_RET=$?\n'
 
         return ret

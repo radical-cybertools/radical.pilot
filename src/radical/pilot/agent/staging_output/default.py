@@ -190,8 +190,9 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        task_prof = "%s/%s.prof" % (sbox, uid)
+        task_prof = '%s/%s.prof' % (sbox, uid)
         if os.path.isfile(task_prof):
+            pids = {'rank_pid': []}
             try:
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
@@ -205,8 +206,20 @@ class Default(AgentStagingOutputComponent):
                         self._prof.prof(ts=float(ts), event=event,
                                         comp=comp, tid=tid, uid=_uid,
                                         state=state, msg=msg)
+                        # collect task related PIDs
+                        if 'RP_LAUNCH_PID' in msg:
+                            lpid_msg, epid_msg = msg.split(':')
+                            pids['launch_pid'] = int(lpid_msg.split('=')[0])
+                            pids['exec_pid']   = int(epid_msg.split('=')[0])
+                        elif 'RP_RANK_PID' in msg:
+                            pids['rank_pid'].append(int(msg.split('=')[0]))
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
+
+            # keep process IDs within metadata in the task description
+            if not task['description'].get('metadata'):
+                task['description']['metadata'] = {}
+            task['description']['metadata'].update(pids)
 
         self._prof.prof('staging_uprof_stop', uid=uid)
 
