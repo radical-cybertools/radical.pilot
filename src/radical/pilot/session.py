@@ -15,12 +15,12 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .         import constants as rpc
-from .         import utils     as rpu
+from . import constants as rpc
+from . import utils     as rpu
 
-from .messages             import HeartbeatMessage
-from .proxy                import Proxy
-from .resource_description import ResourceDescription
+from .messages               import HeartbeatMessage
+from .proxy                  import Proxy
+from .resource_description   import ResourceDescription
 
 
 # ------------------------------------------------------------------------------
@@ -174,6 +174,7 @@ class Session(rs.Session):
         self._pmgrs    = dict()  # map IDs to pmgr instances
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
+        self._rm       = None    # resource manager (agent_0 sessions)
 
         # this session is either living in the client applicatio or lives in the
         # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
@@ -283,6 +284,7 @@ class Session(rs.Session):
         self._connect_proxy()
         self._start_heartbeat()
         self._publish_cfg()
+        self._init_rm()
         self._start_components()
         self._crosswire_proxy()
 
@@ -803,6 +805,30 @@ class Session(rs.Session):
         self.crosswire_pubsub(src=rpc.PROXY_STATE_PUBSUB,
                               tgt=rpc.STATE_PUBSUB,
                               from_proxy=True)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_rm(self):
+
+        # import locally to avoid circular imports
+        from .agent.resource_manager import ResourceManager
+
+        rname    = self._rcfg.resource_manager
+        self._rm = ResourceManager.create(name=rname,
+                                          cfg=self._cfg,
+                                          rcfg=self._rcfg,
+                                          log=self._log, prof=self._prof)
+
+        import pprint
+        self._log.debug(pprint.pformat(self._rm.info))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rm(self):
+
+        return self._rm
 
 
     # --------------------------------------------------------------------------
