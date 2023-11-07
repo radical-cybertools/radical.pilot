@@ -85,7 +85,7 @@ class DDMD(object):
         self._pilot = self._pmgr.submit_pilots(pdesc)
 
         self._tmgr.add_pilots(self._pilot)
-        self._tmgr.register_callback(self._checked_state_cb)
+        self._tmgr.register_callback(self._state_cb)
 
 
     # --------------------------------------------------------------------------
@@ -201,13 +201,15 @@ class DDMD(object):
 
             tds   = list()
             for _ in range(n):
+                uid = ru.generate_id(ttype)
                 tds.append(rp.TaskDescription({
-                         'uid'          : ru.generate_id(ttype),
+                         'uid'          : uid,
                          'cpu_processes': 1,
                          'executable'   : '/bin/sh',
-                         'arguments'    : ['-c', 'sleep %s; echo %s' %
-                             (int(random.randint(0,30) / 10),
-                              int(random.randint(0,10) /  1))]}))
+                         'arguments'    : ['-c', 'NAME=%s /bin/sleep %s; echo %s' %
+                             (uid,
+                              int(random.randint(0,30) / 10 + 5),
+                              int(random.randint(0,10) /  1 + 5))]}))
 
             tasks  = self._tmgr.submit_tasks(tds)
 
@@ -233,6 +235,10 @@ class DDMD(object):
             self.dump(task, 'cancel [%s]' % task.state)
 
             self._unregister_task(task)
+
+        self.dump('cancelled')
+        time.sleep(5)
+        self.dump('cancelled ok')
 
 
     # --------------------------------------------------------------------------

@@ -355,7 +355,8 @@ class TaskManager(rpu.Component):
         things = ru.as_list(arg)
         tasks  = [thing for thing in things if thing.get('type') == 'task']
 
-        self._update_tasks(tasks)
+        try   : self._update_tasks(tasks)
+        except: self._log.exception('state callback failed')
 
         return True
 
@@ -389,6 +390,11 @@ class TaskManager(rpu.Component):
                 current = task.state
                 target  = task_dict['state']
                 if current == target:
+                    continue
+
+                if current in [rps.DONE] and \
+                   target  in [rps.FAILED, rps.CANCELED]:
+                    # done is done...
                     continue
 
                 target, passed = rps._task_state_progress(uid, current, target)

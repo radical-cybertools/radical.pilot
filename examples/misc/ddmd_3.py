@@ -1,21 +1,5 @@
 #!/usr/bin/env python3
 
-
-import os
-import time
-import random
-import signal
-
-from   collections import defaultdict
-
-import threading     as mt
-
-import radical.pilot as rp
-import radical.utils as ru
-
-rp.Task.__repr__ = lambda x: '-'
-
-
 # - initial ML force field exists
 # - while iteration < 1000 (configurable):
 #   - start model training task (ModelTrain) e.g. CVAE
@@ -37,6 +21,24 @@ rp.Task.__repr__ = lambda x: '-'
 
 # lower / upper bound on active num of simulations
 # ddmd.get_last_n_sims ...
+
+# ------------------------------------------------------------------------------
+#
+
+import os
+import time
+import random
+import signal
+import threading as mt
+
+from   collections import defaultdict
+
+
+import radical.pilot as rp
+import radical.utils as ru
+
+rp.Task.__repr__ = lambda x: '-'
+
 
 # ------------------------------------------------------------------------------
 #
@@ -76,10 +78,11 @@ class DDMD(object):
                           self.TASK_DFT        : 'd'}
 
         # bookkeeping
-        self._cores          = 4
-        self._cores_used     = 0
         self._iter           = 0
         self._threshold      = 1
+        self._cores          = 16  # available resources
+        self._cores_used     =  0
+
         self._lock           = mt.RLock()
         self._tasks          = {ttype: dict() for ttype in self.TASK_TYPES}
         self._final_tasks    = list()
@@ -266,7 +269,7 @@ class DDMD(object):
       # print('wait')
       # while True:
       #     time.sleep(1)
-      #     print([t.state for t in tasks])
+      #     print(os.getpid(), [t.state for t in tasks])
       # self._tmgr.wait_tasks(uids)
       # print('waited')
         self.dump(msg='==== canceled')
@@ -416,7 +419,10 @@ class DDMD(object):
         react on completed MD check task
         '''
 
-        uncertainty = int(task.stdout)
+        try:
+            uncertainty = int(task.stdout.split()[0])
+        except:
+            uncertainty = 1
 
         #   - if uncertainty > threshold:
         #     - ADAPTIVITY GOES HERE
