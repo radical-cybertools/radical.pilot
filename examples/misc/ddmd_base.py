@@ -361,9 +361,9 @@ class AsyncDDMD(DDMD_Base):
         react on completed ff training task
         '''
 
-        #       - When FFTrain task goes away, FFTrain met conversion criteria
-        #         - kill MDSim tasks from previous iteration (in next_iteration)
-        #         -> CONTINUE WHILE (with new force field)
+        # - When FFTrain task goes away, FFTrain met conversion criteria
+        #   - kill MDSim tasks from previous iteration (in next_iteration)
+        #   -> CONTINUE WHILE (with new force field)
 
         self.dump(task, 'completed ff train, next iteration')
         self.next_iteration()
@@ -398,13 +398,13 @@ class AsyncDDMD(DDMD_Base):
         except:
             uncertainty = 1
 
-        #   - if uncertainty > threshold:
-        #     - ADAPTIVITY GOES HERE
-        #     - run DFT task
-        #   - else (uncertainty <= threshold):
-        #     - MD output -> input to TASK_TRAIN_MODEL
-        #     - run new MD task / run multiple MD tasks for each structure
-        #       (configurable)
+        # - if uncertainty > threshold:
+        #   - ADAPTIVITY GOES HERE
+        #   - run DFT task
+        # - else (uncertainty <= threshold):
+        #   - MD output -> input to TASK_TRAIN_MODEL
+        #   - run new MD task / run multiple MD tasks for each structure
+        #     (configurable)
 
         if uncertainty > self._threshold:
           # self._adaptivity_cb()
