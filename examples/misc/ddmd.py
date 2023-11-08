@@ -237,7 +237,7 @@ class DDMD(object):
             self._unregister_task(task)
 
         self.dump('cancelled')
-        time.sleep(5)
+        time.sleep(1)
         self.dump('cancelled ok')
 
 

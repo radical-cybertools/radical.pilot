@@ -1,27 +1,5 @@
 #!/usr/bin/env python3
 
-# - initial ML force field exists
-# - while iteration < 1000 (configurable):
-#   - start model training task (ModelTrain) e.g. CVAE
-#   - start force field training task (FFTrain)
-#   - start MD simulation tasks, use all the available resources (MDSim)
-#   - for any MD that completes
-#     - start UncertaintyCheck test for it (UCCheck)
-#     - if uncertainty > threshold:
-#       - ADAPTIVITY GOES HERE
-#       - run DFT task
-#       - DFT task output -> input to FFTrain task
-#         - FFTrain task has some conversion criteria.
-#           If met, FFTrain task goes away
-#           - kill MDSim tasks from previous iteration
-#           -> CONTINUE WHILE (with new force field)
-#     - else (uncertainty <= threshold):
-#       - MD output -> input to ModelTrain task
-#       - run new MD task / run multiple MD tasks for each structure (configurable)
-
-# lower / upper bound on active num of simulations
-# ddmd.get_last_n_sims ...
-
 # ------------------------------------------------------------------------------
 #
 
@@ -37,51 +15,23 @@ import radical.pilot as rp
 import radical.utils as ru
 
 
+
 # ------------------------------------------------------------------------------
 #
-class DDMD(object):
-
-    # define task types (used as prefix on task-uid)
-    TASK_TRAIN_MODEL = 'task_train_model'
-    TASK_TRAIN_FF    = 'task_train_ff'
-    TASK_MD_SIM      = 'task_md_sim'
-    TASK_MD_CHECK    = 'task_md_check'
-    TASK_DFT         = 'task_dft'
-
-    TASK_TYPES       = [TASK_TRAIN_MODEL,
-                        TASK_TRAIN_FF,
-                        TASK_MD_SIM,
-                        TASK_MD_CHECK,
-                        TASK_DFT]
-
-    # keep track of core usage
-    cores_used     = 0
+class DDMD_Base(object):
 
     # --------------------------------------------------------------------------
     #
     def __init__(self):
 
-        # control flow table
-        self._protocol = {self.TASK_TRAIN_MODEL: self._control_train_model,
-                          self.TASK_TRAIN_FF   : self._control_train_ff   ,
-                          self.TASK_MD_SIM     : self._control_md_sim     ,
-                          self.TASK_MD_CHECK   : self._control_md_check   ,
-                          self.TASK_DFT        : self._control_dft        }
+        self._task_types     = dict()
 
-        self._glyphs   = {self.TASK_TRAIN_MODEL: 'T',
-                          self.TASK_TRAIN_FF   : 't',
-                          self.TASK_MD_SIM     : 's',
-                          self.TASK_MD_CHECK   : 'c',
-                          self.TASK_DFT        : 'd'}
-
-        # bookkeeping
-        self._iter           = 0
-        self._threshold      = 1
         self._cores          = 16  # available resources
         self._cores_used     =  0
 
+        self._seed           = list()
         self._lock           = mt.RLock()
-        self._tasks          = {ttype: dict() for ttype in self.TASK_TYPES}
+        self._tasks          = defaultdict(dict)
         self._final_tasks    = list()
 
         # silence RP reporter, use own
@@ -101,6 +51,14 @@ class DDMD(object):
 
         self._tmgr.add_pilots(self._pilot)
         self._tmgr.register_callback(self._state_cb)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_task_type(self, ttype, on_final, glyph):
+
+        self._task_types[ttype] = {'on_final': on_final,
+                                   'glyph'   : glyph}
 
 
     # --------------------------------------------------------------------------
@@ -132,11 +90,11 @@ class DDMD(object):
 
         idle = self._cores
 
-        for ttype in self.TASK_TYPES:
+        for ttype in self._task_types:
 
             n     = len(self._tasks[ttype])
             idle -= n
-            self._rep.ok('%s' % self._glyphs[ttype] * n)
+            self._rep.ok('%s' % self._get_glyph(ttype) * n)
 
         self._rep.plain('%s' % '-' * idle +
                         '| %4d [%4d]' % (self._cores_used, self._cores))
@@ -151,45 +109,24 @@ class DDMD(object):
 
     # --------------------------------------------------------------------------
     #
+    def seed(self, ttype, n=1):
+
+        for _ in range(n):
+            self._seed.append(ttype)
+
+
+    # --------------------------------------------------------------------------
+    #
     def start(self):
         '''
         submit initial set of MD similation tasks
         '''
 
-        self.dump('submit MD simulations')
+        self.dump('submit seed')
+        assert self._seed
 
         # start first iteration
-        self._next_iteration()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _next_iteration(self):
-
-        if self._iter > 3:
-            self.stop()
-
-        self._iter += 1
-
-        self.dump('next iter: requested')
-
-        # cancel all tasks from previous iteration
-        if self._iter > 1:
-
-            uids = list()
-            for ttype in self._tasks:
-                uids.extend(self._tasks[ttype].keys())
-
-            self._cancel_tasks(uids)
-
-        # always (re)start a training tasks
-        self._submit_task(self.TASK_TRAIN_FF   , n=1)
-        self._submit_task(self.TASK_TRAIN_MODEL, n=1)
-
-        # run initial batch of MD_SIM tasks (assume one core per task)
-        self._submit_task(self.TASK_MD_SIM, n=self._cores - 2)
-
-        self.dump('next iter: started %s md sims' % (self._cores - 2))
+        self._submit_tasks(self._seed)
 
 
     # --------------------------------------------------------------------------
@@ -209,15 +146,39 @@ class DDMD(object):
 
         ttype = uid.split('.')[0]
 
-        assert ttype in self.TASK_TYPES, 'unknown task type: %s' % uid
+        assert ttype in self._task_types, 'unknown task type: %s' % uid
         return ttype
 
 
     # --------------------------------------------------------------------------
     #
-    def _submit_task(self, ttype, args=None, n=1):
+    def _get_action(self, ttype):
+        '''
+        get action from protocol
+        '''
+
+        assert ttype in self._task_types, 'unknown task type: %s' % ttype
+        return self._task_types[ttype]['on_final']
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_glyph(self, ttype):
+        '''
+        get task glyph from task type
+        '''
+
+        assert ttype in self._task_types, 'unknown task type: %s' % ttype
+        return self._task_types[ttype]['glyph']
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _submit_tasks(self, ttypes, n=1):
         '''
         submit 'n' new tasks of specified type
+
+        n == -1: fill remaining cores
 
         NOTE: all tasks are uniform for now: they use a single core and sleep
               for a random number (0..3) of seconds.
@@ -225,19 +186,20 @@ class DDMD(object):
 
         with self._lock:
 
-            tds   = list()
-            for _ in range(n):
+            tds = list()
+            for ttype in ru.as_list(ttypes):
+                for _ in range(n):
 
-                t_sleep = int(random.randint(0,30) / 10) + 3
-                result  = int(random.randint(0,10) /  1)
+                    t_sleep = int(random.randint(0,30) / 10) + 3
+                    result  = int(random.randint(0,10) /  1)
 
-                uid = ru.generate_id('%s.%03d' % (ttype, self._iter))
-                tds.append(rp.TaskDescription({
-                           'uid'          : uid,
-                           'cpu_processes': 1,
-                           'executable'   : '/bin/sh',
-                           'arguments'    : ['-c', 'sleep %s; echo %s %s' %
-                                                   (t_sleep, result, args)]}))
+                    uid = ru.generate_id('%s' % ttype)
+                    tds.append(rp.TaskDescription({
+                               'uid'          : uid,
+                               'cpu_processes': 1,
+                               'executable'   : '/bin/sh',
+                               'arguments'    : ['-c', 'sleep %s; echo %s' %
+                                                       (t_sleep, result)]}))
 
             tasks  = self._tmgr.submit_tasks(tds)
 
@@ -313,7 +275,6 @@ class DDMD(object):
         try:
             return self._checked_state_cb(task, state)
         except Exception as e:
-            self._rep.exception('\n\n---------\nexception caught: %s\n\n' % repr(e))
             ru.print_exception_trace()
             self.stop()
 
@@ -347,7 +308,7 @@ class DDMD(object):
 
             # control flow depends on ttype
             ttype  = self._get_ttype(task.uid)
-            action = self._protocol[ttype]
+            action = self._get_action(ttype)
             if not action:
                 self._rep.exit('no action found for task %s' % task.uid)
             action(task)
@@ -356,9 +317,33 @@ class DDMD(object):
             self._unregister_task(task)
 
 
+# ------------------------------------------------------------------------------
+#
+class AsyncDDMD(DDMD_Base):
+
+    TASK_TRAIN_MODEL = 'task_train_model'
+    TASK_TRAIN_FF    = 'task_train_ff'
+    TASK_MD_SIM      = 'task_md_sim'
+    TASK_MD_CHECK    = 'task_md_check'
+    TASK_DFT         = 'task_dft'
+
+    def __init__(self):
+
+        self._threshold = 1
+
+        super().__init__()
+
+        self.register_task_type(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
+        self.register_task_type(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
+        self.register_task_type(self.TASK_MD_SIM,      self.control_md_sim,      's')
+        self.register_task_type(self.TASK_MD_CHECK,    self.control_md_check,    'c')
+        self.register_task_type(self.TASK_DFT,         self.control_dft,         'd')
+
+
+
     # --------------------------------------------------------------------------
     #
-    def _control_train_model(self, task):
+    def control_train_model(self, task):
         '''
         react on completed MD simulation task
         '''
@@ -366,27 +351,27 @@ class DDMD(object):
         self.dump(task, 'completed model train, next iteration')
 
         # FIXME: is that the right response?
-        self._next_iteration()
+        self.next_iteration()
 
 
     # --------------------------------------------------------------------------
     #
-    def _control_train_ff(self, task):
+    def control_train_ff(self, task):
         '''
         react on completed ff training task
         '''
 
         #       - When FFTrain task goes away, FFTrain met conversion criteria
-        #         - kill MDSim tasks from previous iteration (in _next_iteration)
+        #         - kill MDSim tasks from previous iteration (in next_iteration)
         #         -> CONTINUE WHILE (with new force field)
 
         self.dump(task, 'completed ff train, next iteration')
-        self._next_iteration
+        self.next_iteration()
 
 
     # --------------------------------------------------------------------------
     #
-    def _control_md_sim(self, task):
+    def control_md_sim(self, task):
         '''
         react on completed MD sim task
         '''
@@ -398,12 +383,12 @@ class DDMD(object):
 
         tid = task.uid
         self.dump(task, 'completed md, start check ')
-        self._submit_task(self.TASK_MD_CHECK, tid)
+        self._submit_tasks(self.TASK_MD_CHECK)
 
 
     # --------------------------------------------------------------------------
     #
-    def _control_md_check(self, task):
+    def control_md_check(self, task):
         '''
         react on completed MD check task
         '''
@@ -423,16 +408,16 @@ class DDMD(object):
 
         if uncertainty > self._threshold:
           # self._adaptivity_cb()
-            self._submit_task(self.TASK_DFT)
+            self._submit_tasks(self.TASK_DFT)
 
         else:
             # FIXME: output to TASK_TRAIN_MODEL
-            self._submit_task(self.TASK_MD_SIM)
+            self._submit_tasks(self.TASK_MD_SIM)
 
 
     # --------------------------------------------------------------------------
     #
-    def _control_dft(self, task):
+    def control_dft(self, task):
         '''
         react on completed DFT task
         '''
@@ -444,13 +429,41 @@ class DDMD(object):
         pass
 
 
+    # --------------------------------------------------------------------------
+    #
+    def next_iteration(self):
+
+        self.dump('-----------------------------------------------------------')
+        self.dump('next iteration')
+
+        uids = list()
+        for ttype in self._tasks:
+            uids.extend(self._tasks[ttype].keys())
+
+        if uids:
+            self._cancel_tasks(uids)
+
+        # always (re)start a training tasks
+        self._submit_tasks(self.TASK_TRAIN_FF   , n=1)
+        self._submit_tasks(self.TASK_TRAIN_MODEL, n=1)
+
+        # run initial batch of MD_SIM tasks (assume one core per task)
+        self._submit_tasks(self.TASK_MD_SIM, n=self._cores - 2)
+
+        self.dump('next iter: started %s md sims' % (self._cores - 2))
+
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    ddmd = DDMD()
+    ddmd = AsyncDDMD()
 
     try:
+        ddmd.seed(ddmd.TASK_TRAIN_MODEL, 1)
+        ddmd.seed(ddmd.TASK_TRAIN_FF,    1)
+        ddmd.seed(ddmd.TASK_MD_SIM,     10)
+
         ddmd.start()
 
         while True:
