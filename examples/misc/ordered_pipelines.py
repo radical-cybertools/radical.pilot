@@ -16,7 +16,7 @@ pwd = os.path.abspath(os.path.dirname(__file__))
 #
 if __name__ == '__main__':
 
-    report = ru.Reporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot', enabled=True)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost

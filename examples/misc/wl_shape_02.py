@@ -14,7 +14,7 @@ import radical.utils as ru
 #
 if __name__ == '__main__':
 
-    report = ru.Reporter(name='radical.pilot')
+    report = ru.Reporter(name='radical.pilot', enabled=True)
     report.title('Getting Started (RP version %s)' % rp.version)
 
     if   len(sys.argv)  > 2:

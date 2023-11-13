@@ -71,7 +71,7 @@ class DDMD(object):
 
         # silence RP reporter, use own
         os.environ['RADICAL_REPORT'] = 'false'
-        self._rep = ru.Reporter('ddmd')
+        self._rep = ru.Reporter('ddmd', enabled=True)
         self._rep.title('DDMD')
 
         # RP setup
