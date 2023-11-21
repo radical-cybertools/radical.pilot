@@ -13,7 +13,7 @@ import radical.pilot       as rp
 def run_record(rec):
 
     session = None
-    rep = ru.Reporter('radical', enabled=True)
+    rep = ru.Reporter('radical')
 
     try:
 
