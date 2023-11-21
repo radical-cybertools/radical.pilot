@@ -16,7 +16,8 @@ class Agent_n(rpu.Worker):
 
     # This is a sub-agent.  It does not do much apart from starting
     # agent components and watching them, which is all taken care of in the
-    # `Worker` base class (or rather in the `Component` base class of `Worker`).
+    # `Worker` base class (or rather in the `BaseComponent` base class of
+    # `Worker`).
 
     # --------------------------------------------------------------------------
     #

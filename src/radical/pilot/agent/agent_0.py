@@ -390,7 +390,7 @@ class Agent_0(rpu.Worker):
                 service_up = True
                 # FIXME: at this point we assume that since "startup_file" is
                 #        not provided, then we don't wait - this will be
-                #        replaced with another callback (Component.advance will
+                #        replaced with another callback (BaseComponent.advance will
                 #        publish control command "service_up" for service tasks)
 
             elif os.path.isfile(startup_file):
