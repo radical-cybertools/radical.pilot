@@ -100,7 +100,7 @@ if __name__ == '__main__':
     cores_per_task   = cfg.cores_per_task
 
     # we use a reporter class for nicer output
-    report = ru.Reporter(name='radical.pilot', enabled=True)
+    report = ru.Reporter(name='radical.pilot')
     report.title('Raptor example (RP version %s)' % rp.version)
 
     session = rp.Session()

@@ -28,7 +28,7 @@ dh = ru.DebugHelper()
 
 
 # we use a reporter class for nicer output
-report = ru.Reporter(name='radical.pilot', enabled=True)
+report = ru.Reporter(name='radical.pilot')
 report.title('Getting Started (RP version %s)' % rp.version)
 
 
