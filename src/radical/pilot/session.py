@@ -15,12 +15,12 @@ import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
-from .         import constants as rpc
-from .         import utils     as rpu
+from . import constants as rpc
+from . import utils     as rpu
 
-from .messages             import HeartbeatMessage
-from .proxy                import Proxy
-from .resource_description import ResourceDescription
+from .messages               import HeartbeatMessage
+from .proxy                  import Proxy
+from .resource_description   import ResourceDescription
 
 ENDPOINTS_DEFAULT = {'job_manager_endpoint': 'fork://localhost/',
                      'filesystem_endpoint' : 'file://localhost/'}
@@ -177,6 +177,7 @@ class Session(rs.Session):
         self._pmgrs    = dict()  # map IDs to pmgr instances
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
+        self._rm       = None    # resource manager (agent_0 sessions)
 
         # this session is either living in the client applicatio or lives in the
         # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
@@ -286,6 +287,7 @@ class Session(rs.Session):
         self._connect_proxy()
         self._start_heartbeat()
         self._publish_cfg()
+        self._init_rm()
         self._start_components()
         self._crosswire_proxy()
 
@@ -298,10 +300,18 @@ class Session(rs.Session):
         #
         #   - connect to registry
         #   - fetch config from registry
-        #   - start agent components
+        #   - start agent bridges and components
+
+        # the config passed to the session c'tor is the *agent* config - keep it
+        a_cfg = self._cfg
 
         self._connect_registry()
         self._init_cfg_from_registry()
+
+        # merge the agent's config into the session config
+        self._cfg.bridges    = ru.Config(cfg=a_cfg.get('bridges',    {}))
+        self._cfg.components = ru.Config(cfg=a_cfg.get('components', {}))
+
         self._start_components()
 
 
@@ -810,6 +820,30 @@ class Session(rs.Session):
 
     # --------------------------------------------------------------------------
     #
+    def _init_rm(self):
+
+        # import locally to avoid circular imports
+        from .agent.resource_manager import ResourceManager
+
+        rname    = self._rcfg.resource_manager
+        self._rm = ResourceManager.create(name=rname,
+                                          cfg=self._cfg,
+                                          rcfg=self._rcfg,
+                                          log=self._log, prof=self._prof)
+
+        import pprint
+        self._log.debug(pprint.pformat(self._rm.info))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rm(self):
+
+        return self._rm
+
+
+    # --------------------------------------------------------------------------
+    #
     def _start_components(self):
 
         assert self._role in [self._PRIMARY, self._AGENT_0, self._AGENT_N]
@@ -1055,8 +1089,16 @@ class Session(rs.Session):
         """
 
         if not self._reporter:
+
+            enabled = ru.get_env_ns('report', 'radical.pilot', 'false').lower()
+
+            if enabled in ['1', 'true', 'on']:
+                enabled = True
+            else:
+                enabled = False
+
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path)
+                                         path=self._cfg.path, enabled=enabled)
         return self._reporter
 
 

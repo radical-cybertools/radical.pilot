@@ -72,8 +72,8 @@ class TestWorker(TestCase):
         ru.zmq.Publisher  = mock.Mock()
         ru.zmq.Putter     = mock.Mock()
 
-        rp.utils.Component.register_subscriber = mock.Mock()
-        rp.utils.Component.register_publisher  = mock.Mock()
+        rp.utils.BaseComponent.register_subscriber = mock.Mock()
+        rp.utils.BaseComponent.register_publisher  = mock.Mock()
 
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()
