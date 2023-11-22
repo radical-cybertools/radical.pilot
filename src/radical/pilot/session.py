@@ -1086,8 +1086,16 @@ class Session(rs.Session):
         """
 
         if not self._reporter:
+
+            enabled = ru.get_env_ns('report', 'radical.pilot', 'false').lower()
+
+            if enabled in ['1', 'true', 'on']:
+                enabled = True
+            else:
+                enabled = False
+
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path)
+                                         path=self._cfg.path, enabled=enabled)
         return self._reporter
 
 
