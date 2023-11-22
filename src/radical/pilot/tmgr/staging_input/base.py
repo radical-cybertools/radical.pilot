@@ -14,7 +14,7 @@ RP_USI_NAME_DEFAULT = "DEFAULT"
 
 # ------------------------------------------------------------------------------
 #
-class TMGRStagingInputComponent(rpu.Component):
+class TMGRStagingInputComponent(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -23,7 +23,7 @@ class TMGRStagingInputComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.staging.input.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------
