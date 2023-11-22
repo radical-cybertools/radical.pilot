@@ -86,7 +86,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
                          _role=rp.Session._DEFAULT, _reg_addr=reg_addr)
 
     # create the instance and begin to work
-    comp = rp.utils.Component.create(c_cfg, session)
+    comp = rp.utils.BaseComponent.create(c_cfg, session)
     comp.start()
 
     # component runs - send heartbeats so that session knows about it
