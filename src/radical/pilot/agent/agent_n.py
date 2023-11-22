@@ -12,11 +12,11 @@ from .. import Session
 
 # ------------------------------------------------------------------------------
 #
-class Agent_n(rpu.Worker):
+class Agent_n(rpu.AgentComponent):
 
     # This is a sub-agent.  It does not do much apart from starting
     # agent components and watching them, which is all taken care of in the
-    # `Worker` base class (or rather in the `Component` base class of `Worker`).
+    # `AgentComponent` base class.
 
     # --------------------------------------------------------------------------
     #
@@ -46,7 +46,7 @@ class Agent_n(rpu.Worker):
         # at this point the session is up and connected, and it should have
         # brought up all communication bridges and components.  We are
         # ready to rumble!
-        rpu.Worker.__init__(self, self._cfg, self._session)
+        super().__init__(self._cfg, self._session)
 
 
     # --------------------------------------------------------------------------
