@@ -21,7 +21,7 @@ from ..task_description import RAPTOR_WORKER
 
 # ------------------------------------------------------------------------------
 #
-class Master(rpu.Component):
+class Master(rpu.AgentComponent):
     '''
     Raptor Master class
 
@@ -89,7 +89,7 @@ class Master(rpu.Component):
                                     'owner'   : self._pid,
                                     'reg_addr': self._reg_addr})
 
-        rpu.Component.__init__(self, ccfg, self._session)
+        super().__init__(ccfg, self._session)
 
         # we never run `self.start()` which is ok - but it means we miss out on
         # some of the component initialization.  Call it manually thus
@@ -519,7 +519,7 @@ class Master(rpu.Component):
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self)
+        super().stop()
 
         self.terminate()
 
