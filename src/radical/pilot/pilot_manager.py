@@ -26,7 +26,7 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 
 # ------------------------------------------------------------------------------
 #
-class PilotManager(rpu.Component):
+class PilotManager(rpu.ClientComponent):
     """Manage Pilot instances.
 
     A PilotManager manages :class:`rp.Pilot` instances that are
@@ -123,7 +123,7 @@ class PilotManager(rpu.Component):
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 
-        rpu.Component.__init__(self, cfg, session=session)
+        super().__init__(cfg, session=session)
         self.start()
 
         self._log.info('started pmgr %s', self._uid)

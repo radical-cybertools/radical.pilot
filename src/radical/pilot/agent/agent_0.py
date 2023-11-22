@@ -18,19 +18,17 @@ from ..   import constants as rpc
 from ..   import Session
 from ..   import TaskDescription, AGENT_SERVICE
 
-from .resource_manager import ResourceManager
-
 
 # ------------------------------------------------------------------------------
 #
-class Agent_0(rpu.Worker):
+class Agent_0(rpu.AgentComponent):
 
     '''
     This is the main agent.  It starts sub-agents and watches them.  If any of
     the sub-agents die, it will shut down the other sub-agents and itself.
 
-    This class inherits the rpu.Worker, so that it can use its communication
-    bridges and callback mechanisms.
+    This class inherits the rpu.AgentComponent, so that it can use its
+    communication bridges and callback mechanisms.
     '''
 
     # --------------------------------------------------------------------------
@@ -48,8 +46,10 @@ class Agent_0(rpu.Worker):
 
         self._session = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_0)
 
+        self._rm      = self._session.get_rm()
+
         # init the worker / component base classes, connects registry
-        rpu.Worker.__init__(self, cfg, self._session)
+        super().__init__(cfg, self._session)
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -62,16 +62,11 @@ class Agent_0(rpu.Worker):
         # this is the earliest point to sync bootstrap and agent profiles
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
 
-        # configure ResourceManager before component startup, as components need
-        # ResourceManager information for function (scheduler, executor)
-        self._configure_rm()
-
         # ensure that app communication channels are visible to workload
         self._configure_app_comm()
 
-        # create the sub-agent configs and start the sub agents
-        self._write_sa_configs()
-        self._start_sub_agents()   # TODO: move to cmgr?
+        # start the sub agents
+        self._start_sub_agents()
 
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
@@ -132,23 +127,6 @@ class Agent_0(rpu.Worker):
 
         self._log.debug('ctl sub cb: %s %s', topic, msg)
         ## FIXME?
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _configure_rm(self):
-
-        # Create ResourceManager which will give us the set of agent_nodes to
-        # use for sub-agent startup.  Add the remaining ResourceManager
-        # information to the config, for the benefit of the scheduler).
-
-        rname    = self.session.rcfg.resource_manager
-        self._rm = ResourceManager.create(name=rname,
-                                          cfg=self.session.cfg,
-                                          rcfg=self.session.rcfg,
-                                          log=self._log, prof=self._prof)
-
-        self._log.debug(pprint.pformat(self._rm.info))
 
 
     # --------------------------------------------------------------------------
@@ -314,33 +292,6 @@ class Agent_0(rpu.Worker):
         self._session.close()
 
 
-    # --------------------------------------------------------------------
-    #
-    def _write_sa_configs(self):
-
-        # we have all information needed by the subagents -- write the
-        # sub-agent config files.
-
-        # write deep-copies of the config for each sub-agent (sans from agent_0)
-        for sa in self.session.cfg.get('agents', {}):
-
-            assert (sa != 'agent_0'), 'expect subagent, not agent_0'
-
-            # use our own config sans agents/components/bridges as a basis for
-            # the sub-agent config.
-            tmp_cfg = copy.deepcopy(self.session.cfg)
-            tmp_cfg['agents']     = dict()
-            tmp_cfg['components'] = dict()
-            tmp_cfg['bridges']    = dict()
-
-            # merge sub_agent layout into the config
-            ru.dict_merge(tmp_cfg, self.session.cfg['agents'][sa], ru.OVERWRITE)
-
-            tmp_cfg['uid']   = sa
-            tmp_cfg['aid']   = sa
-            tmp_cfg['owner'] = 'agent_0'
-
-
     # --------------------------------------------------------------------------
     #
     def _start_services(self):
@@ -418,7 +369,7 @@ class Agent_0(rpu.Worker):
                 service_up = True
                 # FIXME: at this point we assume that since "startup_file" is
                 #        not provided, then we don't wait - this will be
-                #        replaced with another callback (Component.advance will
+                #        replaced with another callback (BaseComponent.advance will
                 #        publish control command "service_up" for service tasks)
 
             elif os.path.isfile(startup_file):
@@ -479,6 +430,7 @@ class Agent_0(rpu.Worker):
         self._log.debug('start_sub_agents')
 
         # store the current environment as the sub-agents will use the same
+        # (it will be called within "bootstrap_2.sh")
         ru.env_prep(os.environ, script_path='./env/agent.env')
 
         # the configs are written, and the sub-agents can be started.  To know
@@ -519,6 +471,9 @@ class Agent_0(rpu.Worker):
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
+                node_cores = [cid for cid, cstate in enumerate(node['cores'])
+                              if cstate == rpc.FREE]
+
                 agent_task = {
                     'uid'               : sa,
                     'task_sandbox_path' : self._pwd,
@@ -531,7 +486,7 @@ class Agent_0(rpu.Worker):
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
                                             'node_id'  : node['node_id'],
-                                            'core_map' : [[0]],
+                                            'core_map' : [node_cores],
                                             'gpu_map'  : [],
                                             'lfs'      : 0,
                                             'mem'      : 0}]}
@@ -552,15 +507,11 @@ class Agent_0(rpu.Worker):
 
                 cmds = launcher.get_launch_cmds(agent_task, exec_script)
                 tmp += '%s\nexit $?\n\n' % cmds
-
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
 
-
                 tmp  = '#!/bin/sh\n\n'
-                tmp += '. ./env/agent.env\n'
                 tmp += '/bin/sh -l %s\n\n' % ' '.join([bs_name % '.'] + bs_args)
-
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
 
@@ -573,11 +524,10 @@ class Agent_0(rpu.Worker):
                 # spawn the sub-agent
                 cmdline = launch_script
 
-            self._log.info ('create sub-agent %s: %s', sa, cmdline)
+            self._log.info('create sub-agent %s: %s', sa, cmdline)
             ru.sh_callout_bg(cmdline, stdout='%s.out' % sa,
-                                      stderr='%s.err' % sa)
-
-            # FIXME: register heartbeats?
+                                      stderr='%s.err' % sa,
+                                      cwd=self._pwd)
 
         self._log.debug('start_sub_agents done')
 
