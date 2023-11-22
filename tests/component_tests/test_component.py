@@ -10,7 +10,7 @@ from unittest import mock, TestCase
 
 import radical.utils as ru
 
-from radical.pilot.utils.component         import Component
+from radical.pilot.utils.component         import BaseComponent
 from radical.pilot.utils.component_manager import ComponentManager
 
 
@@ -20,10 +20,10 @@ class TestComponent(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Component, '__init__', return_value=None)
+    @mock.patch.object(BaseComponent, '__init__', return_value=None)
     def test_output(self, mocked_init):
 
-        component = Component(None, None)
+        component = BaseComponent(None, None)
 
         component._outputs = {'test_state': []}
 

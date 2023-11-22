@@ -21,14 +21,14 @@ from ..   import TaskDescription, AGENT_SERVICE
 
 # ------------------------------------------------------------------------------
 #
-class Agent_0(rpu.Worker):
+class Agent_0(rpu.AgentComponent):
 
     '''
     This is the main agent.  It starts sub-agents and watches them.  If any of
     the sub-agents die, it will shut down the other sub-agents and itself.
 
-    This class inherits the rpu.Worker, so that it can use its communication
-    bridges and callback mechanisms.
+    This class inherits the rpu.AgentComponent, so that it can use its
+    communication bridges and callback mechanisms.
     '''
 
     # --------------------------------------------------------------------------
@@ -49,7 +49,7 @@ class Agent_0(rpu.Worker):
         self._rm      = self._session.get_rm()
 
         # init the worker / component base classes, connects registry
-        rpu.Worker.__init__(self, cfg, self._session)
+        super().__init__(cfg, self._session)
 
         self._starttime   = time.time()
         self._final_cause = None
@@ -390,7 +390,7 @@ class Agent_0(rpu.Worker):
                 service_up = True
                 # FIXME: at this point we assume that since "startup_file" is
                 #        not provided, then we don't wait - this will be
-                #        replaced with another callback (Component.advance will
+                #        replaced with another callback (BaseComponent.advance will
                 #        publish control command "service_up" for service tasks)
 
             elif os.path.isfile(startup_file):

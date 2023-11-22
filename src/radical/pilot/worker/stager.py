@@ -15,7 +15,7 @@ from .. import states          as rps
 
 # ------------------------------------------------------------------------------
 #
-class Stager(rpu.Worker):
+class Stager(rpu.ClientComponent):
     '''
     A Stager will receive staging requests, perform the respective staging
     actions, and will respond with a completion message.  At the moment, the
@@ -30,7 +30,7 @@ class Stager(rpu.Worker):
         self._cache_lock    = ru.Lock()
         self._saga_fs_cache = dict()
 
-        rpu.Worker.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------
