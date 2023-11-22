@@ -297,10 +297,18 @@ class Session(rs.Session):
         #
         #   - connect to registry
         #   - fetch config from registry
-        #   - start agent components
+        #   - start agent bridges and components
+
+        # the config passed to the session c'tor is the *agent* config - keep it
+        a_cfg = self._cfg
 
         self._connect_registry()
         self._init_cfg_from_registry()
+
+        # merge the agent's config into the session config
+        self._cfg.bridges    = ru.Config(cfg=a_cfg.get('bridges',    {}))
+        self._cfg.components = ru.Config(cfg=a_cfg.get('components', {}))
+
         self._start_components()
 
 
@@ -1078,8 +1086,16 @@ class Session(rs.Session):
         """
 
         if not self._reporter:
+
+            enabled = ru.get_env_ns('report', 'radical.pilot', 'false').lower()
+
+            if enabled in ['1', 'true', 'on']:
+                enabled = True
+            else:
+                enabled = False
+
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path)
+                                         path=self._cfg.path, enabled=enabled)
         return self._reporter
 
 
