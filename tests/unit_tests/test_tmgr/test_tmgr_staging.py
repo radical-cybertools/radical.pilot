@@ -8,7 +8,7 @@ import radical.utils as ru
 from unittest import mock, TestCase
 
 from radical.pilot import states as rps
-from radical.pilot.utils import Component
+from radical.pilot.utils import BaseComponent
 
 from radical.pilot.tmgr.staging_input.default import Default as StageInDefault
 from radical.pilot.tmgr import Input
@@ -31,7 +31,7 @@ class TMGRStagingTC(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Component, '__init__', return_value=None)
+    @mock.patch.object(BaseComponent, '__init__', return_value=None)
     def test_si_create(self, mocked_component_init):
 
         with self.assertRaises(TypeError):
