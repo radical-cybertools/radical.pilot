@@ -1240,20 +1240,3 @@ class AgentComponent(BaseComponent):
 
 
 # ------------------------------------------------------------------------------
-#
-class Worker(BaseComponent):
-    '''
-    A Worker is a Component which cannot change the state of the thing it
-    handles.  Workers are employed as helper classes to mediate between
-    components, between components and database, and between components and
-    notification channels.
-    '''
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-        super().__init__(cfg=cfg, session=session)
-
-
-# ------------------------------------------------------------------------------

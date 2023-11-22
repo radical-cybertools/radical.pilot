@@ -106,7 +106,7 @@ class PilotLauncherBase(object):
 
 # ------------------------------------------------------------------------------
 #
-class PMGRLaunchingComponent(rpu.AgentComponent):
+class PMGRLaunchingComponent(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
