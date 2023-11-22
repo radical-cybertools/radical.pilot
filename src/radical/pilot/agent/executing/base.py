@@ -26,7 +26,7 @@ EXECUTING_NAME_SLEEP   = 'SLEEP'
 
 # ------------------------------------------------------------------------------
 #
-class AgentExecutingComponent(rpu.Component):
+class AgentExecutingComponent(rpu.AgentComponent):
     '''
     Manage the creation of Task processes, and watch them until they are
     completed (one way or the other).  The spawner thus moves the task from
@@ -38,7 +38,7 @@ class AgentExecutingComponent(rpu.Component):
     #
     def __init__(self, cfg, session):
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------

@@ -40,7 +40,7 @@ def _warn(old_type, new_type):
 
 # ------------------------------------------------------------------------------
 #
-class TaskManager(rpu.Component):
+class TaskManager(rpu.ClientComponent):
     """
     A TaskManager manages :class:`radical.pilot.Task` instances which
     represent the **executable** workload in RADICAL-Pilot. A TaskManager
@@ -142,7 +142,7 @@ class TaskManager(rpu.Component):
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 
-        rpu.Component.__init__(self, cfg, session=session)
+        super().__init__(cfg, session=session)
         self.start()
 
         self._log.info('started tmgr %s', self._uid)

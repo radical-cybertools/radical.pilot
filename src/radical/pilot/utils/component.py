@@ -44,7 +44,7 @@ ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 # ------------------------------------------------------------------------------
 #
-class Component(object):
+class BaseComponent(object):
     '''
     This class provides the basic structure for any RP component which operates
     on stateful things.  It provides means to:
@@ -97,9 +97,9 @@ class Component(object):
 
     Inheriting classes MUST call the constructor::
 
-        class StagingComponent(rpu.Component):
+        class StagingComponent(rpu.BaseComponent):
             def __init__(self, cfg, session):
-                rpu.Component.__init__(self, cfg, session)
+                super().__init__(cfg, session)
 
     A component thus must be passed a configuration (either as a path pointing
     to a file name to be opened as `ru.Config`, or as a pre-populated
@@ -1084,6 +1084,7 @@ class Component(object):
          - state:   new state to set for the things
          - publish: determine if state update notifications should be issued
          - push:    determine if things should be pushed to outputs
+         - fwd:     determine if notifications are forarded to the ZMQ bridge
          - prof:    determine if state advance creates a profile event
            (publish, and push are always profiled)
 
@@ -1234,19 +1235,27 @@ class Component(object):
 
 # ------------------------------------------------------------------------------
 #
-class Worker(Component):
-    '''
-    A Worker is a Component which cannot change the state of the thing it
-    handles.  Workers are employed as helper classes to mediate between
-    components, between components and database, and between components and
-    notification channels.
-    '''
+class ClientComponent(BaseComponent):
 
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
+    # client side state advances are *not* forwarded by default (fwd=False)
+    def advance(self, things, state=None, publish=True, push=False, qname=None,
+                      ts=None, fwd=False, prof=True):
 
-        Component.__init__(self, cfg=cfg, session=session)
+        super().advance(things=things, state=state, publish=publish, push=push,
+                        qname=qname, ts=ts, fwd=fwd, prof=prof)
+
+
+
+# ------------------------------------------------------------------------------
+#
+class AgentComponent(BaseComponent):
+
+    # agent side state advances are forwarded by default (fwd=True)
+    def advance(self, things, state=None, publish=True, push=False, qname=None,
+                      ts=None, fwd=True, prof=True):
+
+        super().advance(things=things, state=state, publish=publish, push=push,
+                        qname=qname, ts=ts, fwd=fwd, prof=prof)
 
 
 # ------------------------------------------------------------------------------
