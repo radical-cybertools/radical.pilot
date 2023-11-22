@@ -71,6 +71,7 @@ class RMInfo(ru.TypedDict):
             'threads_per_core' : 1,
             'gpus_per_node'    : 0,
             'threads_per_gpu'  : 1,
+            'details'          : {},
             'launch_methods'   : {}
     }
 
@@ -222,9 +223,11 @@ class ResourceManager(object):
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+
         system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
+        rm_info.details['exact'] = bool(system_architecture.get('exclusive'))
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)

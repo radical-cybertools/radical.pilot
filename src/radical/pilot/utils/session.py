@@ -35,11 +35,6 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
     elif not log:
         log = ru.Logger('radical.pilot.utils')
 
-    if session:
-        rep = session._rep
-    else:
-        rep = ru.Reporter('radical.pilot.utils')
-
     ret = list()
 
     if not src:
@@ -180,11 +175,11 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
             ret.extend(files)
 
-            rep.ok("+ %s (%s)\n" % (pid, name))
+            session._rep.ok("+ %s (%s)\n" % (pid, name))
 
         except Exception:
             # do not raise, we still try the other pilots
-            rep.error("- %s (%s)\n" % (pid, name))
+            session._rep.error("- %s (%s)\n" % (pid, name))
             log.exception('failed to fetch %s for %s', pid, name)
 
     return ret

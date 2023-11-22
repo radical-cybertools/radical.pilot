@@ -181,7 +181,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 
 # ------------------------------------------------------------------------------
 #
-class AgentSchedulingComponent(rpu.Component):
+class AgentSchedulingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -204,7 +204,7 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = []
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------

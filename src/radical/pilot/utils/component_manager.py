@@ -119,6 +119,9 @@ class ComponentManager(object):
     #
     def start_bridges(self, bridges):
 
+        if not bridges:
+            return
+
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         buids = list()
@@ -162,6 +165,9 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def start_components(self, components, cfg = None):
+
+        if not components:
+            return
 
         self._prof.prof('start_components_start: %s', uid=self._uid)
 

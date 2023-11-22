@@ -29,7 +29,7 @@ FAILED  = 'failed'
 
 # ------------------------------------------------------------------------------
 #
-class TMGRSchedulingComponent(rpu.Component):
+class TMGRSchedulingComponent(rpu.ClientComponent):
 
     # FIXME: clarify what can be overloaded by Scheduler classes
 
@@ -40,7 +40,7 @@ class TMGRSchedulingComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.scheduling.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------
