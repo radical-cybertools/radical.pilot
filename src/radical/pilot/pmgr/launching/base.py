@@ -106,7 +106,7 @@ class PilotLauncherBase(object):
 
 # ------------------------------------------------------------------------------
 #
-class PMGRLaunchingComponent(rpu.Component):
+class PMGRLaunchingComponent(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -115,7 +115,7 @@ class PMGRLaunchingComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
         self._pmgr      = self._owner
 
         self._pilots    = dict()      # dict for all known pilots

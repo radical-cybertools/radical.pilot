@@ -21,7 +21,7 @@ from ..task_description import RAPTOR_WORKER
 
 # ------------------------------------------------------------------------------
 #
-class Master(rpu.Component):
+class Master(rpu.AgentComponent):
     '''
     Raptor Master class
 
@@ -90,7 +90,7 @@ class Master(rpu.Component):
                                     'owner'   : self._pid,
                                     'reg_addr': self._reg_addr})
 
-        rpu.Component.__init__(self, ccfg, self._session)
+        super().__init__(ccfg, self._session)
 
         self._log.debug('hb freq: %s', self._hb_freq)
         self._log.debug('hb tout: %s', self._hb_tout)
@@ -523,7 +523,7 @@ class Master(rpu.Component):
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self)
+        super().stop()
 
         self.terminate()
 
