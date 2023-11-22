@@ -12,11 +12,11 @@ from .. import Session
 
 # ------------------------------------------------------------------------------
 #
-class Agent_n(rpu.Worker):
+class Agent_n(rpu.AgentComponent):
 
     # This is a sub-agent.  It does not do much apart from starting
     # agent components and watching them, which is all taken care of in the
-    # `Worker` base class (or rather in the `Component` base class of `Worker`).
+    # `AgentComponent` base class.
 
     # --------------------------------------------------------------------------
     #
@@ -40,8 +40,9 @@ class Agent_n(rpu.Worker):
         self._pmgr    = self._session.cfg.pmgr
         self._pwd     = self._session.cfg.pilot_sandbox
 
-        # init the worker / component base classes, connects registry
-        rpu.Worker.__init__(self, self._session.cfg, self._session)
+        # init the agent component base classes, connects registry
+        super().__init__(self._cfg, self._session)
+
 
 
     # --------------------------------------------------------------------------
