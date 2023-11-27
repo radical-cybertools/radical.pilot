@@ -386,8 +386,8 @@ class Agent_0(rpu.AgentComponent):
                         service_urls[idx] = url
 
                 if service_urls:
-                    key = cb_data[tid]['name']
                     for idx, url in service_urls.items():
+                        key = cb_data[tid]['name']
                         if idx:
                             key += '.%s' % idx
                         key += '.url'
