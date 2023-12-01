@@ -399,8 +399,7 @@ class Master(rpu.AgentComponent):
 
             # the default worker needs it's own task description to derive the
             # amount of available resources
-            self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
-            self._reg.dump('raptor_master')
+            self._reg['raptor.%s.cfg' % td.uid] = td.as_dict()
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -437,6 +436,7 @@ class Master(rpu.AgentComponent):
 
         self.advance(tasks, publish=True, push=True)
 
+        self._reg.dump('raptor_master')
         return [task['uid'] for task in tasks]
 
 
@@ -888,6 +888,7 @@ class Master(rpu.AgentComponent):
       # self.wait()
 
         self._log.debug('all workers terminated')
+        self._reg.close()
 
 
 # ------------------------------------------------------------------------------
