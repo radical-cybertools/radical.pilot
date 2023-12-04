@@ -62,6 +62,9 @@ class Flux(AgentExecutingComponent) :
                                           self.session.rcfg,
                                           self._log, self._prof)
 
+        self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
+
         # thread termination signal
         self._term = mt.Event()
 
@@ -218,28 +221,25 @@ class Flux(AgentExecutingComponent) :
             tasks  = dict()
             events = dict()
 
-            self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                                 rpc.AGENT_STAGING_OUTPUT_QUEUE)
-
             # signal successful setup to main thread
             self._watcher_setup.set()
 
             while not self._term.is_set():
 
-                active = False
-                tasks  = list()
-                events = list()
+                active     = False
+                new_tasks  = list()
+                new_events = list()
 
 
                 try:
                     for task in self._task_q.get_nowait():
-                        tasks.append(task)
+                        new_tasks.append(task)
 
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some events
                     pass
 
-                for task in tasks:
+                for task in new_tasks:
 
                     active = True
                     try:
@@ -274,12 +274,12 @@ class Flux(AgentExecutingComponent) :
 
                 try:
                     for event in self._event_q.get_nowait():
-                        events.append(event)
+                        new_events.append(event)
                 except queue.Empty:
                     # nothing found -- no problem, check if we got some tasks
                     pass
 
-                for event in events:
+                for event in new_events:
 
                     active = True
                     flux_id = event[0]  # event: flux_id, flux_state

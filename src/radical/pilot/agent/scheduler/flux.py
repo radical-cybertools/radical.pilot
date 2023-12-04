@@ -69,8 +69,9 @@ class Flux(AgentSchedulingComponent):
         # performed in retrospect by the executor, based on the scheduling and
         # execution events collected from Flux.
         qname   = rpc.AGENT_EXECUTING_QUEUE
+        self._reg.dump('scheduler')
         cfg     = self._reg['bridges.%s' % qname]
-        self._q = ru.zmq.Putter(qname, cfg['put'])
+        self._q = ru.zmq.Putter(qname, cfg['addr_put'])
 
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
@@ -144,9 +145,9 @@ class Flux(AgentSchedulingComponent):
                 'with' : [{
                     'count': td['cores_per_rank'],
                     'type' : 'core'
-                    # }, {
-                    #     'count': td['gpus_per_rank'],
-                    #     'type' : 'gpu'
+                }, {
+                    'count': td['gpus_per_rank'] or 0,
+                    'type' : 'gpu'
                 }]
             }]
         }

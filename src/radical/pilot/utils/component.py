@@ -731,6 +731,7 @@ class BaseComponent(object):
         return an input endpoint
         '''
 
+        self._log.debug('=== %s in %s', qname, list(self._reg['bridges'].keys()))
         cfg = self._reg['bridges'][qname]
 
         self._log.debug('get input ep: %s', qname)
