@@ -217,10 +217,11 @@ class Default(AgentStagingOutputComponent):
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 
-            # keep process IDs within metadata in the task description
-            if not task['description'].get('metadata'):
-                task['description']['metadata'] = {}
-            task['description']['metadata'].update(pids)
+            if pids:
+                # keep process IDs within metadata in the task description
+                if not task['description'].get('metadata'):
+                    task['description']['metadata'] = {}
+                task['description']['metadata'].update(pids)
 
         self._prof.prof('staging_uprof_stop', uid=uid)
 
