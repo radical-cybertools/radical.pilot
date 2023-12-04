@@ -192,7 +192,7 @@ class Default(AgentStagingOutputComponent):
 
         task_prof = '%s/%s.prof' % (sbox, uid)
         if os.path.isfile(task_prof):
-            pids = {'rank_pid': []}
+            pids = {}
             try:
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
@@ -212,7 +212,8 @@ class Default(AgentStagingOutputComponent):
                             pids['launch_pid'] = int(lpid_msg.split('=')[1])
                             pids['exec_pid']   = int(epid_msg.split('=')[1])
                         elif 'RP_RANK_PID' in msg:
-                            pids['rank_pid'].append(int(msg.split('=')[1]))
+                            pids.setdefault('rank_pid', [])\
+                                .append(int(msg.split('=')[1]))
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 
