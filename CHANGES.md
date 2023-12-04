@@ -7,6 +7,32 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+--------------------------------------------------------------------------------
+### 1.42.0 Release                                                    2023-12-04
+  
+  - AgentComponent forwards all state notifications
+  - document event locations
+  - MPI tutorial for RAPTOR
+  - add mpi4py to the ci requirements
+  - add `bulk_size` for the executing queue (for sub-agents)
+  - add option `--ppn` for `PALS` flavor in MPIEXEC LM
+  - amarel cfg
+  - current version requires RU v1.43
+  - fix Profiling tutorial (fails when executed outside from its directory)
+  - collect service related data in registry
+  - fix multi pilot example
+  - move agent config generation to session init
+  - remove obsolete Worker class
+  - remove MongoDB module load from the Perlmutter config
+  - remove mpi4py from doc requirements
+  - save sub-agent config into Registry
+  - sub-agents are no daemons anymore
+  - update documentation for Polaris (GPUs assignment)
+  - update launcher for `Agent_N`
+  - update sub-agent config (in sync with the agent default config)
+  - update "Describing Tasks" tutorial
+  - use RMInfo `details` for LM options
+
 
 --------------------------------------------------------------------------------
 ### 1.41.0 Release                                                    2023-10-17
