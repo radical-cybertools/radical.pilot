@@ -47,7 +47,7 @@ class DefaultWorker(Worker):
                                                  cb=self._request_cb)
 
         # the master should have stored our own task description in the registry
-        self._descr = self._reg['raptor.%s.cfg' % self._uid]
+        self._descr = self._reg['raptor.%s.cfg' % self._uid] or {}
 
         # keep worker ID and rank
         self._n_cores = int(self._descr.get('cores_per_rank', 1))
