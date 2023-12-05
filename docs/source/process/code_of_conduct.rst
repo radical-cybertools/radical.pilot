@@ -1,7 +1,10 @@
 .. _code_of_conduct:
 
-Contributor Covenant Code of Conduct
-====================================
+Code of Conduct
+===============
+
+This code of conduct regulates the activities of the maintainers and
+contributors to the RADICAL-Pilot (RP) project.
 
 Our Pledge
 ----------
@@ -14,7 +17,7 @@ expression, sexual identity and orientation, level of experience, education,
 socio-economic status, nationality, personal appearance, race, or religion.
 
 Our Standards
-=============
+-------------
 
 Examples of behavior that contributes to creating a positive environment
 include:
@@ -68,7 +71,7 @@ Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by contacting the project's Principal Investigators (PIs) at
-<shantenu.jha@rutgers.edu> and <matteo.turilli@rutgers.edu>. All complaints will
+shantenu.jha@rutgers.edu and matteo.turilli@rutgers.edu. All complaints will
 be reviewed and investigated and will result in a response that is deemed
 necessary and appropriate to the circumstances. The PIs are obligated to
 maintain confidentiality with regard to the reporter of an incident. Further

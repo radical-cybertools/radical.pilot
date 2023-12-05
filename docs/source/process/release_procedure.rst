@@ -3,7 +3,7 @@
 Release Procedure
 =================
 
--  **Release Manager:** Andre Merzky
+**Release Manager:** Andre Merzky
 
 Preconditions for release
 -------------------------

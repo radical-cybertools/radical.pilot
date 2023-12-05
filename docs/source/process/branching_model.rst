@@ -81,8 +81,8 @@ branches should be open at any point in time. Like, only ``N`` branches for
 fixes and ``M << N`` branches for features should be open for each developer -
 other features / issues have to wait.
 
-Some additional rules:
-----------------------
+Some additional rules
+---------------------
 
 -  Commits, in particular for bug fixes, should be self-contained so make it
    easy to use ``git cherry-pick``, so that bug fixes can quickly be transferred

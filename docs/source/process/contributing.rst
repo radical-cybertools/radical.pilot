@@ -1,7 +1,7 @@
 .. _contributing:
 
-Contributing to RADICAL-Pilot (RP)
-==================================
+Contributing
+============
 
 This section offers useful information to the developers that want to join the
 RADICAL-Cybertools (RCT) community and contribute to RADICAL-Pilot (RP)
