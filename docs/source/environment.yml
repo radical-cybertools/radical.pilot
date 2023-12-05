@@ -1,0 +1,13 @@
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pandas
+  - openmpi
+  - pip
+  - setuptools
+  - wheel
+  - pip:
+      - git+https://github.com/radical-cybertools/radical.utils.git@devel
+      - git+https://github.com/radical-cybertools/radical.saga.git@devel
+      - git+https://github.com/radical-cybertools/radical.pilot.git@devel
