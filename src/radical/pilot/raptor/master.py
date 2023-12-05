@@ -70,16 +70,14 @@ class Master(rpu.AgentComponent):
         self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
-        self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
-
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
         self._exec_tasks = list()      # keep track of executable tasks
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
-        self._hb_freq    = 500         # check worker heartbetas every n seconds
-        self._hb_timeout = 1000        # consider worker dead after 150 seconds
+        self._hb_freq    = 500         # check worker heartbeats every N seconds
+        self._hb_timeout = 100000      # consider worker dead after M seconds
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
                                    _role=Session._DEFAULT)
@@ -397,7 +395,7 @@ class Master(rpu.AgentComponent):
             # ensure that defaults and backward compatibility kick in
             td.verify()
 
-            # the default worker needs it's own task description to derive the
+            # the default worker needs its own task description to derive the
             # amount of available resources
             self._reg['raptor.%s.cfg' % td.uid] = td.as_dict()
 
@@ -888,7 +886,6 @@ class Master(rpu.AgentComponent):
       # self.wait()
 
         self._log.debug('all workers terminated')
-        self._reg.close()
 
 
 # ------------------------------------------------------------------------------
