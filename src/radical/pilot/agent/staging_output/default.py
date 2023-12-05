@@ -208,12 +208,13 @@ class Default(AgentStagingOutputComponent):
                                         state=state, msg=msg)
                         # collect task related PIDs
                         if 'RP_LAUNCH_PID' in msg:
-                            lpid_msg, epid_msg = msg.split(':')
-                            pids['launch_pid'] = int(lpid_msg.split('=')[1])
-                            pids['exec_pid']   = int(epid_msg.split('=')[1])
+                            pids['launch_pid'] = int(msg.split('=')[1])
                         elif 'RP_RANK_PID' in msg:
+                            epid_msg, rpid_msg = msg.split(':')
+                            pids.setdefault('exec_pid', []) \
+                                .append(int(epid_msg.split('=')[1]))
                             pids.setdefault('rank_pid', [])\
-                                .append(int(msg.split('=')[1]))
+                                .append(int(rpid_msg.split('=')[1]))
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
 
