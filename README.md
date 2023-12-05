@@ -16,7 +16,7 @@ schedule and launch computational tasks on those resources. Thus, tasks are
 directly scheduled on the acquired resources, not via the batch system of the
 HPC platform. RP supports concurrently using single/multiple pilots on
 single/multiple
-[high performance computing (HPC) platforms](https://radicalpilot.readthedocs.io/en/stable/supported.html)).
+[high performance computing (HPC) platforms](https://radicalpilot.readthedocs.io/en/stable/supported.html).
 
 RP is written in Python and exposes a simple yet powerful
 [API](https://radicalpilot.readthedocs.io/en/stable/apidoc.html). In 15 lines of
@@ -60,7 +60,7 @@ session.close(cleanup=True)
 
 ## Quick Start
 
-Run RP's [quick start tutorial]() directly on Binder. No installation needed.
+Run RP's [quick start tutorial](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD?labpath=docs%2Fsource%2Fgetting_started.ipnb) directly on Binder. No installation needed.
 
 Start to write your RP application, install RP:
 
@@ -85,7 +85,7 @@ for some inspiration.
 
 [RP user documentation](https://radicalpilot.readthedocs.io/en/stable/) uses Sphinx, and it is published on Read the Docs.
 
-[RP tutorials] can be run via [Binder]() or on RADICAL-Cybertools [Docker tutorials container](https://hub.docker.com/u/radicalcybertools).
+[RP tutorials](https://radicalpilot.readthedocs.io/en/docs-readme/tutorials.html) can be run via [Binder](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD).
 
 ## Developers
 
@@ -112,5 +112,9 @@ environment.
 
 We welcome everyone that wants to contribute to RP development. We are an open
 and welcoming community, committed to making participation a harassment-free
-experience for everyone. See our [Code of Conduct](), relevant [technical
-documentation]() and [get in touch](https://github.com/radical-cybertools/radical.pilot/issues).
+experience for everyone. See our
+[Code of Conduct](https://radicalpilot.readthedocs.io/en/docs-readme/process/code_of_conduct.html),
+relevant
+[technical documentation](https://radicalpilot.readthedocs.io/en/docs-readme/process/contributing.html)
+and
+[get in touch](https://github.com/radical-cybertools/radical.pilot/issues).
