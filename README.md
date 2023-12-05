@@ -85,7 +85,7 @@ for some inspiration.
 
 [RP user documentation](https://radicalpilot.readthedocs.io/en/stable/) uses Sphinx, and it is published on Read the Docs.
 
-[RP tutorials](https://radicalpilot.readthedocs.io/en/docs-readme/tutorials.html) can be run via [Binder](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD).
+[RP tutorials](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD) can be run via Binder.
 
 ## Developers
 
@@ -113,8 +113,8 @@ environment.
 We welcome everyone that wants to contribute to RP development. We are an open
 and welcoming community, committed to making participation a harassment-free
 experience for everyone. See our
-[Code of Conduct](https://radicalpilot.readthedocs.io/en/docs-readme/process/code_of_conduct.html),
+[Code of Conduct](https://radicalpilot.readthedocs.io/en/stable/process/code_of_conduct.html),
 relevant
-[technical documentation](https://radicalpilot.readthedocs.io/en/docs-readme/process/contributing.html)
+[technical documentation](https://radicalpilot.readthedocs.io/en/stable/process/contributing.html)
 and
 [get in touch](https://github.com/radical-cybertools/radical.pilot/issues).
