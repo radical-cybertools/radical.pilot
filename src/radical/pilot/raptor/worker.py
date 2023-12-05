@@ -72,8 +72,9 @@ class Worker(object):
         # let ZMQ settle
         time.sleep(1)
 
+        self._hb_register_count = 60
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
-        self._hb_delay  = 5
+        self._hb_delay  = 300
         self._hb_thread = mt.Thread(target=self._hb_worker)
         self._hb_thread.daemon = True
         self._hb_thread.start()
@@ -117,8 +118,8 @@ class Worker(object):
             # wait for raptor response
             self._log.debug('wait for registration to complete')
             count = 0
-            while not self._reg_event.wait(timeout=1):
-                if count < 60:
+            while not self._reg_event.wait(timeout=5):
+                if count < self._hb_register_count:
                     count += 1
                     self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
                     self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
