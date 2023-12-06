@@ -2,7 +2,6 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pandas
   - openmpi
   - pip
   - setuptools
