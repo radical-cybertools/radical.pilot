@@ -1295,12 +1295,13 @@ class Session(rs.Session):
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
 
-        # import locally to avoid circular imports
-        from .agent.resource_manager import ResourceManager
+        if 'resource_manager' in resource_cfg:
+            # import locally to avoid circular imports
+            from .agent.resource_manager import ResourceManager
 
-        rm = ResourceManager.get_manager(resource_cfg['resource_manager'])
-        if rm and rm.batch_started():
-            resource_cfg.update(ResourceDescription.ENDPOINTS_DEFAULT)
+            rm = ResourceManager.get_manager(resource_cfg['resource_manager'])
+            if rm and rm.batch_started():
+                resource_cfg.update(ResourceDescription.ENDPOINTS_DEFAULT)
 
         resource_cfg.label = resource
         return resource_cfg
