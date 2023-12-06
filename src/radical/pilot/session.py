@@ -20,7 +20,7 @@ from . import utils     as rpu
 
 from .messages               import HeartbeatMessage
 from .proxy                  import Proxy
-from .resource_description   import ResourceDescription
+from .resource_description   import ResourceDescription, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -1301,7 +1301,7 @@ class Session(rs.Session):
 
             rm = ResourceManager.get_manager(resource_cfg['resource_manager'])
             if rm and rm.batch_started():
-                resource_cfg.update(ResourceDescription.ENDPOINTS_DEFAULT)
+                resource_cfg.update(ENDPOINTS_DEFAULT)
 
         resource_cfg.label = resource
         return resource_cfg
