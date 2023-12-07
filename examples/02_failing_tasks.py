@@ -26,11 +26,14 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) >= 2: resources = sys.argv[1:]
-    else                 : resources = ['local.localhost']
+    resource = None
+    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    elif len(sys.argv) == 2: resource = sys.argv[1]
+    else                   : resource = 'local.localhost'
+
 
     # Create a new session. No need to try/except this: if session creation
-    # fails, there is not much we can do anyways...
+    # fails, there is not much we can do anyway...
     session = rp.Session()
 
     # all other pilot code is now tried/excepted.  If an exception is caught, we
@@ -40,55 +43,45 @@ if __name__ == '__main__':
     try:
 
         # read the config used for resource details
-        report.info('read config')
-        config = ru.read_json('%s/config.json' % os.path.dirname(os.path.abspath(__file__)))
-        report.ok('>>ok\n')
+        config = ru.read_json('%s/config.json' %
+                              os.path.dirname(__file__)).get(resource, {})
+        pmgr   = rp.PilotManager(session=session)
+        tmgr   = rp.TaskManager(session=session)
 
         report.header('submit pilots')
 
-        # Add a Pilot Manager. Pilot managers manage one or more Pilots.
-        pmgr = rp.PilotManager(session=session)
+        # Add a PilotManager. PilotManagers manage one or more pilots.
 
-        # Register the Pilot in a TaskManager object.
-        tmgr = rp.TaskManager(session=session)
-
-        n = 1
-        pdescs = list()
-        for resource in resources:
-
-            # Define an [n]-core local pilot that runs for [x] minutes
-            # Here we use a dict to initialize the description object
-            for i in range(n):
-                pd_init = {
-                      'resource'      : resource,
-                      'runtime'       : 60,   # pilot runtime (min)
-                      'exit_on_error' : True,
-                      'project'       : config[resource].get('project', None),
-                      'queue'         : config[resource].get('queue', None),
-                      'access_schema' : config[resource].get('schema', None),
-                      'cores'         : config[resource].get('cores', 1),
-                      'gpus'          : config[resource].get('gpus', 0),
-                }
-                pdesc = rp.PilotDescription(pd_init)
-                pdescs.append(pdesc)
+        # Define an [n]-core local pilot that runs for [x] minutes
+        # Here we use a dict to initialize the description object
+        pd_init = {'resource'      : resource,
+                   'runtime'       : 15,  # pilot runtime (min)
+                   'exit_on_error' : True,
+                   'project'       : config.get('project'),
+                   'queue'         : config.get('queue'),
+                   'access_schema' : config.get('schema'),
+                   'cores'         : config.get('cores', 1),
+                   'gpus'          : config.get('gpus',  0)
+                  }
+        pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
-        pilots = pmgr.submit_pilots(pdescs)
-        tmgr.add_pilots(pilots)
+        pilot = pmgr.submit_pilots(pdesc)
 
-        report.header('submit tasks')
+        n = 128   # number of tasks to run
+        report.header('submit %d tasks' % n)
 
+        # Register the pilot in a TaskManager object.
+        tmgr.add_pilots(pilot)
 
-        # Create a workload of Tasks.
+        # Create a workload of tasks.
         # Each task runs '/bin/date'.
-        n = 128  # number of tasks to run
-        report.info('create %d task description(s)\n\t' % n)
 
+        report.progress_tgt(n, label='create')
         tds = list()
-        for i in range(0, n):
+        for i in range(n):
 
-            # create a new Task description, and fill it.
-            # Here we don't use dict initialization.
+            # create a new task description, and fill it.
             td = rp.TaskDescription()
             if i % 10:
                 td.executable = '/bin/date'
@@ -98,11 +91,11 @@ if __name__ == '__main__':
             tds.append(td)
             report.progress()
 
-        report.ok('>>ok\n')
+        report.progress_done()
 
-        # Submit the previously created Task descriptions to the
+        # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
-        # assigning Tasks to the Pilots.
+        # assigning tasks to the pilots.
         tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
@@ -126,8 +119,8 @@ if __name__ == '__main__':
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
-        session._log.exception('oops')
         report.error('caught Exception: %s\n' % e)
+        ru.print_exception_trace()
         raise
 
     except (KeyboardInterrupt, SystemExit):
@@ -135,14 +128,14 @@ if __name__ == '__main__':
         # corresponding KeyboardInterrupt exception for shutdown.  We also catch
         # SystemExit (which gets raised if the main threads exits for some other
         # reason).
+        ru.print_exception_trace()
         report.warn('exit requested\n')
 
     finally:
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        if session:
-            session.close()
+        session.close(download=True)
 
     report.header()
 

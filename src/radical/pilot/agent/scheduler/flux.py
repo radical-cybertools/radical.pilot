@@ -62,16 +62,18 @@ class Flux(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _configure(self):
+    def initialize(self):
 
-        # don't advance tasks via the component's `advance()`, but push them
-        # toward the executor *without state change* - state changes are
-        # performed in retrospect by the executor, based on the scheduling and
-        # execution events collected from Flux.
-        qname   = rpc.AGENT_EXECUTING_QUEUE
-        self._reg.dump('scheduler')
-        cfg     = self._reg['bridges.%s' % qname]
-        self._q = ru.zmq.Putter(qname, cfg['addr_put'])
+        # register task output channels in *this* process
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        super().initialize()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _configure(self):
 
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
@@ -96,10 +98,15 @@ class Flux(AgentSchedulingComponent):
         self._log.debug('submitted tasks')
 
         for task, jid in zip(tasks, jids):
-            self._log.debug('submit tasks %s -> %s', task['uid'], jid)
-            task['flux_id'] = jid
 
-        self._q.put(tasks)
+            self._log.debug('submitted task %s -> %s', task['uid'], jid)
+
+            md = task['description'].get('metadata') or dict()
+            md['flux_id'] = jid
+            task['description']['metadata'] = md
+
+        self._log.debug('=== put %s', [t['uid'] for t in tasks])
+        self.advance(tasks, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -145,9 +152,9 @@ class Flux(AgentSchedulingComponent):
                 'with' : [{
                     'count': td['cores_per_rank'],
                     'type' : 'core'
-                }, {
-                    'count': td['gpus_per_rank'] or 0,
-                    'type' : 'gpu'
+              # }, {
+              #     'count': td['gpus_per_rank'] or 0,
+              #     'type' : 'gpu'
                 }]
             }]
         }
