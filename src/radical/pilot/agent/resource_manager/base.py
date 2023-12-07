@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import math
@@ -408,37 +408,55 @@ class ResourceManager(object):
     @classmethod
     def create(cls, name, cfg, rcfg, log, prof):
 
-        from .ccm         import CCM
-        from .fork        import Fork
-        from .lsf         import LSF
-        from .pbspro      import PBSPro
-        from .slurm       import Slurm
-        from .torque      import Torque
-        from .cobalt      import Cobalt
-        from .yarn        import Yarn
-        from .debug       import Debug
-
         # Make sure that we are the base-class!
         if cls != ResourceManager:
             raise TypeError('ResourceManager Factory only available to base class!')
 
-        impl = {
-            RM_NAME_FORK        : Fork,
-            RM_NAME_CCM         : CCM,
-            RM_NAME_LSF         : LSF,
-            RM_NAME_PBSPRO      : PBSPro,
-            RM_NAME_SLURM       : Slurm,
-            RM_NAME_TORQUE      : Torque,
-            RM_NAME_COBALT      : Cobalt,
-            RM_NAME_YARN        : Yarn,
-            RM_NAME_DEBUG       : Debug
-        }
-
-        if name not in impl:
+        rm = cls.get_manager(name)
+        if rm is None:
             raise RuntimeError('ResourceManager %s unknown' % name)
 
-        return impl[name](cfg, rcfg, log, prof)
+        return rm(cfg, rcfg, log, prof)
 
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def get_manager(name):
+
+        from .ccm     import CCM
+        from .fork    import Fork
+        from .lsf     import LSF
+        from .pbspro  import PBSPro
+        from .slurm   import Slurm
+        from .torque  import Torque
+        from .cobalt  import Cobalt
+        from .yarn    import Yarn
+        from .debug   import Debug
+
+        impl = {
+            RM_NAME_FORK   : Fork,
+            RM_NAME_CCM    : CCM,
+            RM_NAME_LSF    : LSF,
+            RM_NAME_PBSPRO : PBSPro,
+            RM_NAME_SLURM  : Slurm,
+            RM_NAME_TORQUE : Torque,
+            RM_NAME_COBALT : Cobalt,
+            RM_NAME_YARN   : Yarn,
+            RM_NAME_DEBUG  : Debug
+        }
+
+        return impl.get(name)
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def batch_started():
+        '''
+        Method determines from where it was called:
+        either from the batch job or from outside (e.g., login node).
+        '''
+
+        return False
 
 
     # --------------------------------------------------------------------------
