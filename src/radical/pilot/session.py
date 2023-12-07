@@ -20,7 +20,7 @@ from . import utils     as rpu
 
 from .messages               import HeartbeatMessage
 from .proxy                  import Proxy
-from .resource_description   import ResourceDescription
+from .resource_description   import ResourceDescription, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -1290,6 +1290,17 @@ class Session(rs.Session):
         scfg = rcfg['schemas'][schema]
 
         ru.dict_merge(rcfg, scfg, ru.OVERWRITE)
+
+        if 'resource_manager' in rcfg:
+            # import locally to avoid circular imports
+            from .agent.resource_manager import ResourceManager
+
+            rm = ResourceManager.get_manager(rcfg['resource_manager'])
+            if rm and rm.batch_started():
+                rcfg.update(ENDPOINTS_DEFAULT)
+
+        rcfg.label = resource
+
         rcfg.verify()
 
         return rcfg

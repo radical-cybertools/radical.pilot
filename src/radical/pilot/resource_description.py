@@ -44,6 +44,9 @@ RAPTOR_HB_DELAY        = 'hb_delay'
 RAPTOR_HB_TIMEOUT      = 'hb_timeout'
 RAPTOR_HB_FREQUENCY    = 'hb_frequency'
 
+ENDPOINTS_DEFAULT      = {JOB_MANAGER_ENDPOINT: 'fork://localhost/',
+                          FILESYSTEM_ENDPOINT : 'file://localhost/'}
+
 
 # ------------------------------------------------------------------------------
 #
