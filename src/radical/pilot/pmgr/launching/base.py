@@ -566,35 +566,32 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_proxy_url         = rcfg.get('agent_proxy_url', proxy_url)
-        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
-        agent_scheduler         = rcfg.get('agent_scheduler')
-        tunnel_bind_device      = rcfg.get('tunnel_bind_device')
-        default_queue           = rcfg.get('default_queue')
-        forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
-        resource_manager        = rcfg.get('resource_manager')
-        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
-        pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        python_interpreter      = rcfg.get('python_interpreter')
-        rp_version              = rcfg.get('rp_version')
-        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',      default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 0)
-        gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node')
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
-        python_dist             = rcfg.get('python_dist')
-        task_tmp                = rcfg.get('task_tmp')
-        spmd_variation          = rcfg.get('spmd_variation')
-        task_pre_launch         = rcfg.get('task_pre_launch')
-        task_pre_exec           = rcfg.get('task_pre_exec')
-        task_post_launch        = rcfg.get('task_post_launch')
-        task_post_exec          = rcfg.get('task_post_exec')
-        mandatory_args          = rcfg.get('mandatory_args', [])
-        system_architecture     = rcfg.get('system_architecture', {})
-        services               += rcfg.get('services', [])
-        raptor_cfg              = rcfg.get('raptor')
+        agent_spawner           = rcfg.agent_spawner
+        agent_config            = rcfg.agent_config
+        agent_scheduler         = rcfg.agent_scheduler
+        default_queue           = rcfg.default_queue
+        forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
+        resource_manager        = rcfg.resource_manager
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1
+        python_interpreter      = rcfg.python_interpreter
+        rp_version              = rcfg.rp_version
+        virtenv_mode            = rcfg.virtenv_mode
+        virtenv                 = rcfg.virtenv or default_virtenv
+        cores_per_node          = rcfg.cores_per_node
+        gpus_per_node           = rcfg.gpus_per_node
+        lfs_path_per_node       = rcfg.lfs_path_per_node
+        lfs_size_per_node       = rcfg.lfs_size_per_node
+        python_dist             = rcfg.python_dist
+        task_tmp                = rcfg.task_tmp
+        task_pre_launch         = rcfg.task_pre_launch
+        task_post_launch        = rcfg.task_post_launch
+        task_pre_exec           = rcfg.task_pre_exec
+        task_post_exec          = rcfg.task_post_exec
+        mandatory_args          = rcfg.mandatory_args
+        system_architecture     = rcfg.system_architecture
+        services               += rcfg.services
+        raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
         blocked_cores           = system_architecture.get('blocked_cores', [])
@@ -658,7 +655,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        tmp = ru.Url(agent_proxy_url)
+        tmp = ru.Url(proxy_url)
         if tmp.port:
             hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
@@ -851,7 +848,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         if forward_tunnel_endpoint:   bs_args.extend(['-f', forward_tunnel_endpoint])
         if forward_tunnel_endpoint:   bs_args.extend(['-h', hostport])
         if python_interpreter:        bs_args.extend(['-i', python_interpreter])
-        if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
+      # if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
 
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
@@ -870,7 +867,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
-        agent_cfg['proxy_url']           = agent_proxy_url
+        agent_cfg['proxy_url']           = proxy_url
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
@@ -978,7 +975,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = avail_cores_per_node
-        jd_dict.spmd_variation        = spmd_variation
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts

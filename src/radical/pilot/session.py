@@ -18,9 +18,9 @@ import radical.saga.utils.pty_shell as rsup
 from . import constants as rpc
 from . import utils     as rpu
 
-from .messages               import HeartbeatMessage
-from .proxy                  import Proxy
-from .resource_description   import ResourceDescription, ENDPOINTS_DEFAULT
+from .messages        import HeartbeatMessage
+from .proxy           import Proxy
+from .resource_config import ResourceConfig, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -382,7 +382,7 @@ class Session(rs.Session):
         for site in rcfgs:
             self._rcfgs[site] = ru.Config()
             for res, rcfg in rcfgs[site].items():
-                self._rcfgs[site][res] = ResourceDescription(rcfg)
+                self._rcfgs[site][res] = ResourceConfig(rcfg)
 
                 # resolve schema aliases
                 for schema, tgt in rcfg.get('schemas', {}).items():
@@ -497,7 +497,6 @@ class Session(rs.Session):
         self._cfg   = ru.Config(cfg=self._reg['cfg'])
         self._rcfg  = ru.Config(cfg=self._reg['rcfg'])
         self._rcfgs = ru.Config(cfg=self._reg['rcfgs'])
-        print(' ===== 2', self._rcfgs['access']['bridges2']['default_schema'])
 
         # change RU defaults to point logfiles etc. to the session sandbox
         # NOTE: this is racey: the first session in this process will win
@@ -639,9 +638,6 @@ class Session(rs.Session):
         elif self._role == self._AGENT_0:
             self._reg['rcfg']  = self._rcfg
             self._reg['rcfgs'] = dict()
-
-
-        print(' ===== 3', self._rcfgs['access']['bridges2']['default_schema'])
 
 
     # --------------------------------------------------------------------------
@@ -1280,13 +1276,13 @@ class Session(rs.Session):
         if not schema:
             from_dict = self._rcfgs[site][res]
             from_dict.label = resource
-            return ResourceDescription(from_dict=from_dict)
+            return ResourceConfig(from_dict=from_dict)
 
         if schema not in self._rcfgs[site][res]['schemas']:
             raise RuntimeError("schema %s unknown for resource %s"
                               % (schema, resource))
 
-        rcfg = ResourceDescription(from_dict=self._rcfgs[site][res])
+        rcfg = ResourceConfig(from_dict=self._rcfgs[site][res])
         scfg = rcfg['schemas'][schema]
 
         ru.dict_merge(rcfg, scfg, ru.OVERWRITE)

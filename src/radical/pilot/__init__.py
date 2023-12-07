@@ -30,7 +30,7 @@ from .task_description          import TASK_METHOD, TASK_FUNC, TASK_FUNCTION
 from .task_description          import TASK_EXEC, TASK_EVAL, TASK_PROC, TASK_SHELL
 from .task_description          import RAPTOR_MASTER, RAPTOR_WORKER
 from .task_description          import AGENT_SERVICE
-from .resource_description      import ResourceDescription
+from .resource_config           import ResourceConfig
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
