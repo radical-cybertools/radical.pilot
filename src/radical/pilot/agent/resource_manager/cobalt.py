@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -12,6 +12,13 @@ from .base import RMInfo, ResourceManager
 # ------------------------------------------------------------------------------
 #
 class Cobalt(ResourceManager):
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def batch_started():
+
+        return bool(os.getenv('COBALT_JOBID'))
 
     # --------------------------------------------------------------------------
     #
