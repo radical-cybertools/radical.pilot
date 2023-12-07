@@ -132,6 +132,21 @@ class PBSProTestCase(TestCase):
             # $PBS_JOBID not set
             rm_pbspro._parse_pbspro_vnodes()
 
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        saved_batch_id = os.getenv('PBS_JOBID')
+
+        os.environ['PBS_JOBID'] = '12345'
+        self.assertTrue(PBSPro.batch_started())
+
+        del os.environ['PBS_JOBID']
+        self.assertFalse(PBSPro.batch_started())
+
+        if saved_batch_id is not None:
+            os.environ['PBS_JOBID'] = saved_batch_id
+
 # ------------------------------------------------------------------------------
 
 
@@ -142,7 +157,7 @@ if __name__ == '__main__':
     tc.test_init_from_scratch_error()
     tc.test_parse_pbspro_vnodes()
     tc.test_parse_pbspro_vnodes_error()
-
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------
 

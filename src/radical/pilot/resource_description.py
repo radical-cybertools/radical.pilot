@@ -39,6 +39,8 @@ FORWARD_TUNNEL_ENDPOINT = 'forward_tunnel_endpoint'
 NEW_SESSION_PER_TASK   = 'new_session_per_task'
 TASK_PRE_EXEC          = 'task_pre_exec'
 
+ENDPOINTS_DEFAULT      = {JOB_MANAGER_ENDPOINT: 'fork://localhost/',
+                          FILESYSTEM_ENDPOINT : 'file://localhost/'}
 
 # ------------------------------------------------------------------------------
 #
