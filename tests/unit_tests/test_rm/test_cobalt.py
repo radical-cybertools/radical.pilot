@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2021-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -49,6 +49,21 @@ class CobaltTestCase(TestCase):
             # both $COBALT_NODEFILE and $COBALT_PARTNAME are not set
             rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
 
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        saved_batch_id = os.getenv('COBALT_JOBID')
+
+        os.environ['COBALT_JOBID'] = '12345'
+        self.assertTrue(Cobalt.batch_started())
+
+        del os.environ['COBALT_JOBID']
+        self.assertFalse(Cobalt.batch_started())
+
+        if saved_batch_id is not None:
+            os.environ['COBALT_JOBID'] = saved_batch_id
+
 # ------------------------------------------------------------------------------
 
 
@@ -57,6 +72,6 @@ if __name__ == '__main__':
     tc = CobaltTestCase()
     tc.test_init_from_scratch()
     tc.test_init_from_scratch_error()
-
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------
