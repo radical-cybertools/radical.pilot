@@ -20,7 +20,7 @@ from . import utils     as rpu
 
 from .messages               import HeartbeatMessage
 from .proxy                  import Proxy
-from .resource_description   import ResourceDescription
+from .resource_description   import ResourceDescription, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -1294,6 +1294,14 @@ class Session(rs.Session):
                 # merge schema specific resource keys into the
                 # resource config
                 resource_cfg[key] = resource_cfg[schema][key]
+
+        if 'resource_manager' in resource_cfg:
+            # import locally to avoid circular imports
+            from .agent.resource_manager import ResourceManager
+
+            rm = ResourceManager.get_manager(resource_cfg['resource_manager'])
+            if rm and rm.batch_started():
+                resource_cfg.update(ENDPOINTS_DEFAULT)
 
         resource_cfg.label = resource
         return resource_cfg
