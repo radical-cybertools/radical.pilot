@@ -96,7 +96,7 @@ class TestSession(TestCase):
 
         # check running from batch
 
-        from radical.pilot.resource_description import ENDPOINTS_DEFAULT
+        from radical.pilot.resource_config import ENDPOINTS_DEFAULT
         saved_batch_id = os.getenv('SLURM_JOB_ID')
 
         # resource manager is Slurm
