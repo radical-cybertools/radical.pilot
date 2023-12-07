@@ -233,6 +233,15 @@
                                              "pre_exec_cached": [
                                                # "module unload xl xalt"
                                              ]
+                                         },
+                                         "JSRUN_ERF" : {
+                                             "pre_exec": [
+                                                 "[[ -z $(pgrep -u $USER -a jsmd | grep erf) ]] && (eval \"$JSM_ROOT/bin/jsm\" &>/dev/null & disown) || echo 'JSM running'"
+                                             ],
+                                             "pre_exec_cached": [
+                                                 "export JSM_ROOT=/gpfs/alpine/stf007/world-shared/vgv/inbox/jsm_erf/jsm-10.4.0.4/opt/ibm/jsm",
+                                                 "export PATH=$JSM_ROOT/bin:$PATH"
+                                             ]
                                          }
                                         },
         "pre_bootstrap_0"             : [
