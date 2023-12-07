@@ -56,8 +56,8 @@ class Flux(AgentSchedulingComponent):
     #
     def unschedule_task(self, task):
 
-        # this abstract method is not used in this implementation
-        assert False
+        # this abstract method is ignored in this implementation
+        pass
 
 
     # --------------------------------------------------------------------------
@@ -105,7 +105,6 @@ class Flux(AgentSchedulingComponent):
             md['flux_id'] = jid
             task['description']['metadata'] = md
 
-        self._log.debug('=== put %s', [t['uid'] for t in tasks])
         self.advance(tasks, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
 
@@ -118,6 +117,12 @@ class Flux(AgentSchedulingComponent):
         sbox   = task['task_sandbox_path']
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
 
         args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
         cmd  = '%s %s' % (td['executable'], args)

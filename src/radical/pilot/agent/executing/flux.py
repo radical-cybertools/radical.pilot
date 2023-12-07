@@ -110,7 +110,12 @@ class Flux(AgentExecutingComponent) :
 
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:
 
-            task['target_state'] = rps.DONE  # FIXME
+            task['exit_code'] = event.context.get('status', 1)
+
+            if task['exit_code']:
+                task['target_state'] = rps.FAILED
+            else:
+                task['target_state'] = rps.DONE
 
             # on completion, push toward output staging
             self.advance_tasks(task, state, ts=ts, publish=True, push=True)

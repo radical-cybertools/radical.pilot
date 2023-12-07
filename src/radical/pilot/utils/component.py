@@ -633,7 +633,7 @@ class BaseComponent(object):
                               'qname'  : qname,
                               'states' : states}
 
-        self._log.debug('=== registered input %s [%s] [%s]', name, queue, qname)
+        self._log.debug('registered input %s [%s] [%s]', name, queue, qname)
 
         # we want exactly one worker associated with a state -- but a worker
         # can be responsible for multiple states
@@ -985,8 +985,6 @@ class BaseComponent(object):
             if not things:
                 # next input
                 continue
-
-            self._log.debug('=== work_cb: %d', len(things))
 
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
