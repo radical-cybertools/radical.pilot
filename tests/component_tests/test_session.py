@@ -94,6 +94,26 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
+        # check running from batch
+
+        from radical.pilot.resource_description import ENDPOINTS_DEFAULT
+        saved_batch_id = os.getenv('SLURM_JOB_ID')
+
+        # resource manager is Slurm
+
+        os.environ['SLURM_JOB_ID'] = '12345'
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertEqual(rcfg[e_key], e_value)
+
+        del os.environ['SLURM_JOB_ID']
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertNotEquals(rcfg[e_key], e_value)
+
+        if saved_batch_id is not None:
+            os.environ['SLURM_JOB_ID'] = saved_batch_id
+
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Session, '_get_logger')
