@@ -136,7 +136,8 @@ class JSRUN(LaunchMethod):
             rs_str += 'rank: %s : {'    % ','.join(rank_ids)
             rs_str += ' host: %s;'      % str(slot_ranks['node_id'])
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
-            if slot_ranks['gpu_map']:
+            if slot_ranks['gpu_map'] and slot_ranks['gpu_map'][0]:
+                # check the first element, since it is the same for RS ranks
                 slot_gpus = slot_ranks['gpu_map'][0]
                 assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
                 rs_str += '; gpu: {%s}' % ','.join([str(g) for g in slot_gpus])
