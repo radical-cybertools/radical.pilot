@@ -178,6 +178,9 @@ class Task(object):
                 setattr(self, "_%s" % key, val)
 
         # RP's internal processes may update metadata
+        if 'description' not in task_dict:
+            import pprint
+            self._log.error('=== invalid task dict: %s', pprint.pformat(task_dict))
         if task_dict['description'].get('metadata'):
             self._descr['metadata'] = task_dict['description']['metadata']
 

@@ -574,25 +574,25 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         default_queue           = rcfg.default_queue
         forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
         resource_manager        = rcfg.resource_manager
-        pre_bootstrap_0         = rcfg.pre_bootstrap_0 or list()
-        pre_bootstrap_1         = rcfg.pre_bootstrap_1 or list()
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0     or list()
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1     or list()
         python_interpreter      = rcfg.python_interpreter
         rp_version              = rcfg.rp_version
         virtenv_mode            = rcfg.virtenv_mode
-        virtenv                 = rcfg.virtenv or default_virtenv
+        virtenv                 = rcfg.virtenv             or default_virtenv
         cores_per_node          = rcfg.cores_per_node
         gpus_per_node           = rcfg.gpus_per_node
         lfs_path_per_node       = rcfg.lfs_path_per_node
         lfs_size_per_node       = rcfg.lfs_size_per_node
         python_dist             = rcfg.python_dist
         task_tmp                = rcfg.task_tmp
-        task_pre_launch         = rcfg.task_pre_launch or list()
-        task_post_launch        = rcfg.task_post_launch or list()
-        task_pre_exec           = rcfg.task_pre_exec or list()
-        task_post_exec          = rcfg.task_post_exec or list()
-        mandatory_args          = rcfg.mandatory_args or list()
+        task_pre_launch         = rcfg.task_pre_launch     or list()
+        task_post_launch        = rcfg.task_post_launch    or list()
+        task_pre_exec           = rcfg.task_pre_exec       or list()
+        task_post_exec          = rcfg.task_post_exec      or list()
+        mandatory_args          = rcfg.mandatory_args      or list()
         system_architecture     = rcfg.system_architecture or dict()
-        services               += rcfg.services or list()
+        services               += rcfg.services            or list()
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
