@@ -535,6 +535,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
+        rcfg.verify()
+
         pid = pilot["uid"]
         pilot['fts'] = list()  # tar for staging
         pilot['sds'] = list()  # direct staging
@@ -562,7 +564,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         project          = pilot['description']['project']
         cleanup          = pilot['description']['cleanup']
         candidate_hosts  = pilot['description']['candidate_hosts']
-        services         = pilot['description']['services']
+        services         = pilot['description']['services'] or list()
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -572,8 +574,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         default_queue           = rcfg.default_queue
         forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
         resource_manager        = rcfg.resource_manager
-        pre_bootstrap_0         = rcfg.pre_bootstrap_0
-        pre_bootstrap_1         = rcfg.pre_bootstrap_1
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0 or list()
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1 or list()
         python_interpreter      = rcfg.python_interpreter
         rp_version              = rcfg.rp_version
         virtenv_mode            = rcfg.virtenv_mode
@@ -584,13 +586,13 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         lfs_size_per_node       = rcfg.lfs_size_per_node
         python_dist             = rcfg.python_dist
         task_tmp                = rcfg.task_tmp
-        task_pre_launch         = rcfg.task_pre_launch
-        task_post_launch        = rcfg.task_post_launch
-        task_pre_exec           = rcfg.task_pre_exec
-        task_post_exec          = rcfg.task_post_exec
-        mandatory_args          = rcfg.mandatory_args
-        system_architecture     = rcfg.system_architecture
-        services               += rcfg.services
+        task_pre_launch         = rcfg.task_pre_launch or list()
+        task_post_launch        = rcfg.task_post_launch or list()
+        task_pre_exec           = rcfg.task_pre_exec or list()
+        task_post_exec          = rcfg.task_post_exec or list()
+        mandatory_args          = rcfg.mandatory_args or list()
+        system_architecture     = rcfg.system_architecture or dict()
+        services               += rcfg.services or list()
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
@@ -659,7 +661,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         if tmp.port:
             hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            raise RuntimeError('service URL needs port number: %s' % tmp)
+            hostport = tmp.host
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
