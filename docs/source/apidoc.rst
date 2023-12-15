@@ -70,7 +70,7 @@ Raptor
    :members:
 
 A `radical.pilot.Task` managing a `radical.pilot.raptor.Master` instance is created using
-:py:attr:`radical.pilot.TaskDescription.mode` 
+:py:attr:`radical.pilot.TaskDescription.mode`
 ``rp.RAPTOR_MASTER``, or through :py:func:`~radical.pilot.Pilot.submit_raptors()`.
 The object returned to the client is a `Task` subclass with additional features.
 
@@ -79,6 +79,11 @@ The object returned to the client is a `Task` subclass with additional features.
 
 Utilities and helpers
 =====================
+.. autoclass:: radical.pilot.agent.scheduler.base.AgentSchedulingComponent
+   :members:
+.. autoclass:: radical.pilot.agent.scheduler.continuous.Continuous
+   :members:
+   :private-members:
 .. automodule:: radical.pilot.utils.component
    :members:
 .. automodule:: radical.pilot.utils.prof_utils
