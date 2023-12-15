@@ -113,7 +113,7 @@ class Continuous(AgentSchedulingComponent):
         to pick off where the last task placement succeeded.  This iterator is
         preserving that state.
 
-        Note that the first index is yielded twice, so that the respecitve
+        Note that the first index is yielded twice, so that the respective
         node can function as first and last node in an allocation.
         '''
 
@@ -130,7 +130,7 @@ class Continuous(AgentSchedulingComponent):
     #
     def unschedule_task(self, tasks):
         '''
-        This method is called when previously aquired resources are not needed
+        This method is called when previously acquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
         `schedule_task()`.
         '''
