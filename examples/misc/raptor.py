@@ -134,6 +134,8 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
 
+        report.info('done\n')
+
         # Launch a raptor master task, which will launch workers and self-submit
         # some additional tasks for illustration purposes.
 
