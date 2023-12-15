@@ -85,25 +85,37 @@ class Continuous(AgentSchedulingComponent):
         self._node_offset  = 0
 
 
+
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+        '''
+        Configure this scheduler instance
 
-        # * scattered:
-        #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a task.  It does, however,
-        #   also allow to scatter the allocation over discontinuous nodes if
-        #   this option is set.  This implementation is not optimized for the
-        #   scattered mode!  The default is 'False'.
-        #
+        * scattered:
+          This is the continuous scheduler, because it attempts to allocate
+          a *continuous* set of cores/nodes for a task.  It does, however,
+          also allow to scatter the allocation over discontinuous nodes if
+          this option is set.  This implementation is not optimized for the
+          scattered mode!  The default is 'False'.
+        '''
+
         self._scattered = self.session.rcfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
     #
     def _iterate_nodes(self):
-        # note that the first index is yielded twice, so that the respecitve
-        # node can function as first and last node in an allocation.
+        '''
+        The scheduler iterates through the node list for each task placement.
+        However, we want to avoid starting from node zero every time as tasks
+        have likely placed on that node previously - instead, we in general want
+        to pick off where the last task placement succeeded.  This iterator is
+        preserving that state.
+
+        Note that the first index is yielded twice, so that the respecitve
+        node can function as first and last node in an allocation.
+        '''
 
         iterator_count = 0
 
@@ -248,9 +260,16 @@ class Continuous(AgentSchedulingComponent):
     def schedule_task(self, task):
         '''
         Find an available set of slots, potentially across node boundaries (in
-        the MPI case).  By default, we only allow for partial allocations on the
-        first and last node - but all intermediate nodes MUST be completely used
-        (this is the 'CONTINUOUS' scheduler after all).
+        the MPI case).
+
+        A `slot` is here considered the amount of resources required by a single
+        MPI rank.  Those resources need to be available on a single node - but
+        slots can be distributed across multiple nodes.  Resources for non-MPI
+        tasks will always need to be placed on a single node.
+
+        By default, we only allow for partial allocations on the first and last
+        node - but all intermediate nodes MUST be completely used (this is the
+        'CONTINUOUS' scheduler after all).
 
         If the scheduler is configured with `scattered=True`, then that
         constraint is relaxed, and any set of slots (be it continuous across
@@ -260,9 +279,6 @@ class Continuous(AgentSchedulingComponent):
         of cores, gpus, lfs and mem required per process - otherwise the
         application processes would not be able to acquire the requested
         resources on the respective node.
-
-        Note that all resources for non-MPI tasks will always need to be placed
-        on a single node.
         '''
 
         self._log.debug_3('find_resources %s', task['uid'])
