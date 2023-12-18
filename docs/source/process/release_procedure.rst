@@ -14,21 +14,43 @@ Preconditions for release
 Preparing a regular Release
 ---------------------------
 
-1.  Pull ``devel``: ``git checkout devel; git pull``;
-2.  create branch from latest master: e.g. ``git checkout master; git pull; git
-    checkout -b release/0.1.2``;
-3.  update version: ``echo "0.1.2" > VERSION``;
-4.  make modifications to branch: usually by merging devel ``git merge devel``
-    (make sure to pull ``devel`` before);
-5.  update version dependencies to radical stack in setup.py;
-6.  update release notes: ``$EDITOR CHANGES.md``;
-7.  commit and push: ``git commit -a; git push`` (make sure there are no
-    unwanted files in the repo);
-8.  create `pull-request
-    <https://github.com/radical-cybertools/radical.pilot/pulls>`__ of release
-    branch **to master**;
-9.  wait on and/or nudge other developer to review and test;
-10. if not approved, ``GOTO Perform a Release``.
+.. code:: shell
+
+    git prep
+    git release
+    git bump minor
+
+`git prep` is a git script for the following steps:
+
+.. code:: shell
+
+    git co master              --> checkout master
+    git pa                     --> pull all branches form remote
+    git gone -a                --> remove all stale branches
+    git merge devel            --> merge the release candidate
+    git change >> CHANGES.md   --> draft changelog from new commits in master
+    gvim -o VERSION CHANGES.md --> set new version if needed, make CHANGELOG human readable
+
+After that that last manual intervention, the actual release itself with `git release` runs:
+
+.. code:: shell
+
+    git ci -am 'version bump'       --> commit VERSION and CHANGELOG changes
+    git tag \"v$(cat VERSION)\"     --> tag the release
+    git push                        --> push master to origin
+    git push --tags                 --> push the release tag
+    make upload                     --> push to pypi
+    git co devel                    --> checkout devel
+    git merge master                --> merge the release into devel
+    git bump minor                  --> bump minor version
+    git ci -am 'devel version bump' --> commit minor version bump on devel
+    git dync -a                     --> sync all branches to be in sync with devel
+
+That last step is hard to automate as it involves resolving conflicts in all branches. But it is also important as it saved us over the last years from branches running out of sync with devel. `git-dsync` is a custom script:
+
+.. code:: shell
+
+    Add here git-dsyn script.
 
 Preparing a hotfix release
 -------------------------
