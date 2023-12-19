@@ -3,6 +3,7 @@
 [![Build Status](https://github.com/radical-cybertools/radical.pilot/actions/workflows/ci.yml/badge.svg)](https://github.com/radical-cybertools/radical.pilot/actions/workflows/ci.yml)
 [![Documentation Status](https://readthedocs.org/projects/radicalpilot/badge/?version=stable)](http://radicalpilot.readthedocs.io/en/stable/?badge=stable)
 [![codecov](https://codecov.io/gh/radical-cybertools/radical.pilot/branch/devel/graph/badge.svg)](https://codecov.io/gh/radical-cybertools/radical.pilot)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8224/badge)](https://www.bestpractices.dev/projects/8224)
 
 RADICAL-Pilot (RP) executes heterogeneous tasks with maximum concurrency and at
 scale. RP can concurrently execute up to $10^5$ heterogeneous tasks, including
