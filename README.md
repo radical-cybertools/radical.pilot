@@ -108,6 +108,11 @@ RP documentation uses tutorials coded as Jupyter notebooks. `Sphinx` and
 the documentation also serves as a validation of your local development
 environment.
 
+## Provide Feedback
+
+Have a question, a feature request or you found a bug? Feel free to open a 
+[support ticket](https://github.com/radical-cybertools/radical.pilot/issues).
+
 ## Contributing
 
 We welcome everyone that wants to contribute to RP development. We are an open
