@@ -44,13 +44,22 @@ After that that last manual intervention, the actual release itself with `git re
     git merge master                --> merge the release into devel
     git bump minor                  --> bump minor version
     git ci -am 'devel version bump' --> commit minor version bump on devel
-    git dync -a                     --> sync all branches to be in sync with devel
+    git dsync -a                    --> sync all branches to be in sync with devel
 
-That last step is hard to automate as it involves resolving conflicts in all branches. But it is also important as it saved us over the last years from branches running out of sync with devel. `git-dsync` is a custom script:
+That last step is hard to automate as it involves resolving conflicts in all branches. But it is also important as it saved us over the last years from branches running out of sync with devel. `git-dsync` is a custom script which, essentially, does the following (pseudo-code)
 
 .. code:: shell
 
-    Add here git-dsyn script.
+    git checkout devel
+    git pull
+    for each branch in $(git branch -a)
+    do
+        git checkout branch
+        git pull
+        git merge devel
+        git push
+    done
+
 
 Preparing a hotfix release
 -------------------------
@@ -86,7 +95,7 @@ Post Release
 1. Merge master into devel branch: ``git checkout devel; git merge master; git
    push``;
 2. merge ``devel`` into all open development branches: ``for b in $branches; do
-   git checkout $b; git merge master; done``.
+   git checkout $b; git merge devel; done``.
 
 Testing twine and PyPI release
 ------------------------------
