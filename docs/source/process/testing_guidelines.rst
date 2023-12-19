@@ -4,7 +4,7 @@ Testing Guidelines
 ==================
 
 Unit and integration tests for any major change to the code. Unit tests for
-most of the new classes and methods are also mandatory. 
+most of the new classes and methods are also mandatory.
 
 Unit Tests
 ----------
@@ -22,9 +22,7 @@ Tests organization
 ------------------
 
 Under the ``/tests`` folder, for each module there is a folder named ``test_*``,
-where ``*`` is the component under test. There are folders for unit and
-integration tests. A unit test for a specific class contains in the filename the
-name of the tested class after ``test_``. For example:
+where ``*`` is the component under test.  A unit test for a specific class contains in the filename the name of the tested class after ``test_``. For example:
 
 .. code:: text
 
@@ -32,11 +30,7 @@ name of the tested class after ``test_``. For example:
    │
    ├── test_scheduler/
    │   └── __init__.py
-   |   |
-   |   └── test_unit/
-   |       └── __init__.py
-   |       |
-   |       └── test_base.py
+   |   └── test_base.py
 
 Each unit test has a single class. This class is named after the component it
 tests, for example ``TestContinuous`` for testing the continuous scheduler of
