@@ -112,6 +112,8 @@ environment.
 
 Have a question, a feature request or you found a bug? Feel free to open a 
 [support ticket](https://github.com/radical-cybertools/radical.pilot/issues).
+For vilnerabilities, please draft a private 
+[security advisory](https://github.com/radical-cybertools/radical.pilot/security/advisories) 
 
 ## Contributing
 
