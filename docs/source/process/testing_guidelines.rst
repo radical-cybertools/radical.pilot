@@ -3,6 +3,12 @@
 Testing Guidelines
 ==================
 
+Unit and integration tests for any major change to the code. Unit tests for
+most of the new classes and methods are also mandatory. 
+
+Unit Tests
+----------
+
 When coding unit tests, the following guidelines are in effect. This is based on
 Python's ``unittest`` module (`docs
 <https://docs.python.org/3/library/unittest.html>`__), information gathered by
