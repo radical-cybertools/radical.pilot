@@ -47,8 +47,9 @@ class TestLauncher(TestCase):
         cls._configs = ru.Config('radical.pilot.resource', name='*')
 
         for site in cls._configs:
-            for k,v in cls._configs[site].items():
-                v['agent_proxy_url'] = 'tcp://localhost:1024'
+            for resource in cls._configs[site]:
+                cls._configs[site][resource] = \
+                        rp.ResourceConfig(cls._configs[site][resource])
 
 
     # --------------------------------------------------------------------------
