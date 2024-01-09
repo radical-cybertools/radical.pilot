@@ -74,6 +74,7 @@ class TestLauncher(TestCase):
 
         resource                 = 'local.localhost'
         rcfg                     = self._configs.local.localhost
+        rcfg.verify()
 
         pilot = {'uid'         : 'pilot.0001',
                  'description' : {'cores'          : 0,
