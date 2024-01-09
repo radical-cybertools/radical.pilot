@@ -904,7 +904,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                          'gpu': td['ranks'] *
                                                 td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
-                                 publish=True, push=True)
+                                 publish=True, push=True, fwd=True)
 
                 else:
                     to_wait.append(task)
