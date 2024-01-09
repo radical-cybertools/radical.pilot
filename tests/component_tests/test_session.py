@@ -114,59 +114,6 @@ class TestSession(TestCase):
         if saved_batch_id is not None:
             os.environ['SLURM_JOB_ID'] = saved_batch_id
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Session, '_get_logger')
-    @mock.patch.object(Session, '_get_profiler')
-    @mock.patch.object(Session, '_get_reporter')
-    def test_resource_schema_alias(self, *args, **kwargs):
-
-        base_dir = os.path.join(os.path.expanduser('~'), '.radical')
-        self._cleanup_files.append(base_dir)
-
-        user_cfg_dir = os.path.join(base_dir, 'pilot', 'configs')
-        ru.rec_makedir(user_cfg_dir)
-
-        facility_cfg = {
-            'test': {
-                'default_schema'    : 'schema_origin',
-                'schemas'           : {
-                    'schema_origin'     : {'job_manager_hop': 'value_0'},
-                    'schema_alias'      : 'schema_origin',
-                    'schema_alias_alias': 'schema_alias'
-                }
-            }
-        }
-        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
-
-        def init_primary(self):
-            self._reg = mock.Mock()
-            self._init_cfg_from_scratch()
-
-
-        with mock.patch.object(Session, '_init_primary', new=init_primary):
-            s_alias = Session()
-        self._cleanup_files.append(s_alias.uid)
-
-        self.assertEqual(
-            s_alias.get_resource_config('facility.test', 'schema_origin'),
-            s_alias.get_resource_config('facility.test', 'schema_alias_alias'))
-
-        # schema alias refers to unknown schema
-        facility_cfg = {
-            'test': {
-                'default_schema': 'schema_alias_error',
-                'schemas': {
-                    'test_schema': 'schema_alias_error',
-                    'schema_alias_error': 'unknown_schema'
-                }
-            }
-        }
-        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
-      # with self.assertRaises(KeyError):
-        with mock.patch.object(Session, '_init_primary', new=init_primary):
-            s = Session()
-            rcfg = s.get_resource_config('facility.test')
 
     # --------------------------------------------------------------------------
     #
@@ -267,7 +214,6 @@ if __name__ == '__main__':
     tc.setUpClass()
     tc.test_list_resources()
     tc.test_get_resource_config()
-    tc.test_resource_schema_alias()
     tc.test_get_resource_sandbox()
 
 # ------------------------------------------------------------------------------

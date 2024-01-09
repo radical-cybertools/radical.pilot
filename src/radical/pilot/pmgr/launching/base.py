@@ -535,8 +535,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
-        rcfg.verify()
-
         pid = pilot["uid"]
         pilot['fts'] = list()  # tar for staging
         pilot['sds'] = list()  # direct staging
@@ -546,10 +544,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # Database connection parameters
         sid       = self._session.uid
         proxy_url = self._session.cfg.proxy_url
-
-        # some default values are determined at runtime
-        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
-                          (resource, self._rp_version)
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
@@ -574,30 +568,35 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         default_queue           = rcfg.default_queue
         forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
         resource_manager        = rcfg.resource_manager
-        pre_bootstrap_0         = rcfg.pre_bootstrap_0     or list()
-        pre_bootstrap_1         = rcfg.pre_bootstrap_1     or list()
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1
         python_interpreter      = rcfg.python_interpreter
         rp_version              = rcfg.rp_version
         virtenv_mode            = rcfg.virtenv_mode
-        virtenv                 = rcfg.virtenv             or default_virtenv
+        virtenv                 = rcfg.virtenv
         cores_per_node          = rcfg.cores_per_node
         gpus_per_node           = rcfg.gpus_per_node
         lfs_path_per_node       = rcfg.lfs_path_per_node
         lfs_size_per_node       = rcfg.lfs_size_per_node
         python_dist             = rcfg.python_dist
         task_tmp                = rcfg.task_tmp
-        task_pre_launch         = rcfg.task_pre_launch     or list()
-        task_post_launch        = rcfg.task_post_launch    or list()
-        task_pre_exec           = rcfg.task_pre_exec       or list()
-        task_post_exec          = rcfg.task_post_exec      or list()
-        mandatory_args          = rcfg.mandatory_args      or list()
-        system_architecture     = rcfg.system_architecture or dict()
-        services               += rcfg.services            or list()
+        task_pre_launch         = rcfg.task_pre_launch
+        task_post_launch        = rcfg.task_post_launch
+        task_pre_exec           = rcfg.task_pre_exec
+        task_post_exec          = rcfg.task_post_exec
+        mandatory_args          = rcfg.mandatory_args
+        system_architecture     = rcfg.system_architecture
+        services               += rcfg.services
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
         blocked_cores           = system_architecture.get('blocked_cores', [])
         blocked_gpus            = system_architecture.get('blocked_gpus',  [])
+
+        # some default values are determined at runtime
+        if not virtenv:
+            virtenv = '%%(resource_sandbox)s/ve.%s.%s' \
+                    % (resource, self._rp_version)
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -627,6 +626,11 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         pilot_sandbox    = pilot_sandbox   .path % expand
       # client_sandbox   = client_sandbox  # not expanded
 
+        # expand variables in virtenv string
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
+                             'session_sandbox' : session_sandbox,
+                             'resource_sandbox': resource_sandbox}
+
         if not job_name:
             job_name = pid
 
@@ -646,11 +650,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             self._log.exception('Error using agent config')
             raise
 
-
-        # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
-                             'session_sandbox' : session_sandbox,
-                             'resource_sandbox': resource_sandbox}
 
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:

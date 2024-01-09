@@ -34,6 +34,7 @@ MEM_PER_NODE           = 'mem_per_node'
 CORES_PER_NODE         = 'cores_per_node'
 GPUS_PER_NODE          = 'gpus_per_node'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
+SCATTERED              = 'scattered'
 
 FAKE_RESOURCES         = 'fake_resources'
 MANDATORY_ARGS         = 'mandatory_args'
@@ -132,6 +133,7 @@ class ResourceConfig(ru.TypedDict):
         CORES_PER_NODE         : int         ,
         GPUS_PER_NODE          : int         ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
+        SCATTERED              : bool        ,
 
         FAKE_RESOURCES         : bool        ,
         MANDATORY_ARGS         : [str]       ,
@@ -180,6 +182,7 @@ class ResourceConfig(ru.TypedDict):
         CORES_PER_NODE         : 0           ,
         GPUS_PER_NODE          : 0           ,
         SYSTEM_ARCHITECTURE    : dict()      ,
+        SCATTERED              : False       ,
 
         FAKE_RESOURCES         : False       ,
         MANDATORY_ARGS         : list()      ,

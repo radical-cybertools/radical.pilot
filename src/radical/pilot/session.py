@@ -384,15 +384,6 @@ class Session(rs.Session):
             for res, rcfg in rcfgs[site].items():
                 self._rcfgs[site][res] = ResourceConfig(rcfg)
 
-                # resolve schema aliases
-                for schema, tgt in rcfg.get('schemas', {}).items():
-                    alias = False
-                    while isinstance(tgt, str):
-                        alias = True
-                        tgt = rcfg['schemas'].get(tgt)
-                    if alias:
-                        rcfg['schemas'][schema] = tgt
-
 
         self._rcfg  = ru.Config()  # the local resource config, if known
 
