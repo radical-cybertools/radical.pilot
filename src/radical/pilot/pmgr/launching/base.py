@@ -560,7 +560,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         project          = pilot['description']['project']
         cleanup          = pilot['description']['cleanup']
         candidate_hosts  = pilot['description']['candidate_hosts']
-        services         = pilot['description']['services'] or list()
+        services         = pilot['description']['services']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
