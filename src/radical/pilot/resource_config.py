@@ -45,7 +45,6 @@ TASK_PRE_LAUNCH        = 'task_pre_launch'
 TASK_POST_LAUNCH       = 'task_post_launch'
 TASK_PRE_EXEC          = 'task_pre_exec'
 TASK_POST_EXEC         = 'task_post_exec'
-SERVICES               = 'services'
 
 RAPTOR                 = 'raptor'
 RAPTOR_HB_DELAY        = 'hb_delay'
@@ -143,7 +142,6 @@ class ResourceConfig(ru.TypedDict):
         TASK_POST_LAUNCH       : [str]       ,
         TASK_PRE_EXEC          : [str]       ,
         TASK_POST_EXEC         : [str]       ,
-        SERVICES               : [str]       ,
     }
 
     _defaults = {
@@ -192,7 +190,6 @@ class ResourceConfig(ru.TypedDict):
         TASK_POST_LAUNCH       : list()      ,
         TASK_PRE_EXEC          : list()      ,
         TASK_POST_EXEC         : list()      ,
-        SERVICES               : list()      ,
     }
 
 

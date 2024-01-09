@@ -535,6 +535,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
+        rcfg.verify()
+
         pid = pilot["uid"]
         pilot['fts'] = list()  # tar for staging
         pilot['sds'] = list()  # direct staging
@@ -586,7 +588,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         task_post_exec          = rcfg.task_post_exec
         mandatory_args          = rcfg.mandatory_args
         system_architecture     = rcfg.system_architecture
-        services               += rcfg.services
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
