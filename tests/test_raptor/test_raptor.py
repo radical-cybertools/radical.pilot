@@ -44,7 +44,9 @@ class TestWorker(TestCase):
                        'raptor.task.000000.cfg': {
                            'cores_per_rank': 8,
                            'gpus_per_rank' : 2
-                       }
+                       },
+                       'rcfg.raptor.hb_delay': 5
+
                    }
 
             super().__init__(from_dict=data)
