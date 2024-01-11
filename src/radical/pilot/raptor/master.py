@@ -59,7 +59,6 @@ class Master(rpu.AgentComponent):
             cfg: session config.  fallback: agent config
         '''
 
-        self._raptor_cfg = cfg or ru.Config()
         self._uid        = os.environ['RP_TASK_ID']
         self._pid        = os.environ['RP_PILOT_ID']
         self._sid        = os.environ['RP_SESSION_ID']
@@ -71,15 +70,17 @@ class Master(rpu.AgentComponent):
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
         self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
+        self._reg.dump(self._uid)
+
+        # get hb configs
+        self._hb_freq = self._reg['rcfg.raptor.hb_frequency']
+        self._hb_tout = self._reg['rcfg.raptor.hb_timeout']
 
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
         self._exec_tasks = list()      # keep track of executable tasks
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
-
-        self._hb_freq    = 500         # check worker heartbetas every n seconds
-        self._hb_timeout = 1000        # consider worker dead after 150 seconds
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
                                    _role=Session._DEFAULT)
@@ -90,6 +91,9 @@ class Master(rpu.AgentComponent):
                                     'reg_addr': self._reg_addr})
 
         super().__init__(ccfg, self._session)
+
+        self._log.debug('hb freq: %s', self._hb_freq)
+        self._log.debug('hb tout: %s', self._hb_tout)
 
         # we never run `self.start()` which is ok - but it means we miss out on
         # some of the component initialization.  Call it manually thus
@@ -400,7 +404,7 @@ class Master(rpu.AgentComponent):
             # the default worker needs it's own task description to derive the
             # amount of available resources
             self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
-            self._reg.dump('raptor_master')
+          # self._reg.dump('raptor_master')
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -564,7 +568,7 @@ class Master(rpu.AgentComponent):
             lost = set()
             for uid in self._workers:
                 for rank, hb in self._workers[uid]['heartbeats'].items():
-                    if hb < now - self._hb_timeout:
+                    if hb < now - self._hb_tout:
                         self._log.warn('lost rank %d on worker %s', rank, uid)
                         lost.add(uid)
 
