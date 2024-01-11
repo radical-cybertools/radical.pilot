@@ -18,9 +18,9 @@ import radical.saga.utils.pty_shell as rsup
 from . import constants as rpc
 from . import utils     as rpu
 
-from .messages               import HeartbeatMessage
-from .proxy                  import Proxy
-from .resource_description   import ResourceDescription, ENDPOINTS_DEFAULT
+from .messages        import HeartbeatMessage
+from .proxy           import Proxy
+from .resource_config import ResourceConfig, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -377,32 +377,14 @@ class Session(rs.Session):
                                                        cfg=self._cfg)
 
         rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
-        rcfgs_ext = {}
+        self._rcfgs = ru.Config()
 
         for site in rcfgs:
-            rcfgs_ext[site] = {}
+            self._rcfgs[site] = ru.Config()
             for res, rcfg in rcfgs[site].items():
-                rcfgs_ext[site][res] = {
-                    'default_schema': rcfg['default_schema'],
-                    'schemas'       : rcfg.get('schemas', {})
-                }
-                for schema in rcfg.get('schemas', {}):
-                    while isinstance(rcfg['schemas'][schema], str):
-                        tgt = rcfg['schemas'][schema]
-                        rcfg['schemas'][schema] = rcfg['schemas'][tgt]
-                for schema in rcfg.get('schemas', {}):
-                    rcfgs_ext[site][res][schema] = rcfgs[site][res].as_dict()
-                    ru.dict_merge(rcfgs_ext[site][res][schema],
-                                  rcfgs[site][res]['schemas'][schema])
-                    del rcfgs_ext[site][res][schema]['default_schema']
+                self._rcfgs[site][res] = ResourceConfig(rcfg)
 
-        for site in rcfgs_ext:
-            for res, rcfg in rcfgs_ext[site].items():
-                for schema in rcfg.get('schemas', {}):
-                    rd = ResourceDescription(from_dict=rcfg[schema])
-                    rd.verify()
 
-        self._rcfgs = ru.Config(from_dict=rcfgs_ext)
         self._rcfg  = ru.Config()  # the local resource config, if known
 
         # set essential config values for *this* specific session
@@ -1272,39 +1254,43 @@ class Session(rs.Session):
     def get_resource_config(self, resource, schema=None):
         """Returns a dictionary of the requested resource config."""
 
-        domain, host = resource.split('.', 1)
-        if domain not in self._rcfgs:
-            raise RuntimeError("Resource domain '%s' is unknown." % domain)
+        site, res = resource.split('.', 1)
+        if site not in self._rcfgs:
+            raise RuntimeError("Resource site '%s' is unknown." % site)
 
-        if host not in self._rcfgs[domain]:
-            raise RuntimeError("Resource host '%s' unknown." % host)
-
-        resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
+        if res not in self._rcfgs[site]:
+            raise RuntimeError("Resource label '%s' unknown." % res)
 
         if not schema:
-            schema = resource_cfg.get('default_schema')
+            schema = self._rcfgs[site][res]['default_schema']
 
-        if schema:
+        if not schema:
+            from_dict = self._rcfgs[site][res]
+            from_dict.label = resource
+            return ResourceConfig(from_dict=from_dict)
 
-            if schema not in resource_cfg['schemas']:
-                raise RuntimeError("schema %s unknown for resource %s"
-                                  % (schema, resource))
+        if schema not in self._rcfgs[site][res]['schemas']:
+            raise RuntimeError("schema %s unknown for resource %s"
+                              % (schema, resource))
 
-            for key in resource_cfg[schema]:
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
+        rcfg = ResourceConfig(from_dict=self._rcfgs[site][res])
+        scfg = rcfg['schemas'][schema]
 
-        if 'resource_manager' in resource_cfg:
+        ru.dict_merge(rcfg, scfg, ru.OVERWRITE)
+
+        if 'resource_manager' in rcfg:
             # import locally to avoid circular imports
             from .agent.resource_manager import ResourceManager
 
-            rm = ResourceManager.get_manager(resource_cfg['resource_manager'])
+            rm = ResourceManager.get_manager(rcfg['resource_manager'])
             if rm and rm.batch_started():
-                resource_cfg.update(ENDPOINTS_DEFAULT)
+                rcfg.update(ENDPOINTS_DEFAULT)
 
-        resource_cfg.label = resource
-        return resource_cfg
+        rcfg.label = resource
+
+        rcfg.verify()
+
+        return rcfg
 
 
 

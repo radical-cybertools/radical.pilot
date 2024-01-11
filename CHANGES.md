@@ -8,6 +8,13 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.46.0 Release                                                    2024-01-11
+
+  - pypi fix
+  - configurabe raptor hb timeouts
+
+
+--------------------------------------------------------------------------------
 ### 1.43.0 Release                                                    2024-01-10
 
   - add bragg prediction example
