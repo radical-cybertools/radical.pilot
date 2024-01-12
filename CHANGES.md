@@ -8,6 +8,40 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.46.0 Release                                                    2024-01-11
+
+  - pypi fix
+  - configurabe raptor hb timeouts
+
+
+--------------------------------------------------------------------------------
+### 1.43.0 Release                                                    2024-01-10
+
+  - add bragg prediction example
+  - add initial agent scheduler documentation
+  - add JSRUN_ERF setup for Summit's config
+  - add mechanism to determine batch/non-batch RP starting
+  - collect task PIDs through launch- and exec-scripts
+  - ensure mpi4py for raptor example
+  - fix ERF creation for JSRUN LM (and updated tests accordingly)
+  - fix Popen test
+  - fix `Task._update` method (`description` attribute)
+  - fix `_get_exec` in Popen (based on provided comments)
+  - fix parsing PIDs procedure (based on provided comments)
+  - fix profiling in Popen (based on provided comments)
+  - fix resource manager handling in `get_resource_config`
+  - fix tasks handling in `prof_utils`
+  - fix test for launch-/exec-scripts
+  - follow-up on comments
+  - forward after scheduling
+  - keep `pids` dict empty if there is no ranks provided
+  - moved collecting EXEC_PID into exec-script
+  - preserve process id for tasks with `executable` mode
+  - switch raptor to use the agent ve
+  - update `metadata` within task description
+
+
+--------------------------------------------------------------------------------
 ### 1.42.0 Release                                                    2023-12-04
   
   - AgentComponent forwards all state notifications
