@@ -17,7 +17,7 @@ from . import constants as rpc
 
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
-from .resource_description import NodeDescription
+from .resource_config      import NodeDescription
 
 
 # ------------------------------------------------------------------------------
@@ -347,12 +347,12 @@ class Pilot(object):
         if not node_list:
             return list()
 
-        print('=== node list')
+        print('=== get node info from node list')
         import pprint
         pprint.pprint(node_list)
 
         return [NodeDescription(node_resource=node_resource)
-                        for node_resource in node_list]
+                         for node_resource in node_list]
 
 
     # --------------------------------------------------------------------------
