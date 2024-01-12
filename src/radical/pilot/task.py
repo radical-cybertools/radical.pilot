@@ -179,7 +179,7 @@ class Task(object):
                 setattr(self, "_%s" % key, val)
 
         # RP's internal processes may update metadata
-        if task_dict['description'].get('metadata'):
+        if task_dict.get('description', {}).get('metadata'):
             self._descr['metadata'] = task_dict['description']['metadata']
 
         # callbacks are not invoked here anymore, but are bulked in the tmgr
