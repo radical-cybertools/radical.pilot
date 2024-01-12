@@ -147,4 +147,176 @@ class ResourceDescription(ru.TypedDict):
     }
 
 
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, node_resource=None, from_dict=None):
+
+        if not from_dict:
+            from_dict = dict()
+
+        nr = node_resource
+        if nr:
+            nd = nr.get('description', {})
+
+            import pprint
+            print('- NR ----------------')
+            pprint.pprint(nr)
+            print('=====================')
+
+            # FIXME: no description in resource
+            if not nd:
+                nd = {self.N_CORES   : len(nr[NodeResources.CORE_MAP]),
+                      self.N_GPUS    : len(nr[NodeResources.GPU_MAP]),
+                      self.LSF       : nr[NodeResources.LSF_FREE],
+                      self.MEM       : nr[NodeResources.MEM_FREE],
+                      self.NODE_IDX  : None,
+                      self.NODE_NAME : None,
+                  }
+
+
+
+            import pprint
+            print('- ND ----------------')
+            pprint.pprint(nd)
+            print('=====================')
+
+            super().__init__(from_dict=from_dict)
+
+        self._verify
+
+
 # ------------------------------------------------------------------------------
+#
+class NodeDescription(ru.TypedDict):
+
+    N_CORES   = 'n_cores'
+    N_GPUS    = 'n_gpus'
+    LSF       = 'lsf'
+    MEM       = 'mem'
+    NODE_IDX  = 'node_idx'
+    NODE_NAME = 'node_name'
+
+    _schema = {
+        N_CORES   : int,
+        N_GPUS    : int,
+        LSF       : int,
+        MEM       : int,
+        NODE_IDX  : str,
+        NODE_NAME : str,
+    }
+
+    _defaults = {
+        N_CORES   : 0,
+        N_GPUS    : 0,
+        LSF       : 0,
+        MEM       : 0,
+        NODE_IDX  : None,
+        NODE_NAME : None,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, node_resource=None, from_dict=None):
+
+        if not from_dict:
+            from_dict = dict()
+
+        nr = node_resource
+        if nr:
+            nd = nr.get('description', {})
+
+            import pprint
+            print('- NR ----------------')
+            pprint.pprint(nr)
+            print('=====================')
+
+            # FIXME: no description in resource
+            if not nd:
+                nd = {self.N_CORES   : len(nr[NodeResources.CORE_MAP]),
+                      self.N_GPUS    : len(nr[NodeResources.GPU_MAP]),
+                      self.LSF       : nr[NodeResources.LSF_FREE],
+                      self.MEM       : nr[NodeResources.MEM_FREE],
+                      self.NODE_IDX  : None,
+                      self.NODE_NAME : None,
+                  }
+
+
+
+            import pprint
+            print('- ND ----------------')
+            pprint.pprint(nd)
+            print('=====================')
+
+            super().__init__(from_dict=from_dict)
+
+        self._verify
+
+
+# ------------------------------------------------------------------------------
+#
+class NodeResources(ru.TypedDict):
+
+    DESCRIPTION = 'description'
+    CORE_MAP    = 'core_map'
+    GPU_MAP     = 'gpu_map'
+    LSF_FREE    = 'lsf_free'
+    MEM_FREE    = 'mem_free'
+
+    _schema = {
+        DESCRIPTION: NodeDescription,
+        CORE_MAP   : [bool],
+        GPU_MAP    : [bool],
+        LSF_FREE   : int,
+        MEM_FREE   : int,
+    }
+
+    _defaults = {
+        DESCRIPTION: NodeDescription(),
+        CORE_MAP   : [False],
+        GPU_MAP    : [],
+        LSF_FREE   : 0,
+        MEM_FREE   : 0,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, description=None, from_dict=None):
+
+        if not from_dict:
+            from_dict = dict()
+
+        if description:
+            from_dict['description'] = description
+
+        if not from_dict.get('description'):
+            raise ValueError('NodeResources need NodeDescription to initialize')
+
+        print('init 1', from_dict)
+
+        super().__init__(from_dict=from_dict)
+
+        print('init 2', self.as_dict())
+
+        self._verify
+
+        print('init 3', self.as_dict())
+
+        if not self.core_map:
+            self.core_map = [False] * self.description.n_cores
+
+        if not self.gpu_map:
+            self.gpu_map = [False] * self.description.n_gpus
+
+        if not self.lsf_free:
+            self.lsf_free = self.description.lsf
+
+        if not self.lsf_mem:
+            self.lsf_mem = self.description.mem
+
+        print('init 4', self.as_dict())
+
+
+# ------------------------------------------------------------------------------
+

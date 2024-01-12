@@ -94,6 +94,7 @@ class Task(object):
         self._task_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
+        self._slots            = None
 
         # ensure uid is unique
         if self._uid:
@@ -171,7 +172,7 @@ class Task(object):
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
                     'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
-                    'exception', 'exception_detail']:
+                    'exception', 'exception_detail', 'slots']:
 
             val = task_dict.get(key, None)
             if val is not None:
@@ -209,7 +210,8 @@ class Task(object):
             'pilot_sandbox':    self.pilot_sandbox,
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
-            'description':      self.description   # this is a deep copy
+            'slots':            self.slots,
+            'description':      self.description,   # this is a deep copy
         }
 
         return ret
@@ -433,6 +435,14 @@ class Task(object):
     def description(self):
         """dict: The description the task was started with, as a dictionary."""
         return copy.deepcopy(self._descr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def slots(self):
+        '''dict: The slots assigned for the task's execution'''
+        return self._slots
 
 
     # --------------------------------------------------------------------------

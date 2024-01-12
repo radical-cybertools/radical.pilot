@@ -146,7 +146,7 @@ class Hombre(AgentSchedulingComponent):
                 slot = next_slot(slot)
 
             node  = self.nodes[nidx]
-            nuid  = node['node_id']
+            nidx  = node['node_idx']
             nname = node['node_name']
             ok    = True
 
@@ -154,7 +154,7 @@ class Hombre(AgentSchedulingComponent):
                 if node['cblocks']:
                     cblock = node['cblocks'].pop(0)
                     slot['ranks'].append({'node_name': nname,
-                                          'node_id'  : nuid,
+                                          'node_idx' : nidx,
                                           'core_map' : [cblock],
                                           'gpu_map'  : []})
                     slot['ncblocks'] += 1
@@ -169,7 +169,7 @@ class Hombre(AgentSchedulingComponent):
                     # enabled)
                     gblock = node['gblocks'].pop(0)
                     slot['ranks'].append({'node_name': nname,
-                                          'node_id'  : nuid,
+                                          'node_idx' : nidx,
                                           'core_map' : [[0]],
                                           'gpu_map'  : [gblock]})
                     slot['ngblocks'] += 1

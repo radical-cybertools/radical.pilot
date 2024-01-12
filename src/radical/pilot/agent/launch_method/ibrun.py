@@ -94,13 +94,13 @@ class IBRun(LaunchMethod):
         # NOTE: in case of performance issue: reconsider this parameter
         launch_env = 'IBRUN_TASKS_PER_NODE=%d' % tasks_per_node
 
-        rank_node_ids = set([n['node_id'] for n in slots['ranks']])
-        tasks_offset  = 0
-        ibrun_offset  = 0
+        rank_node_idxs = set([n['node_ids'] for n in slots['ranks']])
+        tasks_offset   = 0
+        ibrun_offset   = 0
 
         for node in self._rm_info.node_list:
 
-            if node['node_id'] not in rank_node_ids:
+            if node['node_idx'] not in rank_node_idxs:
                 tasks_offset += tasks_per_node
                 continue
 
@@ -108,7 +108,7 @@ class IBRun(LaunchMethod):
             # but threads are ignored for offset
             core_id_min = min([rank['core_map'][0][0]
                                for rank in slots['ranks']
-                               if rank['node_id'] == node['node_id']])
+                               if rank['node_idx'] == node['node_idx']])
             # offset into processor (cpus) hostlist
             ibrun_offset = tasks_offset + (core_id_min // n_threads_per_rank)
             break

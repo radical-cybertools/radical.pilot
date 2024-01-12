@@ -189,7 +189,7 @@ class ResourceManager(object):
             node_list = [
                 {
                     'node_name': str                        # node name
-                    'node_id'  : str                        # node uid
+                    'node_idx' : int                        # node index
                     'cores'    : [rpc.FREE, rpc.FREE, ...]  # cores per node
                     'gpus'     : [rpc.FREE, rpc.FREE, ...]  # gpus per node
                     'lfs'      : int                        # lfs per node (MB)
@@ -535,10 +535,10 @@ class ResourceManager(object):
         as required for rm_info.
         '''
 
-        # keep nodes to be indexed (node_id) starting at 1
+        # keep nodes to be indexed (node_idx)
         # (required for jsrun ERF spec files and expanded to all other RMs)
         node_list = [{'node_name': node[0],
-                      'node_id'  : str(idx + 1),
+                      'node_idx' : idx,
                       'cores'    : [rpc.FREE] * node[1],
                       'gpus'     : [rpc.FREE] * rm_info.gpus_per_node,
                       'lfs'      : rm_info.lfs_per_node,

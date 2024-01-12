@@ -35,7 +35,7 @@ from .base import AgentSchedulingComponent
 # Expected DS of the nodelist
 # self.nodes = [{
 #                   'node_name': 'aa',
-#                   'node_id'  : 'node.0000',
+#                   'node_idx' : 0,
 #                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'     : [0, 1, 2],
 #                   'lfs'      : 128,
@@ -43,7 +43,7 @@ from .base import AgentSchedulingComponent
 #               },
 #               {
 #                   'node_name': 'bb',
-#                   'node_id'  : 'node.0001',
+#                   'node_idx' : 1,
 #                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'     : [0, 1, 2],
 #                   'lfs'      : 128,
@@ -139,7 +139,7 @@ class Continuous(AgentSchedulingComponent):
 
             {
                 'node_name': 'node_name',
-                'node_id'  : '1',
+                'node_idx' : 1,
                 'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
                 'gpu_map'  : [[1, 3], [1, 3]],
                 'lfs'      : 1234,
@@ -198,7 +198,7 @@ class Continuous(AgentSchedulingComponent):
 
         # we should be able to host the slots - dig out the precise resources
         slots     = list()
-        node_id   = node['node_id']
+        node_idx  = node['node_idx']
         node_name = node['node_name']
 
         core_idx  = 0
@@ -230,7 +230,7 @@ class Continuous(AgentSchedulingComponent):
             gpu_map  = [gpus] * len(core_map)
 
             slots.append({'node_name': node_name,
-                          'node_id'  : node_id,
+                          'node_idx' : node_idx,
                           'core_map' : core_map,
                           'gpu_map'  : gpu_map,
                           'lfs'      : lfs_per_slot,
@@ -379,10 +379,10 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-            node_id   = node['node_id']
+            node_idx  = node['node_idx']
             node_name = node['node_name']
 
-            self._log.debug_3('next %s : %s', node_id, node_name)
+            self._log.debug_3('next %d : %s', node_idx, node_name)
             self._log.debug_3('req1: %s = %s + %s', req_slots, rem_slots,
                                                   len(alc_slots))
 
@@ -394,13 +394,13 @@ class Continuous(AgentSchedulingComponent):
             # used for this node - else continue to the next node.
             if colo_tag is not None:
                 if colo_tag in self._colo_history:
-                    if node_id not in self._colo_history[colo_tag]:
+                    if node_idx not in self._colo_history[colo_tag]:
                         continue
                 # for a new tag check that nodes were not used for previous tags
                 else:
                     # `exclusive` -> not to share nodes between different tags
                     is_exclusive = td['tags'].get('exclusive', False)
-                    if is_exclusive and node_id in self._tagged_nodes:
+                    if is_exclusive and node_idx in self._tagged_nodes:
                         if len(self.nodes) > len(self._tagged_nodes):
                             continue
                         self._log.warn('not enough nodes for exclusive tags, ' +
@@ -412,8 +412,8 @@ class Continuous(AgentSchedulingComponent):
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
                 _skip_node = True
-                for plabel, p_node_ids in self._partitions.items():
-                    if node_id in p_node_ids:
+                for plabel, p_node_idxs in self._partitions.items():
+                    if node_idx in p_node_idxs:
                         if task_partition_id in [None, plabel]:
                             node_partition_id = plabel
                             _skip_node = False
@@ -498,7 +498,7 @@ class Continuous(AgentSchedulingComponent):
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
         if colo_tag is not None and colo_tag != partition:
-            self._colo_history[colo_tag] = [node['node_id']
+            self._colo_history[colo_tag] = [node['node_idx']
                                             for node in slots['ranks']]
             self._tagged_nodes.update(self._colo_history[colo_tag])
 

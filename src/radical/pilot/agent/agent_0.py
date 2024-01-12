@@ -478,7 +478,7 @@ class Agent_0(rpu.AgentComponent):
                         'arguments'     : [bs_name % self._pwd] + bs_args
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
-                                            'node_id'  : node['node_id'],
+                                            'node_idx' : node['node_idx'],
                                             'core_map' : [node_cores],
                                             'gpu_map'  : [],
                                             'lfs'      : 0,

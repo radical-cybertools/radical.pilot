@@ -104,7 +104,7 @@ class JSRUN(LaunchMethod):
             format:
 
             {"ranks"         : [{"node_name" : "a",
-                                 "node_id"   : "1",
+                                 "node_idx"  : 1,
                                  "core_map"  : [[0, 1]],
                                  "gpu_map"   : [[0]],
                                  "lfs"       : 0,
@@ -134,7 +134,7 @@ class JSRUN(LaunchMethod):
                 core_id_sets.append('{%s}' % ','.join(core_ids))
 
             rs_str += 'rank: %s : {'    % ','.join(rank_ids)
-            rs_str += ' host: %s;'      % str(slot_ranks['node_id'])
+            rs_str += ' host: %d;'      % slot_ranks['node_idx']
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
             if slot_ranks['gpu_map'] and slot_ranks['gpu_map'][0]:
                 # check the first element, since it is the same for RS ranks

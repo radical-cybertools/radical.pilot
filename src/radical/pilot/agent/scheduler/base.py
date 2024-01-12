@@ -134,9 +134,9 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #       'cores_per_rank': 2,
 #       'gpus_per_rank  : 2.,
 #       'slots' :
-#       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
-#         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
-#                          [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
+#       {               # [[node,   node_idx,   [cpu map],        [gpu map]]]
+#         'ranks'       : [[node_1, node_idx_1, [[0, 2], [4, 6]], [[0]    ]],
+#                          [node_2, node_idx_2, [[1, 3], [5, 7]], [[0]    ]]],
 #       }
 #     }
 #
@@ -190,7 +190,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     #
     #   self.nodes = [
     #     { 'node_name' : 'name-of-node',
-    #       'node_id'   : 'uid-of-node',
+    #       'node_idx,  : 'idx-of-node',
     #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
     #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
@@ -222,7 +222,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
+        self._partitions = self._rm.get_partitions()  # {plabel : [node_idxs]}
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -438,12 +438,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_id, cores, gpus in slots['ranks']:
+        # for node_name, node_idx, cores, gpus in slots['ranks']:
         for rank in slots['ranks']:
 
             # Find the entry in the slots list
 
-            # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
+            # TODO: [Optimization] Assuming 'node_idx' is the ID of the node, it
             #       seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
@@ -453,7 +453,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['node_id'] == rank['node_id']:
+                if node['node_idx'] == rank['node_idx']:
                     node_found = True
                     break
 
@@ -917,7 +917,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 task['target_state']     = 'FAILED'
                 task['$all']             = True
 
-                self._log.exception('scheduling failed for %s', task['uid'])
+                import pprint
+                self._log.exception('scheduling failed for %s\n%s', task['uid'],
+                                    pprint.pformat(task))
 
                 self.advance(task, rps.FAILED, publish=True, push=False)
 

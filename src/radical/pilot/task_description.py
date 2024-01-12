@@ -567,6 +567,8 @@ class TaskDescription(ru.TypedDict):
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
+
+      # SLOTS           : SlotDict    ,
     }
 
     _defaults = {
