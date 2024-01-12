@@ -194,4 +194,96 @@ class ResourceConfig(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
+#
+class NodeDescription(ru.TypedDict):
+
+    N_CORES   = 'n_cores'
+    N_GPUS    = 'n_gpus'
+    LSF       = 'lsf'
+    MEM       = 'mem'
+    NODE_IDX  = 'node_idx'
+    NODE_NAME = 'node_name'
+
+    _schema = {
+        N_CORES   : int,
+        N_GPUS    : int,
+        LSF       : int,
+        MEM       : int,
+        NODE_IDX  : str,
+        NODE_NAME : str,
+    }
+
+    _defaults = {
+        N_CORES   : 0,
+        N_GPUS    : 0,
+        LSF       : 0,
+        MEM       : 0,
+        NODE_IDX  : None,
+        NODE_NAME : None,
+    }
+
+
+# ------------------------------------------------------------------------------
+#
+class NodeResources(ru.TypedDict):
+
+    CORE_MAP    = 'core_map'
+    GPU_MAP     = 'gpu_map'
+    LSF_FREE    = 'lsf_free'
+    MEM_FREE    = 'mem_free'
+    NODE_IDX    = 'node_idx'
+    NODE_NAME   = 'node_name'
+
+    _schema = {
+        CORE_MAP   : [bool],
+        GPU_MAP    : [bool],
+        LSF_FREE   : int,
+        MEM_FREE   : int,
+        NODE_IDX   : str,
+        NODE_NAME  : str,
+    }
+
+    _defaults = {
+        CORE_MAP   : [False],
+        GPU_MAP    : [],
+        LSF_FREE   : 0,
+        MEM_FREE   : 0,
+        NODE_IDX   : '',
+        NODE_NAME  : '',
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        if isinstance(from_dict, NodeDescription):
+
+            nd        = from_dict
+            from_dict = dict()
+
+            # N_CORES   = 'n_cores'
+            # N_GPUS    = 'n_gpus'
+            # LSF       = 'lsf'
+            # MEM       = 'mem'
+            # NODE_IDX  = 'node_idx'
+            # NODE_NAME = 'node_name'
+
+            from_dict[self.CORE_MAP ] = [False] * nd.n_cores
+            from_dict[self.GPU_MAP  ] = [False] * nd.n_gpus
+            from_dict[self.LSF      ] = nd.lsf
+            from_dict[self.MEM      ] = nd.mem
+            from_dict[self.NODE_IDX ] = nd.node_idx
+            from_dict[self.NODE_NAME] = nd.node_name
+
+        super().__init__(from_dict=from_dict)
+
+        print('init 1', self.as_dict())
+
+        self._verify
+
+        print('init 2', self.as_dict())
+
+
+# ------------------------------------------------------------------------------
 
