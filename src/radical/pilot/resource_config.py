@@ -2,7 +2,12 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import copy
+
+from typing import List
+
 import radical.utils as ru
+
 
 LABEL                  = 'label'
 DESCRIPTION            = 'description'
@@ -199,7 +204,7 @@ class NodeDescription(ru.TypedDict):
 
     N_CORES   = 'n_cores'
     N_GPUS    = 'n_gpus'
-    LSF       = 'lsf'
+    LFS       = 'lfs'
     MEM       = 'mem'
     NODE_IDX  = 'node_idx'
     NODE_NAME = 'node_name'
@@ -207,20 +212,40 @@ class NodeDescription(ru.TypedDict):
     _schema = {
         N_CORES   : int,
         N_GPUS    : int,
-        LSF       : int,
+        LFS       : int,
         MEM       : int,
-        NODE_IDX  : str,
+        NODE_IDX  : int,
         NODE_NAME : str,
     }
 
     _defaults = {
         N_CORES   : 0,
         N_GPUS    : 0,
-        LSF       : 0,
+        LFS       : 0,
         MEM       : 0,
-        NODE_IDX  : None,
+        NODE_IDX  : 0,
         NODE_NAME : None,
     }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        if isinstance(from_dict, NodeResources):
+
+            nr        = copy.deepcopy(from_dict)
+            from_dict = dict()
+
+            from_dict[self.N_CORES  ] = len(nr.cores)
+            from_dict[self.N_GPUS   ] = len(nr.gpus)
+            from_dict[self.LFS      ] = nr.lfs
+            from_dict[self.MEM      ] = nr.mem
+            from_dict[self.NODE_IDX ] = nr.node_idx
+            from_dict[self.NODE_NAME] = nr.node_name
+
+        super().__init__(from_dict=from_dict)
+        self._verify
 
 
 # ------------------------------------------------------------------------------
@@ -229,60 +254,101 @@ class NodeResources(ru.TypedDict):
 
     CORE_MAP    = 'core_map'
     GPU_MAP     = 'gpu_map'
-    LSF_FREE    = 'lsf_free'
+    LFS_FREE    = 'lfs_free'
     MEM_FREE    = 'mem_free'
     NODE_IDX    = 'node_idx'
     NODE_NAME   = 'node_name'
 
     _schema = {
-        CORE_MAP   : [bool],
-        GPU_MAP    : [bool],
-        LSF_FREE   : int,
+        CORE_MAP   : [int],
+        GPU_MAP    : [int],
+        LFS_FREE   : int,
         MEM_FREE   : int,
-        NODE_IDX   : str,
+        NODE_IDX   : int,
         NODE_NAME  : str,
     }
 
     _defaults = {
-        CORE_MAP   : [False],
+        CORE_MAP   : [],
         GPU_MAP    : [],
-        LSF_FREE   : 0,
+        LFS_FREE   : 0,
         MEM_FREE   : 0,
-        NODE_IDX   : '',
+        NODE_IDX   : 0,
+        NODE_NAME  : '',
+    }
+
+
+# ------------------------------------------------------------------------------
+#
+class RankSlot(ru.TypedDict):
+
+    CORE_MAP    = 'core_map'
+    GPU_MAP     = 'gpu_map'
+    LFS         = 'lfs'
+    MEM         = 'mem'
+    NODE_IDX    = 'node_idx'
+    NODE_NAME   = 'node_name'
+
+    _schema = {
+        CORE_MAP   : [int],
+        GPU_MAP    : [int],
+        LFS        : int,
+        MEM        : int,
+        NODE_IDX   : int,
+        NODE_NAME  : str,
+    }
+
+    _defaults = {
+        CORE_MAP   : [],
+        GPU_MAP    : [],
+        LFS        : 0,
+        MEM        : 0,
+        NODE_IDX   : 0,
         NODE_NAME  : '',
     }
 
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, from_dict=None):
+    @classmethod
+    def from_node(cls, node: NodeDescription,
+                  core_ids: List[int] = list(),
+                  gpu_ids : List[int] = list(),
+                  lfs     : int       = 0,
+                  mem     : int       = 0):
 
-        if isinstance(from_dict, NodeDescription):
+        if core_ids: assert max(core_ids) <  node.n_cores
+        if gpu_ids : assert max(gpu_ids)  <  node.n_gpus
+        if lfs     : assert lfs           <= node.lfs
+        if mem     : assert mem           <= node.mem
 
-            nd        = from_dict
-            from_dict = dict()
+        return cls({cls.CORE_MAP : core_ids,
+                    cls.GPU_MAP  : gpu_ids,
+                    cls.LFS      : lfs,
+                    cls.MEM      : mem,
+                    cls.NODE_IDX : node.node_idx,
+                    cls.NODE_NAME: node.node_name})
 
-            # N_CORES   = 'n_cores'
-            # N_GPUS    = 'n_gpus'
-            # LSF       = 'lsf'
-            # MEM       = 'mem'
-            # NODE_IDX  = 'node_idx'
-            # NODE_NAME = 'node_name'
 
-            from_dict[self.CORE_MAP ] = [False] * nd.n_cores
-            from_dict[self.GPU_MAP  ] = [False] * nd.n_gpus
-            from_dict[self.LSF      ] = nd.lsf
-            from_dict[self.MEM      ] = nd.mem
-            from_dict[self.NODE_IDX ] = nd.node_idx
-            from_dict[self.NODE_NAME] = nd.node_name
+# ------------------------------------------------------------------------------
+#
+class Slots(ru.TypedDict):
 
-        super().__init__(from_dict=from_dict)
+    PARTITION_ID = 'partition_id'
+    RANKS        = 'ranks'
+    TEST         = 'test'
 
-        print('init 1', self.as_dict())
+    _schema = {
+        PARTITION_ID: int,
+        RANKS       : [RankSlot],
+        TEST        : RankSlot,
+    }
 
-        self._verify
-
-        print('init 2', self.as_dict())
+    _defaults = {
+        PARTITION_ID: 0,
+        RANKS       : list(),
+        TEST        : None,
+    }
 
 
 # ------------------------------------------------------------------------------

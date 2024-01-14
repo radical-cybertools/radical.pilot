@@ -226,7 +226,7 @@ class PRTE(LaunchMethod):
             _dvm_ready = mt.Event()
             _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
-            dvm_list[str(_dvm_id)] = {
+            dvm_list[_dvm_id] = {
                 'nodes'  : [node['node_idx'] for node in node_list],
                 'dvm_uri': _dvm_uri}
 
@@ -241,7 +241,7 @@ class PRTE(LaunchMethod):
             except: pass
 
             # re-start DVM
-            dvm_list[str(_dvm_id)]['dvm_uri'] = \
+            dvm_list[_dvm_id]['dvm_uri'] = \
                 _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
             # FIXME: with the current approach there is only one attempt to
@@ -263,7 +263,7 @@ class PRTE(LaunchMethod):
         partitions = dict()
 
         for k, v in self._details['dvm_list'].items():
-            partitions[str(k)] = v['nodes']
+            partitions[k] = v['nodes']
 
         return partitions
 
@@ -282,18 +282,18 @@ class PRTE(LaunchMethod):
         for p_id, p_data in self._details.get('dvm_list', {}).items():
             dvm_uri = p_data['dvm_uri']
             try:
-                self._log.info('terminating prte-%s (%s)', p_id, dvm_uri)
+                self._log.info('terminating prte-%d (%s)', p_id, dvm_uri)
                 _, err, _ = ru.sh_callout('%s --dvm-uri "%s"' % (cmd, dvm_uri))
                 self._log.debug('termination state: %s', err.strip('\n') or '-')
                 self._prof.prof(event='dvm_stop', uid=self._lm_cfg['pid'],
-                                msg='dvm_id=%s' % p_id)
+                                msg='dvm_id=%d' % p_id)
 
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                self._log.debug('prte-%s termination failed (%s)', p_id, dvm_uri)
+                self._log.debug('prte-%s termination failed (%d)', p_id, dvm_uri)
                 self._prof.prof(event='dvm_fail', uid=self._lm_cfg['pid'],
-                                msg='dvm_id=%s | error: %s' % (p_id, e))
+                                msg='dvm_id=%s | error: %d' % (p_id, e))
 
     # --------------------------------------------------------------------------
     #
@@ -358,7 +358,7 @@ class PRTE(LaunchMethod):
 
         dvm_list  = self._details['dvm_list']
         # `partition_id` should be set in a scheduler
-        dvm_id    = slots.get('partition_id') or list(dvm_list.keys())[0]
+        dvm_id    = slots.get('partition_id', 0)
         dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
         flags  = '--np %d '                                   % n_procs

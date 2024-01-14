@@ -13,6 +13,7 @@ from . import constants as rpc
 
 from .staging_directives import expand_description
 from .task_description   import TaskDescription
+from .resource_config    import Slots
 
 
 _uids = list()
@@ -178,15 +179,9 @@ class Task(object):
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # RP's internal processes may update metadata
-        if 'description' not in task_dict:
-            # this should not happen!
-            import pprint
-            self._log.debug('=== invalid task dict: %s',
-                                 pprint.pformat(task_dict))
-
-        if task_dict.get('description', {}).get('metadata'):
-            self._descr['metadata'] = task_dict['description']['metadata']
+        metadata = task_dict.get('description', {}).get('metadata')
+        if metadata:
+            self._descr['metadata'] = metadata
 
         # callbacks are not invoked here, but are bulked in the tmgr
 
@@ -448,6 +443,8 @@ class Task(object):
     @property
     def slots(self):
         '''dict: The slots assigned for the task's execution'''
+        if isinstance(self._slots, dict):
+            self._slots = Slots(self._slots)
         return self._slots
 
 

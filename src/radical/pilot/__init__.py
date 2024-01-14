@@ -31,6 +31,9 @@ from .task_description          import TASK_EXEC, TASK_EVAL, TASK_PROC, TASK_SHE
 from .task_description          import RAPTOR_MASTER, RAPTOR_WORKER
 from .task_description          import AGENT_SERVICE
 from .resource_config           import ResourceConfig
+from .resource_config           import NodeDescription
+from .resource_config           import NodeResources
+from .resource_config           import Slots, RankSlot
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot

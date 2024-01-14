@@ -375,17 +375,17 @@ class Continuous(AgentSchedulingComponent):
         if colo_tag is not None:
             colo_tag = str(colo_tag)
 
-        # in case of PRTE LM: key `partition` from task description attribute
-        #                     `tags` represents a DVM ID
-        partition = td.get('tags', {}).get('partition')
-        if self._partitions and partition is not None:
-            partition = str(partition)
-            if partition not in self._partitions:
-                raise ValueError('partition id (%s) out of range' % partition)
+        # in case of PRTE LM: the `slots` attribute may have a partition ID set
+        partition_id = td.get('slots', {}).get('partition_id', 0)
+        if self._partitions:
+            if partition_id not in self._partitions:
+                raise ValueError('partition id (%d) out of range'
+                                 % partition_id)
+
             # partition id becomes a part of a co-locate tag
-            colo_tag = partition + ('' if not colo_tag else '_%s' % colo_tag)
+            colo_tag = str(partition_id) + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
-                self._colo_history[colo_tag] = self._partitions[partition]
+                self._colo_history[colo_tag] = self._partitions[partition_id]
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
@@ -513,7 +513,7 @@ class Continuous(AgentSchedulingComponent):
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
-        if colo_tag is not None and colo_tag != partition:
+        if colo_tag is not None and colo_tag != str(partition_id):
             self._colo_history[colo_tag] = [node['node_idx']
                                             for node in slots['ranks']]
             self._tagged_nodes.update(self._colo_history[colo_tag])

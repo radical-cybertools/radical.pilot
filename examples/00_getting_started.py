@@ -67,10 +67,6 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        pmgr.wait_pilots(state=rp.PMGR_ACTIVE)
-        import pprint
-        pprint.pprint(pilot.nodes)
-
         n = 10  # number of tasks to run
         report.header('submit %d tasks' % n)
 
@@ -99,13 +95,10 @@ if __name__ == '__main__':
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning tasks to the pilots.
-        tasks = tmgr.submit_tasks(tds)
+        tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
-
-        import pprint
-        pprint.pprint(tasks[0].slots)
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
