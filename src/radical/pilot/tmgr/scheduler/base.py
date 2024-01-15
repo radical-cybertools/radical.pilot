@@ -434,10 +434,6 @@ class TMGRSchedulingComponent(rpu.ClientComponent):
         # for task IDs, and that tasks which use invalid / non-existing IDs in
         # sandbox references will never be eligible for scheduling.
 
-        for task in tasks:
-            import pprint
-            self._log.debug('=== 1 %s', pprint.pformat(task))
-
         self.advance(tasks, rps.TMGR_SCHEDULING, publish=True, push=False)
 
         to_schedule = list()
