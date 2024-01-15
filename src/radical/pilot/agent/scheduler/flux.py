@@ -56,21 +56,24 @@ class Flux(AgentSchedulingComponent):
     #
     def unschedule_task(self, task):
 
-        # this abstract method is not used in this implementation
-        assert False
+        # this abstract method is ignored in this implementation
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def initialize(self):
+
+        # register task output channels in *this* process
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
+        super().initialize()
 
 
     # --------------------------------------------------------------------------
     #
     def _configure(self):
-
-        # don't advance tasks via the component's `advance()`, but push them
-        # toward the executor *without state change* - state changes are
-        # performed in retrospect by the executor, based on the scheduling and
-        # execution events collected from Flux.
-        qname   = rpc.AGENT_EXECUTING_QUEUE
-        cfg     = self._reg['bridges.%s' % qname]
-        self._q = ru.zmq.Putter(qname, cfg['put'])
 
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
@@ -95,10 +98,14 @@ class Flux(AgentSchedulingComponent):
         self._log.debug('submitted tasks')
 
         for task, jid in zip(tasks, jids):
-            self._log.debug('submit tasks %s -> %s', task['uid'], jid)
-            task['flux_id'] = jid
 
-        self._q.put(tasks)
+            self._log.debug('submitted task %s -> %s', task['uid'], jid)
+
+            md = task['description'].get('metadata') or dict()
+            md['flux_id'] = jid
+            task['description']['metadata'] = md
+
+        self.advance(tasks, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -110,6 +117,12 @@ class Flux(AgentSchedulingComponent):
         sbox   = task['task_sandbox_path']
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
 
         args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
         cmd  = '%s %s' % (td['executable'], args)
@@ -144,9 +157,9 @@ class Flux(AgentSchedulingComponent):
                 'with' : [{
                     'count': td['cores_per_rank'],
                     'type' : 'core'
-                    # }, {
-                    #     'count': td['gpus_per_rank'],
-                    #     'type' : 'gpu'
+              # }, {
+              #     'count': td['gpus_per_rank'] or 0,
+              #     'type' : 'gpu'
                 }]
             }]
         }
