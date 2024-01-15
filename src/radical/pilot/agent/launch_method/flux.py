@@ -33,8 +33,6 @@ class Flux(LaunchMethod):
         self._prof.prof('flux_start')
         self._fh = ru.FluxHelper()
 
-      # self._fh.start_flux(env=env)  # FIXME
-
         self._log.debug('starting flux')
         self._fh.start_flux()
 
