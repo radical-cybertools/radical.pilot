@@ -749,7 +749,6 @@ class BaseComponent(object):
 
         cfg = self._reg['bridges'][qname]
 
-        self._log.debug('get input ep: %s', qname)
         return ru.zmq.Getter(qname, url=cfg['addr_get'])
 
 
@@ -1003,8 +1002,6 @@ class BaseComponent(object):
                 # next input
                 continue
 
-          # self._log.debug('work_cb: %d', len(things))
-
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
             # pushing them
@@ -1189,8 +1186,8 @@ class BaseComponent(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                      # self._log.debug("lost  %s [%s] : %s", thing['uid'],
-                      #         _state, self._outputs)
+                        self._log.error("lost  %s [%s] : %s", thing['uid'],
+                                _state, self._outputs)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1198,7 +1195,7 @@ class BaseComponent(object):
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
-                      # self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._log.error('drop  %s [%s]', thing['uid'], _state)
                         self._prof.prof('drop', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
