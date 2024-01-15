@@ -103,13 +103,14 @@ class JSRUN(LaunchMethod):
             The slots that the task will be placed. A slot has the following
             format:
 
-            {"ranks"         : [{"node_name" : "a",
-                                 "node_idx"  : 1,
-                                 "core_map"  : [[0, 1]],
-                                 "gpu_map"   : [[0]],
-                                 "lfs"       : 0,
-                                 "mem"       : 0
-                                }]
+            {
+                "node_name" : "a",
+                "node_idx"  : 1,
+                "core_map"  : [[0, 1]],
+                "gpu_map"   : [[0]],
+                "lfs"       : 0,
+                "mem"       : 0
+             ]
             }
 
         uid     : task ID (string)
@@ -122,24 +123,24 @@ class JSRUN(LaunchMethod):
         rs_str  = 'cpu_index_using: logical\n'
 
         base_id = 0
-        for slot_ranks in slots['ranks']:
+        for slot in slots:
 
-            ranks_per_rs  = len(slot_ranks['core_map'])
+            ranks_per_rs  = len(slot['core_map'])
             rank_ids      = [str(r + base_id) for r in range(ranks_per_rs)]
             base_id      += ranks_per_rs
 
             core_id_sets = []
-            for core_map in slot_ranks['core_map']:
+            for core_map in slot['core_map']:
                 core_ids = [str(cid) for cid in core_map]
                 core_id_sets.append('{%s}' % ','.join(core_ids))
 
             rs_str += 'rank: %s : {'    % ','.join(rank_ids)
-            rs_str += ' host: %d;'      % slot_ranks['node_idx']
+            rs_str += ' host: %d;'      % slot['node_idx']
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
-            if slot_ranks['gpu_map'] and slot_ranks['gpu_map'][0]:
+            if slot['gpu_map'] and slot['gpu_map'][0]:
                 # check the first element, since it is the same for RS ranks
-                slot_gpus = slot_ranks['gpu_map'][0]
-                assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
+                slot_gpus = slot['gpu_map'][0]
+                assert slot['gpu_map'].count(slot_gpus) == ranks_per_rs
                 rs_str += '; gpu: {%s}' % ','.join([str(g) for g in slot_gpus])
             rs_str += ' }\n'
 
@@ -158,7 +159,7 @@ class JSRUN(LaunchMethod):
         td    = task['description']
         slots = task['slots']
 
-        assert slots['ranks'], 'task.slots.ranks not defined'
+        assert slots, 'task.slots not defined'
 
         if self._erf:
 
@@ -171,18 +172,18 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs             = len(slots['ranks'])
-            slot_ranks     = slots['ranks'][0]
+            rs             = len(slots)
+            slot           = slots[0]
             # physical cores per rank
-            cores_per_rank = math.ceil(len(slot_ranks['core_map'][0]) /
+            cores_per_rank = math.ceil(len(slot['core_map'][0]) /
                              self._rm_info['threads_per_core'])
-            ranks_per_rs   = len(slot_ranks['core_map'])
+            ranks_per_rs   = len(slot['core_map'])
             cores_per_rs   = cores_per_rank * ranks_per_rs
 
             gpus_per_rs  = 0
-            if slot_ranks['gpu_map']:
-                slot_gpus = slot_ranks['gpu_map'][0]
-                assert slot_ranks['gpu_map'].count(slot_gpus) == ranks_per_rs
+            if slot['gpu_map']:
+                slot_gpus = slot['gpu_map'][0]
+                assert slot['gpu_map'].count(slot_gpus) == ranks_per_rs
                 gpus_per_rs = len(slot_gpus)
 
             # -n: number of RS

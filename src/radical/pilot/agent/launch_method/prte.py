@@ -8,6 +8,8 @@ import os
 import signal
 import time
 
+from typing import Dict, Union
+
 import subprocess    as mp
 import threading     as mt
 
@@ -83,7 +85,7 @@ class PRTE(LaunchMethod):
         nodes_per_dvm = math.ceil(len(self._rm_info.node_list) / dvm_count)
 
         # additional info to form prrte related files (uri-/hosts-file)
-        dvm_file_info = {'base_path': os.getcwd()}
+        dvm_file_info : Dict[str, Union[str,int]] = {'base_path': os.getcwd()}
 
         # ----------------------------------------------------------------------
         def _watch_dvm(dvm_process, dvm_id, dvm_ready_flag):
@@ -121,7 +123,7 @@ class PRTE(LaunchMethod):
         # ----------------------------------------------------------------------
         def _start_dvm(dvm_id, dvm_size, dvm_ready_flag):
 
-            file_info = dict(dvm_file_info)
+            file_info = dvm_file_info
             file_info['dvm_id'] = dvm_id
 
             prte  = '%s' % prte_cmd
@@ -215,7 +217,7 @@ class PRTE(LaunchMethod):
 
             node_list = self._rm_info.node_list[_dvm_id      * nodes_per_dvm:
                                                (_dvm_id + 1) * nodes_per_dvm]
-            dvm_file_info.update({'dvm_id': _dvm_id})
+            dvm_file_info['dvm_id'] = _dvm_id
             # write hosts file
             with ru.ru_open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
                 for node in node_list:
@@ -348,6 +350,7 @@ class PRTE(LaunchMethod):
         # should be set: `time.sleep(.1)`
 
         slots     = task['slots']
+        partition = task['partition']
         td        = task['description']
 
         n_procs   = td['ranks']
@@ -357,8 +360,7 @@ class PRTE(LaunchMethod):
             raise RuntimeError('details with dvm_list not set (%s)' % self.name)
 
         dvm_list  = self._details['dvm_list']
-        # `partition_id` should be set in a scheduler
-        dvm_id    = slots.get('partition_id', 0)
+        dvm_id    = partition
         dvm_uri   = '--dvm-uri "%s"' % dvm_list[dvm_id]['dvm_uri']
 
         flags  = '--np %d '                                   % n_procs
@@ -368,14 +370,14 @@ class PRTE(LaunchMethod):
         if self._verbose:
             flags += ':REPORT'
 
-        if 'ranks' not in slots:
+        if not slots:
             # this task is unscheduled - we leave it to PRRTE/PMI-X
             # to correctly place the task
             pass
         else:
             ranks = collections.defaultdict(int)
-            for rank in slots['ranks']:
-                ranks[rank['node_name']] += 1
+            for slot in slots:
+                ranks[slot['node_name']] += 1
             flags += ' --host ' + ','.join(['%s:%s' % x for x in ranks.items()])
 
         flags += ' --pmixmca ptl_base_max_msg_size %d' % PTL_MAX_MSG_SIZE

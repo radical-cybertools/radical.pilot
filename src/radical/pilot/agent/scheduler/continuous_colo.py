@@ -81,7 +81,7 @@ class ContinuousColo(Continuous):
             if not colo_tag:
               # self._log.debug('no tags for %s', uid)
                 self._unordered.append(task)
-                return
+                return None, None
 
             # this uniit wants to be ordered - keep it in our registry
             assert uid not in self._tasks, 'duplicated task %s' % uid
@@ -107,7 +107,7 @@ class ContinuousColo(Continuous):
         # try to schedule known tasks
         self._try_schedule()
 
-        return
+        return None, None
 
 
     # --------------------------------------------------------------------------

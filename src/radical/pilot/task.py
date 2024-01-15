@@ -13,7 +13,7 @@ from . import constants as rpc
 
 from .staging_directives import expand_description
 from .task_description   import TaskDescription
-from .resource_config    import Slots
+from .resource_config    import Slot
 
 
 _uids = list()
@@ -96,6 +96,7 @@ class Task(object):
         self._client_sandbox   = None
         self._callbacks        = dict()
         self._slots            = None
+        self._partition        = None
 
         # ensure uid is unique
         if self._uid:
@@ -173,7 +174,7 @@ class Task(object):
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
                     'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
-                    'exception', 'exception_detail', 'slots']:
+                    'exception', 'exception_detail', 'slots', 'partition']:
 
             val = task_dict.get(key, None)
             if val is not None:
@@ -212,6 +213,7 @@ class Task(object):
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
             'slots':            self.slots,
+            'partition':        self.partition,
             'description':      self.description,   # this is a deep copy
         }
 
@@ -443,9 +445,19 @@ class Task(object):
     @property
     def slots(self):
         '''dict: The slots assigned for the task's execution'''
-        if isinstance(self._slots, dict):
-            self._slots = Slots(self._slots)
+        if self._slots:
+            if isinstance(self._slots[0], dict):
+                for idx,slot in self._slots.enumerate():
+                    self._slots[idx] = Slot(self._slots[idx])
         return self._slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def partition(self):
+        '''dict: The pilot partition assigned for the task's execution'''
+        return self._partition
 
 
     # --------------------------------------------------------------------------

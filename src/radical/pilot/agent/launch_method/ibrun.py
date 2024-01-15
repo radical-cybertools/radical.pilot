@@ -74,7 +74,7 @@ class IBRun(LaunchMethod):
     def get_launch_cmds(self, task, exec_path):
 
         slots = task['slots']
-        assert slots.get('ranks'), 'task.slots.ranks is not set or empty'
+        assert slots, 'task.slots is not set or empty'
 
         td                 = task['description']
         n_ranks            = td['ranks']
@@ -94,7 +94,7 @@ class IBRun(LaunchMethod):
         # NOTE: in case of performance issue: reconsider this parameter
         launch_env = 'IBRUN_TASKS_PER_NODE=%d' % tasks_per_node
 
-        rank_node_idxs = set([n['node_ids'] for n in slots['ranks']])
+        rank_node_idxs = set([slot['node_ids'] for slot in slots])
         tasks_offset   = 0
         ibrun_offset   = 0
 
@@ -106,9 +106,9 @@ class IBRun(LaunchMethod):
 
             # core_map contains core ids for each thread,
             # but threads are ignored for offset
-            core_id_min = min([rank['core_map'][0][0]
-                               for rank in slots['ranks']
-                               if rank['node_idx'] == node['node_idx']])
+            core_id_min = min([slot['core_map'][0][0]
+                               for slot in slots
+                               if  slot['node_idx'] == node['node_idx']])
             # offset into processor (cpus) hostlist
             ibrun_offset = tasks_offset + (core_id_min // n_threads_per_rank)
             break

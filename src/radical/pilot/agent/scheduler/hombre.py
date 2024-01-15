@@ -229,7 +229,8 @@ class Hombre(AgentSchedulingComponent):
       # self._log.debug('<= allocate [%d]', len(self.free))
 
 
-        return slots
+        partition = 0
+        return slots, partition
 
 
 

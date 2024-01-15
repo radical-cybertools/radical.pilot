@@ -439,7 +439,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # This method needs to change if the DS changes.
 
         # for node_name, node_idx, cores, gpus in slots['ranks']:
-        for rank in slots['ranks']:
+        for slot in slots:
 
             # Find the entry in the slots list
 
@@ -453,7 +453,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['node_idx'] == rank['node_idx']:
+                if node['node_idx'] == slot['node_idx']:
                     node_found = True
                     break
 
@@ -461,25 +461,25 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            for core_map in rank['core_map']:
+            for core_map in slot['core_map']:
                 for core in core_map:
                     node['cores'][core] = new_state
 
-            for gpu_map in rank['gpu_map']:
+            for gpu_map in slot['gpu_map']:
                 for gpu in gpu_map:
                     node['gpus'][gpu] = new_state
 
-            if rank['lfs']:
+            if slot['lfs']:
                 if new_state == rpc.BUSY:
-                    node['lfs'] -= rank['lfs']
+                    node['lfs'] -= slot['lfs']
                 else:
-                    node['lfs'] += rank['lfs']
+                    node['lfs'] += slot['lfs']
 
-            if rank['mem']:
+            if slot['mem']:
                 if new_state == rpc.BUSY:
-                    node['mem'] -= rank['mem']
+                    node['mem'] -= slot['mem']
                 else:
-                    node['mem'] += rank['mem']
+                    node['mem'] += slot['mem']
 
 
 
@@ -774,7 +774,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # update task resources
         for task in scheduled:
             td = task['description']
-            task['$set']      = ['resources']
             task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
                                  'gpu': td['ranks'] * td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
@@ -879,6 +878,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
+            td = task['description']
+
             # FIXME: This is a slow and inefficient way to wait for named VEs.
             #        The semantics should move to the upcoming eligibility
             #        checker
@@ -891,14 +892,29 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                     task['uid'], named_env)
                     continue
 
+            # we actually only schedule tasks which do not yet have a `slots`
+            # structure attached.  Those which do were presumably scheduled
+            # earlier (by the applicaiton of some other client side scheduler),
+            # and we honor that decision.  We though will mark the respective
+            # resources as being used, to avoid other tasks being scheduled onto
+            # the same set of resources.
+            if td['slots']:
+                task['slots']     = td['slots']
+                task['partition'] = td['partition']
+                task['resources'] = {'cpu': td['ranks'] *
+                                            td['cores_per_rank'],
+                                     'gpu': td['ranks'] *
+                                            td['gpus_per_rank']}
+                self.advance(task, rps.AGENT_EXECUTING_PENDING,
+                             publish=True, push=True, fwd=True)
+                continue
+
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
             try:
                 if self._try_allocation(task):
                     # task got scheduled - advance state, notify world about the
                     # state change, and push it out toward the next component.
-                    td = task['description']
-                    task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['ranks'] *
                                                 td['cores_per_rank'],
                                          'gpu': td['ranks'] *
@@ -1051,7 +1067,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
           # td  = task['description']
 
           # self._prof.prof('schedule_try', uid=uid)
-            slots = self.schedule_task(task)
+            slots, partition = self.schedule_task(task)
             if not slots:
 
                 # schedule failure
@@ -1070,7 +1086,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # nodelist state (BUSY) and pass placement to the task, to have
             # it enacted by the executor
             self._change_slot_states(slots, rpc.BUSY)
-            task['slots'] = slots
+            task['slots']     = slots
+            task['partition'] = partition
 
             self.slot_status('after scheduled task', task['uid'])
 

@@ -33,7 +33,7 @@ from .task_description          import AGENT_SERVICE
 from .resource_config           import ResourceConfig
 from .resource_config           import NodeDescription
 from .resource_config           import NodeResources
-from .resource_config           import Slots, RankSlot
+from .resource_config           import Slot
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot

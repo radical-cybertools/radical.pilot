@@ -170,9 +170,9 @@ class MPIExec(LaunchMethod):
         rf_str  = ''
         rank_id = 0
 
-        for rank in slots['ranks']:
-            for core_map in rank['core_map']:
-                rf_str += ('rank %d=%s ' % (rank_id, rank['node_name']) +
+        for slot in slots:
+            for core_map in slot['core_map']:
+                rf_str += ('rank %d=%s ' % (rank_id, slot['node_name']) +
                            'slots=%s\n' % ','.join([str(c) for c in core_map]))
                 rank_id += 1
 
@@ -196,8 +196,8 @@ class MPIExec(LaunchMethod):
             localhost:2
         '''
         host_slots = defaultdict(int)
-        for rank in slots['ranks']:
-            host_slots[rank['node_name']] += len(rank['core_map'])
+        for slot in slots:
+            host_slots[slot['node_name']] += len(slot['core_map'])
 
         if simple:
             hf_str = '%s\n' % '\n'.join(list(host_slots.keys()))
@@ -222,25 +222,26 @@ class MPIExec(LaunchMethod):
         slots = task['slots']
         sbox  = task['task_sandbox_path']
 
-        assert slots.get('ranks'), 'task.slots.ranks not defined'
+        assert slots, 'task.slots not defined'
 
         host_slots = defaultdict(int)
-        for rank in slots['ranks']:
-            host_slots[rank['node_name']] += len(rank['core_map'])
+        for slot in slots:
+            host_slots[slot['node_name']] += len(slot['core_map'])
 
         cmd_options = '-np %d ' % sum(host_slots.values())
 
         if self._use_rf:
             rankfile     = self._get_rank_file(slots, uid, sbox)
-            hosts        = set([r['node_name'] for r in slots['ranks']])
+            hosts        = set([slot['node_name'] for slot in slots])
             cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
             hostfile     = self._get_host_file(slots, uid, sbox)
+            # FIXME: make this readable please
             core_ids     = ':'.join([
                 str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
-                for core_map in [rank['core_map'] for rank in slots['ranks']]
-                for cores in core_map])
+                for core_map in [slot['core_map'] for slot in slots]
+                for cores    in core_map])
             cmd_options += '--ppn %d '           % max(host_slots.values()) + \
                            '--cpu-bind list:%s ' % core_ids + \
                            '--hostfile %s'       % hostfile
@@ -254,7 +255,7 @@ class MPIExec(LaunchMethod):
 
             # if over-subscription is allowed,
             # then the following approach is applicable too:
-            #    cores_per_rank = len(slots['ranks'][0]['core_map'][0])
+            #    cores_per_rank = len(slots[0]['core_map'][0])
             #    cmd_options   += '--depth=%d --cpu-bind depth' % cores_per_rank
 
         elif self._use_hf:

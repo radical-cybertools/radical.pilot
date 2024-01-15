@@ -120,7 +120,7 @@ class APRun(LaunchMethod):
         # cores and memory on other NUMA nodes on that compute node.
         #
         # slots = task['slots']
-        # nodes = set([rank['node_name'] for rank in slots['ranks']])
+        # nodes = set([slot['node_name'] for slot in slots])
         # if len(nodes) < 2:
         #     cmd_options += ' -F share'  # default is `exclusive`
         # cmd_options += ' -L %s ' % ','.join(nodes)

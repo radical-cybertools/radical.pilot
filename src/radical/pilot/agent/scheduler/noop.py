@@ -33,7 +33,7 @@ class Noop(AgentSchedulingComponent):
     #
     def schedule_task(self, task):
 
-        return
+        return None, None
 
 
     # --------------------------------------------------------------------------

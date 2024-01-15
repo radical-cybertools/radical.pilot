@@ -274,10 +274,11 @@ class Popen(AgentExecutingComponent):
         # or post-exec directives contain per-rank dictionaries, then we switch
         # per-rank in the script for all sections between pre- and post-exec.
 
-        n_ranks = td['ranks']
-        slots   = task.setdefault('slots', {})
+        n_ranks   = td['ranks']
+        slots     = task['slots']
+        partition = task['partition']
 
-        self._extend_pre_exec(td, slots.get('ranks'))
+        self._extend_pre_exec(td, slots)
 
         with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
 
@@ -335,7 +336,9 @@ class Popen(AgentExecutingComponent):
 
         # need to set `DEBUG_5` or higher to get slot debug logs
         if self._log._debug_level >= 5:
-            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
+            ru.write_json('%s/%s.sl' % (sbox, tid),
+                          {'partition': partition,
+                           'ranks'    : slots})
 
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)

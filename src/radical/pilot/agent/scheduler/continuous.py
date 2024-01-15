@@ -376,7 +376,7 @@ class Continuous(AgentSchedulingComponent):
             colo_tag = str(colo_tag)
 
         # in case of PRTE LM: the `slots` attribute may have a partition ID set
-        partition_id = td.get('slots', {}).get('partition_id', 0)
+        partition_id = td.get('partition', 0)
         if self._partitions:
             if partition_id not in self._partitions:
                 raise ValueError('partition id (%d) out of range'
@@ -505,21 +505,19 @@ class Continuous(AgentSchedulingComponent):
 
         # if we did not find enough, there is not much we can do at this point
         if  rem_slots > 0:
-            return None  # signal failure
+            return None, None  # signal failure
 
-        slots = {'ranks'       : alc_slots,
-                 'partition_id': task_partition_id}
 
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
         if colo_tag is not None and colo_tag != str(partition_id):
             self._colo_history[colo_tag] = [node['node_idx']
-                                            for node in slots['ranks']]
+                                            for node in alc_slots]
             self._tagged_nodes.update(self._colo_history[colo_tag])
 
         # this should be nicely filled out now - return
-        return slots
+        return alc_slots, task_partition_id
 
 
 # ------------------------------------------------------------------------------

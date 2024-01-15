@@ -280,7 +280,7 @@ class NodeResources(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class RankSlot(ru.TypedDict):
+class Slot(ru.TypedDict):
 
     CORE_MAP    = 'core_map'
     GPU_MAP     = 'gpu_map'
@@ -328,27 +328,6 @@ class RankSlot(ru.TypedDict):
                     cls.MEM      : mem,
                     cls.NODE_IDX : node.node_idx,
                     cls.NODE_NAME: node.node_name})
-
-
-# ------------------------------------------------------------------------------
-#
-class Slots(ru.TypedDict):
-
-    PARTITION_ID = 'partition_id'
-    RANKS        = 'ranks'
-    TEST         = 'test'
-
-    _schema = {
-        PARTITION_ID: int,
-        RANKS       : [RankSlot],
-        TEST        : RankSlot,
-    }
-
-    _defaults = {
-        PARTITION_ID: 0,
-        RANKS       : list(),
-        TEST        : None,
-    }
 
 
 # ------------------------------------------------------------------------------
