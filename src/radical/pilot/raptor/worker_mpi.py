@@ -379,13 +379,19 @@ class MPIWorkerRank(mt.Thread):
     # --------------------------------------------------------------------------
     #
     def __init__(self, rank_task_q_get, rank_result_q_put,
-                       event, log, prof, base):
+                       mpi_info, event, log, prof, base):
 
         super().__init__()
 
         self.daemon             = True
         self._rank_task_q_get   = rank_task_q_get
         self._rank_result_q_put = rank_result_q_put
+
+        self._world             = mpi_info['world']
+        self._group             = mpi_info['group']
+        self._rank              = mpi_info['rank' ]
+        self._ranks             = mpi_info['ranks']
+
         self._event             = event
         self._log               = log
         self._prof              = prof
@@ -664,8 +670,15 @@ class MPIWorker(Worker):
         # contacts the workers with queue endpoint information
         worker_ok = mt.Event()
         worker    = self.get_rank_worker()
+
+        mpi_info  = {'world': self._world,
+                     'group': self._group,
+                     'rank' : self._rank,
+                     'ranks': self._ranks,
+                     'rank0': self._manager}
         self._work_thread = worker(rank_task_q_get   = self._rank_task_q_get,
                                    rank_result_q_put = self._rank_result_q_put,
+                                   mpi_info          = mpi_info,
                                    event             = worker_ok,
                                    log               = self._log,
                                    prof              = self._prof,

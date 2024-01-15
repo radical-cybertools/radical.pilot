@@ -42,6 +42,8 @@ class Worker(object):
         self._reg       = ru.zmq.RegistryClient(url=self._reg_addr)
         self._cfg       = ru.Config(cfg=self._reg['cfg'])
 
+        self._hb_delay  = self._reg['rcfg.raptor.hb_delay']
+
         self._log  = ru.Logger(name=self._uid,
                                ns='radical.pilot.worker',
                                level=self._cfg.log_lvl,
@@ -74,7 +76,7 @@ class Worker(object):
 
         self._hb_register_count = 60
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
-        self._hb_delay  = 300
+        self._log.debug('hb delay: %s', self._hb_delay)
         self._hb_thread = mt.Thread(target=self._hb_worker)
         self._hb_thread.daemon = True
         self._hb_thread.start()

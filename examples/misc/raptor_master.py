@@ -73,11 +73,8 @@ class MyMaster(rp.raptor.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        ru.write_json('m1.json', cfg)
         super().__init__(cfg=cfg)
-        ru.write_json('m2.json', self._cfg)
-
-        self._sleep = self._raptor_cfg.sleep
+        self._sleep = cfg.sleep
 
 
     # --------------------------------------------------------------------------
@@ -306,3 +303,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
+
