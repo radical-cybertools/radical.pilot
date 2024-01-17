@@ -199,13 +199,13 @@ class JSRUN(LaunchMethod):
                 cmd_options += ' -r%d' % max_rs_per_node
 
             # -b: binding of tasks within a resource set (none, rs, or packed:N)
-            if ranks_per_rs > 1:
-                if td['threading_type'] == rpc.OpenMP:
-                    # for OpenMP threads RP will set:
-                    #    export OMP_NUM_THREADS=<threads_per_rank>
-                    cmd_options += ' -b packed:%d' % cores_per_rank
-            else:
-                cmd_options += ' -b rs'
+            cmd_options += ' -b rs'
+
+            # if ranks_per_rs > 1:
+            #     if td['threading_type'] == rpc.OpenMP:
+            #         # for OpenMP threads RP will set:
+            #         #    export OMP_NUM_THREADS=<threads_per_rank>
+            #         cmd_options += ' -b packed:%d' % cores_per_rank
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
             # from https://www.olcf.ornl.gov/ \

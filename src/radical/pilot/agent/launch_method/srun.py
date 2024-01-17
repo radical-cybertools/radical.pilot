@@ -146,8 +146,8 @@ class Srun(LaunchMethod):
                     with ru.ru_open(nodefile, 'w') as fout:
                         fout.write(','.join(nodelist) + '\n')
 
-            if slots[0]['gpu_map']:
-                gpus_per_task = len(slots[0]['gpu_map'][0])
+            if slots[0]['gpus']:
+                gpus_per_task = len(slots[0]['gpus'])
 
         mapping = ''
         if self._exact:

@@ -17,23 +17,40 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks": [
-                    {
-                        "node_name" : "node1",
-                        "node_id"   : "1",
-                        "core_map"  : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                        "gpu_map"   : [[0], [0], [0], [0]],
-                        "lfs"       : 0,
-                        "mem"       : 0
-                    }
-                ],
-                "partition_id"   : null,
-                "cores_per_node" : 42,
-                "gpus_per_node"  : 6,
-                "lfs_per_node"   : 0,
-                "mem_per_node"   : 0
-            }
+            "slots": [
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [0, 1],
+                          "gpus"      : [0],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [2, 3],
+                          "gpus"      : [0],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [4, 5],
+                          "gpus"      : [0],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [5, 6],
+                          "gpus"      : [0],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      }
+            ]
         }
     },
 

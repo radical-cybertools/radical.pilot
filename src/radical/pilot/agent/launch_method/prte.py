@@ -295,7 +295,7 @@ class PRTE(LaunchMethod):
                 # not distinguishable at the moment from termination failures
                 self._log.debug('prte-%s termination failed (%d)', p_id, dvm_uri)
                 self._prof.prof(event='dvm_fail', uid=self._lm_cfg['pid'],
-                                msg='dvm_id=%s | error: %d' % (p_id, e))
+                                msg='dvm_id=%s | error: %s' % (p_id, e))
 
     # --------------------------------------------------------------------------
     #
