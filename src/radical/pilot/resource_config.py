@@ -202,20 +202,20 @@ class ResourceConfig(ru.TypedDict):
 #
 class NodeDescription(ru.TypedDict):
 
-    N_CORES   = 'n_cores'
-    N_GPUS    = 'n_gpus'
-    LFS       = 'lfs'
-    MEM       = 'mem'
-    NODE_IDX  = 'node_idx'
-    NODE_NAME = 'node_name'
+    N_CORES = 'n_cores'
+    N_GPUS  = 'n_gpus'
+    LFS     = 'lfs'
+    MEM     = 'mem'
+    INDEX   = 'index'
+    NAME    = 'name'
 
     _schema = {
         N_CORES   : int,
         N_GPUS    : int,
         LFS       : int,
         MEM       : int,
-        NODE_IDX  : int,
-        NODE_NAME : str,
+        INDEX     : int,
+        NAME      : str,
     }
 
     _defaults = {
@@ -223,8 +223,8 @@ class NodeDescription(ru.TypedDict):
         N_GPUS    : 0,
         LFS       : 0,
         MEM       : 0,
-        NODE_IDX  : 0,
-        NODE_NAME : None,
+        INDEX     : 0,
+        NAME      : None,
     }
 
 
@@ -241,8 +241,8 @@ class NodeDescription(ru.TypedDict):
             from_dict[self.N_GPUS   ] = len(nr.gpus)
             from_dict[self.LFS      ] = nr.lfs
             from_dict[self.MEM      ] = nr.mem
-            from_dict[self.NODE_IDX ] = nr.node_idx
-            from_dict[self.NODE_NAME] = nr.node_name
+            from_dict[self.INDEX    ] = nr.index
+            from_dict[self.NAME     ] = nr.name
 
         super().__init__(from_dict=from_dict)
         self._verify
@@ -252,29 +252,29 @@ class NodeDescription(ru.TypedDict):
 #
 class NodeResources(ru.TypedDict):
 
-    CORE_MAP    = 'core_map'
-    GPU_MAP     = 'gpu_map'
-    LFS_FREE    = 'lfs_free'
-    MEM_FREE    = 'mem_free'
-    NODE_IDX    = 'node_idx'
-    NODE_NAME   = 'node_name'
+    CORES    = 'cores'
+    GPUS     = 'gpus'
+    LFS_FREE = 'lfs_free'
+    MEM_FREE = 'mem_free'
+    INDEX    = 'index'
+    NAME     = 'name'
 
     _schema = {
-        CORE_MAP   : [int],
-        GPU_MAP    : [int],
-        LFS_FREE   : int,
-        MEM_FREE   : int,
-        NODE_IDX   : int,
-        NODE_NAME  : str,
+        CORES    : [int],
+        GPUS     : [int],
+        LFS_FREE : int,
+        MEM_FREE : int,
+        INDEX    : int,
+        NAME     : str,
     }
 
     _defaults = {
-        CORE_MAP   : [],
-        GPU_MAP    : [],
-        LFS_FREE   : 0,
-        MEM_FREE   : 0,
-        NODE_IDX   : 0,
-        NODE_NAME  : '',
+        CORES    : [],
+        GPUS     : [],
+        LFS_FREE : 0,
+        MEM_FREE : 0,
+        INDEX    : 0,
+        NAME     : '',
     }
 
 
@@ -282,28 +282,28 @@ class NodeResources(ru.TypedDict):
 #
 class Slot(ru.TypedDict):
 
-    CORE_MAP    = 'core_map'
-    GPU_MAP     = 'gpu_map'
+    CORES       = 'cores'
+    GPUS        = 'gpus'
     LFS         = 'lfs'
     MEM         = 'mem'
-    NODE_IDX    = 'node_idx'
+    NODE_INDEX  = 'node_index'
     NODE_NAME   = 'node_name'
 
     _schema = {
-        CORE_MAP   : [int],
-        GPU_MAP    : [int],
+        CORES      : [None],
+        GPUS       : [None],
         LFS        : int,
         MEM        : int,
-        NODE_IDX   : int,
+        NODE_INDEX : int,
         NODE_NAME  : str,
     }
 
     _defaults = {
-        CORE_MAP   : [],
-        GPU_MAP    : [],
+        CORES      : [],
+        GPUS       : [],
         LFS        : 0,
         MEM        : 0,
-        NODE_IDX   : 0,
+        NODE_INDEX : 0,
         NODE_NAME  : '',
     }
 
@@ -322,12 +322,12 @@ class Slot(ru.TypedDict):
         if lfs     : assert lfs           <= node.lfs
         if mem     : assert mem           <= node.mem
 
-        return cls({cls.CORE_MAP : core_ids,
-                    cls.GPU_MAP  : gpu_ids,
-                    cls.LFS      : lfs,
-                    cls.MEM      : mem,
-                    cls.NODE_IDX : node.node_idx,
-                    cls.NODE_NAME: node.node_name})
+        return cls({cls.CORES     : [core_ids],
+                    cls.GPUS      : [gpu_ids],
+                    cls.LFS       : lfs,
+                    cls.MEM       : mem,
+                    cls.NODE_INDEX: node.index,
+                    cls.NODE_NAME : node.name})
 
 
 # ------------------------------------------------------------------------------

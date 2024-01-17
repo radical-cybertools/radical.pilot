@@ -334,11 +334,11 @@ class Popen(AgentExecutingComponent):
         ru.rec_makedir(sbox)
         self._prof.prof('task_mkdir_done', uid=tid)
 
-        # need to set `DEBUG_5` or higher to get slot debug logs
+        # set log level to `DEBUG_5` or higher to get slot files
         if self._log._debug_level >= 5:
             ru.write_json('%s/%s.sl' % (sbox, tid),
                           {'partition': partition,
-                           'ranks'    : slots})
+                           'slots'    : slots})
 
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
@@ -688,9 +688,9 @@ class Popen(AgentExecutingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _extend_pre_exec(self, td, ranks=None):
+    def _extend_pre_exec(self, td, slots=None):
 
-        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
+        # FIXME: this assumes that the slot has a `gpus` and `cores`
         #        with exactly one entry, corresponding to the rank process to be
         #        started.
 
@@ -703,16 +703,12 @@ class Popen(AgentExecutingComponent):
             num_threads = td.get('cores_per_rank', 1)
             td['pre_exec'].append('export OMP_NUM_THREADS=%d' % num_threads)
 
-        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
+        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and slots:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            rank_id  = 0
             rank_env = {}
-            for slot_ranks in ranks:
-                for gpu_map in slot_ranks['gpu_map']:
-                    rank_env[str(rank_id)] = \
-                        'export CUDA_VISIBLE_DEVICES=%s' % \
-                        ','.join([str(g) for g in gpu_map])
-                    rank_id += 1
+            for rank_id, slot in enumerate(slots):
+                rank_env[str(rank_id)] = 'export CUDA_VISIBLE_DEVICES=%s' % \
+                                    ','.join([str(gpu) for gpu in slot['gpus']])
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration

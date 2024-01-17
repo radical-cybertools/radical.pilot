@@ -229,7 +229,7 @@ class PRTE(LaunchMethod):
             _dvm_uri   = _start_dvm(_dvm_id, _dvm_size, _dvm_ready)
 
             dvm_list[_dvm_id] = {
-                'nodes'  : [node['node_idx'] for node in node_list],
+                'nodes'  : [node['index'] for node in node_list],
                 'dvm_uri': _dvm_uri}
 
             # extra time to confirm that "DVM ready" was just delayed

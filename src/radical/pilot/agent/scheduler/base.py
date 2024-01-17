@@ -133,11 +133,13 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 #       'ranks'         : 4,
 #       'cores_per_rank': 2,
 #       'gpus_per_rank  : 2.,
-#       'slots' :
-#       {               # [[node,   node_idx,   [cpu map],        [gpu map]]]
-#         'ranks'       : [[node_1, node_idx_1, [[0, 2], [4, 6]], [[0]    ]],
-#                          [node_2, node_idx_2, [[1, 3], [5, 7]], [[0]    ]]],
-#       }
+#       'slots'         :
+#                       # [[node,   node_index, [cpu map], [gpu map]]]
+#                         [[node_1, 0,          [0, 2],    [0],
+#                          [node_1, 0,          [4, 6],    [0],
+#                          [node_2, 1,          [5, 7],    [0],
+#                          [node_2, 1,          [1, 3]],   [0]],
+#
 #     }
 #
 # The `cpu idx` field is a list of sets, where in each set the first core is
@@ -189,10 +191,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'node_name' : 'name-of-node',
-    #       'node_idx,  : 'idx-of-node',
-    #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
-    #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
+    #     { 'name'  : 'name-of-node',
+    #       'index' : 'idx-of-node',
+    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
     #   ]
     #
@@ -222,7 +224,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        self._partitions = self._rm.get_partitions()  # {plabel : [node_idxs]}
+        self._partitions = self._rm.get_partitions()
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -438,13 +440,13 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         '''
         # This method needs to change if the DS changes.
 
-        # for node_name, node_idx, cores, gpus in slots['ranks']:
+        # for node_name, node_index, cores, gpus in slots['ranks']:
         for slot in slots:
 
             # Find the entry in the slots list
 
-            # TODO: [Optimization] Assuming 'node_idx' is the ID of the node, it
-            #       seems a bit wasteful to have to look at all of the nodes
+            # TODO: [Optimization] Assuming 'node_index' is the ID of the node,
+            #       it seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
             #       that we would read, and keep a dictionary that maps the uid
@@ -453,21 +455,22 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['node_idx'] == slot['node_idx']:
+                if node['index'] == slot['node_index']:
                     node_found = True
                     break
 
             if not node_found:
                 raise RuntimeError('inconsistent node information')
 
-            # iterate over cores/gpus in the slot, and update state
-            for core_map in slot['core_map']:
-                for core in core_map:
-                    node['cores'][core] = new_state
+            import pprint
+            self._log.debug('=== change %s', pprint.pformat(slots))
 
-            for gpu_map in slot['gpu_map']:
-                for gpu in gpu_map:
-                    node['gpus'][gpu] = new_state
+            # iterate over cores/gpus in the slot, and update state
+            for core in slot['cores']:
+                node['cores'][core] = new_state
+
+            for gpu in slot['gpus']:
+                node['gpus'][gpu] = new_state
 
             if slot['lfs']:
                 if new_state == rpc.BUSY:
@@ -878,6 +881,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
+            print('------------------')
+            print(task['uid'])
+
             td = task['description']
 
             # FIXME: This is a slow and inefficient way to wait for named VEs.
@@ -899,12 +905,18 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # resources as being used, to avoid other tasks being scheduled onto
             # the same set of resources.
             if td['slots']:
+
+                # FIXME: check assembly of slots in the scheduler (jsrun)
+                #        e.g.: GPU sharing  (*)
+                # FIXME: check how blocked cores are handled  (*)
+                # FIXME: bool / int for core list in node resources  (*)
+                # FIXME: complete node name if needed
+                # FIXME: use UIDs instead of node indexes
+                # FIXME: does TD need ranks then still?  Check launch methods!
                 task['slots']     = td['slots']
                 task['partition'] = td['partition']
-                task['resources'] = {'cpu': td['ranks'] *
-                                            td['cores_per_rank'],
-                                     'gpu': td['ranks'] *
-                                            td['gpus_per_rank']}
+                task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
+                                     'gpu': td['ranks'] * td['gpus_per_rank']}
                 self.advance(task, rps.AGENT_EXECUTING_PENDING,
                              publish=True, push=True, fwd=True)
                 continue

@@ -34,16 +34,16 @@ from .base import AgentSchedulingComponent
 #
 # Expected DS of the nodelist
 # self.nodes = [{
-#                   'node_name': 'aa',
-#                   'node_idx' : 0,
+#                   'name'     : 'aa',
+#                   'index'    : 0,
 #                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'     : [0, 1, 2],
 #                   'lfs'      : 128,
 #                   'mem'      : 256
 #               },
 #               {
-#                   'node_name': 'bb',
-#                   'node_idx' : 1,
+#                   'name'     : 'bb',
+#                   'index'    : 1,
 #                   'cores'    : [0, 1, 2, 3, 4, 5, 6, 7],
 #                   'gpus'     : [0, 1, 2],
 #                   'lfs'      : 128,
@@ -137,6 +137,8 @@ class Continuous(AgentSchedulingComponent):
 
         # reflect the request in the nodelist state (set to `FREE`)
         for task in ru.as_list(tasks):
+            self._log.debug('=== unschedule %s' % task['uid'])
+            self._log.debug('=== %s', pprint.pformat(task['slots']))
             self._change_slot_states(task['slots'], rpc.FREE)
 
 
@@ -150,12 +152,12 @@ class Continuous(AgentSchedulingComponent):
         slots of the following structure:
 
             {
-                'node_name': 'node_name',
-                'node_idx' : 1,
-                'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                'gpu_map'  : [[1, 3], [1, 3]],
-                'lfs'      : 1234,
-                'mem'      : 4321
+                'node_name'  : 'node_name',
+                'node_index' : 1,
+                'cores'      : [1, 2, 4, 5],
+                'gpus'       : [1, 3],
+                'lfs'        : 1234,
+                'mem'        : 4321
             }
 
         The call will *not* change the allocation status of the node, atomicity
@@ -210,11 +212,14 @@ class Continuous(AgentSchedulingComponent):
 
         # we should be able to host the slots - dig out the precise resources
         slots     = list()
-        node_idx  = node['node_idx']
-        node_name = node['node_name']
+        node_idx  = node['index']
+        node_name = node['name']
 
         core_idx  = 0
         gpu_idx   = 0
+
+        self._log.debug('=== alc slots')
+        self._log.debug('=== %s', pprint.pformat(alc_slots))
 
         for _ in range(alc_slots):
 
@@ -233,20 +238,12 @@ class Continuous(AgentSchedulingComponent):
                     gpus.append(gpu_idx)
                 gpu_idx += 1
 
-            cores_per_rank = cores_per_slot // ranks_per_slot
-            # create number of lists (equal to `ranks_per_slot`) with
-            # cores indices (i.e., cores per rank)
-            core_map = [cores[i:i + cores_per_rank]
-                        for i in range(0, len(cores), cores_per_rank)]
-            # gpus per rank are the same within the slot
-            gpu_map  = [gpus] * len(core_map)
-
-            slots.append({'node_name': node_name,
-                          'node_idx' : node_idx,
-                          'core_map' : core_map,
-                          'gpu_map'  : gpu_map,
-                          'lfs'      : lfs_per_slot,
-                          'mem'      : mem_per_slot})
+            slots.append({'node_name' : node_name,
+                          'node_index': node_idx,
+                          'cores'     : cores,
+                          'gpus'      : gpus,
+                          'lfs'       : lfs_per_slot,
+                          'mem'       : mem_per_slot})
 
         # consistency check
         assert (len(slots) == find_slots) or (len(slots) and partial)
@@ -317,7 +314,7 @@ class Continuous(AgentSchedulingComponent):
             ranks_per_slot = 1
             gpus_per_slot  = int(gpus_per_slot)
 
-        self._log.debug_3('req : %s %s %s %s %s %s',
+        self._log.debug_7('req : %s %s %s %s %s %s',
                           req_slots, ranks_per_slot, cores_per_slot,
                           gpus_per_slot, lfs_per_slot, mem_per_slot)
 
@@ -372,6 +369,7 @@ class Continuous(AgentSchedulingComponent):
         is_last  = False
         colo_tag = td['tags'].get('colocate')
 
+        # FIXME: make backward compatible to extract partition from colo tags
         if colo_tag is not None:
             colo_tag = str(colo_tag)
 
@@ -395,11 +393,11 @@ class Continuous(AgentSchedulingComponent):
         # start the search
         for node in self._iterate_nodes():
 
-            node_idx  = node['node_idx']
-            node_name = node['node_name']
+            node_index = node['index']
+            node_name  = node['name']
 
-            self._log.debug_3('next %d : %s', node_idx, node_name)
-            self._log.debug_3('req1: %s = %s + %s', req_slots, rem_slots,
+            self._log.debug_7('next %d : %s', node_index, node_name)
+            self._log.debug_7('req1: %s = %s + %s', req_slots, rem_slots,
                                                   len(alc_slots))
 
             # Check if a task is tagged to use this node.  This means we check
@@ -410,13 +408,13 @@ class Continuous(AgentSchedulingComponent):
             # used for this node - else continue to the next node.
             if colo_tag is not None:
                 if colo_tag in self._colo_history:
-                    if node_idx not in self._colo_history[colo_tag]:
+                    if node_index not in self._colo_history[colo_tag]:
                         continue
                 # for a new tag check that nodes were not used for previous tags
                 else:
                     # `exclusive` -> not to share nodes between different tags
                     is_exclusive = td['tags'].get('exclusive', False)
-                    if is_exclusive and node_idx in self._tagged_nodes:
+                    if is_exclusive and node_index in self._tagged_nodes:
                         if len(self.nodes) > len(self._tagged_nodes):
                             continue
                         self._log.warn('not enough nodes for exclusive tags, ' +
@@ -428,8 +426,8 @@ class Continuous(AgentSchedulingComponent):
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
                 _skip_node = True
-                for plabel, p_node_idxs in self._partitions.items():
-                    if node_idx in p_node_idxs:
+                for plabel, p_node_indexs in self._partitions.items():
+                    if node_index in p_node_indexs:
                         if task_partition_id in [None, plabel]:
                             node_partition_id = plabel
                             _skip_node = False
@@ -458,7 +456,7 @@ class Continuous(AgentSchedulingComponent):
             # now we know how many slots we still need at this point - but
             # we only search up to node-size on this node.  Duh!
             find_slots = min(rem_slots, slots_per_node)
-            self._log.debug_3('find: %s', find_slots)
+            self._log.debug_7('find: %s', find_slots)
 
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
@@ -492,8 +490,8 @@ class Continuous(AgentSchedulingComponent):
             rem_slots -= len(new_slots)
             alc_slots.extend(new_slots)
 
-            self._log.debug_3('new slots: %s', pprint.pformat(new_slots))
-            self._log.debug_3('req2: %s = %s + %s <> %s', req_slots, rem_slots,
+            self._log.debug_7('new slots: %s', pprint.pformat(new_slots))
+            self._log.debug_7('req2: %s = %s + %s <> %s', req_slots, rem_slots,
                                                   len(new_slots), len(alc_slots))
 
             # we are young only once.  kinda...
@@ -512,8 +510,8 @@ class Continuous(AgentSchedulingComponent):
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
         if colo_tag is not None and colo_tag != str(partition_id):
-            self._colo_history[colo_tag] = [node['node_idx']
-                                            for node in alc_slots]
+            self._colo_history[colo_tag] = [slot['node_index']
+                                            for slot in alc_slots]
             self._tagged_nodes.update(self._colo_history[colo_tag])
 
         # this should be nicely filled out now - return

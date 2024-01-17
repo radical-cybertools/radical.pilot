@@ -477,12 +477,12 @@ class Agent_0(rpu.AgentComponent):
                         'executable'    : '/bin/sh',
                         'arguments'     : [bs_name % self._pwd] + bs_args
                     }).as_dict(),
-                    'slots': {'ranks'   : [{'node_name': node['node_name'],
-                                            'node_idx' : node['node_idx'],
-                                            'core_map' : [node_cores],
-                                            'gpu_map'  : [],
-                                            'lfs'      : 0,
-                                            'mem'      : 0}]}
+                    'slots'             : [{'node_name' : node['name'],
+                                            'node_index': node['index'],
+                                            'cores'     : node_cores,
+                                            'gpus'      : [],
+                                            'lfs'       : 0,
+                                            'mem'       : 0}]
                 }
 
                 # find a launcher to use

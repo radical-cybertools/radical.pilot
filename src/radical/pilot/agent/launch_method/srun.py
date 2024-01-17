@@ -113,7 +113,7 @@ class Srun(LaunchMethod):
         td             = task['description']
         sbox           = task['task_sandbox_path']
 
-        n_tasks        = td['ranks']
+        n_tasks        = len(slots)
         n_task_threads = td.get('cores_per_rank', 1)
         gpus_per_task  = td.get('gpus_per_rank', 0.)
 
@@ -128,6 +128,7 @@ class Srun(LaunchMethod):
         nodelist = list()
 
         if not slots:
+            n_tasks = td['ranks']
             n_nodes = int(math.ceil(float(n_tasks) /
                                     self._rm_info.get('cores_per_node', 1)))
         else:
