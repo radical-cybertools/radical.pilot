@@ -8,6 +8,12 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.46.1 Hotfix-Release                                             2024-01-17
+
+  - fix type for `LFS_SIZE_PER_NODE`
+
+
+--------------------------------------------------------------------------------
 ### 1.46.0 Release                                                    2024-01-11
 
   - pypi fix
