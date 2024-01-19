@@ -403,16 +403,6 @@ class MPIWorkerRank(mt.Thread):
     #
     def run(self):
 
-        self._prof.prof('import_mpi')
-        from mpi4py import MPI
-
-        self._prof.prof('read_mpi_info_start')
-        self._world = MPI.COMM_WORLD
-        self._group = self._world.Get_group()
-        self._rank  = self._world.rank
-        self._ranks = self._world.size
-        self._prof.prof('read_mpi_info_stop')
-
         try:
             self._log.debug('init worker [%d] [%d] rtq_get:%s rrq_put:%s',
                             self._rank, self._ranks,
