@@ -63,7 +63,7 @@ session.close(cleanup=True)
 
 Run RP's [quick start tutorial](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD?labpath=docs%2Fsource%2Fgetting_started.ipynb) directly on Binder. No installation needed.
 
-Start to write your RP application, install RP:
+After going through the tutorial, install RP and start to code your application:
 
 ```shell
 python -m venv ~/.ve/radical-pilot
@@ -71,16 +71,17 @@ python -m venv ~/.ve/radical-pilot
 pip install radical.pilot
 ```
 
-Note that you can also use
+Note that other than `venv`, you can also use
 [`virtualenv`](https://radicalpilot.readthedocs.io/en/stable/getting_started.html#Virtualenv),
 [`conda`](https://radicalpilot.readthedocs.io/en/stable/getting_started.html#Conda)
 or
-[`spack`](https://radicalpilot.readthedocs.io/en/stable/getting_started.html#Spack),
-and start coding away. See our
+[`spack`](https://radicalpilot.readthedocs.io/en/stable/getting_started.html#Spack). 
+
+For some inspiration, see our RP application 
 [examples](https://github.com/radical-cybertools/radical.pilot/tree/devel/examples),
 starting from
 [00_getting_started.py](https://github.com/radical-cybertools/radical.pilot/blob/devel/examples/00_getting_started.py)
-for some inspiration.
+.
 
 ## Documentation
 
@@ -111,9 +112,9 @@ environment.
 
 ## Provide Feedback
 
-Have a question, a feature request or you found a bug? Feel free to open a 
+Have a question, feature request or you found a bug? Feel free to open a 
 [support ticket](https://github.com/radical-cybertools/radical.pilot/issues).
-For vilnerabilities, please draft a private 
+For vulnerabilities, please draft a private 
 [security advisory](https://github.com/radical-cybertools/radical.pilot/security/advisories).
 
 ## Contributing
@@ -124,5 +125,5 @@ experience for everyone. See our
 [Code of Conduct](https://radicalpilot.readthedocs.io/en/stable/process/code_of_conduct.html),
 relevant
 [technical documentation](https://radicalpilot.readthedocs.io/en/stable/process/contributing.html)
-and
+and feel free to 
 [get in touch](https://github.com/radical-cybertools/radical.pilot/issues).
