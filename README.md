@@ -61,7 +61,7 @@ session.close(cleanup=True)
 
 ## Quick Start
 
-Run RP's [quick start tutorial](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD?labpath=docs%2Fsource%2Fgetting_started.ipnb) directly on Binder. No installation needed.
+Run RP's [quick start tutorial](https://mybinder.org/v2/gh/radical-cybertools/radical.pilot/HEAD?labpath=docs%2Fsource%2Fgetting_started.ipynb) directly on Binder. No installation needed.
 
 Start to write your RP application, install RP:
 
