@@ -438,7 +438,7 @@ class Master(rpu.AgentComponent):
         self.advance(tasks, publish=True, push=True)
 
         # dump registry with all worker descriptions ("raptor.<worker_uid>.cfg")
-        self._reg.dump('raptor_master')
+        self._reg.dump(self._uid)
         return [task['uid'] for task in tasks]
 
 
