@@ -69,13 +69,6 @@ class Master(rpu.AgentComponent):
         self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
-        self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
-        self._reg.dump(self._uid)
-
-        # get hb configs
-        self._hb_freq = self._reg['rcfg.raptor.hb_frequency']
-        self._hb_tout = self._reg['rcfg.raptor.hb_timeout']
-
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
         self._exec_tasks = list()      # keep track of executable tasks
@@ -91,6 +84,10 @@ class Master(rpu.AgentComponent):
                                     'reg_addr': self._reg_addr})
 
         super().__init__(ccfg, self._session)
+
+        # get hb configs (RegistryClient instance is initiated in Session)
+        self._hb_freq = self._session.rcfg.raptor.hb_frequency
+        self._hb_tout = self._session.rcfg.raptor.hb_timeout
 
         self._log.debug('hb freq: %s', self._hb_freq)
         self._log.debug('hb tout: %s', self._hb_tout)
@@ -401,10 +398,9 @@ class Master(rpu.AgentComponent):
             # ensure that defaults and backward compatibility kick in
             td.verify()
 
-            # the default worker needs it's own task description to derive the
+            # the default worker needs its own task description to derive the
             # amount of available resources
-            self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
-          # self._reg.dump('raptor_master')
+            self._reg['raptor.%s.cfg' % td.uid] = td.as_dict()
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -441,6 +437,8 @@ class Master(rpu.AgentComponent):
 
         self.advance(tasks, publish=True, push=True)
 
+        # dump registry with all worker descriptions ("raptor.<worker_uid>.cfg")
+        self._reg.dump(self._uid)
         return [task['uid'] for task in tasks]
 
 
