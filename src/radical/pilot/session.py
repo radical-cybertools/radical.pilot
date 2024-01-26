@@ -175,6 +175,7 @@ class Session(rs.Session):
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
         self._rm       = None    # resource manager (agent_0 sessions)
+        self._hb       = None    # heartbeat monitor
 
         # this session is either living in the client applicatio or lives in the
         # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
@@ -900,8 +901,9 @@ class Session(rs.Session):
             self._cmgr.close()
 
         # stop heartbeats
-        self._hb.stop()
-        self._hb_pubsub.stop()
+        if self._hb:
+            self._hb.stop()
+            self._hb_pubsub.stop()
 
         if self._proxy:
 
