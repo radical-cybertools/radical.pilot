@@ -40,20 +40,19 @@ class Worker(object):
         self._ranks     = int(os.environ['RP_RANKS'])
 
         self._reg       = ru.zmq.RegistryClient(url=self._reg_addr)
-        self._reg.dump(self._uid)
+        self._cfg       = ru.Config(cfg=self._reg['cfg'])
 
         self._hb_delay  = self._reg['rcfg.raptor.hb_delay']
 
-        self._cfg  = ru.Config(cfg=self._reg['cfg'])
-
-        self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
+        self._log  = ru.Logger(name=self._uid,
+                               ns='radical.pilot.worker',
                                level=self._cfg.log_lvl,
                                debug=self._cfg.debug_lvl,
                                targets=self._cfg.log_tgt,
                                path=self._cfg.path)
         self._prof = ru.Profiler(name='%s.%04d' % (self._uid, self._rank),
                                  ns='radical.pilot.worker',
-                                 path=self._cfg.path)
+                                 path=self._sbox)
 
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']
@@ -75,6 +74,7 @@ class Worker(object):
         # let ZMQ settle
         time.sleep(1)
 
+        self._hb_register_count = 60
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
         self._log.debug('hb delay: %s', self._hb_delay)
         self._hb_thread = mt.Thread(target=self._hb_worker)
@@ -109,6 +109,7 @@ class Worker(object):
 
         # the manager (rank 0) registers the worker with the master
         if self._manager:
+
             self._log.debug('register: %s / %s', self._uid, self._raptor_id)
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
 
@@ -116,21 +117,21 @@ class Worker(object):
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})
 
-        # wait for raptor response
-        self._log.debug('wait for registration to complete')
-        count = 0
-        while not self._reg_event.wait(timeout=1):
-            if count < 60:
-                count += 1
-                self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
-                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
-            else:
-                self.stop()
-                self.join()
-                self._log.error('registration with master timed out')
-                raise RuntimeError('registration with master timed out')
+            # wait for raptor response
+            self._log.debug('wait for registration to complete')
+            count = 0
+            while not self._reg_event.wait(timeout=5):
+                if count < self._hb_register_count:
+                    count += 1
+                    self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
+                    self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
+                else:
+                    self.stop()
+                    self.join()
+                    self._log.error('registration with master timed out')
+                    raise RuntimeError('registration with master timed out')
 
-        self._log.debug('registration with master ok')
+            self._log.debug('registration with master ok')
 
 
     # --------------------------------------------------------------------------
