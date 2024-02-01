@@ -177,9 +177,9 @@ class Session(rs.Session):
         self._rm       = None    # resource manager (agent_0 sessions)
         self._hb       = None    # heartbeat monitor
 
-        # this session is either living in the client applicatio or lives in the
-        # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
-        # set - we derive the session module scope from that env variable.
+        # this session is either living in the client application or lives in
+        # the scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to
+        # be set - we derive the session module scope from that env variable.
         self._module = os.environ.get('RP_PILOT_ID', 'client')
 
         # non-primary sessions need a uid!
