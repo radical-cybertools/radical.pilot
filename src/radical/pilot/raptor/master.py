@@ -177,7 +177,7 @@ class Master(rpu.AgentComponent):
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # everything is set up - we can serve messages on the pubsubs also
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
