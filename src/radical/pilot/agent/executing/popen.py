@@ -668,8 +668,8 @@ class Popen(AgentExecutingComponent):
         ret += ') 1> %s \\\n  2> %s\n' % (task['stdout_file_short'],
                                           task['stderr_file_short'])
         # collect PID for launch-script
-        ret += 'RP_LAUNCH_PID=$$\n'
         ret += 'RP_RET=$?\n'
+        ret += 'RP_LAUNCH_PID=$$\n'
 
         return ret
 
