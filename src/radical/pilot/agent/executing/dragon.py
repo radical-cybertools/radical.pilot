@@ -9,60 +9,29 @@ import time
 import queue
 import atexit
 import signal
-import threading  as mt
-import subprocess as sp
+import threading       as mt
+import multiprocessing as mp
 
 import radical.utils as ru
 
 from ...  import states    as rps
 from ...  import constants as rpc
 
-from .base import AgentExecutingComponent
-
-
-# ------------------------------------------------------------------------------
-# ensure tasks are killed on termination
-_pids = list()
-
-
-# pylint: disable=unused-argument
-def _kill(*args, **kwargs):
-
-    for pid in _pids:
-
-        # skip test mocks
-        if not isinstance(pid, int):
-            continue
-
-        try   : os.killpg(pid, signal.SIGTERM)
-        except: pass
-
-
-atexit.register(_kill)
-signal.signal(signal.SIGTERM, _kill)
-signal.signal(signal.SIGINT,  _kill)
-# ------------------------------------------------------------------------------
+from .popen import Popen
 
 
 # ------------------------------------------------------------------------------
 #
-class Popen(AgentExecutingComponent):
-
-    _header    = '#!/bin/sh\n'
-    _separator = '\n# ' + '-' * 78 + '\n'
-
-    # flags for the watcher queue
-    TO_WATCH  = 0
-    TO_CANCEL = 1
+class Dragon(Popen):
 
     # --------------------------------------------------------------------------
     #
     def initialize(self):
 
-      # self._log.debug('popen initialize start')
+        self._log.debug('dragon initialize start')
         super().initialize()
 
-        self._watch_queue = queue.Queue()
+        self._watch_queue = mp.Queue()
 
         self._pid = self.session.cfg.pid
 
@@ -71,287 +40,26 @@ class Popen(AgentExecutingComponent):
       # self._watcher.daemon = True
         self._watcher.start()
 
-      # self._log.debug('popen initialize stop')
+        # run dragon execution helper in a separate process which actually uses
+        # dragon's multiprocessing implementation
+        self._dragon = mp.Process(target=self._dragon_proc,
+                                  # env= ...,
+                                 )
+        self._dragon.start()
+
+        self._log.debug('dragon initialize stop')
 
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def _dragon_proc(self):
 
-        self._watch_queue.put([self.TO_CANCEL, uid])
+        import dragon
+        import multiprocessing
 
-
-    # --------------------------------------------------------------------------
-    #
-    def work(self, tasks):
-
-        self.advance_tasks(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
-
-        for task in tasks:
-
-            try:
-                self._prof.prof('task_start', uid=task['uid'])
-                self._handle_task(task)
-
-            except Exception as e:
-                self._log.exception("error running Task")
-                task['exception']        = repr(e)
-                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
-
-                # can't rely on the executor base to free the task resources
-                self._prof.prof('unschedule_start', uid=task['uid'])
-                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-                task['control'] = 'tmgr_pending'
-                task['$all']    = True
-                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
+        pass
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _handle_task(self, task):
-
-        # before we start handling the task, check if it should run in a named
-        # env.  If so, inject the activation of that env in the task's pre_exec
-        # directives.
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
-
-        # prepare stdout/stderr
-        task['stdout'] = ''
-        task['stderr'] = ''
-
-        stdout_file    = td.get('stdout') or '%s.out' % tid
-        stderr_file    = td.get('stderr') or '%s.err' % tid
-
-        if stdout_file[0] != '/':
-            task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
-            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % stdout_file
-        else:
-            task['stdout_file']       = stdout_file
-            task['stdout_file_short'] = stdout_file
-
-        if stderr_file[0] != '/':
-            task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
-            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % stderr_file
-        else:
-            task['stderr_file']       = stderr_file
-            task['stderr_file_short'] = stderr_file
-
-        # create two shell scripts: a launcher script (task.launch.sh) which
-        # sets the launcher environment, performs pre_launch commands, and then
-        # launches the second script which executes the task.
-        #
-        # The second script (`task.exec.sh`) is instantiated once per task rank.
-        # It first resets the environment created by the launcher, then prepares
-        # the environment for the tasks.  Next it runs the `pre_exec` directives
-        # for all ranks and per rank (if commands for particular rank are
-        # defined) are executed, and then, after all ranks are synchronized,
-        # finally the task ranks begin to run.
-        #
-        # The scripts thus show the following approximate structure:
-        #
-        # Launcher Script (`task.000000.launch.sh`):
-        # ----------------------------------------------------------------------
-        # #!/bin/sh
-        #
-        # # `pre_launch` commands
-        # date > data.input
-        #
-        # # launcher specific environment setup
-        # module load openmpi
-        #
-        # # launch the task script
-        # mpirun -n 4 ./task.000000.exec.sh
-        # ----------------------------------------------------------------------
-        #
-        # Task Script (`task.000000.exec.sh`)
-        # ----------------------------------------------------------------------
-        # #!/bin/sh
-        #
-        # # clean launch environment
-        # module unload mpi
-        #
-        # # task environment setup (`pre_exec`)
-        # module load gromacs
-        #
-        # # rank specific setup
-        # touch task.000000.ranks
-        # if test "$MPI_RANK" = 0; then
-        #   export CUDA_VISIBLE_DEVICES=0
-        #   export OMP_NUM_THREADS=2
-        #   export RANK_0_VAR=foo
-        #   echo 0 >> task.000000.ranks
-        # fi
-        #
-        # if test "$MPI_RANK" = 1; then
-        #   export CUDA_VISIBLE_DEVICES=1
-        #   export OMP_NUM_THREADS=4
-        #   export RANK_1_VAR=bar
-        #   echo 1 >> task.000000.ranks
-        # fi
-        #
-        # # synchronize ranks
-        # while $(cat task.000000.ranks | wc -l) != $MPI_RANKS; do
-        #   sleep 1
-        # done
-        #
-        # # run the task
-        # mdrun -i ... -o ... -foo ... 1> task.000000.$MPI_RANK.out \
-        #                              2> task.000000.$MPI_RANK.err
-        #
-        # # now do the very same stuff for the `post_exec` directive
-        # ...
-
-        launcher = self._rm.find_launcher(task)
-
-        self._create_launch_script(launcher, task)
-        self._create_exec_script(launcher, task)
-        self._launch_task(task)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _create_launch_script(self, launcher, task):
-
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
-
-        if not launcher:
-            raise RuntimeError('no launcher found for task %s' % tid)
-
-        self._log.debug('Launching task with %s', launcher.name)
-
-        launch_script = '%s.launch.sh'        % tid
-        exec_script   = '%s.exec.sh'          % tid
-        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
-
-        ru.rec_makedir(sbox)
-
-        with ru.ru_open('%s/%s' % (sbox, launch_script), 'w') as fout:
-
-            tmp  = ''
-            tmp += self._header
-            tmp += self._separator
-            tmp += self._get_rp_env(task)
-            tmp += self._get_rp_funcs()
-            tmp += self._separator
-            tmp += self._get_prof('launch_start', tid)
-
-            tmp += self._separator
-            tmp += '# change to task sandbox\n'
-            tmp += 'cd $RP_TASK_SANDBOX\n'
-
-            tmp += self._separator
-            tmp += '# prepare launcher env\n'
-            tmp += self._get_launch_env(launcher)
-
-            tmp += self._separator
-            tmp += '# pre-launch commands\n'
-            tmp += self._get_prof('launch_pre', tid)
-            tmp += self._get_prep_launch(task, sig='pre_launch')
-
-            tmp += self._separator
-            tmp += '# launch commands\n'
-            tmp += self._get_prof('launch_submit', tid)
-            tmp += self._get_launch(task, launcher, exec_path)
-            tmp += self._get_prof('launch_collect', tid,
-                                  msg='RP_LAUNCH_PID=$RP_LAUNCH_PID')
-
-            tmp += self._separator
-            tmp += '# post-launch commands\n'
-            tmp += self._get_prof('launch_post', tid)
-            tmp += self._get_prep_launch(task, sig='post_launch')
-
-            tmp += self._separator
-            tmp += self._get_prof('launch_stop', tid)
-            tmp += 'exit $RP_RET\n'
-
-            tmp += self._separator
-            tmp += '\n'
-
-            fout.write(tmp)
-
-    # --------------------------------------------------------------------------
-    #
-    def _create_exec_script(self, launcher, task):
-
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
-
-        exec_script   = '%s.exec.sh'   % tid
-        launch_script = '%s.launch.sh' % tid
-
-        # the exec shell script runs the same set of commands for all ranks.
-        # However, if the ranks need different GPU's assigned, or if either pre-
-        # or post-exec directives contain per-rank dictionaries, then we switch
-        # per-rank in the script for all sections between pre- and post-exec.
-
-        n_ranks = td['ranks']
-        slots   = task.setdefault('slots', {})
-
-        self._extend_pre_exec(td, slots.get('ranks'))
-
-        with ru.ru_open('%s/%s' % (sbox, exec_script), 'w') as fout:
-
-            tmp  = ''
-            tmp += self._header
-            tmp += self._separator
-            tmp += self._get_rp_env(task)
-            tmp += self._get_rp_funcs()
-            tmp += self._separator
-            tmp += '# rank ID\n'
-            tmp += self._get_rank_ids(n_ranks, launcher)
-            tmp += self._separator
-            tmp += self._get_prof('exec_start', tid)
-
-            tmp += self._get_task_env(task, launcher)
-
-            tmp += self._separator
-            tmp += '# pre-exec commands\n'
-            tmp += self._get_prof('exec_pre', tid)
-            tmp += self._get_prep_exec(task, n_ranks, sig='pre_exec')
-
-            tmp += self._separator
-            tmp += '# execute rank\n'
-            tmp += self._get_prof('rank_start', tid)
-            tmp += self._get_exec(task, launcher)
-            tmp += self._get_prof('rank_stop', tid,
-                                  msg='RP_EXEC_PID=$RP_EXEC_PID:'
-                                      'RP_RANK_PID=$RP_RANK_PID')
-
-            tmp += self._separator
-            tmp += '# post-exec commands\n'
-            tmp += self._get_prof('exec_post', tid)
-            tmp += self._get_prep_exec(task, n_ranks, sig='post_exec')
-
-            tmp += self._separator
-            tmp += self._get_prof('exec_stop', tid)
-            tmp += 'exit $RP_RET\n'
-
-            tmp += self._separator
-            tmp += '\n'
-
-            fout.write(tmp)
-
-
-        # make sure scripts are executable
-        st_l = os.stat('%s/%s' % (sbox, launch_script))
-        st_e = os.stat('%s/%s' % (sbox, exec_script))
-        os.chmod('%s/%s' % (sbox, launch_script), st_l.st_mode | stat.S_IEXEC)
-        os.chmod('%s/%s' % (sbox, exec_script),   st_e.st_mode | stat.S_IEXEC)
-
-        # make sure the sandbox exists
-        self._prof.prof('task_mkdir', uid=tid)
-        ru.rec_makedir(sbox)
-        self._prof.prof('task_mkdir_done', uid=tid)
-
-        # need to set `DEBUG_5` or higher to get slot debug logs
-        if self._log._debug_level >= 5:
-            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
     # --------------------------------------------------------------------------
     #
@@ -364,6 +72,7 @@ class Popen(AgentExecutingComponent):
         exec_script   = '%s.exec.sh'   % tid
         launch_script = '%s.launch.sh' % tid
 
+
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
 
@@ -371,25 +80,21 @@ class Popen(AgentExecutingComponent):
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
-
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
         _start_new_session = self.session.rcfg.new_session_per_task or False
 
         self._prof.prof('task_run_start', uid=tid)
-        task['proc'] = sp.Popen(args              = cmdline,
+        task['proc'] = mp.Popen(args              = cmdline,
                                 executable        = None,
                                 shell             = False,
                                 stdin             = None,
                                 stdout            = _launch_out_h,
-                                stderr            = sp.STDOUT,
+                                stderr            = mp.STDOUT,
                                 start_new_session = _start_new_session,
                                 close_fds         = True,
                                 cwd               = sbox)
         self._prof.prof('task_run_ok', uid=tid)
-
-        # store pid for last-effort termination
-        _pids.append(task['proc'].pid)
 
         # handle task timeout if needed
         self.handle_timeout(task)
