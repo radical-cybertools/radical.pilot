@@ -121,9 +121,8 @@ class Worker(object):
         self._log.debug('wait for registration to complete')
         count = 0
         while not self._reg_event.wait(timeout=5):
-            if count < self._hb_register_count:
-                count += 1
-            else:
+            count += 1
+            if count >= self._hb_register_count:
                 self.stop()
                 self.join()
                 self._log.error('registration with master timed out')
