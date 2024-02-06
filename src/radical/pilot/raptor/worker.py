@@ -123,8 +123,6 @@ class Worker(object):
         while not self._reg_event.wait(timeout=5):
             if count < self._hb_register_count:
                 count += 1
-                self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
-                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
             else:
                 self.stop()
                 self.join()
