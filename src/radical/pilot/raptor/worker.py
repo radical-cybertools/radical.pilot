@@ -117,20 +117,22 @@ class Worker(object):
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})
 
-            # wait for raptor response
-            self._log.debug('wait for registration to complete')
-            count = 0
-            while not self._reg_event.wait(timeout=5):
-                if count < self._hb_register_count:
-                    count += 1
+        # wait for raptor response (*all* ranks*)
+        self._log.debug('wait for registration to complete')
+        count = 0
+        while not self._reg_event.wait(timeout=5):
+            if count < self._hb_register_count:
+                count += 1
+                if self._manager:
                     self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
                     self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
-                else:
-                    self.stop()
-                    self.join()
-                    self._log.error('registration with master timed out')
-                    raise RuntimeError('registration with master timed out')
+            else:
+                self.stop()
+                self.join()
+                self._log.error('registration with master timed out')
+                raise RuntimeError('registration with master timed out')
 
+        if self._manager:
             self._log.debug('registration with master ok')
 
 
