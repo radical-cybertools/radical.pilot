@@ -75,6 +75,7 @@ class TestPopen(TestCase):
 
         task = dict(self._test_case['task'])
         task['slots'] = self._test_case['setup']['slots']
+        task['partition'] = 0
 
         pex = Popen(cfg=None, session=None)
 
