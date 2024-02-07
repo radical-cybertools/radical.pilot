@@ -177,6 +177,9 @@ class Continuous(AgentSchedulingComponent):
                thread count and using physical core IDs for process placement?
         '''
 
+        # FIXME AM: make sure ranks_per_slot is used correctly (gpu sharing)
+        # FIXME AM: check gpu sharing test case
+
       # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
         # check if the node can host the request
@@ -225,6 +228,9 @@ class Continuous(AgentSchedulingComponent):
 
             cores = list()
             gpus  = list()
+
+            # FIXME AM
+            for ... in range(ranks_per_slot):
 
             while len(cores) < cores_per_slot:
 

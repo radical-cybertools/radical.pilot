@@ -201,30 +201,33 @@ class ResourceConfig(ru.TypedDict):
 # ------------------------------------------------------------------------------
 #
 class NodeDescription(ru.TypedDict):
+    '''
+    Node description for the end user, exposed via pilot instances
+    '''
 
-    N_CORES = 'n_cores'
-    N_GPUS  = 'n_gpus'
-    LFS     = 'lfs'
-    MEM     = 'mem'
-    INDEX   = 'index'
-    NAME    = 'name'
+    CORES = 'cores'
+    GPUS  = 'gpus'
+    LFS   = 'lfs'
+    MEM   = 'mem'
+    INDEX = 'index'
+    NAME  = 'name'
 
     _schema = {
-        N_CORES   : int,
-        N_GPUS    : int,
-        LFS       : int,
-        MEM       : int,
-        INDEX     : int,
-        NAME      : str,
+        CORES : int,
+        GPUS  : int,
+        LFS   : int,
+        MEM   : int,
+        INDEX : int,
+        NAME  : str,
     }
 
     _defaults = {
-        N_CORES   : 0,
-        N_GPUS    : 0,
-        LFS       : 0,
-        MEM       : 0,
-        INDEX     : 0,
-        NAME      : None,
+        CORES : 0,
+        GPUS  : 0,
+        LFS   : 0,
+        MEM   : 0,
+        INDEX : 0,
+        NAME  : None,
     }
 
 
@@ -237,12 +240,12 @@ class NodeDescription(ru.TypedDict):
             nr        = copy.deepcopy(from_dict)
             from_dict = dict()
 
-            from_dict[self.N_CORES  ] = len(nr.cores)
-            from_dict[self.N_GPUS   ] = len(nr.gpus)
-            from_dict[self.LFS      ] = nr.lfs
-            from_dict[self.MEM      ] = nr.mem
-            from_dict[self.INDEX    ] = nr.index
-            from_dict[self.NAME     ] = nr.name
+            from_dict[self.CORES  ] = len(nr.cores)
+            from_dict[self.GPUS   ] = len(nr.gpus)
+            from_dict[self.LFS    ] = nr.lfs
+            from_dict[self.MEM    ] = nr.mem
+            from_dict[self.INDEX  ] = nr.index
+            from_dict[self.NAME   ] = nr.name
 
         super().__init__(from_dict=from_dict)
         self._verify
@@ -251,6 +254,9 @@ class NodeDescription(ru.TypedDict):
 # ------------------------------------------------------------------------------
 #
 class NodeResources(ru.TypedDict):
+    '''
+    Node resources as reported by the resource manager, used by the scheduler
+    '''
 
     CORES    = 'cores'
     GPUS     = 'gpus'
@@ -317,8 +323,8 @@ class Slot(ru.TypedDict):
                   lfs     : int       = 0,
                   mem     : int       = 0):
 
-        if core_ids: assert max(core_ids) <  node.n_cores
-        if gpu_ids : assert max(gpu_ids)  <  node.n_gpus
+        if core_ids: assert max(core_ids) <  node.cores
+        if gpu_ids : assert max(gpu_ids)  <  node.gpus
         if lfs     : assert lfs           <= node.lfs
         if mem     : assert mem           <= node.mem
 
