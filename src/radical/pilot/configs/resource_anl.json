@@ -60,7 +60,7 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 104,
         "gpus_per_node"               : 6,
-        "system_architecture"         : {"smt"    : 2,
+        "system_architecture"         : {"smt"    : 1,
                                          "options": ["filesystems=gecko:home", "place=scatter"]}
     }
 }
