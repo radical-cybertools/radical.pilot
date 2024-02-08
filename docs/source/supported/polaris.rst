@@ -120,6 +120,8 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
    # check the status of the script running:
    #   jobs -l
 
+**Monitoring page:** https://status.alcf.anl.gov/#/polaris
+
 =====
 
 .. note::
