@@ -385,7 +385,6 @@ class Session(rs.Session):
             for res, rcfg in rcfgs[site].items():
                 self._rcfgs[site][res] = ResourceConfig(rcfg)
 
-
         self._rcfg  = ru.Config()  # the local resource config, if known
 
         # set essential config values for *this* specific session
@@ -429,6 +428,10 @@ class Session(rs.Session):
 
         self._rep.info ('<<new session: ')
         self._rep.plain('[%s]' % self._uid)
+
+        self._log.debug('=== populate rcfgs')
+        self._log.debug('=== 0 %s',
+              self._rcfgs['local']['localhost']['default_remote_workdir'])
 
 
     # --------------------------------------------------------------------------
@@ -480,6 +483,9 @@ class Session(rs.Session):
 
         self._prof.prof('session_start', uid=self._uid)
 
+        self._log.debug('=== 1 %s',
+              self._rcfgs['local']['localhost']['default_remote_workdir'])
+
 
     # --------------------------------------------------------------------------
     #
@@ -510,6 +516,9 @@ class Session(rs.Session):
 
         self._log.debug('Session(%s, %s)', self._uid, self._role)
         self._prof.prof('session_start', uid=self._uid)
+
+        self._log.debug('=== #### 2 %s',
+              self._rcfgs['local']['localhost']['default_remote_workdir'])
 
 
     # --------------------------------------------------------------------------
@@ -1256,6 +1265,10 @@ class Session(rs.Session):
     def get_resource_config(self, resource, schema=None):
         """Returns a dictionary of the requested resource config."""
 
+        self._log.debug('=== --------- get_rcfg 0 %s, %s', resource, schema)
+        self._log.debug('=== = %s',
+              self._rcfgs['local']['localhost']['default_remote_workdir'])
+
         site, res = resource.split('.', 1)
         if site not in self._rcfgs:
             raise RuntimeError("Resource site '%s' is unknown." % site)
@@ -1269,6 +1282,8 @@ class Session(rs.Session):
         if not schema:
             from_dict = self._rcfgs[site][res]
             from_dict.label = resource
+            self._log.debug('=== --------- get_rcfg 1 %s',
+                            rcfg['default_remote_workdir'])
             return ResourceConfig(from_dict=from_dict)
 
         if schema not in self._rcfgs[site][res]['schemas']:
@@ -1292,6 +1307,8 @@ class Session(rs.Session):
 
         rcfg.verify()
 
+        self._log.debug('=== --------- get_rcfg 2 %s',
+                        rcfg['default_remote_workdir'])
         return rcfg
 
 
@@ -1351,6 +1368,9 @@ class Session(rs.Session):
         resource = pilot['description'].get('resource')
         schema   = pilot['description'].get('access_schema')
 
+        self._log.debug('=== ------------------------------------')
+        self._log.debug('=== resource sandbox for %s', resource)
+
         if not resource:
             raise ValueError('Cannot get pilot sandbox w/o resource target')
 
@@ -1364,10 +1384,15 @@ class Session(rs.Session):
                 rcfg   = self.get_resource_config(resource, schema)
                 fs_url = rs.Url(rcfg['filesystem_endpoint'])
 
+                self._log.debug('=== cfg 1 %s', rcfg['default_remote_workdir'])
+                self._log.debug('=== cfg 2 %s', fs_url)
+
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
+                self._log.debug('=== raw 1 %s', sandbox_raw)
                 if not sandbox_raw:
                     sandbox_raw = rcfg.get('default_remote_workdir', "$PWD")
+                self._log.debug('=== raw 2 %s', sandbox_raw)
 
 
                 # we may need to replace pat elements with data from the pilot
@@ -1419,6 +1444,8 @@ class Session(rs.Session):
                 # before returning, keep the URL string in cache
                 self._cache['resource_sandbox'][resource] = fs_url
 
+            self._log.debug('=== --- return %s',
+                            self._cache['resource_sandbox'][resource])
             return self._cache['resource_sandbox'][resource]
 
 

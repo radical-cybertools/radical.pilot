@@ -386,6 +386,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         session_sandbox = self._session._get_session_sandbox(pilots[0]).path
         session_sandbox = session_sandbox % expand
 
+        self._log.debug('=== 1 %s', session_sandbox)
+
         # we will create the session sandbox before we untar, so we can use that
         # as workdir, and pack all paths relative to that session sandbox.  That
         # implies that we have to recheck that all URLs in fact do point into
@@ -491,6 +493,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         fs_url       = ru.Url(fs_endpoint)
         tar_rem      = ru.Url(fs_url)
         tar_rem.path = "%s/%s" % (session_sandbox, tar_name)
+        self._log.debug('=== 2 %s', tar_rem)
 
         self._log.debug('stage tarball for %s', pilots[0]['uid'])
         self._stage_in(pilots[0], {'source': tar_url,
@@ -613,6 +616,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         session_sandbox  = self._session._get_session_sandbox (pilot)
         pilot_sandbox    = self._session._get_pilot_sandbox   (pilot)
         client_sandbox   = self._session._get_client_sandbox  ()
+
+        self._log.debug('=== 3 %s', session_sandbox)
 
         pilot['endpoint_fs']      = str(endpoint_fs)      % expand
         pilot['resource_sandbox'] = str(resource_sandbox) % expand
