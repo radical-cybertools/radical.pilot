@@ -177,12 +177,11 @@ class Task(object):
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # RP's internal processes may update metadata
-        if 'description' not in task_dict:
-            # this should not happen!
-            import pprint
-            self._log.debug('=== invalid task dict: %s',
-                                 pprint.pformat(task_dict))
+      # # RP's internal processes may update metadata
+      # if 'description' not in task_dict:
+      #     # this should not happen!
+      #     import pprint
+      #     self._log.debug('invalid task dict: %s', pprint.pformat(task_dict))
 
         if task_dict.get('description', {}).get('metadata'):
             self._descr['metadata'] = task_dict['description']['metadata']
