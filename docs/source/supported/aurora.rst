@@ -1,11 +1,13 @@
-==================
-Polaris (ALCF/ANL)
-==================
+=================
+Aurora (ALCF/ANL)
+=================
+
+**ACCESS IS CURRENTLY ENABLED FOR ESP and ECP TEAMS ONLY**
 
 Platform user guide
 ===================
 
-https://docs.alcf.anl.gov/polaris/getting-started
+https://docs.alcf.anl.gov/aurora/getting-started-on-aurora/
 
 General description
 ===================
@@ -13,13 +15,13 @@ General description
 * Resource manager - ``PBSPRO``
 * Launch methods (per platform ID)
 
-  * ``anl.polaris`` - ``MPIEXEC``
+  * ``anl.aurora`` - ``MPIEXEC``
 
-* Configuration per node (560 nodes in total)
+* Configuration per node (10,624 nodes in total)
 
-  * 32 CPU cores, each core has 2 threads (``SMT=2``)
-  * 4 GPUs (NVIDIA A100)
-  * 512 GiB of memory
+  * 2 CPUs with 52 cores each, 2 threads per core (``SMT=2``)
+  * 6 GPUs (Intel Data Center Max 1550 Series)
+  * 512 GB of memory per CPU
 
 .. note::
 
@@ -33,27 +35,12 @@ General description
       mkdir -p ~/.radical/pilot/configs
       cat > ~/.radical/pilot/configs/resource_anl.json <<EOF
       {
-          "polaris": {
+          "aurora": {
               "system_architecture": {"options": ["filesystems=grand:home",
                                                   "place=scatter"]}
           }
       }
       EOF
-
-.. note::
-
-   `Binding MPI ranks to GPUs <https://docs.alcf.anl.gov/polaris/running-jobs/#binding-mpi-ranks-to-gpus>`_:
-   If you want to control GPUs assignment per task, then the following code
-   snippet provides an example of setting ``CUDA_VISIBLE_DEVICES`` for each MPI
-   rank on Polaris:
-
-   .. code-block:: python
-
-      import radical.pilot as rp
-
-      td = rp.TaskDescription()
-      td.pre_exec.append('export CUDA_VISIBLE_DEVICES=$((3 - $PMI_LOCAL_RANK % 4))')
-      td.gpu_type = ''  # reset GPU type, thus RP will not set "CUDA_VISIBLE_DEVICES"
 
 Setup execution environment
 ===========================
@@ -66,6 +53,7 @@ Create a **virtual environment** with ``venv``:
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
+   module load cray-python/3.9.13.1
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
@@ -73,12 +61,31 @@ OR create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 
-   module load conda; conda activate
+   module use /soft/modulefiles
+   module load frameworks
    conda create -y -n ve.rp python=3.9
    conda activate ve.rp
    # OR clone base environment
    #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
    #   conda activate $HOME/ve.rp
+
+.. note::
+
+   Using ``conda`` would require to have a different environment setup for
+   RADICAL-Pilot while running on a target platform. To have it configured
+   correctly, please, follow the steps below:
+
+   .. code-block:: bash
+
+      mkdir -p ~/.radical/pilot/configs
+      cat > ~/.radical/pilot/configs/resource_anl.json <<EOF
+      {
+          "aurora": {
+              "pre_bootstrap_0" : ["module use /soft/modulefiles",
+                                   "module load frameworks"]
+          }
+      }
+      EOF
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
@@ -94,20 +101,20 @@ Launching script example
 Launching script (e.g., ``rp_launcher.sh``) for the RADICAL-Pilot application
 includes setup processes to activate a certain execution environment and
 launching command for the application itself. In this example we use virtual
-environment with ``conda``.
+environment with ``venv``.
 
 .. code-block:: bash
 
    #!/bin/sh
 
    # - pre run -
-   module load conda
-   eval "$(conda shell.posix hook)"
-   conda activate ve.rp
+   module load cray-python
+   source ve.rp/bin/activate
 
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>
@@ -119,8 +126,6 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
    nohup ./rp_launcher.sh > OUTPUT 2>&1 </dev/null &
    # check the status of the script running:
    #   jobs -l
-
-**Monitoring page:** https://status.alcf.anl.gov/#/polaris
 
 =====
 
