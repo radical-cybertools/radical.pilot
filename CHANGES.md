@@ -8,6 +8,19 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.47.0 Release                                                    2024-02-08
+
+  - binder tutorial
+  - expand / fix documentation and README, update policies
+  - docs for psij deployment
+  - raptor example now terminates on worker failures
+  - fix raptor worker registration
+  - fix flux startup
+  - fix type for `LFS_SIZE_PER_NODE`
+  - update HB config parameters for raptor
+
+
+--------------------------------------------------------------------------------
 ### 1.46.2 Hotfix-Release                                             2024-02-02
 
   - fix detection of failed tasks

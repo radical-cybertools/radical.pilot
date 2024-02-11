@@ -1,73 +1,7 @@
 
 {
-    "theta": {
-        "description"                 : "Cray XC40, 4392 nodes (Intel KNL 7230)",
-        "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
-        "default_schema"              : "local",
-        "schemas"                     : {
-            "local"                   : {
-                "job_manager_hop"     : "cobalt://localhost/",
-                "job_manager_endpoint": "cobalt://localhost/",
-                "filesystem_endpoint" : "file://localhost/"
-            }
-        },
-        "default_queue"               : "debug-flat-quad",
-        "resource_manager"            : "COBALT",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "new_session_per_task"        : false,
-        "launch_methods"              : {
-                                         "order": ["APRUN"],
-                                         "APRUN": {}
-                                        },
-        "pre_bootstrap_0"             : [
-                                         "module load miniconda-3"
-                                        ],
-        "default_remote_workdir"      : "$HOME",
-        "virtenv_mode"                : "local",
-        "cores_per_node"              : 64,
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 0
-    },
-
-    "theta_gpu": {
-        "description"                 : "Extension of Theta, 24 NVIDIA DGX A100 nodes",
-        "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
-        "default_schema"              : "local",
-        "schemas"                     : {
-            "local"                   : {
-                "job_manager_hop"     : "cobalt://localhost/",
-                "job_manager_endpoint": "cobalt://localhost/",
-                "filesystem_endpoint" : "file://localhost/"
-            }
-        },
-        "default_queue"               : "full-node",
-        "resource_manager"            : "COBALT",
-        "agent_config"                : "default",
-        "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "POPEN",
-        "launch_methods"              : {
-                                         "order" : ["MPIRUN", "SSH"],
-                                         "MPIRUN": {},
-                                         "SSH"   : {}
-                                        },
-        "pre_bootstrap_0"             : [
-            ". /home/$USER/.miniconda3/etc/profile.d/conda.sh"
-        ],
-        "default_remote_workdir"      : "$HOME",
-        "virtenv_mode"                : "local",
-        "python_dist"                 : "default",
-        "cores_per_node"              : 128,
-        "gpus_per_node"               : 8,
-        "system_architecture"         : {"options": ["mig-mode=True"]},
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 0
-    },
-
     "polaris": {
         "description"                 : "AMD EPYC Milan 7543P 32 core CPU with four Nvidia A100 GPUs, 560 nodes",
-        "notes"                       : "Local instance of MongoDB and pre-set VE should be used.",
         "default_schema"              : "local",
         "schemas"                     : {
             "local"                   : {
@@ -101,46 +35,33 @@
         "lfs_size_per_node"           : 0
     },
 
-    "arcticus": {
-        "description"                 : "JLSE Aurora testbed; 17x Coyote Pass nodes, 2x XeHP_SDV",
-        "notes"                       : "Duo two-factor login. Local instance of virtualenv should be used.",
+    "aurora": {
+        "description"                 : "HPE Cray-Ex based system, 10,624 nodes",
         "default_schema"              : "local",
         "schemas"                     : {
             "local"                   : {
-                "job_manager_hop"     : "cobalt://localhost/",
-                "job_manager_endpoint": "cobalt://localhost/",
+                "job_manager_endpoint": "pbspro://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
             }
         },
-      # "forward_tunnel_endpoint"     : "jlselogin5",
-        "default_queue"               : "full-node",
-        "resource_manager"            : "COBALT",
+        "default_queue"               : "EarlyAppAccess",
+        "resource_manager"            : "PBSPRO",
         "agent_config"                : "default",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order" : ["MPIRUN", "SSH"],
-                                         "MPIRUN": {
-                                             "pre_exec_cached": [
-                                                 "module use  /soft/modulefiles",
-                                                 "module load openmpi/4.1.1-gcc"
-                                             ]
-                                         },
-                                         "SSH"   : {}
+                                         "order" : ["MPIEXEC"],
+                                         "MPIEXEC": {}
                                         },
         "pre_bootstrap_0"             : [
-                                         "module purge",
-                                         "module use  /soft/modulefiles",
-                                         "module load spack/linux-rhel7-x86_64",
-                                         "module load py-virtualenv"
+                                         "module load cray-python"
                                         ],
         "default_remote_workdir"      : "$HOME",
         "virtenv_mode"                : "local",
-        "cores_per_node"              : 96,
-        "gpus_per_node"               : 2,
-        "system_architecture"         : { "gpu": "XeHP_SDV" },
-        "lfs_path_per_node"           : "/tmp",
-        "lfs_size_per_node"           : 0
+        "cores_per_node"              : 104,
+        "gpus_per_node"               : 6,
+        "system_architecture"         : {"smt"    : 1,
+                                         "options": ["filesystems=gecko:home", "place=scatter"]}
     }
 }
 
