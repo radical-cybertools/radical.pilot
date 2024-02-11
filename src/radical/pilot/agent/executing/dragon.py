@@ -1,16 +1,11 @@
-# pylint: disable=unused-argument
 
-__copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2024, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import os
-import stat
 import time
-import queue
-import atexit
-import signal
-import threading       as mt
-import multiprocessing as mp
+
+import threading     as mt
+import subprocess    as sp
 
 import radical.utils as ru
 
@@ -27,484 +22,121 @@ class Dragon(Popen):
     # --------------------------------------------------------------------------
     #
     def initialize(self):
+        '''
+        This method is called by the base class during component
+        initialization.
 
-        self._log.debug('dragon initialize start')
+        It will start the dragon executor. The executor will communicate the endpoint
+        URLs back to us. We will then use those endpoints to communicate with the dragon
+        process.
+        '''
+
         super().initialize()
-
-        self._watch_queue = mp.Queue()
 
         self._pid = self.session.cfg.pid
 
-        # run watcher thread
-        self._watcher = mt.Thread(target=self._watch)
-      # self._watcher.daemon = True
-        self._watcher.start()
-
         # run dragon execution helper in a separate process which actually uses
         # dragon's multiprocessing implementation
-        self._dragon = mp.Process(target=self._dragon_proc,
-                                  # env= ...,
-                                 )
-        self._dragon.start()
+        self._dragon = sp.Popen(
+                args   = ['python3', # 'dragon',
+                          '/home/merzky/j/rp.2/bin/radical-pilot-dragon-executor.py'],
+                stdout = sp.PIPE,
+                stderr = sp.STDOUT)
 
-        self._log.debug('dragon initialize stop')
+        # run this loop for 10 seconds to get the endpoints
+        start = time.time()
+        while True:
 
+            if self._dragon.poll() is not None:
+                self._log.error('%s', str(self._dragon.communicate()))
+                raise RuntimeError('dragon process died')
 
-    # --------------------------------------------------------------------------
-    #
-    def _dragon_proc(self):
+            line = ru.as_string(self._dragon.stdout.readline().strip())
+            self._log.debug('line: [%s]', line)
 
-        import dragon
-        import multiprocessing
+            if line.startswith('ZMQ_ENDPOINTS '):
+                _, url_out, url_in = line.split()
+                break
 
-        pass
+            if time.time() - start > 3:
+                self._log.debug('%s', str(self._dragon.communicate()))
+                raise RuntimeError('failed to get dragon endpoint')
 
+        self._log.debug('dragon eps: %s - %s', url_in, url_out)
+
+        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH, url_out)
+
+        # run watcher thread
+        self._watcher = mt.Thread(target=self._dragon_watch, args=[url_in])
+        self._watcher.daemon = True
+        self._watcher.start()
 
 
     # --------------------------------------------------------------------------
     #
     def _launch_task(self, task):
+        '''
+        This method is called by the base class to actually
+        launch the task.
+        '''
 
-        tid  = task['uid']
-        td   = task['description']
-        sbox = task['task_sandbox_path']
-
-        exec_script   = '%s.exec.sh'   % tid
-        launch_script = '%s.launch.sh' % tid
-
-
-        # launch and exec script are done, get ready for execution.
-        cmdline = '%s/%s' % (sbox, launch_script)
-
-        self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
-
-        _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
-
-        # `start_new_session=True` is default, which enables decoupling
-        # from the parent process group (part of the task cancellation)
-        _start_new_session = self.session.rcfg.new_session_per_task or False
-
-        self._prof.prof('task_run_start', uid=tid)
-        task['proc'] = mp.Popen(args              = cmdline,
-                                executable        = None,
-                                shell             = False,
-                                stdin             = None,
-                                stdout            = _launch_out_h,
-                                stderr            = mp.STDOUT,
-                                start_new_session = _start_new_session,
-                                close_fds         = True,
-                                cwd               = sbox)
-        self._prof.prof('task_run_ok', uid=tid)
+        # send task to dragon
+        self._log.debug('launch task %s', task['uid'])
+        self._pipe_out.put({'cmd': 'run', 'task': task})
 
         # handle task timeout if needed
         self.handle_timeout(task)
 
-        # watch task for completion
-        self._watch_queue.put([self.TO_WATCH, task])
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, uid):
+        '''
+        This method is called by the base class to actually
+        cancel the task.
+        '''
+
+        # send cancel request to dragon
+        self._pipe_out.put({'cmd': 'cancel', 'uid': uid})
 
 
     # --------------------------------------------------------------------------
     #
-    def _watch(self):
+    def _dragon_watch(self, url_in):
+        '''
+        This method watches the dragon endpoint for task completion messages.
 
-        to_watch  = list()  # contains task dicts
-        to_cancel = set()   # contains task IDs
+        :param url_in:  the dragon endpoint to watch
+        '''
+
+        pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL, url_in)
 
         try:
             while not self._term.is_set():
 
-                # FIXME: we don't want to only wait for one Task -- then we
-                #        would pull Task state too frequently.  OTOH, we
-                #        also don't want to learn about tasks until all
-                #        slots are filled, because then we may not be able
-                #        to catch finishing tasks in time -- so there is
-                #        a fine balance here.  Balance means 100.
-                MAX_QUEUE_BULKSIZE = 100
-                count = 0
+                msg = pipe_in.get_nowait(0.1)
 
-                try:
-                    while count < MAX_QUEUE_BULKSIZE:
+                if not msg:
+                    continue
 
-                        flag, thing = self._watch_queue.get_nowait()
-                        count += 1
+                cmd = msg.get('cmd')
 
-                        # NOTE: `thing` can be task id or task dict, depending
-                        #       on the flag value
-                        if   flag == self.TO_WATCH : to_watch.append(thing)
-                        elif flag == self.TO_CANCEL: to_cancel.add(thing)
-                        else: raise RuntimeError('unknown flag %s' % flag)
+                if cmd != 'done':
+                    raise ValueError('unsupported command %s' % cmd)
 
-                except queue.Empty:
-                    # nothing found -- no problem, see if any tasks finished
-                    pass
-
-                # check on the known tasks.
-                action = self._check_running(to_watch, to_cancel)
-
-                # FIXME: remove uids from lists after completion
-
-                if not action and not count:
-                    # nothing happened at all!  Zzz for a bit.
-                    # FIXME: make configurable
-                    time.sleep(0.1)
-
-        except Exception as e:
-            self._log.exception('Error in ExecWorker watch loop (%s)' % e)
-            # FIXME: this should signal the ExecWorker for shutdown...
-
-
-    # --------------------------------------------------------------------------
-    # Iterate over all running tasks, check their status, and decide on the
-    # next step.  Also check for a requested cancellation for the tasks.
-    def _check_running(self, to_watch, to_cancel):
-
-        #
-        action = False
-
-        # `to_watch.remove()` in the loop requires copy to iterate over the list
-        for task in list(to_watch):
-
-            tid = task['uid']
-
-            # poll subprocess object
-            exit_code = task['proc'].poll()
-
-            tasks_to_advance = list()
-            tasks_to_cancel  = list()
-
-            if exit_code is None:
-
-                # process is still running - cancel if needed
-                if tid in to_cancel:
-
-                    self._log.debug('cancel %s', tid)
-
-                    action = True
-                    self._prof.prof('task_run_cancel_start', uid=tid)
-
-                    # got a request to cancel this task - send SIGTERM to the
-                    # process group (which should include the actual launch
-                    # method)
-                    try:
-                        # kill the whole process group
-                        pgrp = os.getpgid(task['proc'].pid)
-                        os.killpg(pgrp, signal.SIGKILL)
-                    except OSError:
-                        # lost race: task is already gone, we ignore this
-                        # FIXME: collect and move to DONE/FAILED
-                        pass
-
-                    task['proc'].wait()  # make sure proc is collected
-
-                    to_cancel.remove(tid)
-                    to_watch.remove(task)
-                    del task['proc']  # proc is not json serializable
-
-                    self._prof.prof('task_run_cancel_stop', uid=tid)
-
-                    self._prof.prof('unschedule_start', uid=tid)
-                    tasks_to_cancel.append(task)
-
-            else:
-
-                action = True
-                self._prof.prof('task_run_stop', uid=tid)
-
-                # make sure proc is collected
-                task['proc'].wait()
-
-                # we have a valid return code -- task is final
-                self._log.info("Task %s has return code %s.", tid, exit_code)
-
-                task['exit_code'] = exit_code
-
-                # Free the Slots, Flee the Flots, Ree the Frots!
-                to_watch.remove(task)
-                if tid in to_cancel:
-                    to_cancel.remove(tid)
-                del task['proc']  # proc is not json serializable
-                tasks_to_advance.append(task)
+                task = msg['task']
+                tid  = task['uid']
 
                 self._prof.prof('unschedule_start', uid=tid)
 
-                if exit_code != 0:
-                    # task failed - fail after staging output
-                    task['exception']        = 'RuntimeError("task failed")'
-                    task['exception_detail'] = 'exit code: %s' % exit_code
-                    task['target_state'    ] = rps.FAILED
+                self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 
-                else:
-                    # The task finished cleanly, see if we need to deal with
-                    # output data.  We always move to stageout, even if there
-                    # are no directives -- at the very least, we'll upload
-                    # stdout/stderr
-                    task['target_state'] = rps.DONE
+                self.advance([task], rps.AGENT_STAGING_OUTPUT_PENDING,
+                                     publish=True, push=True)
 
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB,
-                         tasks_to_cancel + tasks_to_advance)
-
-            if tasks_to_cancel:
-                self.advance(tasks_to_cancel, rps.CANCELED,
-                                              publish=True, push=False)
-            if tasks_to_advance:
-                self.advance(tasks_to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
-                                               publish=True, push=True)
-
-        return action
-
-
-    # --------------------------------------------------------------------------
-    #
-    # pylint: disable=unused-argument
-    def _get_prof(self, event, tid, msg=''):
-
-        return '$RP_PROF %s "%s"\n' % (event, msg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_rp_funcs(self):
-
-        # define helper functions
-        ret  = '\nrp_error() {\n'
-        ret += '    echo "$1 failed" 1>&2\n'
-        ret += '    exit 1\n'
-        ret += '}\n'
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_rp_env(self, task):
-
-        tid  = task['uid']
-        td   = task['description']
-        name = task.get('name') or tid
-        sbox = os.path.realpath(task['task_sandbox_path'])
-
-        if sbox.startswith(self._pwd):
-            sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
-
-        gpr = td['gpus_per_rank']
-        if int(gpr) == gpr:
-            gpr = '%d' % gpr
-        else:
-            gpr = '%f' % gpr
-
-        ret  = '\n'
-        ret += 'export RP_TASK_ID="%s"\n'          % tid
-        ret += 'export RP_TASK_NAME="%s"\n'        % name
-        ret += 'export RP_PILOT_ID="%s"\n'         % self._pid
-        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
-        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
-        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
-        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
-        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
-        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
-        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self.session.reg_addr
-        ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
-        ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
-
-        # FIXME AM
-      # ret += 'export RP_LFS="%s"\n'              % self.lfs
-        ret += 'export RP_GTOD="%s"\n'             % self.gtod
-        ret += 'export RP_PROF="%s"\n'             % self.prof
-
-        if self._prof.enabled:
-            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
-        else:
-            ret += 'unset  RP_PROF_TGT\n'
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    # launcher
-    #
-    def _get_launch_env(self, launcher):
-
-        ret  = ''
-
-        for cmd in launcher.get_launcher_env():
-            ret += '%s || rp_error launcher_env\n' % cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_prep_launch(self, task, sig):
-
-        ret = ''
-        td = task['description']
-
-        if sig not in td:
-            return ret
-
-        for cmd in ru.as_list(task['description'][sig]):
-            ret += '%s || rp_error %s\n' % (cmd, sig)
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_launch(self, task, launcher, exec_path):
-
-        ret  = '( \\\n'
-
-        for cmd in ru.as_list(launcher.get_launch_cmds(task, exec_path)):
-            ret += '  %s \\\n' % cmd
-
-        ret += ') 1> %s \\\n  2> %s\n' % (task['stdout_file_short'],
-                                          task['stderr_file_short'])
-        # collect PID for launch-script
-        ret += 'RP_LAUNCH_PID=$$\n'
-        ret += 'RP_RET=$?\n'
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    # exec
-    #
-    def _get_task_env(self, task, launcher):
-
-        ret = ''
-        td  = task['description']
-
-        # named_env's are prepared by the launcher
-        if td['named_env']:
-            ret += '\n# named environment\n'
-            ret += '. %s\n' % launcher.get_task_named_env(td['named_env'])
-
-        # also add any env vars requested in the task description
-        if td['environment']:
-            ret += '\n# task env settings\n'
-            for key, val in td['environment'].items():
-                ret += 'export %s="%s"\n' % (key, val)
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_rank_ids(self, n_ranks, launcher):
-
-        ret  = ''
-        ret += 'export RP_RANKS=%s\n' % n_ranks
-        ret += launcher.get_rank_cmd()
-
-        if n_ranks > 1:
-
-            # make sure that RP_RANK is known (otherwise task fails silently)
-            if 'export RP_RANK=' not in ret:
-                raise RuntimeError('launch method does not export RP_RANK')
-
-        # also define a method to sync all ranks on certain events
-        ret += '\nrp_sync_ranks() {\n'
-        ret += '    sig=$1\n'
-        ret += '    echo $RP_RANK >> $sig.sig\n'
-        ret += '    while test $(cat $sig.sig | wc -l) -lt $RP_RANKS; do\n'
-        ret += '        sleep 1\n'
-        ret += '    done\n'
-        ret += '}\n'
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _extend_pre_exec(self, td, ranks=None):
-
-        # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
-        #        with exactly one entry, corresponding to the rank process to be
-        #        started.
-
-        # FIXME: need to distinguish between logical and physical IDs
-
-        if td['threading_type'] == rpc.OpenMP:
-            # for future updates: if task ranks are heterogeneous in terms of
-            #                     number of threads, then the following string
-            #                     should be converted into dictionary (per rank)
-            num_threads = td.get('cores_per_rank', 1)
-            td['pre_exec'].append('export OMP_NUM_THREADS=%d' % num_threads)
-
-        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
-            # equivalent to the 'physical' value for original `cvd_id_mode`
-            rank_id  = 0
-            rank_env = {}
-            for slot_ranks in ranks:
-                for gpu_map in slot_ranks['gpu_map']:
-                    rank_env[str(rank_id)] = \
-                        'export CUDA_VISIBLE_DEVICES=%s' % \
-                        ','.join([str(g) for g in gpu_map])
-                    rank_id += 1
-            td['pre_exec'].append(rank_env)
-
-        # pre-defined `pre_exec` per platform configuration
-        td['pre_exec'].extend(ru.as_list(self.session.rcfg.get('task_pre_exec')))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_prep_exec(self, task, n_ranks, sig):
-
-        ret = ''
-        td  = task['description']
-
-        if sig not in td:
-            return ret
-
-        entries         = ru.as_list(td[sig])
-        switch_per_rank = any([isinstance(x, dict) for x in entries])
-        cmd_template    = '%s || rp_error %s\n'
-
-        sync_ranks_cmd = ''
-        if sig == 'pre_exec' and td['pre_exec_sync']:
-            sync_ranks_cmd = 'rp_sync_ranks %s\n' % sig
-
-        if not switch_per_rank:
-            return ''.join([cmd_template % (x, sig) for x in entries]) + \
-                   sync_ranks_cmd
-
-        ret += 'case "$RP_RANK" in\n'
-        for rank_id in range(n_ranks):
-
-            ret += '    %d)\n' % rank_id
-
-            for entry in entries:
-
-                if isinstance(entry, str):
-                    entry = {str(rank_id): entry}
-
-                for cmd in ru.as_list(entry.get(str(rank_id))):
-                    ret += '        ' + cmd_template % (cmd, sig)
-
-            ret += '        ;;\n'
-
-        ret += 'esac\n' + sync_ranks_cmd
-
-        return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_exec(self, task, launcher):
-
-        # FIXME: core pinning goes here
-
-        ret  = '%s &\n' % launcher.get_exec(task)
-        # collect PIDs for exec-script and executable
-        ret += '\nRP_EXEC_PID=$$\nRP_RANK_PID=$!\n\n'
-        ret += 'wait $RP_RANK_PID\n'
-        # set output
-        ret += 'RP_RET=$?\n'
-
-        return ret
+        except Exception as e:
+            self._log.exception('Error in ExecWorker watch loop (%s)' % e)
+            self.stop()
 
 
 # ------------------------------------------------------------------------------
