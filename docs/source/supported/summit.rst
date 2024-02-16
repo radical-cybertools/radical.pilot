@@ -91,18 +91,40 @@ Create a **virtual environment** with ``venv``:
 
    export PYTHONNOUSERSITE=True
    module load python/3.11.6
+   # OR with old modules
+   #    module load DefApps-2023
+   #    module load python/3.8-anaconda3
    python3 -m venv ve.rp
    source ve.rp/bin/activate
+
+OR create a **virtual environment** with ``conda`` (using old modules):
+
+.. code-block:: bash
+
+   module load DefApps-2023
+   module load python/3.8-anaconda3
+   conda create -y -n ve.rp python=3.9
+   eval "$(conda shell.posix hook)"
+   conda activate ve.rp
+
+OR clone a ``conda`` **virtual environment** from the base environment (using
+old modules):
+
+.. code-block:: bash
+
+   module load DefApps-2023
+   module load python/3.8-anaconda3
+   eval "$(conda shell.posix hook)"
+   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
+   conda activate $HOME/ve.rp
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
 .. code-block:: bash
 
    pip install radical.pilot
-
-.. note::
-
-   Summit does not provide virtual environments with ``conda`` at this moment.
+   # OR in case of conda environment
+   conda install -c conda-forge radical.pilot
 
 Launching script example
 ========================
