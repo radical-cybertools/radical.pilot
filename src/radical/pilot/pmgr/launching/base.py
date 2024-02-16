@@ -121,6 +121,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._pilots    = dict()      # dict for all known pilots
         self._lock      = mt.RLock()  # lock on maipulating the above
         self._sandboxes = dict()      # cache of resource sandbox URLs
+        self._cancelled = list()      # list of cancelled pilots
 
         self._mod_dir   = os.path.dirname(os.path.abspath(__file__))
         self._root_dir  = "%s/../../" % self._mod_dir
@@ -248,16 +249,20 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
-        if not pids or not self._pilots:
-            # nothing to do
-            return
+        if not pids:
+            if not self._pilots:
+                return
+            else:
+                pids = list(self._pilots.keys())
 
         with self._lock:
+
             for pid in pids:
 
                 self._log.debug('cancel pilot %s', pid)
                 if pid not in self._pilots:
                     self._log.warn('cannot cancel unknown pilot %s', pid)
+                    self._cancelled.append(pid)
                     continue
 
                 pilot = self._pilots[pid]
@@ -278,8 +283,17 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def work(self, pilots):
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        pilots = ru.as_list(pilots)
+
+        # weed out pilots for which we have already received a cancel request
+        to_start = list()
+        for pilot in pilots:
+            if pilot['uid'] in self._cancelled:
+                to_start.append(pilot)
+                self.advance(pilot, rps.CANCELED, publish=True, push=False)
+                continue
+
+        pilots = to_start
 
         self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
 
