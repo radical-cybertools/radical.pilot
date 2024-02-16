@@ -11,7 +11,6 @@ from typing import Optional
 import threading as mt
 
 import radical.utils                as ru
-import radical.saga                 as rs
 import radical.saga.filesystem      as rsfs
 import radical.saga.utils.pty_shell as rsup
 
@@ -53,7 +52,7 @@ class _CloseOptions(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class Session(rs.Session):
+class Session(object):
     """Root of RP object hierarchy for an application instance.
 
     A Session is the root object of all RP objects in an application instance:
@@ -192,9 +191,6 @@ class Session(rs.Session):
         elif self._role == self._AGENT_0: self._init_agent_0()
         elif self._role == self._AGENT_N: self._init_agent_n()
         else                            : self._init_default()
-
-        # now we have config and uid - initialize base class (saga session)
-        rs.Session.__init__(self, uid=self._uid)
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
@@ -422,7 +418,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -475,7 +470,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -505,7 +499,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._log.debug('Session(%s, %s)', self._uid, self._role)
@@ -1298,26 +1291,25 @@ class Session(rs.Session):
 
   # # --------------------------------------------------------------------------
   # #
-  # def fetch_json(self, tgt=None):
+  # def fetch_json(self, tgt=None, rep=None):
   #
-  #     return rpu.fetch_json(self._uid, tgt=tgt, session=self,
-  #                           skip_existing=True)
+  #     return rpu.fetch_json(self._uid, tgt=tgt, skip_existing=True, rep=rep)
   #
   #
     # --------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None):
+    def fetch_profiles(self, tgt=None, rep=None):
 
-        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
     #
-    def fetch_logfiles(self, tgt=None):
+    def fetch_logfiles(self, tgt=None, rep=None):
 
-        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
@@ -1362,7 +1354,7 @@ class Session(rs.Session):
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
-                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+                fs_url = ru.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
@@ -1435,7 +1427,7 @@ class Session(rs.Session):
 
             js_url = rcfg['job_manager_endpoint']
             js_url = rcfg.get('job_manager_hop', js_url)
-            js_url = rs.Url(js_url)
+            js_url = ru.Url(js_url)
 
             elems  = js_url.schema.split('+')
 
@@ -1483,7 +1475,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox      = self._get_resource_sandbox(pilot)
-                session_sandbox       = rs.Url(resource_sandbox)
+                session_sandbox       = ru.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 self._cache['session_sandbox'][resource] = session_sandbox
@@ -1499,7 +1491,7 @@ class Session(rs.Session):
 
         pilot_sandbox = pilot.get('pilot_sandbox')
         if str(pilot_sandbox):
-            return rs.Url(pilot_sandbox)
+            return ru.Url(pilot_sandbox)
 
         pid = pilot['uid']
         with self._cache_lock:
@@ -1508,7 +1500,7 @@ class Session(rs.Session):
 
                 # cache miss
                 session_sandbox     = self._get_session_sandbox(pilot)
-                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox       = ru.Url(session_sandbox)
                 pilot_sandbox.path += '/%s/' % pilot['uid']
 
                 self._cache['pilot_sandbox'][pid] = pilot_sandbox
@@ -1533,7 +1525,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox  = self._get_resource_sandbox(pilot)
-                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs       = ru.Url(resource_sandbox)
                 endpoint_fs.path  = ''
 
                 self._cache['endpoint_fs'][resource] = endpoint_fs
@@ -1583,8 +1575,8 @@ class Session(rs.Session):
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
 
-        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
-        js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+        js_url  = ru.Url(rcfg.get('job_manager_endpoint'))
+        js_hop  = ru.Url(rcfg.get('job_manager_hop', js_url))
 
         # make sure the js_hop url points to an interactive access
         # TODO: this is an unreliable heuristics - we should require the js_hop

@@ -126,13 +126,12 @@ class Default(TMGRStagingOutputComponent):
                        'endpoint' : task['endpoint_fs']}
 
         # url used for cache (sandbox url w/o path)
-        tmp      = rs.Url(task["task_sandbox"])
+        tmp      = ru.Url(task["task_sandbox"])
         tmp.path = '/'
         key      = str(tmp)
 
         if key not in self._cache:
-            self._cache[key] = rs.filesystem.Directory(tmp,
-                    session=self._session)
+            self._cache[key] = rs.filesystem.Directory(tmp)
         saga_dir = self._cache[key]
 
 

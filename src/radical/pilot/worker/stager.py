@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 import os
 
-import radical.saga            as rs
 import radical.saga.filesystem as rsfs
 import radical.utils           as ru
 
@@ -118,7 +117,7 @@ class Stager(rpu.ClientComponent):
 
             # open the staging directory for the target, and cache it
             # url used for cache: tgt url w/o path
-            tmp      = rs.Url(tgt)
+            tmp      = ru.Url(tgt)
             tmp.path = '/'
             key      = str(tmp)
 
@@ -127,7 +126,7 @@ class Stager(rpu.ClientComponent):
                     fs = self._saga_fs_cache[key]
 
                 else:
-                    fs = rsfs.Directory(key, session=self._session)
+                    fs = rsfs.Directory(key)
                     self._saga_fs_cache[key] = fs
 
             flags |= rsfs.CREATE_PARENTS

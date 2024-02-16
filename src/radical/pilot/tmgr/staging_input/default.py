@@ -219,7 +219,7 @@ class Default(TMGRStagingInputComponent):
                 sbox_fs_str  = str(sbox_fs)
                 if sbox_fs_str not in self._fs_cache:
                     self._fs_cache[sbox_fs_str] = \
-                            rsfs.Directory(sbox_fs, session=self._session)
+                            rsfs.Directory(sbox_fs)
                 saga_dir = self._fs_cache[sbox_fs_str]
 
                 # we have two options for a bulk mkdir:
@@ -271,7 +271,7 @@ class Default(TMGRStagingInputComponent):
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
                     else:
-                        js_tmp = rs.job.Service(js_url, session=self._session)
+                        js_tmp = rs.job.Service(js_url)
                         self._js_cache[js_url] = js_tmp
 
                     cmd = "tar xvf %s/%s -C %s" % (session_sbox.path, tar_name,
@@ -333,8 +333,8 @@ class Default(TMGRStagingInputComponent):
 
         # we have actionable staging directives, and thus we need a task
         # sandbox.
-        sandbox = rs.Url(task["task_sandbox"])
-        tmp     = rs.Url(task["task_sandbox"])
+        sandbox = ru.Url(task["task_sandbox"])
+        tmp     = ru.Url(task["task_sandbox"])
 
         # url used for cache (sandbox url w/o path)
         tmp.path = '/'
@@ -342,7 +342,7 @@ class Default(TMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rsfs.Directory(tmp, session=self._session)
+            self._fs_cache[key] = rsfs.Directory(tmp)
 
         saga_dir = self._fs_cache[key]
         saga_dir.make_dir(sandbox, flags=rsfs.CREATE_PARENTS)

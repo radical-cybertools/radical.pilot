@@ -12,7 +12,7 @@ rs_fs = rs.filesystem
 # ------------------------------------------------------------------------------
 #
 def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
     '''
     Args:
 
@@ -29,10 +29,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
     '''
 
-    if not log and session:
-        log = session._log
-
-    elif not log:
+    if not log:
         log = ru.Logger('radical.pilot.utils')
 
     ret = list()
@@ -51,7 +48,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = rs.Url("%s/%s/" % (tgt, sid))
+    tgt_url = ru.Url("%s/%s/" % (tgt, sid))
 
     # turn URLs without `schema://host` into `file://localhost`,
     # so that they dont become interpreted as relative paths.
@@ -69,7 +66,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
         for client_file in client_files:
 
-            ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
+            ftgt = ru.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
             ret.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
@@ -77,7 +74,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 pass
             else:
                 log.debug('fetch client file %s', client_file)
-                rs_file = rs_fs.File(client_file, session=session)
+                rs_file = rs_fs.File(client_file)
                 rs_file.copy(ftgt, flags=rs_fs.CREATE_PARENTS)
                 rs_file.close()
 
@@ -102,17 +99,17 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         try:
             log.debug("processing pilot '%s'", pid)
 
-            sandbox_url = rs.Url(pilot['pilot_sandbox'])
+            sandbox_url = ru.Url(pilot['pilot_sandbox'])
 
             if access:
                 # Allow to use a different access schema than used for the the
                 # run.  Useful if you ran from the headnode, but would like to
                 # retrieve the files to your desktop (Hello Titan).
-                access_url = rs.Url(access)
+                access_url = ru.Url(access)
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            sandbox = rs_fs.Directory (sandbox_url, session=session)
+            sandbox = rs_fs.Directory (sandbox_url)
 
             # Try to fetch a tarball of files, so that we can get them
             # all in one (SAGA) go!
@@ -140,7 +137,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                     # so lets create a tarball with SAGA JobService
                     js_url = pilot['js_hop']
                     log.debug('js  : %s', js_url)
-                    js  = rs.job.Service(js_url, session=session)
+                    js  = rs.job.Service(js_url)
                     cmd = "cd %s; find . -name \\*.%s > %s.lst; " \
                           "tar cjf %s -T %s.lst" % (sandbox.url.path, ext, ext,
                               tarball_name, ext)
@@ -160,8 +157,8 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 log.info("fetch '%s%s' to '%s'.", sandbox_url,
                          tarball_name, tgt_url)
 
-                rs_file = rs_fs.File("%s%s" % (sandbox_url, tarball_name),
-                                     session=session)
+                rs_file = rs_fs.File("%s%s" % (sandbox_url, tarball_name))
+
                 rs_file.copy(tarball_tgt, flags=rs_fs.CREATE_PARENTS)
                 rs_file.close()
 
@@ -175,12 +172,14 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
             ret.extend(files)
 
-            session._rep.ok("+ %s (%s)\n" % (pid, name))
+            if rep:
+                rep.ok("+ %s (%s)\n" % (pid, name))
 
         except Exception:
             # do not raise, we still try the other pilots
-            session._rep.error("- %s (%s)\n" % (pid, name))
             log.exception('failed to fetch %s for %s', pid, name)
+            if rep:
+                session._rep.error("- %s (%s)\n" % (pid, name))
 
     return ret
 
@@ -188,19 +187,19 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 # ------------------------------------------------------------------------------
 #
 def fetch_profiles (sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
 
     return fetch_filetype('prof', 'profiles', sid, src, tgt, access,
-            session, skip_existing, fetch_client, log)
+            skip_existing, fetch_client, log, rep)
 
 
 # ------------------------------------------------------------------------------
 #
 def fetch_logfiles (sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
 
     return fetch_filetype('log', 'logfiles', sid, src, tgt, access,
-            session, skip_existing, fetch_client, log)
+            skip_existing, fetch_client, log, rep)
 
 
 # ------------------------------------------------------------------------------
