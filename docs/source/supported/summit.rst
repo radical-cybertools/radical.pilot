@@ -90,23 +90,29 @@ Create a **virtual environment** with ``venv``:
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
-   module load python/3.8-anaconda3
+   module load python/3.11.6
+   # OR with old modules
+   #    module load DefApps-2023
+   #    module load python/3.8-anaconda3
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-OR create a **virtual environment** with ``conda``:
+OR create a **virtual environment** with ``conda`` (using old modules):
 
 .. code-block:: bash
 
+   module load DefApps-2023
    module load python/3.8-anaconda3
    conda create -y -n ve.rp python=3.9
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
-OR clone a ``conda`` **virtual environment** from the base environment:
+OR clone a ``conda`` **virtual environment** from the base environment (using
+old modules):
 
 .. code-block:: bash
 
+   module load DefApps-2023
    module load python/3.8-anaconda3
    eval "$(conda shell.posix hook)"
    conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
@@ -132,13 +138,13 @@ launching command for the application itself.
    #!/bin/sh
 
    # - pre run -
-   module load python/3.8-anaconda3
-   eval "$(conda shell.posix hook)"
-   conda activate ve.rp
+   module load python/3.11.6
+   source ve.rp/bin/activate
 
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>
