@@ -790,13 +790,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         task['control']          = 'tmgr_pending'
         task['exception']        = repr(e)
         task['exception_detail'] = detail
-        task['target_state']     = 'FAILED'
+        task['target_state']     = rps.FAILED
         task['$all']             = True
 
         self._log.exception('scheduling failed for %s', task['uid'])
 
-        self.advance(task, rps.FAILED, publish=True, push=False,
-                           fwd=True)
+        self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
