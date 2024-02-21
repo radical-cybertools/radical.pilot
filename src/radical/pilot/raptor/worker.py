@@ -90,7 +90,7 @@ class Worker(object):
         #     shell: execute  a shell command
         self._modes = dict()
         self.register_mode(TASK_FUNC,  self._dispatch_func)
-        self.register_mode(TASK_METH,  self._dispatch_func)
+        self.register_mode(TASK_METH,  self._dispatch_meth)
         self.register_mode(TASK_EVAL,  self._dispatch_eval)
         self.register_mode(TASK_EXEC,  self._dispatch_exec)
         self.register_mode(TASK_PROC,  self._dispatch_proc)
