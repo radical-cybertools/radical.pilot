@@ -160,15 +160,16 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             attr.reservation_id = res
 
             spec = psij.JobSpec()
-            spec.attributes  = attr
-            spec.executable  = jd.executable
-            spec.arguments   = jd.arguments
-            spec.environment = jd.environment
-            spec.directory   = jd.working_directory
-            spec.stdout_path = jd.output
-            spec.stderr_path = jd.error
+            spec.attributes          = attr
+            spec.executable          = jd.executable
+            spec.arguments           = jd.arguments
+            spec.environment         = jd.environment
+            spec.directory           = jd.working_directory
+            spec.stdout_path         = jd.output
+            spec.stderr_path         = jd.error
+            spec.inherit_environment = False
 
-            spec.resources   = psij.ResourceSpecV1()
+            spec.resources = psij.ResourceSpecV1()
             spec.resources.node_count            = jd.node_count
             spec.resources.process_count         = jd.total_cpu_count
           # spec.resources.cpu_cores_per_process = 1
