@@ -286,22 +286,17 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         pilots = ru.as_list(pilots)
 
         # weed out pilots for which we have already received a cancel request
-        to_start = list()
-        for pilot in pilots:
-            if pilot['uid'] in self._cancelled:
-                to_start.append(pilot)
-                self.advance(pilot, rps.CANCELED, publish=True, push=False)
-                continue
+        to_cancel = [p for p in pilots if p['uid']     in self._cancelled]
+        to_start  = [p for p in pilots if p['uid'] not in self._cancelled]
 
-        pilots = to_start
-
-        self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
+        self.advance(to_cancel, rps.CANCELED,       publish=True, push=False)
+        self.advance(to_start,  rps.PMGR_LAUNCHING, publish=True, push=False)
 
         # We can only use bulk submission for pilots which go to the same
         # target, thus we sort them into buckets and launch the buckets
         # individually
         buckets = defaultdict(lambda: defaultdict(list))
-        for pilot in pilots:
+        for pilot in to_start:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
             buckets[resource][schema].append(pilot)
