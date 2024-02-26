@@ -13,7 +13,7 @@ from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
-from ..task_description import TASK_FUNC, TASK_EXEC
+from ..task_description import TASK_FUNC, TASK_METH, TASK_EXEC
 from ..task_description import TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
@@ -90,6 +90,7 @@ class Worker(object):
         #     shell: execute  a shell command
         self._modes = dict()
         self.register_mode(TASK_FUNC,  self._dispatch_func)
+        self.register_mode(TASK_METH,  self._dispatch_meth)
         self.register_mode(TASK_EVAL,  self._dispatch_eval)
         self.register_mode(TASK_EXEC,  self._dispatch_exec)
         self.register_mode(TASK_PROC,  self._dispatch_proc)
@@ -309,6 +310,19 @@ class Worker(object):
             raise ValueError('mode %s unknown' % name)
 
         return self._modes[name]
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _dispatch_meth(self, task):
+        '''
+        _dispatch_meth is a simple wrapper around _dispatch_func which points to
+        private methods to be called.
+        '''
+
+        task['description']['function'] = task['description']['method']
+
+        return self._dispatch_func(task)
 
 
     # --------------------------------------------------------------------------
