@@ -709,17 +709,19 @@ class Pilot(object):
                      'path'   : '/path/to/ve',
                      'setup'  : ['numpy']}
 
-                where the *type* specifies the environment type, *version* specifies the
-                Python version to deploy, and *setup* specifies how the environment is
-                to be prepared.  If *path* is specified the env will be created at that
-                path.  If *path* is not specified, RP will place the named env in the
-                pilot sandbox (under :file:`env/named_env_{name}`). If a VE exists at that
-                path, it will be used as is (an update is not performed). *pre_exec*
-                commands are executed before env creation and setup are attempted.
+                where the *type* specifies the environment type, *version*
+                specifies the Python version to deploy, and *setup* specifies
+                how the environment is to be prepared.  If *path* is specified
+                the env will be created at that path.  If *path* is not
+                specified, RP will place the named env in the pilot sandbox
+                (under :file:`env/named_env_{name}`). If a VE exists at that
+                path, it will be used as is (an update is not performed).
+                *pre_exec* commands are executed before env creation and setup
+                are attempted.
 
         Note:
-            The `version` specifier is only interpreted up to minor version;
-            subminor and less are ignored.
+            The optional `version` specifier is only interpreted up to minor
+            version, subminor and less are ignored.
 
         """
 
