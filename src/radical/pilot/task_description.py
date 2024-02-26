@@ -10,7 +10,8 @@ import radical.utils as ru
 TASK_EXECUTABLE  = 'task.executable'
 TASK_FUNCTION    = 'task.function'
 TASK_FUNC        = 'task.function'
-TASK_METHOD      = 'task.function'
+TASK_METHOD      = 'task.method'
+TASK_METH        = 'task.method'
 TASK_EVAL        = 'task.eval'
 TASK_EXEC        = 'task.exec'
 TASK_PROC        = 'task.proc'
@@ -28,7 +29,7 @@ MODE             = 'mode'
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
 
-# mode: TASK_METHOD  # FIXME
+# mode: TASK_METHOD
 METHOD           = 'method'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
