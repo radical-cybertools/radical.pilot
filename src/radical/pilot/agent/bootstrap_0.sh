@@ -894,12 +894,16 @@ virtenv_activate()
 
     if test "$python_dist" = "anaconda"; then
         export RP_VENV_TYPE='conda'
-        if ! test -z $(which conda); then
+        if ! test -z "$(which conda)"; then
             eval "$(conda shell.posix hook)"
             conda activate "$virtenv"
 
         elif test -e "$virtenv/bin/activate"; then
             . "$virtenv/bin/activate"
+
+        elif test -e "$virtenv/../../bin/activate"; then
+            # check conda base directory
+            . "$virtenv/../../bin/activate" "$(basename $virtenv)"
         fi
 
         if test -z "$CONDA_PREFIX"; then
