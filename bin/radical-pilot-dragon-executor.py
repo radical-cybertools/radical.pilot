@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #dragon
 
-USE_DRAGON = True
+USE_DRAGON = False
 
 import os
 import sys
@@ -31,7 +31,8 @@ class Server(object):
     #
     def __init__(self):
 
-        self._log = ru.Logger('radical.pilot.dragon')
+        sandbox   = sys.argv[1]
+        self._log = ru.Logger('radical.pilot.dragon', path=sandbox)
 
         self._pin  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
         self._pout = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
@@ -40,12 +41,6 @@ class Server(object):
                          % (ru.as_string(self._pin.url),
                             ru.as_string(self._pout.url)))
         sys.stdout.flush()
-
-        with ru.ru_open('/tmp/dragon.endpoints', 'w') as fout:
-            fout.write('%s\n' % ru.as_string(self._pin.url))
-            fout.write('%s\n' % ru.as_string(self._pout.url))
-
-        self._log.debug('ZMQ_ENDPOINTS %s %s', self._pin.url, self._pout.url)
 
         self._watch_queue = queue.Queue()
         self._done_queue  = queue.Queue()
@@ -70,7 +65,7 @@ class Server(object):
         try:
             while True:
 
-                self._log.debug('main loop')
+              # self._log.debug('main loop')
 
                 self._handle_requests()
                 self._handle_results()
@@ -91,15 +86,15 @@ class Server(object):
             - task: the task to execute the command on
         '''
 
-        self._log.debug('waiting for request')
+      # self._log.debug('waiting for request')
 
-        msg = self._pin.get_nowait(1.0)
-
-        import pprint
-        self._log.debug('got request %s', pprint.pformat(msg))
+        msg = self._pin.get_nowait(0.1)
 
         if not msg:
             return
+
+      # import pprint
+      # self._log.debug('got request %s', pprint.pformat(msg))
 
         if not isinstance(msg, dict):
             self._log.error('invalid message type %s', type(msg))
@@ -125,7 +120,7 @@ class Server(object):
             return
 
         self._log.debug('launch task %s', task['uid'])
-        task['proc'] = mp.Process(target=self._fork_task, args=[task])
+        task['proc'] = mp.Process(target=self._fork_task, args=[task, self._log])
         task['proc'].start()
         self._log.debug('task %s launched', task['uid'])
 
@@ -151,7 +146,8 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    def _fork_task(self, task):
+    @staticmethod
+    def _fork_task(task, log):
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']
@@ -163,11 +159,7 @@ class Server(object):
                                                     launch_out, launch_err)
         out, err, ret = ru.sh_callout(launch_cmd, shell=True)
 
-        # # redirect stdio of the current process to files
-        # os.dup2(_launch_out_h.fileno(), sys.stdout.fileno())
-        # os.dup2(_launch_err_h.fileno(), sys.stderr.fileno())
-
-        # os.execvp(cmdline, [cmdline])
+        log.debug('task %s completed %s : %s : %s' % (tid, out, err, ret))
 
 
     # --------------------------------------------------------------------------
@@ -245,6 +237,8 @@ class Server(object):
 
                 del task['proc']  # proc is not json serializable
                 tasks_to_advance.append(task)
+
+                self._log.debug('exit code %s: %s', task['uid'], proc.exitcode)
 
                 if proc.exitcode != 0:
                     # task failed - fail after staging output
