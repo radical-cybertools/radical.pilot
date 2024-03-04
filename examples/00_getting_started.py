@@ -68,7 +68,7 @@ if __name__ == '__main__':
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1  # number of tasks to run
+        n = 10  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -95,10 +95,14 @@ if __name__ == '__main__':
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning tasks to the pilots.
-        tmgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
+
+        for task in tasks:
+            print('%s: %s [%s], %s' % (task.uid, task.state, task.exit_code,
+                                       task.stdout.strip()))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
