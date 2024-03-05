@@ -100,11 +100,11 @@ class DDMD_Base(object):
                         '| %4d [%4d]' % (self._cores_used, self._cores))
 
         if task and msg:
-            self._rep.plain(' %-15s: %s\n' % (task.uid, msg))
+            self._rep.plain(' %-25s: %s\n' % (task.uid, msg))
         else:
             if task:
                 msg = task
-            self._rep.plain(' %-15s: %s\n' % (' ', msg))
+            self._rep.plain(' %-25s: %s\n' % (' ', msg))
 
 
     # --------------------------------------------------------------------------
