@@ -395,45 +395,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
 
                     for task in tasks:
-<<<<<<< HEAD
-                        task['exception']        = 'RuntimeError("raptor gone")'
-                        task['exception_detail'] = 'raptor queue disappeared'
-
-                    self.advance(tasks, state=rps.FAILED,
-                                        publish=True, push=False, fwd=True)
-||||||| cb37d5092
-                        task['exception']        = 'RuntimeError("raptor gone")'
-                        task['exception_detail'] = 'raptor queue disappeared'
-
-                    self.advance(tasks, state=rps.FAILED,
-                                        publish=True, push=False)
-
-        # FIXME: RPC: this is caught in the base class handler already
-        elif cmd == 'cancel_tasks':
-
-            uids = arg['uids']
-            to_cancel = list()
-            with self._lock:
-                for uid in uids:
-                    print('---------- cancel', uid)
-                    if uid in self._waitpool:
-                        to_cancel.append(self._waitpool[uid])
-                        del self._waitpool[uid]
-
-            with self._raptor_lock:
-                for queue in self._raptor_tasks:
-                    matches = [t for t in self._raptor_tasks[queue]
-                                       if t['uid'] in uids]
-                    for task in matches:
-                        to_cancel.append(task)
-                        self._raptor_tasks[queue].remove(task)
-
-            for task in to_cancel:
-                task['target_state'] = rps.CANCELED
-                task['control']      = 'tmgr_pending'
-                task['$all']         = True
-            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
-=======
                         self._fail_task(task, RuntimeError('raptor gone'),
                                               'raptor queue disappeared')
 
@@ -462,7 +423,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 task['control']      = 'tmgr_pending'
                 task['$all']         = True
             self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
->>>>>>> devel
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -852,13 +812,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             error  = error.replace('"', '\\"')
             self._fail_task(task, RuntimeError('bisect failed'), error)
             self._log.error('bisect failed on %s: %s', task['uid'], error)
-<<<<<<< HEAD
-            self.advance(scheduled, rps.FAILED,
-                         publish=True, push=False, fwd=True)
-||||||| cb37d5092
             self.advance(scheduled, rps.FAILED, publish=True, push=False)
-=======
->>>>>>> devel
 
         self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
@@ -883,7 +837,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-<<<<<<< HEAD
     def _filter_incoming(self, tasks):
         '''
         This method can be overloaded by deriving schedulers to filter the
@@ -891,8 +844,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         '''
 
         return tasks
-||||||| cb37d5092
-=======
+
+
+    # --------------------------------------------------------------------------
+    #
     def _fail_task(self, task, e, detail):
 
         task['control']          = 'tmgr_pending'
@@ -904,7 +859,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         self._log.exception('scheduling failed for %s', task['uid'])
 
         self.advance(task, rps.FAILED, publish=True, push=False)
->>>>>>> devel
 
 
     # --------------------------------------------------------------------------
