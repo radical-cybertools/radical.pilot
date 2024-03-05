@@ -55,7 +55,7 @@ class DDMD_Base(object):
 
     # --------------------------------------------------------------------------
     #
-    def register_task_type(self, ttype, on_final, glyph):
+    def register(self, ttype, on_final, glyph):
 
         self._task_types[ttype] = {'on_final': on_final,
                                    'glyph'   : glyph}
@@ -333,11 +333,11 @@ class AsyncDDMD(DDMD_Base):
 
         super().__init__()
 
-        self.register_task_type(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
-        self.register_task_type(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
-        self.register_task_type(self.TASK_MD_SIM,      self.control_md_sim,      's')
-        self.register_task_type(self.TASK_MD_CHECK,    self.control_md_check,    'c')
-        self.register_task_type(self.TASK_DFT,         self.control_dft,         'd')
+        self.register(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
+        self.register(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
+        self.register(self.TASK_MD_SIM,      self.control_md_sim,      's')
+        self.register(self.TASK_MD_CHECK,    self.control_md_check,    'c')
+        self.register(self.TASK_DFT,         self.control_dft,         'd')
 
 
 
