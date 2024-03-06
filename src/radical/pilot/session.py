@@ -645,11 +645,11 @@ class Session(rs.Session):
 
         # check if an external proxy was epcified for the session.
         if self._proxy_url:
-           self._log.debug('use proxy at %s' % self._proxy_url)
-           return
+            self._log.debug('use proxy at %s' % self._proxy_url)
+            return
 
        # check if an external proxy was specified in the environment
-       elif 'RADICAL_PILOT_PROXY_URL' in os.environ:
+        elif 'RADICAL_PILOT_PROXY_URL' in os.environ:
             self._proxy_url = os.environ['RADICAL_PILOT_PROXY_URL']
             self._log.debug('found proxy at %s' % self._proxy_url)
 
