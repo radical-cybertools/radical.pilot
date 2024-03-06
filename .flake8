@@ -27,7 +27,7 @@ ignore           =
      # multiple statements on one line
      E701, E704,
      # space before bracket
-     C0326,
+     C326,
      # trailing whitespace
      W291,
      # Complex methods
