@@ -120,6 +120,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._pilots    = dict()      # dict for all known pilots
         self._lock      = mt.RLock()  # lock on maipulating the above
         self._sandboxes = dict()      # cache of resource sandbox URLs
+        self._cancelled = list()      # list of cancelled pilots
 
         self._mod_dir   = os.path.dirname(os.path.abspath(__file__))
         self._root_dir  = "%s/../../" % self._mod_dir
@@ -247,16 +248,20 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
-        if not pids or not self._pilots:
-            # nothing to do
-            return
+        if not pids:
+            if not self._pilots:
+                return
+            else:
+                pids = list(self._pilots.keys())
 
         with self._lock:
+
             for pid in pids:
 
                 self._log.debug('cancel pilot %s', pid)
                 if pid not in self._pilots:
                     self._log.warn('cannot cancel unknown pilot %s', pid)
+                    self._cancelled.append(pid)
                     continue
 
                 pilot = self._pilots[pid]
@@ -277,16 +282,20 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def work(self, pilots):
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        pilots = ru.as_list(pilots)
 
-        self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
+        # weed out pilots for which we have already received a cancel request
+        to_cancel = [p for p in pilots if p['uid']     in self._cancelled]
+        to_start  = [p for p in pilots if p['uid'] not in self._cancelled]
+
+        self.advance(to_cancel, rps.CANCELED,       publish=True, push=False)
+        self.advance(to_start,  rps.PMGR_LAUNCHING, publish=True, push=False)
 
         # We can only use bulk submission for pilots which go to the same
         # target, thus we sort them into buckets and launch the buckets
         # individually
         buckets = defaultdict(lambda: defaultdict(list))
-        for pilot in pilots:
+        for pilot in to_start:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
             buckets[resource][schema].append(pilot)
