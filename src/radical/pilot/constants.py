@@ -74,7 +74,7 @@ PMGR_METRICS         = [PILOT_STATE]
 
 # ------------------------------------------------------------------------------
 #
-# staging defines
+# staging defines and flags
 #
 COPY     = 'Copy'      # local cp
 LINK     = 'Link'      # local ln -s
@@ -82,14 +82,9 @@ MOVE     = 'Move'      # local mv
 TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
 TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
-#
-# Flags - inherit from RS where possible, add custom ones
-#
-import radical.saga.filesystem as _rsf
-
-CREATE_PARENTS = _rsf.CREATE_PARENTS  # Create parent directories if needed
-RECURSIVE      = _rsf.RECURSIVE       # recursive copy of directories
-NON_FATAL      = 8192                 # Don't fail the Task if input is missing
+CREATE_PARENTS = 'CreateParents'  # Create parent directories if needed
+RECURSIVE      = 'Recursive'      # recursive copy of directories
+NON_FATAL      = 8192             # Don't fail the Task if input is missing
 
 #
 # Defaults

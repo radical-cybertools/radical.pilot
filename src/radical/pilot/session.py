@@ -8,11 +8,9 @@ import time
 
 from typing import Optional
 
-import threading as mt
+import threading        as mt
 
-import radical.utils                as ru
-import radical.saga.filesystem      as rsfs
-import radical.saga.utils.pty_shell as rsup
+import radical.utils    as ru
 
 from . import constants as rpc
 from . import utils     as rpu

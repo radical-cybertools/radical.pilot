@@ -17,7 +17,6 @@ import threading          as mt
 
 import radical.gtod       as rg
 import radical.utils      as ru
-import radical.saga       as rs
 
 from ... import states    as rps
 from ... import constants as rpc
@@ -828,11 +827,9 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         else:
             sdist_names = [str(rg.sdist_name),
                            str(ru.sdist_name),
-                           str(rs.sdist_name),
                            str(self._rp_sdist_name)]
             sdist_paths = [rg.sdist_path,
                            ru.sdist_path,
-                           rs.sdist_path,
                            self._rp_sdist_path]
             bs_args.extend(['-d', ':'.join(sdist_names)])
 

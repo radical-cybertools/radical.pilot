@@ -3,10 +3,9 @@ import os
 import glob
 import tarfile
 
-import radical.saga  as rs
 import radical.utils as ru
 
-rs_fs = rs.filesystem
+from .. import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -74,9 +73,8 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 pass
             else:
                 log.debug('fetch client file %s', client_file)
-                rs_file = rs_fs.File(client_file)
-                rs_file.copy(ftgt, flags=rs_fs.CREATE_PARENTS)
-                rs_file.close()
+                stager = rpu.StagingHelper()
+                stager.copy(client_file, ftgt, flags=rpc.CREATE_PARENTS)
 
     # we need the session json for pilot details
     pilots = list()
@@ -109,7 +107,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            sandbox = rs_fs.Directory (sandbox_url)
+            stager = rpu.StagingHelper()
 
             # Try to fetch a tarball of files, so that we can get them
             # all in one (SAGA) go!
@@ -128,39 +126,12 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 #  - if no remote tarball exists, create it
                 #  - fetch remote tarball
 
-                tarball_remote = False
-                if sandbox.is_file(tarball_name) and \
-                        sandbox.get_size(tarball_name):
-                    tarball_remote = True
-
-                if not tarball_remote:
-                    # so lets create a tarball with SAGA JobService
-                    js_url = pilot['js_hop']
-                    log.debug('js  : %s', js_url)
-                    js  = rs.job.Service(js_url)
-                    cmd = "cd %s; find . -name \\*.%s > %s.lst; " \
-                          "tar cjf %s -T %s.lst" % (sandbox.url.path, ext, ext,
-                              tarball_name, ext)
-                    j = js.run_job(cmd)
-                    j.wait()
-
-                    log.debug('tar cmd   : %s', cmd)
-                    log.debug('tar result: %s\n---\n%s\n---\n%s',
-                              j.get_stdout_string(), j.get_stderr_string(),
-                              j.exit_code)
-
-                    if j.exit_code:
-                        raise RuntimeError('could not create tarball: %s' %
-                                j.get_stderr_string())
-
-                # we not have a remote tarball and can fetch it
+                tarball_remote = True
                 log.info("fetch '%s%s' to '%s'.", sandbox_url,
                          tarball_name, tgt_url)
 
-                rs_file = rs_fs.File("%s%s" % (sandbox_url, tarball_name))
-
-                rs_file.copy(tarball_tgt, flags=rs_fs.CREATE_PARENTS)
-                rs_file.close()
+                rs_file = "%s%s" % (sandbox_url, tarball_name)
+                helper.copy(rs_file, tarball_tgt, flags=rpc.CREATE_PARENTS)
 
             # we now have a local tarball - unpack it
             # note that we do not check if it was unpacked before - it's simpler

@@ -17,7 +17,6 @@ from .constants  import *
 # ------------------------------------------------------------------------------
 # import API
 from .session                   import Session
-from .context                   import Context
 from .proxy                     import Proxy
 
 from .task_manager              import TaskManager
@@ -42,7 +41,6 @@ pythontask = PythonTask.pythontask
 # ------------------------------------------------------------------------------
 # make submodules available -- mostly for internal use
 from . import utils
-from . import worker
 from . import tmgr
 from . import pmgr
 from . import agent
