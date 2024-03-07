@@ -1,6 +1,6 @@
 
 language: python
-python:   "3.6"
+python:   "3.7"
 os:       linux
 dist:     xenial
 
@@ -16,9 +16,9 @@ env:
   global:
     - CODECOV_TOKEN="c7e0d993-d31a-4d39-8ffa-07c30ea73e48"
     - COVERAGE=false
-    - LOC=/home/travis/virtualenv/python3.6.7/lib/python3.6/site-packages
+    - LOC=/home/travis/virtualenv/python3.7/lib/python3.7/site-packages
     - PYTEST="coverage run --include=$LOC/radical/pilot/* -m pytest -ra --timeout=600 -vvv --showlocals"
-    
+
   jobs:
     - MAIN_CMD="$PYTEST tests/" COVERAGE=true
     - MAIN_CMD="ru-runcheck.sh flake8 diff"
@@ -65,7 +65,7 @@ install:
   - pip install codecov
   - pip install pytest
   - pip install pytest-timeout
-  
+
 before_script:
   - tmpLOC=`which python`
   - tmpLOC=(${tmpLOC///bin/ })
