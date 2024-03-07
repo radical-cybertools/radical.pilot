@@ -101,13 +101,13 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
             if isinstance(flags, list):
                 int_flags = 0
                 for flag in flags:
-                    if isinstance(flags, str):
+                    if not isinstance(flags, str):
                         raise ValueError('"%s" is no valid RP constant' % flag)
                     int_flags |= flag
                 flags = int_flags
 
-            elif isinstance(flags, str):
-                raise ValueError('use RP constants for staging flags!')
+            elif not isinstance(flags, str):
+                raise ValueError('use RP constants for staging flags! (%s)' % flags)
 
             expanded = {
                     'uid'             : ru.generate_id('sd'),
