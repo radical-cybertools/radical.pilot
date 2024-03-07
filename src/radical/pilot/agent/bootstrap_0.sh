@@ -544,7 +544,7 @@ verify_install()
     echo ' ok'
 
     # FIXME: attempt to load all required modules
-    modules="radical.pilot radical.saga radical.utils $VIRTENV_RADICAL_MODS"
+    modules="radical.pilot radical.utils $VIRTENV_RADICAL_MODS"
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m

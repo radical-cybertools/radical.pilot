@@ -245,6 +245,8 @@ class Session(object):
         # start bridges and components
         self._start_components()
 
+        time.sleep(1)
+
         # primary session hooks into the control pubsub
         bcfg = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
         self._ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
@@ -1393,11 +1395,12 @@ class Session(object):
                     sandbox_base = sandbox_raw
 
                 else:
-                    shell = self.get_js_shell(resource, schema)
-                    ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
-                                                 sandbox_raw)
+                    # FIXME "remote sandbox expansion not yet supported"
+                    out, err, ret = ru.sh_callout(' echo "WORKDIR: %s"' %
+                                                 sandbox_raw, shell=True)
                     if ret or 'WORKDIR:' not in out:
-                        raise RuntimeError("Couldn't get remote workdir.")
+                        self._log.debug('===', ret, out, err)
+                        raise RuntimeError("Couldn't get remote workdir: %s [%s]" % (out, err))
 
                     sandbox_base = out.split(":")[1].strip()
                     self._log.debug("sandbox base %s", sandbox_base)
@@ -1415,6 +1418,8 @@ class Session(object):
     # --------------------------------------------------------------------------
     #
     def get_js_shell(self, resource, schema):
+
+        return
 
         if resource not in self._cache['js_shells']:
             self._cache['js_shells'][resource] = dict()
@@ -1437,10 +1442,6 @@ class Session(object):
 
             if js_url.schema == 'fork':
                 js_url.host = 'localhost'
-
-            self._log.debug("rsup.PTYShell('%s')", js_url)
-            shell = rsup.PTYShell(js_url, self)
-            self._cache['js_shells'][resource][schema] = shell
 
         return self._cache['js_shells'][resource][schema]
 

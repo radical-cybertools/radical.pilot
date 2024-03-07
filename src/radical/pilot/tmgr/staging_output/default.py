@@ -5,11 +5,10 @@ __license__   = "MIT"
 
 import os
 
-import radical.saga as rs
-
 from ...   import states             as rps
 from ...   import constants          as rpc
 from ...   import staging_directives as rpsd
+from ...   import utils              as rpu
 
 from .base import TMGRStagingOutputComponent
 
@@ -38,6 +37,7 @@ class Default(TMGRStagingOutputComponent):
 
         # we keep a cache of SAGA dir handles
         self._cache = dict()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
@@ -130,42 +130,11 @@ class Default(TMGRStagingOutputComponent):
         tmp.path = '/'
         key      = str(tmp)
 
-        if key not in self._cache:
-            self._cache[key] = rs.filesystem.Directory(tmp)
-        saga_dir = self._cache[key]
-
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
-          # action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            self._prof.prof('staging_out_start', uid=uid, msg=did)
-
-            self._log.debug('src: %s', src)
-            self._log.debug('tgt: %s', tgt)
-
-            src = rpsd.complete_url(src, src_context, self._log)
-            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
-
-            self._log.debug('src: %s', src)
-            self._log.debug('tgt: %s', tgt)
-
-            # Check if the src is a folder, if true
-            # add recursive flag if not already specified
-            if saga_dir.is_dir(src.path):
-                flags |= rs.filesystem.RECURSIVE
-
-            # Always set CREATE_PARENTS
-            flags |= rs.filesystem.CREATE_PARENTS
-
-            self._log.debug('deed: %s: %s -> %s [%s]', saga_dir.url, src, tgt, flags)
-            saga_dir.copy(src, tgt, flags=flags)
-            self._prof.prof('staging_out_stop', uid=uid, msg=did)
+            self._stager.handle_staging_directive(sd)
 
         # all staging is done -- at this point the task is final
         task['state'] = task['target_state']

@@ -127,6 +127,8 @@ class ComponentManager(object):
         buids = list()
         for bname, bcfg in bridges.items():
 
+            self._log.debug('=== start bridge %s', bname)
+
             uid = bname
             buids.append(uid)
 
@@ -143,7 +145,6 @@ class ComponentManager(object):
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
-          # self._reg.put('bridge.%s' % bname, bcfg)
             cmd = 'radical-pilot-bridge %s %s %s' \
                 % (self._sid, self._reg.url, bname)
 

@@ -8,17 +8,18 @@ import os
 import sys
 import time
 
-import threading     as mt
-import setproctitle  as spt
+import threading       as mt
+import setproctitle    as spt
+import multiprocessing as mp
 
-import radical.utils as ru
+import radical.utils   as ru
 
 from radical.pilot.messages import HeartbeatMessage
 
 
 # ------------------------------------------------------------------------------
 #
-def main(sid, reg_addr, uid):
+def main(sid, reg_addr, uid, evt):
     '''
     This thin wrapper starts a ZMQ bridge.  It expects a single argument:
     a config to use for the bridge's configuration.  The config must contain:
@@ -86,7 +87,7 @@ def main(sid, reg_addr, uid):
     try:
         prof.prof('bridge_start', uid=uid)
         prof.disable()
-        wrapped_main(sid, reg_addr, uid, log, prof)
+        wrapped_main(sid, reg_addr, uid, log, prof, evt)
 
     finally:
         prof.enable()
@@ -95,7 +96,7 @@ def main(sid, reg_addr, uid):
 
 # ------------------------------------------------------------------------------
 #
-def wrapped_main(sid, reg_addr, uid, log, prof):
+def wrapped_main(sid, reg_addr, uid, log, prof, evt):
 
     spt.setproctitle('rp.%s' % uid)
 
@@ -113,6 +114,8 @@ def wrapped_main(sid, reg_addr, uid, log, prof):
 
     reg.close()
     bridge.start()
+
+    evt.set()
 
     # re-enable the test below if timing issues crop up
   # if 'pubsub' in uid:
@@ -168,8 +171,13 @@ if __name__ == "__main__":
     reg_addr = sys.argv[2]
     uid      = sys.argv[3]
 
-    ru.daemonize(main=main, args=[sid, reg_addr, uid],
+    evt      = mp.Event()
+    ru.daemonize(main=main, args=[sid, reg_addr, uid, evt],
                  stdout='%s.out' % uid, stderr='%s.err' % uid)
+
+    evt.wait(3.0)
+    if not evt.is_set():
+        sys.stderr.write('error: bridge startup failed\n')
     sys.exit(0)
 
 

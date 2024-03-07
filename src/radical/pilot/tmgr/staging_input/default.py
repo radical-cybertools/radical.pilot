@@ -8,9 +8,6 @@ import tempfile
 import tarfile
 
 import radical.utils as ru
-import radical.saga  as rs
-
-rsfs = rs.filesystem
 
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -60,7 +57,7 @@ class Default(TMGRStagingInputComponent):
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
         self._session_sbox = self._reg['cfg.session_sandbox']
-
+        self._stager       = rpu.StagingHelper(self._log, self._prof)
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
@@ -227,15 +224,7 @@ class Default(TMGRStagingInputComponent):
                 # 2) create a tarball with all task sandboxes, push
                 #    it over, and untar it (one untar op then creates all dirs).
                 #    We implement both
-                if TASK_BULK_MKDIR_MECHANISM == 'saga':
-
-                    tc = rs.task.Container()
-                    for sbox in task_sboxes:
-                        tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
-                    tc.run()
-                    tc.wait()
-
-                elif TASK_BULK_MKDIR_MECHANISM == 'tar':
+                if TASK_BULK_MKDIR_MECHANISM == 'tar':
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -409,32 +398,7 @@ class Default(TMGRStagingInputComponent):
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
 
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            if action == rpc.TRANSFER:
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
-
-                # Check if the src is a folder, if true
-                # add recursive flag if not already specified
-                if os.path.isdir(src.path):
-                    flags |= rsfs.RECURSIVE
-
-                # Always set CREATE_PARENTS
-                flags |= rsfs.CREATE_PARENTS
-
-                src = complete_url(str(src), src_context, self._log)
-                tgt = complete_url(str(tgt), tgt_context, self._log)
-
-                self._prof.prof('staging_in_start', uid=uid, msg=did)
-                saga_dir.copy(src, tgt, flags=flags)
-                self._prof.prof('staging_in_stop', uid=uid, msg=did)
-
+            self._stager.handle_staging_directive(sd)
 
         if tar_file:
 

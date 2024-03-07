@@ -131,13 +131,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (ResourceManager).
-
-        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
-
-        # also listen for completed staging directives
-        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
-        self._active_sds = dict()
-        self._sds_lock   = mt.Lock()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
@@ -1033,7 +1027,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
 
-        self._stage(sds)
+            self._stager.handle_staging_directive(sd)
 
 
     # --------------------------------------------------------------------------
@@ -1063,65 +1057,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
-        self._stage(sds)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _stage(self, sds):
-
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        # prepare to wait for completion
-        with self._sds_lock:
-
-            self._active_sds = dict()
-            for sd in sds:
-                sd['state'] = rps.NEW
-                self._active_sds[sd['uid']] = sd
-
-            sd_states = [sd['state'] for sd
-                                     in  list(self._active_sds.values())
-                                     if  sd['uid'] in uids]
-
-        # push them out
-        self._stager_queue.put(sds)
-
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd
-                                         in  list(self._active_sds.values())
-                                         if  sd['uid'] in uids]
-
-        if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _staging_ack_cb(self, topic, msg):
-        '''
-        update staging directive state information
-        '''
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        if cmd == 'staging_result':
-
-            with self._sds_lock:
-                for sd in arg['sds']:
-                    uid = sd['uid']
-                    if uid in self._active_sds:
-                        active_sd = self._active_sds[uid]
-                        active_sd['state']            = sd['state']
-                        active_sd['exception']        = sd['exception']
-                        active_sd['exception_detail'] = sd['exception_detail']
-
-        return True
+            self._stager.handle_staging_directive(sd)
 
 
 # ------------------------------------------------------------------------------

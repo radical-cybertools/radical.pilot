@@ -7,6 +7,8 @@ import radical.utils as ru
 
 from .. import constants as rpc
 
+from .staging_helper import StagingHelper
+
 
 # ------------------------------------------------------------------------------
 #
@@ -73,7 +75,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 pass
             else:
                 log.debug('fetch client file %s', client_file)
-                stager = rpu.StagingHelper()
+                stager = StagingHelper(log)
                 stager.copy(client_file, ftgt, flags=rpc.CREATE_PARENTS)
 
     # we need the session json for pilot details
@@ -107,11 +109,11 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            stager = rpu.StagingHelper()
+            stager = StagingHelper(log)
 
             # Try to fetch a tarball of files, so that we can get them
             # all in one (SAGA) go!
-            tarball_name  = '%s.%s.tbz'   % (pid, ext)
+            tarball_name  = '%s.%s.tgz'   % (pid, ext)
             tarball_tgt   = '%s/%s/%s/%s' % (tgt, sid, pid, tarball_name)
             tarball_local = False
 
@@ -131,13 +133,19 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                          tarball_name, tgt_url)
 
                 rs_file = "%s%s" % (sandbox_url, tarball_name)
-                helper.copy(rs_file, tarball_tgt, flags=rpc.CREATE_PARENTS)
+                stager.copy(rs_file, tarball_tgt, flags=rpc.CREATE_PARENTS)
+
+                if os.path.getsize(tarball_tgt) == 0:
+                    tarball_remote = False
+
+            if not tarball_remote:
+                raise RuntimeError('no tarball for %s' % pid)
 
             # we now have a local tarball - unpack it
             # note that we do not check if it was unpacked before - it's simpler
             # (and possibly cheaper) to just do that again
             log.info('Extract tarball %s', tarball_tgt)
-            tarball = tarfile.open(tarball_tgt, mode='r:bz2')
+            tarball = tarfile.open(tarball_tgt, mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pid))
 
             files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
@@ -150,7 +158,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             # do not raise, we still try the other pilots
             log.exception('failed to fetch %s for %s', pid, name)
             if rep:
-                session._rep.error("- %s (%s)\n" % (pid, name))
+                rep.error("- %s (%s)\n" % (pid, name))
 
     return ret
 

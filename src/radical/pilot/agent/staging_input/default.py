@@ -7,9 +7,9 @@ import os
 import shutil
 import tarfile
 
-import radical.saga  as rs
 import radical.utils as ru
 
+from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
@@ -40,7 +40,8 @@ class Default(AgentStagingInputComponent):
     #
     def initialize(self):
 
-        self._pwd = os.getcwd()
+        self._pwd    = os.getcwd()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
@@ -222,16 +223,9 @@ class Default(AgentStagingInputComponent):
                 #        left to tmgr input staging.  We should use SAGA to
                 #        attempt all staging ops which do not involve the client
                 #        machine.
-                if src.schema == 'srm':
-                    # FIXME: cache saga handles
-                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                    srm_dir.copy(src, tgt)
-                    srm_dir.close()
-
-                else:
-                    self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_in_fail', uid=uid, msg=did)
-                    raise NotImplementedError('unsupported transfer %s' % src)
+                self._log.error('no transfer for %s -> %s', src, tgt)
+                self._prof.prof('staging_in_fail', uid=uid, msg=did)
+                raise NotImplementedError('unsupported transfer %s' % src)
 
             elif action == rpc.TARBALL:
 
