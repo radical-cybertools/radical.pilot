@@ -636,23 +636,26 @@ class Session(object):
 
         assert self._role == self._PRIMARY
 
-        # check if an external proxy is being used.  If so we are done.
+        # check if an external proxy was epcified for the session.
         if self._proxy_url:
             self._log.debug('use proxy at %s' % self._proxy_url)
             return
 
-        self._proxy_url = os.environ.get('RADICAL_PILOT_PROXY_URL')
-        if self._proxy_url:
+       # check if an external proxy was specified in the environment
+        elif 'RADICAL_PILOT_PROXY_URL' in os.environ:
+            self._proxy_url = os.environ['RADICAL_PILOT_PROXY_URL']
             self._log.debug('found proxy at %s' % self._proxy_url)
-            return
 
         # no luck - start an embedded proxy
-        self._proxy_event  = mt.Event()
-        self._proxy_thread = mt.Thread(target=self._run_proxy)
-        self._proxy_thread.daemon = True
-        self._proxy_thread.start()
+        else:
+            self._proxy_event  = mt.Event()
+            self._proxy_thread = mt.Thread(target=self._run_proxy)
+            self._proxy_thread.daemon = True
+            self._proxy_thread.start()
 
-        self._proxy_event.wait()
+            self._proxy_event.wait()
+
+
         assert self._proxy_url
 
         # the proxy url becomes part of the session cfg
