@@ -83,7 +83,7 @@ class StagingHelper_Local(object):
         src = ru.Url(src).path
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
-        shutil.copy(src, tgt)
+        ru.sh_callout('cp -r %s %s' % (src, tgt))
 
     def move(self, src, tgt, flags):
         src = ru.Url(src).path
