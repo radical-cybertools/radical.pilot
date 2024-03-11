@@ -101,8 +101,8 @@ if __name__ == '__main__':
         tmgr.wait_tasks()
 
         for task in tasks:
-            print('%s: %s [%s], %s' % (task.uid, task.state, task.exit_code,
-                                       task.stdout.strip()))
+            print('  * %s: %s [%s], %s' % (task.uid, task.state, task.exit_code,
+                                           task.stdout.strip()))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above
