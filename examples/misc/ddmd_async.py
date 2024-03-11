@@ -21,6 +21,7 @@ class AsyncDDMD(DDMD_Base):
 
         super().__init__()
 
+        # define the protocol
         self.register(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
         self.register(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
         self.register(self.TASK_MD_SIM,      self.control_md_sim,      's')
