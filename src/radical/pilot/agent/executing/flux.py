@@ -9,8 +9,7 @@ import textwrap
 
 import radical.utils as ru
 
-from ...   import states    as rps
-from ...   import constants as rpc
+from ...   import states as rps
 
 from ..    import LaunchMethod
 from ..    import ResourceManager

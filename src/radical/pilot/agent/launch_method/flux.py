@@ -87,9 +87,5 @@ class Flux(LaunchMethod):
         raise RuntimeError('method cannot be used on Flux LM')
 
 
-    def get_exec(self, task):
-        raise RuntimeError('method cannot be used on Flux LM')
-
-
 # ------------------------------------------------------------------------------
 
