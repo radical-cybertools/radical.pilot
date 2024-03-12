@@ -3,9 +3,9 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
-import time
-import queue
-import threading as mt
+import os
+import shlex
+import textwrap
 
 import radical.utils as ru
 
@@ -26,6 +26,18 @@ class Flux(AgentExecutingComponent) :
     def __init__(self, cfg, session):
 
         AgentExecutingComponent.__init__(self, cfg, session)
+
+
+        # create execution helper, i.e., a small shell script which manages I/O
+        # redirection for us (Flux does not support it just yet)
+        self._helper = textwrap.dedent('''\
+                #/bin/sh
+
+                exec >>%(log)s 2>&1
+
+                %(cmd)s 1>"%(out)s" 2>"%(err)s"
+
+                ''')
 
 
     # --------------------------------------------------------------------------
@@ -74,7 +86,6 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg,
                                                   self.session.cfg,
                                                   self._log, self._prof)
-
         # local state management
         self._tasks  = dict()
 
@@ -119,13 +130,13 @@ class Flux(AgentExecutingComponent) :
 
             # on completion, push toward output staging
             self.advance_tasks(task, state, ts=ts, publish=True, push=True)
-            ret = True
 
         elif state == 'unschedule':
 
             # free task resources
             self._prof.prof('unschedule_start', uid=task['uid'])
-            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+            self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
+          # self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
 
         else:
             # otherwise only push a state update
@@ -136,16 +147,90 @@ class Flux(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
-        for task in tasks:
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-            flux_id = task['description']['metadata']['flux_id']
-            assert flux_id not in self._tasks
+        # FIXME: need actual job description, obviously
+        jds = [self.task_to_spec(task) for task in tasks]
+        self._log.debug('submit tasks: %s', [jd for jd in jds])
+        jids = self._lm.fh.submit_jobs([jd for jd in jds])
+        self._log.debug('submitted tasks')
+
+        for task, flux_id in zip(tasks, jids):
+
+            self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
+
+            md = task['description'].get('metadata') or dict()
+            md['flux_id'] = flux_id
+            task['description']['metadata'] = md
+
             self._tasks[flux_id] = task
 
-
-            fut = self._lm.fh.attach_jobs([flux_id], self._job_event_cb)
+            self._lm.fh.attach_jobs([flux_id], self._job_event_cb)
             self._log.debug('handle %s: %s', task['uid'], flux_id)
 
+
+    # --------------------------------------------------------------------------
+    #
+    def task_to_spec(self, task):
+
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
+
+        args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
+        cmd  = '%s %s' % (td['executable'], args)
+
+        ru.rec_makedir(sbox)
+        exec_script = '%s/%s.flux.sh' % (sbox, uid)
+        with ru.ru_open(exec_script, 'w') as fout:
+            fout.write(self._helper % {'out': stdout,
+                                       'err': stderr,
+                                       'log': '%s.flux.log' % uid,
+                                       'cmd': cmd})
+        os.chmod(exec_script, 0o0755)
+        spec = {
+            'tasks': [{
+                'slot' : 'task',
+                'count': {
+                    'per_slot': 1
+                },
+                'command': [exec_script],
+            }],
+            'attributes': {
+                'system': {
+                    'cwd'     : sbox,
+                    'duration': 0,
+                }
+            },
+            'version': 1,
+            'resources': [{
+                'count': td['ranks'],
+                'type' : 'slot',
+                'label': 'task',
+                'with' : [{
+                    'count': td['cores_per_rank'],
+                    'type' : 'core'
+              # }, {
+              #     'count': td['gpus_per_rank'] or 0,
+              #     'type' : 'gpu'
+                }]
+            }]
+        }
+
+        if td['gpus_per_rank']:
+            spec['resources'][0]['with'].append({
+                    'count': td['gpus_per_rank'],
+                    'type' : 'gpu'})
+
+        return spec
 
 # ------------------------------------------------------------------------------
 
