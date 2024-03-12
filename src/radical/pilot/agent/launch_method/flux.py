@@ -84,7 +84,8 @@ class Flux(LaunchMethod):
 
 
     def get_rank_cmd(self):
-        raise RuntimeError('method cannot be used on Flux LM')
+
+        return 'export RP_RANK=$FLUX_TASK_RANK\n'
 
 
 # ------------------------------------------------------------------------------

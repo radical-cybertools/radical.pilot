@@ -198,8 +198,8 @@ class Popen(AgentExecutingComponent):
 
         launcher = self._rm.find_launcher(task)
 
-        exec_path   = self._create_exec_script(launcher, task)
-        launch_path = self._create_launch_script(launcher, task, exec_path)
+        exec_path  , _ = self._create_exec_script(launcher, task)
+        _, launch_path = self._create_launch_script(launcher, task, exec_path)
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']

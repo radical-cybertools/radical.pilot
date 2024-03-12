@@ -314,7 +314,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         if self._log._debug_level >= 5:
             ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
-        return exec_path
+        return exec_path, exec_fullpath
 
 
     # --------------------------------------------------------------------------
@@ -473,6 +473,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self._log.debug('Launching task with %s', launcher.name)
 
         launch_script   = '%s.launch.sh' % tid
+        launch_path     = '$RP_TASK_SANDBOX/%s' % launch_script
         launch_fullpath = '%s/%s' % (sbox, launch_script)
 
         ru.rec_makedir(sbox)
@@ -525,7 +526,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         st_l = os.stat(launch_fullpath)
         os.chmod(launch_fullpath, st_l.st_mode | stat.S_IEXEC)
 
-        return launch_fullpath
+        return launch_path, launch_fullpath
 
 
     # --------------------------------------------------------------------------

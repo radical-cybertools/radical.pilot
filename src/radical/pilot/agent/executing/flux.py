@@ -3,12 +3,6 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
-import os
-import shlex
-import textwrap
-
-import radical.utils as ru
-
 from ...   import states as rps
 
 from ..    import LaunchMethod
@@ -19,25 +13,6 @@ from .base import AgentExecutingComponent
 # ------------------------------------------------------------------------------
 #
 class Flux(AgentExecutingComponent) :
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-        AgentExecutingComponent.__init__(self, cfg, session)
-
-
-        # create execution helper, i.e., a small shell script which manages I/O
-        # redirection for us (Flux does not support it just yet)
-        self._helper = textwrap.dedent('''\
-                #/bin/sh
-
-                exec >>%(log)s 2>&1
-
-                %(cmd)s 1>"%(out)s" 2>"%(err)s"
-
-                ''')
-
 
     # --------------------------------------------------------------------------
     #
@@ -56,7 +31,7 @@ class Flux(AgentExecutingComponent) :
               further state changes in this component.
         '''
 
-        AgentExecutingComponent.initialize(self)
+        super().initialize()
 
         # translate Flux states to RP states
         self._event_map = {'submit'   : None,   # rps.AGENT_SCHEDULING,
@@ -184,30 +159,25 @@ class Flux(AgentExecutingComponent) :
         task['stdout_file'] = stdout
         task['stderr_file'] = stderr
 
-        args = ' '.join([shlex.quote(arg) for arg in td['arguments']])
-        cmd  = '%s %s' % (td['executable'], args)
+        _, exec_path = self._create_exec_script(self._lm, task)
 
-        ru.rec_makedir(sbox)
-        exec_script = '%s/%s.flux.sh' % (sbox, uid)
-        with ru.ru_open(exec_script, 'w') as fout:
-            fout.write(self._helper % {'out': stdout,
-                                       'err': stderr,
-                                       'log': '%s.flux.log' % uid,
-                                       'cmd': cmd})
-        os.chmod(exec_script, 0o0755)
+        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
+                                                   'out': stdout,
+                                                   'err': stderr}
+
         spec = {
             'tasks': [{
                 'slot' : 'task',
                 'count': {
                     'per_slot': 1
                 },
-                'command': [exec_script],
+                'command': ['/bin/sh', '-c', command],
             }],
             'attributes': {
                 'system': {
                     'cwd'     : sbox,
                     'duration': 0,
-                }
+                },
             },
             'version': 1,
             'resources': [{
@@ -230,6 +200,7 @@ class Flux(AgentExecutingComponent) :
                     'type' : 'gpu'})
 
         return spec
+
 
 # ------------------------------------------------------------------------------
 
