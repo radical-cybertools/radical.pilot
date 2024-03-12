@@ -60,7 +60,7 @@ class Popen(AgentExecutingComponent):
     def initialize(self):
 
       # self._log.debug('popen initialize start')
-        AgentExecutingComponent.initialize(self)
+        super().initialize()
 
         self._watch_queue = queue.Queue()
 
@@ -203,16 +203,21 @@ class Popen(AgentExecutingComponent):
         #
         # # now do the very same stuff for the `post_exec` directive
         # ...
-        #
-        # ----------------------------------------------------------------------
-        #
-        # NOTE: MongoDB only accepts string keys, and thus the rank IDs in
-        #       pre_exec and post_exec dictionaries are rendered as strings.
-        #       This should be changed to more intuitive integers once MongoDB
-        #       is phased out.
-        #
 
         launcher = self._rm.find_launcher(task)
+
+        self._create_launch_script(launcher, task)
+        self._create_exec_script(launcher, task)
+        self._launch_task(task)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _create_launch_script(self, launcher, task):
+
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
 
         if not launcher:
             raise RuntimeError('no launcher found for task %s' % tid)
@@ -268,6 +273,17 @@ class Popen(AgentExecutingComponent):
             tmp += '\n'
 
             fout.write(tmp)
+
+    # --------------------------------------------------------------------------
+    #
+    def _create_exec_script(self, launcher, task):
+
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
+
+        exec_script   = '%s.exec.sh'   % tid
+        launch_script = '%s.launch.sh' % tid
 
         # the exec shell script runs the same set of commands for all ranks.
         # However, if the ranks need different GPU's assigned, or if either pre-
@@ -337,12 +353,24 @@ class Popen(AgentExecutingComponent):
         if self._log._debug_level >= 5:
             ru.write_json('%s/%s.sl' % (sbox, tid), slots)
 
+    # --------------------------------------------------------------------------
+    #
+    def _launch_task(self, task):
+
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
+
+        exec_script   = '%s.exec.sh'   % tid
+        launch_script = '%s.launch.sh' % tid
+
         # launch and exec script are done, get ready for execution.
         cmdline = '%s/%s' % (sbox, launch_script)
 
         self._log.info('Launching task %s via %s in %s', tid, cmdline, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+
 
         # `start_new_session=True` is default, which enables decoupling
         # from the parent process group (part of the task cancellation)
