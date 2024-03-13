@@ -1567,7 +1567,7 @@ class Session(object):
         rcfg    = self.get_resource_config(resrc, schema)
 
         js_url  = ru.Url(rcfg.get('job_manager_endpoint'))
-        js_hop  = ru.Url(rcfg.get('job_manager_hop', js_url))
+        js_hop  = ru.Url(rcfg.get('job_manager_hop') or js_url)
 
         # make sure the js_hop url points to an interactive access
         # TODO: this is an unreliable heuristics - we should require the js_hop
