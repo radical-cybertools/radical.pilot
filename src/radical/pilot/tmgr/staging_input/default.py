@@ -8,9 +8,6 @@ import tempfile
 import tarfile
 
 import radical.utils as ru
-import radical.saga  as rs
-
-rsfs = rs.filesystem
 
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -60,7 +57,7 @@ class Default(TMGRStagingInputComponent):
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
         self._session_sbox = self._reg['cfg.session_sandbox']
-
+        self._stager       = rpu.StagingHelper(self._log, self._prof)
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
@@ -212,30 +209,9 @@ class Default(TMGRStagingInputComponent):
 
                 session_sbox = self._session._get_session_sandbox(pilot)
 
-                # no matter the bulk mechanism, we need a SAGA handle to the
-                # remote FS
-                sbox_fs      = ru.Url(session_sbox)  # deep copy
-                sbox_fs.path = '/'
-                sbox_fs_str  = str(sbox_fs)
-                if sbox_fs_str not in self._fs_cache:
-                    self._fs_cache[sbox_fs_str] = \
-                            rsfs.Directory(sbox_fs, session=self._session)
-                saga_dir = self._fs_cache[sbox_fs_str]
-
-                # we have two options for a bulk mkdir:
-                # 1) ask SAGA to create the sandboxes in a bulk op
-                # 2) create a tarball with all task sandboxes, push
-                #    it over, and untar it (one untar op then creates all dirs).
-                #    We implement both
-                if TASK_BULK_MKDIR_MECHANISM == 'saga':
-
-                    tc = rs.task.Container()
-                    for sbox in task_sboxes:
-                        tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
-                    tc.run()
-                    tc.wait()
-
-                elif TASK_BULK_MKDIR_MECHANISM == 'tar':
+                # create a tarball with all task sandboxes, push
+                # it over, and untar it (one untar op then creates all dirs).
+                if TASK_BULK_MKDIR_MECHANISM == 'tar':
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -260,28 +236,19 @@ class Default(TMGRStagingInputComponent):
                     self._log.debug('sbox: %s [%s]', session_sbox,
                                                              type(session_sbox))
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
-                    saga_dir.copy(tar_url, tar_rem_path,
-                                             flags=rsfs.CREATE_PARENTS)
+
+                    self._stager.copy(tar_url, tar_rem_path)
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
-                    js_url = pilot['js_hop']
-                    self._log.debug('js  : %s', js_url)
-
-                    if  js_url in self._js_cache:
-                        js_tmp = self._js_cache[js_url]
-                    else:
-                        js_tmp = rs.job.Service(js_url, session=self._session)
-                        self._js_cache[js_url] = js_tmp
+                    hop_url = pilot['js_hop']
+                    self._log.debug('js  : %s', hop_url)
 
                     cmd = "tar xvf %s/%s -C %s" % (session_sbox.path, tar_name,
                                                    session_sbox.path)
-                    j = js_tmp.run_job(cmd)
-                    j.wait()
-                    self._log.debug('untar : %s', cmd)
-                  # self._log.debug('untar : %s\n---\n%s\n---\n%s',
-                  #         j.get_stdout_string(), j.get_stderr_string(),
-                  #         j.exit_code)
+
+                    out, err, ret = self._stager.sh_callout(hop_url, cmd)
+                    self._log.debug('untar: %s', [cmd, out, err, ret])
 
 
         for pid in no_staging_tasks:
@@ -333,8 +300,8 @@ class Default(TMGRStagingInputComponent):
 
         # we have actionable staging directives, and thus we need a task
         # sandbox.
-        sandbox = rs.Url(task["task_sandbox"])
-        tmp     = rs.Url(task["task_sandbox"])
+        sandbox = ru.Url(task["task_sandbox"])
+        tmp     = ru.Url(task["task_sandbox"])
 
         # url used for cache (sandbox url w/o path)
         tmp.path = '/'
@@ -342,7 +309,7 @@ class Default(TMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rsfs.Directory(tmp, session=self._session)
+            self._fs_cache[key] = rsfs.Directory(tmp)
 
         saga_dir = self._fs_cache[key]
         saga_dir.make_dir(sandbox, flags=rsfs.CREATE_PARENTS)
@@ -409,32 +376,7 @@ class Default(TMGRStagingInputComponent):
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
 
-            action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            if action == rpc.TRANSFER:
-
-                src = complete_url(src, src_context, self._log)
-                tgt = complete_url(tgt, tgt_context, self._log)
-
-                # Check if the src is a folder, if true
-                # add recursive flag if not already specified
-                if os.path.isdir(src.path):
-                    flags |= rsfs.RECURSIVE
-
-                # Always set CREATE_PARENTS
-                flags |= rsfs.CREATE_PARENTS
-
-                src = complete_url(str(src), src_context, self._log)
-                tgt = complete_url(str(tgt), tgt_context, self._log)
-
-                self._prof.prof('staging_in_start', uid=uid, msg=did)
-                saga_dir.copy(src, tgt, flags=flags)
-                self._prof.prof('staging_in_stop', uid=uid, msg=did)
-
+            self._stager.handle_staging_directive(sd)
 
         if tar_file:
 

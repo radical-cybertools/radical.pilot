@@ -23,22 +23,22 @@ class StagingHelper(object):
         log.debug('using staging backend %s' % self._backend.__class__.__name__)
 
 
-    def mkdir(self, tgt, flags):
+    def mkdir(self, tgt, flags=None):
         self._backend.mkdir(tgt, flags)
 
-    def rmdir(self, tgt, flags):
+    def rmdir(self, tgt, flags=None):
         self._backend.rmdir(tgt, flags)
 
-    def copy(self, src, tgt, flags):
+    def copy(self, src, tgt, flags=None):
         self._backend.copy(src, tgt, flags)
 
-    def move(self, src, tgt, flags):
+    def move(self, src, tgt, flags=None):
         self._backend.move(src, tgt, flags)
 
-    def link(self, src, tgt, flags):
+    def link(self, src, tgt, flags=None):
         self._backend.link(src, tgt, flags)
 
-    def delete(self, tgt, flags):
+    def delete(self, tgt, flags=None):
         self._backend.delete(tgt, flags)
 
     def sh_callout(self, url, cmd):
