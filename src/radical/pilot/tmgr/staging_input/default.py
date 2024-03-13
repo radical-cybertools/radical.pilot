@@ -8,6 +8,9 @@ import tempfile
 import tarfile
 
 import radical.utils as ru
+import radical.saga  as rs
+
+rsfs = rs.filesystem
 
 from ...   import states    as rps
 from ...   import constants as rpc
@@ -57,7 +60,7 @@ class Default(TMGRStagingInputComponent):
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
         self._session_sbox = self._reg['cfg.session_sandbox']
-        self._stager       = rpu.StagingHelper(self._log, self._prof)
+
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
@@ -216,7 +219,7 @@ class Default(TMGRStagingInputComponent):
                 sbox_fs_str  = str(sbox_fs)
                 if sbox_fs_str not in self._fs_cache:
                     self._fs_cache[sbox_fs_str] = \
-                            rsfs.Directory(sbox_fs)
+                            rsfs.Directory(sbox_fs, session=self._session)
                 saga_dir = self._fs_cache[sbox_fs_str]
 
                 # we have two options for a bulk mkdir:
@@ -224,7 +227,15 @@ class Default(TMGRStagingInputComponent):
                 # 2) create a tarball with all task sandboxes, push
                 #    it over, and untar it (one untar op then creates all dirs).
                 #    We implement both
-                if TASK_BULK_MKDIR_MECHANISM == 'tar':
+                if TASK_BULK_MKDIR_MECHANISM == 'saga':
+
+                    tc = rs.task.Container()
+                    for sbox in task_sboxes:
+                        tc.add(saga_dir.make_dir(sbox, ttype=rs.TASK))
+                    tc.run()
+                    tc.wait()
+
+                elif TASK_BULK_MKDIR_MECHANISM == 'tar':
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
@@ -260,7 +271,7 @@ class Default(TMGRStagingInputComponent):
                     if  js_url in self._js_cache:
                         js_tmp = self._js_cache[js_url]
                     else:
-                        js_tmp = rs.job.Service(js_url)
+                        js_tmp = rs.job.Service(js_url, session=self._session)
                         self._js_cache[js_url] = js_tmp
 
                     cmd = "tar xvf %s/%s -C %s" % (session_sbox.path, tar_name,
@@ -322,8 +333,8 @@ class Default(TMGRStagingInputComponent):
 
         # we have actionable staging directives, and thus we need a task
         # sandbox.
-        sandbox = ru.Url(task["task_sandbox"])
-        tmp     = ru.Url(task["task_sandbox"])
+        sandbox = rs.Url(task["task_sandbox"])
+        tmp     = rs.Url(task["task_sandbox"])
 
         # url used for cache (sandbox url w/o path)
         tmp.path = '/'
@@ -331,7 +342,7 @@ class Default(TMGRStagingInputComponent):
         self._log.debug('key %s / %s', key, tmp)
 
         if key not in self._fs_cache:
-            self._fs_cache[key] = rsfs.Directory(tmp)
+            self._fs_cache[key] = rsfs.Directory(tmp, session=self._session)
 
         saga_dir = self._fs_cache[key]
         saga_dir.make_dir(sandbox, flags=rsfs.CREATE_PARENTS)
@@ -398,7 +409,32 @@ class Default(TMGRStagingInputComponent):
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
 
-            self._stager.handle_staging_directive(sd)
+            action = sd['action']
+            flags  = sd['flags']
+            did    = sd['uid']
+            src    = sd['source']
+            tgt    = sd['target']
+
+            if action == rpc.TRANSFER:
+
+                src = complete_url(src, src_context, self._log)
+                tgt = complete_url(tgt, tgt_context, self._log)
+
+                # Check if the src is a folder, if true
+                # add recursive flag if not already specified
+                if os.path.isdir(src.path):
+                    flags |= rsfs.RECURSIVE
+
+                # Always set CREATE_PARENTS
+                flags |= rsfs.CREATE_PARENTS
+
+                src = complete_url(str(src), src_context, self._log)
+                tgt = complete_url(str(tgt), tgt_context, self._log)
+
+                self._prof.prof('staging_in_start', uid=uid, msg=did)
+                saga_dir.copy(src, tgt, flags=flags)
+                self._prof.prof('staging_in_stop', uid=uid, msg=did)
+
 
         if tar_file:
 
