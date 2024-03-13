@@ -306,18 +306,8 @@ class Default(TMGRStagingInputComponent):
         # we have actionable staging directives, and thus we need a task
         # sandbox.
         sandbox = ru.Url(task["task_sandbox"])
-        tmp     = ru.Url(task["task_sandbox"])
 
-        # url used for cache (sandbox url w/o path)
-        tmp.path = '/'
-        key = str(tmp)
-        self._log.debug('key %s / %s', key, tmp)
-
-        if key not in self._fs_cache:
-            self._fs_cache[key] = rsfs.Directory(tmp)
-
-        saga_dir = self._fs_cache[key]
-        saga_dir.make_dir(sandbox, flags=rsfs.CREATE_PARENTS)
+        self._stager.mkdir(sandbox)
         self._prof.prof("create_sandbox_stop", uid=uid)
 
         # Loop over all transfer directives and filter out tarball staging
