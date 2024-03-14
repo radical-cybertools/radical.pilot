@@ -5,12 +5,16 @@ __license__   = "MIT"
 
 import os
 
+import radical.utils as ru
+
 from ...   import states             as rps
 from ...   import constants          as rpc
-from ...   import staging_directives as rpsd
 from ...   import utils              as rpu
 
+from ...staging_directives import expand_staging_directives
+
 from .base import TMGRStagingOutputComponent
+
 
 
 # ------------------------------------------------------------------------------
@@ -110,14 +114,14 @@ class Default(TMGRStagingOutputComponent):
 
         uid = task['uid']
 
-        src_context = {'pwd'      : task['task_sandbox'],       # !!!
+        src_context = {'pwd'      : task['task_sandbox'],       # !
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
                        'session'  : task['session_sandbox'],
                        'resource' : task['resource_sandbox'],
                        'endpoint' : task['endpoint_fs']}
-        tgt_context = {'pwd'      : task['client_sandbox'],     # !!!
+        tgt_context = {'pwd'      : task['client_sandbox'],     # !
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
@@ -130,6 +134,8 @@ class Default(TMGRStagingOutputComponent):
         tmp.path = '/'
         key      = str(tmp)
 
+        actionables = expand_staging_directives(actionables,
+                                            src_context, tgt_context, self._log)
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:

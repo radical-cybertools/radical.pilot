@@ -15,7 +15,7 @@ from ...   import utils     as rpu
 
 from .base import TMGRStagingInputComponent
 
-from ...staging_directives import complete_url
+from ...staging_directives import complete_url, expand_staging_directives
 
 
 # if we receive more than a certain numnber of tasks in a bulk, we create the
@@ -270,6 +270,7 @@ class Default(TMGRStagingInputComponent):
 
                 except Exception as e:
                     # staging failed - do not pass task to agent
+                    self._log.exception('staging for %s failed', task['uid'])
                     task['control']          = 'tmgr'
                     task['exception']        = repr(e)
                     task['exception_detail'] = '\n'.join(ru.get_exception_trace())
@@ -329,7 +330,6 @@ class Default(TMGRStagingInputComponent):
             else:
 
                 action = sd['action']
-                flags  = sd['flags']   # NOTE: we don't use those
                 did    = sd['uid']
                 src    = sd['source']
                 tgt    = sd['target']
@@ -348,7 +348,7 @@ class Default(TMGRStagingInputComponent):
                     tar_path = tmp_file.name
                     tar_file = tarfile.open(fileobj=tmp_file, mode='w')
                     tar_src  = ru.Url('file://localhost/%s' % tar_path)
-                    tar_tgt  = ru.Url('task:////%s.tar'     % uid)
+                    tar_tgt  = ru.Url('task:///%s.tar'      % uid)
                     tar_did  = ru.generate_id('sd')
                     tar_sd   = {'action' : rpc.TRANSFER,
                                 'flags'  : rpc.DEFAULT_FLAGS,
@@ -357,6 +357,8 @@ class Default(TMGRStagingInputComponent):
                                 'target' : str(tar_tgt),
                                }
                     new_actionables.append(tar_sd)
+
+                    self._log.debug('create tar sd %s', tar_sd)
 
                 # add the src file
                 tar_file.add(src.path, arcname=tgt.path)
@@ -368,9 +370,11 @@ class Default(TMGRStagingInputComponent):
         if tar_file:
             tar_file.close()
 
+        new_actionables = expand_staging_directives(new_actionables,
+                                            src_context, tgt_context, self._log)
+
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
-
             self._stager.handle_staging_directive(sd)
 
         if tar_file:

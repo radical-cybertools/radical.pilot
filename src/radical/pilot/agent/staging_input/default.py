@@ -40,8 +40,7 @@ class Default(AgentStagingInputComponent):
     #
     def initialize(self):
 
-        self._pwd    = os.getcwd()
-        self._stager = rpu.StagingHelper(self._log, self._prof)
+        self._pwd = os.getcwd()
 
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
@@ -137,7 +136,6 @@ class Default(AgentStagingInputComponent):
         for sd in actionables:
 
             action = sd['action']
-            flags  = sd['flags']
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
@@ -185,7 +183,7 @@ class Default(AgentStagingInputComponent):
 
             # SAGA will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
-            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
+            if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)

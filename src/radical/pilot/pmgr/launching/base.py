@@ -1010,23 +1010,20 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         '''
 
         # contexts for staging url expansion
-        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+        tgt_ctx = {'pwd'     : pilot['pilot_sandbox'],      # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+        src_ctx = {'pwd'     : pilot['client_sandbox'],     # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        sds = ru.as_list(sds)
+        sds = expand_staging_directives(sds, src_ctx, tgt_ctx)
 
         for sd in sds:
             sd['prof_id'] = pilot['uid']
-            sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
-
             self._stager.handle_staging_directive(sd)
 
 

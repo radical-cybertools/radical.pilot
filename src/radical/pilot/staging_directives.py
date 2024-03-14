@@ -42,9 +42,18 @@ def expand_description(descr: Dict[str, Any]) -> None:
 
 # ------------------------------------------------------------------------------
 #
-def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
+def expand_staging_directives(sds:         Union[str, Dict[str, Any], List[str]],
+                              src_context: Dict[str, str] = None,
+                              tgt_context: Dict[str, str] = None,
+                              log        : ru.Logger      = None
                              ) -> List[Dict[str, Any]]:
-    """Take an abbreviated or compressed staging directive and expand it."""
+    """Take an abbreviated or compressed staging directive and expand it.
+
+    The method takes a list of staging directives, and expands any string based
+    directives into their dictionary based equivalent.  The method will also
+    evaluate source and target URL schemas in the directives based on the
+    given contexts.
+    """
 
     if not sds:
         return []
@@ -54,6 +63,7 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
     for sd in sds:
 
         if isinstance(sd, str):
+
             # We detected a string, convert into dict.  The interpretation
             # differs depending of redirection characters being present in the
             # string.
@@ -80,7 +90,8 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
 
             # sanity check on dict syntax
             valid_keys = ['source', 'target', 'action', 'flags', 'priority',
-                          'uid', 'prof_id']
+                          'uid', 'prof_id', 'exception', 'exception_detail']
+
             for k in sd.keys():
                 if k not in valid_keys:
                     raise ValueError('"%s" is invalid on staging directive' % k)
@@ -94,20 +105,11 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
             if not source:
                 raise Exception("Staging directive dict has no source member!")
 
-            # RCT flags should always be rendered as OR'ed integers - but old
-            # versions of the RP API rendered them as list of strings.  We
-            # convert to the integer version for backward compatibility - but we
-            # complain loudly if we find actual strings.
-            if isinstance(flags, list):
-                int_flags = 0
-                for flag in flags:
-                    if not isinstance(flags, str):
-                        raise ValueError('"%s" is no valid RP constant' % flag)
-                    int_flags |= flag
-                flags = int_flags
+            if src_context:
+                source = complete_url(source, src_context, log)
 
-            elif not isinstance(flags, str):
-                raise ValueError('use RP constants for staging flags! (%s)' % flags)
+            if tgt_context:
+                target = complete_url(target, tgt_context, log)
 
             expanded = {
                     'uid'             : ru.generate_id('sd'),
@@ -123,17 +125,6 @@ def expand_staging_directives(sds: Union[str, Dict[str, Any], List[str]]
         else:
             raise Exception("Unknown directive: %s (%s)" % (sd, type(sd)))
 
-        # we warn the user when src or tgt are using the deprecated
-        # `staging://` schema
-        if str(expanded['source']).startswith('staging://'):
-            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
-            expanded['source'] = str(expanded['source']).replace('staging://',
-                                                                 'pilot://')
-
-        if str(expanded['target']).startswith('staging://'):
-            sys.stderr.write('staging:// schema is deprecated - use pilot://\n')
-            expanded['target'] = str(expanded['target']).replace('staging://',
-                                                                 'pilot://')
         ret.append(expanded)
 
     return ret
@@ -174,15 +165,9 @@ def complete_url(path   : str,
     The method returns an instance of `:py:class:`radical.utils.Url`.  Even if
     the URL is not altered, a new instance (deep copy) will be returned.
 
-    `endpoint://` is based on the `filesystem_endpoint` attribute of the
-    resource config and points to the file system accessible  via that URL.
-    Note that the notion of 'root' dependends of the access protocol and the
-    providing service implementation.
-
     Note:
         URL parsing is not really cheap, so this method should be used
         conservatively.
-
     """
 
     # FIXME: consider evaluation of env vars
@@ -202,12 +187,14 @@ def complete_url(path   : str,
         else:
             purl.schema = 'pwd'
 
-    log.debug('  -> %s', purl)
+    if log:
+        log.debug('  -> %s', purl)
 
     if purl.schema not in list(context.keys()):
 
         ret = purl
-        log.debug('             = %s (%s)', ret, list(context.keys()))
+        if log:
+            log.debug('             = %s (%s)', ret, list(context.keys()))
 
     else:
 
@@ -218,7 +205,8 @@ def complete_url(path   : str,
             try:
                 raise ValueError('URLs cannot specify `host` for expanded schemas')
             except:
-                log.exception('purl host: %s' % str(purl))
+                if log:
+                    log.exception('purl host: %s' % str(purl))
                 raise
 
         if purl.schema == 'file':
@@ -236,9 +224,11 @@ def complete_url(path   : str,
             ret.path += '/%s' % purl.path
 
         if expand:
-            log.debug('   expand with %s', context.get(purl.schema))
+            if log:
+                log.debug('   expand with %s', context.get(purl.schema))
 
-    log.debug('             > %s', ret)
+    if log:
+        log.debug('             > %s', ret)
 
     return ret
 

@@ -75,8 +75,8 @@ class StagingHelper_Local(object):
         self._log = log
 
     def mkdir(self, tgt, flags):
+        self._log.debug('mkdir %s', tgt)
         tgt = ru.Url(tgt).path
-        self._log.debug('=== mkdir %s', tgt)
         ru.rec_makedir(tgt)
 
     def rmdir(self, tgt, flags):
@@ -84,10 +84,10 @@ class StagingHelper_Local(object):
         os.rmdir(tgt)
 
     def copy(self, src, tgt, flags):
+        self._log.debug('copy  %s %s', src, tgt)
         src = ru.Url(src).path
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
-        self._log.debug('=== copy  %s %s', src, tgt)
         ru.sh_callout('cp -r %s %s' % (src, tgt))
 
     def move(self, src, tgt, flags):

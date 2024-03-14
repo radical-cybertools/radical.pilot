@@ -45,7 +45,6 @@ class Default(AgentStagingOutputComponent):
     def initialize(self):
 
         self._pwd = os.getcwd()
-        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
