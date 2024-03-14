@@ -17,8 +17,8 @@ class StagingHelper(object):
         self._log  = log
         self._prof = prof
 
-        try   : self._backend = StagingHelper_SAGA()
-        except: self._backend = StagingHelper_Local()
+        try   : self._backend = StagingHelper_SAGA (self._log)
+        except: self._backend = StagingHelper_Local(self._log)
 
         log.debug('using staging backend %s' % self._backend.__class__.__name__)
 
@@ -71,8 +71,12 @@ class StagingHelper(object):
 #
 class StagingHelper_Local(object):
 
+    def __init__(self, log):
+        self._log = log
+
     def mkdir(self, tgt, flags):
         tgt = ru.Url(tgt).path
+        self._log.debug('=== mkdir %s', tgt)
         ru.rec_makedir(tgt)
 
     def rmdir(self, tgt, flags):
@@ -83,6 +87,7 @@ class StagingHelper_Local(object):
         src = ru.Url(src).path
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
+        self._log.debug('=== copy  %s %s', src, tgt)
         ru.sh_callout('cp -r %s %s' % (src, tgt))
 
     def move(self, src, tgt, flags):
@@ -117,7 +122,8 @@ class StagingHelper_SAGA(object):
     except:
         _has_saga = False
 
-    def __init__(self):
+    def __init__(self, log):
+        self._log = log
         if not self._has_saga:
             raise Exception('SAGA-Python not available')
 
