@@ -79,7 +79,6 @@ class Pilot(object):
         self._log        = pmgr._log
         self._pilot_dict = dict()
         self._callbacks  = dict()
-        self._cache      = dict()    # cache of SAGA dir handles
         self._cb_lock    = ru.RLock()
         self._tmgr       = None
 
@@ -600,20 +599,6 @@ class Pilot(object):
         self._finalize()
 
         self._pmgr.cancel_pilots(self._uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _finalize(self):
-
-        # clean connection cache
-        try:
-            for key in self._cache:
-                self._cache[key].close()
-            self._cache = dict()
-
-        except:
-            pass
 
 
     # --------------------------------------------------------------------------

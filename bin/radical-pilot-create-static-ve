@@ -56,7 +56,7 @@ MODULES=$(echo "$MODULES" | sed -e 's/,/ /g')
 if ! test -z "$DEFAULTS"
 then
     # by default, install all RCT dependencies
-    MODULES="$MODULES apache-libcloud chardet colorama idna msgpack"
+    MODULES="$MODULES chardet colorama idna msgpack"
     MODULES="$MODULES msgpack-python netifaces ntplib parse dill"
     MODULES="$MODULES pyzmq regex requests setproctitle urllib3"
 fi

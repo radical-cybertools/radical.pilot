@@ -39,8 +39,6 @@ class Default(TMGRStagingOutputComponent):
     #
     def initialize(self):
 
-        # we keep a cache of SAGA dir handles
-        self._cache = dict()
         self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
@@ -49,14 +47,6 @@ class Default(TMGRStagingOutputComponent):
                             cb=self.work)
 
         # we don't need an output queue -- tasks will be final
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        for key in self._cache:
-            self._cache[key].close()
 
 
     # --------------------------------------------------------------------------

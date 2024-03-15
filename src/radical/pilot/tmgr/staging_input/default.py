@@ -21,7 +21,6 @@ from ...staging_directives import complete_url, expand_staging_directives
 # if we receive more than a certain numnber of tasks in a bulk, we create the
 # task sandboxes in a remote bulk op.  That limit is defined here, along with
 # the definition of the bulk mechanism used to create the sandboxes:
-#   saga: use SAGA bulk ops
 #   tar : unpack a locally created tar which contains all sandboxes
 
 TASK_BULK_MKDIR_THRESHOLD = 16
@@ -50,9 +49,6 @@ class Default(TMGRStagingInputComponent):
     #
     def initialize(self):
 
-        # we keep a cache of SAGA dir handles
-        self._fs_cache     = dict()
-        self._js_cache     = dict()
         self._pilots       = dict()
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
@@ -69,14 +65,6 @@ class Default(TMGRStagingInputComponent):
 
         self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
                                              TASK_BULK_MKDIR_THRESHOLD)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        for fs in list(self._fs_cache.values()): fs.close()
-        for js in list(self._js_cache.values()): js.close()
 
 
     # --------------------------------------------------------------------------

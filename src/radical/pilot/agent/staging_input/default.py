@@ -181,7 +181,7 @@ class Default(AgentStagingInputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert src.schema == 'file', 'staging src expected as file://'
 
-            # SAGA will take care of dir creation - but we do it manually
+            # backend will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
             if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)

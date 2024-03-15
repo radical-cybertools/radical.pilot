@@ -112,7 +112,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             stager = StagingHelper(log)
 
             # Try to fetch a tarball of files, so that we can get them
-            # all in one (SAGA) go!
+            # all in one go!
             tarball_name  = '%s.%s.tgz'   % (pid, ext)
             tarball_tgt   = '%s/%s/%s/%s' % (tgt, sid, pid, tarball_name)
             tarball_local = False
