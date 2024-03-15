@@ -188,16 +188,22 @@ class Flux(AgentExecutingComponent) :
                     'count': td['cores_per_rank'],
                     'type' : 'core'
               # }, {
-              #     'count': td['gpus_per_rank'] or 0,
+              #     'count': int(td['gpus_per_rank'] or 0),
               #     'type' : 'gpu'
                 }]
             }]
         }
 
         if td['gpus_per_rank']:
-            spec['resources'][0]['with'].append({
-                    'count': td['gpus_per_rank'],
-                    'type' : 'gpu'})
+
+             gpr = td['gpus_per_rank']
+
+             if gpr != int(gpr):
+                 raise ValueError('flux does not support on-integer GPU count')
+
+             spec['resources'][0]['with'].append({
+                     'count': gpr,
+                     'type' : 'gpu'})
 
         return spec
 
