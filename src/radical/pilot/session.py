@@ -1402,8 +1402,8 @@ class Session(object):
                     out, err, ret = ru.sh_callout(' echo "WORKDIR: %s"' %
                                                  sandbox_raw, shell=True)
                     if ret or 'WORKDIR:' not in out:
-                        self._log.debug('===', ret, out, err)
-                        raise RuntimeError("Couldn't get remote workdir: %s [%s]" % (out, err))
+                        raise RuntimeError("workdir expansion failed: %s [%s]"
+                                           % (out, err))
 
                     sandbox_base = out.split(":")[1].strip()
                     self._log.debug("sandbox base %s", sandbox_base)

@@ -5,7 +5,7 @@ import shutil
 import radical.utils as ru
 
 from ..constants import COPY, LINK, MOVE, TRANSFER
-from ..constants import TARBALL, CREATE_PARENTS, RECURSIVE
+from ..constants import TARBALL  # , CREATE_PARENTS, RECURSIVE
 
 
 # ------------------------------------------------------------------------------
@@ -128,15 +128,15 @@ class StagingHelper_SAGA(object):
             raise Exception('SAGA-Python not available')
 
     def mkdir(self, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
 
     def rmdir(self, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
 
     def copy(self, src, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
         tmp      = ru.Url(tgt)
         tmp.path = '/'
@@ -149,22 +149,19 @@ class StagingHelper_SAGA(object):
 
         fs.copy(src, tgt, flags=flags)
 
-        sd['state'] = rps.DONE
-
-
     def move(self, src, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
 
     def link(self, src, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
 
     def delete(self, tgt, flags):
-        assert _has_saga
+        assert self._has_saga
 
     def sh_callout(self, url, cmd):
-        assert _has_saga
+        assert self._has_saga
 
         js_url = ru.Url(url)
         elems  = js_url.schema.split('+')

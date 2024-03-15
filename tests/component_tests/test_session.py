@@ -109,7 +109,7 @@ class TestSession(TestCase):
         del os.environ['SLURM_JOB_ID']
         rcfg = self._session.get_resource_config(rcfg_label)
         for e_key, e_value in ENDPOINTS_DEFAULT.items():
-            self.assertNotEquals(rcfg[e_key], e_value)
+            self.assertNotEqual(rcfg[e_key], e_value)
 
         if saved_batch_id is not None:
             os.environ['SLURM_JOB_ID'] = saved_batch_id
@@ -120,7 +120,7 @@ class TestSession(TestCase):
     def test_close(self):
 
         class Dummy():
-            def put(*args, **kwargs):
+            def put(self, *args, **kwargs):
                 pass
 
         # check default values
