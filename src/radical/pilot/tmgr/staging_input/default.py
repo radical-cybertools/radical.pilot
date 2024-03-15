@@ -60,6 +60,7 @@ class Default(TMGRStagingInputComponent):
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
         self._session_sbox = self._reg['cfg.session_sandbox']
+        self._tar_idx      = 0
 
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
@@ -239,9 +240,12 @@ class Default(TMGRStagingInputComponent):
 
                     tmp_path = tempfile.mkdtemp(prefix='rp_agent_tar_dir')
                     tmp_dir  = os.path.abspath(tmp_path)
-                    tar_name = '%s.%s.tar' % (self._session.uid, self.uid)
-                    tar_tgt  = '%s/%s'     % (tmp_dir, tar_name)
+                    tar_name = '%s.%s.%04d.tar' % (self._session.uid, self.uid,
+                                                   self._tar_idx)
+                    tar_tgt  = '%s/%s'         % (tmp_dir, tar_name)
                     tar_url  = ru.Url('file://localhost/%s' % tar_tgt)
+
+                    self._tar_idx += 1
 
                     # we want pathnames which are relative to the session
                     # sandbox.  Ignore all other sandboxes - the agent will have
