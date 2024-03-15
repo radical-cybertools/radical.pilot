@@ -231,7 +231,7 @@ setup_args = {
         'Issues' : 'https://github.com/radical-cybertools/%s/issues'   % name,
     },
     'license'            : 'MIT',
-    'keywords'           : 'radical pilot job saga',
+    'keywords'           : 'radical pilot job',
     'python_requires'    : '>=3.7',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',

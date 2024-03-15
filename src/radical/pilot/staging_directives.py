@@ -82,15 +82,13 @@ def expand_staging_directives(sds:         Union[str, Dict[str, Any], List[str]]
                     'action'          : DEFAULT_ACTION,
                     'flags'           : DEFAULT_FLAGS,
                     'priority'        : DEFAULT_PRIORITY,
-                    'exception'       : None,
-                    'exception_detail': None
             }
 
         elif isinstance(sd, dict):
 
             # sanity check on dict syntax
             valid_keys = ['source', 'target', 'action', 'flags', 'priority',
-                          'uid', 'prof_id', 'exception', 'exception_detail']
+                          'uid', 'prof_id']
 
             for k in sd.keys():
                 if k not in valid_keys:
@@ -117,9 +115,7 @@ def expand_staging_directives(sds:         Union[str, Dict[str, Any], List[str]]
                     'target'          : target,
                     'action'          : action,
                     'flags'           : flags,
-                    'priority'        : priority,
-                    'exception'       : None,
-                    'exception_detail': None
+                    'priority'        : priority
             }
 
         else:

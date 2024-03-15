@@ -9,7 +9,7 @@ import tempfile
 import threading     as mt
 import radical.utils as ru
 
-from radical.pilot.staging_directives import expand_staging_directives
+from radical.pilot.staging_directives   import expand_staging_directives
 from radical.pilot.utils.staging_helper import StagingHelper
 
 from unittest import mock, TestCase

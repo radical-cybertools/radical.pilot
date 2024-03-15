@@ -415,12 +415,7 @@ class PilotManager(rpu.ClientComponent):
     def _pilot_staging_input(self, sds):
         """Run some staging directives for a pilot."""
 
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        for sd in sds:
-            sd['state'] = rps.NEW
+        for sd in expand_staging_directives(sds):
             self._stager.handle_staging_directive(sd)
 
 
@@ -429,12 +424,7 @@ class PilotManager(rpu.ClientComponent):
     def _pilot_staging_output(self, sds):
         """Run some staging directives for a pilot."""
 
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        for sd in sds:
-            sd['state'] = rps.NEW
+        for sd in expand_staging_directives(sds):
             self._stager.handle_staging_directive(sd)
 
 

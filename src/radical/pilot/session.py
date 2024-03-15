@@ -1292,16 +1292,9 @@ class Session(object):
 
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def fetch_json(self, tgt=None, rep=None):
-  #
-  #     return rpu.fetch_json(self._uid, tgt=tgt, skip_existing=True, rep=rep)
-  #
-  #
     # --------------------------------------------------------------------------
     #
-    def fetch_profiles(self, tgt=None, rep=None):
+    def fetch_profiles(self, tgt=None):
 
         return rpu.fetch_profiles(self._uid, tgt=tgt, skip_existing=True,
                                   rep=self._rep)
@@ -1309,7 +1302,7 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
-    def fetch_logfiles(self, tgt=None, rep=None):
+    def fetch_logfiles(self, tgt=None):
 
         return rpu.fetch_logfiles(self._uid, tgt=tgt, skip_existing=True,
                                   rep=self._rep)

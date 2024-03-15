@@ -82,9 +82,9 @@ MOVE     = 'Move'      # local mv
 TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
 TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
-CREATE_PARENTS = 'CreateParents'  # Create parent directories if needed
-RECURSIVE      = 'Recursive'      # recursive copy of directories
-NON_FATAL      = 8192             # Don't fail the Task if input is missing
+RECURSIVE      = 1     # recursive copy of directories
+CREATE_PARENTS = 2     # Create parent directories if needed
+NON_FATAL      = 4     # Don't fail the Task if input is missing
 
 #
 # Defaults
