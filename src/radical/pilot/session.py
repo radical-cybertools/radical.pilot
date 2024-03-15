@@ -1420,37 +1420,6 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_js_shell(self, resource, schema):
-
-        return
-
-        if resource not in self._cache['js_shells']:
-            self._cache['js_shells'][resource] = dict()
-
-        if schema not in self._cache['js_shells'][resource]:
-
-            rcfg   = self.get_resource_config(resource, schema)
-
-            js_url = rcfg['job_manager_endpoint']
-            js_url = rcfg.get('job_manager_hop', js_url)
-            js_url = ru.Url(js_url)
-
-            elems  = js_url.schema.split('+')
-
-            if   'ssh'    in elems: js_url.schema = 'ssh'
-            elif 'gsissh' in elems: js_url.schema = 'gsissh'
-            elif 'fork'   in elems: js_url.schema = 'fork'
-            elif len(elems) == 1  : js_url.schema = 'fork'
-            else: raise Exception("invalid schema: %s" % js_url.schema)
-
-            if js_url.schema == 'fork':
-                js_url.host = 'localhost'
-
-        return self._cache['js_shells'][resource][schema]
-
-
-    # --------------------------------------------------------------------------
-    #
     def _get_session_sandbox(self, pilot):
 
         # FIXME: this should get 'resource, schema=None' as parameters
