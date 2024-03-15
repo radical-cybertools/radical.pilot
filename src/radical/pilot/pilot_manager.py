@@ -743,7 +743,6 @@ class PilotManager(rpu.ClientComponent):
             for uid in uids:
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
-                self._pilots[uid]._finalize()
 
 
     # --------------------------------------------------------------------------
