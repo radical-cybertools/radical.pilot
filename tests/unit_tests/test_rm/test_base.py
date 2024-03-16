@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2021-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -45,6 +45,7 @@ class RMBaseTestCase(TestCase):
         c.close()
 
         rm = ResourceManager(cfg=ru.TypedDict({'reg_addr': reg.addr}),
+                             rcfg=ru.TypedDict(),
                              log=mock.Mock(), prof=mock.Mock())
 
         self.assertIsInstance(rm.info, RMInfo)
@@ -71,13 +72,16 @@ class RMBaseTestCase(TestCase):
                              'lfs_size_per_node': 100,
                              'resource_cfg'     : {}})
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
         rm._cfg  = cfg
+        rm._rcfg = ru.Config(cfg={})
+
         rm._log  = mock.Mock()
         rm._prof = mock.Mock()
 
         def _init_from_scratch(rm_info):
             rm_info.node_list = rm._get_node_list([('node00', 16)], rm_info)
+            rm_info.cores_per_node = rm_info['cores_per_node']
             return rm_info
 
         # RM specific method (to update node_list and cores_per_node if needed)
@@ -108,7 +112,7 @@ class RMBaseTestCase(TestCase):
 
         tc_map = ru.read_json('%s/test_cases/test_cores_gpus_map.json' % base)
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
         rm._log  = mock.Mock()
         rm._prof = mock.Mock()
 
@@ -119,11 +123,14 @@ class RMBaseTestCase(TestCase):
             def _init_from_scratch(rm_info_tc, rm_info_input):
                 _rm_info = ru.TypedDict(rm_info_tc)
                 _rm_info.update(rm_info_input)
+
                 return _rm_info
 
             from functools import partial
 
-            rm._cfg = ru.TypedDict(rm_cfg)
+            rm._rcfg = ru.TypedDict(rm_cfg['rcfg'])
+            del rm_cfg['rcfg']
+            rm._cfg  = ru.TypedDict(rm_cfg)
             rm._init_from_scratch = partial(_init_from_scratch, rm_info)
 
             if result == 'AssertionError':
@@ -139,7 +146,7 @@ class RMBaseTestCase(TestCase):
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
     def test_set_info(self, mocked_init):
 
-        rm = ResourceManager(cfg=None, log=None, prof=None)
+        rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
 
         with self.assertRaises(KeyError):
             # required attributes are missed
@@ -171,7 +178,8 @@ class RMBaseTestCase(TestCase):
         cfg = ru.TypedDict({
             'cores'        : 16,
             'gpus'         : 2,
-            'resource_cfg' : {
+            })
+        rcfg = ru.TypedDict({
                 'cores_per_node'   : 16,
                 'gpus_per_node'    : 2,
                 'lfs_path_per_node': '${LOCAL}',
@@ -179,9 +187,9 @@ class RMBaseTestCase(TestCase):
                 'launch_methods'   : {
                     'order': ['SRUN'],
                     'SRUN' : {}
-                }}})
+                }})
 
-        rm = ResourceManager.create('FORK', cfg, None, None)
+        rm = ResourceManager.create('FORK', cfg, rcfg, None, None)
 
         rm._launch_order = ['SRUN']
         rm._launchers    = {'SRUN': mocked_lm}
@@ -208,43 +216,45 @@ class RMBaseTestCase(TestCase):
         mocked_lm.create.return_value = mocked_lm
 
         rm = ResourceManager(cfg=None, log=None, prof=None)
-        rm._log = rm._prof = mock.Mock()
-        rm._cfg = ru.TypedDict({'pid'     : None,
-                                'reg_addr': None,
-                                'resource_cfg': {
-                                    'launch_methods': {'SRUN': {}}
-                                }})
+        rm._log     = rm._prof = mock.Mock()
+        rm._cfg     = ru.TypedDict({'pid'     : None,
+                                    'reg_addr': None})
+        rm._rm_info = ru.TypedDict({
+            'launch_methods': {
+                'SRUN': {'pre_exec_cached': []}
+            }
+        })
 
         # launching order not provided
 
-        rm._prepare_launch_methods(None)
+        rm._prepare_launch_methods()
         self.assertEqual(rm._launchers['SRUN'], mocked_lm)
         self.assertEqual(rm._launch_order, ['SRUN'])
 
         # launching order provided
 
-        rm._cfg.resource_cfg.launch_methods = {'order': ['SSH'],
-                                               'SRUN' : {},
-                                               'SSH'  : {}}
-        rm._prepare_launch_methods(None)
+        rm._rm_info.launch_methods = {'order': ['SSH'],
+                                      'SRUN' : {},
+                                      'SSH'  : {}}
+        rm._prepare_launch_methods()
         self.assertEqual(rm._launch_order, ['SSH'])
 
         # launching methods not provided
 
-        rm._cfg.resource_cfg.launch_methods = {}
+        rm._rm_info.launch_methods = {}
         with self.assertRaises(RuntimeError):
-            rm._prepare_launch_methods(None)
+            rm._prepare_launch_methods()
 
         # raise exception for every launch method
 
         def lm_raise_exception(*args, **kwargs):
             raise Exception('LM Error')
 
-        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        rm._rm_info.launch_methods = {'SRUN': {}, 'SSH': {}}
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception)
         # all LMs will be skipped, thus RuntimeError raised
         with self.assertRaises(RuntimeError):
-            rm._prepare_launch_methods(None)
+            rm._prepare_launch_methods()
         # check that exception was logged (sign that LM exception was raised)
         self.assertTrue(rm._log.exception.called)
 
@@ -259,14 +269,32 @@ class RMBaseTestCase(TestCase):
                 raise Exception('LM Error')
             return mocked_lm
 
-        rm._cfg.resource_cfg.launch_methods = {'SRUN': {}, 'SSH': {}}
+        rm._rm_info.launch_methods = {'SRUN': {}, 'SSH': {}}
         mocked_lm.create = mock.MagicMock(side_effect=lm_raise_exception_once)
-        rm._prepare_launch_methods(None)
+        rm._prepare_launch_methods()
         # only second LM is considered successful
         self.assertEqual(rm._launch_order, ['SSH'])
         self.assertEqual(len(rm._launchers), 1)
         self.assertEqual(rm._launchers['SSH'], mocked_lm)
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_create_errors(self, mocked_init):
+
+        with self.assertRaises(RuntimeError):
+            ResourceManager.create('UNKNOWN_RM', None, None, None, None)
+
+        from radical.pilot.agent.resource_manager.slurm import Slurm
+        with self.assertRaises(TypeError):
+            # ResourceManager Factory only available to base class
+            Slurm.create('SLURM', None, None, None, None)
+
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        self.assertFalse(ResourceManager.batch_started())
 
 # ------------------------------------------------------------------------------
 
@@ -280,7 +308,8 @@ if __name__ == '__main__':
     tc.test_set_info()
     tc.test_find_launcher()
     tc.test_prepare_launch_methods()
-
+    tc.test_create_errors()
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------
 

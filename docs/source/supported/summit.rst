@@ -37,7 +37,7 @@ General description
 .. note::
 
    Launch method ``MPIRUN`` is able to see only one hardware-thread per core,
-   thus make sure that ``SMT`` level is set to ``1`` with a corresponding 
+   thus make sure that ``SMT`` level is set to ``1`` with a corresponding
    platform ID either with ``export RADICAL_SMT=1`` (before running the
    application) or follow the steps below:
 
@@ -90,23 +90,29 @@ Create a **virtual environment** with ``venv``:
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
-   module load python/3.8-anaconda3
+   module load python/3.11.6
+   # OR with old modules
+   #    module load DefApps-2023
+   #    module load python/3.8-anaconda3
    python3 -m venv ve.rp
    source ve.rp/bin/activate
 
-OR create a **virtual environment** with ``conda``:
+OR create a **virtual environment** with ``conda`` (using old modules):
 
 .. code-block:: bash
 
+   module load DefApps-2023
    module load python/3.8-anaconda3
    conda create -y -n ve.rp python=3.9
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
-OR clone a ``conda`` **virtual environment** from the base environment:
+OR clone a ``conda`` **virtual environment** from the base environment (using
+old modules):
 
 .. code-block:: bash
 
+   module load DefApps-2023
    module load python/3.8-anaconda3
    eval "$(conda shell.posix hook)"
    conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
@@ -120,21 +126,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
    # OR in case of conda environment
    conda install -c conda-forge radical.pilot
 
-MongoDB
--------
-
-OLCF provides a MongoDB service via
-`Slate <https://docs.olcf.ornl.gov/services_and_applications/slate/index.html>`_,
-an infrastructure built on Kubernetes and OpenShift. Please ask the RADICAL team for a
-corresponding MongoDB URI by opening a
-`ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
-
-RADICAL-Pilot will connect to the MongoDB instance using the provided URI.
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="<mongodb_uri>"
-
 Launching script example
 ========================
 
@@ -147,14 +138,13 @@ launching command for the application itself.
    #!/bin/sh
 
    # - pre run -
-   module load python/3.8-anaconda3
-   eval "$(conda shell.posix hook)"
-   conda activate ve.rp
+   module load python/3.11.6
+   source ve.rp/bin/activate
 
-   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>

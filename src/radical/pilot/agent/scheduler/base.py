@@ -181,7 +181,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 
 # ------------------------------------------------------------------------------
 #
-class AgentSchedulingComponent(rpu.Component):
+class AgentSchedulingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -204,7 +204,7 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = []
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -216,8 +216,11 @@ class AgentSchedulingComponent(rpu.Component):
 
         # The scheduler needs the ResourceManager information which have been
         # collected during agent startup.
-        self._rm = ResourceManager.create(self._cfg.resource_manager,
-                                          self._cfg, self._log, self._prof)
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(rm_name,
+                                          self.session.cfg,
+                                          self.session.rcfg,
+                                          self._log, self._prof)
 
         self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
 
@@ -256,6 +259,7 @@ class AgentSchedulingComponent(rpu.Component):
         self.register_subscriber(rpc.AGENT_UNSCHEDULE_PUBSUB, self.unschedule_cb)
 
         # start a process to host the actual scheduling algorithm
+        self._scheduler_process = False
         self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
@@ -286,7 +290,7 @@ class AgentSchedulingComponent(rpu.Component):
         if cls != AgentSchedulingComponent:
             raise TypeError("Scheduler Factory only available to base class!")
 
-        name = cfg['scheduler']
+        name = session.rcfg.agent_scheduler
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
@@ -313,15 +317,21 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
         '''
         listen on the control channel for raptor queue registration commands
         '''
+        print('----- b', msg)
+
+        # only the scheduler process listens for control messages
+        if not self._scheduler_process:
+            return
 
         cmd = msg['cmd']
         arg = msg['arg']
 
         if cmd == 'register_named_env':
+
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
@@ -377,18 +387,17 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
 
                     for task in tasks:
-                        task['exception']        = 'RuntimeError("raptor gone")'
-                        task['exception_detail'] = 'raptor queue disappeared'
+                        self._fail_task(task, RuntimeError('raptor gone'),
+                                              'raptor queue disappeared')
 
-                    self.advance(tasks, state=rps.FAILED,
-                                        publish=True, push=False)
-
+        # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
             uids = arg['uids']
             to_cancel = list()
             with self._lock:
                 for uid in uids:
+                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
@@ -409,8 +418,6 @@ class AgentSchedulingComponent(rpu.Component):
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
-
-        return True
 
 
     # --------------------------------------------------------------------------
@@ -593,6 +600,17 @@ class AgentSchedulingComponent(rpu.Component):
         tasks.
         '''
 
+        self._scheduler_process = True
+
+        # ZMQ endpoints will not have survived the fork. Specifically the
+        # registry client of the component base class will have to reconnect.
+        # Note that `self._reg` of the base class is a *pointer* to the sesison
+        # registry.
+        #
+        # FIXME: should be moved into a post-fork hook of the session
+        #
+        self._reg = ru.zmq.RegistryClient(url=self.session.cfg.reg_addr)
+
         #  FIXME: the component does not clean out subscribers after fork :-/
         self._subscribers = dict()
 
@@ -639,12 +657,12 @@ class AgentSchedulingComponent(rpu.Component):
         self._raptor_tasks  = dict()           # raptor_master_id : [task]
         self._raptor_lock   = mt.Lock()        # lock for the above
 
-        #  subscribe to control messages, e.g., to register raptor queues
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
-
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
                              rpc.AGENT_EXECUTING_QUEUE)
+
+        # re-register the control callback in this subprocess
+        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
 
         self._publishers = dict()
         self.register_publisher(rpc.STATE_PUBSUB)
@@ -739,14 +757,10 @@ class AgentSchedulingComponent(rpu.Component):
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
-            error                = error.replace('"', '\\"')
-            task['exception']    = 'RuntimeError("%s")' % error
-            task['control']      = 'tmgr_pending'
-            task['target_state'] = 'FAILED'
-            task['$all']         = True
 
+            error  = error.replace('"', '\\"')
+            self._fail_task(task, RuntimeError('bisect failed'), error)
             self._log.error('bisect failed on %s: %s', task['uid'], error)
-            self.advance(scheduled, rps.FAILED, publish=True, push=False)
 
         self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
@@ -771,6 +785,21 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _fail_task(self, task, e, detail):
+
+        task['control']          = 'tmgr_pending'
+        task['exception']        = repr(e)
+        task['exception_detail'] = detail
+        task['target_state']     = rps.FAILED
+        task['$all']             = True
+
+        self._log.exception('scheduling failed for %s', task['uid'])
+
+        self.advance(task, rps.FAILED, publish=True, push=False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _schedule_incoming(self):
 
         # fetch all tasks from the queue
@@ -787,10 +816,15 @@ class AgentSchedulingComponent(rpu.Component):
 
                 for task in data:
 
+                    td = task['description']
+
+                    if td.get('ranks') <= 0:
+                        self._fail_task(task, ValueError('invalid ranks'), '')
+
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
-                    raptor_id = task['description'].get('raptor_id')
-                    mode      = task['description'].get('mode')
+                    raptor_id = td.get('raptor_id')
+                    mode      = td.get('mode')
 
                     # raptor workers are not scheduled by raptor itself!
                     if raptor_id and mode != RAPTOR_WORKER:
@@ -883,23 +917,14 @@ class AgentSchedulingComponent(rpu.Component):
                                          'gpu': td['ranks'] *
                                                 td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
-                                 publish=True, push=True)
+                                 publish=True, push=True, fwd=True)
 
                 else:
                     to_wait.append(task)
 
             except Exception as e:
 
-                task['control']          = 'tmgr_pending'
-                task['exception']        = repr(e)
-                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
-                task['target_state']     = 'FAILED'
-                task['$all']             = True
-
-                self._log.exception('scheduling failed for %s', task['uid'])
-
-                self.advance(task, rps.FAILED, publish=True, push=False)
-
+                self._fail_task(task, e, '\n'.join(ru.get_exception_trace()))
 
         # all tasks which could not be scheduled are added to the waitpool
         self._waitpool.update({task['uid']: task for task in to_wait})
@@ -938,8 +963,8 @@ class AgentSchedulingComponent(rpu.Component):
             # in a max added latency of about 0.1 second, which is one order of
             # magnitude above our noise level again and thus acceptable (tm).
             while not self._term.is_set():
-                task = self._queue_unsched.get(timeout=0.01)
-                to_unschedule.append(task)
+                tasks = self._queue_unsched.get(timeout=0.01)
+                to_unschedule += ru.as_list(tasks)
                 if len(to_unschedule) > 512:
                     break
 

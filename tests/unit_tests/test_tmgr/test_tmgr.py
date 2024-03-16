@@ -46,7 +46,6 @@ class TMGRTestCase(TestCase):
         global_pilots = []
 
         def publish_side_effect(rpc, pilot):
-            print(type(pilot), pilot)
             nonlocal global_pilots
             global_pilots.append(pilot)
 
@@ -59,7 +58,8 @@ class TMGRTestCase(TestCase):
 
         dummy = self._DummyPilot('pilot.1234')
         component.add_pilots(dummy)
-        self.assertEqual(component._pilots['pilot.1234'], dummy.as_dict())
+        self.assertEqual(component._pilots['pilot.1234'].as_dict(),
+                        dummy.as_dict())
         # self.assertEqual(global_pilots[0], result)
 
         with self.assertRaises(ValueError):
@@ -119,4 +119,10 @@ class TMGRTestCase(TestCase):
 
 
 # ------------------------------------------------------------------------------
+
+if __name__ == '__main__':
+
+    tc = TMGRTestCase()
+    tc.test_add_pilots()
+
 

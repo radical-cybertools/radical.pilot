@@ -5,52 +5,44 @@ __license__   = "MIT"
 import time
 import radical.utils  as ru
 
-from ..  import utils as rpu
+from .. import utils as rpu
+
+from .. import Session
 
 
 # ------------------------------------------------------------------------------
 #
-class Agent_n(rpu.Worker):
+class Agent_n(rpu.AgentComponent):
 
     # This is a sub-agent.  It does not do much apart from starting
     # agent components and watching them, which is all taken care of in the
-    # `Worker` base class (or rather in the `Component` base class of `Worker`).
+    # `AgentComponent` base class.
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg, session):
+    def __init__(self, sid, reg_addr, uid):
 
-        self._cfg      = cfg
-        self._pid      = cfg.pid
-        self._pmgr     = cfg.pmgr
-        self._pwd      = cfg.pilot_sandbox
-        self._sid      = cfg.sid
-        self._reg_addr = cfg.reg_addr
+        reg = ru.zmq.RegistryClient(url=reg_addr)
+        cfg = ru.Config(cfg=reg['cfg'])
 
-        # log / profile via session until component manager is initialized
-        self._session = session
-        self._log     = session._log
-        self._prof    = session._prof
+        # use our own config sans agents/components/bridges as a basis for
+        # the sub-agent config.
+        a_cfg = cfg['agents'][uid]
 
-        self._starttime   = time.time()
-        self._final_cause = None
+        self._uid     = uid
+        self._session = Session(uid=sid, cfg=a_cfg,
+                                _reg_addr=reg_addr,
+                                _role=Session._AGENT_N)
 
-        # this is the earliest point to sync bootstrap and agent profiles
-        self._prof.prof('hostname', uid=self._pid, msg=ru.get_hostname())
-        self._prof.prof('sub_agent_start', uid=self._pid)
+        self._pid     = self._session.cfg.pid
+        self._sid     = self._session.cfg.sid
+        self._owner   = self._session.cfg.owner
+        self._pmgr    = self._session.cfg.pmgr
+        self._pwd     = self._session.cfg.pilot_sandbox
 
-        # expose heartbeat channel to sub-agents, bridges and components,
-        # and start those
-        self._cmgr = rpu.ComponentManager(self._cfg)
-        self._cfg.heartbeat = self._cmgr.cfg.heartbeat
+        # init the agent component base classes, connects registry
+        super().__init__(self._cfg, self._session)
 
-        self._cmgr.start_bridges()
-        self._cmgr.start_components()
-
-        # at this point the session is up and connected, and it should have
-        # brought up all communication bridges and components.  We are
-        # ready to rumble!
-        rpu.Worker.__init__(self, self._cfg, session)
 
 
     # --------------------------------------------------------------------------

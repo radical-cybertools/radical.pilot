@@ -71,14 +71,13 @@ if __name__ == '__main__':
         # Launch the pilots.
         pilots = pmgr.submit_pilots(pdescs)
 
+        # Register the Pilots in a TaskManager object.
+        tmgr = rp.TaskManager(session=session)
+        tmgr.add_pilots(pilots)
 
-        for gen in range(1):
+        for gen in range(2):
 
             report.header('submit tasks [%d]' % gen)
-
-            # Register the Pilot in a TaskManager object.
-            tmgr = rp.TaskManager(session=session)
-            tmgr.add_pilots(pilots)
 
             # Create a workload of Tasks.
             # Each task reports the id of the pilot it runs on.
@@ -102,21 +101,21 @@ if __name__ == '__main__':
             report.header('gather results')
             tmgr.wait_tasks()
 
-        report.info('\n')
-        counts = dict()
-        for task in tasks:
-            out_str = task.stdout.strip()[:35]
-            report.plain('  * %s: %s, exit: %3s, out: %s\n'
-                    % (task.uid, task.state[:4],
-                        task.exit_code, out_str))
-            if out_str not in counts:
-                counts[out_str] = 0
-            counts[out_str] += 1
+            report.info('\n')
+            counts = dict()
+            for task in tasks:
+                out_str = task.stdout.strip()[:35]
+                report.plain('  * %s: %s, exit: %3s, out: %s\n'
+                        % (task.uid, task.state[:4],
+                            task.exit_code, out_str))
+                if out_str not in counts:
+                    counts[out_str] = 0
+                counts[out_str] += 1
 
-        report.info("\n")
-        for out_str in counts:
-            report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
-        report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
+            report.info("\n")
+            for out_str in counts:
+                report.info("  * %-20s: %3d\n" % (out_str, counts[out_str]))
+            report.info("  * %-20s: %3d\n" % ('total', sum(counts.values())))
 
 
     except Exception as e:
@@ -135,7 +134,7 @@ if __name__ == '__main__':
         # always clean up the session, no matter if we caught an exception or
         # not.  This will kill all remaining pilots.
         report.header('finalize')
-        session.close(cleanup=False)
+        session.close()
 
     report.header()
 

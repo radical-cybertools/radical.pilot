@@ -1,11 +1,14 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2020-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2020-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import glob
 import os
 import shutil
+import tempfile
 
 import radical.utils as ru
 
@@ -23,14 +26,18 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
     @mock.patch.object(Session, '_get_logger')
     @mock.patch.object(Session, '_get_profiler')
     @mock.patch.object(Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs) -> None:
 
-        cls._session = Session()
-        cls._cleanup_files.append(cls._session.uid)
+        def init_primary(self):
+            self._reg = mock.Mock()
+            self._init_cfg_from_scratch()
+
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            cls._session = Session(uid='rp.session.cls_test')
+            cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -38,6 +45,8 @@ class TestSession(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if not p:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:
@@ -64,12 +73,14 @@ class TestSession(TestCase):
 
         # schemas are ["ssh", "gsissh"]
         rcfg = self._session.get_resource_config(rcfg_label)
+
+        default_schema = rcfg.default_schema
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[rcfg.schemas[0]].job_manager_endpoint)
+                         rcfg.schemas[default_schema].job_manager_endpoint)
         new_schema = 'gsissh'
         rcfg = self._session.get_resource_config(rcfg_label, schema=new_schema)
         self.assertEqual(rcfg.job_manager_endpoint,
-                         rcfg[new_schema].job_manager_endpoint)
+                         rcfg.schemas[new_schema].job_manager_endpoint)
 
         # check exceptions
 
@@ -83,82 +94,47 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Session, '_initialize_primary', return_value=None)
-    @mock.patch.object(Session, '_get_logger')
-    @mock.patch.object(Session, '_get_profiler')
-    @mock.patch.object(Session, '_get_reporter')
-    @mock.patch('radical.pilot.session.ru.Config')
-    def test_resource_schema_alias(self, mocked_config, *args, **kwargs):
+        # check running from batch
 
-        mocked_config.return_value = ru.TypedDict({
-            'local': {
-                'test': {
-                    'schemas'           : ['schema_origin',
-                                           'schema_alias',
-                                           'schema_alias_alias'],
-                    'schema_origin'     : {'param_0': 'value_0'},
-                    'schema_alias'      : 'schema_origin',
-                    'schema_alias_alias': 'schema_alias'
-                }
-            }
-        })
+        from radical.pilot.resource_config import ENDPOINTS_DEFAULT
+        saved_batch_id = os.getenv('SLURM_JOB_ID')
 
-        s_alias = Session()
+        # resource manager is Slurm
 
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias)
-        self.assertEqual(
-            s_alias._rcfgs.local.test.schema_origin,
-            s_alias._rcfgs.local.test.schema_alias_alias)
-        self.assertEqual(
-            s_alias.get_resource_config('local.test', 'schema_origin'),
-            s_alias.get_resource_config('local.test', 'schema_alias_alias'))
+        os.environ['SLURM_JOB_ID'] = '12345'
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertEqual(rcfg[e_key], e_value)
 
-        self._cleanup_files.append(s_alias.uid)
+        del os.environ['SLURM_JOB_ID']
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertNotEquals(rcfg[e_key], e_value)
 
-        with self.assertRaises(KeyError):
-            # schema alias refers to unknown schema
-            mocked_config.return_value = ru.TypedDict({
-                'local': {
-                    'test': {
-                        'schemas'           : ['schema_alias_error'],
-                        'schema_alias_error': 'unknown_schema'
-                    }
-                }
-            })
-            Session()
+        if saved_batch_id is not None:
+            os.environ['SLURM_JOB_ID'] = saved_batch_id
+
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, 'created', return_value=0)
-    @mock.patch.object(Session, 'closed', return_value=0)
-    def test_close(self, mocked_closed, mocked_created):
+    def test_close(self):
+
+        class Dummy():
+            def put(*args, **kwargs):
+                pass
 
         # check default values
-        self.assertFalse(self._session._close_options.cleanup)
         self.assertFalse(self._session._close_options.download)
         self.assertTrue(self._session._close_options.terminate)
 
+        self._session._ctrl_pub    = Dummy()
+        self._session._hb          = mock.Mock()
+        self._session._hb_pubsub   = mock.Mock()
+        self._session._reg_service = mock.Mock()
+
         # only `True` values are targeted
-
-        self._session._closed = False
-        self._session.close(cleanup=True)
-        self.assertTrue(self._session._close_options.cleanup)
-
-        self._session._closed = False
-        self._session.fetch_json     = mock.Mock()
-        self._session.fetch_profiles = mock.Mock()
-        self._session.fetch_logfiles = mock.Mock()
         self._session.close(download=True)
-        self._session.fetch_json.assert_called()
-        self._session.fetch_profiles.assert_called()
-        self._session.fetch_logfiles.assert_called()
-
-        self._session._closed = False
-        self._session.close(cleanup=True, terminate=True)
+        self._session.close(terminate=True)
 
     # --------------------------------------------------------------------------
     #
@@ -201,15 +177,43 @@ class TestSession(TestCase):
                          self._session._get_resource_sandbox(pilot).path)
         self._session._cache['resource_sandbox'] = {}
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch('os.getcwd', return_value=tempfile.mkdtemp())
+    def test_paths(self, mocked_getcwd, mocked_reporter):
+
+        work_dir = mocked_getcwd()
+        self._cleanup_files.append(work_dir)
+
+        def init_primary(session):
+            session._reg = mock.Mock()
+            session._init_cfg_from_scratch()
+
+        s_uid = 'test.session.0000'
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            s0 = Session(uid=s_uid, cfg={'base': ''})
+
+        self.assertEqual(s0.uid, s_uid)
+        self.assertEqual(s0.base, work_dir)
+
+        for path_key in ['base', 'path', 'client_sandbox']:
+            with mock.patch.object(Session, '_init_primary', new=init_primary):
+
+                s = Session(uid=s_uid, cfg={path_key: 'random_dir'})
+                self.assertEqual(s.cfg[path_key], '%s/random_dir' % os.getcwd())
+
+                self._cleanup_files.append(s.path)
+
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
     tc = TestSession()
+    tc.setUpClass()
     tc.test_list_resources()
     tc.test_get_resource_config()
-    tc.test_resource_schema_alias()
     tc.test_get_resource_sandbox()
 
 # ------------------------------------------------------------------------------

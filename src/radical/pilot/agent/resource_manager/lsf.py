@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2018-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2018-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -10,6 +10,13 @@ from .base import RMInfo, ResourceManager
 # ------------------------------------------------------------------------------
 #
 class LSF(ResourceManager):
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def batch_started():
+
+        return bool(os.getenv('LSB_JOBID'))
 
     # --------------------------------------------------------------------------
     #
@@ -39,13 +46,14 @@ class LSF(ResourceManager):
         #
         # It is possible that login/batch nodes were not marked at hostfile
         # and were not filtered out, thus we assume that there is only one
-        # such node with 1 core (otherwise assertion error will be raised later)
+        # such node with 1 physical core, i.e., equals to SMT threads
+        # (otherwise assertion error will be raised later)
         # *) affected machine(s): Lassen@LLNL
         filtered = list()
         for node in nodes:
             if   'login' in node[0]: continue
             elif 'batch' in node[0]: continue
-            elif 1       == node[1]: continue
+            elif smt     == node[1]: continue
             filtered.append(node)
 
         nodes = filtered

@@ -46,11 +46,14 @@ class DefaultWorker(Worker):
         self._req_get = ru.zmq.Getter('request', self._req_addr_get,
                                                  cb=self._request_cb)
 
-        self._descr = ru.read_json('%s.json' % self._uid)
+        # the master should have stored our own task description in the registry
+        self._descr = self._reg['raptor.%s.cfg' % self._uid] or {}
 
         # keep worker ID and rank
-        self._n_cores =     self._descr.get('cores_per_rank', 1)
-        self._n_gpus  = int(self._descr.get('gpus_per_rank',  0))
+        self._n_cores = int(self._descr.get('cores_per_rank') or
+                            os.getenv('RP_CORES_PER_RANK', 1))
+        self._n_gpus  = int(self._descr.get('gpus_per_rank') or
+                            os.getenv('RP_GPUS_PER_RANK', 0))
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.
@@ -407,17 +410,6 @@ class DefaultWorker(Worker):
 
         self._log.debug('error: %s', error)
         raise RuntimeError(error)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def test(self, msg, sleep):
-
-        # pylint: disable=reimported
-        import time
-        print('start idx %s: %.1f' % (msg, time.time()))
-        time.sleep(sleep)
-        print('stop  idx %s: %.1f' % (msg, time.time()))
 
 
 # ------------------------------------------------------------------------------

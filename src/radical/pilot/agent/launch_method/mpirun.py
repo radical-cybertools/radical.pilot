@@ -35,7 +35,7 @@ class MPIRun(LaunchMethod):
         components (including Raptor and other task overlays) can use them to
         launch tasks.
 
-        The first use (likely in `agent.0`) will call this initializer to
+        The first use (likely in `agent_0`) will call this initializer to
         inspect LM properties.  Later uses will be able to use the information
         gathered and should re-initialize via `_init_from_info()`, using the
         info dict returned here.

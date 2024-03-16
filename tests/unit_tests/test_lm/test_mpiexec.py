@@ -93,6 +93,7 @@ class TestMPIExec(TestCase):
             'mpt'        : True,
             'rsh'        : False,
             'use_rf'     : True,
+            'use_hf'     : False,
             'ccmrun'     : '/bin/ccmrun',
             'dplace'     : '/bin/dplace',
             'omplace'    : '/bin/omplace',
@@ -106,6 +107,7 @@ class TestMPIExec(TestCase):
         self.assertEqual(lm_mpiexec._mpt,         lm_info['mpt'])
         self.assertEqual(lm_mpiexec._rsh,         lm_info['rsh'])
         self.assertEqual(lm_mpiexec._use_rf,      lm_info['use_rf'])
+        self.assertEqual(lm_mpiexec._use_hf,      lm_info['use_hf'])
         self.assertEqual(lm_mpiexec._ccmrun,      lm_info['ccmrun'])
         self.assertEqual(lm_mpiexec._dplace,      lm_info['dplace'])
         self.assertEqual(lm_mpiexec._omplace,     'omplace')
@@ -154,13 +156,13 @@ class TestMPIExec(TestCase):
                 {'node_name': 'node_A',
                  'node_id'  : '1',
                  'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[]],
                  'lfs'      : 0,
                  'mem'      : 0},
                 {'node_name': 'node_B',
                  'node_id'  : '2',
                  'core_map' : [[0, 1, 2, 3]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[]],
                  'lfs'      : 0,
                  'mem'      : 0}
             ]
@@ -206,13 +208,13 @@ class TestMPIExec(TestCase):
                 {'node_name': 'node_A',
                  'node_id'  : '1',
                  'core_map' : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[], [], [], []],
                  'lfs'      : 0,
                  'mem'      : 0},
                 {'node_name': 'node_B',
                  'node_id'  : '2',
                  'core_map' : [[0, 1], [2, 3]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[], []],
                  'lfs'      : 0,
                  'mem'      : 0}
             ]
@@ -251,6 +253,7 @@ class TestMPIExec(TestCase):
         lm_mpiexec._command = 'mpiexec'
         lm_mpiexec._mpt     = False
         lm_mpiexec._use_rf  = False
+        lm_mpiexec._use_hf  = False
         lm_mpiexec._omplace = ''
         lm_mpiexec._log     = mocked_logger
 
@@ -287,6 +290,7 @@ class TestMPIExec(TestCase):
         lm_mpiexec._command    = 'mpiexec_mpt'
         lm_mpiexec._mpt        = True
         lm_mpiexec._use_rf     = False
+        lm_mpiexec._use_hf     = False
         lm_mpiexec._omplace    = 'omplace'
         lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_OMPI
         lm_mpiexec._log        = mocked_logger

@@ -2,8 +2,11 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import math as m
 import pprint
+
+import math as m
+
+import radical.utils as ru
 
 from ...   import constants as rpc
 from .base import AgentSchedulingComponent
@@ -82,25 +85,37 @@ class Continuous(AgentSchedulingComponent):
         self._node_offset  = 0
 
 
+
     # --------------------------------------------------------------------------
     #
     def _configure(self):
+        '''
+        Configure this scheduler instance
 
-        # * scattered:
-        #   This is the continuous scheduler, because it attempts to allocate
-        #   a *continuous* set of cores/nodes for a task.  It does, however,
-        #   also allow to scatter the allocation over discontinuous nodes if
-        #   this option is set.  This implementation is not optimized for the
-        #   scattered mode!  The default is 'False'.
-        #
-        self._scattered = self._cfg.get('scattered', False)
+        * scattered:
+          This is the continuous scheduler, because it attempts to allocate
+          a *continuous* set of cores/nodes for a task.  It does, however,
+          also allow to scatter the allocation over discontinuous nodes if
+          this option is set.  This implementation is not optimized for the
+          scattered mode!  The default is 'False'.
+        '''
+
+        self._scattered = self.session.rcfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
     #
     def _iterate_nodes(self):
-        # note that the first index is yielded twice, so that the respecitve
-        # node can function as first and last node in an allocation.
+        '''
+        The scheduler iterates through the node list for each task placement.
+        However, we want to avoid starting from node zero every time as tasks
+        have likely placed on that node previously - instead, we in general want
+        to pick off where the last task placement succeeded.  This iterator is
+        preserving that state.
+
+        Note that the first index is yielded twice, so that the respective
+        node can function as first and last node in an allocation.
+        '''
 
         iterator_count = 0
 
@@ -113,15 +128,16 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def unschedule_task(self, task):
+    def unschedule_task(self, tasks):
         '''
-        This method is called when previously aquired resources are not needed
+        This method is called when previously acquired resources are not needed
         anymore.  `slots` are the resource slots as previously returned by
         `schedule_task()`.
         '''
 
         # reflect the request in the nodelist state (set to `FREE`)
-        self._change_slot_states(task['slots'], rpc.FREE)
+        for task in ru.as_list(tasks):
+            self._change_slot_states(task['slots'], rpc.FREE)
 
 
     # --------------------------------------------------------------------------
@@ -158,6 +174,8 @@ class Continuous(AgentSchedulingComponent):
                This might best be realized by internally handling SMT as minimal
                thread count and using physical core IDs for process placement?
         '''
+
+      # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
         # check if the node can host the request
         free_cores = node['cores'].count(rpc.FREE)
@@ -242,9 +260,16 @@ class Continuous(AgentSchedulingComponent):
     def schedule_task(self, task):
         '''
         Find an available set of slots, potentially across node boundaries (in
-        the MPI case).  By default, we only allow for partial allocations on the
-        first and last node - but all intermediate nodes MUST be completely used
-        (this is the 'CONTINUOUS' scheduler after all).
+        the MPI case).
+
+        A `slot` is here considered the amount of resources required by a single
+        MPI rank.  Those resources need to be available on a single node - but
+        slots can be distributed across multiple nodes.  Resources for non-MPI
+        tasks will always need to be placed on a single node.
+
+        By default, we only allow for partial allocations on the first and last
+        node - but all intermediate nodes MUST be completely used (this is the
+        'CONTINUOUS' scheduler after all).
 
         If the scheduler is configured with `scattered=True`, then that
         constraint is relaxed, and any set of slots (be it continuous across
@@ -254,9 +279,6 @@ class Continuous(AgentSchedulingComponent):
         of cores, gpus, lfs and mem required per process - otherwise the
         application processes would not be able to acquire the requested
         resources on the respective node.
-
-        Note that all resources for non-MPI tasks will always need to be placed
-        on a single node.
         '''
 
         self._log.debug_3('find_resources %s', task['uid'])
@@ -319,22 +341,31 @@ class Continuous(AgentSchedulingComponent):
                'too much mem     per proc %s' % mem_per_slot
 
         # check what resource type limits teh number of slots per node
+        tmp = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
+        tmp.append([cores_per_node, cores_per_slot, slots_per_node])
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(gpus_per_node / gpus_per_slot)))
+        tmp.append([gpus_per_node, gpus_per_slot, slots_per_node])
 
         if lfs_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(lfs_per_node / lfs_per_slot)))
+        tmp.append([lfs_per_node, lfs_per_slot, slots_per_node])
 
         if mem_per_slot:
             slots_per_node = min(slots_per_node,
                                  int(m.floor(mem_per_node / mem_per_slot)))
+        tmp.append([mem_per_node, mem_per_slot, slots_per_node])
 
         if not mpi and req_slots > slots_per_node:
-            raise ValueError('non-mpi task does not fit on a single node')
+            raise ValueError('non-mpi task does not fit on a single node:'
+                    '%s * %s:%s > %s:%s -- %s > %s [%s %s] %s' % (req_slots,
+                    cores_per_slot, gpus_per_slot,
+                    cores_per_node, gpus_per_node, req_slots,
+                    slots_per_node, cores_per_slot, gpus_per_slot, tmp))
 
         # set conditions to find the first matching node
         is_first = True

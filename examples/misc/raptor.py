@@ -27,6 +27,7 @@ In this example, we
 
 import os
 import sys
+import functools
 
 import radical.utils as ru
 import radical.pilot as rp
@@ -37,10 +38,9 @@ import radical.pilot as rp
 # * https://radicalpilot.readthedocs.io/en/stable/overview.html#what-about-logging
 # * https://radicalpilot.readthedocs.io/en/stable/developer.html#debugging
 # For terminal output, set RADICAL_LOG_TGT=stderr or RADICAL_LOG_TGT=stdout
-logger = ru.Logger('raptor')
+logger = ru.Logger('radical.raptor')
 PWD    = os.path.abspath(os.path.dirname(__file__))
 RANKS  = 2
-
 
 # ------------------------------------------------------------------------------
 #
@@ -68,10 +68,18 @@ def func_non_mpi(a, sleep):
 
 # ------------------------------------------------------------------------------
 #
-def task_state_cb(task, state):
+def task_state_cb(task, state, session):
+
     logger.info('task %s: %s', task.uid, state)
+
     if state == rp.FAILED:
         logger.error('task %s failed', task.uid)
+
+    if 'master' in task.uid:
+
+        logger.info('master state update')
+        if state in rp.FINAL:
+            session.close()
 
 
 # ------------------------------------------------------------------------------
@@ -121,7 +129,10 @@ if __name__ == '__main__':
 
         pmgr = rp.PilotManager(session=session)
         tmgr = rp.TaskManager(session=session)
-        tmgr.register_callback(task_state_cb)
+
+
+        partial_cb = functools.partial(task_state_cb, session=session)
+        tmgr.register_callback(partial_cb)
 
         pilot = pmgr.submit_pilots(pd)
         tmgr.add_pilots(pilot)
@@ -134,16 +145,6 @@ if __name__ == '__main__':
                         'target': 'radical-pilot-hello.sh',
                         'action': rp.TRANSFER})
 
-        # Issue an RPC to provision a Python virtual environment for the later
-        # raptor tasks.  Note that we are telling prepare_env to install
-        # radical.pilot and radical.utils from sdist archives on the local
-        # filesystem. This only works for the default resource, local.localhost.
-        report.info('Call pilot.prepare_env()... ')
-        pilot.prepare_env(env_name='ve_raptor',
-                          env_spec={'type' : 'venv',
-                                    'setup': [rp.sdist_path,
-                                              ru.sdist_path,
-                                              'mpi4py']})
         report.info('done\n')
 
         # Launch a raptor master task, which will launch workers and self-submit
@@ -161,7 +162,6 @@ if __name__ == '__main__':
             td.arguments      = [cfg_file, i]
             td.cpu_processes  = 1
             td.cpu_threads    = cores_per_master
-            td.named_env      = 'rp'
             td.input_staging  = [{'source': '%s/raptor_master.py' % PWD,
                                   'target': 'raptor_master.py',
                                   'action': rp.TRANSFER,

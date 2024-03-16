@@ -7,6 +7,128 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+--------------------------------------------------------------------------------
+### 1.47.0 Release                                                    2024-02-08
+
+  - binder tutorial
+  - expand / fix documentation and README, update policies
+  - docs for psij deployment
+  - raptor example now terminates on worker failures
+  - fix raptor worker registration
+  - fix flux startup
+  - fix type for `LFS_SIZE_PER_NODE`
+  - update HB config parameters for raptor
+
+
+--------------------------------------------------------------------------------
+### 1.46.2 Hotfix-Release                                             2024-02-02
+
+  - fix detection of failed tasks
+
+
+--------------------------------------------------------------------------------
+### 1.46.1 Hotfix-Release                                             2024-01-17
+
+  - fix type for `LFS_SIZE_PER_NODE`
+
+
+--------------------------------------------------------------------------------
+### 1.46.0 Release                                                    2024-01-11
+
+  - pypi fix
+  - configurabe raptor hb timeouts
+
+
+--------------------------------------------------------------------------------
+### 1.43.0 Release                                                    2024-01-10
+
+  - add bragg prediction example
+  - add initial agent scheduler documentation
+  - add JSRUN_ERF setup for Summit's config
+  - add mechanism to determine batch/non-batch RP starting
+  - collect task PIDs through launch- and exec-scripts
+  - ensure mpi4py for raptor example
+  - fix ERF creation for JSRUN LM (and updated tests accordingly)
+  - fix Popen test
+  - fix `Task._update` method (`description` attribute)
+  - fix `_get_exec` in Popen (based on provided comments)
+  - fix parsing PIDs procedure (based on provided comments)
+  - fix profiling in Popen (based on provided comments)
+  - fix resource manager handling in `get_resource_config`
+  - fix tasks handling in `prof_utils`
+  - fix test for launch-/exec-scripts
+  - follow-up on comments
+  - forward after scheduling
+  - keep `pids` dict empty if there is no ranks provided
+  - moved collecting EXEC_PID into exec-script
+  - preserve process id for tasks with `executable` mode
+  - switch raptor to use the agent ve
+  - update `metadata` within task description
+
+
+--------------------------------------------------------------------------------
+### 1.42.0 Release                                                    2023-12-04
+  
+  - AgentComponent forwards all state notifications
+  - document event locations
+  - MPI tutorial for RAPTOR
+  - add mpi4py to the ci requirements
+  - add `bulk_size` for the executing queue (for sub-agents)
+  - add option `--ppn` for `PALS` flavor in MPIEXEC LM
+  - amarel cfg
+  - current version requires RU v1.43
+  - fix Profiling tutorial (fails when executed outside from its directory)
+  - collect service related data in registry
+  - fix multi pilot example
+  - move agent config generation to session init
+  - remove obsolete Worker class
+  - remove MongoDB module load from the Perlmutter config
+  - remove mpi4py from doc requirements
+  - save sub-agent config into Registry
+  - sub-agents are no daemons anymore
+  - update documentation for Polaris (GPUs assignment)
+  - update launcher for `Agent_N`
+  - update sub-agent config (in sync with the agent default config)
+  - update "Describing Tasks" tutorial
+  - use RMInfo `details` for LM options
+
+
+--------------------------------------------------------------------------------
+### 1.41.0 Release                                                    2023-10-17
+
+  - fix RTD
+  - replace MongoDB with ZMQ messaging
+  - adapt resource config for `ccs.mahti` to the new structure
+  - add description about input staging data
+  - add method to track startup file with service URL (special case - SOMA)
+  - add package `mpich` into CU and docs dependencies
+  - add resource_description class
+  - check agent sandbox existence
+  - clean RPC handling
+  - clean raptor RPC
+  - deprecated `python.system_packages`
+  - enable testing of all notebooks
+  - enable tests for all devel-branches
+  - fix heartbeat management
+  - fix LM config initialization
+  - fix RM LSF for Lassen (+ add platform config)
+  - fix Session close options
+  - fix TMGR Staging Input
+  - fix `pilot_state` in bootstrapping
+  - fix `task_pre_exec` configurable parameter for Popen
+  - fix bootstrapping for sub-agents
+  - keep pilot RPCs local
+  - raptor worker: one profile per rank
+  - let raptor use registry
+  - shield agains missing mpi
+  - sub-schema for `schemas`
+  - switch to registry configs instead of config files
+  - update testes
+  - update handling of the service startup process
+  - upload session when testing notebooks
+  - use hb msg class type
+  - version RP devel/nodb temporary
+
 
 --------------------------------------------------------------------------------
 ### 1.37.0 Release                                                    2023-09-23

@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
 
         # we submit n tasks, some of which will fail.
-        n    = 1024 * 3
+        n    = 3 * 1024
         tds = list()
         for _ in range(n):
             td = rp.TaskDescription()

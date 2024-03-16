@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+import radical.pilot as rp
+import setproctitle  as spt
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    uid = 'agent.0'
+    spt.setproctitle('rp.%s' % uid)
+
+    agent = rp.Agent_0()
+    agent.start()
+    agent.wait()
+
+
+# ------------------------------------------------------------------------------
+

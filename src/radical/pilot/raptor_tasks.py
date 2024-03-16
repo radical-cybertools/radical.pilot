@@ -78,15 +78,14 @@ class Raptor(Task):
 
     # --------------------------------------------------------------------------
     #
-    def rpc(self, rpc: str,
-                  args: Optional[Dict[str, Any]] = None
-           ) -> Dict[str, Any]:
+    def rpc(self, cmd, *args, **kwargs):
         '''
         Send a raptor command, wait for the response, and return the result.
 
         Args:
             rpc (str): name of the rpc call to invoke
-            args (Dict[str, Any])): kwargs dict for the rpc call
+            *args (*List[Any]): unnamed arguments
+            **kwargs (**Dict[str, Any])): named arguments
 
         Returns:
             Dict[str, Any]: the returned dictionary has the following fields:
@@ -97,11 +96,12 @@ class Raptor(Task):
         '''
 
         if not self._pilot:
-            raise RuntimeError('not assoigned to a pilot yet, cannot run rpc')
+            raise RuntimeError('not assigned to a pilot yet, cannot run rpc')
 
-        reply = self._session._dbs.pilot_rpc(self._pilot, self.uid, rpc, args)
+        kwargs['raptor_cmd'] = cmd
 
-        return reply
+        return self._tmgr.pilot_rpc(self._pilot, 'raptor_rpc', *args,
+                                    rpc_addr=self.uid, **kwargs)
 
 
 # ------------------------------------------------------------------------------

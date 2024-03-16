@@ -1,8 +1,6 @@
-
-radical.utils>=1.12
-radical.saga>=1.12
+radical.utils>=1.44
+radical.saga>=1.40
 radical.gtod
-pymongo<4
 setproctitle
 dill
 

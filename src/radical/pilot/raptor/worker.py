@@ -13,7 +13,7 @@ from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
-from ..task_description import TASK_FUNC, TASK_EXEC
+from ..task_description import TASK_FUNC, TASK_METH, TASK_EXEC
 from ..task_description import TASK_PROC, TASK_SHELL, TASK_EVAL
 
 
@@ -33,37 +33,50 @@ class Worker(object):
         self._rank      = rank
         self._raptor_id = raptor_id
         self._reg_event = mt.Event()
+        self._reg_addr  = os.environ['RP_REGISTRY_ADDRESS']
         self._sbox      = os.environ['RP_TASK_SANDBOX']
         self._uid       = os.environ['RP_TASK_ID']
+        self._sid       = os.environ['RP_SESSION_ID']
         self._ranks     = int(os.environ['RP_RANKS'])
 
-        self._log  = ru.Logger(name=self._uid,   ns='radical.pilot.worker',
-                               level='DEBUG', targets=['.'], path=self._sbox)
-        self._prof = ru.Profiler(name=self._uid, ns='radical.pilot.worker',
+        self._reg       = ru.zmq.RegistryClient(url=self._reg_addr)
+        self._cfg       = ru.Config(cfg=self._reg['cfg'])
+
+        self._hb_delay  = self._reg['rcfg.raptor.hb_delay']
+
+        self._log  = ru.Logger(name=self._uid,
+                               ns='radical.pilot.worker',
+                               level=self._cfg.log_lvl,
+                               debug=self._cfg.debug_lvl,
+                               targets=self._cfg.log_tgt,
+                               path=self._cfg.path)
+        self._prof = ru.Profiler(name='%s.%04d' % (self._uid, self._rank),
+                                 ns='radical.pilot.worker',
                                  path=self._sbox)
 
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']
-        state_cfg = ru.read_json('%s/%s.cfg' % (psbox, rpc.STATE_PUBSUB))
-        ctrl_cfg  = ru.read_json('%s/%s.cfg' % (psbox, rpc.CONTROL_PUBSUB))
+        state_cfg = self._reg['bridges.%s' % rpc.STATE_PUBSUB]
+        ctrl_cfg  = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
 
-        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['sub'],
+        ru.zmq.Subscriber(rpc.STATE_PUBSUB, url=state_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._state_cb,
                           topic=rpc.STATE_PUBSUB)
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['sub'],
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_cfg['addr_sub'],
                           log=self._log, prof=self._prof, cb=self._control_cb,
                           topic=rpc.CONTROL_PUBSUB)
 
         # we push hertbeat and registration messages on that pubsub also
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB,
-                                          url=ctrl_cfg['pub'],
+                                          url=ctrl_cfg['addr_pub'],
                                           log=self._log,
                                           prof=self._prof)
         # let ZMQ settle
         time.sleep(1)
 
+        self._hb_register_count = 60
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
-        self._hb_delay  = 5
+        self._log.debug('hb delay: %s', self._hb_delay)
         self._hb_thread = mt.Thread(target=self._hb_worker)
         self._hb_thread.daemon = True
         self._hb_thread.start()
@@ -77,6 +90,7 @@ class Worker(object):
         #     shell: execute  a shell command
         self._modes = dict()
         self.register_mode(TASK_FUNC,  self._dispatch_func)
+        self.register_mode(TASK_METH,  self._dispatch_meth)
         self.register_mode(TASK_EVAL,  self._dispatch_eval)
         self.register_mode(TASK_EXEC,  self._dispatch_exec)
         self.register_mode(TASK_PROC,  self._dispatch_proc)
@@ -96,6 +110,7 @@ class Worker(object):
 
         # the manager (rank 0) registers the worker with the master
         if self._manager:
+
             self._log.debug('register: %s / %s', self._uid, self._raptor_id)
             self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
 
@@ -103,21 +118,23 @@ class Worker(object):
           # self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'worker_unregister',
           #                                         'arg': {'uid' : self._uid}})
 
-        # wait for raptor response
+        # wait for raptor response (*all* ranks*)
         self._log.debug('wait for registration to complete')
         count = 0
-        while not self._reg_event.wait(timeout=1):
-            if count < 60:
+        while not self._reg_event.wait(timeout=5):
+            if count < self._hb_register_count:
                 count += 1
-                self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
-                self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
+                if self._manager:
+                    self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
+                    self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
             else:
                 self.stop()
                 self.join()
                 self._log.error('registration with master timed out')
                 raise RuntimeError('registration with master timed out')
 
-        self._log.debug('registration with master ok')
+        if self._manager:
+            self._log.debug('registration with master ok')
 
 
     # --------------------------------------------------------------------------
@@ -136,15 +153,17 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _state_cb(self, topic, msg):
+    def _state_cb(self, topic, msgs):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        for msg in ru.as_list(msgs):
 
-        # general task state updates -- check if our master is affected
-        if cmd == 'update':
+            cmd = msg['cmd']
+            arg = msg['arg']
 
-            for thing in ru.as_list(arg):
+            if cmd != 'update':
+                continue
+
+            for thing in arg:
 
                 uid   = thing['uid']
                 state = thing['state']
@@ -165,8 +184,8 @@ class Worker(object):
     #
     def _control_cb(self, topic, msg):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'worker_registered':
 
@@ -295,6 +314,19 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
+    def _dispatch_meth(self, task):
+        '''
+        _dispatch_meth is a simple wrapper around _dispatch_func which points to
+        private methods to be called.
+        '''
+
+        task['description']['function'] = task['description']['method']
+
+        return self._dispatch_func(task)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _dispatch_func(self, task):
         '''
         We expect three attributes: 'function', containing the name of the
@@ -370,7 +402,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-          # self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
@@ -643,6 +675,16 @@ class Worker(object):
       # os.environ = old_env
 
         return out, err, ret, None, exc
+
+
+    # --------------------------------------------------------------------------
+    #
+    def hello(self, msg, sleep=0):
+
+        print('hello %s: %.3f' % (msg, time.time()))
+        time.sleep(sleep)
+        print('hello %s: %.3f' % (msg, time.time()))
+        return 'hello %s' % msg
 
 
 # ------------------------------------------------------------------------------

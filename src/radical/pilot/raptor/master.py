@@ -21,7 +21,7 @@ from ..task_description import RAPTOR_WORKER
 
 # ------------------------------------------------------------------------------
 #
-class Master(rpu.Component):
+class Master(rpu.AgentComponent):
     '''
     Raptor Master class
 
@@ -46,7 +46,7 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, cfg=None):
+    def __init__(self, cfg: ru.Config = None):
         '''
         This raptor master is expected to be hosted in a main thread of a RP
         task instance.  As such the normal `RP_*` environment variables are
@@ -67,6 +67,7 @@ class Master(rpu.Component):
         self._psbox      = os.environ['RP_PILOT_SANDBOX']
         self._ssbox      = os.environ['RP_SESSION_SANDBOX']
         self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
+        self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
@@ -74,23 +75,34 @@ class Master(rpu.Component):
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
-        self._hb_freq    = 500         # check worker heartbetas every n seconds
-        self._hb_timeout = 1000        # consider worker dead after 150 seconds
+        self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
+                                   _role=Session._DEFAULT)
 
-        cfg              = self._get_config(cfg)
-        self._session    = Session(cfg=cfg, uid=cfg.sid, _primary=False)
+        ccfg = ru.Config(from_dict={'uid'     : self._uid,
+                                    'sid'     : self._sid,
+                                    'owner'   : self._pid,
+                                    'reg_addr': self._reg_addr})
 
-        self._rpc_handlers = dict()
-        self.register_rpc_handler('stop', self.stop)
+        super().__init__(ccfg, self._session)
 
-        rpu.Component.__init__(self, cfg, self._session)
+        # get hb configs (RegistryClient instance is initiated in Session)
+        self._hb_freq = self._session.rcfg.raptor.hb_frequency
+        self._hb_tout = self._session.rcfg.raptor.hb_timeout
 
-        self.register_publisher(rpc.STATE_PUBSUB,   self._psbox)
-        self.register_publisher(rpc.CONTROL_PUBSUB, self._psbox)
+        self._log.debug('hb freq: %s', self._hb_freq)
+        self._log.debug('hb tout: %s', self._hb_tout)
+
+        # we never run `self.start()` which is ok - but it means we miss out on
+        # some of the component initialization.  Call it manually thus
+        self._initialize()
+
+        # register termination handler
+        self.register_rpc_handler('raptor_rpc', self._raptor_rpc,
+                                  rpc_addr=self.uid)
 
         # send new worker tasks and agent input staging / agent scheduler
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE, self._psbox)
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
@@ -102,12 +114,13 @@ class Master(rpu.Component):
                                    'stall_hwm' : 0,
                                    'bulk_size' : 1})
 
-        self._input_queue = ru.zmq.Queue(input_cfg)
+        # FIXME: how to pass cfg?
+        self._input_queue = ru.zmq.Queue(qname, cfg=input_cfg)
         self._input_queue.start()
 
         # send completed request tasks to agent output staging / tmgr
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self._psbox)
+                             rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
         # set up zmq queues between this master and all workers for request
         # distribution and result collection
@@ -125,8 +138,8 @@ class Master(rpu.Component):
                                  'stall_hwm' : 0,
                                  'bulk_size' : 1})
 
-        self._req_queue = ru.zmq.Queue(req_cfg)
-        self._res_queue = ru.zmq.Queue(res_cfg)
+        self._req_queue = ru.zmq.Queue('raptor_tasks',   cfg=req_cfg)
+        self._res_queue = ru.zmq.Queue('raptor_results', cfg=res_cfg)
 
         self._req_queue.start()
         self._res_queue.start()
@@ -164,8 +177,7 @@ class Master(rpu.Component):
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # everything is set up - we can serve messages on the pubsubs also
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb,   self._psbox)
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb, self._psbox)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
@@ -181,54 +193,6 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def register_rpc_handler(self, cmd, handler) -> None:
-        '''
-        register a handler to be invoked on 'cmd' type rpc calls.
-
-        Args:
-            cmd (str): name of the registered rpc call
-            handler (callable): the method which implements the rpc call
-        '''
-        self._rpc_handlers[cmd] = handler
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_config(self, cfg=None):
-        '''
-        derive a worker base configuration from the control pubsub configuration
-
-        Args:
-            cfg (Dict[str, Any]): configuration to start from
-        '''
-
-        # FIXME: use registry for comm EP info exchange, not cfg files
-
-        if cfg is None:
-            cfg = dict()
-
-        if cfg and 'path' in cfg:
-            del cfg['path']
-
-        ru.dict_merge(cfg, ru.read_json('%s/control_pubsub.json' % self._psbox))
-
-        del cfg['channel']
-        del cfg['cmgr']
-
-        cfg['log_lvl'] = 'warn'
-        cfg['kind']    = 'master'
-        cfg['sid']     = self._sid
-        cfg['path']    = self._sbox
-        cfg['base']    = os.environ['RP_PILOT_SANDBOX']
-
-        cfg = ru.Config(cfg=cfg)
-        cfg['uid'] = self._uid
-
-        return cfg
-
-
-    # --------------------------------------------------------------------------
-    #
     @property
     def workers(self):
         '''
@@ -239,14 +203,26 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def _raptor_rpc(self, *args, **kwargs):
+
+        self._log.debug('r rpc (%s, %s)', args, kwargs)
+
+        raptor_cmd = kwargs.get('raptor_cmd')
+
+        if raptor_cmd == 'stop':
+            self.stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def control_cb(self, topic, msg):
         '''
         listen for `worker_register`, `worker_unregister`,
         `worker_rank_heartbeat` and `rpc_req` messages.
         '''
 
         cmd = msg['cmd']
-        arg = msg['arg']
+        arg = msg.get('arg')
 
         if cmd == 'worker_register':
 
@@ -299,41 +275,6 @@ class Master(rpu.Component):
 
             self._workers[uid]['status'] = self.DONE
 
-
-        elif cmd == 'rpc_req':
-
-            if arg['tgt'] != self._uid:
-                return
-
-            self._log.debug('handle rpc %s', arg)
-
-            rpc_res  = {'uid': arg['uid']}
-            rpc_cmd  = arg['rpc']
-            rpc_args = arg['arg']
-
-            rpc_handler = self._rpc_handlers.get(rpc_cmd)
-            if rpc_handler:
-                try:
-                    # FIXME: capture stdout/stderr
-                    if rpc_args is not None:
-                        rpc_handler(arg['arg'])
-                    else:
-                        rpc_handler()
-                    rpc_res['err'] = ''
-                    rpc_res['out'] = ''
-                    rpc_res['ret'] = 0
-
-                except Exception as e:
-                    rpc_res['err'] = repr(e)
-                    rpc_res['out'] = ''
-                    rpc_res['ret'] = 1
-            else:
-                rpc_res['err'] = 'unknown rpc command'
-                rpc_res['out'] = ''
-                rpc_res['ret'] = 1
-
-            self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'rpc_res',
-                                              'arg':  rpc_res})
 
 
     # --------------------------------------------------------------------------
@@ -425,12 +366,10 @@ class Master(rpu.Component):
             List[str]: list of uids for submitted worker tasks
         '''
 
-        # FIXME registry: use registry instead of config files
-
         tasks = list()
         for td in descriptions:
 
-            if not td.mode == RAPTOR_WORKER:
+            if td.mode != RAPTOR_WORKER:
                 raise ValueError('unexpected task mode [%s]' % td.mode)
 
             # sharing GPUs among multiple ranks not yet supported
@@ -445,7 +384,6 @@ class Master(rpu.Component):
             if not td.get('uid'):
                 td.uid = '%s.%s' % (self.uid, ru.generate_id('worker',
                                                              ns=self.uid))
-
             if not td.get('executable'):
                 td.executable = 'radical-pilot-raptor-worker'
 
@@ -459,6 +397,10 @@ class Master(rpu.Component):
 
             # ensure that defaults and backward compatibility kick in
             td.verify()
+
+            # the default worker needs its own task description to derive the
+            # amount of available resources
+            self._reg['raptor.%s.cfg' % td.uid] = td.as_dict()
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -495,6 +437,8 @@ class Master(rpu.Component):
 
         self.advance(tasks, publish=True, push=True)
 
+        # dump registry with all worker descriptions ("raptor.<worker_uid>.cfg")
+        self._reg.dump(self._uid)
         return [task['uid'] for task in tasks]
 
 
@@ -577,7 +521,7 @@ class Master(rpu.Component):
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self)
+        super().stop()
 
         self.terminate()
 
@@ -607,16 +551,13 @@ class Master(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _run(self):
+    def _hb_thread(self):
         '''
         main work threda of this master
         '''
 
         # wait for the submitted requests to complete
-        while True:
-
-            if self._term.is_set():
-                break
+        while not self._term.is_set():
 
             self._log.debug('still alive')
 
@@ -625,7 +566,7 @@ class Master(rpu.Component):
             lost = set()
             for uid in self._workers:
                 for rank, hb in self._workers[uid]['heartbeats'].items():
-                    if hb < now - self._hb_timeout:
+                    if hb < now - self._hb_tout:
                         self._log.warn('lost rank %d on worker %s', rank, uid)
                         lost.add(uid)
 
@@ -636,6 +577,23 @@ class Master(rpu.Component):
                                                   'arg': {'uid': uid}})
                 self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'cancel_tasks',
                                                   'arg': {'uids': [uid]}})
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _run(self):
+        '''
+        main work threda of this master
+        '''
+
+        hb_thread = mt.Thread(target=self._hb_thread)
+        hb_thread.daemon = True
+        hb_thread.start()
+
+        # wait for the submitted requests to complete
+        while not self._term.is_set():
+            time.sleep(1)
+
         self._log.debug('terminate run loop')
 
 

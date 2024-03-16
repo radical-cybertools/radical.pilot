@@ -32,7 +32,6 @@ RP's documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/index.html
 
   ```shell
   cd docs
-  export RADICAL_PILOT_DBURL=<URI>
   sphinx-build source _build -b html
   ```
 
@@ -55,4 +54,3 @@ RP's documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/index.html
 - Branch name
 - Requirements File: relative path to requirements file
 - Documentation Type: Select `Sphinx Html`
-- Environment Variable: `RADICAL_PILOT_DBURL` set as private as it contains auth tokens.

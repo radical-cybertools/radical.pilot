@@ -51,7 +51,7 @@ General description
 .. note::
    In order to be able to access Amarel cluster, you must be connected to
    Rutgers Virtual Private Network (VPN) with a valid Rutgers ``netid``.
-   
+
 
 .. note::
 
@@ -97,18 +97,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 
    pip install radical.pilot
 
-MongoDB
--------
-
-MongoDB service is **not** provided by Amarel cluster, thus, you have to use
-either your running instance of MongoDB service or contact the RADICAL team by
-opening a `ticket <https://github.com/radical-cybertools/radical.pilot/issues>`_.
-
-RADICAL-Pilot will connect to the MongoDB instance using a corresponding URI:
-
-.. code-block:: bash
-
-   export RADICAL_PILOT_DBURL="<mongodb_uri>"
 
 Launching script example
 ========================
@@ -125,7 +113,6 @@ launching command for the application itself.
    module load python
    source ve.rp/bin/activate
 
-   export RADICAL_PILOT_DBURL="mongodb://localhost:27017/"
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG

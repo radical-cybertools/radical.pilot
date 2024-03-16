@@ -31,6 +31,10 @@ reg      = ru.zmq.RegistryClient(url=reg_addr)
 ctr_addr = reg['bridges.control_pubsub.addr_pub']
 task_uid = os.environ['RP_TASK_ID']
 
+print('reg_addr: %s' % reg_addr)
+print('ctr_addr: %s' % ctr_addr)
+print('task_uid: %s' % task_uid)
+
 pub = ru.zmq.Publisher('control_pubsub', ctr_addr)
 
 pub.put('control_pubsub', msg={'cmd': 'service_up',

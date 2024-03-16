@@ -39,7 +39,10 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Add a PilotManager. PilotManagers manage one or more pilots.
+        # Also define a (dummy) service to be run by the pilot
+        sd = rp.TaskDescription({'executable': '/bin/sh',
+                                 'arguments' : ['-c', 'radical-pilot-service-signal'],
+                                 'named_env' : 'rp'})
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object

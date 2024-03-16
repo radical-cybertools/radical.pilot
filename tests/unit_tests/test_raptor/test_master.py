@@ -21,13 +21,21 @@ class RaptorMasterTC(TestCase):
 
     _cleanup_files = []
 
+    def _init_primary_side_effect(self):
+
+        self._log  = mock.MagicMock()
+        self._prof = mock.MagicMock()
+        self._rep  = mock.MagicMock()
+        self._reg  = mock.MagicMock()
+        self._uid  = 'session.001'
+
+
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(rp.Session, '_initialize_primary', return_value=None)
-    @mock.patch.object(rp.Session, '_get_logger')
-    @mock.patch.object(rp.Session, '_get_profiler')
-    @mock.patch.object(rp.Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_init_primary',
+                       side_effect=_init_primary_side_effect,
+                       autospec=True)
     def setUpClass(cls, *args, **kwargs) -> None:
 
         cls._session = rp.Session()
@@ -39,6 +47,8 @@ class RaptorMasterTC(TestCase):
     def tearDownClass(cls) -> None:
 
         for p in cls._cleanup_files:
+            if p is None:
+                continue
             for f in glob.glob(p):
                 if os.path.isdir(f):
                     try:

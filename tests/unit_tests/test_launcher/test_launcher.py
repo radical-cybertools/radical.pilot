@@ -24,7 +24,7 @@ class TestLauncher(TestCase):
             def __init__(self):
                 self.uid = 'uid.0'
                 self.sid = 'sid.0'
-                self.cfg = ru.Config(cfg={'dburl': 'db://'})
+                self.cfg = ru.Config(cfg={})
 
             def _get_endpoint_fs(self, pilot):
                 return ru.Url(pilot['description'].get('endpoint_fs') or '/')
@@ -45,6 +45,12 @@ class TestLauncher(TestCase):
 
         cls._session = Session()
         cls._configs = ru.Config('radical.pilot.resource', name='*')
+
+        for site in cls._configs:
+            for resource in cls._configs[site]:
+                cls._configs[site][resource] = \
+                        rp.ResourceConfig(cls._configs[site][resource])
+
 
     # --------------------------------------------------------------------------
     #
@@ -69,6 +75,7 @@ class TestLauncher(TestCase):
 
         resource                 = 'local.localhost'
         rcfg                     = self._configs.local.localhost
+        rcfg.verify()
 
         pilot = {'uid'         : 'pilot.0001',
                  'description' : {'cores'          : 0,

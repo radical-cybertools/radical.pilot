@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+
+__copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
+__license__   = "MIT"
+
+import os
+import sys
+import time
+
+import threading     as mt
+import setproctitle  as spt
+
+import radical.utils as ru
+import radical.pilot as rp
+
+from radical.pilot.messages import HeartbeatMessage
+
+
+# ------------------------------------------------------------------------------
+#
+def main(sid, reg_addr, uid):
+    '''
+    This method continues where the bootstrap_0/1/2 left off, and will now pass
+    control to the Agent class which will spawn the functional components.
+    '''
+
+    # basic setup: logger and profiler
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
+
+    try:
+        prof.prof('agent_start', uid=uid)
+        prof.disable()
+        wrapped_main(sid, reg_addr, uid, log, prof)
+
+    finally:
+        prof.enable()
+        prof.prof('agent_stop', uid=uid)
+
+
+# ------------------------------------------------------------------------------
+#
+def wrapped_main(sid, reg_addr, uid, log, prof):
+
+    spt.setproctitle('rp.%s' % uid)
+
+    agent = rp.Agent_n(sid, reg_addr, uid)
+    agent.start()
+    agent.wait()
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    if len(sys.argv) != 4:
+        sys.stderr.write('error: invalid arguments\n'
+                         'usage: %s <sid> <reg_addr> <uid>\n'  % sys.argv[0])
+        raise RuntimeError('invalid arguments: %s' % sys.argv)
+
+    sid      = sys.argv[1]
+    reg_addr = sys.argv[2]
+    uid      = sys.argv[3]
+
+    main(sid, reg_addr, uid)
+
+
+# ------------------------------------------------------------------------------
+

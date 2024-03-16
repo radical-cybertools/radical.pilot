@@ -106,7 +106,7 @@ class PilotLauncherBase(object):
 
 # ------------------------------------------------------------------------------
 #
-class PMGRLaunchingComponent(rpu.Component):
+class PMGRLaunchingComponent(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -115,12 +115,13 @@ class PMGRLaunchingComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
         self._pmgr      = self._owner
 
         self._pilots    = dict()      # dict for all known pilots
         self._lock      = mt.RLock()  # lock on maipulating the above
         self._sandboxes = dict()      # cache of resource sandbox URLs
+        self._cancelled = list()      # list of cancelled pilots
 
         self._mod_dir   = os.path.dirname(os.path.abspath(__file__))
         self._root_dir  = "%s/../../" % self._mod_dir
@@ -133,9 +134,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # pilot jobs to the resource management system (ResourceManager).
 
         self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
-
-        # we listen for pilot cancel commands
-        self.register_subscriber(rpc.CONTROL_PUBSUB, self._pmgr_control_cb)
 
         # also listen for completed staging directives
         self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
@@ -220,12 +218,12 @@ class PMGRLaunchingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
-    def _pmgr_control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
 
         cmd = msg['cmd']
         arg = msg['arg']
 
-        self._log.debug('launcher got %s', msg)
+        self._log.debug_9('launcher got %s', msg)
 
         if cmd == 'kill_pilots':
 
@@ -242,8 +240,6 @@ class PMGRLaunchingComponent(rpu.Component):
 
             self._kill_pilots(pids)
 
-        return True
-
 
     # --------------------------------------------------------------------------
     #
@@ -253,16 +249,20 @@ class PMGRLaunchingComponent(rpu.Component):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
-        if not pids or not self._pilots:
-            # nothing to do
-            return
+        if not pids:
+            if not self._pilots:
+                return
+            else:
+                pids = list(self._pilots.keys())
 
         with self._lock:
+
             for pid in pids:
 
                 self._log.debug('cancel pilot %s', pid)
                 if pid not in self._pilots:
                     self._log.warn('cannot cancel unknown pilot %s', pid)
+                    self._cancelled.append(pid)
                     continue
 
                 pilot = self._pilots[pid]
@@ -283,16 +283,20 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def work(self, pilots):
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        pilots = ru.as_list(pilots)
 
-        self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
+        # weed out pilots for which we have already received a cancel request
+        to_cancel = [p for p in pilots if p['uid']     in self._cancelled]
+        to_start  = [p for p in pilots if p['uid'] not in self._cancelled]
+
+        self.advance(to_cancel, rps.CANCELED,       publish=True, push=False)
+        self.advance(to_start,  rps.PMGR_LAUNCHING, publish=True, push=False)
 
         # We can only use bulk submission for pilots which go to the same
         # target, thus we sort them into buckets and launch the buckets
         # individually
         buckets = defaultdict(lambda: defaultdict(list))
-        for pilot in pilots:
+        for pilot in to_start:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
             buckets[resource][schema].append(pilot)
@@ -307,13 +311,6 @@ class PMGRLaunchingComponent(rpu.Component):
                     self._log.info("Launching pilots on %s: %s", resource, pids)
 
                     self._start_pilot_bulk(resource, schema, pilots)
-
-                    # Update the Pilots' state to 'PMGR_ACTIVE_PENDING' if job
-                    # submission was successful.  Since the pilot leaves the
-                    # scope of the PMGR for the time being, we update the
-                    # complete DB document
-                    for pilot in pilots:
-                        pilot['$all'] = True
 
                     self.advance(pilots, rps.PMGR_ACTIVE_PENDING,
                                          push=False, publish=True)
@@ -431,8 +428,13 @@ class PMGRLaunchingComponent(rpu.Component):
             for fname in ru.as_list(pilot['description'].get('input_staging')):
                 base = os.path.basename(fname)
                 # checking if input staging file exists
+                if fname.startswith('./'):
+                    fname = fname.split('./', maxsplit=1)[1]
+                if not fname.startswith('/'):
+                    fname = os.path.join(self._cfg.base, fname)
                 if not os.path.exists(fname):
-                    raise RuntimeError('input_staging file does not exists: %s for pilot %s' % fname, pid)
+                    raise RuntimeError('input_staging file does not exists: '
+                                       '%s for pilot %s' % (fname, pid))
 
                 ft_list.append({'src': fname,
                                 'tgt': '%s/%s' % (pid, base),
@@ -473,6 +475,7 @@ class PMGRLaunchingComponent(rpu.Component):
                 cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
                 out, err, ret = ru.sh_callout(cmd, shell=True)
                 if ret:
+                    self._log.debug('cmd: %s', cmd)
                     self._log.debug('out: %s', out)
                     self._log.debug('err: %s', err)
                     raise RuntimeError('callout failed: %s' % cmd)
@@ -483,6 +486,7 @@ class PMGRLaunchingComponent(rpu.Component):
         out, err, ret = ru.sh_callout(cmd, shell=True)
 
         if ret:
+            self._log.debug('cmd: %s', cmd)
             self._log.debug('out: %s', out)
             self._log.debug('err: %s', err)
             raise RuntimeError('callout failed: %s' % cmd)
@@ -540,6 +544,8 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
+        rcfg.verify()
+
         pid = pilot["uid"]
         pilot['fts'] = list()  # tar for staging
         pilot['sds'] = list()  # direct staging
@@ -547,12 +553,8 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # Database connection parameters
-        sid          = self._session.uid
-        database_url = self._session.cfg.dburl
-
-        # some default values are determined at runtime
-        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
-                          (resource, self._rp_version)
+        sid       = self._session.uid
+        proxy_url = self._session.cfg.proxy_url
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
@@ -571,38 +573,40 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
-        agent_dburl             = rcfg.get('agent_mongodb_endpoint', database_url)
-        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
-        agent_scheduler         = rcfg.get('agent_scheduler')
-        tunnel_bind_device      = rcfg.get('tunnel_bind_device')
-        default_queue           = rcfg.get('default_queue')
-        forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
-        resource_manager        = rcfg.get('resource_manager')
-        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
-        pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        python_interpreter      = rcfg.get('python_interpreter')
-        rp_version              = rcfg.get('rp_version')
-        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',      default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 0)
-        gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node')
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
-        python_dist             = rcfg.get('python_dist')
-        task_tmp                = rcfg.get('task_tmp')
-        spmd_variation          = rcfg.get('spmd_variation')
-        task_pre_launch         = rcfg.get('task_pre_launch')
-        task_pre_exec           = rcfg.get('task_pre_exec')
-        task_post_launch        = rcfg.get('task_post_launch')
-        task_post_exec          = rcfg.get('task_post_exec')
-        mandatory_args          = rcfg.get('mandatory_args', [])
-        system_architecture     = rcfg.get('system_architecture', {})
-        services               += rcfg.get('services', [])
+        agent_spawner           = rcfg.agent_spawner
+        agent_config            = rcfg.agent_config
+        agent_scheduler         = rcfg.agent_scheduler
+        default_queue           = rcfg.default_queue
+        forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
+        resource_manager        = rcfg.resource_manager
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1
+        python_interpreter      = rcfg.python_interpreter
+        rp_version              = rcfg.rp_version
+        virtenv_mode            = rcfg.virtenv_mode
+        virtenv                 = rcfg.virtenv
+        cores_per_node          = rcfg.cores_per_node
+        gpus_per_node           = rcfg.gpus_per_node
+        lfs_path_per_node       = rcfg.lfs_path_per_node
+        lfs_size_per_node       = rcfg.lfs_size_per_node
+        python_dist             = rcfg.python_dist
+        task_tmp                = rcfg.task_tmp
+        task_pre_launch         = rcfg.task_pre_launch
+        task_post_launch        = rcfg.task_post_launch
+        task_pre_exec           = rcfg.task_pre_exec
+        task_post_exec          = rcfg.task_post_exec
+        mandatory_args          = rcfg.mandatory_args
+        system_architecture     = rcfg.system_architecture
+        raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
         blocked_cores           = system_architecture.get('blocked_cores', [])
         blocked_gpus            = system_architecture.get('blocked_gpus',  [])
+
+        # some default values are determined at runtime
+        if not virtenv:
+            virtenv = '%%(resource_sandbox)s/ve.%s.%s' \
+                    % (resource, self._rp_version)
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -632,6 +636,11 @@ class PMGRLaunchingComponent(rpu.Component):
         pilot_sandbox    = pilot_sandbox   .path % expand
       # client_sandbox   = client_sandbox  # not expanded
 
+        # expand variables in virtenv string
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
+                             'session_sandbox' : session_sandbox,
+                             'resource_sandbox': resource_sandbox}
+
         if not job_name:
             job_name = pid
 
@@ -652,21 +661,16 @@ class PMGRLaunchingComponent(rpu.Component):
             raise
 
 
-        # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
-                             'session_sandbox' : session_sandbox,
-                             'resource_sandbox': resource_sandbox}
-
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        db_url = ru.Url(agent_dburl)
-        if db_url.port:
-            db_hostport = "%s:%d" % (db_url.host, db_url.port)
+        tmp = ru.Url(proxy_url)
+        if tmp.port:
+            hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            db_hostport = "%s:%d" % (db_url.host, 27017)  # mongodb default
+            hostport = tmp.host
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -853,15 +857,19 @@ class PMGRLaunchingComponent(rpu.Component):
         # set optional args
         if resource_manager == "CCM": bs_args.extend(['-c'])
         if forward_tunnel_endpoint:   bs_args.extend(['-f', forward_tunnel_endpoint])
-        if forward_tunnel_endpoint:   bs_args.extend(['-h', db_hostport])
+        if forward_tunnel_endpoint:   bs_args.extend(['-h', hostport])
         if python_interpreter:        bs_args.extend(['-i', python_interpreter])
-        if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
+      # if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
 
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
-        agent_cfg['owner']               = 'agent.0'
+        agent_cfg['uid']                 = 'agent_0'
+        agent_cfg['sid']                 = sid
+        agent_cfg['pid']                 = pid
+        agent_cfg['owner']               = pid
+        agent_cfg['pmgr']                = self._pmgr
         agent_cfg['resource']            = resource
         agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = allocated_cores
@@ -870,11 +878,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm
-        agent_cfg['dburl']               = str(database_url)
-        agent_cfg['sid']                 = sid
-        agent_cfg['pid']                 = pid
-        agent_cfg['pmgr']                = self._pmgr
-        agent_cfg['logdir']              = '.'
+        agent_cfg['proxy_url']           = proxy_url
         agent_cfg['pilot_sandbox']       = pilot_sandbox
         agent_cfg['session_sandbox']     = session_sandbox
         agent_cfg['resource_sandbox']    = resource_sandbox
@@ -889,20 +893,20 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['task_post_launch']    = task_post_launch
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['debug']               = self._log.getEffectiveLevel()
+        agent_cfg['log_lvl']             = self._log.level
+        agent_cfg['debug_lvl']           = self._log.debug_level
         agent_cfg['services']            = services
+        agent_cfg['raptor']              = raptor_cfg
 
-        # we'll also push the agent config into MongoDB
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
                               'gpu': allocated_gpus}
-        pilot['$set']      = ['resources']
 
 
         # ----------------------------------------------------------------------
         # Write agent config dict to a json file in pilot sandbox.
 
-        agent_cfg_name = 'agent.0.cfg'
+        agent_cfg_name = 'agent_0.cfg'
         cfg_tmp_handle, cfg_tmp_file = tempfile.mkstemp(prefix='rp.agent_cfg.')
         os.close(cfg_tmp_handle)  # file exists now
 
@@ -982,7 +986,6 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = avail_cores_per_node
-        jd_dict.spmd_variation        = spmd_variation
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
