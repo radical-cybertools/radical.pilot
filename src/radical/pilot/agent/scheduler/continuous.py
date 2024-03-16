@@ -230,7 +230,7 @@ class Continuous(AgentSchedulingComponent):
             while len(gpus) < gpus_per_slot:
 
                 if node['gpus'][gpu_idx] == rpc.FREE:
-                gpus.append(gpu_idx)
+                    gpus.append(gpu_idx)
                 gpu_idx += 1
 
             cores_per_rank = cores_per_slot // ranks_per_slot
