@@ -596,8 +596,6 @@ class Pilot(object):
     def cancel(self):
         """Cancel the pilot."""
 
-        self._finalize()
-
         self._pmgr.cancel_pilots(self._uid)
 
 
