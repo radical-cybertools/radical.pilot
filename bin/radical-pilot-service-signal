@@ -25,7 +25,7 @@ import os
 
 import radical.utils as ru
 
-reg_addr = os.environ['RP_REGISTRY_URL']
+reg_addr = os.environ['RP_REGISTRY_ADDRESS']
 reg      = ru.zmq.RegistryClient(url=reg_addr)
 
 ctr_addr = reg['bridges.control_pubsub.addr_pub']
