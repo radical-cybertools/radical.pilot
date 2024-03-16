@@ -50,13 +50,6 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        # Also define a zmq listener service to be run by the pilot
-        pwd = os.path.abspath(os.path.dirname(__file__))
-        sd  = rp.TaskDescription({'executable': '%s/zmq_listener.py' % pwd,
-                                  'uid'       : 'zmq_listener',
-                                  'named_env' : 'rp',
-                                  'metadata'  : dict()})
-
         # Add a PilotManager. PilotManagers manage one or more pilots.
 
         # Define an [n]-core local pilot that runs for [x] minutes
@@ -68,8 +61,7 @@ if __name__ == '__main__':
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
                    'cores'         : config.get('cores', 1),
-                   'gpus'          : config.get('gpus',  0),
-                   'services'      : [sd]
+                   'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
