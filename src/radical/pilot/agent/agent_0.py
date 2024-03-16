@@ -207,7 +207,6 @@ class Agent_0(rpu.AgentComponent):
         rm_info = self._rm.info
         n_nodes = len(rm_info['node_list'])
 
-        self._log.debug('set rest url: %s', self._service.addr)
         self._log.debug('advance to PMGR_ACTIVE')
 
         pilot = {'$all'     : True,              # pass full info to client side
@@ -707,16 +706,16 @@ class Agent_0(rpu.AgentComponent):
 
         state_cfg = ru.Config(path='./state_pubsub.cfg')
 
-        self._log.info('=== service_url : %s', self._service.addr)
-        self._log.info('=== state pubsub: %s', state_cfg.sub)
+        self._log.info('service_url : %s', self._service.addr)
+        self._log.info('state pubsub: %s', state_cfg.sub)
 
 
     # --------------------------------------------------------------------------
     #
     def _ep_submit_tasks(self, request):
 
-        import pprint
-        self._log.debug('service request: %s', pprint.pformat(request))
+      # import pprint
+      # self._log.debug('service request: %s', pprint.pformat(request))
 
         tasks = request['tasks']
 
@@ -724,9 +723,12 @@ class Agent_0(rpu.AgentComponent):
 
             td = task['description']
 
+            if not task.get('uid'):
+                task['uid'] = ru.generate_id('task.ep.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=self._pid)
+
             sbox = '%s/%s' % (os.environ['RP_PILOT_SANDBOX'], td['uid'])
 
-          # task['uid']               = td.get('uid')
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
             task['task_sandbox_path'] = sbox
             task['task_sandbox']      = 'file://localhost/' + sbox
@@ -739,22 +741,18 @@ class Agent_0(rpu.AgentComponent):
                                          'gpu': td['gpu_processes'] *
                                                 td.get('cpu_processes', 1)}
 
-            # FIXME: MongoDB: this insert registers the tasks to be visible on
-            #        the client side.  We probably don't want to do this and
-            #        instead limit task visibility to this service endpoint.
-            self._log.debug('insert %s', td['uid'])
-            self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
+            self._log.debug('ep: submit %s', td['uid'])
 
         self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
                             publish=True, push=True)
 
 
-    # --------------------------------------------------------------------------
-    #
-    def _ep_get_task_updates(self, request):
-
-        import pprint
-        self._log.debug('update request: %s', pprint.pformat(request))
+  # # --------------------------------------------------------------------------
+  # #
+  # def _ep_get_task_updates(self, request):
+  #
+  #     import pprint
+  #     self._log.debug('update request: %s', pprint.pformat(request))
 
 
 # ------------------------------------------------------------------------------

@@ -311,9 +311,6 @@ class PilotManager(rpu.ClientComponent):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                if thing['state'] == rps.PMGR_ACTIVE:
-                    self._log.debug('pilot rest url (state sub): %s',
-                                    thing.get('rest_url'))
                 if not self._update_pilot(thing, publish=False):
                     return False
 

@@ -219,8 +219,6 @@ class Pilot(object):
         """
 
         self._log.debug('update %s', pilot_dict['uid'])
-        self._log.debug('=== url (p update  ): %s - %s',
-                pilot_dict.get('rest_url'), pilot_dict['state'])
 
         if pilot_dict['uid'] != self.uid:
             self._log.error('invalid uid: %s / %s', pilot_dict['uid'], self.uid)
