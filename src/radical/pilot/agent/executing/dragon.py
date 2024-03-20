@@ -38,8 +38,7 @@ class Dragon(Popen):
         # run dragon execution helper in a separate process which actually uses
         # dragon's multiprocessing implementation
         self._dragon = sp.Popen(
-                args   = ['python3', # 'dragon',
-                          '/home/merzky/j/rp.2/bin/radical-pilot-dragon-executor.py',
+                args   = ['dragon', 'radical-pilot-dragon-executor.py',
                           self.session._cfg.path],
                 stdout = sp.PIPE,
                 stderr = sp.STDOUT)
