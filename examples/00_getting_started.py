@@ -83,8 +83,7 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable     = '/bin/sleep'
-            td.arguments      = ['1']
+            td.executable     = '/bin/date'
             td.ranks          = 1
             td.cores_per_rank = 1
 
@@ -96,10 +95,14 @@ if __name__ == '__main__':
         # Submit the previously created task descriptions to the
         # PilotManager. This will trigger the selected scheduler to start
         # assigning tasks to the pilots.
-        tmgr.submit_tasks(tds)
+        tasks = tmgr.submit_tasks(tds)
 
         # Wait for all tasks to reach a final state (DONE, CANCELED or FAILED).
         tmgr.wait_tasks()
+
+        for task in tasks:
+            print('  * %s: %s [%s], %s' % (task.uid, task.state, task.exit_code,
+                                           task.stdout.strip()))
 
     except Exception as e:
         # Something unexpected happened in the pilot code above

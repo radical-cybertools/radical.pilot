@@ -82,7 +82,7 @@ class TestPopen(TestCase):
         pex._log._debug_level = 1
 
         pex._pwd     = ''
-        pex._pid     = 'pilot.0000'
+        pex.pid      = 'pilot.0000'
         pex.sid      = 'session.0000'
         pex.resource = 'resource_label'
         pex.rsbox    = ''
