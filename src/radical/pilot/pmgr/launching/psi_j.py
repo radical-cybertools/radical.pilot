@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import datetime
 
 # configure the psij logger (captured in the launch components stderr)
 import logging
@@ -154,7 +155,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
                     proj = jd.project
 
             attr = psij.JobAttributes()
-            attr.duration       = jd.wall_time_limit
+            attr.duration       = datetime.timedelta(minutes=jd.wall_time_limit)
             attr.queue_name     = jd.queue
             attr.project_name   = proj
             attr.reservation_id = res
