@@ -91,18 +91,5 @@ class RSH(LaunchMethod):
         return 'export RP_RANK=0\n'
 
 
-    # --------------------------------------------------------------------------
-    #
-    def get_exec(self, task):
-
-        td          = task['description']
-        task_exec   = td['executable']
-        task_args   = td.get('arguments')
-        task_argstr = self._create_arg_string(task_args)
-        command     = '%s %s' % (task_exec, task_argstr)
-
-        return command.rstrip()
-
-
 # ------------------------------------------------------------------------------
 
