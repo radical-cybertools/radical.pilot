@@ -144,7 +144,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_resources(self, node, find_slots, ranks_per_slot, cores_per_slot,
+    def _find_resources(self, node, n_slots, cores_per_slot,
                         gpus_per_slot, lfs_per_slot, mem_per_slot, partial):
         '''
         Find up to the requested number of slots, where each slot features the
@@ -166,9 +166,9 @@ class Continuous(AgentSchedulingComponent):
         We don't care about continuity within a single node - cores `[1, 5]` are
         assumed to be as close together as cores `[1, 2]`.
 
-        When `partial` is set, the method CAN return less than `find_slots`
-        number of slots - otherwise, the method returns the requested number of
-        slots or `None`.
+        When `partial` is set, the method CAN return less than `n_slots` number
+        of slots - otherwise, the method returns the requested number of slots
+        or `None`.
 
         FIXME: SMT handling: we should assume that hardware threads of the same
                physical core cannot host different executables, so HW threads
@@ -177,82 +177,81 @@ class Continuous(AgentSchedulingComponent):
                thread count and using physical core IDs for process placement?
         '''
 
-        # FIXME AM: make sure ranks_per_slot is used correctly (gpu sharing)
         # FIXME AM: check gpu sharing test case
 
       # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
-        # check if the node can host the request
-        free_cores = node['cores'].count(rpc.FREE)
-        free_gpus  = node['gpus'].count(rpc.FREE)
-        free_lfs   = node['lfs']
-        free_mem   = node['mem']
 
-        # check how many slots we can serve, at most
-        alc_slots = 1
-        if cores_per_slot:
-            alc_slots = int(m.floor(free_cores / cores_per_slot))
+        slots = list()
 
-        if gpus_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot)))
+        # find at most `n_slots`
+        while len(slots) < n_slots:
 
-        if lfs_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot)))
+            node_idx  = node['index']
+            node_name = node['name']
 
-        if mem_per_slot:
-            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot)))
+            self._log.debug('=== find resources on %s', node_name)
+            self._log.debug('=== %s', pprint.pformat(slots))
 
-        # is this enough?
-        if not alc_slots:
+            slot  = {'node_name' : node_name,
+                     'node_index': node_idx,
+                     'cores'     : list(),
+                     'gpus'      : list(),
+                     'lfs'       : lfs_per_slot,
+                     'mem'       : mem_per_slot}
+
+            for core_idx,core in enumerate(node['cores']):
+
+                if core == rpc.FREE:
+                    slot['cores'].append(core_idx)
+
+                if len(slot['cores']) == cores_per_slot:
+                    break
+
+            if len(slot['cores']) < cores_per_slot:
+                # not enough cores on this node
+                break
+
+            # gpus can be shared, so we need proper resource tracking.  If
+            # a slot requires one or more GPUs, GPU sharing is disabled.
+            if gpus_per_slot >= 1.0:
+
+                assert gpus_per_slot.is_integer(), 'GPU sharing not supported'
+
+                for gpu_idx,gpu in enumerate(node['gpus']):
+
+                    if gpu == rpc.FREE:
+                        slot['gpus'].append([gpu_idx, 1.0])
+
+                    if len(slot['gpus']) == gpus_per_slot:
+                        break
+
+                if len(slot['gpus']) < gpus_per_slot:
+                    # not enough gpus on this node
+                    break
+
+            elif gpus_per_slot > 0.0:
+
+                # find a GPU which has sufficient space left
+                for gpu_idx,gpu in enumerate(node['gpus']):
+
+                    if gpu == gpus_per_slot:
+                        slot['gpus'].append([gpu_idx, gpus_per_slot])
+                        break
+
+                if len(slot['gpus']) < 1:
+                    # not enough gpus on this node
+                    break
+
+
+            slots.append(slot)
+
+        self._log.debug('==== find resources on %s', node_name)
+        self._log.debug('==== %s', pprint.pformat(slots))
+
+
+        if partial and len(slots) < n_slots:
             return None
-
-        if not partial:
-            if alc_slots < find_slots:
-                return None
-
-        # find at most `find_slots`
-        alc_slots = min(alc_slots, find_slots)
-
-        # we should be able to host the slots - dig out the precise resources
-        slots     = list()
-        node_idx  = node['index']
-        node_name = node['name']
-
-        core_idx  = 0
-        gpu_idx   = 0
-
-        self._log.debug('=== alc slots')
-        self._log.debug('=== %s', pprint.pformat(alc_slots))
-
-        for _ in range(alc_slots):
-
-            cores = list()
-            gpus  = list()
-
-            # FIXME AM
-            for ... in range(ranks_per_slot):
-
-            while len(cores) < cores_per_slot:
-
-                if node['cores'][core_idx] == rpc.FREE:
-                    cores.append(core_idx)
-                core_idx += 1
-
-            while len(gpus) < gpus_per_slot:
-
-                if node['gpus'][gpu_idx] == rpc.FREE:
-                    gpus.append(gpu_idx)
-                gpu_idx += 1
-
-            slots.append({'node_name' : node_name,
-                          'node_index': node_idx,
-                          'cores'     : cores,
-                          'gpus'      : gpus,
-                          'lfs'       : lfs_per_slot,
-                          'mem'       : mem_per_slot})
-
-        # consistency check
-        assert (len(slots) == find_slots) or (len(slots) and partial)
 
         return slots
 
@@ -317,12 +316,11 @@ class Continuous(AgentSchedulingComponent):
 
         else:
             req_slots      = td['ranks']
-            ranks_per_slot = 1
             gpus_per_slot  = int(gpus_per_slot)
 
-        self._log.debug_7('req : %s %s %s %s %s %s',
-                          req_slots, ranks_per_slot, cores_per_slot,
-                          gpus_per_slot, lfs_per_slot, mem_per_slot)
+        self._log.debug_7('req : %s %s %s %s %s',
+                          req_slots, cores_per_slot, gpus_per_slot,
+                                     lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -461,13 +459,12 @@ class Continuous(AgentSchedulingComponent):
 
             # now we know how many slots we still need at this point - but
             # we only search up to node-size on this node.  Duh!
-            find_slots = min(rem_slots, slots_per_node)
-            self._log.debug_7('find: %s', find_slots)
+            n_slots = min(rem_slots, slots_per_node)
+            self._log.debug_7('find %s slots', n_slots)
 
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
-                                             find_slots     = find_slots,
-                                             ranks_per_slot = ranks_per_slot,
+                                             n_slots        = n_slots,
                                              cores_per_slot = cores_per_slot,
                                              gpus_per_slot  = gpus_per_slot,
                                              lfs_per_slot   = lfs_per_slot,
@@ -480,10 +477,10 @@ class Continuous(AgentSchedulingComponent):
                 # ignore this node.  Otherwise we have to restart the search
                 # (continuity is broken)
                 if not self._scattered:
-                    alc_slots       = list()
-                    rem_slots       = req_slots
-                    is_first        = True
-                    is_last         = False
+                    alc_slots = list()
+                    rem_slots = req_slots
+                    is_first  = True
+                    is_last   = False
 
                 # try next node
                 continue
