@@ -169,7 +169,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             if rep:
                 rep.error("- %s (%s)\n" % (pid, name))
 
-    return ret
+    return files
 
 
 # ------------------------------------------------------------------------------
