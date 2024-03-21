@@ -33,7 +33,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
     if not log:
         log = ru.Logger('radical.pilot.utils')
 
-    ret = list()
+    files = list()
 
     if not src:
         src = os.getcwd()
@@ -49,7 +49,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = ru.Url("%s/%s/" % (tgt, sid))
+    tgt_url = ru.Url("%s/%s" % (tgt, sid))
 
     # turn URLs without `schema://host` into `file://localhost`,
     # so that they dont become interpreted as relative paths.
@@ -68,7 +68,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         for client_file in client_files:
 
             ftgt = ru.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
-            ret.append("%s" % ftgt.path)
+            files.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
                              and os.path.getsize(ftgt.path):
@@ -91,15 +91,14 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
-        pid = pilot['uid']
+        pid      = pilot['uid']
+        tar_name = '%s.%s.tgz' % (pid, ext)
 
         # create target dir for this pilot
         ru.rec_makedir('%s/%s' % (tgt_url.path, pid))
 
         try:
             log.debug("processing pilot '%s'", pid)
-
-            sandbox_url = ru.Url(pilot['pilot_sandbox'])
 
             if access:
                 # Allow to use a different access schema than used for the the
@@ -109,47 +108,57 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            stager = StagingHelper(log)
+            else:
+                sandbox_url = ru.Url(pilot['pilot_sandbox'])
 
-            # Try to fetch a tarball of files, so that we can get them
-            # all in one go!
-            tarball_name  = '%s.%s.tgz'   % (pid, ext)
-            tarball_tgt   = '%s/%s/%s/%s' % (tgt, sid, pid, tarball_name)
-            tarball_local = False
+            sandbox_url.path.rstrip('/')
+
+            src_url  = ru.Url('%s/%s' % (sandbox_url, tar_name))
+            src_dir  = os.path.dirname(src_url.path)
+            is_local = False
+
+            log.debug("sandbox: %s", sandbox_url)
+            log.debug("src_url: %s", src_url)
 
             # check if we have a local tarball already
             if skip_existing and \
-               os.path.isfile(tarball_tgt) and \
-               os.path.getsize(tarball_tgt):
-                tarball_local = True
+               os.path.isfile(tgt_url.path) and \
+               os.path.getsize(tgt_url.path):
+                is_local = True
 
-            if not tarball_local:
+            stager = StagingHelper(log)
+
+            if not is_local:
                 # need to fetch tarball
                 #  - if no remote tarball exists, create it
                 #  - fetch remote tarball
+                _, _, ret = stager.sh_callout(src_url, 'test -f %s' % src_url.path)
 
-                tarball_remote = True
-                log.info("fetch '%s%s' to '%s'.", sandbox_url,
-                         tarball_name, tgt_url)
+                if ret:
+                    # no tarball on remote side, create one
+                    #
+                    find_cmd = "find . -name '*.%s'" % ext
+                    tar_cmd  = "cd %s && tar czf %s $(%s)" \
+                             % (src_dir, tar_name, find_cmd)
 
-                rs_file = "%s%s" % (sandbox_url, tarball_name)
-                stager.copy(rs_file, tarball_tgt, flags=rpc.CREATE_PARENTS)
+                    out, err, ret = stager.sh_callout(src_url, tar_cmd)
+                    log.debug("create with '%s': %s/%s", tar_cmd, out, err)
 
-                if os.path.getsize(tarball_tgt) == 0:
-                    tarball_remote = False
+                    if ret:
+                        raise RuntimeError("failed to create tarball: %s" % err)
 
-            if not tarball_remote:
-                raise RuntimeError('no tarball for %s' % pid)
+                log.info("fetch '%s' to '%s'.", src_url, tgt_url)
+                stager.copy(src_url, tgt_url, flags=rpc.CREATE_PARENTS)
 
             # we now have a local tarball - unpack it
             # note that we do not check if it was unpacked before - it's simpler
             # (and possibly cheaper) to just do that again
-            log.info('Extract tarball %s', tarball_tgt)
-            tarball = tarfile.open(tarball_tgt, mode='r:gz')
+            log.info('Extract tarball %s', tgt_url.path)
+            tarball = tarfile.open('%s/%s' % (tgt_url.path, tar_name), mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pid))
 
-            files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
-            ret.extend(files)
+            found = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
+            files.extend(found)
 
             if rep:
                 rep.ok("+ %s (%s)\n" % (pid, name))

@@ -931,19 +931,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
                                                   os.path.basename(env_helper)),
                              'action': rpc.TRANSFER})
 
-        # ----------------------------------------------------------------------
-        # we also touch the log and profile tarballs in the target pilot sandbox
-        pilot['fts'].append({
-                    'src': '/dev/null',
-                    'tgt': '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
-                    'rem': False})  # don't remove /dev/null
-        # only stage profiles if we profile
-        if self._prof.enabled:
-            pilot['fts'].append({
-                        'src': '/dev/null',
-                        'tgt': '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
-                        'rem': False})  # don't remove /dev/null
-
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
         # stack etc.

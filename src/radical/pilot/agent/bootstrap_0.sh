@@ -1557,18 +1557,6 @@ then
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
 
-# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
-LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-
-# some backends (condor) never finalize a job when output files are missing --
-# so we touch them here to prevent that
-echo "# -------------------------------------------------------------------"
-echo '# Touching output tarballs'
-echo "# -------------------------------------------------------------------"
-touch "$LOGFILES_TARBALL"
-touch "$PROFILES_TARBALL"
-
 pilot_state="PMGR_ACTIVE_PENDING"
 # FIXME: By now the pre_process rules are already performed.
 #        We should split the parsing and the execution of those.

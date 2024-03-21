@@ -927,8 +927,6 @@ class Session(object):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-          # # FIXME: MongoDB
-          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
