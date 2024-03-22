@@ -127,7 +127,7 @@ class ComponentManager(object):
         buids = list()
         for bname, bcfg in bridges.items():
 
-            self._log.debug('=== start bridge %s', bname)
+            self._log.debug('start bridge %s', bname)
 
             uid = bname
             buids.append(uid)

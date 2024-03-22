@@ -300,8 +300,8 @@ class PilotManager(rpu.ClientComponent):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
-                self._log.debug('state push: %s: %s %s', thing['uid'],
-                                thing['state'], thing.get('resources'))
+                self._log.debug('state push: %s: %s', thing['uid'],
+                                thing['state'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
@@ -349,7 +349,10 @@ class PilotManager(rpu.ClientComponent):
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
+
+            # always update the pilot instance, even if state didn't change
             if current == target:
+                self._pilots[pid]._update(pilot_dict)
                 return
 
             target, passed = rps._pilot_state_progress(pid, current, target)

@@ -234,21 +234,26 @@ class Pilot(object):
             # ensure valid state transition
             state_diff = rps._pilot_state_value(target) - \
                          rps._pilot_state_value(current)
-            if state_diff != 1:
+            if state_diff > 1:
                 raise RuntimeError('%s: invalid state transition %s -> %s',
                                    self.uid, current, target)
 
         self._state = target
 
-        # keep all information around
-        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
-
-        # FIXME MONGODB
-        resources = self._pilot_dict.get('resources') or {}
+        # FIXME: this is a hack to get the resource details into the pilot
+        resources = pilot_dict.get('resources') or {}
         rm_info   = resources.get('rm_info')
+
         if rm_info:
-            del self._pilot_dict['resources']['rm_info']
-            self._pilot_dict['resource_details'] = rm_info
+            del pilot_dict['resources']['rm_info']
+            pilot_dict['resource_details'] = rm_info
+
+        for k in list(pilot_dict.keys()):
+            if pilot_dict[k] is None:
+                del pilot_dict[k]
+
+        # keep all other information around
+        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
