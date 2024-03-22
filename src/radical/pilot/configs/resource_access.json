@@ -25,7 +25,8 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "launch_methods"              : {
-                                         "order" : ["MPIRUN"],
+                                         "order" : ["SRUN", "MPIRUN"],
+                                         "SRUN"  : {},
                                          "MPIRUN": {"pre_exec_cached": ["module load slurm",
                                                                         "module load gcc",
                                                                         "module load openmpi"]}

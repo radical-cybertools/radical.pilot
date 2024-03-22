@@ -287,22 +287,11 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER], \
-                              'invalid staging action'
-
-            # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the tmgr staging components
-            if src.startswith('client://'):
-                self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_out_skip', uid=uid, msg=did)
+            # agent stager only handles local actions
+            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
-            if tgt.startswith('client://'):
-                self._log.debug('skip staging for tgt %s', tgt)
-                self._prof.prof('staging_out_skip', uid=uid, msg=did)
-                continue
-
-            # Fix for when the target PATH is empty
             # we assume current directory is the task staging 'task://'
             # and we assume the file to be copied is the base filename
             # of the source

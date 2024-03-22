@@ -376,6 +376,11 @@ class Default(TMGRStagingInputComponent):
                 src    = sd['source']
                 tgt    = sd['target']
 
+                # client stager only handles remote actions
+                if action not in [rpc.TRANSFER, rpc.TARBALL]:
+                    self._prof.prof('staging_in_skip', uid=uid, msg=did)
+                    continue
+
                 src = complete_url(src, src_context, self._log)
                 tgt = complete_url(tgt, tgt_context, self._log)
 
@@ -390,7 +395,7 @@ class Default(TMGRStagingInputComponent):
                     tar_path = tmp_file.name
                     tar_file = tarfile.open(fileobj=tmp_file, mode='w')
                     tar_src  = ru.Url('file://localhost/%s' % tar_path)
-                    tar_tgt  = ru.Url('task:////%s.tar'     % uid)
+                    tar_tgt  = ru.Url('task:///%s.tar'      % uid)
                     tar_did  = ru.generate_id('sd')
                     tar_sd   = {'action' : rpc.TRANSFER,
                                 'flags'  : rpc.DEFAULT_FLAGS,
