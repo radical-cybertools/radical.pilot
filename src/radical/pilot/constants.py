@@ -79,7 +79,7 @@ PMGR_METRICS         = [PILOT_STATE]
 COPY     = 'Copy'      # local cp
 LINK     = 'Link'      # local ln -s
 MOVE     = 'Move'      # local mv
-TRANSFER = 'Transfer'  # saga remote transfer  TODO: special case of copy?
+TRANSFER = 'Transfer'  # remote transfer from / to client
 TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
 #
