@@ -189,7 +189,7 @@ class Srun(LaunchMethod):
 
         env = '--export=ALL'
 
-        cmd = '%s %s %s %s' % (self._command, env mapping, exec_path)
+        cmd = '%s %s %s %s' % (self._command, env, mapping, exec_path)
         return cmd.rstrip()
 
 
