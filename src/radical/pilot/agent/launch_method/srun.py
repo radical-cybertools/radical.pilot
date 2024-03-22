@@ -187,7 +187,9 @@ class Srun(LaunchMethod):
         elif nodelist:
             mapping += ' --nodelist=%s' % ','.join(nodelist)
 
-        cmd = '%s %s %s' % (self._command, mapping, exec_path)
+        env = '--export=ALL'
+
+        cmd = '%s %s %s %s' % (self._command, env mapping, exec_path)
         return cmd.rstrip()
 
 
