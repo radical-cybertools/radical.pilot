@@ -139,11 +139,16 @@ class Default(TMGRStagingOutputComponent):
         # Loop over all transfer directives and execute them.
         for sd in actionables:
 
-          # action = sd['action']
+            action = sd['action']
             flags  = sd['flags']
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
+
+            # client stager only handles remote actions
+            if action not in [rpc.TRANSFER, rpc.TARBALL]:
+                self._prof.prof('staging_in_skip', uid=uid, msg=did)
+                continue
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
