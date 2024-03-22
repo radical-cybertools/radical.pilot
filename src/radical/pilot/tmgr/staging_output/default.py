@@ -129,7 +129,6 @@ class Default(TMGRStagingOutputComponent):
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:
-
             self._stager.handle_staging_directive(sd)
 
         # all staging is done -- at this point the task is final

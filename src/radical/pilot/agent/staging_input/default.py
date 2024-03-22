@@ -142,18 +142,8 @@ class Default(AgentStagingInputComponent):
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE,
-                              rpc.TRANSFER, rpc.TARBALL]
-
-            # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the tmgr staging components
-            if src.startswith('client://') and action != rpc.TARBALL:
-                self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_in_skip', uid=uid, msg=did)
-                continue
-
-            if tgt.startswith('client://'):
-                self._log.debug('skip staging for tgt %s', tgt)
+            # agent stager only handles local actions
+            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
