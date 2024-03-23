@@ -337,8 +337,9 @@ class Agent_0(rpu.AgentComponent):
             self._service_uids_launched.append(tid)
             services.append(task)
 
-            services_data[tid] = {}
-            if td.metadata.get('startup_file'):
+            services_data[tid] = dict()
+            metdata = td.metadata or dict()
+            if metdata.get('startup_file'):
                 n = td.metadata.get('name')
                 services_data[tid]['name'] = 'service.%s' % n if n else tid
                 services_data[tid]['startup_file'] = td.metadata['startup_file']
