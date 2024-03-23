@@ -16,15 +16,11 @@
     "bridges" : {
         "log_pubsub"            : {"kind": "pubsub"},
         "state_pubsub"          : {"kind": "pubsub"},
-        "control_pubsub"        : {"kind": "pubsub"},
-
-        "stager_request_queue"  : {"kind": "queue" },
-        "stager_response_pubsub": {"kind": "pubsub"}
+        "control_pubsub"        : {"kind": "pubsub"}
     },
 
     "components" : {
         # how many instances of the respective components should be started
-        "stager" : { "count": 1 }
     }
 }
 
