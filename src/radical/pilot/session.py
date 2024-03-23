@@ -8,12 +8,9 @@ import time
 
 from typing import Optional
 
-import threading as mt
+import threading        as mt
 
-import radical.utils                as ru
-import radical.saga                 as rs
-import radical.saga.filesystem      as rsfs
-import radical.saga.utils.pty_shell as rsup
+import radical.utils    as ru
 
 from . import constants as rpc
 from . import utils     as rpu
@@ -53,7 +50,7 @@ class _CloseOptions(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class Session(rs.Session):
+class Session(object):
     """Root of RP object hierarchy for an application instance.
 
     A Session is the root object of all RP objects in an application instance:
@@ -193,9 +190,6 @@ class Session(rs.Session):
         elif self._role == self._AGENT_N: self._init_agent_n()
         else                            : self._init_default()
 
-        # now we have config and uid - initialize base class (saga session)
-        rs.Session.__init__(self, uid=self._uid)
-
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
         self._cache      = {'endpoint_fs'      : dict(),
@@ -218,6 +212,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _init_primary(self):
+
+        assert self._role == self._PRIMARY
 
         # The primary session
         #   - reads session config files
@@ -251,6 +247,8 @@ class Session(rs.Session):
         # start bridges and components
         self._start_components()
 
+        time.sleep(1)
+
         # primary session hooks into the control pubsub
         bcfg = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
         self._ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
@@ -279,6 +277,8 @@ class Session(rs.Session):
         #   - connects to the ZMQ proxy for client/agent communication
         #   - start agent components
 
+        assert self._role == self._AGENT_0
+
         self._init_cfg_from_dict()
         self._start_registry()
         self._connect_registry()
@@ -300,6 +300,8 @@ class Session(rs.Session):
         #   - fetch config from registry
         #   - start agent bridges and components
 
+        assert self._role == self._AGENT_N
+
         # the config passed to the session c'tor is the *agent* config - keep it
         a_cfg = self._cfg
 
@@ -320,6 +322,8 @@ class Session(rs.Session):
         # sub-agents and components connect to an existing registry (owned by
         # the `primary` session or `agent_0`) and load config settings from
         # there.
+
+        assert self._role == self._DEFAULT
 
         self._connect_registry()
         self._init_cfg_from_registry()
@@ -422,7 +426,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -475,7 +478,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -505,7 +507,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._log.debug('Session(%s, %s)', self._uid, self._role)
@@ -710,8 +711,8 @@ class Session(rs.Session):
         url_sub = reg['bridges.%s.addr_sub' % src.lower()]
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
-        self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-        self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+        self._log.debug_5('XXX cfg fwd for topic:%s to %s', src, tgt)
+        self._log.debug_5('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -730,7 +731,7 @@ class Session(rs.Session):
                     self._log.debug_8('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
-              # self._log.debug('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
+                self._log.debug_8('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
 
             else:
@@ -741,16 +742,16 @@ class Session(rs.Session):
                                       tgt, msg, msg['origin'], self._module)
                     return
 
-                # avoid message loops (forward only once)
-                msg['fwd'] = False
-
                 # only forward all messages which originated in *this* module.
-
                 if not msg['origin'] == self._module:
                     self._log.debug_8('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
                 self._log.debug_8('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+
+                # avoid message loops (forward only once)
+                msg['fwd'] = False
+
                 publisher.put(tgt, msg)
 
 
@@ -762,13 +763,13 @@ class Session(rs.Session):
     #
     def _crosswire_proxy(self):
 
-        # - forward local ctrl messages to control proxy
-        # - forward local state updates to state proxy
-        # - forward local task queue to proxy task queue
+        # - forward local ctrl  pubsub messages to proxy control pubsub
+        # - forward local state pubsub messages to proxy state   pubsub
+        # - forward local task  queue  messages to proxy task    queue
         #
-        # - forward proxy ctrl messages to local control pubsub
-        # - forward proxy state updates to local state pubsub
-        # - forward proxy task queue messages to local task queue
+        # - forward proxy ctrl  pubsub messages to local control pubsub
+        # - forward proxy state pubsub messages to local state   pubsub
+        # - forward proxy task  queue  messages to local task    queue
         #
         # The local task queue endpoints differ for primary session and agent_0
         #
@@ -934,8 +935,6 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-          # # FIXME: MongoDB
-          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
@@ -1299,28 +1298,20 @@ class Session(rs.Session):
 
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def fetch_json(self, tgt=None):
-  #
-  #     return rpu.fetch_json(self._uid, tgt=tgt, session=self,
-  #                           skip_existing=True)
-  #
-  #
     # --------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None):
 
-        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None):
 
-        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
@@ -1365,7 +1356,7 @@ class Session(rs.Session):
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
-                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+                fs_url = ru.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
@@ -1406,11 +1397,12 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    shell = self.get_js_shell(resource, schema)
-                    ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
-                                                 sandbox_raw)
+                    # FIXME "remote sandbox expansion not yet supported"
+                    out, err, ret = ru.sh_callout(' echo "WORKDIR: %s"' %
+                                                 sandbox_raw, shell=True)
                     if ret or 'WORKDIR:' not in out:
-                        raise RuntimeError("Couldn't get remote workdir.")
+                        raise RuntimeError("workdir expansion failed: %s [%s]"
+                                           % (out, err))
 
                     sandbox_base = out.split(":")[1].strip()
                     self._log.debug("sandbox base %s", sandbox_base)
@@ -1423,50 +1415,6 @@ class Session(rs.Session):
                 self._cache['resource_sandbox'][resource] = fs_url
 
             return self._cache['resource_sandbox'][resource]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_js_shell(self, resource, schema):
-
-        if resource not in self._cache['js_shells']:
-            self._cache['js_shells'][resource] = dict()
-
-        if schema not in self._cache['js_shells'][resource]:
-
-            rcfg   = self.get_resource_config(resource, schema)
-
-            js_url = rcfg['job_manager_endpoint']
-            js_url = rcfg.get('job_manager_hop', js_url)
-            js_url = rs.Url(js_url)
-
-            elems  = js_url.schema.split('+')
-
-            if   'ssh'    in elems: js_url.schema = 'ssh'
-            elif 'gsissh' in elems: js_url.schema = 'gsissh'
-            elif 'fork'   in elems: js_url.schema = 'fork'
-            elif len(elems) == 1  : js_url.schema = 'fork'
-            else: raise Exception("invalid schema: %s" % js_url.schema)
-
-            if js_url.schema == 'fork':
-                js_url.host = 'localhost'
-
-            self._log.debug("rsup.PTYShell('%s')", js_url)
-            shell = rsup.PTYShell(js_url, self)
-            self._cache['js_shells'][resource][schema] = shell
-
-        return self._cache['js_shells'][resource][schema]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_fs_dir(self, url):
-
-        if url not in self._cache['fs_dirs']:
-            self._cache['fs_dirs'][url] = rsfs.Directory(url,
-                                               flags=rsfs.CREATE_PARENTS)
-
-        return self._cache['fs_dirs'][url]
 
 
     # --------------------------------------------------------------------------
@@ -1486,7 +1434,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox      = self._get_resource_sandbox(pilot)
-                session_sandbox       = rs.Url(resource_sandbox)
+                session_sandbox       = ru.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 self._cache['session_sandbox'][resource] = session_sandbox
@@ -1502,7 +1450,7 @@ class Session(rs.Session):
 
         pilot_sandbox = pilot.get('pilot_sandbox')
         if str(pilot_sandbox):
-            return rs.Url(pilot_sandbox)
+            return ru.Url(pilot_sandbox)
 
         pid = pilot['uid']
         with self._cache_lock:
@@ -1511,7 +1459,7 @@ class Session(rs.Session):
 
                 # cache miss
                 session_sandbox     = self._get_session_sandbox(pilot)
-                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox       = ru.Url(session_sandbox)
                 pilot_sandbox.path += '/%s/' % pilot['uid']
 
                 self._cache['pilot_sandbox'][pid] = pilot_sandbox
@@ -1536,7 +1484,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox  = self._get_resource_sandbox(pilot)
-                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs       = ru.Url(resource_sandbox)
                 endpoint_fs.path  = ''
 
                 self._cache['endpoint_fs'][resource] = endpoint_fs
@@ -1586,8 +1534,8 @@ class Session(rs.Session):
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
 
-        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
-        js_hop  = rs.Url(rcfg.get('job_manager_hop') or js_url)
+        js_url  = ru.Url(rcfg.get('job_manager_endpoint'))
+        js_hop  = ru.Url(rcfg.get('job_manager_hop') or js_url)
 
         # make sure the js_hop url points to an interactive access
         # TODO: this is an unreliable heuristics - we should require the js_hop

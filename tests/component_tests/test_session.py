@@ -120,7 +120,7 @@ class TestSession(TestCase):
     def test_close(self):
 
         class Dummy():
-            def put(*args, **kwargs):
+            def put(self, *args, **kwargs):
                 pass
 
         # check default values
