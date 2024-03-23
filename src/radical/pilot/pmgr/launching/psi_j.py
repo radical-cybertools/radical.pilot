@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import datetime
 
 # configure the psij logger (captured in the launch components stderr)
 import logging
@@ -100,7 +101,10 @@ class PilotLauncherPSIJ(PilotLauncherBase):
                 rp_state = self._translate_state(status)
                 pilot    = self._pilots[job.id]
 
-            self._state_cb(pilot, rp_state)
+            # we don't report PMGR+ACTIVE here - that information comes from the
+            # pilot itself once it is up and running
+            if rp_state != rps.PMGR_ACTIVE:
+                self._state_cb(pilot, rp_state)
 
         except Exception:
             self._log.exception('job status callback failed')
@@ -154,7 +158,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
                     proj = jd.project
 
             attr = psij.JobAttributes()
-            attr.duration       = jd.wall_time_limit
+            attr.duration       = datetime.timedelta(minutes=jd.wall_time_limit)
             attr.queue_name     = jd.queue
             attr.project_name   = proj
             attr.reservation_id = res
