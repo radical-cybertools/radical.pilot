@@ -101,7 +101,10 @@ class PilotLauncherPSIJ(PilotLauncherBase):
                 rp_state = self._translate_state(status)
                 pilot    = self._pilots[job.id]
 
-            self._state_cb(pilot, rp_state)
+            # we don't report PMGR+ACTIVE here - that information comes from the
+            # pilot itself once it is up and running
+            if rp_state != rps.PMGR_ACTIVE:
+                self._state_cb(pilot, rp_state)
 
         except Exception:
             self._log.exception('job status callback failed')

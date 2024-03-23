@@ -213,6 +213,8 @@ class Session(object):
     #
     def _init_primary(self):
 
+        assert self._role == self._PRIMARY
+
         # The primary session
         #   - reads session config files
         #   - reads resource config files
@@ -275,6 +277,8 @@ class Session(object):
         #   - connects to the ZMQ proxy for client/agent communication
         #   - start agent components
 
+        assert self._role == self._AGENT_0
+
         self._init_cfg_from_dict()
         self._start_registry()
         self._connect_registry()
@@ -296,6 +300,8 @@ class Session(object):
         #   - fetch config from registry
         #   - start agent bridges and components
 
+        assert self._role == self._AGENT_N
+
         # the config passed to the session c'tor is the *agent* config - keep it
         a_cfg = self._cfg
 
@@ -316,6 +322,8 @@ class Session(object):
         # sub-agents and components connect to an existing registry (owned by
         # the `primary` session or `agent_0`) and load config settings from
         # there.
+
+        assert self._role == self._DEFAULT
 
         self._connect_registry()
         self._init_cfg_from_registry()
@@ -703,8 +711,8 @@ class Session(object):
         url_sub = reg['bridges.%s.addr_sub' % src.lower()]
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
-        self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-        self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+      # self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
+      # self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -734,14 +742,13 @@ class Session(object):
                   #                 tgt, msg, msg['origin'], self._module)
                     return
 
-                # avoid message loops (forward only once)
-                msg['fwd'] = False
-
                 # only forward all messages which originated in *this* module.
-
                 if not msg['origin'] == self._module:
                   # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
+
+                # avoid message loops (forward only once)
+                msg['fwd'] = False
 
               # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
@@ -755,13 +762,13 @@ class Session(object):
     #
     def _crosswire_proxy(self):
 
-        # - forward local ctrl messages to control proxy
-        # - forward local state updates to state proxy
-        # - forward local task queue to proxy task queue
+        # - forward local ctrl  pubsub messages to proxy control pubsub
+        # - forward local state pubsub messages to proxy state   pubsub
+        # - forward local task  queue  messages to proxy task    queue
         #
-        # - forward proxy ctrl messages to local control pubsub
-        # - forward proxy state updates to local state pubsub
-        # - forward proxy task queue messages to local task queue
+        # - forward proxy ctrl  pubsub messages to local control pubsub
+        # - forward proxy state pubsub messages to local state   pubsub
+        # - forward proxy task  queue  messages to local task    queue
         #
         # The local task queue endpoints differ for primary session and agent_0
         #
