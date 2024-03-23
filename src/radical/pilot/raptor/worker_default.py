@@ -51,9 +51,9 @@ class DefaultWorker(Worker):
 
         # keep worker ID and rank
         self._n_cores = int(self._descr.get('cores_per_rank') or
-                            os.getenv('RP_CORES_PER_RANK', 1))
+                            os.getenv('RP_CORES_PER_RANK', '1'))
         self._n_gpus  = int(self._descr.get('gpus_per_rank') or
-                            os.getenv('RP_GPUS_PER_RANK', 0))
+                            os.getenv('RP_GPUS_PER_RANK', '0'))
 
         # We need to make sure to run only up to `gpn` tasks using a gpu
         # within that pool, so need a separate counter for that.

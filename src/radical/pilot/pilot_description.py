@@ -62,9 +62,8 @@ class PilotDescription(ru.TypedDict):
     Attributes:
         uid (str, optional): A unique ID for the pilot. A unique ID will be
             assigned by RP if the field is not set.
-        job_name (str, optional):  The name of the job / pilot, which will
-            be provided to `radical.saga.job.Description`. If not set then
-            :attr:`uid` will be used instead.
+        job_name (str, optional):  The name of the job / pilot as provided to
+            the batch system. If not set then :attr:`uid` will be used instead.
         resource (str): The key of a
             :ref:`platform description </tutorials/configuration.ipynb#Platform-description>`
             entry. If the key exists, the machine-specific
@@ -113,8 +112,7 @@ class PilotDescription(ru.TypedDict):
                 If `gpus` is specified, `nodes` must not be specified.
 
         memory (int, optional): The total amount of physical memory the
-            pilot (and related to it job) requires. This parameter translates into
-            *TotalPhysicalMemory* at `radical.saga.job.Description`.
+            pilot (and related to it job) requires.
         queue (str, optional): The name of the job queue the pilot should get
             submitted to. If *queue* is set in the resource configuration
             (:attr:`resource`), defining `queue` will override it explicitly.

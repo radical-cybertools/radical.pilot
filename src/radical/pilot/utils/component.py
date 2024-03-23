@@ -278,14 +278,11 @@ class BaseComponent(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker as rpw
         from radical.pilot import pmgr   as rppm
         from radical.pilot import tmgr   as rptm
         from radical.pilot import agent  as rpa
 
         comp = {
-                rpc.STAGER_WORKER                  : rpw.Stager,
-
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
                 rpc.TMGR_STAGING_INPUT_COMPONENT   : rptm.Input,

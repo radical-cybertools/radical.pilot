@@ -544,7 +544,7 @@ verify_install()
     echo ' ok'
 
     # FIXME: attempt to load all required modules
-    modules="radical.pilot radical.saga radical.utils $VIRTENV_RADICAL_MODS"
+    modules="radical.pilot radical.utils $VIRTENV_RADICAL_MODS"
     for m in $modules
     do
         printf 'verify module viability: %-15s ...' $m
@@ -1556,18 +1556,6 @@ if test -z "$SESSION_SANDBOX"
 then
     SESSION_SANDBOX="$PILOT_SANDBOX/.."
 fi
-
-# TODO: Move earlier, because if pre_bootstrap fails, this is not yet set
-LOGFILES_TARBALL="$PILOT_ID.log.tgz"
-PROFILES_TARBALL="$PILOT_ID.prof.tgz"
-
-# some backends (condor) never finalize a job when output files are missing --
-# so we touch them here to prevent that
-echo "# -------------------------------------------------------------------"
-echo '# Touching output tarballs'
-echo "# -------------------------------------------------------------------"
-touch "$LOGFILES_TARBALL"
-touch "$PROFILES_TARBALL"
 
 pilot_state="PMGR_ACTIVE_PENDING"
 # FIXME: By now the pre_process rules are already performed.

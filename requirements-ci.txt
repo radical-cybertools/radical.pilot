@@ -5,13 +5,13 @@
 # default RCT branch for CI runs is "devel"
 
 radical.utils @ git+https://github.com/radical-cybertools/radical.utils@devel
-radical.saga @ git+https://github.com/radical-cybertools/radical.saga@devel
 radical.gtod @ git+https://github.com/radical-cybertools/radical.gtod@devel
 radical.analytics @ git+https://github.com/radical-cybertools/radical.analytics.git@devel
 
 # RP from the current branch
 .
 
+psij-python
 setproctitle
 dill
 

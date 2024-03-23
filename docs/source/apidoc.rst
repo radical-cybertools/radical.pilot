@@ -7,20 +7,9 @@ API Reference
 
 .. toctree::
 
-Sessions and Security Contexts
-==============================
-
 Sessions
 --------
 .. autoclass:: radical.pilot.Session
-   :members:
-   :special-members: __init__
-
-.. py:module:: radical.pilot.context
-
-Security Contexts
------------------
-.. autoclass:: radical.pilot.Context
    :members:
    :special-members: __init__
 

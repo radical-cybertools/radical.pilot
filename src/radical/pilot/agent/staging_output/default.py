@@ -314,15 +314,7 @@ class Default(AgentStagingOutputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert tgt.schema == 'file', 'staging tgt expected as file://'
 
-            # SAGA will take care of dir creation - but we do it manually
-            # for local ops (copy, link, move)
-            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
-                tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != task_sandbox.path:
-                    self._log.debug("mkdir %s", tgtdir)
-                    ru.rec_makedir(tgtdir)
-
-            if   action == rpc.COPY:
+            if action == rpc.COPY:
                 try:
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc:
@@ -346,21 +338,6 @@ class Default(AgentStagingOutputComponent):
                 # This is currently never executed. Commenting it out.
                 # Uncomment and implement when uploads directly to remote URLs
                 # from tasks are supported.
-                # FIXME: we only handle srm staging right now, and only for
-                #        a specific target proxy. Other TRANSFER directives are
-                #        left to tmgr output staging.  We should use SAGA to
-                #        attempt all staging ops which do not target the client
-                #        machine.
-                # if tgt.schema == 'srm':
-                #     # FIXME: cache saga handles
-                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                #     srm_dir.copy(src, tgt)
-                #     srm_dir.close()
-                # else:
-                #     self._log.error('no transfer for %s -> %s', src, tgt)
-                #     self._prof.prof('staging_out_fail', uid=uid, msg=did)
-                #     raise NotImplementedError('unsupported transfer %s' % tgt)
-
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging
