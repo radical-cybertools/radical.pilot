@@ -33,6 +33,7 @@ class Noop(AgentSchedulingComponent):
     #
     def schedule_task(self, task):
 
+        # this abstract method is not used in this implementation
         return None, None
 
 
@@ -40,7 +41,8 @@ class Noop(AgentSchedulingComponent):
     #
     def unschedule_task(self, task):
 
-        return
+        # this abstract method is not used in this implementation
+        pass
 
 
     # --------------------------------------------------------------------------

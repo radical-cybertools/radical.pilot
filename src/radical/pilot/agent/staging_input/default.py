@@ -7,9 +7,9 @@ import os
 import shutil
 import tarfile
 
-import radical.saga  as rs
 import radical.utils as ru
 
+from ...  import utils     as rpu
 from ...  import states    as rps
 from ...  import constants as rpc
 
@@ -136,25 +136,14 @@ class Default(AgentStagingInputComponent):
         for sd in actionables:
 
             action = sd['action']
-            flags  = sd['flags']
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
-            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE,
-                              rpc.TRANSFER, rpc.TARBALL]
-
-            # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the tmgr staging components
-            if src.startswith('client://') and action != rpc.TARBALL:
-                self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_in_skip', uid=uid, msg=did)
-                continue
-
-            if tgt.startswith('client://'):
-                self._log.debug('skip staging for tgt %s', tgt)
+            # agent stager only handles local actions
+            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
@@ -182,9 +171,9 @@ class Default(AgentStagingInputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert src.schema == 'file', 'staging src expected as file://'
 
-            # SAGA will take care of dir creation - but we do it manually
+            # backend will take care of dir creation - but we do it manually
             # for local ops (copy, link, move)
-            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
+            if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
@@ -222,16 +211,9 @@ class Default(AgentStagingInputComponent):
                 #        left to tmgr input staging.  We should use SAGA to
                 #        attempt all staging ops which do not involve the client
                 #        machine.
-                if src.schema == 'srm':
-                    # FIXME: cache saga handles
-                    srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                    srm_dir.copy(src, tgt)
-                    srm_dir.close()
-
-                else:
-                    self._log.error('no transfer for %s -> %s', src, tgt)
-                    self._prof.prof('staging_in_fail', uid=uid, msg=did)
-                    raise NotImplementedError('unsupported transfer %s' % src)
+                self._log.error('no transfer for %s -> %s', src, tgt)
+                self._prof.prof('staging_in_fail', uid=uid, msg=did)
+                raise NotImplementedError('unsupported transfer %s' % src)
 
             elif action == rpc.TARBALL:
 

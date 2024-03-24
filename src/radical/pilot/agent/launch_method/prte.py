@@ -393,17 +393,6 @@ class PRTE(LaunchMethod):
 
         return 'export RP_RANK=$PMIX_RANK\n'
 
-    # --------------------------------------------------------------------------
-    #
-    def get_exec(self, task):
-
-        td           = task['description']
-        task_exec    = td['executable']
-        task_args    = td['arguments']
-        task_argstr  = self._create_arg_string(task_args)
-        command      = '%s %s' % (task_exec, task_argstr)
-
-        return command.rstrip()
 
 # ------------------------------------------------------------------------------
 

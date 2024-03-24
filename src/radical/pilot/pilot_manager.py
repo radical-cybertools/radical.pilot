@@ -143,14 +143,7 @@ class PilotManager(rpu.ClientComponent):
         self.register_output(rps.PMGR_LAUNCHING_PENDING,
                              rpc.PMGR_LAUNCHING_QUEUE)
 
-        # get queue for staging requests
-        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
-
-        # we also listen for completed staging directives
-        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB,
-                                     self._staging_ack_cb)
-        self._active_sds = dict()
-        self._sds_lock   = mt.Lock()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
@@ -307,8 +300,8 @@ class PilotManager(rpu.ClientComponent):
 
             if 'type' in thing and thing['type'] == 'pilot':
 
-                self._log.debug('state push: %s: %s %s', thing['uid'],
-                                thing['state'], thing.get('resources'))
+                self._log.debug('state push: %s: %s', thing['uid'],
+                                thing['state'])
 
                 # we got the state update from the state callback - don't
                 # publish it again
@@ -356,7 +349,10 @@ class PilotManager(rpu.ClientComponent):
             # only update on state changes
             current = self._pilots[pid].state
             target  = pilot_dict['state']
+
+            # always update the pilot instance, even if state didn't change
             if current == target:
+                self._pilots[pid]._update(pilot_dict)
                 return
 
             target, passed = rps._pilot_state_progress(pid, current, target)
@@ -422,44 +418,8 @@ class PilotManager(rpu.ClientComponent):
     def _pilot_staging_input(self, sds):
         """Run some staging directives for a pilot."""
 
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        # prepare to wait for completion
-        with self._sds_lock:
-
-            for sd in sds:
-                sd['state'] = rps.NEW
-                self._active_sds[sd['uid']] = sd
-
-            sd_states = [sd['state'] for sd
-                                     in  self._active_sds.values()
-                                     if  sd['uid'] in uids]
-        # push them out
-        self._stager_queue.put(sds)
-
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd
-                                         in  self._active_sds.values()
-                                         if  sd['uid'] in uids]
-        try:
-            if rps.FAILED in sd_states:
-                errs = list()
-                for uid in uids:
-                    if self._active_sds[uid].get('exception'):
-                        errs.append(self._active_sds[uid]['exception'])
-
-                if errs:
-                    raise RuntimeError('pilot staging failed: %s' % errs)
-                else:
-                    raise RuntimeError('pilot staging failed')
-        finally:
-            with self._sds_lock:
-                for uid in uids:
-                    del self._active_sds[uid]
+        for sd in expand_staging_directives(sds):
+            self._stager.handle_staging_directive(sd)
 
 
     # --------------------------------------------------------------------------
@@ -467,66 +427,8 @@ class PilotManager(rpu.ClientComponent):
     def _pilot_staging_output(self, sds):
         """Run some staging directives for a pilot."""
 
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        # prepare to wait for completion
-        with self._sds_lock:
-
-            for sd in sds:
-                sd['state'] = rps.NEW
-                self._active_sds[sd['uid']] = sd
-
-        # push them out
-        self._stager_queue.put(sds)
-
-        # wait for their completion
-        with self._sds_lock:
-            sd_states = [sd['state'] for sd in self._active_sds.values()
-                                            if sd['uid'] in uids]
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd in self._active_sds.values()
-                                                if sd['uid'] in uids]
-
-        try:
-            if rps.FAILED in sd_states:
-                errs = list()
-                for uid in uids:
-                    if self._active_sds[uid].get('exception'):
-                        errs.append(self._active_sds[uid]['exception'])
-
-                if errs:
-                    raise RuntimeError('pilot staging failed: %s' % errs)
-                else:
-                    raise RuntimeError('pilot staging failed')
-        finally:
-            with self._sds_lock:
-                for uid in uids:
-                    del self._active_sds[uid]
-
-    # --------------------------------------------------------------------------
-    #
-    def _staging_ack_cb(self, topic, msg):
-        """Update staging directive state information."""
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        if cmd == 'staging_result':
-
-            with self._sds_lock:
-                for sd in arg['sds']:
-                    uid = sd['uid']
-                    if uid in self._active_sds:
-                        active_sd = self._active_sds[uid]
-                        active_sd['state']            = sd['state']
-                        active_sd['exception']        = sd['exception']
-                        active_sd['exception_detail'] = sd['exception_detail']
-
-        return True
+        for sd in expand_staging_directives(sds):
+            self._stager.handle_staging_directive(sd)
 
 
     # --------------------------------------------------------------------------
@@ -843,7 +745,6 @@ class PilotManager(rpu.ClientComponent):
             for uid in uids:
                 if uid not in self._pilots:
                     raise ValueError('pilot %s not known' % uid)
-                self._pilots[uid]._finalize()
 
 
     # --------------------------------------------------------------------------

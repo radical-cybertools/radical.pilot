@@ -82,8 +82,8 @@ class Task(object):
         self._state            = rps.NEW
         self._log              = tmgr._log
         self._exit_code        = None
-        self._stdout           = None
-        self._stderr           = None
+        self._stdout           = str()
+        self._stderr           = str()
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
