@@ -651,9 +651,12 @@ class TaskDescription(ru.TypedDict):
                 umode = self.mode.upper().replace('.', '_')
                 raise ValueError("%s Task mode needs 'executable'" % umode)
 
-        elif self.mode == TASK_FUNC:
+        elif self.mode in [TASK_FUNC, TASK_METH]:
             if not self.get('function'):
                 raise ValueError("TASK_FUNC Task mode needs 'function'")
+            if self.get('named_env'):
+                raise ValueError("TASK_FUNC and TASK_METH Task mode does not "
+                                 "support 'named_env'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):
