@@ -25,11 +25,12 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "launch_methods"              : {
-                                         "order" : ["SRUN", "MPIRUN"],
+                                         "order" : ["SRUN"]
+                                       #            "MPIRUN",
                                          "SRUN"  : {},
-                                         "MPIRUN": {"pre_exec_cached": ["module load slurm",
-                                                                        "module load gcc",
-                                                                        "module load openmpi"]}
+                                       # "MPIRUN": {"pre_exec_cached": ["module load slurm",
+                                       #                                "module load gcc",
+                                       #                                "module load openmpi"]}
                                         },
         "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 1000000,
