@@ -128,6 +128,47 @@
                                         }
     },
 
+    "frontier_flux": {
+        "description"                 : "74 cabinets: 128 compute nodes",
+        "notes"                       : "Requires RSA SecurID and uses prepared local virtual env",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
+                "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
+            }
+        },
+        "default_queue"               : "batch",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "FLUX",
+        "agent_spawner"               : "FLUX",
+        "launch_methods"              : {
+                                         "order" : ["FLUX"],
+                                         "FLUX"  : {
+                                             "pre_exec_cached": [
+                                                 "module load rocm",
+                                                 "module load flux/0.56.0"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                         "module load rocm",
+                                         "module load flux/0.56.0",
+                                         "module load cray-python"
+                                        ],
+        "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {
+                                         "smt"           : 2,
+                                       # "options"       : ["nvme"],
+                                         "blocked_cores" : [ 0,  8, 16, 24, 32,  40,  48,  56,
+                                                            64, 72, 80, 88, 96, 104, 112, 120],
+                                         "blocked_gpus"  : []
+                                        }
+    },
+
     "spock": {
         "description"                 : "3 cabinets: each containing 12 compute nodes",
         "notes"                       : "",
