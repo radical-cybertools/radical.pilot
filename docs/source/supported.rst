@@ -30,7 +30,7 @@ National Science Foundation (NSF) HPC Platforms
    :header: "Name", "FQDN", "Launch Method", "Configuration File"
    :widths: auto
 
-   "`Bridges2  <https://www.psc.edu/resources/bridges-2/user-guide-2-2/>`_",             "bridges2.psc.edu",          "``mpirun``",                               "`resource_access.json   <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_access.json>`_"
+   "`Bridges2  <https://www.psc.edu/resources/bridges-2/user-guide-2-2/>`_",             "bridges2.psc.edu",          "``srun``",                               "`resource_access.json   <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_access.json>`_"
    "`Expanse   <https://www.sdsc.edu/support/user_guides/expanse.html>`_",               "login.expanse.sdsc.edu",    "``mpirun``",                               "`resource_access.json   <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_access.json>`_"
    "`Frontera  <https://frontera-portal.tacc.utexas.edu/user-guide/>`_",                 "frontera.tacc.utexas.edu",  "``mpirun``, ``ssh``, ``srun``, ``prte``",  "`resource_tacc.json     <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_tacc.json>`_"
    "`Stampede2 <https://docs.tacc.utexas.edu/hpc/stampede2/>`_",                         "stampede2.tacc.utexas.edu", "``fork``, ``ibrun``, ``mpirun``, ``ssh``", "`resource_access.json   <https://github.com/radical-cybertools/radical.pilot/blob/devel/src/radical/pilot/configs/resource_access.json>`_"
