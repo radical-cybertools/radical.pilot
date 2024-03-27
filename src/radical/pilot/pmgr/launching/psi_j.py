@@ -13,6 +13,8 @@ import threading as mt
 from .base import PilotLauncherBase
 from ...   import states as rps
 
+SCHEMA_LOCAL = 'local'
+
 # psij is optional
 psij    = None
 psij_ex = None
@@ -69,7 +71,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
         schema = schemas[0]
 
         if schema == 'fork':
-            schema = 'local'
+            schema = SCHEMA_LOCAL
 
         return schema
 
@@ -171,7 +173,8 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.directory           = jd.working_directory
             spec.stdout_path         = jd.output
             spec.stderr_path         = jd.error
-            spec.inherit_environment = False
+            # inherit environment for local executor only
+            spec.inherit_environment = bool(schema == SCHEMA_LOCAL)
 
             spec.resources = psij.ResourceSpecV1()
             spec.resources.node_count            = jd.node_count
