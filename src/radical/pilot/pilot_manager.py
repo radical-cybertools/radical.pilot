@@ -283,8 +283,7 @@ class PilotManager(rpu.ClientComponent):
         if self._terminate.is_set():
             return False
 
-
-      # self._log.debug('state event: %s', msg)
+        self._log.debug('state event: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -305,7 +304,8 @@ class PilotManager(rpu.ClientComponent):
 
                 # we got the state update from the state callback - don't
                 # publish it again
-                self._update_pilot(thing, publish=False)
+                if not self._update_pilot(thing, publish=False):
+                    return False
 
         return True
 

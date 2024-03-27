@@ -71,6 +71,11 @@ class Agent_0(rpu.AgentComponent):
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
 
+        # also open a service endpoint so that a ZMQ client can submit tasks to
+        # this agent
+        self._service = None
+        self._start_service_ep()
+
 
     # --------------------------------------------------------------------------
     #
@@ -208,6 +213,7 @@ class Agent_0(rpu.AgentComponent):
                  'type'     : 'pilot',
                  'uid'      : self._pid,
                  'state'    : rps.PMGR_ACTIVE,
+                 'rest_url' : self._service.addr,
                  'resources': {'rm_info': rm_info,
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
@@ -689,6 +695,65 @@ class Agent_0(rpu.AgentComponent):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'register_named_env',
                                           'arg': {'env_name': env_name}})
         return out
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_service_ep(self):
+
+        self._service = ru.zmq.Server(uid='%s.server' % self._uid)
+        self._service.register_request('submit_tasks', self._ep_submit_tasks)
+        self._service.start()
+
+        state_cfg = ru.Config(path='./state_pubsub.cfg')
+
+        self._log.info('service_url : %s', self._service.addr)
+        self._log.info('state pubsub: %s', state_cfg.sub)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ep_submit_tasks(self, request):
+
+      # import pprint
+      # self._log.debug('service request: %s', pprint.pformat(request))
+
+        tasks = request['tasks']
+
+        for task in tasks:
+
+            td = task['description']
+
+            if not task.get('uid'):
+                task['uid'] = ru.generate_id('task.ep.%(item_counter)04d',
+                                             ru.ID_CUSTOM, ns=self._pid)
+
+            sbox = '%s/%s' % (os.environ['RP_PILOT_SANDBOX'], td['uid'])
+
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['task_sandbox_path'] = sbox
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
+            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
+            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
+            task['pilot']             = os.environ['RP_PILOT_ID']
+            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
+                                                td.get('cpu_threads',   1),
+                                         'gpu': td['gpu_processes'] *
+                                                td.get('cpu_processes', 1)}
+
+            self._log.debug('ep: submit %s', td['uid'])
+
+        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+                            publish=True, push=True)
+
+
+  # # --------------------------------------------------------------------------
+  # #
+  # def _ep_get_task_updates(self, request):
+  #
+  #     import pprint
+  #     self._log.debug('update request: %s', pprint.pformat(request))
 
 
 # ------------------------------------------------------------------------------
