@@ -26,7 +26,7 @@
     "results": {
         "lm": {
             "aprun" : {
-                "launch_cmd" : "aprun -N 2 -n 4 -d 15",
+                "launch_cmd" : "aprun -n 4 -d 15",
                 "rank_exec"  : "/bin/sleep \"25\""
             }
         }

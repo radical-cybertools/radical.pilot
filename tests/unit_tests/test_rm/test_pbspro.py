@@ -50,7 +50,7 @@ class PBSProTestCase(TestCase):
 
         self.assertEqual(rm_info.cores_per_node, 15)
         self.assertEqual(len(rm_info.node_list), 1)
-        self.assertEqual(rm_info.node_list[0]['node_name'], 'nodes1')
+        self.assertEqual(rm_info.node_list[0]['name'], 'nodes1')
 
     # --------------------------------------------------------------------------
     #

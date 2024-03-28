@@ -723,7 +723,7 @@ def get_node_index(node_list, node_uid, pn):
 
     if not _node_index:
         for idx,n in enumerate(node_list):
-            _node_index[n['node_id']] = idx
+            _node_index[n['index']] = idx
 
     r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
@@ -820,7 +820,7 @@ def _get_pilot_provision(pilot, rtype):
             t1 = pilot.events[-1][ru.TIME]
 
         for node in nodes:
-            r0, r1 = get_node_index(nodes, node['node_id'], pn)
+            r0, r1 = get_node_index(nodes, node['index'], pn)
             boxes.append([t0, t1, r0, r1])
 
         ret['total'] = {pid: boxes}
@@ -959,11 +959,11 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
         pid  = pilot.uid
         rnd  = 'cores_per_node'
-        rmap = 'core_map'
+        rkey = 'cores'
 
         if rtype == 'gpu':
             rnd  = 'gpus_per_node'
-            rmap = 'gpu_map'
+            rkey = 'gpus'
 
         pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
@@ -978,7 +978,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         # resource id, we set or adjust t_min / t_max.
         resources = dict()
         for pnode in pnodes:
-            idx = get_node_index(nodes, pnode['node_id'], pn)
+            idx = get_node_index(nodes, pnode['index'], pn)
             for c in range(idx[0], idx[1] + 1):
                 resources[c] = [None, None]
 
@@ -988,7 +988,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
                 continue
 
             try:
-                ranks  = task.cfg['slots']['ranks']
+                slots  = task.cfg['slots']
                 tts    = task.timestamps
                 task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
                 task_max  = tts(event=task['consume']['unschedule'][1])[-1]
@@ -996,18 +996,17 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
             except:
                 continue
 
-            for rank in ranks:
+            for slot in slots:
 
-                r0, _ = get_node_index(nodes, rank['node_id'], pn)
+                r0, _ = get_node_index(nodes, slot['node_index'], pn)
 
-                for resource_map in rank[rmap]:
-                    for resource in resource_map:
-                        idx   = r0 + resource
-                        t_min = resources[idx][0]
-                        t_max = resources[idx][1]
-                        if t_min is None or t_min > task_min: t_min = task_min
-                        if t_max is None or t_max < task_max: t_max = task_max
-                        resources[idx] = [t_min, t_max]
+                for resource in slot[rkey]:
+                    idx   = r0 + resource
+                    t_min = resources[idx][0]
+                    t_max = resources[idx][1]
+                    if t_min is None or t_min > task_min: t_min = task_min
+                    if t_max is None or t_max < task_max: t_max = task_max
+                    resources[idx] = [t_min, t_max]
 
         # now sift through resources and find buckets of pairs with same t_min
         # or same t_max
@@ -1127,7 +1126,7 @@ def _get_pilot_consumption(pilot, rtype):
 
     if anodes and t0 is not None:
         for anode in anodes:
-            r0, r1 = get_node_index(nodes, anode['node_id'], pn)
+            r0, r1 = get_node_index(nodes, anode['index'], pn)
             boxes.append([t0, t1, r0, r1])
 
     ret['agent'] = {pid: boxes}
@@ -1143,7 +1142,7 @@ def _get_pilot_consumption(pilot, rtype):
 
         if t0 is not None:
             for node in pnodes:
-                r0, r1 = get_node_index(nodes, node['node_id'], pn)
+                r0, r1 = get_node_index(nodes, node['index'], pn)
                 boxes.append([t0, t1, r0, r1])
 
         ret[metric] = {pid: boxes}
@@ -1174,11 +1173,11 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     nodes, _, _ = _get_nodes(pilot)
 
     rnd  = 'cores_per_node'
-    rmap = 'core_map'
+    rkey = 'cores'
 
     if rtype == 'gpu':
         rnd  = 'gpus_per_node'
-        rmap = 'gpu_map'
+        rkey = 'gpus'
 
     pn = pilot.cfg['resource_details']['rm_info'][rnd]
 
@@ -1186,15 +1185,14 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     if 'slots' not in task.cfg:
         return dict()
 
-    ranks     = task.cfg['slots']['ranks']
+    slots     = task.cfg['slots']
     resources = list()
-    for rank in ranks:
+    for slot in slots:
 
-        r0, _ = get_node_index(nodes, rank['node_id'], pn)
+        r0, _ = get_node_index(nodes, slot['node_index'], pn)
 
-        for resource_map in rank[rmap]:
-            for resource in resource_map:
-                resources.append(r0 + resource)
+        for resource in slot[rkey]:
+            resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
     resources = cluster_resources(resources)

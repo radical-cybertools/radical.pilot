@@ -15,8 +15,9 @@ from . import PilotManager
 from . import states    as rps
 from . import constants as rpc
 
-from .messages           import RPCRequestMessage, RPCResultMessage
-from .staging_directives import complete_url
+from .messages             import RPCRequestMessage, RPCResultMessage
+from .staging_directives   import complete_url
+from .resource_config      import NodeResources, NodeDescription
 
 
 # ------------------------------------------------------------------------------
@@ -301,7 +302,8 @@ class Pilot(object):
                'js_url'           : str(self._pilot_jsurl),
                'js_hop'           : str(self._pilot_jshop),
                'description'      : self.description,  # this is a deep copy
-               'resource_details' : self.resource_details
+               'resource_details' : self.resource_details,
+               'nodes'            : self.nodes
               }
 
         return ret
@@ -332,6 +334,23 @@ class Pilot(object):
         """dict: agent level resource information."""
 
         return self._pilot_dict.get('resource_details')
+
+
+    # -------------------------------------------------------------------------
+    #
+    @property
+    def nodes(self):
+        '''List of NodeDescriptions, describing the nodes the pilot can place
+        tasks on'''
+
+        resource_details = self.resource_details
+        if not resource_details:
+            return list()
+
+        node_resources = [NodeResources(node)
+                          for node in resource_details.get('node_list')]
+
+        return [NodeDescription(from_dict=nr) for nr in node_resources]
 
 
     # --------------------------------------------------------------------------

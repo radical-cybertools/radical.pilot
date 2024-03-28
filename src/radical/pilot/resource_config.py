@@ -2,7 +2,12 @@
 __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import copy
+
+from typing import List
+
 import radical.utils as ru
+
 
 LABEL                  = 'label'
 DESCRIPTION            = 'description'
@@ -194,3 +199,142 @@ class ResourceConfig(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
+#
+class NodeDescription(ru.TypedDict):
+    '''
+    Node description for the end user, exposed via pilot instances
+    '''
+
+    CORES = 'cores'
+    GPUS  = 'gpus'
+    LFS   = 'lfs'
+    MEM   = 'mem'
+    INDEX = 'index'
+    NAME  = 'name'
+
+    _schema = {
+        CORES : int,
+        GPUS  : int,
+        LFS   : int,
+        MEM   : int,
+        INDEX : int,
+        NAME  : str,
+    }
+
+    _defaults = {
+        CORES : 0,
+        GPUS  : 0,
+        LFS   : 0,
+        MEM   : 0,
+        INDEX : 0,
+        NAME  : None,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict=None):
+
+        if isinstance(from_dict, NodeResources):
+
+            nr        = copy.deepcopy(from_dict)
+            from_dict = dict()
+
+            from_dict[self.CORES  ] = len(nr.cores)
+            from_dict[self.GPUS   ] = len(nr.gpus)
+            from_dict[self.LFS    ] = nr.lfs
+            from_dict[self.MEM    ] = nr.mem
+            from_dict[self.INDEX  ] = nr.index
+            from_dict[self.NAME   ] = nr.name
+
+        super().__init__(from_dict=from_dict)
+        self._verify
+
+
+# ------------------------------------------------------------------------------
+#
+class NodeResources(ru.TypedDict):
+    '''
+    Node resources as reported by the resource manager, used by the scheduler
+    '''
+
+    CORES    = 'cores'
+    GPUS     = 'gpus'
+    LFS_FREE = 'lfs_free'
+    MEM_FREE = 'mem_free'
+    INDEX    = 'index'
+    NAME     = 'name'
+
+    _schema = {
+        CORES    : [int],
+        GPUS     : [int],
+        LFS_FREE : int,
+        MEM_FREE : int,
+        INDEX    : int,
+        NAME     : str,
+    }
+
+    _defaults = {
+        CORES    : [],
+        GPUS     : [],
+        LFS_FREE : 0,
+        MEM_FREE : 0,
+        INDEX    : 0,
+        NAME     : '',
+    }
+
+
+# ------------------------------------------------------------------------------
+#
+class Slot(ru.TypedDict):
+
+    CORES       = 'cores'
+    GPUS        = 'gpus'
+    LFS         = 'lfs'
+    MEM         = 'mem'
+    NODE_INDEX  = 'node_index'
+    NODE_NAME   = 'node_name'
+
+    _schema = {
+        CORES      : [None],
+        GPUS       : [None],
+        LFS        : int,
+        MEM        : int,
+        NODE_INDEX : int,
+        NODE_NAME  : str,
+    }
+
+    _defaults = {
+        CORES      : [],
+        GPUS       : [],
+        LFS        : 0,
+        MEM        : 0,
+        NODE_INDEX : 0,
+        NODE_NAME  : '',
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def from_node(cls, node: NodeDescription,
+                  core_ids: List[int] = list(),
+                  gpu_ids : List[int] = list(),
+                  lfs     : int       = 0,
+                  mem     : int       = 0):
+
+        if core_ids: assert max(core_ids) <  node.cores
+        if gpu_ids : assert max(gpu_ids)  <  node.gpus
+        if lfs     : assert lfs           <= node.lfs
+        if mem     : assert mem           <= node.mem
+
+        return cls({cls.CORES     : [core_ids],
+                    cls.GPUS      : [gpu_ids],
+                    cls.LFS       : lfs,
+                    cls.MEM       : mem,
+                    cls.NODE_INDEX: node.index,
+                    cls.NODE_NAME : node.name})
+
+
+# ------------------------------------------------------------------------------
+

@@ -49,24 +49,24 @@ class TestFork(TestCase):
         lm_fork.node_name = 'local_machine'
         self.assertFalse(lm_fork.can_launch(
             task={'description': {'use_mpi': False},
-                  'slots': {'ranks': [{'node_id': '00001'},
-                                      {'node_id': '00002'}]}})[0])
+                  'slots': [{'node_index': 1},
+                            {'node_index': 2}]})[0])
         self.assertFalse(lm_fork.can_launch(
             task={'description': {'use_mpi': False},
-                  'slots': {'ranks': [{'node_name': 'not_localhost_00'}]}})[0])
+                  'slots': [{'node_name': 'not_localhost_00'}]})[0])
         self.assertFalse(lm_fork.can_launch(
             task={'description': {'executable': None,
                                   'ranks'     : 1,
                                   'use_mpi'   : False},
-                  'slots': {'ranks': [{'node_name': 'localhost'}]}})[0])
+                  'slots': [{'node_name': 'localhost'}]})[0])
         self.assertTrue(lm_fork.can_launch(
             task={'description': {'executable': 'script',
                                   'ranks'     : 1,
                                   'use_mpi'   : False},
-                  'slots': {'ranks': [{'node_name': 'localhost'}]}})[0])
+                  'slots': [{'node_name': 'localhost'}]})[0])
         self.assertFalse(lm_fork.can_launch(
             task={'description': {'use_mpi': True},
-                  'slots': {'ranks': [{'node_name': 'localhost'}]}})[0])
+                  'slots': [{'node_name': 'localhost'}]})[0])
 
 
     # --------------------------------------------------------------------------

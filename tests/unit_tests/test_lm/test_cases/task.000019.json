@@ -14,23 +14,40 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks": [
-                    {
-                        "node_name" : "node1",
-                        "node_id"   : "00001",
-                        "core_map"  : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                        "gpu_map"   : [[], [], [], []],
-                        "lfs"       : 0,
-                        "mem"       : 0
-                    }
-                ],
-                "partition_id"   : null,
-                "cores_per_node" : 28,
-                "gpus_per_node"  : 0,
-                "lfs_per_node"   : 0,
-                "mem_per_node"   : 0
-            },
+            "slots": [
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [0, 1],
+                          "gpus"      : [],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [2, 3],
+                          "gpus"      : [],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [4, 5],
+                          "gpus"      : [],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [6, 7],
+                          "gpus"      : [],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      }
+            ],
             "exact": true
         }
     },
