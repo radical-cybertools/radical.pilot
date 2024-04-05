@@ -8,6 +8,13 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.49.0 Release                                                    2024-04-05
+
+  - MPIRUN/SRUN documentation update
+  - inherit environment for local executor
+
+
+--------------------------------------------------------------------------------
 ### 1.48.0 Release                                                    2024-03-24
 
   - remove SAGA as hard dependency
