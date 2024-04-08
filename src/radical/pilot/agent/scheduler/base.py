@@ -464,10 +464,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
             # iterate over cores/gpus in the slot, and update state
             for core in slot['cores']:
-                node['cores'][core] = new_state
+                node['cores'][core['index']] = new_state
 
             for gpu in slot['gpus']:
-                node['gpus'][gpu] = new_state
+                node['gpus'][gpu['index']] = new_state
 
             if slot['lfs']:
                 if new_state == rpc.BUSY:

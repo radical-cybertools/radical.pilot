@@ -3,4 +3,5 @@ radical.gtod
 psij-python
 setproctitle
 dill
+marshmallow-dataclass
 

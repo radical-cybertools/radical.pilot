@@ -52,11 +52,11 @@ PROXY_TASK_QUEUE               = 'proxy_task_queue'
 
 # ------------------------------------------------------------------------------
 #
-# two-state for resource occupation.
+# constants for resource occupation: floats allow for partial occupation
 #
-FREE = float( 0.0)
-BUSY = float( 1.0)
-DOWN = float(-1.0)
+FREE =  0.0
+BUSY =  1.0
+DOWN = None
 
 
 # -----------------------------------------------------------------------------

@@ -17,7 +17,7 @@ from . import constants as rpc
 
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
-from .resource_config      import NodeResources, NodeDescription
+from .resource_config      import NodeResources, NodeList
 
 
 # ------------------------------------------------------------------------------
@@ -82,6 +82,7 @@ class Pilot(object):
         self._callbacks  = dict()
         self._cb_lock    = ru.RLock()
         self._tmgr       = None
+        self._nodelist   = None
 
         # pilot failures can trigger app termination
         self._exit_on_error = self._descr.get('exit_on_error')
@@ -339,18 +340,20 @@ class Pilot(object):
     # -------------------------------------------------------------------------
     #
     @property
-    def nodes(self):
-        '''List of NodeDescriptions, describing the nodes the pilot can place
-        tasks on'''
+    def nodelist(self):
+        '''NodeList, describing the nodes the pilot can place tasks on'''
 
-        resource_details = self.resource_details
-        if not resource_details:
-            return list()
+        if not self._nodelist:
 
-        node_resources = [NodeResources(node)
-                          for node in resource_details.get('node_list')]
+            resource_details = self.resource_details
+            if not resource_details:
+                return list()
 
-        return [NodeDescription(from_dict=nr) for nr in node_resources]
+            nodes = [NodeResources(node) for node
+                                         in  resource_details.get('node_list')]
+            self._nodelist = NodeList(nodes=nodes)
+
+        return self._nodelist
 
 
     # --------------------------------------------------------------------------
