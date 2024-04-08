@@ -220,4 +220,60 @@ def get_resource_job_url(resource: str,
 
 
 # ------------------------------------------------------------------------------
+#
+def convert_slots(slots, log=None):
+
+    from ..resource_config import Slot, ResourceOccupation
+
+    if not slots:
+        return slots
+
+    print('=== try convert %s' % slots)
+
+    new_slots = list()
+    for slot in slots:
+
+        cores = slot['cores']
+        if cores:
+            if isinstance(cores[0], int):
+                cores = [ResourceOccupation(index=i, occupation=1.0)
+                         for i in slot['cores']]
+            elif isinstance(cores[0], dict):
+                cores = list()
+                for ro in slot['cores']:
+                    i = ro['index']
+                    o = ro['occupation']
+                    cores.append(ResourceOccupation(index=i, occupation=o))
+            else:
+                cores = [ResourceOccupation(index=i, occupation=o)
+                         for i,o in slot['cores']]
+
+
+        gpus = slot['gpus']
+        if gpus:
+            if isinstance(gpus[0], int):
+                gpus  = [ResourceOccupation(index=i, occupation=1.0)
+                         for i in slot['gpus']]
+            elif isinstance(gpus[0], dict):
+                gpus = list()
+                for ro in slot['gpus']:
+                    i = ro['index']
+                    o = ro['occupation']
+                    gpus.append(ResourceOccupation(index=i, occupation=o))
+            else:
+                gpus  = [ResourceOccupation(index=i, occupation=o)
+                         for i,o in slot['gpus']]
+
+        new_slot = Slot(cores=cores,
+                        gpus=gpus,
+                        lfs=slot['lfs'],
+                        mem=slot['mem'],
+                        node_index=slot['node_index'],
+                        node_name=slot['node_name'])
+        new_slots.append(new_slot)
+
+    return new_slots
+
+
+# ------------------------------------------------------------------------------
 

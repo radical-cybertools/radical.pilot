@@ -352,6 +352,7 @@ class Pilot(object):
             nodes = [NodeResources(node) for node
                                          in  resource_details.get('node_list')]
             self._nodelist = NodeList(nodes=nodes)
+            self._nodelist.verify()
 
         return self._nodelist
 

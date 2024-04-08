@@ -84,7 +84,7 @@ class TestSSH(TestCase):
 
         lm_ssh = SSH('', {}, None, None, None)
         self.assertFalse(lm_ssh.can_launch(
-            task={'description': {'use_mpi': False},
+            task={'description': {'use_mpi': False, 'executable': None},
                   'slots': {'ranks': [{'node_id': '00001'},
                                       {'node_id': '00002'}]}})[0])
         self.assertFalse(lm_ssh.can_launch(

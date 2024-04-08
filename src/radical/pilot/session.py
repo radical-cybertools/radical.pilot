@@ -555,7 +555,11 @@ class Session(object):
 
             # also update proxy heartbeat
             if self._proxy:
-                self._proxy.request('heartbeat', {'sid': self._uid})
+                try:
+                    self._proxy.request('heartbeat', {'sid': self._uid})
+                except:
+                    # ignore errors in case proxy went away already
+                    pass
         # --------------------------------------
 
         # --------------------------------------

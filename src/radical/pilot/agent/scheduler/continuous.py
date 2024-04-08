@@ -216,7 +216,10 @@ class Continuous(AgentSchedulingComponent):
             # a slot requires one or more GPUs, GPU sharing is disabled.
             if gpus_per_slot >= 1.0:
 
-                assert gpus_per_slot.is_integer(), 'GPU sharing not supported'
+                tmp = int(gpus_per_slot)
+                if tmp != gpus_per_slot:
+                    raise ValueError('cannot share GPUs')
+                gpus_per_slot = tmp
 
                 for gpu_idx,gpu in enumerate(node['gpus']):
 

@@ -11,6 +11,7 @@ import multiprocessing as mp
 from unittest import mock, TestCase
 
 import radical.utils           as ru
+import radical.pilot           as rp
 import radical.pilot.constants as rpc
 
 from radical.pilot.agent.resource_manager     import RMInfo
@@ -47,7 +48,7 @@ class TestContinuous(TestCase):
 
             td = test_case['task']['description']
             sd_options = test_case['setup'].get('slots_description') or \
-                         {'find_slots'    : td['ranks'],
+                         {'n_slots'       : td['ranks'],
                           'ranks_per_slot': 1,
                           'cores_per_slot': td['cores_per_rank'],
                           'gpus_per_slot' : td['gpus_per_rank'],
@@ -106,6 +107,8 @@ class TestContinuous(TestCase):
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
+                    import pprint
+                    pprint.pprint(t)
                     td = t['description']
                     self.assertEqual(
                         t['resources'], {'cpu': td['ranks'] *
@@ -120,6 +123,7 @@ class TestContinuous(TestCase):
             component._schedule_incoming()
 
             slots = test_case['result']['slots']
+            slots = rp.utils.convert_slots(slots)
             component._change_slot_states(slots, rpc.FREE)
 
             component._set_tuple_size(task)
@@ -197,13 +201,15 @@ class TestContinuous(TestCase):
             component.nodes = copy.deepcopy(test_case['setup']['nodes'])
 
             task = {'description': test_case['task']['description'],
-                    'slots'      : test_case['result']['slots']}
+                    'slots'      : test_case['result']['slots'],
+                    'uid'        : 'task.000000'}
+
+            task['slots'] = rp.utils.convert_slots(task['slots'])
 
             # set corresponding cores/gpus as busy
             component._change_slot_states(task['slots'], rpc.BUSY)
             # check that nodes got changed
             self.assertNotEqual(component.nodes, test_case['setup']['nodes'])
-
             component.unschedule_task(task)
 
             # nodes are back to the initial state

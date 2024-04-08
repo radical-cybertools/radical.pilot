@@ -42,6 +42,9 @@ class TestPilot(TestCase):
         session._get_client_sandbox   = mock.Mock(return_value = sandbox_url)
         session._get_jsurl            = mock.Mock(return_value = ('ssh',
                                                                   sandbox_url))
+        session._prof                 = mock.Mock()
+        session._log                  = mock.Mock()
+
 
         descr = rp.PilotDescription({'resource': 'foo',
                                      'uid'     : 'foo',

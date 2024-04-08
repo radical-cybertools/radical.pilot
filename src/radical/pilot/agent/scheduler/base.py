@@ -436,7 +436,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         have been allocated or deallocated.  For details on the data structure,
         see top of `base.py`.
         '''
-        # This method needs to change if the DS changes.
+        # FIXME: remove once Slot structure settles
+        slots = rpu.convert_slots(slots)
 
         # for node_name, node_index, cores, gpus in slots['ranks']:
         for slot in slots:
@@ -459,9 +460,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
             if not node_found:
                 raise RuntimeError('inconsistent node information')
-
-            import pprint
-            self._log.debug('=== change %s', pprint.pformat(slots))
 
             # iterate over cores/gpus in the slot, and update state
             for core in slot['cores']:
@@ -918,7 +916,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # and we honor that decision.  We though will mark the respective
             # resources as being used, to avoid other tasks being scheduled onto
             # the same set of resources.
-            if td['slots']:
+            if td.get('slots'):
 
                 # FIXME: check assembly of slots in the scheduler (jsrun)
                 #        e.g.: GPU sharing  (*)
@@ -1097,19 +1095,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             self._active_cnt += 1
 
             # change old slot structure to the new `Slot` type
-            new_slots = list()
-            for slot in slots:
-                cores = [ResourceOccupation(index=c) for c in slot['cores']]
-                gpus  = [ResourceOccupation(index=g) for g in slot['gpus']]
-                new_slot = Slot(cores=cores,
-                                gpus=gpus,
-                                lfs=slot['lfs'],
-                                mem=slot['mem'],
-                                node_index=slot['node_index'],
-                                node_name=slot['node_name'])
-                new_slots.append(new_slot)
-
-            slots = new_slots
+            slots = rpu.convert_slots(slots, self._log)
+            import pprint
+            print(slots)
 
             # the task was placed, we need to reflect the allocation in the
             # nodelist state (BUSY) and pass placement to the task, to have

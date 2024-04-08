@@ -14,8 +14,8 @@ import radical.utils as ru
 
 if True:
 
-    n_nodes =   100
-    n_tasks =  1001
+    n_nodes =  10000
+    n_tasks =  30001
 
     print('========================================')
 
@@ -46,9 +46,10 @@ if True:
         slots = nl.find_slots(rr, n_slots=2)
       # print(i, slots)
         if slots:
+          # print(i)
             allocs.append(slots)
 
-        if allocs and random.random() < 0.2:
+        if allocs and random.random() < 0.001:
             to_release = random.choice(allocs)
             allocs.remove(to_release)
             nl.release_slots(to_release)
@@ -58,7 +59,6 @@ if True:
 
     for slots in allocs:
         nl.release_slots(slots)
-
 
     for _ in range(5):
 
@@ -87,14 +87,14 @@ if __name__ == '__main__':
         pd_init = {'resource'      : 'local.localhost',
                    'runtime'       : 15,
                    'exit_on_error' : True,
-                   'nodes'         : 5
+                   'nodes'         : 2
                   }
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
         tmgr.add_pilots(pilot)
 
         pilot.wait([rp.PMGR_ACTIVE, rp.FAILED])
-        pprint.pprint(pilot.nodelist)
+        pprint.pprint(pilot.nodelist.as_dict())
 
         n = 5
         report.header('submit %d tasks' % n)
@@ -102,15 +102,18 @@ if __name__ == '__main__':
 
         tds = list()
         for i in range(n):
-            slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1))
+            slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
+                                                                  lfs=512))
             print('=== %s' % slots)
 
             td = rp.TaskDescription()
-            td.executable = '/bin/date'
-            td.slots      = slots
+            td.executable   = '/bin/date'
+            td.slots        = slots
 
             tds.append(td)
             report.progress()
+
+        pprint.pprint(pilot.nodelist.as_dict())
 
         report.progress_done()
 

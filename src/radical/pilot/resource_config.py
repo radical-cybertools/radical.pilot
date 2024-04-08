@@ -226,15 +226,11 @@ class ResourceOccupation(ru.TypedDict):
     def __str__(self):
         return self.__repr__()
 
+
     def __repr__(self):
         if self.occupation == DOWN:
             return '%d:----' % self.index
-        try:
-            return '%d:%.2f' % (self.index, self.occupation)
-        except Exception as e:
-            print('invalid occupation: -%s- / %s: %s' % (self.index,
-                                                       self.occupation, e))
-            raise
+        return '%d:%.2f' % (self.index, self.occupation)
 
 
 _RO = ResourceOccupation
@@ -270,7 +266,7 @@ class RankRequirements(ru.TypedDict):
     }
 
     def __repr__(self):
-        return 'RR(%d, %.2f, %d, %.2f, %d, %d)' % (
+        return 'RR(%d:%.2f, %d:%.2f, %d, %d)' % (
                 self.n_cores, self.core_occupation,
                 self.n_gpus,  self.gpu_occupation,
                 self.lfs,     self.mem)
@@ -280,53 +276,58 @@ class RankRequirements(ru.TypedDict):
 
     def __eq__(self, other: 'RankRequirements') -> bool:
 
-        if   self.n_cores         != self.n_cores:         return False
-        elif self.n_gpus          != self.n_gpus:          return False
-        elif self.lfs             != self.lfs:             return False
-        elif self.mem             != self.mem:             return False
-        elif self.core_occupation != self.core_occupation: return False
-        elif self.gpu_occupation  != self.gpu_occupation:  return False
-        else:                                              return True
+        if  self.n_cores         != self.n_cores          and \
+            self.n_gpus          != self.n_gpus           and \
+            self.lfs             != self.lfs              and \
+            self.mem             != self.mem              and \
+            self.core_occupation != self.core_occupation  and \
+            self.gpu_occupation  != self.gpu_occupation:
+            return False
+        return True
 
     def __lt__(self, other: 'RankRequirements') -> bool:
 
-        if   self.n_cores         >= self.n_cores:         return False
-        elif self.n_gpus          >= self.n_gpus:          return False
-        elif self.lfs             >= self.lfs:             return False
-        elif self.mem             >= self.mem:             return False
-        elif self.core_occupation >= self.core_occupation: return False
-        elif self.gpu_occupation  >= self.gpu_occupation:  return False
-        else:                                              return True
+        if  self.n_cores         >= self.n_cores          and \
+            self.n_gpus          >= self.n_gpus           and \
+            self.lfs             >= self.lfs              and \
+            self.mem             >= self.mem              and \
+            self.core_occupation >= self.core_occupation  and \
+            self.gpu_occupation  >= self.gpu_occupation:
+            return False
+        return True
 
     def __le__(self, other: 'RankRequirements') -> bool:
 
-        if   self.n_cores         >  self.n_cores:         return False
-        elif self.n_gpus          >  self.n_gpus:          return False
-        elif self.lfs             >  self.lfs:             return False
-        elif self.mem             >  self.mem:             return False
-        elif self.core_occupation >  self.core_occupation: return False
-        elif self.gpu_occupation  >  self.gpu_occupation:  return False
-        else:                                              return True
+        if  self.n_cores         >  self.n_cores          and \
+            self.n_gpus          >  self.n_gpus           and \
+            self.lfs             >  self.lfs              and \
+            self.mem             >  self.mem              and \
+            self.core_occupation >  self.core_occupation  and \
+            self.gpu_occupation  >  self.gpu_occupation:
+            return False
+        return True
 
     def __gt__(self, other: 'RankRequirements') -> bool:
 
-        if   self.n_cores         <= self.n_cores:         return False
-        elif self.n_gpus          <= self.n_gpus:          return False
-        elif self.lfs             <= self.lfs:             return False
-        elif self.mem             <= self.mem:             return False
-        elif self.core_occupation <= self.core_occupation: return False
-        elif self.gpu_occupation  <= self.gpu_occupation:  return False
-        else:                                              return True
+        if  self.n_cores         <= self.n_cores          and \
+            self.n_gpus          <= self.n_gpus           and \
+            self.lfs             <= self.lfs              and \
+            self.mem             <= self.mem              and \
+            self.core_occupation <= self.core_occupation  and \
+            self.gpu_occupation  <= self.gpu_occupation:
+            return False
+        return True
 
     def __ge__(self, other: 'RankRequirements') -> bool:
 
-        if   self.n_cores         <  self.n_cores:         return False
-        elif self.n_gpus          <  self.n_gpus:          return False
-        elif self.lfs             <  self.lfs:             return False
-        elif self.mem             <  self.mem:             return False
-        elif self.core_occupation <  self.core_occupation: return False
-        elif self.gpu_occupation  <  self.gpu_occupation:  return False
-        else:                                              return True
+        if  self.n_cores         <  self.n_cores          and \
+            self.n_gpus          <  self.n_gpus           and \
+            self.lfs             <  self.lfs              and \
+            self.mem             <  self.mem              and \
+            self.core_occupation <  self.core_occupation  and \
+            self.gpu_occupation  <  self.gpu_occupation:
+            return False
+        return True
 
 
 # ------------------------------------------------------------------------------
@@ -557,8 +558,8 @@ class NodeResources(ru.TypedDict):
                 if len(gpus) < rr.n_gpus:
                     return None
 
-            if rr.lfs and self._lfs < rr.lfs: return None
-            if rr.mem and self._mem < rr.mem: return None
+            if rr.lfs and self.lfs < rr.lfs: return None
+            if rr.mem and self.mem < rr.mem: return None
 
             slot = Slot(cores=cores, gpus=gpus, lfs=rr.lfs, mem=rr.mem,
                         node_index=self.index, node_name=self.name)
@@ -625,8 +626,8 @@ class NodeList(ru.TypedDict):
                 break
 
         if self.uniform:
-            self.cores_per_node = node_0.cores
-            self.gpus_per_node  = node_0.gpus
+            self.cores_per_node = len(node_0.cores)
+            self.gpus_per_node  = len(node_0.gpus)
             self.lfs_per_node   = node_0.lfs
             self.mem_per_node   = node_0.mem
 
@@ -650,6 +651,7 @@ class NodeList(ru.TypedDict):
                 return None
 
         slots = list()
+        count = 0
         start = self.__index
 
         for i in range(0, len(self.nodes)):
@@ -658,6 +660,7 @@ class NodeList(ru.TypedDict):
             node = self.nodes[idx]
 
             while True:
+                count += 1
                 slot = node.find_slot(rr)
               # print('--- got slot %s' % slot)
                 if not slot:
@@ -678,10 +681,12 @@ class NodeList(ru.TypedDict):
                 node.deallocate_slot(slot)
             self.__last_failed_rr = rr
             self.__last_failed_n  = n_slots
+          # print(' --- %5d' % count)
             return None
 
         self.__index = stop
 
+      # print(' === %5d' % count)
         return slots
 
 
@@ -692,10 +697,11 @@ class NodeList(ru.TypedDict):
             node = self.nodes[slot.node_index]
             node.deallocate_slot(slot)
 
-            self.__last_failed_rr = None
-            self.__last_failed_n  = None
+        if self.__last_failed_rr:
+            self.__index = min([slot.node_index for slot in slots]) - 1
 
-        self.__index = min([slot.node_index for slot in slots])
+        self.__last_failed_rr = None
+        self.__last_failed_n  = None
 
 
 # ------------------------------------------------------------------------------

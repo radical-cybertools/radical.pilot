@@ -41,9 +41,12 @@ class TestBaseScheduling(TestCase):
                         mocked_reg_close, mocked_reg_put, mocked_reg_init,
                         mocked_init):
 
+        def _mock_schedule_tasks(*args, **kwargs):
+            return None, None
+
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._configure          = mock.Mock()
-        sched._schedule_tasks     = mock.Mock()
+        sched._schedule_tasks     = _mock_schedule_tasks
         sched._log                = mock.Mock()
         sched._prof               = mock.Mock()
         sched.slot_status         = mock.Mock()
@@ -87,6 +90,7 @@ class TestBaseScheduling(TestCase):
     def test_change_slot_states(self, mocked_init):
 
         sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._log = mock.Mock()
 
         for c in self._test_cases['change_slots']:
             sched.nodes = c['nodes']
@@ -111,6 +115,9 @@ class TestBaseScheduling(TestCase):
 
         for c in self._test_cases['slot_status']:
             sched.nodes = c['nodes']
+            print('======================== NODES')
+            print(c['nodes'])
+            print('========================')
             self.assertEqual(sched.slot_status(), c['result'])
 
         # if log is NOT enabled for `logging.DEBUG`
