@@ -137,8 +137,7 @@ class Continuous(AgentSchedulingComponent):
 
         # reflect the request in the nodelist state (set to `FREE`)
         for task in ru.as_list(tasks):
-            self._log.debug('=== unschedule %s' % task['uid'])
-            self._log.debug('=== %s', pprint.pformat(task['slots']))
+            self._log.debug('unschedule %s' % task['uid'])
             self._change_slot_states(task['slots'], rpc.FREE)
 
 
@@ -187,7 +186,7 @@ class Continuous(AgentSchedulingComponent):
             node_idx  = node['index']
             node_name = node['name']
 
-            self._log.debug('=== find resources on %s:%d', node_name, node_idx)
+            self._log.debug_9('find resources on %s:%d', node_name, node_idx)
             self._log.debug_9('node: %s', pprint.pformat(node))
             self._log.debug_9('cps : %s', cores_per_slot)
 
@@ -200,76 +199,56 @@ class Continuous(AgentSchedulingComponent):
 
             for core_idx,core in enumerate(node['cores']):
 
-                self._log.debug_9('=== check core %s:%s' % (node_name, core_idx))
-
                 if core == rpc.FREE:
-                    self._log.debug_9('=== found core %s:%s' % (node_name, core_idx))
                     slot['cores'].append(core_idx)
 
                 if len(slot['cores']) == cores_per_slot:
-                    self._log.debug_9('=== enough cores on %s', node_name)
                     break
 
             if len(slot['cores']) < cores_per_slot:
-                self._log.debug_9('===! slots: %s', pprint.pformat(slots))
-                self._log.debug_9('===! not enough cores on %s', node_name)
+                self._log.debug_9('not enough cores on %s', node_name)
                 break
 
             # gpus can be shared, so we need proper resource tracking.  If
             # a slot requires one or more GPUs, GPU sharing is disabled.
             if gpus_per_slot >= 1.0:
-                self._log.debug('==== 0', gpus_per_slot)
 
                 tmp = int(gpus_per_slot)
                 if tmp != gpus_per_slot:
-                    self._log.debug('==== cannot share GPUs>1')
                     raise ValueError('cannot share GPUs>1')
                 gpus_per_slot = tmp
 
                 for gpu_idx,gpu in enumerate(node['gpus']):
 
-                    self._log.debug_9('==== check gpu %s:%s:%s:%s'
-                                      % (node_name, gpu_idx, gpu, rpc.FREE))
-
                     if gpu == rpc.FREE:
-                        self._log.debug_9('==== found gpu %s:%s' % (node_name, gpu_idx))
                         slot['gpus'].append([gpu_idx, 1.0])
 
                     if len(slot['gpus']) == gpus_per_slot:
-                        self._log.debug_9('==== enough gpus on %s', node_name)
                         break
 
                 if len(slot['gpus']) < gpus_per_slot:
-                    self._log.debug_9('====! slots: %s', pprint.pformat(slots))
-                    # not enough gpus on this node
+                    self._log.debug_9('not enough gpus on %s', node_name)
                     break
 
             elif gpus_per_slot > 0.0:
 
-                self._log.debug_9('==== 1', gpus_per_slot)
-
                 # find a GPU which has sufficient space left
                 for gpu_idx,gpu_occ in enumerate(node['gpus']):
 
-                    self._log.debug_9('==== check gpu %s:%s:%s'
-                                      % (node_name, gpu_idx, gpu_occ))
-
                     if 1 - gpu_occ >= gpus_per_slot:
-                        self._log.debug_9('==== found gpu %s:%s' % (node_name, gpu_idx))
                         slot['gpus'].append([gpu_idx, gpus_per_slot])
                         break
 
                 if len(slot['gpus']) < 1:
-                    self._log.debug_9('====! slots: %s', pprint.pformat(slots))
-                    # not enough gpus on this node
+                    self._log.debug_9('not enough gpus on %s', node_name)
                     break
 
-            self._log.debug('==== found resources on %s: %s', node_name, slot)
+            self._log.debug_9('found resources on %s: %s', node_name, slot)
 
             slots.append(slot)
 
-        self._log.debug('==== found resources on %s', node_name)
-        self._log.debug('==== %s', pprint.pformat(slots))
+        self._log.debug_9('found resources on %s', node_name)
+        self._log.debug_9(pprint.pformat(slots))
 
 
         if partial and len(slots) < n_slots:
@@ -321,8 +300,6 @@ class Continuous(AgentSchedulingComponent):
         mem_per_slot   = td['mem_per_rank']
         req_slots      = td['ranks']
 
-        self._log.debug('=== gps 1: %s', gpus_per_slot)
-
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
             cores_per_slot = 1
@@ -350,7 +327,6 @@ class Continuous(AgentSchedulingComponent):
         assert mem_per_slot   <= mem_per_node, \
                'too much mem     per proc %s' % mem_per_slot
 
-        self._log.debug('=== gps 4: %s', gpus_per_slot)
         # check what resource type limits teh number of slots per node
         tmp = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
@@ -378,7 +354,6 @@ class Continuous(AgentSchedulingComponent):
                     cores_per_node, gpus_per_node, req_slots,
                     slots_per_node, cores_per_slot, gpus_per_slot, tmp))
 
-        self._log.debug('=== gps 5: %s', gpus_per_slot)
         # set conditions to find the first matching node
         is_first = True
         is_last  = False
@@ -473,7 +448,6 @@ class Continuous(AgentSchedulingComponent):
             n_slots = min(rem_slots, slots_per_node)
             self._log.debug_7('find %s slots', n_slots)
 
-            self._log.debug('=== gps 5: %s', gpus_per_slot)
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
                                              n_slots        = n_slots,
