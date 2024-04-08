@@ -14,8 +14,8 @@ import radical.utils as ru
 
 if True:
 
-    n_nodes =   1000
-    n_tasks =  10001
+    n_nodes =   100
+    n_tasks =  1001
 
     print('========================================')
 
@@ -56,14 +56,15 @@ if True:
     stop = time.time()
     print('find_slots: %.2f' % (stop - start))
 
-    sys.exit(0)
+    for slots in allocs:
+        nl.release_slots(slots)
 
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
-    slots = nl.find_slots(n_cores=1, core_occupation=0.5); print(slots)
+
+    for _ in range(5):
+
+        slots = nl.find_slots(rp.RankRequirements(n_cores=1,
+                                                  core_occupation=0.5))
+        print(slots)
 
     print('========================================')
 
@@ -101,7 +102,7 @@ if __name__ == '__main__':
 
         tds = list()
         for i in range(n):
-            slots = pilot.nodelist.find_slot(n_cores=1)
+            slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1))
             print('=== %s' % slots)
 
             td = rp.TaskDescription()

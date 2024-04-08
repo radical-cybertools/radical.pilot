@@ -304,7 +304,7 @@ class Pilot(object):
                'js_hop'           : str(self._pilot_jshop),
                'description'      : self.description,  # this is a deep copy
                'resource_details' : self.resource_details,
-               'nodes'            : self.nodes
+               'nodeslist'        : self.nodelist
               }
 
         return ret

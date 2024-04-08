@@ -18,6 +18,7 @@ from ... import states    as rps
 from ... import constants as rpc
 
 from ...task_description import RAPTOR_WORKER
+from ...resource_config  import Slot, ResourceOccupation
 from ..resource_manager  import ResourceManager
 
 
@@ -1094,6 +1095,21 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 return False
 
             self._active_cnt += 1
+
+            # change old slot structure to the new `Slot` type
+            new_slots = list()
+            for slot in slots:
+                cores = [ResourceOccupation(index=c) for c in slot['cores']]
+                gpus  = [ResourceOccupation(index=g) for g in slot['gpus']]
+                new_slot = Slot(cores=cores,
+                                gpus=gpus,
+                                lfs=slot['lfs'],
+                                mem=slot['mem'],
+                                node_index=slot['node_index'],
+                                node_name=slot['node_name'])
+                new_slots.append(new_slot)
+
+            slots = new_slots
 
             # the task was placed, we need to reflect the allocation in the
             # nodelist state (BUSY) and pass placement to the task, to have
