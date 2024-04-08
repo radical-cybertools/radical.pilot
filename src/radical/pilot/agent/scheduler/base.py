@@ -750,13 +750,13 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-      # self._log.debug_9('before bisec: %d', len(to_test))
+        self._log.debug_9('before bisec: %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
-      # self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
-      #                                           len(unscheduled), len(failed))
+        self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
+                                                  len(unscheduled), len(failed))
 
         for task, error in failed:
 

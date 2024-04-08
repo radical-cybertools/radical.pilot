@@ -47,9 +47,7 @@ class TestContinuous(TestCase):
         for test_case in self._test_cases:
 
             td = test_case['task']['description']
-            sd_options = test_case['setup'].get('slots_description') or \
-                         {'n_slots'       : td['ranks'],
-                          'ranks_per_slot': 1,
+            sd_options = {'n_slots'       : td['ranks'],
                           'cores_per_slot': td['cores_per_rank'],
                           'gpus_per_slot' : td['gpus_per_rank'],
                           'lfs_per_slot'  : td['lfs_per_rank'],
@@ -64,7 +62,7 @@ class TestContinuous(TestCase):
             # number of ranks to run on a single node
             ranks = len(alc_slots)
             self.assertEqual(alc_slots,
-                             test_case['result']['slots']['ranks'][:ranks])
+                             test_case['result']['slots'][:ranks])
 
     # --------------------------------------------------------------------------
     #
@@ -159,7 +157,15 @@ class TestContinuous(TestCase):
             component._partitions   = {}
             component.nodes         = nodes
 
+            import pprint
+            pprint.pprint(test_case)
+            print('-------------------')
+          # task['description']['gpus_per_rank'] = 1.0
+            pprint.pprint(task['description'])
             slots = component.schedule_task(task)
+            print('-------------------')
+            pprint.pprint(slots)
+            print('-------------------')
 
             self.assertEqual(slots, test_case['result']['slots'])
             self.assertEqual(component._colo_history,

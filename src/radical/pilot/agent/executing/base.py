@@ -312,7 +312,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         # need to set `DEBUG_5` or higher to get slot debug logs
         if self._log._debug_level >= 5:
-            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
+            ru.write_json(slots, '%s/%s.sl' % (sbox, tid))
 
         return exec_path, exec_fullpath
 

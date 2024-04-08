@@ -43,15 +43,7 @@
                 "lfs"        : 0,
                 "mem"        : 0
             }
-        ],
-        "slots_description"  : {
-            "n_slots"        : 3,
-            "ranks_per_slot" : 3,
-            "cores_per_slot" : 6,
-            "gpus_per_slot"  : 1,
-            "lfs_per_slot"   : 0,
-            "mem_per_slot"   : 0
-        }
+        ]
     },
 
     "result": {
