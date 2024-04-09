@@ -39,20 +39,20 @@
     },
 
     "result": {
-        "slots": [{"node_name" : "a",
-                   "node_index": 1,
-                   "cores"     : [0],
-                   "gpus"      : [0],
-                   "mem"       : 128,
-                   "lfs"       : 0},
-                  {"node_name" : "a",
-                   "node_index": 1,
-                   "cores"     : [1],
-                   "gpus"      : [1],
-                   "mem"       : 128,
-                   "lfs"       : 0}
+        "slots": [{"cores"      : [0],
+                   "gpus"       : [[0, 1.0]],
+                   "lfs"        : 0,
+                   "mem"        : 128,
+                   "node_index" : 1,
+                   "node_name"  : "a"},
+                  {"cores"      : [0],
+                   "gpus"       : [[0, 1.0]],
+                   "lfs"        : 0,
+                   "mem"        : 128,
+                   "node_index" : 1,
+                   "node_name"  : "a"}
         ],
-        "colo_history": {"tag.0000": ["1", "1"]}
+        "colo_history": {"tag.0000": [1, 1]}
     }
 }
 

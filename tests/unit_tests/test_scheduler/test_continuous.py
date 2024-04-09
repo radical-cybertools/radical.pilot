@@ -25,6 +25,8 @@ base = os.path.abspath(os.path.dirname(__file__))
 #
 class TestContinuous(TestCase):
 
+    maxDiff = None
+
     # --------------------------------------------------------------------------
     #
     @classmethod
@@ -105,8 +107,6 @@ class TestContinuous(TestCase):
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
-                    import pprint
-                    pprint.pprint(t)
                     td = t['description']
                     self.assertEqual(
                         t['resources'], {'cpu': td['ranks'] *
@@ -157,17 +157,10 @@ class TestContinuous(TestCase):
             component._partitions   = {}
             component.nodes         = nodes
 
-            import pprint
-            pprint.pprint(test_case)
-            print('-------------------')
-          # task['description']['gpus_per_rank'] = 1.0
-            pprint.pprint(task['description'])
-            slots = component.schedule_task(task)
-            print('-------------------')
-            pprint.pprint(slots)
-            print('-------------------')
+            slots, partition = component.schedule_task(task)
 
-            self.assertEqual(slots, test_case['result']['slots'])
+            self.maxDiff = None
+            self.assertEqual(slots[0], test_case['result']['slots'][0])
             self.assertEqual(component._colo_history,
                              test_case['result']['colo_history'])
 

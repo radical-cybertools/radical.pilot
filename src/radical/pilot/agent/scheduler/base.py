@@ -18,7 +18,6 @@ from ... import states    as rps
 from ... import constants as rpc
 
 from ...task_description import RAPTOR_WORKER
-from ...resource_config  import Slot, ResourceOccupation
 from ..resource_manager  import ResourceManager
 
 
@@ -499,8 +498,11 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
-                  rpc.DOWN : '!'}
+                  rpc.DOWN : '!',
+                  2        : '!'}  # FIXME: backward compatible, old slots
         ret = "|"
+        import pprint
+        pprint.pprint(glyphs)
         for node in self.nodes:
             for core in node['cores']:
                 ret += glyphs[core]

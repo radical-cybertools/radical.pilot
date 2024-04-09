@@ -65,7 +65,7 @@
                        "mem"        : 1024}],
             "slots": [{"node_name"  : "node-0000",
                        "node_index" : 0,
-                       "cores"      : [0],
+                       "cores"      : [[0, 1.0]],
                        "gpus"       : [],
                        "lfs"        : 100,
                        "mem"        : 0}
@@ -87,8 +87,8 @@
                        "mem"        : 1024}],
             "slots": [{"node_name"  : "node-0001",
                        "node_index" : 1,
-                       "cores"      : [0],
-                       "gpus"       : [1],
+                       "cores"      : [[0, 1.0]],
+                       "gpus"       : [[1, 1.0]],
                        "lfs"        : 70,
                        "mem"        : 0}
             ],
@@ -109,8 +109,8 @@
                        "mem"        : 1024}],
             "slots": [{"node_name"  : "node-0003",
                        "node_index" : 3,
-                       "cores"      : [0],
-                       "gpus"       : [1],
+                       "cores"      : [[0, 1.0]],
+                       "gpus"       : [[1, 1.0]],
                        "lfs"        : 100,
                        "mem"        : 0}
             ],
@@ -151,8 +151,8 @@
             },
             "slots": [{"node_name" : "node-0000",
                        "node_index": 0,
-                       "cores"     : [0],
-                       "gpus"      : [0],
+                       "cores"     : [[0, 1.0]],
+                       "gpus"      : [[0, 1.0]],
                        "lfs"       : 0,
                        "mem"       : 128}
             ]

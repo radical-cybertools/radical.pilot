@@ -7,6 +7,7 @@ import os
 import threading            as mt
 import radical.utils        as ru
 import radical.pilot.states as rps
+import radical.pilot.utils  as rpu
 
 from unittest import mock, TestCase
 
@@ -26,6 +27,7 @@ class TestBaseScheduling(TestCase):
     def setUpClass(cls) -> None:
 
         # provided JSON file (with test cases) should NOT contain any comments
+        print('%s/test_cases/test_base.json' % base)
         cls._test_cases = ru.read_json('%s/test_cases/test_base.json' % base)
 
     # --------------------------------------------------------------------------
@@ -115,9 +117,6 @@ class TestBaseScheduling(TestCase):
 
         for c in self._test_cases['slot_status']:
             sched.nodes = c['nodes']
-            print('======================== NODES')
-            print(c['nodes'])
-            print('========================')
             self.assertEqual(sched.slot_status(), c['result'])
 
         # if log is NOT enabled for `logging.DEBUG`
@@ -149,10 +148,16 @@ class TestBaseScheduling(TestCase):
             #        is mocked?
 
             task = c['task']
-            component.schedule_task = mock.Mock(return_value=c['slots'])
+
+            component.schedule_task = mock.Mock(return_value=[c['slots'], None])
             component._try_allocation(task=task)
 
-            self.assertEqual(task['slots'], c['slots'])
+            import pprint
+            print('================')
+            pprint.pprint(task['slots'])
+            pprint.pprint(rpu.unconvert_slots(task['slots']))
+            print('================')
+            self.assertEqual(rpu.unconvert_slots(task['slots']), c['slots'])
 
 
     # --------------------------------------------------------------------------

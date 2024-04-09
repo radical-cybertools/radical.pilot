@@ -228,8 +228,6 @@ def convert_slots(slots, log=None):
     if not slots:
         return slots
 
-    print('=== try convert %s' % slots)
-
     new_slots = list()
     for slot in slots:
 
@@ -273,6 +271,47 @@ def convert_slots(slots, log=None):
         new_slots.append(new_slot)
 
     return new_slots
+
+
+# ------------------------------------------------------------------------------
+#
+def unconvert_slots(slots, log=None):
+
+    from ..resource_config import Slot, ResourceOccupation
+
+    if not slots:
+        return slots
+
+    old_slots = list()
+    for slot in slots:
+
+        cores = slot['cores']
+        if cores:
+            if isinstance(cores[0], int):
+                cores = [[c, 1.0] for c in cores]
+            elif isinstance(cores[0], dict):
+                cores = [[ro['index'], ro['occupation']] for ro in cores]
+            else:
+                cores = [[ro.index, ro.occupation] for ro in cores]
+
+        gpus = slot['gpus']
+        if gpus:
+            if isinstance(gpus[0], int):
+                gpus = [[c, 1.0] for c in gpus]
+            elif isinstance(gpus[0], dict):
+                gpus = [[ro['index'], ro['occupation']] for ro in gpus]
+            else:
+                gpus = [[ro.index, ro.occupation] for ro in gpus]
+
+        old_slot = {'cores'     : cores,
+                    'gpus'      : gpus,
+                    'lfs'       : slot['lfs'],
+                    'mem'       : slot['mem'],
+                    'node_index': slot['node_index'],
+                    'node_name' : slot['node_name']}
+        old_slots.append(old_slot)
+
+    return old_slots
 
 
 # ------------------------------------------------------------------------------
