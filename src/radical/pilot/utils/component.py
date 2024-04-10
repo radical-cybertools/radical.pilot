@@ -1216,6 +1216,15 @@ class ClientComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=False, prof=True):
 
+        # CANCELED and FAILED are always published, never pushed
+        if state in [rps.FAILED, rps.CANCELED]:
+
+            for thing in ru.as_list(things):
+                thing['target_state'] = state
+
+            publish = True
+            push    = False
+
         super().advance(things=things, state=state, publish=publish, push=push,
                         qname=qname, ts=ts, fwd=fwd, prof=prof)
 
