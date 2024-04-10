@@ -133,6 +133,7 @@ class Default(AgentStagingOutputComponent):
 
                 self.advance(task, rps.FAILED)
 
+
     # --------------------------------------------------------------------------
     #
     def _handle_task_stdio(self, task):
