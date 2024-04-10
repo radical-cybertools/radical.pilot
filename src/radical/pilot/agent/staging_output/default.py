@@ -319,6 +319,7 @@ class Default(AgentStagingOutputComponent):
 
             if action == rpc.COPY:
                 try:
+                    ru.rec_makedir(os.path.dirname(tgt.path))
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc:
                     if exc.errno == errno.ENOTDIR:
