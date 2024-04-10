@@ -1039,7 +1039,8 @@ class BaseComponent(object):
                             thing['exception_detail'] = \
                                              '\n'.join(ru.get_exception_trace())
 
-                        self.advance_failed(things, publish=True, push=False)
+                        self.advance(things, state=rps.FAILED,
+                                             publish=True, push=False)
 
         # keep work_cb registered
         return True
