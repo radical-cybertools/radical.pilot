@@ -112,9 +112,10 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging prep error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.FAILED)
 
 
         if no_staging_tasks:
@@ -127,10 +128,10 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
+                self.advance(task, rps.FAILED)
 
     # --------------------------------------------------------------------------
     #

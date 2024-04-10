@@ -80,12 +80,20 @@ class Default(AgentStagingInputComponent):
                          publish=True, push=True)
 
         for task, actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            try:
+                self._handle_task_staging(task, actionables)
+
+            except Exception as e:
+                self._log.exception('staging error')
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.FAILED)
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_task(self, task, actionables):
+    def _handle_task_staging(self, task, actionables):
 
         uid = task['uid']
 
