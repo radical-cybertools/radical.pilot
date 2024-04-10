@@ -131,6 +131,9 @@ class Default(AgentStagingOutputComponent):
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
+                self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                   publish=True, push=True)
+
 
     # --------------------------------------------------------------------------
     #
