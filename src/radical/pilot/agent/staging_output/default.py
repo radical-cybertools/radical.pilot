@@ -317,9 +317,15 @@ class Default(AgentStagingOutputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert tgt.schema == 'file', 'staging tgt expected as file://'
 
+            # implicitly create target dir if needed - but only for local ops
+            if action != rpc.TRANSFER:
+                tgtdir = os.path.dirname(tgt.path)
+                if tgtdir != task_sandbox.path:
+                    self._log.debug("mkdir %s", tgtdir)
+                    ru.rec_makedir(tgtdir)
+
             if action == rpc.COPY:
                 try:
-                    ru.rec_makedir(os.path.dirname(tgt.path))
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc:
                     if exc.errno == errno.ENOTDIR:

@@ -181,8 +181,7 @@ class Default(AgentStagingInputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert src.schema == 'file', 'staging src expected as file://'
 
-            # backend will take care of dir creation - but we do it manually
-            # for local ops (copy, link, move)
+            # implicitly create target dir if needed - but only for local ops
             if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
@@ -191,7 +190,6 @@ class Default(AgentStagingInputComponent):
 
             if action == rpc.COPY:
                 try:
-                    ru.rec_makedir(os.path.dirname(tgt.path))
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc:
                     if exc.errno == errno.ENOTDIR:
