@@ -80,7 +80,17 @@ class Default(AgentStagingInputComponent):
                          publish=True, push=True)
 
         for task, actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            try:
+                self._handle_task(task, actionables)
+
+            except Exception as e:
+                self._log.exception('staging error')
+                task['target_state']     = rps.FAILED
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                   publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
