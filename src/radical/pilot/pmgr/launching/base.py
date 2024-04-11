@@ -131,7 +131,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (ResourceManager).
-        self._stager = rpu.StagingHelper(self._log, self._prof)
+        self._stager = rpu.StagingHelper(self._log)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
@@ -1010,8 +1010,9 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         sds = expand_staging_directives(sds, src_ctx, tgt_ctx)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
+            self._prof.prof('staging_in_start', uid=pilot['uid'], msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -1035,13 +1036,12 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         sds = ru.as_list(sds)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
+            self._prof.prof('staging_out_start', uid=pilot['uid'], msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_out_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
 # ------------------------------------------------------------------------------
