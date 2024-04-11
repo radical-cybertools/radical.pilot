@@ -35,10 +35,15 @@ class Flux(LaunchMethod):
 
         self._log.debug('starting flux')
 
-        # FIXME: this is a hack fro frontier and will onlu work for slurm
+        # FIXME: this is a hack for frontier and will onlu work for slurm
         #        resources.  If Flux is to be used more widely, we need to
         #        pull the launch command from the agent's resource manager.
-        self._fh.start_flux(launcher='srun')
+        launcher = ''
+        out, err, ret = ru.sh_callout('which srun')
+        if ret == 0 and 'srun' in out:
+            launcher = 'srun'
+
+        self._fh.start_flux(launcher=launcher)
 
         self._details = {'flux_uri': self._fh.uri,
                          'flux_env': self._fh.env}
