@@ -1240,9 +1240,11 @@ class AgentComponent(BaseComponent):
         # CANCELED and FAILED is handled on the client side
         if state in [rps.FAILED, rps.CANCELED]:
 
+            # final state is handled on client side - hand task over to tmgr
             for thing in ru.as_list(things):
                 thing['target_state'] = state
                 thing['control']      = 'tmgr_pending'
+                thing['$all']         = True
 
             state   = rps.TMGR_STAGING_OUTPUT_PENDING
             publish = True

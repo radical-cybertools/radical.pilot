@@ -72,9 +72,9 @@ class Default(AgentStagingOutputComponent):
             try:
                 uid = task['uid']
 
-                # From here on, any state update will hand control over to the tmgr
-                # again.  The next task update should thus push *all* task details,
-                # not only state.
+                # From here on, any state update will hand control over to the
+                # tmgr again.  The next task update should thus push *all* task
+                # details, not only state.
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
 

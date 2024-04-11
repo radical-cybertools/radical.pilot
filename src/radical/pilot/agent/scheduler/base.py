@@ -410,10 +410,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-            for task in to_cancel:
-                task['control']      = 'tmgr_pending'
-                task['$all']         = True
-
             self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
 
         else:
@@ -789,7 +785,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         task['exception']        = repr(e)
         task['exception_detail'] = detail
-        task['$all']             = True
 
         self._log.exception('scheduling failed for %s', task['uid'])
 
