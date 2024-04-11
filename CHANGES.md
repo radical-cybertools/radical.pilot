@@ -8,9 +8,9 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
-### 1.49.1 Hotfix Release                                             2024-04-10
+### 1.49.2 Hotfix Release                                             2024-04-10
 
-  - fix #3162: missing advance on failed agent staging
+  - fix #3162: missing advance on failed agent staging, create target dir
 
 
 --------------------------------------------------------------------------------
