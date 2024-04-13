@@ -1429,7 +1429,7 @@ find_available_port()
 #
 pre_bootstrap_0()
 {
-    cmd="$@"
+    cmd=$(eval echo "$@")
     run_cmd "Running pre_bootstrap_0 command" "$cmd"
 
     if test $? -ne 0
