@@ -80,7 +80,17 @@ class Default(AgentStagingInputComponent):
                          publish=True, push=True)
 
         for task, actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            try:
+                self._handle_task(task, actionables)
+
+            except Exception as e:
+                self._log.exception('staging error')
+                task['target_state']     = rps.FAILED
+                task['exception']        = repr(e)
+                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
+                                   publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
@@ -171,8 +181,7 @@ class Default(AgentStagingInputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert src.schema == 'file', 'staging src expected as file://'
 
-            # backend will take care of dir creation - but we do it manually
-            # for local ops (copy, link, move)
+            # implicitly create target dir if needed - but only for local ops
             if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
