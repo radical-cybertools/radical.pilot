@@ -77,13 +77,15 @@ class TestIBRun(TestCase):
         test_cases = setUp('lm', 'ibrun')
         for task, result in test_cases:
 
+            print(task['uid'])
+
             if result == 'AssertionError':
                 with self.assertRaises(AssertionError):
                     lm_ibrun.get_launch_cmds(task, '')
                 continue
 
-            cores_per_node = task['slots'].get('cores_per_node', 1)
-            gpus_per_node  = task['slots'].get('gpus_per_node',  0)
+            cores_per_node = task.get('cores_per_node', 1)
+            gpus_per_node  = task.get('gpus_per_node',  0)
 
             lm_ibrun._rm_info = RMInfo({
                 'cores_per_node': cores_per_node,

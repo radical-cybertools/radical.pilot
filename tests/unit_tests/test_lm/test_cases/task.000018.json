@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"               : "task.000018",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["15"],
@@ -40,8 +41,11 @@
 
     "results": {
         "lm": {
-            "jsrun"    : "AssertionError",
-            "jsrun_erf": "AssertionError"
+            "jsrun"    : {
+                "launch_cmd": "jsrun -n2 -a1 -c2 -g2 -r2 -b rs --smpiargs=\"-gpu\"",
+                "rank_exec"  : "/bin/sleep \"15\""
+            },
+            "jsrun_erf": {}
         }
     }
 }

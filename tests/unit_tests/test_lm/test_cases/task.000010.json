@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"               : "task.000010",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : null,

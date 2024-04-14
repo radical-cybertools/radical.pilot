@@ -153,19 +153,18 @@ class TestJSRun(TestCase):
 
             test_cases = setUp('lm', lm_name)
             for test_case in test_cases:
-
                 task   = test_case[0]
                 result = test_case[1]
 
                 lm_jsrun._rm_info = {
-                    'gpus_per_node'   : task['slots']['gpus_per_node'],
+                    'gpus_per_node'   : 1,
                     'threads_per_core': 1
                 }
 
                 if result == 'AssertionError':
                     if not lm_jsrun._erf:
                         with self.assertRaises(AssertionError):
-                            lm_jsrun.get_launch_cmds(task, '')
+                            cmd = lm_jsrun.get_launch_cmds(task, '')
 
                 else:
                     if len(test_case) > 2:

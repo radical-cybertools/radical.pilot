@@ -221,7 +221,7 @@ class PRTE(LaunchMethod):
             # write hosts file
             with ru.ru_open(DVM_HOSTS_FILE_TPL % dvm_file_info, 'w') as fout:
                 for node in node_list:
-                    fout.write('%s slots=%d\n' % (node['node_name'],
+                    fout.write('%s slots=%d\n' % (node['name'],
                                                   self._rm_info.cores_per_node))
 
             _dvm_size  = len(node_list)
@@ -279,7 +279,7 @@ class PRTE(LaunchMethod):
         """
         cmd = ru.which('pterm')
         if not cmd:
-            raise Exception('termination command not found')
+            return
 
         for p_id, p_data in self._details.get('dvm_list', {}).items():
             dvm_uri = p_data['dvm_uri']
@@ -350,8 +350,8 @@ class PRTE(LaunchMethod):
         # should be set: `time.sleep(.1)`
 
         slots     = task['slots']
-        partition = task['partition']
         td        = task['description']
+        partition = task['partition']
 
         n_procs   = td['ranks']
         n_threads = td['cores_per_rank']

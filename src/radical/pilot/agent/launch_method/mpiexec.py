@@ -206,8 +206,8 @@ class MPIExec(LaunchMethod):
 
         else:
             hf_str = ''
-            if mode == 1: slots_ref = ':'
-            else        : slots_ref = ' slots='
+            if mode == 1: slots_ref = ' slots='
+            else        : slots_ref = ':'
 
             for host_name, num_slots in host_slots.items():
                 hf_str += '%s%s%d\n' % (host_name, slots_ref, num_slots)
@@ -242,11 +242,21 @@ class MPIExec(LaunchMethod):
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
             hostfile     = self._get_host_file(slots, uid, sbox)
-            # FIXME: make this readable please
-            core_ids     = ':'.join([
-                str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
-                for core_map in [slot['core_map'] for slot in slots]
-                for cores    in core_map])
+
+            tmp = list()
+            for slot in slots:
+                cores = slot['cores']
+                if len(cores) > 1:
+                    tmp.append('%s-%s' % (cores[0], cores[-1]))
+                else:
+                    tmp.append(str(cores[0]))
+            core_ids = ':'.join(tmp)
+
+          # # FIXME: make this readable please
+          # core_ids     = ':'.join([
+          #     str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
+          #     for core_map in [slot['cores'] for slot in slots]
+          #     for cores    in core_map])
             cmd_options += '--ppn %d '           % max(host_slots.values()) + \
                            '--cpu-bind list:%s ' % core_ids + \
                            '--hostfile %s'       % hostfile

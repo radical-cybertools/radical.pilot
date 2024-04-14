@@ -78,7 +78,7 @@ class SSH(LaunchMethod):
             return False, 'more than one rank'
 
         # ensure non-MPI
-        if task['description']['use_mpi']:
+        if task['description'].get('use_mpi'):
             return False, 'cannot launch MPI tasks'
 
         if not task['description']['executable']:

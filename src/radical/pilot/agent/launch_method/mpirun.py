@@ -166,7 +166,7 @@ class MPIRun(LaunchMethod):
         for slot in slots:
 
             host_list.append(slot['node_name'])
-            core_list.append(slots['cores'][0])
+            core_list.append(slot['cores'][0])
             # FIXME: inform this proc about the GPU to be used
 
             if '_dplace' in self.name and save_list:

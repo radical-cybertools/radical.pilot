@@ -1,7 +1,11 @@
 
 {
     "task": {
+        "cores_per_node"    : 16,
+        "gpus_per_node"     : 1,
+        "lsf_per_node"      : 0,
         "uid"                  : "task.000006",
+        "partition"            : "0",
         "description": {
             "executable"       : "/bin/sleep",
             "arguments"        : ["10"],
@@ -54,7 +58,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun" : {
-                "launch_cmd" : "jsrun -n1 -a2 -c4 -g0",
+                "launch_cmd" : "jsrun -n2 -a1 -c2 -g0 -b rs",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf" : {
@@ -64,7 +68,8 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0,1 : { host: 1; cpu: {0,1},{2,3} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0,1} }\n",
+                           "rank: 1 : { host: 1; cpu: {2,3} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000006"

@@ -385,12 +385,11 @@ class AgentExecutingComponent(rpu.AgentComponent):
             # equivalent to the 'physical' value for original `cvd_id_mode`
             rank_id  = 0
             rank_env = {}
-            for slot in slots:
-                for gpu_map in slot['gpu_map']:
-                    rank_env[str(rank_id)] = \
-                        'export CUDA_VISIBLE_DEVICES=%s' % \
-                        ','.join([str(g) for g in gpu_map])
-                    rank_id += 1
+            for rank_id,slot in enumerate(slots):
+                rank_env[str(rank_id)] = \
+                    'export CUDA_VISIBLE_DEVICES=%s' % \
+                    ','.join([str(g) for g in slot['gpus']])
+                rank_id += 1
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration

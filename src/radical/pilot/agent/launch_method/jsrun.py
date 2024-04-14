@@ -128,6 +128,7 @@ class JSRUN(LaunchMethod):
             core_ids = [str(core) for core in slot['cores']]
             core_id_sets.append('{%s}' % ','.join(core_ids))
 
+
             rs_str += 'rank: %s : {'    % rank_id
             rs_str += ' host: %d;'      % slot['node_index']
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
@@ -153,10 +154,6 @@ class JSRUN(LaunchMethod):
         slots = task['slots']
 
         assert slots, 'task.slots not defined'
-
-        import pprint
-        print('===', uid)
-        pprint.pprint(slots)
 
         if self._erf:
 
