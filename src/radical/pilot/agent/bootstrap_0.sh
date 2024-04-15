@@ -62,13 +62,6 @@ fi
 #
 # https://xkcd.com/1987/
 #
-# A created virtualenv will contain all dependencies for the RADICAL stack (see
-# $VIRTENV_RADICAL_DEPS).  The RADICAL stack itself (or at least parts of it,
-# see $VIRTENV_RADICAL_MODS) will be installed into $VIRTENV/radical/, and
-# PYTHONPATH will be set to include that tree during runtime.  That allows us to
-# use a different RADICAL stack if needed, by rerouting the PYTHONPATH, w/o the
-# need to create a new virtualenv from scratch.
-#
 # Arguments passed to bootstrap_0 should be required by bootstrap_0 itself,
 # and *not* be passed down to the agent.  Configuration used by the agent should
 # go in the agent config file, and *not( be passed as an argument to
@@ -114,17 +107,6 @@ VIRTENV_TGZ_URL="https://files.pythonhosted.org/packages/1c/c2/7516ea983fc37cec2
 VIRTENV_IS_ACTIVATED=FALSE
 
 echo $VIRTENV_TGZ_URL
-
-VIRTENV_RADICAL_DEPS="colorama ntplib pyzmq "\
-"netifaces setproctitle msgpack regex dill"
-
-VIRTENV_RADICAL_MODS="colorama ntplib zmq "\
-"netifaces setproctitle msgpack regex dill"
-
-if ! test -z "$RADICAL_DEBUG"
-then
-    VIRTENV_RADICAL_DEPS="$VIRTENV_RADICAL_DEPS pudb"
-fi
 
 
 # ------------------------------------------------------------------------------
@@ -524,7 +506,9 @@ rehash()
 # verify that we have a usable python installation
 verify_install()
 {
-    echo -n "verify python viability: $PYTHON ..."
+    verify_rp_install
+    echo    "PYTHONPATH             : $PYTHONPATH"
+    echo -n "Verify python viability: $PYTHON ..."
     if ! $PYTHON -c 'import sys; assert sys.version_info >= (3,5)'
     then
         echo ' failed'
@@ -532,20 +516,6 @@ verify_install()
         exit 1
     fi
     echo ' ok'
-
-    # FIXME: attempt to load all required modules
-    modules="radical.pilot radical.utils $VIRTENV_RADICAL_MODS"
-    for m in $modules
-    do
-        printf 'verify module viability: %-15s ...' $m
-        if ! $PYTHON -c "import $m"
-        then
-            echo ' failed'
-            echo "python installation cannot load module $m - abort"
-            exit 1
-        fi
-        echo ' ok'
-    done
 }
 
 
@@ -729,6 +699,12 @@ virtenv_setup()
             RP_INSTALL_TARGET=''
             ;;
 
+        local)
+            # FIXME
+            RP_INSTALL_SOURCES='radical.pilot'
+            RP_INSTALL_TARGET='SANDBOX'
+            ;;
+
         *)
             # NOTE: do *not* use 'pip -e' -- egg linking does not work with
             #       PYTHONPATH.  Instead, we manually clone the respective
@@ -909,7 +885,7 @@ virtenv_activate()
     # we can now derive the pythonpath into the rp_install portion by replacing
     # the leading path elements.  The same mechanism is used later on
     # to derive the PYTHONPATH into the sandbox rp_install, if needed.
-    RP_MOD_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$virtenv|$virtenv/rp_install|"`
+    RP_MOD_PREFIX="$PILOT_SANDBOX/rp_install"
     echo "RP_MOD_PREFIX     : $RP_MOD_PREFIX"
 
     # NOTE: this should not be necessary, but we explicit set PYTHONPATH to
@@ -1047,15 +1023,6 @@ virtenv_create()
             "$PIP --no-cache-dir install --upgrade pip setuptools wheel" \
          || echo "Couldn't update venv! Lets see how far we get ..."
 
-    # now that the virtenv is set up, we install all dependencies
-    # of the RADICAL stack
-    for dep in $VIRTENV_RADICAL_DEPS
-    do
-        run_cmd "install $dep" \
-                "$PIP --no-cache-dir install '$dep'" \
-             || echo "Couldn't install $dep! Lets see how far we get ..."
-    done
-
     profile_event 've_create_stop'
 }
 
@@ -1069,20 +1036,10 @@ virtenv_update()
     profile_event 've_update_start'
 
     virtenv="$1"
-    pytohn_dist="$2"
+    python_dist="$2"
 
     # activate the virtualenv
     virtenv_activate "$virtenv" "$python_dist"
-
-    # we upgrade all dependencies of the RADICAL stack, one by one.
-    # NOTE: we only do pip upgrades -- that will ignore the easy_installed
-    #       modules on india etc.
-    for dep in $VIRTENV_RADICAL_DEPS
-    do
-        run_cmd "install '$dep'" \
-                "$PIP install --upgrade $dep" \
-             || echo "Couldn't update $dep! Lets see how far we get ..."
-    done
 
     profile_event 've_update_stop'
 }
@@ -1093,10 +1050,6 @@ virtenv_update()
 # Install the radical stack, ie. install RP which pulls the rest.
 # This assumes that the virtenv has been activated.  Any previously installed
 # stack version is deleted.
-#
-# As the virtenv should have all dependencies set up (see VIRTENV_RADICAL_DEPS),
-# we don't expect any additional module pull from pypi.  Some rp_versions will,
-# however, pull the rp modules from pypi or git.
 #
 # . $VIRTENV/bin/activate
 # rm -rf $VIRTENV/rp_install
@@ -1163,7 +1116,9 @@ rp_install()
             RP_INSTALL="$PILOT_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
+            # FIXME
             RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$RP_INSTALL/|"`
+            RP_LOC_PREFIX="$RP_INSTALL"
 
             echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
             echo "VIRTENV           : $VIRTENV"
@@ -1203,8 +1158,8 @@ rp_install()
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
 
-    pip_flags="$pip_flags --t '$RP_INSTALL'"
-    pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
+    pip_flags="$pip_flags --target '$RP_INSTALL'"
+    pip_flags="$pip_flags --no-cache-dir --no-build-isolation"
 
     for src in $rp_install_sources
     do
