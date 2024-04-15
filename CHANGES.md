@@ -7,6 +7,15 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+
+--------------------------------------------------------------------------------
+### 1.52.0 Release                                                    2024-04-15
+
+  - fix for setuptools upgrade
+  - added resource configuration for Flux on Frontier
+  - use srun for flux startup
+
+
 --------------------------------------------------------------------------------
 ### 1.49.2 Hotfix Release                                             2024-04-10
 
@@ -2067,3 +2076,7 @@ API Changes:
 
 --------------------------------------------------------------------------------
 
+  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
+  - devel version bump
+  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
+  - devel version bump
