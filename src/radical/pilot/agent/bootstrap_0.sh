@@ -86,7 +86,6 @@ fi
 TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
 HOSTPORT=
-SDISTS=
 RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
@@ -103,15 +102,6 @@ PREBOOTSTRAP2=""
 # NOTE:  $HOME is set to the job sandbox on OSG.  Bah!
 # FIXME: the need for this needs to be reconfirmed and documented
 # mkdir -p .ssh/
-
-# flag which is set when a system level RP installation is found, triggers
-# '--upgrade' flag for pip
-# NOTE: this mechanism is disabled, as it affects a minority of machines and
-#       adds too much complexity for too little benefit.  Also, it will break on
-#       machines where pip has no connectivity, and pip cannot silently ignore
-#       that system version...
-# SYSTEM_RP='FALSE'
-
 
 # seconds to wait for lock files
 # 10 min should be enough for anybody to create/update a virtenv...
@@ -729,60 +719,26 @@ virtenv_setup()
     #
     case "$RP_VERSION" in
 
-        local)
-            for sdist in $(echo $SDISTS | tr ':' ' ')
-            do
-                src=${sdist%.tgz}
-                src=${sdist%.tar.gz}
-                # NOTE: Condor does not support staging into some arbitrary
-                #       directory, so we may find the dists in pwd
-                if test -e   "$SESSION_SANDBOX/$sdist"; then
-                    tar zxmf "$SESSION_SANDBOX/$sdist"
-
-                elif test -e "./$sdist"; then
-                    tar zxmf "./$sdist"
-
-                else
-                    echo "missing $sdist"
-                    echo "session sandbox: $SESSION_SANDBOX"
-                    ls -la "$SESSION_SANDBOX"
-                    echo "pilot sandbox: $(pwd)"
-                    ls -la
-                    exit 1
-                fi
-                RP_INSTALL_SOURCES="$RP_INSTALL_SOURCES $src/"
-            done
-            RP_INSTALL_TARGET='SANDBOX'
-            RP_INSTALL_SDIST='TRUE'
-            ;;
-
         release)
             RP_INSTALL_SOURCES='radical.pilot'
             RP_INSTALL_TARGET='SANDBOX'
-            RP_INSTALL_SDIST='FALSE'
             ;;
 
         installed)
             RP_INSTALL_SOURCES=''
             RP_INSTALL_TARGET=''
-            RP_INSTALL_SDIST='FALSE'
             ;;
 
         *)
             # NOTE: do *not* use 'pip -e' -- egg linking does not work with
             #       PYTHONPATH.  Instead, we manually clone the respective
             #       git repository, and switch to the branch/tag/commit.
-            git clone https://github.com/radical-cybertools/radical.pilot.git
-            (cd radical.pilot; git checkout $RP_VERSION)
-            RP_INSTALL_SOURCES="radical.pilot/"
+            RP_INSTALL_SOURCES="radical.pilot==$RP_VERSION"
             RP_INSTALL_TARGET='SANDBOX'
-            RP_INSTALL_SDIST='FALSE'
     esac
 
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
-    #       a SANDBOX install target.  SANDBOX installation will only work with
-    #       'python setup.py install' (pip cannot handle it), so we have to use
-    #       the sdist, and the RP_INSTALL_SOURCES has to point to directories.
+    #       a SANDBOX install target.
     if test "$virtenv_mode" = "use" \
        -o   "$virtenv_mode" = "local"
     then
@@ -790,21 +746,6 @@ virtenv_setup()
         then
             echo "WARNING: virtenv immutable - install RP locally"
             RP_INSTALL_TARGET='SANDBOX'
-        fi
-
-        if ! test -z "$RP_INSTALL_TARGET"
-        then
-            for src in $RP_INSTALL_SOURCES
-            do
-                if ! test -d "$src"
-                then
-                    # TODO: we could in principle download from pypi and
-                    # extract, or 'git clone' to local, and then use the setup
-                    # install.  Not sure if this is worth the effor (AM)
-                    echo "ERROR: local RP install needs sdist based install (not '$src')"
-                    exit 1
-                fi
-            done
         fi
     fi
 
@@ -869,7 +810,7 @@ virtenv_setup()
         echo "rp lock for rp install (target: $RP_INSTALL_TARGET)"
         lock "$pid" "$virtenv" # use default timeout
     fi
-    rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET" "$RP_INSTALL_SDIST"
+    rp_install "$RP_INSTALL_SOURCES" "$RP_INSTALL_TARGET"
     if test "$RP_INSTALL_LOCK" = 'TRUE'
     then
        unlock "$pid" "$virtenv"
@@ -933,16 +874,6 @@ virtenv_activate()
 
     # make sure we use the new python binary
     rehash
-
-  # # NOTE: calling radicalpilot-version does not work here -- depending on the
-  # #       system settings, python setup it may not be found even if the
-  # #       rp module is installed and importable.
-  # system_rp_loc="`python -c 'import radical.pilot as rp; print rp.__file__' 2>/dev/null`"
-  # if ! test -z "$system_rp_loc"
-  # then
-  #     echo "found system RP install at '$system_rp_loc'"
-  #     SYSTEM_RP='TRUE'
-  # fi
 
   # prefix="$virtenv/rp_install"
 
@@ -1171,41 +1102,21 @@ virtenv_update()
 # rm -rf $VIRTENV/rp_install
 #
 # case rp_version:
-#   @<token>:
-#   @tag/@branch/@commit: # no sdist staging
-#       git clone $github_base radical.pilot.src
-#       (cd radical.pilot.src && git checkout token)
-#       pip install -t $SANDBOX/rp_install/ radical.pilot.src
-#       rm -rf radical.pilot.src
-#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
-#       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
-#   release: # no sdist staging
+#   installed:
+#       true
+#
+#   <version string>:
 #       pip install -t $SANDBOX/rp_install radical.pilot
 #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
 #       export PATH=$SANDBOX/rp_install/bin:$PATH
 #
-#   local: # needs sdist staging
-#       tar zxmf $sdist.tgz
-#       pip install -t $SANDBOX/rp_install $sdist/
-#       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
-#       export PATH=$SANDBOX/rp_install/bin:$PATH
-#
-#   installed: # no sdist staging
-#       true
 # esac
-#
-# NOTE: A 'pip install' (without '--upgrade') will not install anything if an
-#       old version lives in the system space.  A 'pip install --upgrade' will
-#       fail if there is no network connectivity (which otherwise is not really
-#       needed when we install from sdists).  '--upgrade' is not needed when
-#       installing from sdists.
 #
 rp_install()
 {
     rp_install_sources="$1"
     rp_install_target="$2"
-    rp_install_sdist="$3"
 
     if test -z "$rp_install_target"
     then
@@ -1242,11 +1153,6 @@ rp_install()
 
             RADICAL_MOD_PREFIX="$RP_MOD_PREFIX/radical/"
 
-            # NOTE: we first uninstall RP (for some reason, 'pip install --upgrade' does
-            #       not work with all source types)
-            run_cmd "uninstall radical.pilot" "$PIP uninstall -y radical.pilot"
-            # ignore any errors
-
             echo "using virtenv install tree"
             echo "PYTHONPATH        : $PYTHONPATH"
             echo "RP_MOD_PREFIX     : $RP_MOD_PREFIX"
@@ -1257,7 +1163,7 @@ rp_install()
             RP_INSTALL="$PILOT_SANDBOX/rp_install"
 
             # make sure the lib path into the prefix conforms to the python conventions
-            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$PILOT_SANDBOX/rp_install|"`
+            RP_LOC_PREFIX=`echo $VE_MOD_PREFIX | sed -e "s|$VIRTENV|$RP_INSTALL/|"`
 
             echo "VE_MOD_PREFIX     : $VE_MOD_PREFIX"
             echo "VIRTENV           : $VIRTENV"
@@ -1297,34 +1203,7 @@ rp_install()
     rm    -rf  "$RP_INSTALL/"
     mkdir -p   "$RP_INSTALL/"
 
-  # # NOTE: if we find a system level RP install, then pip install will not work
-  # #       w/o the upgrade flag -- unless we install from sdist.  It may not
-  # #       work with update flag either though...
-  # if test "$SYSTEM_RP" = 'FALSE'
-  # then
-  #     # no previous version installed, don't need no upgrade
-  #     pip_flags=''
-  #     echo "no previous RP version - no upgrade"
-  # else
-  #     if test "$rp_install_sdist" = "TRUE"
-  #     then
-  #         # install from sdist doesn't need uprade either
-  #         pip_flags=''
-  #     else
-  #         pip_flags='--upgrade'
-  #         # NOTE: --upgrade is unreliable in its results -- depending on the
-  #         #       VE setup, the resulting installation may be viable or not.
-  #         echo "-----------------------------------------------------------------"
-  #         echo " WARNING: found a system installation of radical.pilot!          "
-  #         echo "          Upgrading to a new version may *or may not* succeed,   "
-  #         echo "          depending on the specific system, python and virtenv   "
-  #         echo "          configuration!                                         "
-  #         echo "-----------------------------------------------------------------"
-  #     fi
-  # fi
-
-    pip_flags="$pip_flags --src '$PILOT_SANDBOX/rp_install/src'"
-    pip_flags="$pip_flags --prefix '$RP_INSTALL'"
+    pip_flags="$pip_flags --t '$RP_INSTALL'"
     pip_flags="$pip_flags --no-deps --no-cache-dir --no-build-isolation"
 
     for src in $rp_install_sources
@@ -1335,13 +1214,6 @@ rp_install()
         if test $? -ne 0
         then
             echo "Couldn't install $src! Lets see how far we get ..."
-        fi
-
-        # clean out the install source if it is a local dir
-        if test -d "$src"
-        then
-            echo "purge install source at $src"
-            rm -r "$src"
         fi
     done
 
@@ -1458,9 +1330,8 @@ $cmd"
 #
 untar()
 {
-    # FIXME: concurrently starting pilots may conflict on SDIST extraction
     tar="$1"
-    tar zxvf ../"$tar" -C .. "$PILOT_ID" $(echo $SDISTS | tr ':' ' ')
+    tar zxvf ../"$tar" -C .. "$PILOT_ID"
 }
 
 
@@ -1499,7 +1370,6 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         a)  SESSION_SANDBOX="$OPTARG"         ;;
         b)  PYTHON_DIST="$OPTARG"             ;;
         c)  LAUNCHER='ccmrun'                 ;;
-        d)  SDISTS="$OPTARG"                  ;;
         e)  pre_bootstrap_0 "$OPTARG"         ;;
         f)  FORWARD_TUNNEL_ENDPOINT="$OPTARG" ;;
         h)  HOSTPORT="$OPTARG"                ;;
