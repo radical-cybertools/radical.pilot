@@ -61,7 +61,9 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          git branch -a
           radical-stack
+          du -a testenv/lib/pyth*/site*/radical
       - name: Unit tests
         run: |
           . testenv/bin/activate
