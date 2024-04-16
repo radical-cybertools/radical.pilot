@@ -59,9 +59,9 @@ jobs:
         run: |
           python -m venv testenv
           . testenv/bin/activate
-          radical-stack
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          radical-stack
       - name: Unit tests
         run: |
           . testenv/bin/activate
