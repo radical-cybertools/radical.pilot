@@ -118,10 +118,15 @@ def get_version(_mod_root):
             'not-found'      in _version_detail or \
             'fatal'          in _version_detail :
             _version = _version_base
-        elif '@' not in _version_base:
-            _version = '%s-%s' % (_version_base, _version_detail)
         else:
             _version = _version_base
+
+        # copy version info to module dir
+        with open('%s/VERSION' % _mod_root, 'w', encoding='utf-8') as fout:
+            fout.write(_version)
+            fout.write('\n')
+            fout.write(_version_detail)
+            fout.write('\n')
 
         return _version_base, _version_detail
 
