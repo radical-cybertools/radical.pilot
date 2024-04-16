@@ -63,9 +63,9 @@ jobs:
           python -m pip install -r requirements-ci.txt
           git branch -a
           radical-stack
+          du -a testenv/lib/pyth*/site*/radical
           python -c 'import radical.utils as ru; print(ru.__file__)'
           python -c 'import radical.pilot as rp; print(rp.__file__)'
-          du -a testenv/lib/pyth*/site*/radical
       - name: Unit tests
         run: |
           . testenv/bin/activate
