@@ -61,11 +61,7 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
-          git branch -a
           radical-stack
-          du -a testenv/lib/pyth*/site*/radical
-          python -c 'import radical.utils as ru; print(ru.__file__)'
-          python -c 'import radical.pilot as rp; print(rp.__file__)'
       - name: Unit tests
         run: |
           . testenv/bin/activate
