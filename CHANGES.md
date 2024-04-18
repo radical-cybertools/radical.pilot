@@ -9,6 +9,14 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.52.1 Hotfix Release                                             2024-04-18
+
+  - more fixes for setuptools upgrade
+  - remove sdist staging
+  - simplify bootstrapper
+
+
+--------------------------------------------------------------------------------
 ### 1.52.0 Release                                                    2024-04-15
 
   - fix for setuptools upgrade
@@ -2080,3 +2088,7 @@ API Changes:
   - devel version bump
   - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
   - devel version bump
+  - devel version bump
+  - draft
+  - remove rct dist staging
+  - trigger tests

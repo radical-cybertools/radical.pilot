@@ -8,6 +8,8 @@ on:
   pull_request:
     branches:
       - 'devel*'
+  schedule:
+    - cron:  '45 6 * * *'
 
 jobs:
 
@@ -26,6 +28,7 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          radical-stack
       - name: Lint with flake8 and pylint
         run: |
           . testenv/bin/activate
@@ -60,9 +63,11 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          radical-stack
       - name: Unit tests
         run: |
           . testenv/bin/activate
+          radical-stack
           coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
           coverage xml
       - uses: codecov/codecov-action@v3
