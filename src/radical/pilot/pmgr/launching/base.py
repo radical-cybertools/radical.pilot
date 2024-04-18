@@ -821,21 +821,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
-        # add dists to staging files, if needed:
-        # don't stage on `rp_version==installed` or `virtenv_mode==local`
-        if rp_version   == 'installed' or \
-           virtenv_mode == 'local'     :
-            sdist_names = list()
-            sdist_paths = list()
-        else:
-            sdist_names = [str(rg.sdist_name),
-                           str(ru.sdist_name),
-                           str(self._rp_sdist_name)]
-            sdist_paths = [rg.sdist_path,
-                           ru.sdist_path,
-                           self._rp_sdist_path]
-            bs_args.extend(['-d', ':'.join(sdist_names)])
-
         bs_args.extend(['-p', pid])
         bs_args.extend(['-s', sid])
         bs_args.extend(['-m', virtenv_mode])
@@ -938,12 +923,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # NOTE: this will race when multiple pilot launcher instances are used!
         #
         if resource not in self._sandboxes:
-
-            for sdist in sdist_paths:
-                base = os.path.basename(sdist)
-                pilot['fts'].append({'src': sdist,
-                                     'tgt': '%s/%s' % (session_sandbox, base),
-                                     'rem': False})
 
             self._sandboxes[resource] = True
 
