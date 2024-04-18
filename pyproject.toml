@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "wheel>=0.33.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "radical.pilot"
+version = "1.53.0"
+description = "The RADICAL pilot job framework"
+requires-python = ">= 3.7"
+readme = "README.md"
+authors = [
+    {name = "RADICAL Group at Rutgers University", email = "radical@rutgers.edu"},
+]
+maintainers = [
+    {name = "The RADICAL Group", email = "radical@rutgers.edu"},
+]
+license = {text = "MIT License"}
+keywords = ["radical", "pilot", "job"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Topic :: Utilities",
+    "Topic :: System :: Distributed Computing",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX",
+    "Operating System :: Unix",
+]
+
+dependencies = [
+    "radical.utils>=1.44",
+    "radical.gtod",
+]
+
+
+[project.urls]
+Documentation = "https://radicalpilot.readthedocs.io/en/latest/"
+Source = "https://github.com/radical-cybertools/radical.pilot/"
+Issues = "https://github.com/radical-cybertools/radical.pilot/issues"
+
+
+[tool.setuptools.packages.find]
+where = ["src/"]  # list of folders that contain the packages (["."] by default)
+#include = ["my_package*"]  # package names should match these glob patterns (["*"] by default)
+#exclude = ["my_package.tests*"]  # exclude packages matching these glob patterns (empty by default)
+#namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
+[project.scripts]
+radical-pilot-stats = "radical.pilot.bin.stats:main"

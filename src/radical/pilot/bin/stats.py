@@ -372,14 +372,7 @@ def handle_session(mode, session, cachedir=None):
 
 # ------------------------------------------------------------------------------
 #
-def parse_commandline():
-
-    return args
-
-
-# ------------------------------------------------------------------------------
-#
-if __name__ == '__main__':
+def main():
 
     import argparse
     parser = argparse.ArgumentParser(description='')
@@ -435,3 +428,5 @@ if __name__ == '__main__':
 
 # ------------------------------------------------------------------------------
 
+if __name__ == '__main__':
+    main()

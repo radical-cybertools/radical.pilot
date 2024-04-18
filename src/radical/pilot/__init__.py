@@ -57,12 +57,14 @@ from .raptor import Master, Worker
 #
 # get version info
 #
-import os as _os
+import sys
 
-version_short, version_detail, version_base, version_branch, \
-        sdist_name, sdist_path = _ru.get_version(_os.path.dirname(__file__))
+if sys.version_info >= (3, 8):
+    from importlib import metadata
+else:
+    import importlib_metadata as metadata
 
-version = version_short
+version = version_detail = metadata.version('radical.pilot')
 
 
 # ------------------------------------------------------------------------------
