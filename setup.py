@@ -46,9 +46,6 @@ mod_root = 'src/radical/%s/' % base
 # We thus introduce an env variable `SDIST_LEVEL` which allows us to separate
 # internal calls from the top level invocation - we only clean on the latter
 # (see end of this file).
-sdist_level = int(os.environ.get('SDIST_LEVEL', 0))
-os.environ['SDIST_LEVEL'] = str(sdist_level + 1)
-
 root = os.path.dirname(__file__) or '.'
 
 
@@ -121,44 +118,17 @@ def get_version(_mod_root):
             'not-found'      in _version_detail or \
             'fatal'          in _version_detail :
             _version = _version_base
-        elif '@' not in _version_base:
-            _version = '%s-%s' % (_version_base, _version_detail)
         else:
             _version = _version_base
 
-        # make sure the version files exist for the runtime version inspection
-        _path = '%s/%s' % (root, _mod_root)
-        with open(_path + '/VERSION', 'w', encoding='utf-8') as fout:
-            fout.write(_version_base + '\n')
-            fout.write(_version      + '\n')
+        # copy version info to module dir
+        with open('%s/VERSION' % _mod_root, 'w', encoding='utf-8') as fout:
+            fout.write(_version)
+            fout.write('\n')
+            fout.write(_version_detail)
+            fout.write('\n')
 
-        _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
-      # _sdist_name = _sdist_name.replace('/', '-')
-      # _sdist_name = _sdist_name.replace('@', '-')
-      # _sdist_name = _sdist_name.replace('#', '-')
-      # _sdist_name = _sdist_name.replace('_', '-')
-
-        # setuptools 69.5 does changes naming scheme
-        if not os.path.isfile('dist/%s' % _sdist_name):
-            _sdist_name = '%s-%s.tar.gz' % (name.replace('.', '_'), _version_base)
-
-        if os.path.isfile('dist/%s' % _sdist_name):
-            # pip install stage 2 or easy_install stage 1
-            #
-            # pip install will untar the sdist in a tmp tree.  In that tmp
-            # tree, we won't be able to derive git version tags -- so we pack
-            # the formerly derived version as ./VERSION
-            shutil.move('VERSION', 'VERSION.bak')              # backup
-            shutil.copy('%s/VERSION' % _path, 'VERSION')       # version to use
-            os.system  ('python3 setup.py sdist')              # build sdist
-            shutil.copy('dist/%s' % _sdist_name,
-                        '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
-            shutil.move('VERSION.bak', 'VERSION')              # restore version
-
-        with open(_path + '/SDIST', 'w', encoding='utf-8') as fout:
-            fout.write(_sdist_name + '\n')
-
-        return _version_base, _version_detail, _sdist_name, _path
+        return _version_base, _version_detail
 
     except Exception as e:
         raise RuntimeError('Could not extract/set version: %s' % e) from e
@@ -166,7 +136,7 @@ def get_version(_mod_root):
 
 # ------------------------------------------------------------------------------
 # get version info -- this will create VERSION and srcroot/VERSION
-version, version_detail, sdist_name, path = get_version(mod_root)
+version, version_detail = get_version(mod_root)
 
 
 # ------------------------------------------------------------------------------
@@ -274,7 +244,7 @@ setup_args = {
                             'bin/radical-pilot-version',
                            ],
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
-                                 '*.md', 'VERSION', 'SDIST', sdist_name]},
+                                 '*.md', 'VERSION', 'SDIST']},
     'install_requires'   : requirements,
     'zip_safe'           : False,
     'data_files'         : df,
@@ -289,11 +259,9 @@ setup(**setup_args)
 
 # ------------------------------------------------------------------------------
 # clean temporary files from source tree
-if sdist_level == 0:
-    os.system('rm -vrf src/%s.egg-info' % name)
-    os.system('rm -vf  %s/%s'           % (path, sdist_name))
-    os.system('rm -vf  %s/VERSION'      % path)
-    os.system('rm -vf  %s/SDIST'        % path)
+# os.system('rm -vrf src/%s.egg-info' % name)
+# os.system('rm -vf  %s/VERSION'      % path)
+# os.system('rm -vf  %s/SDIST'        % path)
 
 
 # ------------------------------------------------------------------------------
