@@ -7,6 +7,65 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+
+--------------------------------------------------------------------------------
+### 1.52.1 Hotfix Release                                             2024-04-18
+
+  - more fixes for setuptools upgrade
+  - remove sdist staging
+  - simplify bootstrapper
+
+
+--------------------------------------------------------------------------------
+### 1.52.0 Release                                                    2024-04-15
+
+  - fix for setuptools upgrade
+  - added resource configuration for Flux on Frontier
+  - use srun for flux startup
+
+
+--------------------------------------------------------------------------------
+### 1.49.2 Hotfix Release                                             2024-04-10
+
+  - fix #3162: missing advance on failed agent staging, create target dir
+
+
+--------------------------------------------------------------------------------
+### 1.49.0 Release                                                    2024-04-05
+
+  - MPIRUN/SRUN documentation update
+  - inherit environment for local executor
+
+
+--------------------------------------------------------------------------------
+### 1.48.0 Release                                                    2024-03-24
+
+  - remove SAGA as hard dependency
+  - add `named_env` check to TD verfication
+  - add dragon readme
+  - add link for a monitoring page for Polaris
+  - add supported platform Aurora (ALCF)
+  - add SRUN to Bridges2 config and make it default
+  - compensate job env isolation for tasks
+  - disable env inheritance in PSIJ launcher
+  - ensure string type on stdout/stderr
+  - fix a pilot cancellation race
+  - fix external proxy handling
+  - fix non-integer gpu count for flux
+  - fix staging scheme expansion
+  - fix state reporting from psij
+  - fix tarball staging for session
+  - refactoring moves launch and exec script creation to executor base
+  - removed Theta placeholder (Theta is decommissioned)
+  - set original env as a base for LM env
+  - update flake8, remove unneeded dependency
+  - update ANL config file (added Aurora and removed obsolete platforms)
+  - update doc page for Summit (rollback using conda env)
+  - update resource configs for Summit
+  - update table for supported platforms
+  - use physical cores only (no threads) for Aurora for now
+
+
 --------------------------------------------------------------------------------
 ### 1.47.0 Release                                                    2024-02-08
 
@@ -2025,3 +2084,11 @@ API Changes:
 
 --------------------------------------------------------------------------------
 
+  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
+  - devel version bump
+  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
+  - devel version bump
+  - devel version bump
+  - draft
+  - remove rct dist staging
+  - trigger tests

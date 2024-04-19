@@ -5,13 +5,16 @@ __license__   = "MIT"
 
 import os
 
-import radical.saga as rs
+import radical.utils as ru
 
 from ...   import states             as rps
 from ...   import constants          as rpc
-from ...   import staging_directives as rpsd
+from ...   import utils              as rpu
+
+from ...staging_directives import expand_staging_directives
 
 from .base import TMGRStagingOutputComponent
+
 
 
 # ------------------------------------------------------------------------------
@@ -36,8 +39,7 @@ class Default(TMGRStagingOutputComponent):
     #
     def initialize(self):
 
-        # we keep a cache of SAGA dir handles
-        self._cache = dict()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
@@ -45,14 +47,6 @@ class Default(TMGRStagingOutputComponent):
                             cb=self.work)
 
         # we don't need an output queue -- tasks will be final
-
-
-    # --------------------------------------------------------------------------
-    #
-    def finalize(self):
-
-        for key in self._cache:
-            self._cache[key].close()
 
 
     # --------------------------------------------------------------------------
@@ -110,14 +104,14 @@ class Default(TMGRStagingOutputComponent):
 
         uid = task['uid']
 
-        src_context = {'pwd'      : task['task_sandbox'],       # !!!
+        src_context = {'pwd'      : task['task_sandbox'],       # !
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
                        'session'  : task['session_sandbox'],
                        'resource' : task['resource_sandbox'],
                        'endpoint' : task['endpoint_fs']}
-        tgt_context = {'pwd'      : task['client_sandbox'],     # !!!
+        tgt_context = {'pwd'      : task['client_sandbox'],     # !
                        'client'   : task['client_sandbox'],
                        'task'     : task['task_sandbox'],
                        'pilot'    : task['pilot_sandbox'],
@@ -126,47 +120,16 @@ class Default(TMGRStagingOutputComponent):
                        'endpoint' : task['endpoint_fs']}
 
         # url used for cache (sandbox url w/o path)
-        tmp      = rs.Url(task["task_sandbox"])
+        tmp      = ru.Url(task["task_sandbox"])
         tmp.path = '/'
         key      = str(tmp)
 
-        if key not in self._cache:
-            self._cache[key] = rs.filesystem.Directory(tmp,
-                    session=self._session)
-        saga_dir = self._cache[key]
-
+        actionables = expand_staging_directives(actionables,
+                                            src_context, tgt_context, self._log)
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:
-
-          # action = sd['action']
-            flags  = sd['flags']
-            did    = sd['uid']
-            src    = sd['source']
-            tgt    = sd['target']
-
-            self._prof.prof('staging_out_start', uid=uid, msg=did)
-
-            self._log.debug('src: %s', src)
-            self._log.debug('tgt: %s', tgt)
-
-            src = rpsd.complete_url(src, src_context, self._log)
-            tgt = rpsd.complete_url(tgt, tgt_context, self._log)
-
-            self._log.debug('src: %s', src)
-            self._log.debug('tgt: %s', tgt)
-
-            # Check if the src is a folder, if true
-            # add recursive flag if not already specified
-            if saga_dir.is_dir(src.path):
-                flags |= rs.filesystem.RECURSIVE
-
-            # Always set CREATE_PARENTS
-            flags |= rs.filesystem.CREATE_PARENTS
-
-            self._log.debug('deed: %s: %s -> %s [%s]', saga_dir.url, src, tgt, flags)
-            saga_dir.copy(src, tgt, flags=flags)
-            self._prof.prof('staging_out_stop', uid=uid, msg=did)
+            self._stager.handle_staging_directive(sd)
 
         # all staging is done -- at this point the task is final
         task['state'] = task['target_state']

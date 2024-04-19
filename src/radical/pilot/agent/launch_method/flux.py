@@ -34,7 +34,16 @@ class Flux(LaunchMethod):
         self._fh = ru.FluxHelper()
 
         self._log.debug('starting flux')
-        self._fh.start_flux()
+
+        # FIXME: this is a hack for frontier and will onlu work for slurm
+        #        resources.  If Flux is to be used more widely, we need to
+        #        pull the launch command from the agent's resource manager.
+        launcher = ''
+        out, err, ret = ru.sh_callout('which srun')
+        if ret == 0 and 'srun' in out:
+            launcher = 'srun'
+
+        self._fh.start_flux(launcher=launcher)
 
         self._details = {'flux_uri': self._fh.uri,
                          'flux_env': self._fh.env}
@@ -84,11 +93,8 @@ class Flux(LaunchMethod):
 
 
     def get_rank_cmd(self):
-        raise RuntimeError('method cannot be used on Flux LM')
 
-
-    def get_exec(self, task):
-        raise RuntimeError('method cannot be used on Flux LM')
+        return 'export RP_RANK=$FLUX_TASK_RANK\n'
 
 
 # ------------------------------------------------------------------------------

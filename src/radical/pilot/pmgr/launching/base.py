@@ -17,7 +17,6 @@ import threading          as mt
 
 import radical.gtod       as rg
 import radical.utils      as ru
-import radical.saga       as rs
 
 from ... import states    as rps
 from ... import constants as rpc
@@ -132,13 +131,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (ResourceManager).
-
-        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
-
-        # also listen for completed staging directives
-        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
-        self._active_sds = dict()
-        self._sds_lock   = mt.Lock()
+        self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
         self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
@@ -828,23 +821,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
-        # add dists to staging files, if needed:
-        # don't stage on `rp_version==installed` or `virtenv_mode==local`
-        if rp_version   == 'installed' or \
-           virtenv_mode == 'local'     :
-            sdist_names = list()
-            sdist_paths = list()
-        else:
-            sdist_names = [str(rg.sdist_name),
-                           str(ru.sdist_name),
-                           str(rs.sdist_name),
-                           str(self._rp_sdist_name)]
-            sdist_paths = [rg.sdist_path,
-                           ru.sdist_path,
-                           rs.sdist_path,
-                           self._rp_sdist_path]
-            bs_args.extend(['-d', ':'.join(sdist_names)])
-
         bs_args.extend(['-p', pid])
         bs_args.extend(['-s', sid])
         bs_args.extend(['-m', virtenv_mode])
@@ -940,19 +916,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
                                                   os.path.basename(env_helper)),
                              'action': rpc.TRANSFER})
 
-        # ----------------------------------------------------------------------
-        # we also touch the log and profile tarballs in the target pilot sandbox
-        pilot['fts'].append({
-                    'src': '/dev/null',
-                    'tgt': '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
-                    'rem': False})  # don't remove /dev/null
-        # only stage profiles if we profile
-        if self._prof.enabled:
-            pilot['fts'].append({
-                        'src': '/dev/null',
-                        'tgt': '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
-                        'rem': False})  # don't remove /dev/null
-
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
         # stack etc.
@@ -960,12 +923,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # NOTE: this will race when multiple pilot launcher instances are used!
         #
         if resource not in self._sandboxes:
-
-            for sdist in sdist_paths:
-                base = os.path.basename(sdist)
-                pilot['fts'].append({'src': sdist,
-                                     'tgt': '%s/%s' % (session_sandbox, base),
-                                     'rem': False})
 
             self._sandboxes[resource] = True
 
@@ -1019,24 +976,21 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         '''
 
         # contexts for staging url expansion
-        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+        tgt_ctx = {'pwd'     : pilot['pilot_sandbox'],      # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+        src_ctx = {'pwd'     : pilot['client_sandbox'],     # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        sds = ru.as_list(sds)
+        sds = expand_staging_directives(sds, src_ctx, tgt_ctx)
 
         for sd in sds:
             sd['prof_id'] = pilot['uid']
-            sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
-
-        self._stage(sds)
+            self._stager.handle_staging_directive(sd)
 
 
     # --------------------------------------------------------------------------
@@ -1066,65 +1020,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
-        self._stage(sds)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _stage(self, sds):
-
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        # prepare to wait for completion
-        with self._sds_lock:
-
-            self._active_sds = dict()
-            for sd in sds:
-                sd['state'] = rps.NEW
-                self._active_sds[sd['uid']] = sd
-
-            sd_states = [sd['state'] for sd
-                                     in  list(self._active_sds.values())
-                                     if  sd['uid'] in uids]
-
-        # push them out
-        self._stager_queue.put(sds)
-
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd
-                                         in  list(self._active_sds.values())
-                                         if  sd['uid'] in uids]
-
-        if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _staging_ack_cb(self, topic, msg):
-        '''
-        update staging directive state information
-        '''
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        if cmd == 'staging_result':
-
-            with self._sds_lock:
-                for sd in arg['sds']:
-                    uid = sd['uid']
-                    if uid in self._active_sds:
-                        active_sd = self._active_sds[uid]
-                        active_sd['state']            = sd['state']
-                        active_sd['exception']        = sd['exception']
-                        active_sd['exception_detail'] = sd['exception_detail']
-
-        return True
+            self._stager.handle_staging_directive(sd)
 
 
 # ------------------------------------------------------------------------------
