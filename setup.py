@@ -261,7 +261,7 @@ setup(**setup_args)
 # ------------------------------------------------------------------------------
 # clean temporary files from source tree
 os.system('rm -vrf src/%s.egg-info' % name)
-os.system('rm -vf  %s/VERSION'      % path)
+os.system('rm -vf  %s/VERSION'      % mod_root)
 
 
 # ------------------------------------------------------------------------------
