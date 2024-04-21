@@ -16,6 +16,8 @@ import radical.utils as ru
 from ... import agent     as rpa
 from ... import constants as rpc
 
+from ...pilot_description import PilotDescription
+
 
 # 'enum' for resource manager types
 RM_NAME_FORK        = 'FORK'
@@ -159,6 +161,17 @@ class ResourceManager(object):
 
         # set up launch methods even when initialized from registry info
         self._prepare_launch_methods()
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def inspect_resources(cls) -> PilotDescription:
+        '''
+        This method will inspect the local system and return a pilot
+        description to run a pilot on the full set of available resources.
+        '''
+        raise NotImplementedError('inspect_resources is not implemented')
 
 
     # --------------------------------------------------------------------------

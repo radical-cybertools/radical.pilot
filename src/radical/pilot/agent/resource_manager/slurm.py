@@ -3,10 +3,14 @@ __copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import time
 
 import radical.utils as ru
 
 from .base import RMInfo, ResourceManager
+
+from ...pilot_description import PilotDescription
+from ...resource_config   import ResourceConfig
 
 
 # ------------------------------------------------------------------------------
@@ -19,6 +23,54 @@ class Slurm(ResourceManager):
     def batch_started():
 
         return bool(os.getenv('SLURM_JOB_ID'))
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def inspect_resources(cls) -> PilotDescription:
+        '''
+        This method will inspect the local environment.  If it is determined
+        that we are running in a Slurm job allocation, a suitable pilot
+        description is crafted and returned.
+
+        SLURM_CLUSTER_NAME=frontier
+        SLURM_CPUS_ON_NODE=64
+        SLURM_GPUS_ON_NODE=8
+        SLURM_JOB_CPUS_PER_NODE=64(x4)
+        SLURM_JOB_END_TIME=1712740416
+        SLURM_JOB_NUM_NODES=4
+        SLURM_JOB_START_TIME=1712740356
+        SLURM_THREADS_PER_CORE=1
+        '''
+
+        if 'SLURM_CLUSTER_NAME' not in os.environ:
+            raise RuntimeError('not running in a SLURM allocation')
+
+
+        n_nodes  = int(os.environ['SLURM_JOB_NUM_NODES'])
+        runtime  = int(os.environ['SLURM_JOB_END_TIME']) - time.time()
+        hostname =     os.environ['SLURM_CLUSTER_NAME']
+
+        # we now have the hostname, but we need to know the resource label
+        resource = None
+        sites    = ru.Config('radical.pilot.resource', name='*', expand=False)
+        for site in sites:
+            if resource:
+                break
+            for res, rcfg in sites[site].items():
+                if hostname in res:
+                    resource = '%s.%s' % (site, res)
+                    break
+
+        return PilotDescription(resource=resource,
+                                runtime=runtime,
+                                nodes=n_nodes)
+
+
+
+
+
 
     # --------------------------------------------------------------------------
     #
