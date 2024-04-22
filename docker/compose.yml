@@ -4,26 +4,43 @@
 #
 # See https://docs.docker.com/compose/compose-file/ for reference information.
 
+# version: "3.8"
+# services:
+#   mongodb:
+#     image: mongo
+#     container_name: mongodb
+#   ports:
+#     - 27017:27017
+#   restart: unless-stopped
+
+version: "3.8"
 services:
-  mongo:
-    image: mongo:bionic
-    restart: unless-stopped
+  mongodb:
+    image: mongo
+    container_name: mongodb
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
-  mongo-express:
-    image: mongo-express
-    restart: unless-stopped
+    # - PUID=1000
+    # - PGID=1000
+      - MONGO_INITDB_ROOT_USERNAME=user
+      - MONGO_INITDB_ROOT_PASSWORD=password
+#     - MONGO_INITDB_DATABASE=test
     ports:
-      - "127.0.0.1:8081:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: root
-      ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      - "127.0.0.1:10000:27017"
+    restart: unless-stopped
+#
+# # rabbitmq:
+# #   image: rabbitmq
+# #   container_name: 'rabbitmq'
+# #   ports:
+# #       - 10001:5672
+# #       - 10002:15672
+
   login:
-    image: radicalpilot
+    image: shell
     restart: unless-stopped
     build:
       context: ..
-      dockerfile: docker/radicalpilot.dockerfile
-#    ports:
-#      - "127.0.0.1:2345:22"
+      dockerfile: docker/shell.dockerfile
+    ports:
+      - "127.0.0.1:2345:22"
+

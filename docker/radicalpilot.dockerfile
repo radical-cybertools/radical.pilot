@@ -92,14 +92,18 @@ RUN (cd ~rp && \
         coverage \
         flake8 \
         'mock==2.0.0' \
+        hypothesis \
         mpi4py \
         netifaces \
         ntplib \
+        "pika==0.13.0" \
+        packaging \
         pylint \
         pymongo \
         pytest \
         python-hostlist \
         setproctitle \
+        timeout-decorator \
         )
 
 COPY --chown=rp:radical . /home/rp/radical.pilot
