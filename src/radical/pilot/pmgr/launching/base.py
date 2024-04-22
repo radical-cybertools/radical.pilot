@@ -827,7 +827,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         bs_args.extend(['-r', rp_version])
         bs_args.extend(['-b', python_dist])
         bs_args.extend(['-v', virtenv])
-        bs_args.extend(['-y', str(runtime)])
         bs_args.extend(['-z', tar_name])
 
         # set optional args

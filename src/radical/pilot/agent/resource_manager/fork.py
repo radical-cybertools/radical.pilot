@@ -2,15 +2,61 @@
 __copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import os
 import math
 import multiprocessing
 
+import radical.utils as ru
+
 from .base import RMInfo, ResourceManager
+
+from ...pilot_description import PilotDescription
 
 
 # ------------------------------------------------------------------------------
 #
 class Fork(ResourceManager):
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _inspect(cls) -> PilotDescription:
+        '''
+        This method will inspect the local nodea and create a suitable pilot
+        description.
+        '''
+
+        # this inspect should always return a valid pilot description, as it
+        # will be used to create a pilot for the local node.
+
+        out, err, ret = ru.sh_callout('lspci | grep " VGA"',
+                                      shell=True)
+        if ret: n_gpus = None
+        else  : n_gpus = len(out.split('\n'))
+
+        out, err, ret = ru.sh_callout('cat /proc/cpuinfo | grep processor',
+                                      shell=True)
+        if ret: n_cores = None
+        else  : n_cores = len(out.split('\n'))
+
+        out, err, ret = ru.sh_callout('free -m | grep "Mem: "', shell=True)
+        if ret: mem = None
+        else  : mem = int(out.split()[1])
+
+        out, err, ret = ru.sh_callout('free -m | grep "Mem: "', shell=True)
+        if ret: mem = None
+        else  : mem = int(out.split()[1])
+
+        out, err, ret = ru.sh_callout('df -m / | grep "/"', shell=True)
+        if ret: lfs = None
+        else  : lfs = int(out.split()[3])
+
+        resource = 'local.localhost'
+
+        return PilotDescription({'resource': resource,
+                                 'nodes'   : 1})
+
 
     # --------------------------------------------------------------------------
     #

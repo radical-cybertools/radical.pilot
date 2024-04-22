@@ -79,7 +79,6 @@ fi
 TUNNEL_BIND_DEVICE="lo"
 CLEANUP=
 HOSTPORT=
-RUNTIME=
 VIRTENV=
 VIRTENV_MODE=
 LAUNCHER=
@@ -253,51 +252,11 @@ last_event()
 trap last_event INT TERM
 
 
-
 # ------------------------------------------------------------------------------
 #
-# we add another safety feature to ensure agent cancelation after runtime
-# expires: the timeout() function expects *exactly* two processes to run in the
-# background.  Whichever finishes with will cause a SIGUSR1 signal, which is
-# then trapped to kill both processes.  Since the first one is dead, only the
-# second will actually get the kill, and the subsequent wait will thus succeed.
-# The second process is, of course, a `sleep $TIMEOUT`, so that the actual
-# workload process will get killed after that timeout...
-#
-timeout()
-{
-    TIMEOUT="$1"; shift
-    COMMAND="$*"
-
-    RET="./timetrap.$$.ret"
-
-    # note that this insane construct uses `$PID_1` and `$PID_2` which will
-    # only be set later on.  In fact, those may or may not be set at all...
-    timetrap()
-    {
-        kill $PID_1 2>&1 > /dev/null
-        kill $PID_2 2>&1 > /dev/null
-    }
-    trap timetrap USR1
-
-    rm -f $RET
-    ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
-    (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
-
-    wait
-
-    ret=`cat $RET || echo 2`
-    rm -f $RET
-    return $ret
-}
-
-
-# ------------------------------------------------------------------------------
-#
-# a similar method is `waitfor()`, which will test a condition in certain
-# intervals and return once that condition is met, or finish after a timeout.
-# Other than `timeout()` above, this method will not create subshells, and thus
-# can be utilized for job control etc.
+# `waitfor()` will test a condition in certain intervals and return once that
+# condition is met, or finish after a timeout.  This method will not create
+# subshells, and thus can be utilized for job control etc.
 #
 waitfor()
 {
@@ -1337,7 +1296,6 @@ while getopts "a:b:cd:e:f:h:i:m:p:r:s:t:v:w:x:y:z:" OPTION; do
         v)  VIRTENV=$(eval echo "$OPTARG")    ;;
         w)  pre_bootstrap_2 "$OPTARG"         ;;
         x)  CLEANUP="$OPTARG"                 ;;
-        y)  RUNTIME="$OPTARG"                 ;;
         z)  TARBALL="$OPTARG"                 ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
             return 1;;
@@ -1416,16 +1374,8 @@ echo "VIRTENV normalized: $VIRTENV"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
-if test -z "$RUNTIME"     ; then  echo "missing RUNTIME"   ; exit 1;  fi
 if test -z "$PILOT_ID"    ; then  echo "missing PILOT_ID"  ; exit 1;  fi
 if test -z "$RP_VERSION"  ; then  echo "missing RP_VERSION"; exit 1;  fi
-
-# pilot runtime is specified in minutes -- on shell level, we want seconds
-RUNTIME=$((RUNTIME * 60))
-
-# we also add a minute as safety margin, to give the agent proper time to shut
-# down on its own
-RUNTIME=$((RUNTIME + 60))
 
 # ------------------------------------------------------------------------------
 # If the host that will run the agent is not capable of communication

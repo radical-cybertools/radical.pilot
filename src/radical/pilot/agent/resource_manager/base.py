@@ -166,12 +166,47 @@ class ResourceManager(object):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def inspect_resources(cls) -> PilotDescription:
+    def inspect(cls) -> PilotDescription:
         '''
-        This method will inspect the local system and return a pilot
-        description to run a pilot on the full set of available resources.
+        Find the first resource manager which can provide a pilot description
         '''
-        raise NotImplementedError('inspect_resources is not implemented')
+
+        from .ccm     import CCM
+        from .fork    import Fork
+        from .lsf     import LSF
+        from .pbspro  import PBSPro
+        from .slurm   import Slurm
+        from .torque  import Torque
+        from .cobalt  import Cobalt
+        from .yarn    import Yarn
+        from .debug   import Debug
+
+        impls = [Slurm, PBSPro, Torque, CCM, LSF, Cobalt, Yarn, Debug, Fork]
+        for impl in impls:
+            print('=== try', impl)
+
+            try:
+                pd = impl._inspect()
+                print('=== got', pd)
+                return pd
+            except Exception as e:
+                print('=== except', e)
+                pass
+
+        raise RuntimeError('resource inspection failed')
+
+
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _inspect(cls) -> PilotDescription:
+        '''
+        This method can be overloaded by any RM implementation.  It will be
+        called during `inspect` and is expected to return a `PilotDescription`
+        instance which describes the resources available to the current job.
+        '''
+
+        raise NotImplementedError('_inspect is not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -393,6 +428,7 @@ class ResourceManager(object):
             raise RuntimeError('ResourceManager %s unknown' % name)
 
         return rm(cfg, rcfg, log, prof)
+
 
     # --------------------------------------------------------------------------
     #

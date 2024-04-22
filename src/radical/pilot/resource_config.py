@@ -608,7 +608,11 @@ class NodeList(ru.TypedDict):
         self.__last_failed_rr = None
         self.__last_failed_n  = None
 
+        self.__verified = False
 
+
+    # --------------------------------------------------------------------------
+    #
     def verify(self) -> None:
 
         if not self.nodes:
@@ -639,11 +643,45 @@ class NodeList(ru.TypedDict):
 
         self.__nodes_by_name  = {node.name : node for node in self.nodes}
 
+        self.__verified = True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _assert_rr(self, rr: RankRequirements, n_slots:int) -> None:
+
+        if not self.__verified:
+            self.verify()
+
+        if not self.uniform:
+            raise RuntimeError('verification unsupported for non-uniform nodes')
+
+        if not rr.n_cores:
+            raise ValueError('invalid rank requirements: %s' % rr)
+
+        ranks_per_node = self.cores_per_node / rr.n_cores
+
+        if rr.n_gpus:
+            ranks_per_node = min(ranks_per_node, self.gpus_per_node / rr.n_gpus)
+
+        if rr.lfs:
+            ranks_per_node = min(ranks_per_node, self.lfs_per_node / rr.lfs)
+
+        if rr.mem:
+            ranks_per_node = min(ranks_per_node, self.mem_per_node / rr.mem)
+
+        if ranks_per_node < 1:
+            raise ValueError('invalid rank requirements: %s' % rr)
+
+        if int(ranks_per_node) * n_slots > len(self.nodes):
+            raise ValueError('invalid rank requirements: %s' % rr)
 
 
     # --------------------------------------------------------------------------
     #
     def find_slots(self, rr: RankRequirements, n_slots:int = 1) -> List[Slot]:
+
+        self._assert_rr(rr, n_slots)
 
         if self.__last_failed_rr:
             if self.__last_failed_rr >= rr and \

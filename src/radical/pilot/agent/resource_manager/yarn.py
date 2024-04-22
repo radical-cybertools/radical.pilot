@@ -44,5 +44,13 @@ class Yarn(Fork):
         return rm_info
 
 
+    # --------------------------------------------------------------------------
+    #
+    @classmethod
+    def _inspect(cls):
+
+        raise NotImplementedError('Yarn resource inspection not implemented')
+
+
 # ------------------------------------------------------------------------------
 

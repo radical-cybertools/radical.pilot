@@ -28,7 +28,7 @@ class Slurm(ResourceManager):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    def inspect_resources(cls) -> PilotDescription:
+    def _inspect(cls) -> PilotDescription:
         '''
         This method will inspect the local environment.  If it is determined
         that we are running in a Slurm job allocation, a suitable pilot
@@ -49,7 +49,6 @@ class Slurm(ResourceManager):
 
 
         n_nodes  = int(os.environ['SLURM_JOB_NUM_NODES'])
-        runtime  = int(os.environ['SLURM_JOB_END_TIME']) - time.time()
         hostname =     os.environ['SLURM_CLUSTER_NAME']
 
         # we now have the hostname, but we need to know the resource label
@@ -63,13 +62,7 @@ class Slurm(ResourceManager):
                     resource = '%s.%s' % (site, res)
                     break
 
-        return PilotDescription(resource=resource,
-                                runtime=runtime,
-                                nodes=n_nodes)
-
-
-
-
+        return PilotDescription(resource=resource, nodes=n_nodes)
 
 
     # --------------------------------------------------------------------------

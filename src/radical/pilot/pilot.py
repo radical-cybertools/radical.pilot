@@ -37,7 +37,6 @@ class Pilot(object):
 
           pd.resource = "local.localhost"
           pd.cores    = 2
-          pd.runtime  = 5 # minutes
 
           pilot = pm.submit_pilots(pd)
 
@@ -60,12 +59,6 @@ class Pilot(object):
     def __init__(self, pmgr: PilotManager, descr):
 
         # sanity checks on description
-        if not descr.runtime:
-            raise ValueError('pilot runtime must be defined')
-
-        if descr.runtime <= 0:
-            raise ValueError('pilot runtime must be positive')
-
         if not descr.resource:
             raise ValueError('pilot target resource must be defined')
 
@@ -304,8 +297,11 @@ class Pilot(object):
                'js_hop'           : str(self._pilot_jshop),
                'description'      : self.description,  # this is a deep copy
                'resource_details' : self.resource_details,
-               'nodeslist'        : self.nodelist
+               'nodelist'         : None
               }
+
+        if self.nodelist:
+            ret['nodelist'] = self.nodelist.as_dict()
 
         return ret
 
@@ -347,7 +343,7 @@ class Pilot(object):
 
             resource_details = self.resource_details
             if not resource_details:
-                return list()
+                return
 
             nodes = [NodeResources(node) for node
                                          in  resource_details.get('node_list')]

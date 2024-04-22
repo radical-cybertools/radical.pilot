@@ -160,10 +160,12 @@ class PilotLauncherPSIJ(PilotLauncherBase):
                     proj = jd.project
 
             attr = psij.JobAttributes()
-            attr.duration       = datetime.timedelta(minutes=jd.wall_time_limit)
             attr.queue_name     = jd.queue
             attr.project_name   = proj
             attr.reservation_id = res
+
+            if jd.wall_time_limit is not None:
+                attr.duration   = datetime.timedelta(minutes=jd.wall_time_limit)
 
             spec = psij.JobSpec()
             spec.attributes          = attr

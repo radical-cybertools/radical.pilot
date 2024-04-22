@@ -47,15 +47,13 @@ class PilotDescription(ru.TypedDict):
 
     Note:
         A PilotDescription **MUST** define at least
-        :attr:`resource`, :attr:`cores` or :attr:`nodes`,
-        and :attr:`runtime`.
+        :attr:`resource`, and either one of :attr:`cores` or :attr:`nodes`.
 
     Example::
         pm = radical.pilot.PilotManager(session=s)
         pd = radical.pilot.PilotDescription()
         pd.resource = "local.localhost"
         pd.cores    = 16
-        pd.runtime  = 5 # minutes
 
         pilot = pm.submit_pilots(pd)
 
@@ -180,7 +178,7 @@ class PilotDescription(ru.TypedDict):
         UID             : None       ,
         RESOURCE        : None       ,
         ACCESS_SCHEMA   : None       ,
-        RUNTIME         : 10         ,
+        RUNTIME         : None       ,
         APP_COMM        : []         ,
         SANDBOX         : None       ,
         CORES           : 0          ,
