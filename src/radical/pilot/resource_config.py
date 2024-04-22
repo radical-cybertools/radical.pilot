@@ -224,10 +224,6 @@ class ResourceOccupation(ru.TypedDict):
 
 
     def __str__(self):
-        return self.__repr__()
-
-
-    def __repr__(self):
         if self.occupation == DOWN:
             return '%d:----' % self.index
         return '%d:%.2f' % (self.index, self.occupation)
@@ -265,14 +261,12 @@ class RankRequirements(ru.TypedDict):
         MEM            : 0,
     }
 
-    def __repr__(self):
+    def __str__(self):
         return 'RR(%d:%.2f, %d:%.2f, %d, %d)' % (
                 self.n_cores, self.core_occupation,
                 self.n_gpus,  self.gpu_occupation,
                 self.lfs,     self.mem)
 
-    def __str__(self):
-        return self.__repr__()
 
     def __eq__(self, other: 'RankRequirements') -> bool:
 

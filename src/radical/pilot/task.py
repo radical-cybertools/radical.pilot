@@ -124,13 +124,6 @@ class Task(object):
 
     # --------------------------------------------------------------------------
     #
-    def __repr__(self):
-
-        return '<%s object, uid %s>' % (self.__class__.__qualname__, self._uid)
-
-
-    # --------------------------------------------------------------------------
-    #
     def __str__(self):
 
         return str([self.uid, self.pilot, self.state])
