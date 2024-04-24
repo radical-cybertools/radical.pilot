@@ -408,7 +408,12 @@ class NodeResources(ru.TypedDict):
 
     def __init__(self, from_dict: dict):
 
+        class XLock:
+            def __enter__(self): pass
+            def __exit__(self, *args): pass
+
         self.__lock = mt.RLock()
+        self.__lock = XLock()
 
         cores = from_dict.get('cores')
         gpus  = from_dict.get('gpus')
@@ -642,7 +647,7 @@ class NodeList(ru.TypedDict):
 
     # --------------------------------------------------------------------------
     #
-    def _assert_rr(self, rr: RankRequirements, n_slots:int) -> None:
+    def _assert_rr(self, rr: RankRequirements, ranks:int) -> None:
 
         if not self.__verified:
             self.verify()
@@ -667,19 +672,20 @@ class NodeList(ru.TypedDict):
         if ranks_per_node < 1:
             raise ValueError('invalid rank requirements: %s' % rr)
 
-        if int(ranks_per_node) * n_slots > len(self.nodes):
-            raise ValueError('invalid rank requirements: %s' % rr)
+        if ranks > len(self.nodes) * ranks_per_node:
+            raise ValueError('invalid rank requirements: %d x %s'
+                             % (ranks, rr))
 
 
     # --------------------------------------------------------------------------
     #
-    def find_slots(self, rr: RankRequirements, n_slots:int = 1) -> List[Slot]:
+    def find_slots(self, rr: RankRequirements, ranks:int = 1) -> List[Slot]:
 
-        self._assert_rr(rr, n_slots)
+        self._assert_rr(rr, ranks)
 
         if self.__last_failed_rr:
             if self.__last_failed_rr >= rr and \
-               self.__last_failed_n  >= n_slots:
+               self.__last_failed_n  >= ranks:
                 return None
 
         slots = list()
@@ -699,20 +705,20 @@ class NodeList(ru.TypedDict):
                     break
 
                 slots.append(slot)
-                if len(slots) == n_slots:
+                if len(slots) == ranks:
                     stop = idx
                     break
 
-            if len(slots) == n_slots:
+            if len(slots) == ranks:
                 break
 
-        if len(slots) != n_slots:
+        if len(slots) != ranks:
             # free whatever we got
             for slot in slots:
                 node = self.nodes[slot.node_index]
                 node.deallocate_slot(slot)
             self.__last_failed_rr = rr
-            self.__last_failed_n  = n_slots
+            self.__last_failed_n  = ranks
           # print(' --- %5d' % count)
             return None
 

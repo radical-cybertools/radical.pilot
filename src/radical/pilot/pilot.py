@@ -73,7 +73,7 @@ class Pilot(object):
         self._log        = pmgr._log
         self._pilot_dict = dict()
         self._callbacks  = dict()
-        self._cb_lock    = ru.RLock()
+        self._cb_lock    = ru.Lock()
         self._tmgr       = None
         self._nodelist   = None
 

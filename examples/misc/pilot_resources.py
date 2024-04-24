@@ -12,7 +12,7 @@ import radical.pilot as rp
 import radical.utils as ru
 
 
-if True:
+if False:
 
     n_nodes        =   9472
     gpus_per_node  =      8
@@ -48,7 +48,7 @@ if True:
     start  = time.time()
     for i in range(n_tasks):
 
-        slots = nl.find_slots(rr, n_slots=ranks_per_task)
+        slots = nl.find_slots(rr, ranks=ranks_per_task)
         if slots:
             allocs.append(slots)
 

@@ -239,6 +239,10 @@ class PilotManager(rpu.ClientComponent):
         json['uid']    = self.uid
         json['pilots'] = [pilot.as_dict() for pilot in self._pilots.values()]
 
+        import pprint
+        with open('/tmp/pmgr.json', 'w') as fout:
+            fout.write(pprint.pformat(json))
+
         tgt = '%s/%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
 
