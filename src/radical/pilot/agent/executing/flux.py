@@ -3,6 +3,8 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
+from collections import defaultdict
+
 from ...   import states as rps
 
 from ..    import LaunchMethod
@@ -61,7 +63,8 @@ class Flux(AgentExecutingComponent) :
                                                   self.session.cfg,
                                                   self._log, self._prof)
         # local state management
-        self._tasks  = dict()
+        self._tasks      = dict()
+        self._task_count = 0
 
 
     # --------------------------------------------------------------------------
@@ -103,6 +106,8 @@ class Flux(AgentExecutingComponent) :
                 task['target_state'] = rps.DONE
 
             # on completion, push toward output staging
+            import pprint
+            self._log.debug('task %s: %s', task['uid'], pprint.pformat(task))
             self.advance_tasks(task, state, ts=ts, publish=True, push=True)
 
         elif state == 'unschedule':
@@ -123,24 +128,33 @@ class Flux(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        # FIXME: need actual job description, obviously
-        jds = [self.task_to_spec(task) for task in tasks]
-        self._log.debug('submit tasks: %s', [jd for jd in jds])
-        jids = self._lm.fh.submit_jobs([jd for jd in jds])
-        self._log.debug('submitted tasks')
+        # round robin on available flux partitions
+        parts = defaultdict(list)
+        for task in tasks:
+            partition_id = self._task_count % self._lm.n_partitions
+            parts[partition_id].append(task)
+            self._task_count += 1
+            task['description']['environment']['RP_PARTITION_ID'] = partition_id
 
-        for task, flux_id in zip(tasks, jids):
+        for partition_id, partition_tasks in parts.items():
 
-            self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
+            part = self._lm.get_partition(partition_id)
+            jds  = [self.task_to_spec(task) for task in partition_tasks]
+            jids = part.submit_jobs([jd for jd in jds])
+            self._log.debug('submitted tasks: %s', jids)
 
-            md = task['description'].get('metadata') or dict()
-            md['flux_id'] = flux_id
-            task['description']['metadata'] = md
+            for task, flux_id in zip(partition_tasks, jids):
 
-            self._tasks[flux_id] = task
+                self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
 
-            self._lm.fh.attach_jobs([flux_id], self._job_event_cb)
-            self._log.debug('handle %s: %s', task['uid'], flux_id)
+                md = task['description'].get('metadata') or dict()
+                md['flux_id'] = flux_id
+                task['description']['metadata'] = md
+
+                self._tasks[flux_id] = task
+
+                part.attach_jobs([flux_id], self._job_event_cb)
+                self._log.debug('handle %s: %s', task['uid'], flux_id)
 
 
     # --------------------------------------------------------------------------

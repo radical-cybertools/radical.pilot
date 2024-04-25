@@ -15,6 +15,10 @@ class Flux(LaunchMethod):
     #
     def __init__(self, name, lm_cfg, rm_info, session, prof):
 
+        self._flux_handles = list()
+        self._details      = list()
+        self._n_partitions = 2
+
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, session, prof)
 
 
@@ -22,37 +26,44 @@ class Flux(LaunchMethod):
     #
     def _terminate(self):
 
-        if self._fh:
-            self._fh.reset()
+        for fh in self._flux_handles:
+            fh.reset()
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_scratch(self, env, env_sh):
 
-        self._prof.prof('flux_start')
-        self._fh = ru.FluxHelper()
+        # FIXME: get number of partitions from config
+        n_partitions = 3
 
-        self._log.debug('starting flux')
+        for n in range(n_partitions):
 
-        # FIXME: this is a hack for frontier and will onlu work for slurm
-        #        resources.  If Flux is to be used more widely, we need to
-        #        pull the launch command from the agent's resource manager.
-        launcher = ''
-        out, err, ret = ru.sh_callout('which srun')
-        if ret == 0 and 'srun' in out:
-            launcher = 'srun'
+            self._prof.prof('flux_start')
+            fh = ru.FluxHelper()
 
-        self._fh.start_flux(launcher=launcher)
+            self._log.debug('starting flux')
 
-        self._details = {'flux_uri': self._fh.uri,
-                         'flux_env': self._fh.env}
+            # FIXME: this is a hack for frontier and will onlu work for slurm
+            #        resources.  If Flux is to be used more widely, we need to
+            #        pull the launch command from the agent's resource manager.
+            launcher = ''
+            out, err, ret = ru.sh_callout('which srun')
+            if ret == 0 and 'srun' in out:
+                launcher = 'srun'
+
+            fh.start_flux(launcher=launcher)
+
+            self._flux_handles.append(fh)
+            self._details.append({'flux_uri': fh.uri,
+                                  'flux_env': fh.env})
 
         self._prof.prof('flux_start_ok')
 
-        lm_info = {'env'    : env,
-                   'env_sh' : env_sh,
-                   'details': self._details}
+        lm_info = {'env'          : env,
+                   'env_sh'       : env_sh,
+                   'n_partitions' : n_partitions,
+                   'details'      : self._details}
 
         return lm_info
 
@@ -67,17 +78,25 @@ class Flux(LaunchMethod):
         self._env_sh  = lm_info['env_sh']
         self._details = lm_info['details']
 
-        self._fh = ru.FluxHelper()
-        self._fh.connect_flux(uri=self._details['flux_uri'])
+        for details in self._details:
+
+            fh = ru.FluxHelper()
+            fh.connect_flux(uri=details['flux_uri'])
+            self._flux_handles.append(fh)
 
         self._prof.prof('flux_reconnect_ok')
 
 
     # --------------------------------------------------------------------------
     #
+    def get_partition(self, partition):
+        assert partition < self._n_partitions
+        return self._flux_handles[partition]
+
+
     @property
-    def fh(self):
-        return self._fh
+    def n_partitions(self):
+        return self._n_partitions
 
 
     def can_launch(self, task):
