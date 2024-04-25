@@ -183,14 +183,11 @@ class ResourceManager(object):
 
         impls = [Slurm, PBSPro, Torque, CCM, LSF, Cobalt, Yarn, Debug, Fork]
         for impl in impls:
-            print('=== try', impl)
-
             try:
                 pd = impl._inspect()
-                print('=== got', pd)
+              # print('got pd from %s: %s' % (impl, pd))
                 return pd
-            except Exception as e:
-                print('=== except', e)
+            except Exception:
                 pass
 
         raise RuntimeError('resource inspection failed')
