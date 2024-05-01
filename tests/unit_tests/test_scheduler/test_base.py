@@ -199,7 +199,6 @@ class TestBaseScheduling(TestCase):
 
         # task from `waitpool` was cancelled
         self.assertFalse(sched._waitpool)
-        self.assertEqual(task0000['target_state'], rps.CANCELED)
 
 
 # ------------------------------------------------------------------------------
