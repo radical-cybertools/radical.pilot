@@ -72,9 +72,9 @@ class Default(AgentStagingOutputComponent):
             try:
                 uid = task['uid']
 
-                # From here on, any state update will hand control over to the tmgr
-                # again.  The next task update should thus push *all* task details,
-                # not only state.
+                # From here on, any state update will hand control over to the
+                # tmgr again.  The next task update should thus push *all* task
+                # details, not only state.
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
 
@@ -112,9 +112,10 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging prep error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.FAILED)
 
 
         if no_staging_tasks:
@@ -127,12 +128,10 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
 
-                self.advance(task, rps.TMGR_STAGING_OUTPUT_PENDING,
-                                   publish=True, push=True)
+                self.advance(task, rps.FAILED)
 
 
     # --------------------------------------------------------------------------
