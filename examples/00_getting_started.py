@@ -60,14 +60,15 @@ if __name__ == '__main__':
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'nodes': 2
+                   'cores'         : config.get('cores', 1),
+                   'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
         # Launch the pilot.
         pilot = pmgr.submit_pilots(pdesc)
 
-        n = 1  # number of tasks to run
+        n = 10  # number of tasks to run
         report.header('submit %d tasks' % n)
 
         # Register the pilot in a TaskManager object.
@@ -85,7 +86,6 @@ if __name__ == '__main__':
             td.executable     = '/bin/date'
             td.ranks          = 1
             td.cores_per_rank = 1
-            td.gpus_per_rank  = 1 / 3
 
             tds.append(td)
             report.progress()
