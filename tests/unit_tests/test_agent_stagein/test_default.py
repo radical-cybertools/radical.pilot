@@ -50,7 +50,7 @@ class StageInTC(TestCase):
             _advance_side_effect(task, actionables, False, False)
 
         component = Default(cfg=None, session=None)
-        component._handle_task = mock.MagicMock(
+        component._handle_task_staging = mock.MagicMock(
                                        side_effect=_handle_task_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
         component._log = ru.Logger('dummy')
