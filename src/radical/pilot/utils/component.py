@@ -137,7 +137,6 @@ class BaseComponent(object):
     multithreading implementation.
     '''
 
-
     # --------------------------------------------------------------------------
     #
     def __init__(self, cfg, session):
@@ -1039,6 +1038,7 @@ class BaseComponent(object):
                             thing['exception']        = repr(e)
                             thing['exception_detail'] = \
                                              '\n'.join(ru.get_exception_trace())
+
                         self.advance(things, rps.FAILED, publish=True,
                                                          push=False)
 
@@ -1216,9 +1216,17 @@ class ClientComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=False, prof=True):
 
+        # CANCELED and FAILED are always published, never pushed
+        if state in [rps.FAILED, rps.CANCELED]:
+
+            for thing in ru.as_list(things):
+                thing['target_state'] = state
+
+            publish = True
+            push    = False
+
         super().advance(things=things, state=state, publish=publish, push=push,
                         qname=qname, ts=ts, fwd=fwd, prof=prof)
-
 
 
 # ------------------------------------------------------------------------------
@@ -1228,6 +1236,19 @@ class AgentComponent(BaseComponent):
     # agent side state advances are forwarded by default (fwd=True)
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=True, prof=True):
+
+        # CANCELED and FAILED is handled on the client side
+        if state in [rps.FAILED, rps.CANCELED]:
+
+            # final state is handled on client side - hand task over to tmgr
+            for thing in ru.as_list(things):
+                thing['target_state'] = state
+                thing['control']      = 'tmgr_pending'
+                thing['$all']         = True
+
+            state   = rps.TMGR_STAGING_OUTPUT_PENDING
+            publish = True
+            push    = False
 
         super().advance(things=things, state=state, publish=publish, push=push,
                         qname=qname, ts=ts, fwd=fwd, prof=prof)
