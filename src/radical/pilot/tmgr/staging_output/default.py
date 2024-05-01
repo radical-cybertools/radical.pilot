@@ -67,12 +67,6 @@ class Default(TMGRStagingOutputComponent):
 
         for task in tasks:
 
-            # no matter if we perform any staging or not, we will push the full
-            # task info to the DB on the next advance, since the tasks will be
-            # final
-            task['$all']    = True
-            task['control'] = None
-
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
@@ -95,7 +89,12 @@ class Default(TMGRStagingOutputComponent):
             self.advance(no_staging_tasks, publish=True, push=True)
 
         for task,actionables in staging_tasks:
-            self._handle_task(task, actionables)
+            try:
+                self._handle_task(task, actionables)
+                self.advance(task, publish=True, push=True)
+            except:
+                self._log.exception("staging error")
+                self.advance(task, rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
