@@ -3,6 +3,7 @@ __copyright__ = 'Copyright 2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import copy
 
 import radical.utils as ru
 
@@ -23,13 +24,16 @@ class ContinuousReconfig(Continuous):
 
         self._task_reqs = {}  # resource requirements (ranks, cores_per_rank)
 
+
     # --------------------------------------------------------------------------
     #
     def _set_task_reqs(self):
 
-        reqs_file = ''
+        reqs_file = 'sched_reconfig.json'
         if os.path.isfile(reqs_file):
             self._task_reqs.update(ru.read_json(reqs_file))
+            self._log.debug('=== task reqs: %s', self._task_reqs)
+
 
     # --------------------------------------------------------------------------
     #
@@ -38,20 +42,37 @@ class ContinuousReconfig(Continuous):
         if not self._task_reqs:
             self._set_task_reqs()
 
-        if self._task_reqs:
+        new_tasks = list()
+        for task in ru.as_list(tasks):
 
-            tasks_reconfigured = []
-            for task in ru.as_list(tasks):
+            if not self._task_reqs:
+                new_tasks.append(task)
+
+            else:
+
+                handled = False
                 for attr in ['ranks', 'cores_per_rank']:
+
                     v = int(self._task_reqs.get(attr) or 0)
+
                     if v:
-                        task[attr] = v
-                        tasks_reconfigured.append(task)
+                        new_task = copy.deepcopy(task)
+                        descr = new_task['description']
 
-                if task['cores_per_rank'] > 1:
-                    task['threading_type'] = rpc.OpenMP
+                        new_descr = copy.deepcopy(descr)
+                        new_descr[attr] = v
 
-            super().work(tasks_reconfigured)
+                        if descr['cores_per_rank'] > 1:
+                            descr['threading_type'] = rpc.OpenMP
+
+                        new_tasks.append(new_task)
+                        handled = True
+
+                if not handled:
+                    new_tasks.append(task)
+
+        super().work(new_tasks)
+
 
 # ------------------------------------------------------------------------------
 
