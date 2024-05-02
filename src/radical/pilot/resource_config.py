@@ -512,7 +512,7 @@ class NodeResources(ru.TypedDict):
 
     # --------------------------------------------------------------------------
     #
-    def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
+    def find_slot(self, rank_reqs: RankRequirements) -> Optional[Slot]:
 
         with self.__lock:
 
@@ -522,36 +522,37 @@ class NodeResources(ru.TypedDict):
             # NOTE: the current mechanism will never use the same core or gpu
             #       multiple times for the created slot, even if the respective
             #       occupation would allow for it.
-            if rr.n_cores:
+            if rank_reqs.n_cores:
                 for ro in self.cores:
                     if ro.occupation is DOWN:
                         continue
-                    if rr.core_occupation <= 1 - ro.occupation:
+                    if rank_reqs.core_occupation <= 1 - ro.occupation:
                         cores.append(_RO(index=ro.index,
-                                         occupation=rr.core_occupation))
-                    if len(cores) == rr.n_cores:
+                                         occupation=rank_reqs.core_occupation))
+                    if len(cores) == rank_reqs.n_cores:
                         break
 
-                if len(cores) < rr.n_cores:
+                if len(cores) < rank_reqs.n_cores:
                     return None
 
-            if rr.n_gpus:
+            if rank_reqs.n_gpus:
                 for ro in self.gpus:
                     if ro.occupation is DOWN:
                         continue
-                    if rr.gpu_occupation <= 1 - ro.occupation:
+                    if rank_reqs.gpu_occupation <= 1 - ro.occupation:
                         gpus.append(_RO(index=ro.index,
-                                        occupation=rr.gpu_occupation))
-                    if len(gpus) == rr.n_gpus:
+                                        occupation=rank_reqs.gpu_occupation))
+                    if len(gpus) == rank_reqs.n_gpus:
                         break
 
-                if len(gpus) < rr.n_gpus:
+                if len(gpus) < rank_reqs.n_gpus:
                     return None
 
-            if rr.lfs and self.lfs < rr.lfs: return None
-            if rr.mem and self.mem < rr.mem: return None
+            if rank_reqs.lfs and self.lfs < rank_reqs.lfs: return None
+            if rank_reqs.mem and self.mem < rank_reqs.mem: return None
 
-            slot = Slot(cores=cores, gpus=gpus, lfs=rr.lfs, mem=rr.mem,
+            slot = Slot(cores=cores, gpus=gpus,
+                        lfs=rank_reqs.lfs, mem=rank_reqs.mem,
                         node_index=self.index, node_name=self.name)
             self.allocate_slot(slot, _check=False)
 
@@ -638,7 +639,7 @@ class NodeList(ru.TypedDict):
 
     # --------------------------------------------------------------------------
     #
-    def _assert_rr(self, rr: RankRequirements, ranks:int) -> None:
+    def _assert_rr(self, rank_reqs: RankRequirements, n_ranks:int) -> None:
 
         if not self.__verified:
             self.verify()
@@ -646,37 +647,41 @@ class NodeList(ru.TypedDict):
         if not self.uniform:
             raise RuntimeError('verification unsupported for non-uniform nodes')
 
-        if not rr.n_cores:
-            raise ValueError('invalid rank requirements: %s' % rr)
+        if not rank_reqs.n_cores:
+            raise ValueError('invalid rank requirements: %s' % rank_reqs)
 
-        ranks_per_node = self.cores_per_node / rr.n_cores
+        ranks_per_node = self.cores_per_node / rank_reqs.n_cores
 
-        if rr.n_gpus:
-            ranks_per_node = min(ranks_per_node, self.gpus_per_node / rr.n_gpus)
+        if rank_reqs.n_gpus:
+            ranks_per_node = min(ranks_per_node,
+                                 self.gpus_per_node / rank_reqs.n_gpus)
 
-        if rr.lfs:
-            ranks_per_node = min(ranks_per_node, self.lfs_per_node / rr.lfs)
+        if rank_reqs.lfs:
+            ranks_per_node = min(ranks_per_node,
+                                 self.lfs_per_node / rank_reqs.lfs)
 
-        if rr.mem:
-            ranks_per_node = min(ranks_per_node, self.mem_per_node / rr.mem)
+        if rank_reqs.mem:
+            ranks_per_node = min(ranks_per_node,
+                                 self.mem_per_node / rank_reqs.mem)
 
         if ranks_per_node < 1:
-            raise ValueError('invalid rank requirements: %s' % rr)
+            raise ValueError('invalid rank requirements: %s' % rank_reqs)
 
-        if ranks > len(self.nodes) * ranks_per_node:
+        if n_ranks > len(self.nodes) * ranks_per_node:
             raise ValueError('invalid rank requirements: %d x %s'
-                             % (ranks, rr))
+                             % (n_ranks, rank_reqs))
 
 
     # --------------------------------------------------------------------------
     #
-    def find_slots(self, rr: RankRequirements, ranks:int = 1) -> List[Slot]:
+    def find_slots(self, rank_reqs: RankRequirements,
+                         n_ranks  : int = 1) -> List[Slot]:
 
-        self._assert_rr(rr, ranks)
+        self._assert_rr(rank_reqs, n_ranks)
 
         if self.__last_failed_rr:
-            if self.__last_failed_rr >= rr and \
-               self.__last_failed_n  >= ranks:
+            if self.__last_failed_rr >= rank_reqs and \
+               self.__last_failed_n  >= n_ranks:
                 return None
 
         slots = list()
@@ -690,25 +695,25 @@ class NodeList(ru.TypedDict):
 
             while True:
                 count += 1
-                slot = node.find_slot(rr)
+                slot = node.find_slot(rank_reqs)
                 if not slot:
                     break
 
                 slots.append(slot)
-                if len(slots) == ranks:
+                if len(slots) == n_ranks:
                     stop = idx
                     break
 
-            if len(slots) == ranks:
+            if len(slots) == n_ranks:
                 break
 
-        if len(slots) != ranks:
+        if len(slots) != n_ranks:
             # free whatever we got
             for slot in slots:
                 node = self.nodes[slot.node_index]
                 node.deallocate_slot(slot)
-            self.__last_failed_rr = rr
-            self.__last_failed_n  = ranks
+            self.__last_failed_rr = rank_reqs
+            self.__last_failed_n  = n_ranks
             return None
 
         self.__index = stop

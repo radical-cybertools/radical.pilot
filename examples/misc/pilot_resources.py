@@ -20,7 +20,7 @@ if True:
     mem_per_node   =    512
     lfs_per_node   =   1920
 
-    n_tasks        =  10000
+    n_tasks        =  100000
     ranks_per_task =      2
     cores_per_task =     16
     gpus_per_task  =      2
@@ -48,17 +48,21 @@ if True:
     start  = time.time()
     for i in range(n_tasks):
 
-        slots = nl.find_slots(rr, ranks=ranks_per_task)
+        slots = nl.find_slots(rr, n_ranks=ranks_per_task)
         if slots:
             allocs.append(slots)
+        else:
+            print('no slots for task %d' % i)
+            break
 
-        if allocs and random.random() < 0.5:
-            to_release = random.choice(allocs)
-            allocs.remove(to_release)
-            nl.release_slots(to_release)
+      # if allocs and random.random() < 0.5:
+      #     to_release = random.choice(allocs)
+      #     allocs.remove(to_release)
+      #     nl.release_slots(to_release)
 
     stop = time.time()
     print('find_slots: %.2f' % (stop - start))
+    sys.exit()
 
     for slots in allocs:
         nl.release_slots(slots)
@@ -71,7 +75,7 @@ if True:
 
     print('========================================')
 
-  # sys.exit()
+    sys.exit()
 
 
 # ------------------------------------------------------------------------------
@@ -90,12 +94,10 @@ if __name__ == '__main__':
         report.header('submit pilots')
 
         pd_init = rp.agent.ResourceManager.inspect()
-      # pprint.pprint(pd_init.as_dict())
-
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
 
-      # pprint.pprint(pilot.as_dict())
+        pprint.pprint(pilot.as_dict())
         tmgr.add_pilots(pilot)
 
         pilot.wait([rp.PMGR_ACTIVE, rp.FAILED])
@@ -109,16 +111,16 @@ if __name__ == '__main__':
         for i in range(n):
             slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
                                                                   lfs=512))
-          # print('=== %s' % slots)
+            print('=== %s' % slots)
 
             td = rp.TaskDescription()
-            td.executable   = '/bin/date'
-            td.slots        = slots
+            td.executable = '/bin/date'
+            td.slots      = slots
 
             tds.append(td)
             report.progress()
 
-      # pprint.pprint(pilot.nodelist.as_dict())
+        pprint.pprint(pilot.nodelist.as_dict())
 
         report.progress_done()
 
