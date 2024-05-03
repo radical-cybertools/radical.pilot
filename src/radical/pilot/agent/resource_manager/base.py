@@ -62,6 +62,8 @@ class RMInfo(ru.TypedDict):
 
             'details'          : {None: None},  # dict of launch method info
             'launch_methods'   : {str: None},   # dict of launch method info
+
+            'rcfg'             : {None: None},  # resource config
     }
 
     _defaults = {
@@ -72,7 +74,8 @@ class RMInfo(ru.TypedDict):
             'gpus_per_node'    : 0,
             'threads_per_gpu'  : 1,
             'details'          : {},
-            'launch_methods'   : {}
+            'launch_methods'   : {},
+            'rcfg'             : {}
     }
 
 
@@ -210,6 +213,8 @@ class ResourceManager(object):
     def init_from_scratch(self):
 
         rm_info = RMInfo()
+
+        rm_info.rcfg = self._rcfg.as_dict()
 
         # fill well defined default attributes
         rm_info.requested_nodes  = self._cfg.nodes

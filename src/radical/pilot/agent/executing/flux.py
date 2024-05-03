@@ -106,8 +106,6 @@ class Flux(AgentExecutingComponent) :
                 task['target_state'] = rps.DONE
 
             # on completion, push toward output staging
-            import pprint
-            self._log.debug('task %s: %s', task['uid'], pprint.pformat(task))
             self.advance_tasks(task, state, ts=ts, publish=True, push=True)
 
         elif state == 'unschedule':

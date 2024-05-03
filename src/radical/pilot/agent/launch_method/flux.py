@@ -17,10 +17,8 @@ class Flux(LaunchMethod):
 
         self._flux_handles = list()
         self._details      = list()
-        self._n_partitions = 2
 
-        LaunchMethod.__init__(self, name, lm_cfg, rm_info, session, prof)
-
+        super().__init__(name, lm_cfg, rm_info, session, prof)
 
     # --------------------------------------------------------------------------
     #
@@ -34,10 +32,10 @@ class Flux(LaunchMethod):
     #
     def _init_from_scratch(self, env, env_sh):
 
-        # FIXME: get number of partitions from config
-        n_partitions = 3
+        sys_cfg = self._rm_info.rcfg.get('system_architecture', dict())
+        self._n_partitions = sys_cfg.get('n_partitions', 1)
 
-        for n in range(n_partitions):
+        for n in range(self._n_partitions):
 
             self._prof.prof('flux_start')
             fh = ru.FluxHelper()
@@ -62,7 +60,7 @@ class Flux(LaunchMethod):
 
         lm_info = {'env'          : env,
                    'env_sh'       : env_sh,
-                   'n_partitions' : n_partitions,
+                   'n_partitions' : self._n_partitions,
                    'details'      : self._details}
 
         return lm_info
@@ -74,9 +72,10 @@ class Flux(LaunchMethod):
 
         self._prof.prof('flux_reconnect')
 
-        self._env     = lm_info['env']
-        self._env_sh  = lm_info['env_sh']
-        self._details = lm_info['details']
+        self._env          = lm_info['env']
+        self._env_sh       = lm_info['env_sh']
+        self._details      = lm_info['details']
+        self._n_partitions = lm_info['n_partitions']
 
         for details in self._details:
 
@@ -90,6 +89,7 @@ class Flux(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def get_partition(self, partition):
+
         assert partition < self._n_partitions
         return self._flux_handles[partition]
 
@@ -97,7 +97,6 @@ class Flux(LaunchMethod):
     @property
     def n_partitions(self):
         return self._n_partitions
-
 
     def can_launch(self, task):
         raise RuntimeError('method cannot be used on Flux LM')
