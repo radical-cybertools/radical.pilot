@@ -67,7 +67,7 @@ from .base import AgentSchedulingComponent
 #
 # ------------------------------------------------------------------------------
 #
-class Continuous(AgentSchedulingComponent):
+class ContinuousJsrun(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
     a tasks onto nodes in the cluster.
@@ -299,10 +299,6 @@ class Continuous(AgentSchedulingComponent):
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
             cores_per_slot = 1
-
-        self._log.debug_7('req : %s %s %s %s %s',
-                          req_slots, cores_per_slot, gpus_per_slot,
-                                     lfs_per_slot, mem_per_slot)
 
         # check if there is a GPU sharing
         if gpus_per_slot and not gpus_per_slot.is_integer():

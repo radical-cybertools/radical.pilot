@@ -27,6 +27,7 @@ from ..resource_manager  import ResourceManager
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
 SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
+SCHEDULER_NAME_CONTINUOUS_JSRUN   = "CONTINUOUS_JSRUN"
 SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE             = "HOMBRE"
 SCHEDULER_NAME_FLUX               = "FLUX"
@@ -296,15 +297,23 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         from .continuous_ordered import ContinuousOrdered
         from .continuous_colo    import ContinuousColo
+        from .continuous_jsrun   import ContinuousJsrun
         from .continuous         import Continuous
         from .hombre             import Hombre
         from .flux               import Flux
         from .noop               import Noop
 
+        # if `jsrun` is used as lauunch method, then we switch the CONTINUOUS
+        # scheduler with CONTINUOUS_JSRUN
+        if 'JSRUN' in session.rcfg.launch_methods:
+            if name == SCHEDULER_NAME_CONTINUOUS:
+                name = SCHEDULER_NAME_CONTINUOUS_JSRUN
+
         impl = {
 
             SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
             SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS_JSRUN   : ContinuousJsrun,
             SCHEDULER_NAME_CONTINUOUS         : Continuous,
             SCHEDULER_NAME_HOMBRE             : Hombre,
             SCHEDULER_NAME_FLUX               : Flux,
