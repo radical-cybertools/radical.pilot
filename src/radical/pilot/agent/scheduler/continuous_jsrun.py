@@ -150,12 +150,12 @@ class ContinuousJsrun(AgentSchedulingComponent):
         slots of the following structure:
 
             {
-                'node_name': 'node_name',
-                'node_id'  : '1',
-                'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                'gpu_map'  : [[1, 3], [1, 3]],
-                'lfs'      : 1234,
-                'mem'      : 4321
+                'node_name' : 'node_name',
+                'node_index': '1',
+                'core_map'  : [[1, 2, 4, 5], [6, 7, 8, 9]],
+                'gpu_map'   : [[1, 3], [1, 3]],
+                'lfs'       : 1234,
+                'mem'       : 4321
             }
 
         The call will *not* change the allocation status of the node, atomicity
@@ -209,12 +209,12 @@ class ContinuousJsrun(AgentSchedulingComponent):
         alc_slots = min(alc_slots, n_slots)
 
         # we should be able to host the slots - dig out the precise resources
-        slots     = list()
-        node_id   = node['node_id']
-        node_name = node['node_name']
+        slots      = list()
+        node_index = node['index']
+        node_name  = node['name']
 
-        core_idx  = 0
-        gpu_idx   = 0
+        core_idx   = 0
+        gpu_idx    = 0
 
         for _ in range(alc_slots):
 
@@ -241,17 +241,70 @@ class ContinuousJsrun(AgentSchedulingComponent):
             # gpus per rank are the same within the slot
             gpu_map  = [gpus] * len(core_map)
 
-            slots.append({'node_name': node_name,
-                          'node_id'  : node_id,
-                          'core_map' : core_map,
-                          'gpu_map'  : gpu_map,
-                          'lfs'      : lfs_per_slot,
-                          'mem'      : mem_per_slot})
+            slots.append({'node_name' : node_name,
+                          'node_index': node_index,
+                          'cores'     : core_map,
+                          'gpus'      : gpu_map,
+                          'lfs'       : lfs_per_slot,
+                          'mem'       : mem_per_slot})
 
         # consistency check
         assert (len(slots) == n_slots) or (len(slots) and partial)
 
         return slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _change_slot_states(self, slots, new_state):
+        '''
+        This function is used to update the state for a list of slots that
+        have been allocated or deallocated.  For details on the data structure,
+        see top of `base.py`.
+        '''
+
+        # for node_name, node_index, cores, gpus in slots['ranks']:
+        for slot in slots:
+
+            # Find the entry in the slots list
+
+            # TODO: [Optimization] Assuming 'node_index' is the ID of the node,
+            #       it seems a bit wasteful to have to look at all of the nodes
+            #       available for use if at most one node can have that uid.
+            #       Maybe it would be worthwhile to simply keep a list of nodes
+            #       that we would read, and keep a dictionary that maps the uid
+            #       of the node to the location on the list?
+
+            node = None
+            node_found = False
+            for node in self.nodes:
+                if node['index'] == slot['node_index']:
+                    node_found = True
+                    break
+
+            if not node_found:
+                raise RuntimeError('inconsistent node information')
+
+            # iterate over cores/gpus in the slot, and update state
+            for core_map in slot['cores']:
+                for core in core_map:
+                    node['cores'][core] = new_state
+
+            for gpu_map in slot['gpus']:
+                for gpu in gpu_map:
+                    node['gpus'][gpu] = new_state
+
+            if slot['lfs']:
+                if new_state == rpc.BUSY:
+                    node['lfs'] -= slot['lfs']
+                else:
+                    node['lfs'] += slot['lfs']
+
+            if slot['mem']:
+                if new_state == rpc.BUSY:
+                    node['mem'] -= slot['mem']
+                else:
+                    node['mem'] += slot['mem']
 
 
     # --------------------------------------------------------------------------

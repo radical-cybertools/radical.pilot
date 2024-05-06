@@ -103,14 +103,13 @@ class JSRUN(LaunchMethod):
             The slots that the task will be placed. A slot has the following
             format:
 
-            {"ranks"         : [{"node_name" : "a",
-                                 "node_index": "1",
-                                 "cores"     : [[0, 1]],
-                                 "gpus"      : [[0]],
-                                 "lfs"       : 0,
-                                 "mem"       : 0
-                                }
-             ]
+            {
+               "node_name" : "a",
+               "node_index": "1",
+               "cores"     : [[0, 1]],
+               "gpus"      : [[0]],
+               "lfs"       : 0,
+               "mem"       : 0
             }
 
         uid     : task ID (string)
@@ -123,7 +122,7 @@ class JSRUN(LaunchMethod):
         rs_str  = 'cpu_index_using: logical\n'
 
         base_id = 0
-        for slot_ranks in slots['ranks']:
+        for slot_ranks in slots:
 
             ranks_per_rs  = len(slot_ranks['cores'])
             rank_ids      = [str(r + base_id) for r in range(ranks_per_rs)]
@@ -159,7 +158,7 @@ class JSRUN(LaunchMethod):
         td    = task['description']
         slots = task['slots']
 
-        assert slots['ranks'], 'task.slots.ranks not defined'
+        assert slots, 'task.slots.ranks not defined'
 
         if self._erf:
 
@@ -172,8 +171,8 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs             = len(slots['ranks'])
-            slot_ranks     = slots['ranks'][0]
+            rs             = len(slots)
+            slot_ranks     = slots[0]
             # physical cores per rank
             cores_per_rank = math.ceil(len(slot_ranks['cores'][0]) /
                              self._rm_info['threads_per_core'])

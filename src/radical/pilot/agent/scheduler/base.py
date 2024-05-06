@@ -1098,11 +1098,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
             self._active_cnt += 1
 
-            # change old slot structure to the new `Slot` type
-            slots = rpu.convert_slots(slots, self._log)
-            import pprint
-            print(slots)
-
             # the task was placed, we need to reflect the allocation in the
             # nodelist state (BUSY) and pass placement to the task, to have
             # it enacted by the executor
