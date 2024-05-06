@@ -112,42 +112,44 @@ All Components
 
 ::
 
-   get                 : component receives an entity               (uid: eid, state: estate)               -- agent; client (agent_scheduling_queue.get.0000.prof, pmgr_launching_queue.get.0000.prof, stager_request_queue.get.0000.prof; tmgr_scheduling_queue.get.0000.prof)
-   advance             : component advances  entity state           (uid: eid, state: estate)               -- agent; client (agent_0.prof, agent_executing.0000.prof, agent_scheduling.0000.prof, agent_staging_input.0000.prof, agent_staging_output.0000.prof; pmgr.0000.prof, pmgr_launching.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
-   publish             : component publishes entity state           (uid: eid, state: estate)               --  ()
-   put                 : component pushes an entity out             (uid: eid, state: estate, msg: channel) --  ()
-   lost                : component lost   an entity (state error)   (uid: eid, state: estate)               --  ()
-   drop                : component drops  an entity (final state)   (uid: eid, state: estate)               -- client (tmgr_staging_output.0000.prof)
-   component_init      : component child  initializes after start() ()                                      -- agent; client (agent_0.prof, agent_executing.0000.prof, agent_scheduling.0000.prof, agent_staging_input.0000.prof, agent_staging_output.0000.prof; pmgr.0000.prof, pmgr_launching.0000.prof, stager.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
-   component_final     : component finalizes ()                                                             -- client (pmgr.0000.prof, pmgr_launching.0000.prof, stager.0000.prof, tmgr.0000.prof, tmgr_scheduling.0000.prof, tmgr_staging_input.0000.prof, tmgr_staging_output.0000.prof)
+    state                 : component advances  entity state           (uid: eid, state: estate)
+    lost                  : component lost   an entity (state error)   (uid: eid, state: estate)
+    drop                  : component drops  an entity (final state)   (uid: eid, state: estate)
+    component_init        : component child  initializes after start()
+    component_init        : component parent initializes after start()
+    component_final       : component finalizes
 
-   partial orders
-   * per component     : component_init, *, component_final
-   * per entity        : get, advance, publish, put
+    partial orders
+    * per component       : component_init, *, component_final
+    * per entity          : get, advance, publish, put
+
 
 Session (Component)
 -------------------
 
 ::
 
-   session_start       : session is being created (not reconnected) (uid: sid)        -- agent; client (rp.session.*.prof)
-   session_close       : session close is requested                 (uid: sid)        --  ()
-   session_stop        : session is closed                          (uid: sid)        --  ()
-   session_fetch_start : start fetching logs/profs/json after close (uid: sid, [API]) --  ()
-   session_fetch_stop  : stops fetching logs/profs/json after close (uid: sid, [API]) --  ()
+    location: client (rp.session.*.prof)
 
-   partial orders
-   * per session       : session_start, config_parser_start, \
-                         config_parser_stop, session_close,  \
-                         session_stop,  session_fetch_start, \
-                         session_fetch_stop
+    session_start         : session is being created (not reconnected) (uid: sid)
+    session_close         : session close is requested                 (uid: sid)
+    session_stop          : session is closed                          (uid: sid)
+    session_fetch_start   : start fetching logs/profs/json after close (uid: sid, [API])
+    session_fetch_stop    : stops fetching logs/profs/json after close (uid: sid, [API])
+
+    partial orders
+    * per session         : session_start, session_close,  \
+                            session_stop,  session_fetch_start, \
+                            session_fetch_stop
 
 PilotManager (Component)
 ------------------------
 
 ::
 
-   setup_done          : manager has bootstrapped                   (uid: pmgr) -- client (pmgr.0000.prof)
+    location: client (pmgr.0000.prof)
+
+    setup_done            : manager has bootstrapped                   (uid: pmgr)
 
 PMGRLaunchingComponent (Component)
 ----------------------------------
