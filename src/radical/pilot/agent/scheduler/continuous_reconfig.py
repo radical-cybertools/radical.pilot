@@ -27,12 +27,15 @@ class ContinuousReconfig(Continuous):
 
     # --------------------------------------------------------------------------
     #
-    def _set_task_reqs(self):
+    def initialize(self):
 
-        reqs_file = 'sched_reconfig.json'
-        if os.path.isfile(reqs_file):
+        super().initialize()
+
+        reqs_file = self._rm._cfg.get('config', {}).get('task_reqs')
+
+        if reqs_file and os.path.isfile(reqs_file):
             self._task_reqs.update(ru.read_json(reqs_file))
-            self._log.debug('=== task reqs: %s', self._task_reqs)
+            self._log.debug('set task reqs: %s', self._task_reqs)
 
 
     # --------------------------------------------------------------------------
@@ -40,7 +43,8 @@ class ContinuousReconfig(Continuous):
     def work(self, tasks):
 
         if not self._task_reqs:
-            self._set_task_reqs()
+            return super().work(tasks)
+
 
         new_tasks = list()
         for task in ru.as_list(tasks):

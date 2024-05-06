@@ -61,8 +61,7 @@ if __name__ == '__main__':
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
                    'cores'         : config.get('cores', 1),
-                   'gpus'          : config.get('gpus',  0),
-                   'scheduler_cfg' : '/tmp/reqs.txt',
+                   'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
