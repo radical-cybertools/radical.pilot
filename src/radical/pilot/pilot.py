@@ -297,7 +297,7 @@ class Pilot(object):
                'js_hop'           : str(self._pilot_jshop),
                'description'      : self.description,  # this is a deep copy
                'resource_details' : self.resource_details,
-               'nodeslist'        : self.nodelist
+               'nodelist'         : self.nodelist,
               }
 
         return ret
@@ -340,7 +340,7 @@ class Pilot(object):
 
             resource_details = self.resource_details
             if not resource_details:
-                return list()
+                return None
 
             nodes = [NodeResources(node) for node
                                          in  resource_details.get('node_list')]

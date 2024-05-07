@@ -408,7 +408,7 @@ class NodeResources(ru.TypedDict):
 
     def __init__(self, from_dict: dict):
 
-        self.__lock = mt.RLock()
+        self.__lock__ = mt.RLock()
 
         cores = from_dict.get('cores')
         gpus  = from_dict.get('gpus')
@@ -440,7 +440,7 @@ class NodeResources(ru.TypedDict):
             assert self.index == slot.node_index
             assert self.name  == slot.node_name
 
-        with self.__lock:
+        with self.__lock__:
 
             # we only need to perform consistency checks for slots which were not
             # created by `self.find_slot`
@@ -494,7 +494,7 @@ class NodeResources(ru.TypedDict):
     #
     def deallocate_slot(self, slot : 'Slot') -> None:
 
-        with self.__lock:
+        with self.__lock__:
 
           # print('release  %s' % slot)
           # print('     ->  %s' % self)
@@ -518,7 +518,7 @@ class NodeResources(ru.TypedDict):
     #
     def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
 
-        with self.__lock:
+        with self.__lock__:
 
             cores = list()
             gpus  = list()
@@ -596,13 +596,11 @@ class NodeList(ru.TypedDict):
 
         super().__init__(from_dict=from_dict, **kwargs)
 
-        self.__index          = int()
-        self.__nodes_by_index = dict()
-        self.__nodes_by_name  = dict()
-        self.__last_failed_rr = None
-        self.__last_failed_n  = None
+        self.__index__          = int()
+        self.__last_failed_rr__ = None
+        self.__last_failed_n__  = None
 
-        self.__verified = False
+        self.__verified__ = False
 
 
     # --------------------------------------------------------------------------
@@ -635,16 +633,16 @@ class NodeList(ru.TypedDict):
             self.lfs_per_node   = None
             self.mem_per_node   = None
 
-        self.__nodes_by_name  = {node.name : node for node in self.nodes}
+        self.__nodes_by_name__  = {node.name : node for node in self.nodes}
 
-        self.__verified = True
+        self.__verified__ = True
 
 
     # --------------------------------------------------------------------------
     #
     def _assert_rr(self, rr: RankRequirements, n_slots:int) -> None:
 
-        if not self.__verified:
+        if not self.__verified__:
             self.verify()
 
         if not self.uniform:
@@ -667,7 +665,7 @@ class NodeList(ru.TypedDict):
         if ranks_per_node < 1:
             raise ValueError('invalid rank requirements: %s' % rr)
 
-        if int(ranks_per_node) * n_slots > len(self.nodes):
+        if n_slots > len(self.nodes) * ranks_per_node:
             raise ValueError('invalid rank requirements: %s' % rr)
 
 
@@ -677,14 +675,14 @@ class NodeList(ru.TypedDict):
 
         self._assert_rr(rr, n_slots)
 
-        if self.__last_failed_rr:
-            if self.__last_failed_rr >= rr and \
-               self.__last_failed_n  >= n_slots:
+        if self.__last_failed_rr__:
+            if self.__last_failed_rr__ >= rr and \
+               self.__last_failed_n__  >= n_slots:
                 return None
 
         slots = list()
         count = 0
-        start = self.__index
+        start = self.__index__
 
         for i in range(0, len(self.nodes)):
 
@@ -711,12 +709,12 @@ class NodeList(ru.TypedDict):
             for slot in slots:
                 node = self.nodes[slot.node_index]
                 node.deallocate_slot(slot)
-            self.__last_failed_rr = rr
-            self.__last_failed_n  = n_slots
+            self.__last_failed_rr__ = rr
+            self.__last_failed_n__  = n_slots
           # print(' --- %5d' % count)
             return None
 
-        self.__index = stop
+        self.__index__ = stop
 
       # print(' === %5d' % count)
         return slots
@@ -729,11 +727,11 @@ class NodeList(ru.TypedDict):
             node = self.nodes[slot.node_index]
             node.deallocate_slot(slot)
 
-        if self.__last_failed_rr:
-            self.__index = min([slot.node_index for slot in slots]) - 1
+        if self.__last_failed_rr__:
+            self.__index__ = min([slot.node_index for slot in slots]) - 1
 
-        self.__last_failed_rr = None
-        self.__last_failed_n  = None
+        self.__last_failed_rr__ = None
+        self.__last_failed_n__  = None
 
 
 # ------------------------------------------------------------------------------
