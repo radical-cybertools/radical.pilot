@@ -97,7 +97,6 @@ if __name__ == '__main__':
 
         n = 5
         report.header('submit %d tasks' % n)
-        report.progress_tgt(n, label='create')
 
         tds = list()
         for i in range(n):
@@ -110,9 +109,6 @@ if __name__ == '__main__':
             td.slots        = slots
 
             tds.append(td)
-            report.progress()
-
-        report.progress_done()
 
         tasks = tmgr.submit_tasks(tds)
         tmgr.wait_tasks()
