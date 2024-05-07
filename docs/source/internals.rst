@@ -104,7 +104,8 @@ Format of this file
 
 ::
 
-   event_name          : semantic event description (details on 'uid', 'msg', 'state' fields) -- Sandbox (prof file name)
+   * location            : Sandbox (prof file name)
+   * event_name          : semantic event description (details on 'uid', 'msg', 'state' fields) --
 
 
 All Components
@@ -129,7 +130,7 @@ Session (Component)
 
 ::
 
-    location: client (rp.session.*.prof)
+    location              : client (rp.session.*.prof)
 
     session_start         : session is being created (not reconnected) (uid: sid)
     session_close         : session close is requested                 (uid: sid)
@@ -147,7 +148,7 @@ PilotManager (Component)
 
 ::
 
-    location: client (pmgr.0000.prof)
+    location              : client (pmgr.0000.prof)
 
     setup_done            : manager has bootstrapped                   (uid: pmgr)
 
@@ -156,7 +157,7 @@ PMGRLaunchingComponent (Component)
 
 ::
 
-    location: client (pmgr_launching.0000.prof)
+    location              : client (pmgr_launching.0000.prof)
 
     staging_in_start      : pilot sandbox staging starts               (uid: pilot)
     staging_in_stop       : pilot sandbox staging stops                (uid: pilot)
@@ -172,7 +173,7 @@ Pilot (in session profile, all optional)
 
 ::
 
-    location: client & agent (rp.session.*.prof)
+    location              : client & agent (rp.session.*.prof)
 
     staging_in_start      : pilot level input staging request starts   (uid: pilot, msg: did, [PILOT-DS])
     staging_in_fail       : pilot level input staging request failed   (uid: pilot, msg: did, [PILOT-DS])
@@ -191,7 +192,7 @@ TaskManager (Component)
 
 ::
 
-    location: client (tmgr.0000.prof)
+    location              : client (tmgr.0000.prof)
 
     setup_done            : manager has bootstrapped                   (uid: tmgr)
 
@@ -204,7 +205,7 @@ TMGRStagingInputComponent (Component)
 
 ::
 
-    location: client (pmgr_launching.0000.prof)
+    location              : client (pmgr_launching.0000.prof)
 
     create_sandbox_start  : create_task_sandbox starts                 (uid: task, [Task-DS])
     create_sandbox_stop   : create_task_sandbox stops                  (uid: task, [Task-DS])
@@ -223,10 +224,10 @@ bootstrap_0.sh
 
 ::
 
-    location: agent (bootstrap_0.prof)
+    location              : agent (bootstrap_0.prof)
 
     bootstrap_0_start     : pilot bootstrapper 1 starts                (uid: pilot)
-    tunnel_setup_start    : setting up tunnel    starts                (uid: pilot)
+    tunnel_setup_start    : setting up tunnel    starts                (uid: pilot, [CFG-R])
     tunnel_setup_stop     : setting up tunnel    stops                 (uid: pilot, [CFG-R])
     ve_setup_start        : pilot ve setup       starts                (uid: pilot)
     ve_create_start       : pilot ve creation    starts                (uid: pilot, [CFG-R])
@@ -255,7 +256,7 @@ agent_0 (Component)
 
 ::
 
-    location: agent (agent_0.prof)
+    location              : agent (agent_0.prof)
 
     sync_rel              : sync with bootstrapper profile             (uid: pilot, msg: 'agent_0 start')
     hostname              : host or nodename for agent_0               (uid: pilot)
@@ -276,7 +277,7 @@ AgentStagingInputComponent (Component)
 
 ::
 
-    location: agent (agent_staging_input.0000.prof)
+    location              : agent (agent_staging_input.0000.prof)
 
     staging_in_start      : staging input request starts               (uid: task, msg: did, [Task-DS])
     staging_in_skip       : staging input request is not handled here  (uid: task, msg: did, [Task-DS])
@@ -293,7 +294,7 @@ AgentSchedulingComponent (Component)
 
 ::
 
-    location: agent (agent_scheduling.0000.prof)
+    location              : agent (agent_scheduling.0000.prof)
 
     schedule_try          : search for task resources starts           (uid: task, [RUNTIME])
     schedule_fail         : search for task resources failed           (uid: task, [RUNTIME])
@@ -311,7 +312,7 @@ AgentExecutingComponent: (Component)
 
 ::
 
-    location: agent (agent_executing.0000.prof)
+    location              : agent (agent_executing.0000.prof)
 
     task_start            : executor starts handling task              (uid: task)
     task_mkdir            : creation of sandbox requested              (uid: task, [APP])
@@ -354,16 +355,15 @@ AgentExecutingComponent: (Component)
 
 
    NOTE: raptor tasks will not log the complete set of events - they will miss
-   the launch_* events (raptor has not separate launcher), the exec_pre and
-   exec_post events (pre and post exec are not supported), and the task_mkdir_*
-   events (raptor tasks don't have individual sandboxes).
+   the launch_* events (raptor has not separate launcher), and the exec_pre and
+   exec_post events (pre and post exec are not supported).
 
 AgentStagingOutputComponent (Component)
 ---------------------------------------
 
 ::
 
-    location: agent (agent_staging_output.0000.prof)
+    location              : agent (agent_staging_output.0000.prof)
 
     staging_stdout_start  : reading task stdout starts                 (uid: task, [APP])
     staging_stdout_stop   : reading task stdout stops                  (uid: task, [APP])
@@ -389,7 +389,7 @@ TMGRStagingOutputComponent (Component)
 
 ::
 
-    location: client (tmgr_staging_output.0000.prof)
+    location              : client (tmgr_staging_output.0000.prof)
 
     staging_out_start     : staging request starts                     (uid: task, msg: did, [Task-DS])
     staging_out_stop      : staging request stops                      (uid: task, msg: did, [Task-DS])
@@ -415,10 +415,10 @@ Conditional events
     - [CFG]           - only for some RP configurations
       - [CFG-R]       - only for some bootstrapping configurations
       - [CFG-DVM]     - only for launch methods which use a DVM
-    - [Task]            - only for some Task descriptions
-      - [Task-DS]       - only for tasks specifying data staging directives
-      - [Task-PRE]      - only for tasks specifying pre-exec directives
-      - [Task-POST]     - only for tasks specifying post-exec directives
+    - [Task]          - only for some Task descriptions
+      - [Task-DS]     - only for tasks specifying data staging directives
+      - [Task-PRE]    - only for tasks specifying pre-exec directives
+      - [Task-POST]   - only for tasks specifying post-exec directives
     - [PILOT]         - only for certain pilot
     - [APP]           - only for applications writing compatible profiles
     - [RUNTIME]       - only on  certain runtime decisions and system configuration

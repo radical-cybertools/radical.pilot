@@ -161,7 +161,7 @@ class RunTwine(Command):
 # This copies the contents like examples/ dir under sys.prefix/share/$name
 # It needs the MANIFEST.in entries to work.
 base = 'share/%s' % name
-df = [('%s'                       % base, ['src/radical/pilot/events.md']),
+df = [('%s/'                      % base, ['docs/source/internals.rst']),
       ('%s/examples'              % base, glob.glob('examples/[01]*.py')),
       ('%s/examples'              % base, glob.glob('examples/hello*')),
       ('%s/examples'              % base, glob.glob('examples/*.json')),
