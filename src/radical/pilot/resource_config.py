@@ -270,58 +270,58 @@ class RankRequirements(ru.TypedDict):
 
     def __eq__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         != self.n_cores          and \
-            self.n_gpus          != self.n_gpus           and \
-            self.lfs             != self.lfs              and \
-            self.mem             != self.mem              and \
-            self.core_occupation != self.core_occupation  and \
-            self.gpu_occupation  != self.gpu_occupation:
-            return False
-        return True
+        if  self.n_cores         == self.n_cores           and \
+            self.n_gpus          == self.n_gpus            and \
+            self.lfs             == self.lfs               and \
+            self.mem             == self.mem               and \
+            self.core_occupation == self.core_occupation   and \
+            self.gpu_occupation  == self.gpu_occupation:
+            return True
+        return False
 
     def __lt__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         >= self.n_cores          and \
-            self.n_gpus          >= self.n_gpus           and \
-            self.lfs             >= self.lfs              and \
-            self.mem             >= self.mem              and \
-            self.core_occupation >= self.core_occupation  and \
-            self.gpu_occupation  >= self.gpu_occupation:
-            return False
-        return True
+        if  self.n_cores         <  other.n_cores          and \
+            self.n_gpus          <  other.n_gpus           and \
+            self.lfs             <  other.lfs              and \
+            self.mem             <  other.mem              and \
+            self.core_occupation <  other.core_occupation  and \
+            self.gpu_occupation  <  other.gpu_occupation:
+            return True
+        return False
 
     def __le__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         >  self.n_cores          and \
-            self.n_gpus          >  self.n_gpus           and \
-            self.lfs             >  self.lfs              and \
-            self.mem             >  self.mem              and \
-            self.core_occupation >  self.core_occupation  and \
-            self.gpu_occupation  >  self.gpu_occupation:
-            return False
-        return True
+        if  self.n_cores         <= other.n_cores          and \
+            self.n_gpus          <= other.n_gpus           and \
+            self.lfs             <= other.lfs              and \
+            self.mem             <= other.mem              and \
+            self.core_occupation <= other.core_occupation  and \
+            self.gpu_occupation  <= other.gpu_occupation:
+            return True
+        return False
 
     def __gt__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         <= self.n_cores          and \
-            self.n_gpus          <= self.n_gpus           and \
-            self.lfs             <= self.lfs              and \
-            self.mem             <= self.mem              and \
-            self.core_occupation <= self.core_occupation  and \
-            self.gpu_occupation  <= self.gpu_occupation:
-            return False
-        return True
+        if  self.n_cores         >  other.n_cores          and \
+            self.n_gpus          >  other.n_gpus           and \
+            self.lfs             >  other.lfs              and \
+            self.mem             >  other.mem              and \
+            self.core_occupation >  other.core_occupation  and \
+            self.gpu_occupation  >  other.gpu_occupation:
+            return True
+        return False
 
     def __ge__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         <  self.n_cores          and \
-            self.n_gpus          <  self.n_gpus           and \
-            self.lfs             <  self.lfs              and \
-            self.mem             <  self.mem              and \
-            self.core_occupation <  self.core_occupation  and \
-            self.gpu_occupation  <  self.gpu_occupation:
-            return False
-        return True
+        if  self.n_cores         >= other.n_cores          and \
+            self.n_gpus          >= other.n_gpus           and \
+            self.lfs             >= other.lfs              and \
+            self.mem             >= other.mem              and \
+            self.core_occupation >= other.core_occupation  and \
+            self.gpu_occupation  >= other.gpu_occupation:
+            return True
+        return False
 
 
 # ------------------------------------------------------------------------------
@@ -457,16 +457,16 @@ class NodeResources(ru.TypedDict):
                 # occupancy is compatible with the request
                 for ro in cores:
                     assert ro.index < len(self.cores)
-                    assert self.cores[ro.index].occupation >= ro.occupation, \
-                            'core %d is full' % ro.index
+                    ro_available = BUSY - self.cores[ro.index].occupation
+                    assert ro_available >= ro.occupation
                   # # DOWN check is covered by occupancy check
                   # assert self.cores[ro.index].occupation is not DOWN, \
                   #         'core %d is down' % ro.index
 
                 for ro in gpus:
                     assert ro.index < len(self.gpus)
-                    assert self.gpus[ro.index].occupation >= ro.occupation, \
-                            'gpu %d is full' % ro.index
+                    ro_available = BUSY - self.gpus[ro.index].occupation
+                    assert ro_available >= ro.occupation
                   # # DOWN check is covered by occupancy check
                   # assert self.gpus[ro.index].occupation is not DOWN, \
                   #         'gpu %d is down' % ro.index
@@ -530,7 +530,7 @@ class NodeResources(ru.TypedDict):
                 for ro in self.cores:
                     if ro.occupation is DOWN:
                         continue
-                    if rr.core_occupation <= 1 - ro.occupation:
+                    if rr.core_occupation <= BUSY - ro.occupation:
                         cores.append(_RO(index=ro.index,
                                          occupation=rr.core_occupation))
                     if len(cores) == rr.n_cores:
@@ -543,7 +543,7 @@ class NodeResources(ru.TypedDict):
                 for ro in self.gpus:
                     if ro.occupation is DOWN:
                         continue
-                    if rr.gpu_occupation <= 1 - ro.occupation:
+                    if rr.gpu_occupation <= BUSY - ro.occupation:
                         gpus.append(_RO(index=ro.index,
                                         occupation=rr.gpu_occupation))
                     if len(gpus) == rr.n_gpus:
@@ -667,7 +667,7 @@ class NodeList(ru.TypedDict):
         if ranks_per_node < 1:
             raise ValueError('invalid rank requirements: %s' % rr)
 
-        if int(ranks_per_node) * n_slots > len(self.nodes):
+        if n_slots > len(self.nodes) * int(ranks_per_node):
             raise ValueError('invalid rank requirements: %s' % rr)
 
 
