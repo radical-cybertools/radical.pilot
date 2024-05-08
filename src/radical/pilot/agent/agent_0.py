@@ -209,11 +209,15 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug('advance to PMGR_ACTIVE')
 
+        rest_url = None
+        if self._service:
+            rest_url = self._service.addr
+
         pilot = {'$all'     : True,              # pass full info to client side
                  'type'     : 'pilot',
                  'uid'      : self._pid,
                  'state'    : rps.PMGR_ACTIVE,
-                 'rest_url' : self._service.addr,
+                 'rest_url' : rest_url,
                  'resources': {'rm_info': rm_info,
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
@@ -701,14 +705,13 @@ class Agent_0(rpu.AgentComponent):
     #
     def _start_service_ep(self):
 
-        self._service = ru.zmq.Server(uid='%s.server' % self._uid)
-        self._service.register_request('submit_tasks', self._ep_submit_tasks)
-        self._service.start()
+        if not self._cfg.config.get('agent_ep', False):
 
-        state_cfg = ru.Config(path='./state_pubsub.cfg')
+            self._service = ru.zmq.Server(uid='%s.server' % self._uid)
+            self._service.register_request('submit_tasks', self._ep_submit_tasks)
+            self._service.start()
 
-        self._log.info('service_url : %s', self._service.addr)
-        self._log.info('state pubsub: %s', state_cfg.sub)
+            self._log.info('service_url : %s', self._service.addr)
 
 
     # --------------------------------------------------------------------------
