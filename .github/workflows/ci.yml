@@ -72,6 +72,8 @@ jobs:
           coverage xml
       - uses: codecov/codecov-action@v3
         if: ${{ matrix.python-version == '3.7' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: ./coverage.xml
 
