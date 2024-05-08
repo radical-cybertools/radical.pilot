@@ -88,7 +88,7 @@ def expand_staging_directives(sds:         Union[str, Dict[str, Any], List[str]]
 
             # sanity check on dict syntax
             valid_keys = ['source', 'target', 'action', 'flags', 'priority',
-                          'uid', 'prof_id']
+                          'uid']
 
             for k in sd.keys():
                 if k not in valid_keys:
