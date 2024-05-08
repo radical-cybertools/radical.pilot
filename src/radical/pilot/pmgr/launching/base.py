@@ -134,7 +134,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
-        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
 
@@ -672,23 +672,18 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         #
         # case rp_version:
         #   @<token>:
-        #   @tag/@branch/@commit: # no sdist staging
+        #   @tag/@branch/@commit:
         #       git clone $github_base radical.pilot.src
         #       (cd radical.pilot.src && git checkout token)
         #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
         #       rm -rf radical.pilot.src
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   release: # no sdist staging
+        #   release:
         #       pip install -t $VIRTENV/rp_install radical.pilot
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   local: # needs sdist staging
-        #       tar zxf $sdist.tgz
-        #       pip install -t $SANDBOX/rp_install $sdist/
-        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
-        #
-        #   installed: # no sdist staging
+        #   installed:
         #       true
         # esac
         #
