@@ -134,7 +134,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._stager = rpu.StagingHelper(self._log, self._prof)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
-        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
 
