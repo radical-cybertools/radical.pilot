@@ -143,7 +143,7 @@ class PilotManager(rpu.ClientComponent):
         self.register_output(rps.PMGR_LAUNCHING_PENDING,
                              rpc.PMGR_LAUNCHING_QUEUE)
 
-        self._stager = rpu.StagingHelper(self._log, self._prof)
+        self._stager = rpu.StagingHelper(self._log)
 
         # register the state notification pull cb and hb pull cb
         # FIXME: we may want to have the frequency configurable
@@ -415,20 +415,24 @@ class PilotManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_input(self, sds):
+    def _pilot_staging_input(self, pid, sds):
         """Run some staging directives for a pilot."""
 
         for sd in expand_staging_directives(sds):
+            self._prof.prof('staging_in_start', uid=pid, msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=pid, msg=sd['uid'])
 
 
     # --------------------------------------------------------------------------
     #
-    def _pilot_staging_output(self, sds):
+    def _pilot_staging_output(self, pid, sds):
         """Run some staging directives for a pilot."""
 
         for sd in expand_staging_directives(sds):
+            self._prof.prof('staging_out_start', uid=self.uid, msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_out_stop', uid=self.uid, msg=sd['uid'])
 
 
     # --------------------------------------------------------------------------
