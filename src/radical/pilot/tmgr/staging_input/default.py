@@ -53,7 +53,7 @@ class Default(TMGRStagingInputComponent):
         self._pilots_lock  = ru.RLock()
         self._connected    = list()  # list of pilot conected by ZMQ
         self._session_sbox = self._reg['cfg.session_sandbox']
-        self._stager       = rpu.StagingHelper(self._log, self._prof)
+        self._stager       = rpu.StagingHelper(self._log)
         self._tar_idx      = 0
 
         self.register_input(rps.TMGR_STAGING_INPUT_PENDING,
@@ -230,7 +230,9 @@ class Default(TMGRStagingInputComponent):
                                                              type(session_sbox))
                     self._log.debug('copy: %s -> %s', tar_url, tar_rem_path)
 
+                    self._prof.prof('staging_in_start', uid=pid, msg='tar')
                     self._stager.copy(tar_url, tar_rem_path)
+                    self._prof.prof('staging_in_stop', uid=pid, msg='tar')
 
                     # get a job service handle to the target resource and run
                     # the untar command.  Use the hop to skip the batch system
@@ -368,7 +370,9 @@ class Default(TMGRStagingInputComponent):
 
         # work on the filtered TRANSFER actionables
         for sd in new_actionables:
+            self._prof.prof('staging_in_start', uid=uid, msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=uid, msg=sd['uid'])
 
         if tar_file:
 
