@@ -33,7 +33,9 @@ class Flux(LaunchMethod):
     def _init_from_scratch(self, env, env_sh):
 
 
-        self._n_partitions = self._rm_info.details.get('n_patrtitions', 1)
+        self._n_partitions = self._rm_info.details.get('n_partitions', 1)
+
+        self._log.info('using %d flux partitions', self._n_partitions)
 
         for n in range(self._n_partitions):
 
