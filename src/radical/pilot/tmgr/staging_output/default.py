@@ -39,7 +39,7 @@ class Default(TMGRStagingOutputComponent):
     #
     def initialize(self):
 
-        self._stager = rpu.StagingHelper(self._log, self._prof)
+        self._stager = rpu.StagingHelper(self._log)
 
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
@@ -128,7 +128,9 @@ class Default(TMGRStagingOutputComponent):
 
         # Loop over all transfer directives and execute them.
         for sd in actionables:
+            self._prof.prof('staging_in_start', uid=uid, msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=uid, msg=sd['uid'])
 
         # all staging is done -- at this point the task is final
         task['state'] = task['target_state']
