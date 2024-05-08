@@ -70,8 +70,6 @@ class TestLauncher(TestCase):
         component._root_dir      = '/radical_pilot_src'
 
         component._rp_version    = rp.version
-        component._rp_sdist_name = rp.sdist_name
-        component._rp_sdist_path = rp.sdist_path
 
         resource                 = 'local.localhost'
         rcfg                     = self._configs.local.localhost
