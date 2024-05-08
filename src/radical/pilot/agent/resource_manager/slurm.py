@@ -27,8 +27,8 @@ class Slurm(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    @classmethod
-    def _inspect(cls) -> PilotDescription:
+    @staticmethod
+    def _inspect() -> PilotDescription:
         '''
         This method will inspect the local environment.  If it is determined
         that we are running in a Slurm job allocation, a suitable pilot
@@ -46,7 +46,6 @@ class Slurm(ResourceManager):
 
         if 'SLURM_CLUSTER_NAME' not in os.environ:
             raise RuntimeError('not running in a SLURM allocation')
-
 
         n_nodes  = int(os.environ['SLURM_JOB_NUM_NODES'])
         hostname =     os.environ['SLURM_CLUSTER_NAME']
