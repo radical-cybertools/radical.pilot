@@ -12,10 +12,9 @@ from ..constants import TARBALL  # , CREATE_PARENTS, RECURSIVE
 #
 class StagingHelper(object):
 
-    def __init__(self, log, prof=None):
+    def __init__(self, log):
 
         self._log  = log
-        self._prof = prof
 
         try   : self._backend = StagingHelper_SAGA (self._log)
         except: self._backend = StagingHelper_Local(self._log)
@@ -51,20 +50,20 @@ class StagingHelper(object):
         tgt     = sd['target']
         uid     = sd.get('uid', '')
         flags   = sd.get('flags', 0)
-        prof_id = sd.get('prof_id')   # staging on behalf of this entity
 
         assert action in [COPY, LINK, MOVE, TRANSFER]
-
-        if self._prof:
-            self._prof.prof('staging_start', uid=prof_id, msg=uid)
 
         self._log.info('%-10s %s', action, src)
         self._log.info('%-10s %s', '', tgt)
 
-        self.copy(src, tgt, flags)
+        if action in [COPY, TRANSFER]:
+            self.copy(src, tgt, flags)
 
-        if self._prof:
-            self._prof.prof('staging_stop', uid=prof_id, msg=uid)
+        elif action == LINK:
+            self.link(src, tgt, flags)
+
+        elif action == MOVE:
+            self.move(src, tgt, flags)
 
 
 # ------------------------------------------------------------------------------
