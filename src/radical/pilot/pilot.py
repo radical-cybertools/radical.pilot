@@ -336,7 +336,7 @@ class Pilot(object):
 
             resource_details = self.resource_details
             if not resource_details:
-                return
+                return None
 
             nodes = [NodeResources(node) for node
                                          in  resource_details.get('node_list')]

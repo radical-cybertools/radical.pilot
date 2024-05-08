@@ -104,13 +104,12 @@ class JSRUN(LaunchMethod):
             format:
 
             {
-                "node_name" : "a",
-                "node_index": 1,
-                "cores"     : [0, 1],
-                "gpus"      : [0],
-                "lfs"       : 0,
-                "mem"       : 0
-             ]
+               "node_name" : "a",
+               "node_index": "1",
+               "cores"     : [[0, 1]],
+               "gpus"      : [[0]],
+               "lfs"       : 0,
+               "mem"       : 0
             }
 
         uid     : task ID (string)
@@ -122,20 +121,26 @@ class JSRUN(LaunchMethod):
         # "error in ptssup_mkcltsock_afunix()"
         rs_str  = 'cpu_index_using: logical\n'
 
-        for rank_id, slot in enumerate(slots):
+        base_id = 0
+        for slot_ranks in slots:
+
+            ranks_per_rs  = len(slot_ranks['cores'])
+            rank_ids      = [str(r + base_id) for r in range(ranks_per_rs)]
+            base_id      += ranks_per_rs
 
             core_id_sets = []
-            core_ids = [str(core) for core in slot['cores']]
-            core_id_sets.append('{%s}' % ','.join(core_ids))
+            for core_map in slot_ranks['cores']:
+                core_ids = [str(cid) for cid in cores]
+                core_id_sets.append('{%s}' % ','.join(core_ids))
 
-
-            rs_str += 'rank: %s : {'    % rank_id
-            rs_str += ' host: %d;'      % slot['node_index']
+            rs_str += 'rank: %s : {'    % ','.join(rank_ids)
+            rs_str += ' host: %s;'      % str(slot_ranks['node_id'])
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
-
-            if slot['gpus']:
-                rs_str += '; gpu: {%s}' % ','.join([str(gpu)
-                                                    for gpu in slot['gpus']])
+            if slot_ranks['gpus'] and slot_ranks['gpus'][0]:
+                # check the first element, since it is the same for RS ranks
+                slot_gpus = slot_ranks['gpus'][0]
+                assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
+                rs_str += '; gpu: {%s}' % ','.join([str(g) for g in slot_gpus])
             rs_str += ' }\n'
 
         rs_name = '%s/%s.rs' % (sandbox, uid)
@@ -153,7 +158,7 @@ class JSRUN(LaunchMethod):
         td    = task['description']
         slots = task['slots']
 
-        assert slots, 'task.slots not defined'
+        assert slots, 'task.slots.ranks not defined'
 
         if self._erf:
 
@@ -166,16 +171,19 @@ class JSRUN(LaunchMethod):
             # for a job/task: https://docs.olcf.ornl.gov/systems/\
             #                 summit_user_guide.html#resource-sets
 
-            rs           = len(slots)
-            ranks_per_rs = 1
-            slot         = slots[0]
+            rs             = len(slots)
+            slot_ranks     = slots[0]
             # physical cores per rank
-            cores_per_rs = math.ceil(len(slot['cores']) /
-                           self._rm_info['threads_per_core'])
+            cores_per_rank = math.ceil(len(slot_ranks['cores'][0]) /
+                             self._rm_info['threads_per_core'])
+            ranks_per_rs   = len(slot_ranks['cores'])
+            cores_per_rs   = cores_per_rank * ranks_per_rs
 
-            gpus_per_rs = 0
-            if slot['gpus']:
-                gpus_per_rs = len(slot['gpus'])
+            gpus_per_rs  = 0
+            if slot_ranks['gpus']:
+                slot_gpus = slot_ranks['gpus'][0]
+                assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
+                gpus_per_rs = len(slot_gpus)
 
             # -n: number of RS
             # -a: number of MPI tasks (ranks)     per RS
@@ -196,13 +204,13 @@ class JSRUN(LaunchMethod):
                 cmd_options += ' -r%d' % max_rs_per_node
 
             # -b: binding of tasks within a resource set (none, rs, or packed:N)
-            cmd_options += ' -b rs'
-
-            # if ranks_per_rs > 1:
-            #     if td['threading_type'] == rpc.OpenMP:
-            #         # for OpenMP threads RP will set:
-            #         #    export OMP_NUM_THREADS=<threads_per_rank>
-            #         cmd_options += ' -b packed:%d' % cores_per_rank
+            if ranks_per_rs > 1:
+                if td['threading_type'] == rpc.OpenMP:
+                    # for OpenMP threads RP will set:
+                    #    export OMP_NUM_THREADS=<threads_per_rank>
+                    cmd_options += ' -b packed:%d' % cores_per_rank
+            else:
+                cmd_options += ' -b rs'
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA:
             # from https://www.olcf.ornl.gov/ \

@@ -5,14 +5,13 @@ __license__   = 'MIT'
 
 import sys
 import time
-import pprint
 import random
 
 import radical.pilot as rp
 import radical.utils as ru
 
 
-if True:
+if False:
 
     n_nodes        =   9472
     gpus_per_node  =      8
@@ -62,7 +61,6 @@ if True:
 
     stop = time.time()
     print('find_slots: %.2f' % (stop - start))
-    sys.exit()
 
     for slots in allocs:
         nl.release_slots(slots)
@@ -72,8 +70,6 @@ if True:
         slots = nl.find_slots(rp.RankRequirements(n_cores=1,
                                                   core_occupation=0.5))
         print(slots)
-
-    print('========================================')
 
     sys.exit()
 
@@ -93,19 +89,17 @@ if __name__ == '__main__':
 
         report.header('submit pilots')
 
-        pd_init = rp.agent.ResourceManager.inspect()
+        pd_init = {'resource': 'local.localhost',
+                   'runtime' : 15,
+                   'cores'   : 32}
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
 
-        pprint.pprint(pilot.as_dict())
         tmgr.add_pilots(pilot)
-
         pilot.wait([rp.PMGR_ACTIVE, rp.FAILED])
-        pprint.pprint(pilot.nodelist.as_dict())
 
         n = 5
         report.header('submit %d tasks' % n)
-        report.progress_tgt(n, label='create')
 
         tds = list()
         for i in range(n):
@@ -118,11 +112,6 @@ if __name__ == '__main__':
             td.slots      = slots
 
             tds.append(td)
-            report.progress()
-
-        pprint.pprint(pilot.nodelist.as_dict())
-
-        report.progress_done()
 
         tasks = tmgr.submit_tasks(tds)
         tmgr.wait_tasks()
