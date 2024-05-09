@@ -15,7 +15,6 @@ from collections import defaultdict
 
 import threading          as mt
 
-import radical.gtod       as rg
 import radical.utils      as ru
 
 from ... import states    as rps
@@ -29,14 +28,6 @@ from ...staging_directives import complete_url, expand_staging_directives
 # 'enum' for RP's PMGRraunching types
 RP_UL_NAME_SAGA  = "SAGA"
 RP_UL_NAME_PSI_J = "PSI_J"
-
-
-# ------------------------------------------------------------------------------
-# local constants
-DEFAULT_AGENT_SPAWNER = 'POPEN'
-DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV_MODE  = 'update'
-DEFAULT_AGENT_CONFIG  = 'default'
 
 
 # ------------------------------------------------------------------------------
@@ -727,19 +718,9 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-        if not rp_version:
-            if virtenv_mode == 'local': rp_version = 'installed'
-            else                      : rp_version = DEFAULT_RP_VERSION
-
-        if not rp_version.startswith('@') and \
-               rp_version not in ['installed', 'local', 'release']:
-            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-        if rp_version.startswith('@'):
-            rp_version  = rp_version[1:]  # strip '@'
-
         # use local VE ?
         if virtenv_mode == 'local':
+            rp_version = 'installed'
             if os.environ.get('VIRTUAL_ENV'):
                 python_dist = 'default'
                 virtenv     = os.environ['VIRTUAL_ENV']
@@ -750,6 +731,13 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
                 # we can't use local
                 self._log.error('virtenv_mode is local, no local env found')
                 raise ValueError('no local env found')
+
+        if not rp_version.startswith('@') and \
+               rp_version not in ['installed', 'local', 'release']:
+            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+        if rp_version.startswith('@'):
+            rp_version  = rp_version[1:]  # strip '@'
 
         # ----------------------------------------------------------------------
         # sanity checks
