@@ -9,6 +9,23 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.60.0 Release                                                    2024-05-10
+
+  - remove rct dist staging
+  - added resource configuration for Flux on Frontier
+  - cleanup defaults for virtenv setup
+  - fix pre_exec handling, srun detection
+  - fix codecov (using `CODECOV_TOKEN`)
+  - iteration on event docs
+  - make advance calls more uniform
+  - re-enable event checking for sessions
+  - set version requirement for RCT stack
+  - sync with RU
+  - updated tutorial `Configuration`
+  - use srun for flux startup
+
+
+--------------------------------------------------------------------------------
 ### 1.52.1 Hotfix Release                                             2024-04-18
 
   - more fixes for setuptools upgrade
@@ -2084,11 +2101,3 @@ API Changes:
 
 --------------------------------------------------------------------------------
 
-  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
-  - devel version bump
-  - (HEAD -> master, origin/devel, origin/HEAD, devel) fix the fix
-  - devel version bump
-  - devel version bump
-  - draft
-  - remove rct dist staging
-  - trigger tests
