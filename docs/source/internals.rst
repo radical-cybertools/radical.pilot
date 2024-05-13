@@ -489,6 +489,8 @@ released.
 
 * Implement ``cancel`` method to cancel tasks:
 
+::
+
     def cancel_task(self, uid):
         pass
 
