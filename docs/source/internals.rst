@@ -411,16 +411,95 @@ Conditional events
 
 ::
 
-    - [API]           - only for corresponding RP API calls
-    - [CFG]           - only for some RP configurations
-      - [CFG-R]       - only for some bootstrapping configurations
-      - [CFG-DVM]     - only for launch methods which use a DVM
-    - [Task]          - only for some Task descriptions
-      - [Task-DS]     - only for tasks specifying data staging directives
-      - [Task-PRE]    - only for tasks specifying pre-exec directives
-      - [Task-POST]   - only for tasks specifying post-exec directives
-    - [PILOT]         - only for certain pilot
-    - [APP]           - only for applications writing compatible profiles
-    - [RUNTIME]       - only on  certain runtime decisions and system configuration
-    - [INTERNAL]      - only for certain internal states
+   - [API]           - only for corresponding RP API calls
+   - [CFG]           - only for some RP configurations
+     - [CFG-R]       - only for some bootstrapping configurations
+     - [CFG-DVM]     - only for launch methods which use a DVM
+   - [Task]          - only for some Task descriptions
+     - [Task-DS]     - only for tasks specifying data staging directives
+     - [Task-PRE]    - only for tasks specifying pre-exec directives
+     - [Task-POST]   - only for tasks specifying post-exec directives
+   - [PILOT]         - only for certain pilot
+   - [APP]           - only for applications writing compatible profiles
+   - [RUNTIME]       - only on  certain runtime decisions and system configuration
+   - [INTERNAL]      - only for certain internal states
+
+
+Implementing Executors
+======================
+
+Agent executors are at the heart of RADICAL-Pilot: they are responsible for
+executing tasks on the target resources. The executor is a Python class that
+implements the ``radical.pilot.agent.executing.Executor`` interface.
+
+In order to add a custom executor to RADICAL-Pilot, the following steps are
+required:
+
+* Implement the executor class
+
+::
+
+    from .base import AgentExecutingComponent
+
+    class MyExecutor(AgentExecutingComponent):
+
+
+* Implement ``initialize`` method to set up the executor component
+
+  Note: The ``initialize`` method is called by the agent when the executor
+  component is spawned.  As for all RP components, do not rely on ``__init__``
+  for initialization, but instead use ``initialize`` as that method will run in
+  a separate process.
+
+::
+
+    def initialize(self):
+
+        # call parent class method to set self._log
+        super().initialize()
+
+
+* Implement ``work`` method to execute tasks:
+
+::
+
+    def work(self, tasks):
+
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
+        ...
+
+That method is called by the agent when tasks are ready to be executed. The task
+dictionaries will have a ``slots`` structure attached which describes the
+resources assigned to the task.  It is important to call the ``advance`` method
+as shown above to communicate to RP (and to the application) that the task
+reached the execution component.
+
+The work method will usually not wait for task completion as that would limit
+task throughput significantly.  Instead, the executor should start a separate
+thread or process which watches for task completion.  Make sure that the task is
+marked as completed by calling ``advance``, and to also publish an
+``unschedule`` message to ensure that the resources used by the task are
+released.
+
+::
+
+        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+        self.advance_tasks(task, rps.DONE, publish=True, push=False)
+
+
+* Implement ``cancel`` method to cancel tasks:
+
+::
+
+    def cancel_task(self, uid):
+        pass
+
+Again, make sure that the new task state is communicated via a call to
+``advance`` (unless the state change is picked up elsewhere).
+
+
+* Register executor
+
+The last step is to register the executor in the executor base class - look at
+the ``create`` method defined there and add the task class as a new instance type.
 
