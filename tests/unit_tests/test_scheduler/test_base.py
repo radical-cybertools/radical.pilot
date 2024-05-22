@@ -94,7 +94,7 @@ class TestBaseScheduling(TestCase):
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._log = mock.Mock()
 
-        for c in self._test_cases['change_slots']:
+        for c in self._test_cases['change_slot_states']:
             sched.nodes = c['nodes']
             if c['result'] == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
@@ -152,12 +152,7 @@ class TestBaseScheduling(TestCase):
             component.schedule_task = mock.Mock(return_value=[c['slots'], None])
             component._try_allocation(task=task)
 
-            import pprint
-            print('================')
-            pprint.pprint(task['slots'])
-            pprint.pprint(rpu.unconvert_slots(task['slots']))
-            print('================')
-            self.assertEqual(rpu.unconvert_slots(task['slots']), c['slots'])
+            self.assertEqual(task['slots'], c['slots'])
 
 
     # --------------------------------------------------------------------------

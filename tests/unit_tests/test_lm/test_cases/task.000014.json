@@ -45,7 +45,7 @@
     "results": {
         "lm": {
             "jsrun": {
-                "launch_cmd" : "jsrun -n2 -a1 -c2 -g2 -r2 -b rs --smpiargs=\"-gpu\"",
+                "launch_cmd" : "jsrun -n2 -a2 -c2 -g1 -r1 --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "srun": {

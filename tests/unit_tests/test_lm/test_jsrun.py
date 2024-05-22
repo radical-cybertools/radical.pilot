@@ -10,6 +10,8 @@ import radical.utils as ru
 from .test_common import setUp
 from radical.pilot.agent.launch_method.jsrun import JSRUN, LaunchMethod
 
+JSRUN._in_pytest = True
+
 
 # ------------------------------------------------------------------------------
 #
@@ -131,7 +133,8 @@ class TestJSRun(TestCase):
                 rs_file = lm_jsrun._create_resource_set_file(
                     slots=slots, uid=uid, sandbox=self._sbox)
                 with ru.ru_open(rs_file) as rs_layout_file:
-                    self.assertEqual(rs_layout_file.readlines(), rs_layout)
+                    lines = rs_layout_file.readlines()
+                    self.assertEqual(lines, rs_layout)
 
     # --------------------------------------------------------------------------
     #

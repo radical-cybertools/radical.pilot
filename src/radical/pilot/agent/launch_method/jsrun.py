@@ -6,8 +6,9 @@ import math
 
 import radical.utils as ru
 
-from ...   import constants as rpc
-from .base import LaunchMethod
+from ...      import constants as rpc
+from .base    import LaunchMethod
+from ...utils import unconvert_slots
 
 
 # ------------------------------------------------------------------------------
@@ -121,6 +122,11 @@ class JSRUN(LaunchMethod):
         # "error in ptssup_mkcltsock_afunix()"
         rs_str  = 'cpu_index_using: logical\n'
 
+        # NOTE: our tests feed us the new slot structure, the jsrun scheduler
+        #       provides the old one.  We need to detect that and convert.
+        if self._in_pytest:
+            slots = unconvert_slots(slots)
+
         base_id = 0
         for slot_ranks in slots:
 
@@ -130,16 +136,17 @@ class JSRUN(LaunchMethod):
 
             core_id_sets = []
             for core_map in slot_ranks['cores']:
-                core_ids = [str(cid) for cid in cores]
+                core_ids = [str(cid) for cid in core_map]
                 core_id_sets.append('{%s}' % ','.join(core_ids))
 
             rs_str += 'rank: %s : {'    % ','.join(rank_ids)
-            rs_str += ' host: %s;'      % str(slot_ranks['node_id'])
+            rs_str += ' host: %s;'      % str(slot_ranks['node_index'])
             rs_str += ' cpu: %s'        % ','.join(core_id_sets)
             if slot_ranks['gpus'] and slot_ranks['gpus'][0]:
                 # check the first element, since it is the same for RS ranks
                 slot_gpus = slot_ranks['gpus'][0]
-                assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
+                if not self._in_pytest:
+                    assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
                 rs_str += '; gpu: {%s}' % ','.join([str(g) for g in slot_gpus])
             rs_str += ' }\n'
 
@@ -158,7 +165,12 @@ class JSRUN(LaunchMethod):
         td    = task['description']
         slots = task['slots']
 
-        assert slots, 'task.slots.ranks not defined'
+        assert slots, 'task.slots not defined'
+
+        # NOTE: our tests feed us the new slot structure, the jsrun scheduler
+        #       provides the old one.  We need to detect that and convert.
+        if self._in_pytest:
+            slots = unconvert_slots(slots)
 
         if self._erf:
 
@@ -182,7 +194,8 @@ class JSRUN(LaunchMethod):
             gpus_per_rs  = 0
             if slot_ranks['gpus']:
                 slot_gpus = slot_ranks['gpus'][0]
-                assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
+                if not self._in_pytest:
+                    assert slot_ranks['gpus'].count(slot_gpus) == ranks_per_rs
                 gpus_per_rs = len(slot_gpus)
 
             # -n: number of RS

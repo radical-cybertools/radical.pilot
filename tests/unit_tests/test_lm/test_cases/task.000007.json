@@ -52,8 +52,8 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0,1} }\n",
-                           "rank: 1 : { host: 2; cpu: {0,1} }\n"]
+                           "rank: 0,1 : { host: 1; cpu: {0},{1} }\n",
+                           "rank: 2,3 : { host: 2; cpu: {0},{1} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000007"

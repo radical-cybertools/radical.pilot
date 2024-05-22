@@ -58,7 +58,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun -n1 -a1 -c4 -g0 -b rs",
+                "launch_cmd" : "jsrun -n1 -a4 -c4 -g0",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf"   : {
@@ -72,7 +72,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0,1,2,3} }\n"],
+                           "rank: 0,1,2,3 : { host: 1; cpu: {0},{1},{2},{3} }\n"],
             "mpiexec"   : ["node1\n"]
         },
         "resource_filename": {

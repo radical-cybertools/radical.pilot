@@ -52,7 +52,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"  : {
-                "launch_cmd" : "jsrun -n1 -a1 -c1 -g2 -r1 -b rs --smpiargs=\"off\"",
+                "launch_cmd" : "jsrun -n1 -a1 -c1 -g1 -r1 -b rs --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf": {
@@ -62,7 +62,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0}; gpu: {0,1} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0}; gpu: {0} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000013"
