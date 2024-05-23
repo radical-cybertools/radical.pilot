@@ -184,6 +184,22 @@
         "gpus"     : 6
     },
 
+    "ornl.frontier"  : {
+        "project"  : "chm155_003",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 10,
+        "gpus"     : 0
+    },
+
+    "ornl.frontier_flux"  : {
+        "project"  : "chm155_003",
+        "queue"    : "batch",
+        "schema"   : "local",
+        "cores"    : 10,
+        "gpus"     : 0
+    },
+
     "ornl.summit_prte" : {
         "project"  : "geo111",
         "queue"    : "batch",
