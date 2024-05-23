@@ -122,8 +122,10 @@
         "system_architecture"         : {
                                          "smt"           : 2,
                                        # "options"       : ["nvme"],
-                                         "blocked_cores" : [ 0,  8, 16, 24, 32,  40,  48,  56,
-                                                            64, 72, 80, 88, 96, 104, 112, 120],
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56,
+                                                            64,  72,  80,  88,
+                                                            96, 104, 112, 120],
                                          "blocked_gpus"  : []
                                         }
     },
@@ -147,13 +149,13 @@
                                          "FLUX"  : {
                                              "pre_exec_cached": [
                                                  "module load rocm",
-                                                 "module load flux/0.56.0"
+                                                 "module load flux"
                                              ]
                                          }
                                         },
         "pre_bootstrap_0"             : [
                                          "module load rocm",
-                                         "module load flux/0.56.0",
+                                         "module load flux",
                                          "module load cray-python"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -163,8 +165,10 @@
         "system_architecture"         : {
                                          "smt"           : 2,
                                        # "options"       : ["nvme"],
-                                         "blocked_cores" : [ 0,  8, 16, 24, 32,  40,  48,  56,
-                                                            64, 72, 80, 88, 96, 104, 112, 120],
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56,
+                                                            64,  72,  80,  88,
+                                                            96, 104, 112, 120],
                                          "blocked_gpus"  : []
                                         }
     },
