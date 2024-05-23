@@ -15,7 +15,6 @@ from collections import defaultdict
 
 import threading          as mt
 
-import radical.gtod       as rg
 import radical.utils      as ru
 
 from ... import states    as rps
@@ -29,14 +28,6 @@ from ...staging_directives import complete_url, expand_staging_directives
 # 'enum' for RP's PMGRraunching types
 RP_UL_NAME_SAGA  = "SAGA"
 RP_UL_NAME_PSI_J = "PSI_J"
-
-
-# ------------------------------------------------------------------------------
-# local constants
-DEFAULT_AGENT_SPAWNER = 'POPEN'
-DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV_MODE  = 'update'
-DEFAULT_AGENT_CONFIG  = 'default'
 
 
 # ------------------------------------------------------------------------------
@@ -131,10 +122,10 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (ResourceManager).
-        self._stager = rpu.StagingHelper(self._log, self._prof)
+        self._stager = rpu.StagingHelper(self._log)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
-        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
 
@@ -672,23 +663,18 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         #
         # case rp_version:
         #   @<token>:
-        #   @tag/@branch/@commit: # no sdist staging
+        #   @tag/@branch/@commit:
         #       git clone $github_base radical.pilot.src
         #       (cd radical.pilot.src && git checkout token)
         #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
         #       rm -rf radical.pilot.src
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   release: # no sdist staging
+        #   release:
         #       pip install -t $VIRTENV/rp_install radical.pilot
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   local: # needs sdist staging
-        #       tar zxf $sdist.tgz
-        #       pip install -t $SANDBOX/rp_install $sdist/
-        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
-        #
-        #   installed: # no sdist staging
+        #   installed:
         #       true
         # esac
         #
@@ -723,19 +709,9 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-        if not rp_version:
-            if virtenv_mode == 'local': rp_version = 'installed'
-            else                      : rp_version = DEFAULT_RP_VERSION
-
-        if not rp_version.startswith('@') and \
-               rp_version not in ['installed', 'local', 'release']:
-            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-        if rp_version.startswith('@'):
-            rp_version  = rp_version[1:]  # strip '@'
-
         # use local VE ?
         if virtenv_mode == 'local':
+            rp_version = 'installed'
             if os.environ.get('VIRTUAL_ENV'):
                 python_dist = 'default'
                 virtenv     = os.environ['VIRTUAL_ENV']
@@ -746,6 +722,13 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
                 # we can't use local
                 self._log.error('virtenv_mode is local, no local env found')
                 raise ValueError('no local env found')
+
+        if not rp_version.startswith('@') and \
+               rp_version not in ['installed', 'local', 'release']:
+            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+        if rp_version.startswith('@'):
+            rp_version  = rp_version[1:]  # strip '@'
 
         # ----------------------------------------------------------------------
         # sanity checks
@@ -989,8 +972,9 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         sds = expand_staging_directives(sds, src_ctx, tgt_ctx)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
+            self._prof.prof('staging_in_start', uid=pilot['uid'], msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -1014,13 +998,12 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         sds = ru.as_list(sds)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
+            self._prof.prof('staging_out_start', uid=pilot['uid'], msg=sd['uid'])
             self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_out_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
 # ------------------------------------------------------------------------------

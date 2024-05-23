@@ -30,7 +30,6 @@ PRE_BOOTSTRAP_1        = 'pre_bootstrap_1'
 RP_VERSION             = 'rp_version'
 VIRTENV                = 'virtenv'
 VIRTENV_MODE           = 'virtenv_mode'
-VIRTENV_DIST           = 'virtenv_dist'
 PYTHON_DIST            = 'python_dist'
 PYTHON_INTERPRETER     = 'python_interpreter'
 LAUNCH_METHODS         = 'launch_methods'
@@ -128,7 +127,6 @@ class ResourceConfig(ru.TypedDict):
         RP_VERSION             : str         ,
         VIRTENV                : str         ,
         VIRTENV_MODE           : str         ,
-        VIRTENV_DIST           : str         ,
         PYTHON_DIST            : str         ,
         PYTHON_INTERPRETER     : str         ,
         LAUNCH_METHODS         : {str: None} ,
@@ -173,10 +171,9 @@ class ResourceConfig(ru.TypedDict):
         AGENT_SPAWNER          : 'POPEN'     ,
         PRE_BOOTSTRAP_0        : list()      ,
         PRE_BOOTSTRAP_1        : list()      ,
-        RP_VERSION             : 'local'     ,
+        RP_VERSION             : 'installed' ,
         VIRTENV                : ''          ,
-        VIRTENV_MODE           : 'update'    ,
-        VIRTENV_DIST           : ''          ,
+        VIRTENV_MODE           : 'local'     ,
         PYTHON_DIST            : 'default'   ,
         PYTHON_INTERPRETER     : ''          ,
         LAUNCH_METHODS         : dict()      ,

@@ -23,7 +23,7 @@ class StagerTestCase(TestCase):
     #
     def test_handle_staging(self):
 
-        stager = StagingHelper(log=mock.Mock(), prof=mock.Mock())
+        stager = StagingHelper(log=mock.Mock())
 
         base_dir = tempfile.gettempdir()
         src_dir  = os.path.join(base_dir, 'stager_test')
