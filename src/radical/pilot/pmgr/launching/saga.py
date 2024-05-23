@@ -122,7 +122,7 @@ class PilotLauncherSAGA(PilotLauncherBase):
             if js_ep in self._js:
                 js = self._js[js_ep]
             else:
-                js = rs.job.Service(js_ep, session=self._session)
+                js = rs.job.Service(js_ep)
                 self._js[js_ep] = js
 
         # now that the scripts are in place and configured,

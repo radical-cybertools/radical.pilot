@@ -1,0 +1,68 @@
+cff-version: 1.2.0
+title: RADICAL-Pilot
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Andre
+    family-names: Merzky
+  - given-names: Matteo
+    family-names: Turilli
+  - given-names: Mikhail
+    family-names: Titov
+  - given-names: Aymen
+    family-names: Al-Saadi
+  - given-names: Shantenu
+    family-names: Jha
+identifiers:
+  - type: url
+    value: 'https://github.com/radical-cybertools/radical.pilot'
+    description: GitHub repository
+  - type: doi
+    value: 10.1109/TPDS.2021.3105994
+repository-code: 'https://github.com/radical-cybertools/radical.pilot'
+url: 'https://radicalpilot.readthedocs.io/'
+abstract: >-
+  RADICAL-Pilot (RP) is a Pilot system written in Python and
+  specialized in executing applications composed of many
+  computational tasks on high performance computing (HPC)
+  platforms. As a Pilot system, RP separates resource
+  acquisition from using those resources to execute
+  application tasks. Resources are acquired by submitting a
+  job to the batch system of an HPC machine. Once the job is
+  scheduled on the requested resources, RP can directly
+  schedule and launch application tasks on those resources.
+  Thus, tasks are not scheduled via the batch system of the
+  HPC platform, but directly on the acquired resources.
+keywords:
+  - High Performance Computing (HPC)
+  - Pilot Job
+  - Scientific Computing
+license: MIT
+references:
+  - type: article
+    scope: Cite this paper if you want to reference the general concepts of the software.
+    authors:
+      - family-names: Merzky
+        given-names: Andre
+        orcid: 'https://orcid.org/0000-0002-7228-4327'
+      - family-names: Turilli
+        given-names: Matteo
+        orcid: 'https://orcid.org/0000-0003-0527-1435'
+      - family-names: Titov
+        given-names: Mikhail
+        orcid: 'https://orcid.org/0000-0003-2357-7382'
+      - family-names: Al-Saadi
+        given-names: Aymen
+        orcid: 'https://orcid.org/0000-0001-7491-4946'
+      - family-names: Jha
+        given-names: Shantenu
+        orcid: 'https://orcid.org/0000-0002-5040-026X'
+    title: "Design and Performance Characterization of RADICAL-Pilot on Leadership-Class Platforms"
+    year: 2022
+    journal: IEEE Transactions on Parallel and Distributed Systems
+    volume: 33
+    issue: 4
+    pages: 818-829
+    doi: 10.1109/TPDS.2021.3105994

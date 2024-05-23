@@ -39,10 +39,7 @@ class Srun(LaunchMethod):
 
         self._command : str  = ''
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
-        self._exact   : bool = False
-
-        if 'uva.rivanna' in lm_cfg['resource']:
-            self._exact = True
+        self._exact   : bool = rm_info.details.get('exact', False)
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -190,7 +187,9 @@ class Srun(LaunchMethod):
         elif nodelist:
             mapping += ' --nodelist=%s' % ','.join(nodelist)
 
-        cmd = '%s %s %s' % (self._command, mapping, exec_path)
+        env = '--export=ALL'
+
+        cmd = '%s %s %s %s' % (self._command, env, mapping, exec_path)
         return cmd.rstrip()
 
 
@@ -203,19 +202,6 @@ class Srun(LaunchMethod):
         ret += 'test -z "$PMIX_RANK"    || export RP_RANK=$PMIX_RANK\n'
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_exec(self, task):
-
-        td          = task['description']
-        task_exec   = td['executable']
-        task_args   = td.get('arguments')
-        task_argstr = self._create_arg_string(task_args)
-        command     = '%s %s' % (task_exec, task_argstr)
-
-        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

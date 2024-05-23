@@ -13,7 +13,7 @@ General description
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
 
-  * ``access.bridges2`` - ``MPIRUN``
+  * ``access.bridges2`` - ``SRUN``
 
 * Configuration per node (per queue)
 

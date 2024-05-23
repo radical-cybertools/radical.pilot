@@ -47,6 +47,7 @@ distributed architecture.
    tutorials.rst
    supported.rst
    envs.rst
+   process/contributing.rst
    glossary.rst
    internals.rst
    apidoc.rst

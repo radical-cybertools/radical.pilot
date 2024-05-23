@@ -9,6 +9,8 @@ environment variables. Those variables are exported in the shell from which you
 will launch your RP application. Usually, environment variables can be set using
 the `export <https://manpages.org/export>`_ command.
 
+.. note:: All the variables are optional. You can set them to change/enhance the behavior of RP, depending on your requirements.
+
 .. warning:: Tables are large, scroll to the right to see the whole table.
 
 End user
@@ -57,6 +59,9 @@ End user
     * - .. envvar:: RADICAL_DEFAULT_PROFILE_DIR
       - Directory where to store profiles/traces
       - $PWD
+    * - .. envvar:: RADICAL_PILOT_PROXY_URL
+      - Proxy to facilitate communication between the client machine, i.e., the host where the application created this Session instance, and the target resource, i.e., the host where the pilot agent/s is/are running and where the workload is being executed.
+      - {NOT_SET}
 
 Logger
 ------

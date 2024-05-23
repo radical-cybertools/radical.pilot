@@ -20,7 +20,7 @@
                         "node_name" : "node1",
                         "node_id"   : "00001",
                         "core_map"  : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                        "gpu_map"   : [],
+                        "gpu_map"   : [[], [], [], []],
                         "lfs"       : 0,
                         "mem"       : 0
                     }
@@ -38,7 +38,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
+                "launch_cmd" : "srun --export=ALL --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"12\""
             }
         }

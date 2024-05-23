@@ -25,7 +25,8 @@
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "launch_methods"              : {
-                                         "order" : ["MPIRUN"],
+                                         "order" : ["SRUN", "MPIRUN"],
+                                         "SRUN"  : {},
                                          "MPIRUN": {"pre_exec_cached": ["module load slurm",
                                                                         "module load gcc",
                                                                         "module load openmpi"]}
@@ -329,13 +330,12 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order" : ["MPIRUN"],
-                                         "MPIRUN": {
-                                             "pre_exec_cached": [
-                                                 "module load gcc",
-                                                 "module load openmpi"
-                                             ]
-                                         }
+                                         "order" : ["SRUN"],
+                                       #            "MPIRUN",
+                                         "SRUN"   : {}
+                                       # "MPIRUN" : {"pre_exec_cached": ["module load slurm",
+                                       #                                 "module load gcc",
+                                       #                                 "module load openmpi"]}
                                         },
         "pre_bootstrap_0"             : ["module load anaconda3"],
         "default_remote_workdir"      : "$PROJECT",
@@ -346,4 +346,3 @@
         "system_architecture"         : {"gpu": "v100"}
     }
 }
-

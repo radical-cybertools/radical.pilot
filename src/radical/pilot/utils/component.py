@@ -42,7 +42,7 @@ ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 # ------------------------------------------------------------------------------
 #
-class Component(object):
+class BaseComponent(object):
     '''
     This class provides the basic structure for any RP component which operates
     on stateful things.  It provides means to:
@@ -95,9 +95,9 @@ class Component(object):
 
     Inheriting classes MUST call the constructor::
 
-        class StagingComponent(rpu.Component):
+        class StagingComponent(rpu.BaseComponent):
             def __init__(self, cfg, session):
-                rpu.Component.__init__(self, cfg, session)
+                super().__init__(cfg, session)
 
     A component thus must be passed a configuration (either as a path pointing
     to a file name to be opened as `ru.Config`, or as a pre-populated
@@ -136,7 +136,6 @@ class Component(object):
     discouraged, as Python's process management is not playing well with it's
     multithreading implementation.
     '''
-
 
     # --------------------------------------------------------------------------
     #
@@ -278,14 +277,11 @@ class Component(object):
         #        should really be derived from rp module inspection via an
         #        `ru.PluginManager`.
         #
-        from radical.pilot import worker as rpw
         from radical.pilot import pmgr   as rppm
         from radical.pilot import tmgr   as rptm
         from radical.pilot import agent  as rpa
 
         comp = {
-                rpc.STAGER_WORKER                  : rpw.Stager,
-
                 rpc.PMGR_LAUNCHING_COMPONENT       : rppm.Launching,
 
                 rpc.TMGR_STAGING_INPUT_COMPONENT   : rptm.Input,
@@ -733,7 +729,6 @@ class Component(object):
 
         cfg = self._reg['bridges'][qname]
 
-        self._log.debug('get input ep: %s', qname)
         return ru.zmq.Getter(qname, url=cfg['addr_get'])
 
 
@@ -987,8 +982,6 @@ class Component(object):
                 # next input
                 continue
 
-          # self._log.debug('work_cb: %d', len(things))
-
             # the worker target depends on the state of things, so we
             # need to sort the things into buckets by state before
             # pushing them
@@ -1045,6 +1038,7 @@ class Component(object):
                             thing['exception']        = repr(e)
                             thing['exception_detail'] = \
                                              '\n'.join(ru.get_exception_trace())
+
                         self.advance(things, rps.FAILED, publish=True,
                                                          push=False)
 
@@ -1066,6 +1060,7 @@ class Component(object):
          - state:   new state to set for the things
          - publish: determine if state update notifications should be issued
          - push:    determine if things should be pushed to outputs
+         - fwd:     determine if notifications are forarded to the ZMQ bridge
          - prof:    determine if state advance creates a profile event
            (publish, and push are always profiled)
 
@@ -1170,8 +1165,8 @@ class Component(object):
                 if _state not in self._outputs:
                     # unknown target state -- error
                     for thing in _things:
-                      # self._log.debug("lost  %s [%s] : %s", thing['uid'],
-                      #         _state, self._outputs)
+                        self._log.error("lost  %s [%s] : %s", thing['uid'],
+                                _state, self._outputs)
                         self._prof.prof('lost', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1179,7 +1174,7 @@ class Component(object):
                 if not self._outputs[_state]:
                     # empty output -- drop thing
                     for thing in _things:
-                      # self._log.debug('drop  %s [%s]', thing['uid'], _state)
+                        self._log.error('drop  %s [%s]', thing['uid'], _state)
                         self._prof.prof('drop', uid=thing['uid'], state=_state,
                                         ts=ts)
                     continue
@@ -1215,19 +1210,48 @@ class Component(object):
 
 # ------------------------------------------------------------------------------
 #
-class Worker(Component):
-    '''
-    A Worker is a Component which cannot change the state of the thing it
-    handles.  Workers are employed as helper classes to mediate between
-    components, between components and database, and between components and
-    notification channels.
-    '''
+class ClientComponent(BaseComponent):
 
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
+    # client side state advances are *not* forwarded by default (fwd=False)
+    def advance(self, things, state=None, publish=True, push=False, qname=None,
+                      ts=None, fwd=False, prof=True):
 
-        Component.__init__(self, cfg=cfg, session=session)
+        # CANCELED and FAILED are always published, never pushed
+        if state in [rps.FAILED, rps.CANCELED]:
+
+            for thing in ru.as_list(things):
+                thing['target_state'] = state
+
+            publish = True
+            push    = False
+
+        super().advance(things=things, state=state, publish=publish, push=push,
+                        qname=qname, ts=ts, fwd=fwd, prof=prof)
+
+
+# ------------------------------------------------------------------------------
+#
+class AgentComponent(BaseComponent):
+
+    # agent side state advances are forwarded by default (fwd=True)
+    def advance(self, things, state=None, publish=True, push=False, qname=None,
+                      ts=None, fwd=True, prof=True):
+
+        # CANCELED and FAILED is handled on the client side
+        if state in [rps.FAILED, rps.CANCELED]:
+
+            # final state is handled on client side - hand task over to tmgr
+            for thing in ru.as_list(things):
+                thing['target_state'] = state
+                thing['control']      = 'tmgr_pending'
+                thing['$all']         = True
+
+            state   = rps.TMGR_STAGING_OUTPUT_PENDING
+            publish = True
+            push    = False
+
+        super().advance(things=things, state=state, publish=publish, push=push,
+                        qname=qname, ts=ts, fwd=fwd, prof=prof)
 
 
 # ------------------------------------------------------------------------------

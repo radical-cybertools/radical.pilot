@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, no-value-for-parameter, unused-argument
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2021-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -277,6 +277,24 @@ class RMBaseTestCase(TestCase):
         self.assertEqual(len(rm._launchers), 1)
         self.assertEqual(rm._launchers['SSH'], mocked_lm)
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(ResourceManager, '__init__', return_value=None)
+    def test_create_errors(self, mocked_init):
+
+        with self.assertRaises(RuntimeError):
+            ResourceManager.create('UNKNOWN_RM', None, None, None, None)
+
+        from radical.pilot.agent.resource_manager.slurm import Slurm
+        with self.assertRaises(TypeError):
+            # ResourceManager Factory only available to base class
+            Slurm.create('SLURM', None, None, None, None)
+
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        self.assertFalse(ResourceManager.batch_started())
 
 # ------------------------------------------------------------------------------
 
@@ -290,7 +308,8 @@ if __name__ == '__main__':
     tc.test_set_info()
     tc.test_find_launcher()
     tc.test_prepare_launch_methods()
-
+    tc.test_create_errors()
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------
 

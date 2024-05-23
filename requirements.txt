@@ -1,6 +1,8 @@
-radical.utils>=1.40
-radical.saga>=1.37
-radical.gtod
+
+radical.utils>=1.60
+radical.gtod>=1.60
+
+psij-python
 setproctitle
 dill
 

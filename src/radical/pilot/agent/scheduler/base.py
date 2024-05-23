@@ -181,7 +181,7 @@ SCHEDULER_NAME_NOOP               = "NOOP"
 
 # ------------------------------------------------------------------------------
 #
-class AgentSchedulingComponent(rpu.Component):
+class AgentSchedulingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -204,7 +204,7 @@ class AgentSchedulingComponent(rpu.Component):
     def __init__(self, cfg, session):
 
         self.nodes = []
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
 
 
     # --------------------------------------------------------------------------
@@ -387,11 +387,8 @@ class AgentSchedulingComponent(rpu.Component):
                     self._log.debug('fail %d tasks: %d', len(tasks), name)
 
                     for task in tasks:
-                        task['exception']        = 'RuntimeError("raptor gone")'
-                        task['exception_detail'] = 'raptor queue disappeared'
-
-                    self.advance(tasks, state=rps.FAILED,
-                                        publish=True, push=False)
+                        self._fail_task(task, RuntimeError('raptor gone'),
+                                              'raptor queue disappeared')
 
         # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
@@ -413,10 +410,6 @@ class AgentSchedulingComponent(rpu.Component):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-            for task in to_cancel:
-                task['target_state'] = rps.CANCELED
-                task['control']      = 'tmgr_pending'
-                task['$all']         = True
             self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
 
         else:
@@ -760,14 +753,10 @@ class AgentSchedulingComponent(rpu.Component):
       #                                           len(unscheduled), len(failed))
 
         for task, error in failed:
-            error                = error.replace('"', '\\"')
-            task['exception']    = 'RuntimeError("%s")' % error
-            task['control']      = 'tmgr_pending'
-            task['target_state'] = 'FAILED'
-            task['$all']         = True
 
+            error  = error.replace('"', '\\"')
+            self._fail_task(task, RuntimeError('bisect failed'), error)
             self._log.error('bisect failed on %s: %s', task['uid'], error)
-            self.advance(scheduled, rps.FAILED, publish=True, push=False)
 
         self._waitpool = {task['uid']: task for task in (unscheduled + to_wait)}
 
@@ -792,6 +781,18 @@ class AgentSchedulingComponent(rpu.Component):
 
     # --------------------------------------------------------------------------
     #
+    def _fail_task(self, task, e, detail):
+
+        task['exception']        = repr(e)
+        task['exception_detail'] = detail
+
+        self._log.exception('scheduling failed for %s', task['uid'])
+
+        self.advance(task, rps.FAILED, publish=True, push=False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _schedule_incoming(self):
 
         # fetch all tasks from the queue
@@ -808,10 +809,15 @@ class AgentSchedulingComponent(rpu.Component):
 
                 for task in data:
 
+                    td = task['description']
+
+                    if td.get('ranks') <= 0:
+                        self._fail_task(task, ValueError('invalid ranks'), '')
+
                     # check if this task is to be scheduled by sub-schedulers
                     # like raptor
-                    raptor_id = task['description'].get('raptor_id')
-                    mode      = task['description'].get('mode')
+                    raptor_id = td.get('raptor_id')
+                    mode      = td.get('mode')
 
                     # raptor workers are not scheduled by raptor itself!
                     if raptor_id and mode != RAPTOR_WORKER:
@@ -904,23 +910,14 @@ class AgentSchedulingComponent(rpu.Component):
                                          'gpu': td['ranks'] *
                                                 td['gpus_per_rank']}
                     self.advance(task, rps.AGENT_EXECUTING_PENDING,
-                                 publish=True, push=True)
+                                 publish=True, push=True, fwd=True)
 
                 else:
                     to_wait.append(task)
 
             except Exception as e:
 
-                task['control']          = 'tmgr_pending'
-                task['exception']        = repr(e)
-                task['exception_detail'] = '\n'.join(ru.get_exception_trace())
-                task['target_state']     = 'FAILED'
-                task['$all']             = True
-
-                self._log.exception('scheduling failed for %s', task['uid'])
-
-                self.advance(task, rps.FAILED, publish=True, push=False)
-
+                self._fail_task(task, e, '\n'.join(ru.get_exception_trace()))
 
         # all tasks which could not be scheduled are added to the waitpool
         self._waitpool.update({task['uid']: task for task in to_wait})

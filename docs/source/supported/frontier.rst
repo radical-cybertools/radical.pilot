@@ -14,6 +14,7 @@ General description
 * Launch methods (per platform ID)
 
   * ``ornl.frontier`` - ``SRUN``
+  * ``ornl.frontier_flux`` - ``FLUX``
 
 * Configuration per node (9,408 nodes in total)
 
@@ -123,6 +124,7 @@ launching command for the application itself.
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>

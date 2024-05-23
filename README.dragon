@@ -1,0 +1,20 @@
+
+## Using the RP Dragon executor
+
+The Dragon executor requires Python 3.10 *or lower* - Python 3.11 conflicts with
+how json serialization is used (https://github.com/DragonHPC/dragon/issues/9).
+
+In order to correctly install Dragon, we had to change
+`.devcontainer/constraints.txt`:
+
+  - remove the `attrs=22.1.0` dependency
+  - remove the `pytest=7.2.0` dependency
+
+Also ensure that `radical.utils` is installed from the `fix/dragon` branch which
+avoids some logger lambdas which conflicted with the used serialization scheme.
+
+The simplest setup is to carefully prepare a virtualenv as described above, and
+then configure RP so that the pilot agent and the tasks use the very same
+environment.  In the resource config, set `rp_version=installed` and
+`virtenv_mode=local`, for task descriptions set `named_env=rp`.
+

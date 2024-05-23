@@ -2,7 +2,7 @@
 
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
-__copyright__ = 'Copyright 2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2021-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -95,6 +95,21 @@ class SlurmTestCase(TestCase):
         with self.assertRaises(RuntimeError):
             rm_slurm._init_from_scratch(RMInfo())
 
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        saved_batch_id = os.getenv('SLURM_JOB_ID')
+
+        os.environ['SLURM_JOB_ID'] = '12345'
+        self.assertTrue(Slurm.batch_started())
+
+        del os.environ['SLURM_JOB_ID']
+        self.assertFalse(Slurm.batch_started())
+
+        if saved_batch_id is not None:
+            os.environ['SLURM_JOB_ID'] = saved_batch_id
+
 # ------------------------------------------------------------------------------
 
 
@@ -103,6 +118,6 @@ if __name__ == '__main__':
     tc = SlurmTestCase()
     tc.test_init_from_scratch()
     tc.test_init_from_scratch_error()
-
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------

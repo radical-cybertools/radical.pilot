@@ -82,7 +82,7 @@ class TestPopen(TestCase):
         pex._log._debug_level = 1
 
         pex._pwd     = ''
-        pex._pid     = 'pilot.0000'
+        pex.pid      = 'pilot.0000'
         pex.sid      = 'session.0000'
         pex.resource = 'resource_label'
         pex.rsbox    = ''
@@ -111,9 +111,12 @@ class TestPopen(TestCase):
 
             if 'launch' in prefix:
                 self.assertIn('$RP_PROF launch_start', content)
+                self.assertIn('$RP_LAUNCH_PID',        content)
 
             elif 'exec' in prefix:
-                self.assertIn('$RP_PROF exec_start', content)
+                self.assertIn('$RP_PROF exec_start',   content)
+                self.assertIn('$RP_EXEC_PID',          content)
+                self.assertIn('$RP_RANK_PID',          content)
                 for pre_exec_cmd in task['description']['pre_exec']:
 
                     if isinstance(pre_exec_cmd, str):

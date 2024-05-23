@@ -53,7 +53,7 @@ class LaunchMethod(object):
         self._log      = log
         self._prof     = prof
         self._pwd      = os.getcwd()
-        self._env_orig = ru.env_eval('env/bs0_active.env')
+        self._env_orig = ru.env_eval('env/bs0_orig.env')
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
@@ -227,7 +227,13 @@ class LaunchMethod(object):
     #
     def get_exec(self, task):
 
-        raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+        td           = task['description']
+        task_exec    = td['executable']
+        task_args    = td['arguments']
+        task_argstr  = self._create_arg_string(task_args)
+        command      = '%s %s' % (task_exec, task_argstr)
+
+        return command.rstrip()
 
 
     # --------------------------------------------------------------------------

@@ -119,10 +119,15 @@ class ComponentManager(object):
     #
     def start_bridges(self, bridges):
 
+        if not bridges:
+            return
+
         self._prof.prof('start_bridges_start', uid=self._uid)
 
         buids = list()
         for bname, bcfg in bridges.items():
+
+            self._log.debug('start bridge %s', bname)
 
             uid = bname
             buids.append(uid)
@@ -140,7 +145,6 @@ class ComponentManager(object):
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
-          # self._reg.put('bridge.%s' % bname, bcfg)
             cmd = 'radical-pilot-bridge %s %s %s' \
                 % (self._sid, self._reg.url, bname)
 
@@ -162,6 +166,9 @@ class ComponentManager(object):
     # --------------------------------------------------------------------------
     #
     def start_components(self, components, cfg = None):
+
+        if not components:
+            return
 
         self._prof.prof('start_components_start: %s', uid=self._uid)
 

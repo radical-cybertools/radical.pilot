@@ -44,7 +44,9 @@ class TestWorker(TestCase):
                        'raptor.task.000000.cfg': {
                            'cores_per_rank': 8,
                            'gpus_per_rank' : 2
-                       }
+                       },
+                       'rcfg.raptor.hb_delay': 5
+
                    }
 
             super().__init__(from_dict=data)
@@ -72,8 +74,8 @@ class TestWorker(TestCase):
         ru.zmq.Publisher  = mock.Mock()
         ru.zmq.Putter     = mock.Mock()
 
-        rp.utils.Component.register_subscriber = mock.Mock()
-        rp.utils.Component.register_publisher  = mock.Mock()
+        rp.utils.BaseComponent.register_subscriber = mock.Mock()
+        rp.utils.BaseComponent.register_publisher  = mock.Mock()
 
         ru.zmq.Putter = mock.Mock()
         ru.zmq.Getter = mock.Mock()

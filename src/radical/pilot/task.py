@@ -81,8 +81,8 @@ class Task(object):
         self._state            = rps.NEW
         self._log              = tmgr._log
         self._exit_code        = None
-        self._stdout           = None
-        self._stderr           = None
+        self._stdout           = str()
+        self._stderr           = str()
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
@@ -177,7 +177,16 @@ class Task(object):
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-        # callbacks are not invoked here anymore, but are bulked in the tmgr
+      # # RP's internal processes may update metadata
+      # if 'description' not in task_dict:
+      #     # this should not happen!
+      #     import pprint
+      #     self._log.debug('invalid task dict: %s', pprint.pformat(task_dict))
+
+        if task_dict.get('description', {}).get('metadata'):
+            self._descr['metadata'] = task_dict['description']['metadata']
+
+        # callbacks are not invoked here, but are bulked in the tmgr
 
 
     # --------------------------------------------------------------------------

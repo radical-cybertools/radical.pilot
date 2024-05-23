@@ -8,73 +8,45 @@ __license__   = 'MIT'
 
 ''' Setup script, only usable via pip. '''
 
-import re
 import os
-import sys
-import glob
-import shutil
 
 import subprocess as sp
 
+from glob       import glob
 from setuptools import setup, Command, find_namespace_packages
-from pathlib    import Path
 
 
 # ------------------------------------------------------------------------------
+#
 base     = 'pilot'
 name     = 'radical.%s'      % base
 mod_root = 'src/radical/%s/' % base
 
-# ------------------------------------------------------------------------------
-#
-# pip warning:
-# "In-tree builds are now default. pip 22.1 will enforce this behaviour change.
-#  A possible replacement is to remove the --use-feature=in-tree-build flag."
-#
-# With this change we need to make sure to clean out all temporary files from
-# the src tree. Specifically create (and thus need to clean)
-#   - VERSION
-#   - SDIST
-#   - the sdist file itself (a tarball)
-#
-# `pip install` (or any other direct or indirect invocation of `setup.py`) will
-# in fact run `setup.py` multiple times: one on the top level, and internally
-# again with other arguments to build sdist and bwheel packages.  We must *not*
-# clean out temporary files in those internal runs as that would invalidate the
-# install.
-#
-# We thus introduce an env variable `SDIST_LEVEL` which allows us to separate
-# internal calls from the top level invocation - we only clean on the latter
-# (see end of this file).
-sdist_level = int(os.environ.get('SDIST_LEVEL', 0))
-os.environ['SDIST_LEVEL'] = str(sdist_level + 1)
+scripts  = list(glob('bin/*'))
+root     = os.path.dirname(__file__) or '.'
+readme   = open("%s/README.md" % root, encoding='utf-8').read()
+descr    = "RADICAL-Cybertools Pilot Job Framework"
+keywords = ['radical', 'cybertools', 'pilot job']
 
-root = os.path.dirname(__file__) or '.'
+share    = 'share/%s' % name
+data     = [('%s/examples'      % share, glob('examples/*.{py,cfg,json,sh}')),
+            ('%s/examples'      % share, glob('examples/hello*'            )),
+            ('%s/examples/docs' % share, glob('examples/docs/*.py'         )),
+            ('%s/examples/misc' % share, glob('examples/misc/*.py'         )),
+            ('%s/examples/misc' % share, glob('examples/misc/*.cfg'        )),
+            ('%s/examples/misc' % share, glob('examples/data_staging/*.py' ))]
 
 
 # ------------------------------------------------------------------------------
 #
 def sh_callout(cmd):
-
     p = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-
     stdout, stderr = p.communicate()
     ret            = p.returncode
     return stdout, stderr, ret
 
 
 # ------------------------------------------------------------------------------
-#
-# versioning mechanism:
-#
-#   - version:          1.2.3            - is used for installation
-#   - version_detail:  v1.2.3-9-g0684b06 - is used for debugging
-#   - version is read from VERSION file in root, which then is copied to
-#     module dir, and is getting installed from there.
-#   - version_detail is derived from the git tag, and only available when
-#     installed from git.  That is stored in mod_root/VERSION in the install
-#     tree.
-#   - The VERSION file is used to provide the runtime version information.
 #
 def get_version(_mod_root):
     '''
@@ -83,94 +55,77 @@ def get_version(_mod_root):
     information.
     '''
 
+    _out = None
+    _err = None
+    _ret = None
     try:
-
+        _version_path   = '%s/%s/VERSION' % (root, _mod_root)
         _version_base   = None
+        _version_short  = None
+        _version_branch = None
+        _version_tag    = None
         _version_detail = None
-        _sdist_name     = None
 
-        # get version from './VERSION'
+        # get `version_base` from distribution's 'VERSION' file
         with open('%s/VERSION' % root, 'r', encoding='utf-8') as fin:
             _version_base = fin.readline().strip()
 
-        # attempt to get version detail information from git
-        # We only do that though if we are in a repo root dir,
-        # ie. if 'git rev-parse --show-prefix' returns an empty string --
-        # otherwise we get confused if the ve lives beneath another repository,
-        # and the pip version used uses an install tmp dir in the ve space
-        # instead of /tmp (which seems to happen with some pip/setuptools
-        # versions).
-        out, _, ret = sh_callout(
-            'cd %s ; '
-            'test -z `git rev-parse --show-prefix` || exit -1; '
-            'tag=`git describe --tags --always` 2>/dev/null ; '
-            'branch=`git branch | grep -e "^*" | cut -f 2- -d " "` 2>/dev/null ; '
-            'echo $tag@$branch' % root)
-        _version_detail = out.strip()
-        _version_detail = _version_detail.decode()
-        _version_detail = _version_detail.replace('detached from ', 'detached-')
+        _, _, ret = sh_callout('cd %s && git rev-parse --git-dir && which git'
+                               % root)
+        _in_git = (ret == 0)
 
-        # remove all non-alphanumeric (and then some) chars
-        _version_detail = re.sub('[/ ]+', '-', _version_detail)
-        _version_detail = re.sub('[^a-zA-Z0-9_+@.-]+', '', _version_detail)
+        if not _in_git:
 
-        if ret              !=  0  or \
-            _version_detail == '@' or \
-            'git-error'      in _version_detail or \
-            'not-a-git-repo' in _version_detail or \
-            'not-found'      in _version_detail or \
-            'fatal'          in _version_detail :
-            _version = _version_base
-        elif '@' not in _version_base:
-            _version = '%s-%s' % (_version_base, _version_detail)
+            with open(_version_path, 'w', encoding='utf-8') as fout:
+                fout.write(_version_base + '\n')
+
         else:
-            _version = _version_base
 
-        # make sure the version files exist for the runtime version inspection
-        _path = '%s/%s' % (root, _mod_root)
-        with open(_path + '/VERSION', 'w', encoding='utf-8') as fout:
-            fout.write(_version_base + '\n')
-            fout.write(_version      + '\n')
+            # get details from git
+            _out, _err, _ret = sh_callout('cd %s && git describe --tags --always' % root)
+            assert _ret == 0, 'git describe failed'
+            _out = _out.decode()
+            _out = _out.strip()
 
-        _sdist_name = '%s-%s.tar.gz' % (name, _version_base)
-      # _sdist_name = _sdist_name.replace('/', '-')
-      # _sdist_name = _sdist_name.replace('@', '-')
-      # _sdist_name = _sdist_name.replace('#', '-')
-      # _sdist_name = _sdist_name.replace('_', '-')
+            _version_tag = _out
 
-        if '--record'    in sys.argv or \
-           'bdist_egg'   in sys.argv or \
-           'bdist_wheel' in sys.argv    :
-            # pip install stage 2 or easy_install stage 1
-            #
-            # pip install will untar the sdist in a tmp tree.  In that tmp
-            # tree, we won't be able to derive git version tags -- so we pack
-            # the formerly derived version as ./VERSION
-            shutil.move('VERSION', 'VERSION.bak')              # backup
-            shutil.copy('%s/VERSION' % _path, 'VERSION')       # version to use
-            os.system  ('python3 setup.py sdist')              # build sdist
-            shutil.copy('dist/%s' % _sdist_name,
-                        '%s/%s'   % (_mod_root, _sdist_name))  # copy into tree
-            shutil.move('VERSION.bak', 'VERSION')              # restore version
+            _out, _err, _ret = sh_callout('cd %s && git branch --show-current' % root)
+            assert _ret == 0, 'git branch failed'
 
-        with open(_path + '/SDIST', 'w', encoding='utf-8') as fout:
-            fout.write(_sdist_name + '\n')
+            _out = _out.decode()
+            _out = _out.strip()
 
-        return _version_base, _version_detail, _sdist_name, _path
+            _version_branch = _out or 'detached'
+            _version_branch = _version_branch.replace('detached from ', '~')
+
+            _version_short = _version_tag.split('-')[0]
+            _version_short = _version_short[1:]  # strip the 'v'
+
+            if _version_tag:
+                _version_detail = '%s-%s@%s' % (_version_base, _version_tag,
+                                                _version_branch)
+            else:
+                _version_detail = '%s@%s' % (_version_base, _version_branch)
+
+            with open(_version_path, 'w', encoding='utf-8') as fout:
+                fout.write(_version_short  + '\n')
+                fout.write(_version_base   + '\n')
+                fout.write(_version_branch + '\n')
+                fout.write(_version_tag    + '\n')
+                fout.write(_version_detail + '\n')
+
+        return _version_base, _version_path
 
     except Exception as e:
-        raise RuntimeError('Could not extract/set version: %s' % e) from e
+        _msg = 'Could not extract/set version: %s' % e
+        if _ret:
+            _msg += '\n' + _out + '\n\n' + _err
+        raise RuntimeError(_msg) from e
 
 
 # ------------------------------------------------------------------------------
 # get version info -- this will create VERSION and srcroot/VERSION
-version, version_detail, sdist_name, path = get_version(mod_root)
-
-
-# ------------------------------------------------------------------------------
-# check python version, should be >= 3.6
-if sys.hexversion < 0x03060000:
-    raise RuntimeError('ERROR: %s requires Python 3.6 or newer' % name)
+version, version_path = get_version(mod_root)
 
 
 # ------------------------------------------------------------------------------
@@ -180,23 +135,8 @@ class RunTwine(Command):
     def initialize_options(self): pass
     def finalize_options(self):   pass
     def run(self):
-        _, _, ret = sh_callout('python3 setup.py sdist upload -r pypi')
-        raise SystemExit(ret)
-
-
-# ------------------------------------------------------------------------------
-#
-# This copies the contents like examples/ dir under sys.prefix/share/$name
-# It needs the MANIFEST.in entries to work.
-base = 'share/%s' % name
-df = [('%s/examples'              % base, glob.glob('examples/[01]*.py')),
-      ('%s/examples'              % base, glob.glob('examples/hello*')),
-      ('%s/examples'              % base, glob.glob('examples/*.json')),
-      ('%s/examples/docs'         % base, glob.glob('examples/docs/*.py')),
-      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.py')),
-      ('%s/examples/misc'         % base, glob.glob('examples/misc/*.cfg')),
-      ('%s/examples/data_staging' % base, glob.glob('examples/data_staging/*.py')),
-]
+        _, _, _ret = sh_callout('python3 setup.py sdist upload -r pypi')
+        raise SystemExit(_ret)
 
 
 # ------------------------------------------------------------------------------
@@ -207,18 +147,11 @@ with open('%s/requirements.txt' % root, encoding='utf-8') as freq:
 
 # ------------------------------------------------------------------------------
 #
-this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text(encoding='utf-8')
-
-
-# ------------------------------------------------------------------------------
-#
 setup_args = {
     'name'               : name,
-    'namespace_packages' : ['radical'],
     'version'            : version,
-    'description'        : 'The RADICAL pilot job framework',
-    'long_description'   : long_description,
+    'description'        : descr,
+    'long_description'   : readme,
     'long_description_content_type' : 'text/markdown',
     'author'             : 'RADICAL Group at Rutgers University',
     'author_email'       : 'radical@rutgers.edu',
@@ -231,8 +164,8 @@ setup_args = {
         'Issues' : 'https://github.com/radical-cybertools/%s/issues'   % name,
     },
     'license'            : 'MIT',
-    'keywords'           : 'radical pilot job saga',
-    'python_requires'    : '>=3.6',
+    'keywords'           : keywords,
+    'python_requires'    : '>=3.7',
     'classifiers'        : [
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -240,7 +173,7 @@ setup_args = {
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Utilities',
         'Topic :: System :: Distributed Computing',
         'Topic :: Scientific/Engineering',
@@ -250,32 +183,12 @@ setup_args = {
     ],
     'packages'           : find_namespace_packages('src', include=['radical.*']),
     'package_dir'        : {'': 'src'},
-    'scripts'            : [
-                            'bin/radical-pilot-agent_0',
-                            'bin/radical-pilot-agent_n',
-                            'bin/radical-pilot-agent-statepush',
-                            'bin/radical-pilot-bridge',
-                            'bin/radical-pilot-component',
-                            'bin/radical-pilot-create-static-ve',
-                            'bin/radical-pilot-deploy-ompi.sh',
-                            'bin/radical-pilot-hello.sh',
-                            'bin/radical-pilot-limits.py',
-                            'bin/radical-pilot-prte2prof',
-                            'bin/radical-pilot-raptor-master',
-                            'bin/radical-pilot-raptor-worker',
-                            'bin/radical-pilot-resources',
-                            'bin/radical-pilot-run-session',
-                            'bin/radical-pilot-service-signal',
-                            'bin/radical-pilot-stats',
-                            'bin/radical-pilot-stats.plot',
-                            'bin/radical-pilot-ve',
-                            'bin/radical-pilot-version',
-                           ],
+    'scripts'            : scripts,
     'package_data'       : {'': ['*.txt', '*.sh', '*.json', '*.gz', '*.c',
-                                 '*.md', 'VERSION', 'SDIST', sdist_name]},
+                                 '*.md', 'VERSION']},
     'install_requires'   : requirements,
     'zip_safe'           : False,
-    'data_files'         : df,
+    'data_files'         : data,
     'cmdclass'           : {'upload': RunTwine},
 }
 
@@ -287,11 +200,8 @@ setup(**setup_args)
 
 # ------------------------------------------------------------------------------
 # clean temporary files from source tree
-if sdist_level == 0:
-    os.system('rm -vrf src/%s.egg-info' % name)
-    os.system('rm -vf  %s/%s'           % (path, sdist_name))
-    os.system('rm -vf  %s/VERSION'      % path)
-    os.system('rm -vf  %s/SDIST'        % path)
+os.system('rm -vrf src/%s.egg-info' % name)
+os.system('rm -vf  %s'              % version_path)
 
 
 # ------------------------------------------------------------------------------

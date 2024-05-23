@@ -3,16 +3,17 @@ import os
 import glob
 import tarfile
 
-import radical.saga  as rs
 import radical.utils as ru
 
-rs_fs = rs.filesystem
+from .. import constants as rpc
+
+from .staging_helper import StagingHelper
 
 
 # ------------------------------------------------------------------------------
 #
 def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
     '''
     Args:
 
@@ -29,18 +30,10 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
     '''
 
-    if not log and session:
-        log = session._log
-
-    elif not log:
+    if not log:
         log = ru.Logger('radical.pilot.utils')
 
-    if session:
-        rep = session._rep
-    else:
-        rep = ru.Reporter('radical.pilot.utils')
-
-    ret = list()
+    files = list()
 
     if not src:
         src = os.getcwd()
@@ -56,7 +49,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         tgt = "%s/%s" % (os.getcwd(), tgt)
 
     # we always create a session dir as real target
-    tgt_url = rs.Url("%s/%s/" % (tgt, sid))
+    tgt_url = ru.Url("%s/%s" % (tgt, sid))
 
     # turn URLs without `schema://host` into `file://localhost`,
     # so that they dont become interpreted as relative paths.
@@ -74,17 +67,16 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
         for client_file in client_files:
 
-            ftgt = rs.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
-            ret.append("%s" % ftgt.path)
+            ftgt = ru.Url('%s/%s' % (tgt_url, os.path.basename(client_file)))
+            files.append("%s" % ftgt.path)
 
             if skip_existing and os.path.isfile(ftgt.path) \
                              and os.path.getsize(ftgt.path):
                 pass
             else:
                 log.debug('fetch client file %s', client_file)
-                rs_file = rs_fs.File(client_file, session=session)
-                rs_file.copy(ftgt, flags=rs_fs.CREATE_PARENTS)
-                rs_file.close()
+                stager = StagingHelper(log)
+                stager.copy(client_file, ftgt, flags=rpc.CREATE_PARENTS)
 
     # we need the session json for pilot details
     pilots = list()
@@ -99,7 +91,8 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
 
     for pilot in pilots:
 
-        pid = pilot['uid']
+        pid      = pilot['uid']
+        tar_name = '%s.%s.tgz' % (pid, ext)
 
         # create target dir for this pilot
         ru.rec_makedir('%s/%s' % (tgt_url.path, pid))
@@ -107,105 +100,94 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
         try:
             log.debug("processing pilot '%s'", pid)
 
-            sandbox_url = rs.Url(pilot['pilot_sandbox'])
-
             if access:
                 # Allow to use a different access schema than used for the the
                 # run.  Useful if you ran from the headnode, but would like to
                 # retrieve the files to your desktop (Hello Titan).
-                access_url = rs.Url(access)
+                access_url = ru.Url(access)
                 sandbox_url.schema = access_url.schema
                 sandbox_url.host   = access_url.host
 
-            sandbox = rs_fs.Directory (sandbox_url, session=session)
+            else:
+                sandbox_url = ru.Url(pilot['pilot_sandbox'])
 
-            # Try to fetch a tarball of files, so that we can get them
-            # all in one (SAGA) go!
-            tarball_name  = '%s.%s.tbz'   % (pid, ext)
-            tarball_tgt   = '%s/%s/%s/%s' % (tgt, sid, pid, tarball_name)
-            tarball_local = False
+            sandbox_url.path.rstrip('/')
+
+            src_url  = ru.Url('%s/%s' % (sandbox_url, tar_name))
+            src_dir  = os.path.dirname(src_url.path)
+            is_local = False
+
+            log.debug("sandbox: %s", sandbox_url)
+            log.debug("src_url: %s", src_url)
 
             # check if we have a local tarball already
             if skip_existing and \
-               os.path.isfile(tarball_tgt) and \
-               os.path.getsize(tarball_tgt):
-                tarball_local = True
+               os.path.isfile(tgt_url.path) and \
+               os.path.getsize(tgt_url.path):
+                is_local = True
 
-            if not tarball_local:
+            stager = StagingHelper(log)
+
+            if not is_local:
                 # need to fetch tarball
                 #  - if no remote tarball exists, create it
                 #  - fetch remote tarball
+                _, _, ret = stager.sh_callout(src_url, 'test -f %s' % src_url.path)
 
-                tarball_remote = False
-                if sandbox.is_file(tarball_name) and \
-                        sandbox.get_size(tarball_name):
-                    tarball_remote = True
+                if ret:
+                    # no tarball on remote side, create one
+                    #
+                    find_cmd = "find . -name '*.%s'" % ext
+                    tar_cmd  = "cd %s && tar czf %s $(%s)" \
+                             % (src_dir, tar_name, find_cmd)
 
-                if not tarball_remote:
-                    # so lets create a tarball with SAGA JobService
-                    js_url = pilot['js_hop']
-                    log.debug('js  : %s', js_url)
-                    js  = rs.job.Service(js_url, session=session)
-                    cmd = "cd %s; find . -name \\*.%s > %s.lst; " \
-                          "tar cjf %s -T %s.lst" % (sandbox.url.path, ext, ext,
-                              tarball_name, ext)
-                    j = js.run_job(cmd)
-                    j.wait()
+                    out, err, ret = stager.sh_callout(src_url, tar_cmd)
+                    log.debug("create with '%s': %s/%s", tar_cmd, out, err)
 
-                    log.debug('tar cmd   : %s', cmd)
-                    log.debug('tar result: %s\n---\n%s\n---\n%s',
-                              j.get_stdout_string(), j.get_stderr_string(),
-                              j.exit_code)
+                    if ret:
+                        raise RuntimeError("failed to create tarball: %s" % err)
 
-                    if j.exit_code:
-                        raise RuntimeError('could not create tarball: %s' %
-                                j.get_stderr_string())
-
-                # we not have a remote tarball and can fetch it
-                log.info("fetch '%s%s' to '%s'.", sandbox_url,
-                         tarball_name, tgt_url)
-
-                rs_file = rs_fs.File("%s%s" % (sandbox_url, tarball_name),
-                                     session=session)
-                rs_file.copy(tarball_tgt, flags=rs_fs.CREATE_PARENTS)
-                rs_file.close()
+                log.info("fetch '%s' to '%s'.", src_url, tgt_url)
+                stager.copy(src_url, tgt_url, flags=rpc.CREATE_PARENTS)
 
             # we now have a local tarball - unpack it
             # note that we do not check if it was unpacked before - it's simpler
             # (and possibly cheaper) to just do that again
-            log.info('Extract tarball %s', tarball_tgt)
-            tarball = tarfile.open(tarball_tgt, mode='r:bz2')
+            log.info('Extract tarball %s', tgt_url.path)
+            tarball = tarfile.open('%s/%s' % (tgt_url.path, tar_name), mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pid))
 
-            files = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
-            ret.extend(files)
+            found = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
+            files.extend(found)
 
-            rep.ok("+ %s (%s)\n" % (pid, name))
+            if rep:
+                rep.ok("+ %s (%s)\n" % (pid, name))
 
         except Exception:
             # do not raise, we still try the other pilots
-            rep.error("- %s (%s)\n" % (pid, name))
             log.exception('failed to fetch %s for %s', pid, name)
+            if rep:
+                rep.error("- %s (%s)\n" % (pid, name))
 
-    return ret
+    return files
 
 
 # ------------------------------------------------------------------------------
 #
 def fetch_profiles (sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
 
     return fetch_filetype('prof', 'profiles', sid, src, tgt, access,
-            session, skip_existing, fetch_client, log)
+            skip_existing, fetch_client, log, rep)
 
 
 # ------------------------------------------------------------------------------
 #
 def fetch_logfiles (sid, src=None, tgt=None, access=None,
-        session=None, skip_existing=False, fetch_client=False, log=None):
+        skip_existing=False, fetch_client=False, log=None, rep=None):
 
     return fetch_filetype('log', 'logfiles', sid, src, tgt, access,
-            session, skip_existing, fetch_client, log)
+            skip_existing, fetch_client, log, rep)
 
 
 # ------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2018-2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2018-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
@@ -10,6 +10,13 @@ from .base import RMInfo, ResourceManager
 # ------------------------------------------------------------------------------
 #
 class LSF(ResourceManager):
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def batch_started():
+
+        return bool(os.getenv('LSB_JOBID'))
 
     # --------------------------------------------------------------------------
     #

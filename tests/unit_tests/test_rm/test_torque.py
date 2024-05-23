@@ -53,6 +53,21 @@ class TorqueTestCase(TestCase):
         with self.assertRaises(RuntimeError):
             rm_torque._init_from_scratch(RMInfo())
 
+    # --------------------------------------------------------------------------
+    #
+    def test_batch_started(self):
+
+        saved_batch_id = os.getenv('PBS_JOBID')
+
+        os.environ['PBS_JOBID'] = '12345'
+        self.assertTrue(Torque.batch_started())
+
+        del os.environ['PBS_JOBID']
+        self.assertFalse(Torque.batch_started())
+
+        if saved_batch_id is not None:
+            os.environ['PBS_JOBID'] = saved_batch_id
+
 # ------------------------------------------------------------------------------
 
 
@@ -61,7 +76,7 @@ if __name__ == '__main__':
     tc = TorqueTestCase()
     tc.test_init_from_scratch()
     tc.test_init_from_scratch_error()
-
+    tc.test_batch_started()
 
 # ------------------------------------------------------------------------------
 

@@ -662,6 +662,10 @@ def get_session_description(sid, src=None):
         if tmgr:
             tree[tmgr]['children'].append(uid)
 
+        if 'pilot' not in task:
+            # if task haven't finished, while session got terminated
+            continue
+
         pid  = task['pilot']
         tree[pid]['children'].append(uid)
 
@@ -1154,7 +1158,7 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
     # we need to know what pilot the task ran on.  If we don't find a designated
     # pilot, no resources were consumed
     uid = task.uid
-    pid = task.cfg['pilot']
+    pid = task.cfg.get('pilot')
 
     if not pid:
         return dict()
