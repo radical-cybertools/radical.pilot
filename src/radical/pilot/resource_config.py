@@ -760,7 +760,7 @@ class NumaNodeResources(NodeResources):
 
         assert self.numa_domains >= 1
 
-        self._numa_domains = list()
+        self.__domains__ = list()
 
         if len(self.cores) % self.numa_domains:
             raise ValueError('invalid NUMA domain configuration')
@@ -781,16 +781,22 @@ class NumaNodeResources(NodeResources):
             n.lfs   = self.lfs // self.numa_domains
             n.mem   = self.mem // self.numa_domains
 
-            self._numa_domains.append(n)
+            self.__domains__.append(n)
+
+        import pprint
+        pprint.pprint(self.__domains__)
 
 
+
+    # --------------------------------------------------------------------------
+    #
     def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
 
         if self.numa_domains == 1:
             return super().find_slot(self)
 
         else:
-            for nd in self._numa_domains:
+            for nd in self.__domains__:
                 slot = nd.find_slot(rr)
                 if slot:
                     return slot
