@@ -8,6 +8,8 @@ on:
   pull_request:
     branches:
       - 'devel*'
+  schedule:
+    - cron:  '45 6 * * *'
 
 jobs:
 
@@ -26,6 +28,7 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          radical-stack
       - name: Lint with flake8 and pylint
         run: |
           . testenv/bin/activate
@@ -47,9 +50,6 @@ jobs:
       matrix:
         os: [ ubuntu-latest ]
         python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
-        include:
-          - os: ubuntu-20.04
-            python-version: '3.6'
     steps:
       - uses: actions/checkout@v3
         with:
@@ -63,13 +63,17 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
+          radical-stack
       - name: Unit tests
         run: |
           . testenv/bin/activate
+          radical-stack
           coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
           coverage xml
       - uses: codecov/codecov-action@v3
         if: ${{ matrix.python-version == '3.7' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: ./coverage.xml
 
@@ -89,9 +93,6 @@ jobs:
       matrix:
         os: [ ubuntu-latest ]
         python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
-        include:
-          - os: ubuntu-20.04
-            python-version: '3.6'
     steps:
       - uses: actions/checkout@v3
         with:

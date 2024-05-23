@@ -224,8 +224,11 @@ class MPIExec(LaunchMethod):
 
         assert slots.get('ranks'), 'task.slots.ranks not defined'
 
-        n_ranks     = sum([len(slot['core_map']) for slot in slots['ranks']])
-        cmd_options = '-np %d ' % n_ranks
+        host_slots = defaultdict(int)
+        for rank in slots['ranks']:
+            host_slots[rank['node_name']] += len(rank['core_map'])
+
+        cmd_options = '-np %d ' % sum(host_slots.values())
 
         if self._use_rf:
             rankfile     = self._get_rank_file(slots, uid, sbox)
@@ -236,9 +239,19 @@ class MPIExec(LaunchMethod):
             hostfile     = self._get_host_file(slots, uid, sbox)
             core_ids     = ':'.join([
                 str(cores[0]) + ('-%s' % cores[-1] if len(cores) > 1 else '')
-                for cores in [rank['core_map'][0] for rank in slots['ranks']]])
-            cmd_options += '--hostfile %s '     % hostfile + \
-                           '--cpu-bind list:%s' % core_ids
+                for core_map in [rank['core_map'] for rank in slots['ranks']]
+                for cores in core_map])
+            cmd_options += '--ppn %d '           % max(host_slots.values()) + \
+                           '--cpu-bind list:%s ' % core_ids + \
+                           '--hostfile %s'       % hostfile
+
+            # NOTE: Option "--ppn" controls "node-depth" vs. "core-depth"
+            #       process placement. If we submit "mpiexec" command with
+            #       "--ppn" option, it will place processes within the same
+            #       node first. If we do not provide "--ppn" option, it will
+            #       place processes on the available nodes one by one and
+            #       round-robin when each available node is populated.
+
             # if over-subscription is allowed,
             # then the following approach is applicable too:
             #    cores_per_rank = len(slots['ranks'][0]['core_map'][0])
@@ -278,19 +291,6 @@ class MPIExec(LaunchMethod):
             ret += 'test -z "$PALS_RANKID"  || export RP_RANK=$PALS_RANKID\n'
 
         return ret
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_exec(self, task):
-
-        td           = task['description']
-        task_exec    = td['executable']
-        task_args    = td['arguments']
-        task_argstr  = self._create_arg_string(task_args)
-        command      = '%s %s' % (task_exec, task_argstr)
-
-        return command.rstrip()
 
 
 # ------------------------------------------------------------------------------

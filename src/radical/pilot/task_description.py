@@ -10,7 +10,8 @@ import radical.utils as ru
 TASK_EXECUTABLE  = 'task.executable'
 TASK_FUNCTION    = 'task.function'
 TASK_FUNC        = 'task.function'
-TASK_METHOD      = 'task.function'
+TASK_METHOD      = 'task.method'
+TASK_METH        = 'task.method'
 TASK_EVAL        = 'task.eval'
 TASK_EXEC        = 'task.exec'
 TASK_PROC        = 'task.proc'
@@ -28,7 +29,7 @@ MODE             = 'mode'
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
 
-# mode: TASK_METHOD  # FIXME
+# mode: TASK_METHOD
 METHOD           = 'method'
 ARGS             = 'args'
 KWARGS           = 'kwargs'
@@ -650,9 +651,12 @@ class TaskDescription(ru.TypedDict):
                 umode = self.mode.upper().replace('.', '_')
                 raise ValueError("%s Task mode needs 'executable'" % umode)
 
-        elif self.mode == TASK_FUNC:
+        elif self.mode in [TASK_FUNC, TASK_METH]:
             if not self.get('function'):
                 raise ValueError("TASK_FUNC Task mode needs 'function'")
+            if self.get('named_env'):
+                raise ValueError("TASK_FUNC and TASK_METH Task mode does not "
+                                 "support 'named_env'")
 
         elif self.mode == TASK_PROC:
             if not self.get('executable'):

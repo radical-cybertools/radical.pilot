@@ -8,19 +8,16 @@ import time
 
 from typing import Optional
 
-import threading as mt
+import threading        as mt
 
-import radical.utils                as ru
-import radical.saga                 as rs
-import radical.saga.filesystem      as rsfs
-import radical.saga.utils.pty_shell as rsup
+import radical.utils    as ru
 
-from .         import constants as rpc
-from .         import utils     as rpu
+from . import constants as rpc
+from . import utils     as rpu
 
-from .messages             import HeartbeatMessage
-from .proxy                import Proxy
-from .resource_description import ResourceDescription
+from .messages        import HeartbeatMessage
+from .proxy           import Proxy
+from .resource_config import ResourceConfig, ENDPOINTS_DEFAULT
 
 
 # ------------------------------------------------------------------------------
@@ -53,7 +50,7 @@ class _CloseOptions(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class Session(rs.Session):
+class Session(object):
     """Root of RP object hierarchy for an application instance.
 
     A Session is the root object of all RP objects in an application instance:
@@ -174,10 +171,12 @@ class Session(rs.Session):
         self._pmgrs    = dict()  # map IDs to pmgr instances
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
+        self._rm       = None    # resource manager (agent_0 sessions)
+        self._hb       = None    # heartbeat monitor
 
-        # this session is either living in the client applicatio or lives in the
-        # scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to be
-        # set - we derive the session module scope from that env variable.
+        # this session is either living in the client application or lives in
+        # the scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to
+        # be set - we derive the session module scope from that env variable.
         self._module = os.environ.get('RP_PILOT_ID', 'client')
 
         # non-primary sessions need a uid!
@@ -190,9 +189,6 @@ class Session(rs.Session):
         elif self._role == self._AGENT_0: self._init_agent_0()
         elif self._role == self._AGENT_N: self._init_agent_n()
         else                            : self._init_default()
-
-        # now we have config and uid - initialize base class (saga session)
-        rs.Session.__init__(self, uid=self._uid)
 
         # cache sandboxes etc.
         self._cache_lock = ru.RLock()
@@ -216,6 +212,8 @@ class Session(rs.Session):
     # --------------------------------------------------------------------------
     #
     def _init_primary(self):
+
+        assert self._role == self._PRIMARY
 
         # The primary session
         #   - reads session config files
@@ -249,6 +247,8 @@ class Session(rs.Session):
         # start bridges and components
         self._start_components()
 
+        time.sleep(1)
+
         # primary session hooks into the control pubsub
         bcfg = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
         self._ctrl_pub = ru.zmq.Publisher(channel=rpc.CONTROL_PUBSUB,
@@ -277,12 +277,15 @@ class Session(rs.Session):
         #   - connects to the ZMQ proxy for client/agent communication
         #   - start agent components
 
+        assert self._role == self._AGENT_0
+
         self._init_cfg_from_dict()
         self._start_registry()
         self._connect_registry()
         self._connect_proxy()
         self._start_heartbeat()
         self._publish_cfg()
+        self._init_rm()
         self._start_components()
         self._crosswire_proxy()
 
@@ -295,10 +298,20 @@ class Session(rs.Session):
         #
         #   - connect to registry
         #   - fetch config from registry
-        #   - start agent components
+        #   - start agent bridges and components
+
+        assert self._role == self._AGENT_N
+
+        # the config passed to the session c'tor is the *agent* config - keep it
+        a_cfg = self._cfg
 
         self._connect_registry()
         self._init_cfg_from_registry()
+
+        # merge the agent's config into the session config
+        self._cfg.bridges    = ru.Config(cfg=a_cfg.get('bridges',    {}))
+        self._cfg.components = ru.Config(cfg=a_cfg.get('components', {}))
+
         self._start_components()
 
 
@@ -309,6 +322,8 @@ class Session(rs.Session):
         # sub-agents and components connect to an existing registry (owned by
         # the `primary` session or `agent_0`) and load config settings from
         # there.
+
+        assert self._role == self._DEFAULT
 
         self._connect_registry()
         self._init_cfg_from_registry()
@@ -367,32 +382,14 @@ class Session(rs.Session):
                                                        cfg=self._cfg)
 
         rcfgs = ru.Config('radical.pilot.resource', name='*', expand=False)
-        rcfgs_ext = {}
+        self._rcfgs = ru.Config()
 
         for site in rcfgs:
-            rcfgs_ext[site] = {}
+            self._rcfgs[site] = ru.Config()
             for res, rcfg in rcfgs[site].items():
-                rcfgs_ext[site][res] = {
-                    'default_schema': rcfg['default_schema'],
-                    'schemas'       : rcfg.get('schemas', {})
-                }
-                for schema in rcfg.get('schemas', {}):
-                    while isinstance(rcfg['schemas'][schema], str):
-                        tgt = rcfg['schemas'][schema]
-                        rcfg['schemas'][schema] = rcfg['schemas'][tgt]
-                for schema in rcfg.get('schemas', {}):
-                    rcfgs_ext[site][res][schema] = rcfgs[site][res].as_dict()
-                    ru.dict_merge(rcfgs_ext[site][res][schema],
-                                  rcfgs[site][res]['schemas'][schema])
-                    del rcfgs_ext[site][res][schema]['default_schema']
+                self._rcfgs[site][res] = ResourceConfig(rcfg)
 
-        for site in rcfgs_ext:
-            for res, rcfg in rcfgs_ext[site].items():
-                for schema in rcfg.get('schemas', {}):
-                    rd = ResourceDescription(from_dict=rcfg[schema])
-                    rd.verify()
 
-        self._rcfgs = ru.Config(from_dict=rcfgs_ext)
         self._rcfg  = ru.Config()  # the local resource config, if known
 
         # set essential config values for *this* specific session
@@ -400,15 +397,20 @@ class Session(rs.Session):
 
         pwd = os.getcwd()
 
-        if not self._cfg.base:
+        if self._cfg.base:
+            self._cfg.base = os.path.abspath(self._cfg.base)
+        else:
             self._cfg.base = pwd
 
-        if not self._cfg.path:
+        if self._cfg.path:
+            self._cfg.path = os.path.abspath(self._cfg.path)
+        else:
             self._cfg.path = '%s/%s' % (self._cfg.base, self._cfg.sid)
 
-        if not self._cfg.client_sandbox:
+        if self._cfg.client_sandbox:
+            self._cfg.client_sandbox = os.path.abspath(self._cfg.client_sandbox)
+        else:
             self._cfg.client_sandbox = pwd
-
 
         # change RU defaults to point logfiles etc. to the session sandbox
         def_cfg             = ru.DefaultConfig()
@@ -424,7 +426,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -453,10 +454,14 @@ class Session(rs.Session):
         # set essential config values for *this* specific session
         pwd = os.getcwd()
 
-        if not self._cfg.base:
+        if self._cfg.base:
+            self._cfg.base = os.path.abspath(self._cfg.base)
+        else:
             self._cfg.base = pwd
 
-        if not self._cfg.path:
+        if self._cfg.path:
+            self._cfg.path = os.path.abspath(self._cfg.path)
+        else:
             self._cfg.path = pwd
 
         # change RU defaults to point logfiles etc. to the session sandbox
@@ -473,7 +478,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._prof.prof('session_start', uid=self._uid)
@@ -503,7 +507,6 @@ class Session(rs.Session):
 
         from . import version_detail as rp_version_detail
         self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.saga  version: %s', rs.version_detail)
         self._log.info('radical.utils version: %s', ru.version_detail)
 
         self._log.debug('Session(%s, %s)', self._uid, self._role)
@@ -641,23 +644,26 @@ class Session(rs.Session):
 
         assert self._role == self._PRIMARY
 
-        # check if an external proxy is being used.  If so we are done.
+        # check if an external proxy was epcified for the session.
         if self._proxy_url:
             self._log.debug('use proxy at %s' % self._proxy_url)
             return
 
-        self._proxy_url = os.environ.get('RADICAL_PILOT_PROXY_URL')
-        if self._proxy_url:
+       # check if an external proxy was specified in the environment
+        elif 'RADICAL_PILOT_PROXY_URL' in os.environ:
+            self._proxy_url = os.environ['RADICAL_PILOT_PROXY_URL']
             self._log.debug('found proxy at %s' % self._proxy_url)
-            return
 
         # no luck - start an embedded proxy
-        self._proxy_event  = mt.Event()
-        self._proxy_thread = mt.Thread(target=self._run_proxy)
-        self._proxy_thread.daemon = True
-        self._proxy_thread.start()
+        else:
+            self._proxy_event  = mt.Event()
+            self._proxy_thread = mt.Thread(target=self._run_proxy)
+            self._proxy_thread.daemon = True
+            self._proxy_thread.start()
 
-        self._proxy_event.wait()
+            self._proxy_event.wait()
+
+
         assert self._proxy_url
 
         # the proxy url becomes part of the session cfg
@@ -705,8 +711,8 @@ class Session(rs.Session):
         url_sub = reg['bridges.%s.addr_sub' % src.lower()]
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
-        self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-        self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+      # self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
+      # self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -736,14 +742,13 @@ class Session(rs.Session):
                   #                 tgt, msg, msg['origin'], self._module)
                     return
 
-                # avoid message loops (forward only once)
-                msg['fwd'] = False
-
                 # only forward all messages which originated in *this* module.
-
                 if not msg['origin'] == self._module:
                   # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
+
+                # avoid message loops (forward only once)
+                msg['fwd'] = False
 
               # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
@@ -757,13 +762,13 @@ class Session(rs.Session):
     #
     def _crosswire_proxy(self):
 
-        # - forward local ctrl messages to control proxy
-        # - forward local state updates to state proxy
-        # - forward local task queue to proxy task queue
+        # - forward local ctrl  pubsub messages to proxy control pubsub
+        # - forward local state pubsub messages to proxy state   pubsub
+        # - forward local task  queue  messages to proxy task    queue
         #
-        # - forward proxy ctrl messages to local control pubsub
-        # - forward proxy state updates to local state pubsub
-        # - forward proxy task queue messages to local task queue
+        # - forward proxy ctrl  pubsub messages to local control pubsub
+        # - forward proxy state pubsub messages to local state   pubsub
+        # - forward proxy task  queue  messages to local task    queue
         #
         # The local task queue endpoints differ for primary session and agent_0
         #
@@ -794,6 +799,30 @@ class Session(rs.Session):
         self.crosswire_pubsub(src=rpc.PROXY_STATE_PUBSUB,
                               tgt=rpc.STATE_PUBSUB,
                               from_proxy=True)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_rm(self):
+
+        # import locally to avoid circular imports
+        from .agent.resource_manager import ResourceManager
+
+        rname    = self._rcfg.resource_manager
+        self._rm = ResourceManager.create(name=rname,
+                                          cfg=self._cfg,
+                                          rcfg=self._rcfg,
+                                          log=self._log, prof=self._prof)
+
+        import pprint
+        self._log.debug(pprint.pformat(self._rm.info))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_rm(self):
+
+        return self._rm
 
 
     # --------------------------------------------------------------------------
@@ -875,8 +904,9 @@ class Session(rs.Session):
             self._cmgr.close()
 
         # stop heartbeats
-        self._hb.stop()
-        self._hb_pubsub.stop()
+        if self._hb:
+            self._hb.stop()
+            self._hb_pubsub.stop()
 
         if self._proxy:
 
@@ -904,8 +934,6 @@ class Session(rs.Session):
             self._prof.prof("session_fetch_start", uid=self._uid)
             self._log.debug('start download')
             tgt = self._cfg.base
-          # # FIXME: MongoDB
-          # self.fetch_json    (tgt='%s/%s' % (tgt, self.uid))
             self.fetch_profiles(tgt=tgt)
             self.fetch_logfiles(tgt=tgt)
 
@@ -1043,8 +1071,16 @@ class Session(rs.Session):
         """
 
         if not self._reporter:
+
+            enabled = ru.get_env_ns('report', 'radical.pilot', 'false').lower()
+
+            if enabled in ['1', 'true', 'on']:
+                enabled = True
+            else:
+                enabled = False
+
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path)
+                                         path=self._cfg.path, enabled=enabled)
         return self._reporter
 
 
@@ -1221,56 +1257,60 @@ class Session(rs.Session):
     def get_resource_config(self, resource, schema=None):
         """Returns a dictionary of the requested resource config."""
 
-        domain, host = resource.split('.', 1)
-        if domain not in self._rcfgs:
-            raise RuntimeError("Resource domain '%s' is unknown." % domain)
+        site, res = resource.split('.', 1)
+        if site not in self._rcfgs:
+            raise RuntimeError("Resource site '%s' is unknown." % site)
 
-        if host not in self._rcfgs[domain]:
-            raise RuntimeError("Resource host '%s' unknown." % host)
-
-        resource_cfg = copy.deepcopy(self._rcfgs[domain][host])
+        if res not in self._rcfgs[site]:
+            raise RuntimeError("Resource label '%s' unknown." % res)
 
         if not schema:
-            schema = resource_cfg.get('default_schema')
+            schema = self._rcfgs[site][res]['default_schema']
 
-        if schema:
+        if not schema:
+            from_dict = self._rcfgs[site][res]
+            from_dict.label = resource
+            return ResourceConfig(from_dict=from_dict)
 
-            if schema not in resource_cfg['schemas']:
-                raise RuntimeError("schema %s unknown for resource %s"
-                                  % (schema, resource))
+        if schema not in self._rcfgs[site][res]['schemas']:
+            raise RuntimeError("schema %s unknown for resource %s"
+                              % (schema, resource))
 
-            for key in resource_cfg[schema]:
-                # merge schema specific resource keys into the
-                # resource config
-                resource_cfg[key] = resource_cfg[schema][key]
+        rcfg = ResourceConfig(from_dict=self._rcfgs[site][res])
+        scfg = rcfg['schemas'][schema]
 
-        resource_cfg.label = resource
-        return resource_cfg
+        ru.dict_merge(rcfg, scfg, ru.OVERWRITE)
+
+        if 'resource_manager' in rcfg:
+            # import locally to avoid circular imports
+            from .agent.resource_manager import ResourceManager
+
+            rm = ResourceManager.get_manager(rcfg['resource_manager'])
+            if rm and rm.batch_started():
+                rcfg.update(ENDPOINTS_DEFAULT)
+
+        rcfg.label = resource
+
+        rcfg.verify()
+
+        return rcfg
 
 
 
-  # # --------------------------------------------------------------------------
-  # #
-  # def fetch_json(self, tgt=None):
-  #
-  #     return rpu.fetch_json(self._uid, tgt=tgt, session=self,
-  #                           skip_existing=True)
-  #
-  #
     # --------------------------------------------------------------------------
     #
     def fetch_profiles(self, tgt=None):
 
-        return rpu.fetch_profiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_profiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
     #
     def fetch_logfiles(self, tgt=None):
 
-        return rpu.fetch_logfiles(self._uid, tgt=tgt, session=self,
-                                  skip_existing=True)
+        return rpu.fetch_logfiles(self._uid, tgt=tgt, skip_existing=True,
+                                  rep=self._rep)
 
 
     # --------------------------------------------------------------------------
@@ -1315,7 +1355,7 @@ class Session(rs.Session):
 
                 # cache miss -- determine sandbox and fill cache
                 rcfg   = self.get_resource_config(resource, schema)
-                fs_url = rs.Url(rcfg['filesystem_endpoint'])
+                fs_url = ru.Url(rcfg['filesystem_endpoint'])
 
                 # Get the sandbox from either the pilot_desc or resource conf
                 sandbox_raw = pilot['description'].get('sandbox')
@@ -1356,11 +1396,12 @@ class Session(rs.Session):
                     sandbox_base = sandbox_raw
 
                 else:
-                    shell = self.get_js_shell(resource, schema)
-                    ret, out, _ = shell.run_sync(' echo "WORKDIR: %s"' %
-                                                 sandbox_raw)
+                    # FIXME "remote sandbox expansion not yet supported"
+                    out, err, ret = ru.sh_callout(' echo "WORKDIR: %s"' %
+                                                 sandbox_raw, shell=True)
                     if ret or 'WORKDIR:' not in out:
-                        raise RuntimeError("Couldn't get remote workdir.")
+                        raise RuntimeError("workdir expansion failed: %s [%s]"
+                                           % (out, err))
 
                     sandbox_base = out.split(":")[1].strip()
                     self._log.debug("sandbox base %s", sandbox_base)
@@ -1373,50 +1414,6 @@ class Session(rs.Session):
                 self._cache['resource_sandbox'][resource] = fs_url
 
             return self._cache['resource_sandbox'][resource]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_js_shell(self, resource, schema):
-
-        if resource not in self._cache['js_shells']:
-            self._cache['js_shells'][resource] = dict()
-
-        if schema not in self._cache['js_shells'][resource]:
-
-            rcfg   = self.get_resource_config(resource, schema)
-
-            js_url = rcfg['job_manager_endpoint']
-            js_url = rcfg.get('job_manager_hop', js_url)
-            js_url = rs.Url(js_url)
-
-            elems  = js_url.schema.split('+')
-
-            if   'ssh'    in elems: js_url.schema = 'ssh'
-            elif 'gsissh' in elems: js_url.schema = 'gsissh'
-            elif 'fork'   in elems: js_url.schema = 'fork'
-            elif len(elems) == 1  : js_url.schema = 'fork'
-            else: raise Exception("invalid schema: %s" % js_url.schema)
-
-            if js_url.schema == 'fork':
-                js_url.host = 'localhost'
-
-            self._log.debug("rsup.PTYShell('%s')", js_url)
-            shell = rsup.PTYShell(js_url, self)
-            self._cache['js_shells'][resource][schema] = shell
-
-        return self._cache['js_shells'][resource][schema]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_fs_dir(self, url):
-
-        if url not in self._cache['fs_dirs']:
-            self._cache['fs_dirs'][url] = rsfs.Directory(url,
-                                               flags=rsfs.CREATE_PARENTS)
-
-        return self._cache['fs_dirs'][url]
 
 
     # --------------------------------------------------------------------------
@@ -1436,7 +1433,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox      = self._get_resource_sandbox(pilot)
-                session_sandbox       = rs.Url(resource_sandbox)
+                session_sandbox       = ru.Url(resource_sandbox)
                 session_sandbox.path += '/%s' % self.uid
 
                 self._cache['session_sandbox'][resource] = session_sandbox
@@ -1452,7 +1449,7 @@ class Session(rs.Session):
 
         pilot_sandbox = pilot.get('pilot_sandbox')
         if str(pilot_sandbox):
-            return rs.Url(pilot_sandbox)
+            return ru.Url(pilot_sandbox)
 
         pid = pilot['uid']
         with self._cache_lock:
@@ -1461,7 +1458,7 @@ class Session(rs.Session):
 
                 # cache miss
                 session_sandbox     = self._get_session_sandbox(pilot)
-                pilot_sandbox       = rs.Url(session_sandbox)
+                pilot_sandbox       = ru.Url(session_sandbox)
                 pilot_sandbox.path += '/%s/' % pilot['uid']
 
                 self._cache['pilot_sandbox'][pid] = pilot_sandbox
@@ -1486,7 +1483,7 @@ class Session(rs.Session):
 
                 # cache miss
                 resource_sandbox  = self._get_resource_sandbox(pilot)
-                endpoint_fs       = rs.Url(resource_sandbox)
+                endpoint_fs       = ru.Url(resource_sandbox)
                 endpoint_fs.path  = ''
 
                 self._cache['endpoint_fs'][resource] = endpoint_fs
@@ -1536,8 +1533,8 @@ class Session(rs.Session):
         schema  = pilot['description']['access_schema']
         rcfg    = self.get_resource_config(resrc, schema)
 
-        js_url  = rs.Url(rcfg.get('job_manager_endpoint'))
-        js_hop  = rs.Url(rcfg.get('job_manager_hop', js_url))
+        js_url  = ru.Url(rcfg.get('job_manager_endpoint'))
+        js_hop  = ru.Url(rcfg.get('job_manager_hop') or js_url)
 
         # make sure the js_hop url points to an interactive access
         # TODO: this is an unreliable heuristics - we should require the js_hop

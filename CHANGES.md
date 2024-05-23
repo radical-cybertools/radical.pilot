@@ -9,6 +9,167 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.60.0 Release                                                    2024-05-10
+
+  - remove rct dist staging
+  - added resource configuration for Flux on Frontier
+  - cleanup defaults for virtenv setup
+  - fix pre_exec handling, srun detection
+  - fix codecov (using `CODECOV_TOKEN`)
+  - iteration on event docs
+  - make advance calls more uniform
+  - re-enable event checking for sessions
+  - set version requirement for RCT stack
+  - sync with RU
+  - updated tutorial `Configuration`
+  - use srun for flux startup
+
+
+--------------------------------------------------------------------------------
+### 1.52.1 Hotfix Release                                             2024-04-18
+
+  - more fixes for setuptools upgrade
+  - remove sdist staging
+  - simplify bootstrapper
+
+
+--------------------------------------------------------------------------------
+### 1.52.0 Release                                                    2024-04-15
+
+  - fix for setuptools upgrade
+  - added resource configuration for Flux on Frontier
+  - use srun for flux startup
+
+
+--------------------------------------------------------------------------------
+### 1.49.2 Hotfix Release                                             2024-04-10
+
+  - fix #3162: missing advance on failed agent staging, create target dir
+
+
+--------------------------------------------------------------------------------
+### 1.49.0 Release                                                    2024-04-05
+
+  - MPIRUN/SRUN documentation update
+  - inherit environment for local executor
+
+
+--------------------------------------------------------------------------------
+### 1.48.0 Release                                                    2024-03-24
+
+  - remove SAGA as hard dependency
+  - add `named_env` check to TD verfication
+  - add dragon readme
+  - add link for a monitoring page for Polaris
+  - add supported platform Aurora (ALCF)
+  - add SRUN to Bridges2 config and make it default
+  - compensate job env isolation for tasks
+  - disable env inheritance in PSIJ launcher
+  - ensure string type on stdout/stderr
+  - fix a pilot cancellation race
+  - fix external proxy handling
+  - fix non-integer gpu count for flux
+  - fix staging scheme expansion
+  - fix state reporting from psij
+  - fix tarball staging for session
+  - refactoring moves launch and exec script creation to executor base
+  - removed Theta placeholder (Theta is decommissioned)
+  - set original env as a base for LM env
+  - update flake8, remove unneeded dependency
+  - update ANL config file (added Aurora and removed obsolete platforms)
+  - update doc page for Summit (rollback using conda env)
+  - update resource configs for Summit
+  - update table for supported platforms
+  - use physical cores only (no threads) for Aurora for now
+
+
+--------------------------------------------------------------------------------
+### 1.47.0 Release                                                    2024-02-08
+
+  - binder tutorial
+  - expand / fix documentation and README, update policies
+  - docs for psij deployment
+  - raptor example now terminates on worker failures
+  - fix raptor worker registration
+  - fix flux startup
+  - fix type for `LFS_SIZE_PER_NODE`
+  - update HB config parameters for raptor
+
+
+--------------------------------------------------------------------------------
+### 1.46.2 Hotfix-Release                                             2024-02-02
+
+  - fix detection of failed tasks
+
+
+--------------------------------------------------------------------------------
+### 1.46.1 Hotfix-Release                                             2024-01-17
+
+  - fix type for `LFS_SIZE_PER_NODE`
+
+
+--------------------------------------------------------------------------------
+### 1.46.0 Release                                                    2024-01-11
+
+  - pypi fix
+  - configurabe raptor hb timeouts
+
+
+--------------------------------------------------------------------------------
+### 1.43.0 Release                                                    2024-01-10
+
+  - add bragg prediction example
+  - add initial agent scheduler documentation
+  - add JSRUN_ERF setup for Summit's config
+  - add mechanism to determine batch/non-batch RP starting
+  - collect task PIDs through launch- and exec-scripts
+  - ensure mpi4py for raptor example
+  - fix ERF creation for JSRUN LM (and updated tests accordingly)
+  - fix Popen test
+  - fix `Task._update` method (`description` attribute)
+  - fix `_get_exec` in Popen (based on provided comments)
+  - fix parsing PIDs procedure (based on provided comments)
+  - fix profiling in Popen (based on provided comments)
+  - fix resource manager handling in `get_resource_config`
+  - fix tasks handling in `prof_utils`
+  - fix test for launch-/exec-scripts
+  - follow-up on comments
+  - forward after scheduling
+  - keep `pids` dict empty if there is no ranks provided
+  - moved collecting EXEC_PID into exec-script
+  - preserve process id for tasks with `executable` mode
+  - switch raptor to use the agent ve
+  - update `metadata` within task description
+
+
+--------------------------------------------------------------------------------
+### 1.42.0 Release                                                    2023-12-04
+  
+  - AgentComponent forwards all state notifications
+  - document event locations
+  - MPI tutorial for RAPTOR
+  - add mpi4py to the ci requirements
+  - add `bulk_size` for the executing queue (for sub-agents)
+  - add option `--ppn` for `PALS` flavor in MPIEXEC LM
+  - amarel cfg
+  - current version requires RU v1.43
+  - fix Profiling tutorial (fails when executed outside from its directory)
+  - collect service related data in registry
+  - fix multi pilot example
+  - move agent config generation to session init
+  - remove obsolete Worker class
+  - remove MongoDB module load from the Perlmutter config
+  - remove mpi4py from doc requirements
+  - save sub-agent config into Registry
+  - sub-agents are no daemons anymore
+  - update documentation for Polaris (GPUs assignment)
+  - update launcher for `Agent_N`
+  - update sub-agent config (in sync with the agent default config)
+  - update "Describing Tasks" tutorial
+  - use RMInfo `details` for LM options
+
+
+--------------------------------------------------------------------------------
 ### 1.41.0 Release                                                    2023-10-17
 
   - fix RTD

@@ -29,7 +29,7 @@ class MyWorker(rp.raptor.MPIWorker):
     def _dispatch_foo(self, task):
 
         import pprint
-        self._log.debug('==== running foo\n%s',
+        self._log.debug('running foo\n%s',
                 pprint.pformat(task['description']))
 
         return 'out', 'err', 0, None, None

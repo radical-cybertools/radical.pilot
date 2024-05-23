@@ -79,7 +79,6 @@ class Pilot(object):
         self._log        = pmgr._log
         self._pilot_dict = dict()
         self._callbacks  = dict()
-        self._cache      = dict()    # cache of SAGA dir handles
         self._cb_lock    = ru.RLock()
         self._tmgr       = None
 
@@ -235,21 +234,26 @@ class Pilot(object):
             # ensure valid state transition
             state_diff = rps._pilot_state_value(target) - \
                          rps._pilot_state_value(current)
-            if state_diff != 1:
+            if state_diff > 1:
                 raise RuntimeError('%s: invalid state transition %s -> %s',
                                    self.uid, current, target)
 
         self._state = target
 
-        # keep all information around
-        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
-
-        # FIXME MONGODB
-        resources = self._pilot_dict.get('resources') or {}
+        # FIXME: this is a hack to get the resource details into the pilot
+        resources = pilot_dict.get('resources') or {}
         rm_info   = resources.get('rm_info')
+
         if rm_info:
-            del self._pilot_dict['resources']['rm_info']
-            self._pilot_dict['resource_details'] = rm_info
+            del pilot_dict['resources']['rm_info']
+            pilot_dict['resource_details'] = rm_info
+
+        for k in list(pilot_dict.keys()):
+            if pilot_dict[k] is None:
+                del pilot_dict[k]
+
+        # keep all other information around
+        ru.dict_merge(self._pilot_dict, pilot_dict, ru.OVERWRITE)
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
@@ -597,23 +601,7 @@ class Pilot(object):
     def cancel(self):
         """Cancel the pilot."""
 
-        self._finalize()
-
         self._pmgr.cancel_pilots(self._uid)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _finalize(self):
-
-        # clean connection cache
-        try:
-            for key in self._cache:
-                self._cache[key].close()
-            self._cache = dict()
-
-        except:
-            pass
 
 
     # --------------------------------------------------------------------------
@@ -690,17 +678,19 @@ class Pilot(object):
                      'path'   : '/path/to/ve',
                      'setup'  : ['numpy']}
 
-                where the *type* specifies the environment type, *version* specifies the
-                Python version to deploy, and *setup* specifies how the environment is
-                to be prepared.  If *path* is specified the env will be created at that
-                path.  If *path* is not specified, RP will place the named env in the
-                pilot sandbox (under :file:`env/named_env_{name}`). If a VE exists at that
-                path, it will be used as is (an update is not performed). *pre_exec*
-                commands are executed before env creation and setup are attempted.
+                where the *type* specifies the environment type, *version*
+                specifies the Python version to deploy, and *setup* specifies
+                how the environment is to be prepared.  If *path* is specified
+                the env will be created at that path.  If *path* is not
+                specified, RP will place the named env in the pilot sandbox
+                (under :file:`env/named_env_{name}`). If a VE exists at that
+                path, it will be used as is (an update is not performed).
+                *pre_exec* commands are executed before env creation and setup
+                are attempted.
 
         Note:
-            The `version` specifier is only interpreted up to minor version;
-            subminor and less are ignored.
+            The optional `version` specifier is only interpreted up to minor
+            version, subminor and less are ignored.
 
         """
 
@@ -723,12 +713,11 @@ class Pilot(object):
         sds = ru.as_list(sds)
 
         for sd in sds:
-            sd['prof_id'] = self.uid
             sd['source'] = str(complete_url(sd['source'], self._loc_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], self._rem_ctx, self._log))
 
         # ask the pmgr to send the staging requests to the stager
-        self._pmgr._pilot_staging_input(sds)
+        self._pmgr._pilot_staging_input(self.uid, sds)
 
         return [sd['target'] for sd in sds]
 
@@ -819,14 +808,11 @@ class Pilot(object):
                     'action': rpc.TRANSFER}]
 
         for sd in sds:
-            sd['prof_id'] = self.uid
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], self._rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], self._loc_ctx, self._log))
 
         # ask the pmgr to send the staging reuests to the stager
-        self._pmgr._pilot_staging_output(sds)
+        self._pmgr._pilot_staging_output(self.uid, sds)
 
         return [sd['target'] for sd in sds]
 
