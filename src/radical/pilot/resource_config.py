@@ -40,6 +40,7 @@ MEM_PER_NODE           = 'mem_per_node'
 CORES_PER_NODE         = 'cores_per_node'
 GPUS_PER_NODE          = 'gpus_per_node'
 NUMA_DOMAINS_PER_NODE  = 'numa_domains_per_node'
+NUMA_DOMAIN_MAP        = 'numa_domain_map'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 SCATTERED              = 'scattered'
 SERVICES               = 'services'
@@ -139,6 +140,7 @@ class ResourceConfig(ru.TypedDict):
         CORES_PER_NODE         : int         ,
         GPUS_PER_NODE          : int         ,
         NUMA_DOMAINS_PER_NODE  : int         ,
+        NUMA_DOMAIN_MAP        : {int: None} ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
         SERVICES               : [str]       ,
@@ -188,6 +190,7 @@ class ResourceConfig(ru.TypedDict):
         CORES_PER_NODE         : 0           ,
         GPUS_PER_NODE          : 0           ,
         NUMA_DOMAINS_PER_NODE  : 1           ,
+        NUMA_DOMAIN_MAP        : dict()      ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : False       ,
         SERVICES               : list()      ,
