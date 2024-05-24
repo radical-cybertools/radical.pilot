@@ -33,11 +33,17 @@ class Flux(LaunchMethod):
     def _init_from_scratch(self, env, env_sh):
 
 
-        self._n_partitions = self._rm_info.details.get('n_partitions', 1)
+        n_partitions        = self._rm_info.details.get('n_partitions', 1)
+        n_nodes             = len(self._rm_info.node_list)
+        nodes_per_partition = n_nodes / n_partitions
 
-        self._log.info('using %d flux partitions', self._n_partitions)
+        assert n_nodes % n_partitions == 0, \
+                'n_nodes %d % n_partitions %d != 0' % (n_nodes, n_partitions)
 
-        for n in range(self._n_partitions):
+
+        self._log.info('using %d flux partitions', n_partitions)
+
+        for n in range(n_partitions):
 
             self._prof.prof('flux_start')
             fh = ru.FluxHelper()
@@ -50,7 +56,7 @@ class Flux(LaunchMethod):
             launcher = ''
             out, err, ret = ru.sh_callout('which srun')
             if ret == 0 and 'srun' in out:
-                launcher = 'srun'
+                launcher = 'srun -n %d' % nodes_per_partition
 
             fh.start_flux(launcher=launcher)
 
@@ -62,7 +68,7 @@ class Flux(LaunchMethod):
 
         lm_info = {'env'          : env,
                    'env_sh'       : env_sh,
-                   'n_partitions' : self._n_partitions,
+                   'n_partitions' : n_partitions,
                    'details'      : self._details}
 
         return lm_info

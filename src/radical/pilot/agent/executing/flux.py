@@ -129,9 +129,14 @@ class Flux(AgentExecutingComponent) :
         # round robin on available flux partitions
         parts = defaultdict(list)
         for task in tasks:
-            partition_id = self._task_count % self._lm.n_partitions
+
+            partition_id = task['description']['partition']
+
+            if partition_id is None:
+                partition_id = self._task_count % self._lm.n_partitions
+                self._task_count += 1
+
             parts[partition_id].append(task)
-            self._task_count += 1
             task['description']['environment']['RP_PARTITION_ID'] = partition_id
 
         for partition_id, partition_tasks in parts.items():
