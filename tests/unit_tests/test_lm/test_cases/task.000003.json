@@ -24,7 +24,7 @@
                 "ranks"         : [{"node_name" : "node1",
                                     "node_id"   : "1",
                                     "core_map"  : [[0, 1, 2, 3]],
-                                    "gpu_map"   : [],
+                                    "gpu_map"   : [[]],
                                     "lfs"       : 0}]
             },
             "task_sandbox": "./",
@@ -66,7 +66,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpiexec" : {
-                "launch_cmd" : "mpiexec -np 1 --hostfile /tmp/task.000003.hf --cpu-bind list:0-3",
+                "launch_cmd" : "mpiexec -np 1 --ppn 1 --cpu-bind list:0-3 --hostfile /tmp/task.000003.hf",
                 "rank_exec"  : "/bin/sleep \"10\""
             }
         },

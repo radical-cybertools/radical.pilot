@@ -8,6 +8,7 @@ __license__   = 'MIT'
 import glob
 import os
 import shutil
+import tempfile
 
 import radical.utils as ru
 
@@ -35,8 +36,8 @@ class TestSession(TestCase):
             self._init_cfg_from_scratch()
 
         with mock.patch.object(Session, '_init_primary', new=init_primary):
-            cls._session = Session()
-        cls._cleanup_files.append(cls._session.uid)
+            cls._session = Session(uid='rp.session.cls_test')
+            cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
     #
@@ -93,70 +94,33 @@ class TestSession(TestCase):
             self._session.get_resource_config(
                 resource='local.localhost', schema='wrong_schema')
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Session, '_get_logger')
-    @mock.patch.object(Session, '_get_profiler')
-    @mock.patch.object(Session, '_get_reporter')
-    def test_resource_schema_alias(self, *args, **kwargs):
+        # check running from batch
 
-        base_dir = os.path.join(os.path.expanduser('~'), '.radical')
-        self._cleanup_files.append(base_dir)
+        from radical.pilot.resource_config import ENDPOINTS_DEFAULT
+        saved_batch_id = os.getenv('SLURM_JOB_ID')
 
-        user_cfg_dir = os.path.join(base_dir, 'pilot', 'configs')
-        ru.rec_makedir(user_cfg_dir)
+        # resource manager is Slurm
 
-        facility_cfg = {
-            'test': {
-                'default_schema'    : 'schema_origin',
-                'schemas'           : {
-                    'schema_origin'     : {'job_manager_hop': 'value_0'},
-                    'schema_alias'      : 'schema_origin',
-                    'schema_alias_alias': 'schema_alias'
-                }
-            }
-        }
-        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
+        os.environ['SLURM_JOB_ID'] = '12345'
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertEqual(rcfg[e_key], e_value)
 
-        def init_primary(self):
-            self._reg = mock.Mock()
-            self._init_cfg_from_scratch()
+        del os.environ['SLURM_JOB_ID']
+        rcfg = self._session.get_resource_config(rcfg_label)
+        for e_key, e_value in ENDPOINTS_DEFAULT.items():
+            self.assertNotEqual(rcfg[e_key], e_value)
 
-        with mock.patch.object(Session, '_init_primary', new=init_primary):
-            s_alias = Session()
-        self._cleanup_files.append(s_alias.uid)
+        if saved_batch_id is not None:
+            os.environ['SLURM_JOB_ID'] = saved_batch_id
 
-        self.assertEqual(
-            s_alias._rcfgs.facility.test.schema_origin,
-            s_alias._rcfgs.facility.test.schema_alias)
-        self.assertEqual(
-            s_alias._rcfgs.facility.test.schema_origin,
-            s_alias._rcfgs.facility.test.schema_alias_alias)
-        self.assertEqual(
-            s_alias.get_resource_config('facility.test', 'schema_origin'),
-            s_alias.get_resource_config('facility.test', 'schema_alias_alias'))
-
-        # schema alias refers to unknown schema
-        facility_cfg = {
-            'test': {
-                'default_schema': 'schema_alias_error',
-                'schemas': {
-                    'schemas': ['schema_alias_error'],
-                    'schema_alias_error': 'unknown_schema'
-                }
-            }
-        }
-        ru.write_json(facility_cfg, '%s/resource_facility.json' % user_cfg_dir)
-        with self.assertRaises(KeyError):
-            with mock.patch.object(Session, '_init_primary', new=init_primary):
-                Session()
 
     # --------------------------------------------------------------------------
     #
     def test_close(self):
 
         class Dummy():
-            def put(*args, **kwargs):
+            def put(self, *args, **kwargs):
                 pass
 
         # check default values
@@ -213,6 +177,34 @@ class TestSession(TestCase):
                          self._session._get_resource_sandbox(pilot).path)
         self._session._cache['resource_sandbox'] = {}
 
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch('os.getcwd', return_value=tempfile.mkdtemp())
+    def test_paths(self, mocked_getcwd, mocked_reporter):
+
+        work_dir = mocked_getcwd()
+        self._cleanup_files.append(work_dir)
+
+        def init_primary(session):
+            session._reg = mock.Mock()
+            session._init_cfg_from_scratch()
+
+        s_uid = 'test.session.0000'
+        with mock.patch.object(Session, '_init_primary', new=init_primary):
+            s0 = Session(uid=s_uid, cfg={'base': ''})
+
+        self.assertEqual(s0.uid, s_uid)
+        self.assertEqual(s0.base, work_dir)
+
+        for path_key in ['base', 'path', 'client_sandbox']:
+            with mock.patch.object(Session, '_init_primary', new=init_primary):
+
+                s = Session(uid=s_uid, cfg={path_key: 'random_dir'})
+                self.assertEqual(s.cfg[path_key], '%s/random_dir' % os.getcwd())
+
+                self._cleanup_files.append(s.path)
+
 
 # ------------------------------------------------------------------------------
 #
@@ -222,7 +214,6 @@ if __name__ == '__main__':
     tc.setUpClass()
     tc.test_list_resources()
     tc.test_get_resource_config()
-    tc.test_resource_schema_alias()
     tc.test_get_resource_sandbox()
 
 # ------------------------------------------------------------------------------

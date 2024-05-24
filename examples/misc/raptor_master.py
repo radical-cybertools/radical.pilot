@@ -11,7 +11,7 @@ import radical.pilot as rp
 
 
 def out(msg):
-    sys.stdout.write('==== %s\n' % msg)
+    sys.stdout.write('%s\n' % msg)
     sys.stdout.flush()
 
 
@@ -73,11 +73,8 @@ class MyMaster(rp.raptor.Master):
 
         # initialize the task overlay base class.  That base class will ensure
         # proper communication channels to the pilot agent.
-        ru.write_json('m1.json', cfg)
         super().__init__(cfg=cfg)
-        ru.write_json('m2.json', self._cfg)
-
-        self._sleep = self._raptor_cfg.sleep
+        self._sleep = cfg.sleep
 
 
     # --------------------------------------------------------------------------
@@ -177,7 +174,7 @@ class MyMaster(rp.raptor.Master):
         self._prof.prof('create_stop')
 
         # wait for outstanding tasks to complete
-        while True:
+        while not self._term.is_set():
 
             completed = sum(self._collected.values())
             submitted = sum(self._submitted.values())
@@ -185,14 +182,14 @@ class MyMaster(rp.raptor.Master):
             if submitted:
                 # request_cb has been called, so we can wait for completion
 
-                self._log.info('=== submit done?: %d >= %d ', completed, submitted)
+                self._log.info('submit done?: %d >= %d ', completed, submitted)
 
                 if completed >= submitted:
                     break
 
             time.sleep(1)
 
-        self._log.info('=== submit done!')
+        self._log.info('submit done!')
 
 
     # --------------------------------------------------------------------------
@@ -201,7 +198,7 @@ class MyMaster(rp.raptor.Master):
 
         for task in tasks:
 
-            self._log.debug('=== request_cb %s\n', task['uid'])
+            self._log.debug('request_cb %s\n', task['uid'])
 
             mode = task['description']['mode']
             uid  = task['description']['uid']
@@ -239,7 +236,7 @@ class MyMaster(rp.raptor.Master):
             self._collected[mode] += 1
 
             # NOTE: `state` will be `AGENT_EXECUTING`
-            self._log.info('=== result_cb  %s: %s [%s] [%s]',
+            self._log.info('result_cb  %s: %s [%s] [%s]',
                             task['uid'],
                             task['state'],
                             task['stdout'],
@@ -249,6 +246,15 @@ class MyMaster(rp.raptor.Master):
             print('id: %s [%s]:\n    out: %s\n    ret: %s\n'
                  % (task['uid'], task['state'], task['stdout'],
                     task['return_value']))
+
+
+    # --------------------------------------------------------------------------
+    #
+    def worker_state_cb(self, worker_dict, state):
+
+        if state == rp.AGENT_STAGING_OUTPUT_PENDING:
+            self._log.warning('worker finalized')
+            self.stop()
 
 
 # ------------------------------------------------------------------------------
@@ -306,3 +312,4 @@ if __name__ == '__main__':
 
 
 # ------------------------------------------------------------------------------
+

@@ -15,9 +15,7 @@ from collections import defaultdict
 
 import threading          as mt
 
-import radical.gtod       as rg
 import radical.utils      as ru
-import radical.saga       as rs
 
 from ... import states    as rps
 from ... import constants as rpc
@@ -30,14 +28,6 @@ from ...staging_directives import complete_url, expand_staging_directives
 # 'enum' for RP's PMGRraunching types
 RP_UL_NAME_SAGA  = "SAGA"
 RP_UL_NAME_PSI_J = "PSI_J"
-
-
-# ------------------------------------------------------------------------------
-# local constants
-DEFAULT_AGENT_SPAWNER = 'POPEN'
-DEFAULT_RP_VERSION    = 'local'
-DEFAULT_VIRTENV_MODE  = 'update'
-DEFAULT_AGENT_CONFIG  = 'default'
 
 
 # ------------------------------------------------------------------------------
@@ -106,7 +96,7 @@ class PilotLauncherBase(object):
 
 # ------------------------------------------------------------------------------
 #
-class PMGRLaunchingComponent(rpu.Component):
+class PMGRLaunchingComponent(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
@@ -115,12 +105,13 @@ class PMGRLaunchingComponent(rpu.Component):
         self._uid = ru.generate_id(cfg['owner'] + '.launching.%(counter)s',
                                    ru.ID_CUSTOM)
 
-        rpu.Component.__init__(self, cfg, session)
+        super().__init__(cfg, session)
         self._pmgr      = self._owner
 
         self._pilots    = dict()      # dict for all known pilots
         self._lock      = mt.RLock()  # lock on maipulating the above
         self._sandboxes = dict()      # cache of resource sandbox URLs
+        self._cancelled = list()      # list of cancelled pilots
 
         self._mod_dir   = os.path.dirname(os.path.abspath(__file__))
         self._root_dir  = "%s/../../" % self._mod_dir
@@ -131,16 +122,10 @@ class PMGRLaunchingComponent(rpu.Component):
 
         # we don't really have an output queue, as we pass control over the
         # pilot jobs to the resource management system (ResourceManager).
-
-        self._stager_queue = self.get_output_ep(rpc.STAGER_REQUEST_QUEUE)
-
-        # also listen for completed staging directives
-        self.register_subscriber(rpc.STAGER_RESPONSE_PUBSUB, self._staging_ack_cb)
-        self._active_sds = dict()
-        self._sds_lock   = mt.Lock()
+        self._stager = rpu.StagingHelper(self._log)
 
         self._log.info(ru.get_version([self._mod_dir, self._root_dir]))
-        self._rp_version, _, _, _, self._rp_sdist_name, self._rp_sdist_path = \
+        self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
 
@@ -248,16 +233,20 @@ class PMGRLaunchingComponent(rpu.Component):
         the request to get enacted, nor for it to arrive, but just send it.
         '''
 
-        if not pids or not self._pilots:
-            # nothing to do
-            return
+        if not pids:
+            if not self._pilots:
+                return
+            else:
+                pids = list(self._pilots.keys())
 
         with self._lock:
+
             for pid in pids:
 
                 self._log.debug('cancel pilot %s', pid)
                 if pid not in self._pilots:
                     self._log.warn('cannot cancel unknown pilot %s', pid)
+                    self._cancelled.append(pid)
                     continue
 
                 pilot = self._pilots[pid]
@@ -278,16 +267,20 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def work(self, pilots):
 
-        if not isinstance(pilots, list):
-            pilots = [pilots]
+        pilots = ru.as_list(pilots)
 
-        self.advance(pilots, rps.PMGR_LAUNCHING, publish=True, push=False)
+        # weed out pilots for which we have already received a cancel request
+        to_cancel = [p for p in pilots if p['uid']     in self._cancelled]
+        to_start  = [p for p in pilots if p['uid'] not in self._cancelled]
+
+        self.advance(to_cancel, rps.CANCELED,       publish=True, push=False)
+        self.advance(to_start,  rps.PMGR_LAUNCHING, publish=True, push=False)
 
         # We can only use bulk submission for pilots which go to the same
         # target, thus we sort them into buckets and launch the buckets
         # individually
         buckets = defaultdict(lambda: defaultdict(list))
-        for pilot in pilots:
+        for pilot in to_start:
             resource = pilot['description']['resource']
             schema   = pilot['description']['access_schema']
             buckets[resource][schema].append(pilot)
@@ -535,6 +528,8 @@ class PMGRLaunchingComponent(rpu.Component):
     #
     def _prepare_pilot(self, resource, rcfg, pilot, expand, tar_name):
 
+        rcfg.verify()
+
         pid = pilot["uid"]
         pilot['fts'] = list()  # tar for staging
         pilot['sds'] = list()  # direct staging
@@ -544,10 +539,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # Database connection parameters
         sid       = self._session.uid
         proxy_url = self._session.cfg.proxy_url
-
-        # some default values are determined at runtime
-        default_virtenv = '%%(resource_sandbox)s/ve.%s.%s' % \
-                          (resource, self._rp_version)
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
@@ -565,40 +556,43 @@ class PMGRLaunchingComponent(rpu.Component):
         services         = pilot['description']['services']
 
         # ----------------------------------------------------------------------
-        # get parameters from resource cfg, set defaults where needed
-        agent_proxy_url         = rcfg.get('agent_proxy_url', proxy_url)
-        agent_spawner           = rcfg.get('agent_spawner', DEFAULT_AGENT_SPAWNER)
-        agent_config            = rcfg.get('agent_config', DEFAULT_AGENT_CONFIG)
-        agent_scheduler         = rcfg.get('agent_scheduler')
-        tunnel_bind_device      = rcfg.get('tunnel_bind_device')
-        default_queue           = rcfg.get('default_queue')
-        forward_tunnel_endpoint = rcfg.get('forward_tunnel_endpoint')
-        resource_manager        = rcfg.get('resource_manager')
-        pre_bootstrap_0         = rcfg.get('pre_bootstrap_0', [])
-        pre_bootstrap_1         = rcfg.get('pre_bootstrap_1', [])
-        python_interpreter      = rcfg.get('python_interpreter')
-        rp_version              = rcfg.get('rp_version')
-        virtenv_mode            = rcfg.get('virtenv_mode', DEFAULT_VIRTENV_MODE)
-        virtenv                 = rcfg.get('virtenv',      default_virtenv)
-        cores_per_node          = rcfg.get('cores_per_node', 0)
-        gpus_per_node           = rcfg.get('gpus_per_node',  0)
-        numa_domains_per_node   = rcfg.get('numa_domains_per_node',  0)
-        lfs_path_per_node       = rcfg.get('lfs_path_per_node')
-        lfs_size_per_node       = rcfg.get('lfs_size_per_node', 0)
-        python_dist             = rcfg.get('python_dist')
-        task_tmp                = rcfg.get('task_tmp')
-        spmd_variation          = rcfg.get('spmd_variation')
-        task_pre_launch         = rcfg.get('task_pre_launch')
-        task_pre_exec           = rcfg.get('task_pre_exec')
-        task_post_launch        = rcfg.get('task_post_launch')
-        task_post_exec          = rcfg.get('task_post_exec')
-        mandatory_args          = rcfg.get('mandatory_args', [])
-        system_architecture     = rcfg.get('system_architecture', {})
-        services               += rcfg.get('services', [])
+        # get parameters from resource cfg
+        agent_spawner           = rcfg.agent_spawner
+        agent_config            = rcfg.agent_config
+        agent_scheduler         = rcfg.agent_scheduler
+        default_queue           = rcfg.default_queue
+        forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
+        resource_manager        = rcfg.resource_manager
+        pre_bootstrap_0         = rcfg.pre_bootstrap_0
+        pre_bootstrap_1         = rcfg.pre_bootstrap_1
+        python_interpreter      = rcfg.python_interpreter
+        rp_version              = rcfg.rp_version
+        virtenv_mode            = rcfg.virtenv_mode
+        virtenv                 = rcfg.virtenv
+        cores_per_node          = rcfg.cores_per_node
+        gpus_per_node           = rcfg.gpus_per_node
+        numa_domains_per_node   = rcfg.numa_domains_per_node
+        lfs_path_per_node       = rcfg.lfs_path_per_node
+        lfs_size_per_node       = rcfg.lfs_size_per_node
+        python_dist             = rcfg.python_dist
+        task_tmp                = rcfg.task_tmp
+        task_pre_launch         = rcfg.task_pre_launch
+        task_post_launch        = rcfg.task_post_launch
+        task_pre_exec           = rcfg.task_pre_exec
+        task_post_exec          = rcfg.task_post_exec
+        mandatory_args          = rcfg.mandatory_args
+        system_architecture     = rcfg.system_architecture
+        services                = rcfg.services
+        raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
         blocked_cores           = system_architecture.get('blocked_cores', [])
         blocked_gpus            = system_architecture.get('blocked_gpus',  [])
+
+        # some default values are determined at runtime
+        if not virtenv:
+            virtenv = '%%(resource_sandbox)s/ve.%s.%s' \
+                    % (resource, self._rp_version)
 
         self._log.debug(pprint.pformat(rcfg))
 
@@ -628,6 +622,11 @@ class PMGRLaunchingComponent(rpu.Component):
         pilot_sandbox    = pilot_sandbox   .path % expand
       # client_sandbox   = client_sandbox  # not expanded
 
+        # expand variables in virtenv string
+        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
+                             'session_sandbox' : session_sandbox,
+                             'resource_sandbox': resource_sandbox}
+
         if not job_name:
             job_name = pid
 
@@ -648,21 +647,16 @@ class PMGRLaunchingComponent(rpu.Component):
             raise
 
 
-        # expand variables in virtenv string
-        virtenv = virtenv % {'pilot_sandbox'   : pilot_sandbox,
-                             'session_sandbox' : session_sandbox,
-                             'resource_sandbox': resource_sandbox}
-
         # Check for deprecated global_virtenv
         if 'global_virtenv' in rcfg:
             raise RuntimeError("'global_virtenv' is deprecated (%s)" % resource)
 
         # Create a host:port string for use by the bootstrap_0.
-        tmp = ru.Url(agent_proxy_url)
+        tmp = ru.Url(proxy_url)
         if tmp.port:
             hostport = "%s:%d" % (tmp.host, tmp.port)
         else:
-            raise RuntimeError('service URL needs port number: %s' % tmp)
+            hostport = tmp.host
 
         # ----------------------------------------------------------------------
         # the version of the agent is derived from
@@ -671,23 +665,18 @@ class PMGRLaunchingComponent(rpu.Component):
         #
         # case rp_version:
         #   @<token>:
-        #   @tag/@branch/@commit: # no sdist staging
+        #   @tag/@branch/@commit:
         #       git clone $github_base radical.pilot.src
         #       (cd radical.pilot.src && git checkout token)
         #       pip install -t $VIRTENV/rp_install/ radical.pilot.src
         #       rm -rf radical.pilot.src
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   release: # no sdist staging
+        #   release:
         #       pip install -t $VIRTENV/rp_install radical.pilot
         #       export PYTHONPATH=$VIRTENV/rp_install:$PYTHONPATH
         #
-        #   local: # needs sdist staging
-        #       tar zxf $sdist.tgz
-        #       pip install -t $SANDBOX/rp_install $sdist/
-        #       export PYTHONPATH=$SANDBOX/rp_install:$PYTHONPATH
-        #
-        #   installed: # no sdist staging
+        #   installed:
         #       true
         # esac
         #
@@ -722,19 +711,9 @@ class PMGRLaunchingComponent(rpu.Component):
         # above syntax is ignored, and the fallback stage@local
         # is used.
 
-        if not rp_version:
-            if virtenv_mode == 'local': rp_version = 'installed'
-            else                      : rp_version = DEFAULT_RP_VERSION
-
-        if not rp_version.startswith('@') and \
-               rp_version not in ['installed', 'local', 'release']:
-            raise ValueError("invalid rp_version '%s'" % rp_version)
-
-        if rp_version.startswith('@'):
-            rp_version  = rp_version[1:]  # strip '@'
-
         # use local VE ?
         if virtenv_mode == 'local':
+            rp_version = 'installed'
             if os.environ.get('VIRTUAL_ENV'):
                 python_dist = 'default'
                 virtenv     = os.environ['VIRTUAL_ENV']
@@ -745,6 +724,13 @@ class PMGRLaunchingComponent(rpu.Component):
                 # we can't use local
                 self._log.error('virtenv_mode is local, no local env found')
                 raise ValueError('no local env found')
+
+        if not rp_version.startswith('@') and \
+               rp_version not in ['installed', 'local', 'release']:
+            raise ValueError("invalid rp_version '%s'" % rp_version)
+
+        if rp_version.startswith('@'):
+            rp_version  = rp_version[1:]  # strip '@'
 
         # ----------------------------------------------------------------------
         # sanity checks
@@ -820,23 +806,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
 
-        # add dists to staging files, if needed:
-        # don't stage on `rp_version==installed` or `virtenv_mode==local`
-        if rp_version   == 'installed' or \
-           virtenv_mode == 'local'     :
-            sdist_names = list()
-            sdist_paths = list()
-        else:
-            sdist_names = [str(rg.sdist_name),
-                           str(ru.sdist_name),
-                           str(rs.sdist_name),
-                           str(self._rp_sdist_name)]
-            sdist_paths = [rg.sdist_path,
-                           ru.sdist_path,
-                           rs.sdist_path,
-                           self._rp_sdist_path]
-            bs_args.extend(['-d', ':'.join(sdist_names)])
-
         bs_args.extend(['-p', pid])
         bs_args.extend(['-s', sid])
         bs_args.extend(['-m', virtenv_mode])
@@ -851,7 +820,7 @@ class PMGRLaunchingComponent(rpu.Component):
         if forward_tunnel_endpoint:   bs_args.extend(['-f', forward_tunnel_endpoint])
         if forward_tunnel_endpoint:   bs_args.extend(['-h', hostport])
         if python_interpreter:        bs_args.extend(['-i', python_interpreter])
-        if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
+      # if tunnel_bind_device:        bs_args.extend(['-t', tunnel_bind_device])
         if cleanup:                   bs_args.extend(['-x', cleanup])
 
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
@@ -870,7 +839,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['scheduler']             = agent_scheduler
         agent_cfg['runtime']               = runtime
         agent_cfg['app_comm']              = app_comm
-        agent_cfg['proxy_url']             = agent_proxy_url
+        agent_cfg['proxy_url']             = proxy_url
         agent_cfg['pilot_sandbox']         = pilot_sandbox
         agent_cfg['session_sandbox']       = session_sandbox
         agent_cfg['resource_sandbox']      = resource_sandbox
@@ -889,6 +858,7 @@ class PMGRLaunchingComponent(rpu.Component):
         agent_cfg['log_lvl']               = self._log.level
         agent_cfg['debug_lvl']             = self._log.debug_level
         agent_cfg['services']              = services
+        agent_cfg['raptor']                = raptor_cfg
 
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
@@ -932,19 +902,6 @@ class PMGRLaunchingComponent(rpu.Component):
                                                   os.path.basename(env_helper)),
                              'action': rpc.TRANSFER})
 
-        # ----------------------------------------------------------------------
-        # we also touch the log and profile tarballs in the target pilot sandbox
-        pilot['fts'].append({
-                    'src': '/dev/null',
-                    'tgt': '%s/%s' % (pilot_sandbox, '%s.log.tgz' % pid),
-                    'rem': False})  # don't remove /dev/null
-        # only stage profiles if we profile
-        if self._prof.enabled:
-            pilot['fts'].append({
-                        'src': '/dev/null',
-                        'tgt': '%s/%s' % (pilot_sandbox, '%s.prof.tgz' % pid),
-                        'rem': False})  # don't remove /dev/null
-
         # check if we have a sandbox cached for that resource.  If so, we have
         # nothing to do.  Otherwise we create the sandbox and stage the RP
         # stack etc.
@@ -952,12 +909,6 @@ class PMGRLaunchingComponent(rpu.Component):
         # NOTE: this will race when multiple pilot launcher instances are used!
         #
         if resource not in self._sandboxes:
-
-            for sdist in sdist_paths:
-                base = os.path.basename(sdist)
-                pilot['fts'].append({'src': sdist,
-                                     'tgt': '%s/%s' % (session_sandbox, base),
-                                     'rem': False})
 
             self._sandboxes[resource] = True
 
@@ -978,7 +929,6 @@ class PMGRLaunchingComponent(rpu.Component):
         jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
         jd_dict.processes_per_host    = avail_cores_per_node
-        jd_dict.spmd_variation        = spmd_variation
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
         jd_dict.candidate_hosts       = candidate_hosts
@@ -1012,24 +962,22 @@ class PMGRLaunchingComponent(rpu.Component):
         '''
 
         # contexts for staging url expansion
-        rem_ctx = {'pwd'     : pilot['pilot_sandbox'],
+        tgt_ctx = {'pwd'     : pilot['pilot_sandbox'],      # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        loc_ctx = {'pwd'     : pilot['client_sandbox'],
+        src_ctx = {'pwd'     : pilot['client_sandbox'],     # !
                    'client'  : pilot['client_sandbox'],
                    'pilot'   : pilot['pilot_sandbox'],
                    'resource': pilot['resource_sandbox']}
 
-        sds = ru.as_list(sds)
+        sds = expand_staging_directives(sds, src_ctx, tgt_ctx)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
-            sd['source'] = str(complete_url(sd['source'], loc_ctx, self._log))
-            sd['target'] = str(complete_url(sd['target'], rem_ctx, self._log))
-
-        self._stage(sds)
+            self._prof.prof('staging_in_start', uid=pilot['uid'], msg=sd['uid'])
+            self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_in_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -1053,71 +1001,12 @@ class PMGRLaunchingComponent(rpu.Component):
         sds = ru.as_list(sds)
 
         for sd in sds:
-            sd['prof_id'] = pilot['uid']
-
-        for sd in sds:
             sd['source'] = str(complete_url(sd['source'], rem_ctx, self._log))
             sd['target'] = str(complete_url(sd['target'], loc_ctx, self._log))
 
-        self._stage(sds)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _stage(self, sds):
-
-        # add uid, ensure its a list, general cleanup
-        sds  = expand_staging_directives(sds)
-        uids = [sd['uid'] for sd in sds]
-
-        # prepare to wait for completion
-        with self._sds_lock:
-
-            self._active_sds = dict()
-            for sd in sds:
-                sd['state'] = rps.NEW
-                self._active_sds[sd['uid']] = sd
-
-            sd_states = [sd['state'] for sd
-                                     in  list(self._active_sds.values())
-                                     if  sd['uid'] in uids]
-
-        # push them out
-        self._stager_queue.put(sds)
-
-        while rps.NEW in sd_states:
-            time.sleep(1.0)
-            with self._sds_lock:
-                sd_states = [sd['state'] for sd
-                                         in  list(self._active_sds.values())
-                                         if  sd['uid'] in uids]
-
-        if rps.FAILED in sd_states:
-            raise RuntimeError('pilot staging failed')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _staging_ack_cb(self, topic, msg):
-        '''
-        update staging directive state information
-        '''
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        if cmd == 'staging_result':
-
-            with self._sds_lock:
-                for sd in arg['sds']:
-                    uid = sd['uid']
-                    if uid in self._active_sds:
-                        active_sd = self._active_sds[uid]
-                        active_sd['state']            = sd['state']
-                        active_sd['exception']        = sd['exception']
-                        active_sd['exception_detail'] = sd['exception_detail']
-
-        return True
+            self._prof.prof('staging_out_start', uid=pilot['uid'], msg=sd['uid'])
+            self._stager.handle_staging_directive(sd)
+            self._prof.prof('staging_out_stop', uid=pilot['uid'], msg=sd['uid'])
 
 
 # ------------------------------------------------------------------------------

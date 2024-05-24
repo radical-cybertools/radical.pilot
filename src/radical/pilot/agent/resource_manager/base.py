@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2016-2021, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import math
@@ -63,17 +63,34 @@ class RMInfo(ru.TypedDict):
 
             'details'              : {None: None},  # dict of launch method info
             'lm_info'              : {str : None},  # dict of launch method info
+            'launch_methods'       : {str : None},  # dict of launch method cfgs
     }
 
     _defaults = {
-            'agent_node_list'      : [],            # no sub-agents run by default
-            'service_node_list'    : [],            # no services run by default
-            'cores_per_node'       : 1,
-            'threads_per_core'     : 1,
+            'requested_nodes'      : 0,
+            'requested_cores'      : 0,
+            'requested_gpus'       : 0,
+
+            'partitions'           : dict(),
+            'node_list'            : list(),
+            'agent_node_list'      : list(),
+            'service_node_list'    : list(),
+
+            'cores_per_node'       : 0,
+            'threads_per_core'     : 0,
+
             'gpus_per_node'        : 0,
             'numa_domains_per_node': 1,
             'threads_per_gpu'      : 1,
-            'launch_methods'       : {}
+            'mem_per_gpu'          : 0,
+
+            'lfs_per_node'         : 0,
+            'lfs_path'             : '/tmp/',
+            'mem_per_node'         : 0,
+
+            'details'              : dict(),
+            'lm_info'              : dict(),
+            'launch_methods'       : dict(),
     }
 
 
@@ -150,6 +167,8 @@ class ResourceManager(object):
 
             # let the base class collect some data, then let the impl take over
             rm_info = self.init_from_scratch()
+            import pprint
+            pprint.pprint(rm_info.as_dict())
             rm_info.verify()
 
             # have a valid info - store in registry and complete initialization
@@ -225,9 +244,11 @@ class ResourceManager(object):
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+
         system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
+        rm_info.details['exact'] = bool(system_architecture.get('exclusive'))
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)
@@ -405,37 +426,55 @@ class ResourceManager(object):
     @classmethod
     def create(cls, name, cfg, rcfg, log, prof):
 
-        from .ccm         import CCM
-        from .fork        import Fork
-        from .lsf         import LSF
-        from .pbspro      import PBSPro
-        from .slurm       import Slurm
-        from .torque      import Torque
-        from .cobalt      import Cobalt
-        from .yarn        import Yarn
-        from .debug       import Debug
-
         # Make sure that we are the base-class!
         if cls != ResourceManager:
             raise TypeError('ResourceManager Factory only available to base class!')
 
-        impl = {
-            RM_NAME_FORK        : Fork,
-            RM_NAME_CCM         : CCM,
-            RM_NAME_LSF         : LSF,
-            RM_NAME_PBSPRO      : PBSPro,
-            RM_NAME_SLURM       : Slurm,
-            RM_NAME_TORQUE      : Torque,
-            RM_NAME_COBALT      : Cobalt,
-            RM_NAME_YARN        : Yarn,
-            RM_NAME_DEBUG       : Debug
-        }
-
-        if name not in impl:
+        rm = cls.get_manager(name)
+        if rm is None:
             raise RuntimeError('ResourceManager %s unknown' % name)
 
-        return impl[name](cfg, rcfg, log, prof)
+        return rm(cfg, rcfg, log, prof)
 
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def get_manager(name):
+
+        from .ccm     import CCM
+        from .fork    import Fork
+        from .lsf     import LSF
+        from .pbspro  import PBSPro
+        from .slurm   import Slurm
+        from .torque  import Torque
+        from .cobalt  import Cobalt
+        from .yarn    import Yarn
+        from .debug   import Debug
+
+        impl = {
+            RM_NAME_FORK   : Fork,
+            RM_NAME_CCM    : CCM,
+            RM_NAME_LSF    : LSF,
+            RM_NAME_PBSPRO : PBSPro,
+            RM_NAME_SLURM  : Slurm,
+            RM_NAME_TORQUE : Torque,
+            RM_NAME_COBALT : Cobalt,
+            RM_NAME_YARN   : Yarn,
+            RM_NAME_DEBUG  : Debug
+        }
+
+        return impl.get(name)
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def batch_started():
+        '''
+        Method determines from where it was called:
+        either from the batch job or from outside (e.g., login node).
+        '''
+
+        return False
 
 
     # --------------------------------------------------------------------------

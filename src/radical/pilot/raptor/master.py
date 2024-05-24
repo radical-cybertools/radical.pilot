@@ -21,7 +21,7 @@ from ..task_description import RAPTOR_WORKER
 
 # ------------------------------------------------------------------------------
 #
-class Master(rpu.Component):
+class Master(rpu.AgentComponent):
     '''
     Raptor Master class
 
@@ -59,7 +59,6 @@ class Master(rpu.Component):
             cfg: session config.  fallback: agent config
         '''
 
-        self._raptor_cfg = cfg or ru.Config()
         self._uid        = os.environ['RP_TASK_ID']
         self._pid        = os.environ['RP_PILOT_ID']
         self._sid        = os.environ['RP_SESSION_ID']
@@ -70,16 +69,11 @@ class Master(rpu.Component):
         self._rsbox      = os.environ['RP_RESOURCE_SANDBOX']
         self._reg_addr   = os.environ['RP_REGISTRY_ADDRESS']
 
-        self._reg        = ru.zmq.RegistryClient(url=self._reg_addr)
-
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
         self._exec_tasks = list()      # keep track of executable tasks
         self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
-
-        self._hb_freq    = 500         # check worker heartbetas every n seconds
-        self._hb_timeout = 1000        # consider worker dead after 150 seconds
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
                                    _role=Session._DEFAULT)
@@ -89,7 +83,14 @@ class Master(rpu.Component):
                                     'owner'   : self._pid,
                                     'reg_addr': self._reg_addr})
 
-        rpu.Component.__init__(self, ccfg, self._session)
+        super().__init__(ccfg, self._session)
+
+        # get hb configs (RegistryClient instance is initiated in Session)
+        self._hb_freq = self._session.rcfg.raptor.hb_frequency
+        self._hb_tout = self._session.rcfg.raptor.hb_timeout
+
+        self._log.debug('hb freq: %s', self._hb_freq)
+        self._log.debug('hb tout: %s', self._hb_tout)
 
         # we never run `self.start()` which is ok - but it means we miss out on
         # some of the component initialization.  Call it manually thus
@@ -176,7 +177,7 @@ class Master(rpu.Component):
         ru.zmq.Getter(qname, self._input_queue.addr_get, cb=self._request_cb)
 
         # everything is set up - we can serve messages on the pubsubs also
-        self.register_subscriber(rpc.STATE_PUBSUB,   self._state_cb)
+        self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # and register that input queue with the scheduler
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
@@ -397,10 +398,9 @@ class Master(rpu.Component):
             # ensure that defaults and backward compatibility kick in
             td.verify()
 
-            # the default worker needs it's own task description to derive the
+            # the default worker needs its own task description to derive the
             # amount of available resources
-            self._reg['raptor.%s.cfg' % self._uid] = td.as_dict()
-            self._reg.dump('raptor_master')
+            self._reg['raptor.%s.cfg' % td.uid] = td.as_dict()
 
             # all workers run in the same sandbox as the master
             task = dict()
@@ -437,6 +437,8 @@ class Master(rpu.Component):
 
         self.advance(tasks, publish=True, push=True)
 
+        # dump registry with all worker descriptions ("raptor.<worker_uid>.cfg")
+        self._reg.dump(self._uid)
         return [task['uid'] for task in tasks]
 
 
@@ -519,7 +521,7 @@ class Master(rpu.Component):
         self._log.debug('set term from stop: %s', ru.get_stacktrace())
         self._term.set()
 
-        rpu.Component.stop(self)
+        super().stop()
 
         self.terminate()
 
@@ -564,7 +566,7 @@ class Master(rpu.Component):
             lost = set()
             for uid in self._workers:
                 for rank, hb in self._workers[uid]['heartbeats'].items():
-                    if hb < now - self._hb_timeout:
+                    if hb < now - self._hb_tout:
                         self._log.warn('lost rank %d on worker %s', rank, uid)
                         lost.add(uid)
 

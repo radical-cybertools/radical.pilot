@@ -3,14 +3,7 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
-import time
-import queue
-import threading as mt
-
-import radical.utils as ru
-
-from ...   import states    as rps
-from ...   import constants as rpc
+from ...   import states as rps
 
 from ..    import LaunchMethod
 from ..    import ResourceManager
@@ -20,13 +13,6 @@ from .base import AgentExecutingComponent
 # ------------------------------------------------------------------------------
 #
 class Flux(AgentExecutingComponent) :
-
-    # --------------------------------------------------------------------------
-    #
-    def __init__(self, cfg, session):
-
-        AgentExecutingComponent.__init__(self, cfg, session)
-
 
     # --------------------------------------------------------------------------
     #
@@ -45,14 +31,20 @@ class Flux(AgentExecutingComponent) :
               further state changes in this component.
         '''
 
+        super().initialize()
+
         # translate Flux states to RP states
-        self._event_map = {'NEW'     : None,   # rps.AGENT_SCHEDULING,
-                           'DEPEND'  : None,
-                           'SCHED'   : rps.AGENT_EXECUTING_PENDING,
-                           'RUN'     : rps.AGENT_EXECUTING,
-                           'CLEANUP' : None,
-                           'INACTIVE': rps.AGENT_STAGING_OUTPUT_PENDING,
-                           'PRIORITY': None,
+        self._event_map = {'submit'   : None,   # rps.AGENT_SCHEDULING,
+                           'depend'   : None,
+                           'alloc'    : rps.AGENT_EXECUTING_PENDING,
+                           'start'    : rps.AGENT_EXECUTING,
+                           'cleanup'  : None,
+                           'finish'   : rps.AGENT_STAGING_OUTPUT_PENDING,
+                           'release'  : 'unschedule',
+                           'free'     : None,
+                           'clean'    : None,
+                           'priority' : None,
+                           'exception': rps.FAILED,
                           }
 
         # we get an instance of the resource manager (init from registry info)
@@ -62,38 +54,14 @@ class Flux(AgentExecutingComponent) :
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        # thread termination signal
-        self._term = mt.Event()
-
-        # need two queues, for tasks and events
-        self._task_q  = queue.Queue()
-        self._event_q = queue.Queue()
-
-        # run listener thread
-        self._listener_setup  = mt.Event()
-        self._listener        = mt.Thread(target=self._listen)
-        self._listener.daemon = True
-        self._listener.start()
-
-        # run watcher thread
-        self._watcher_setup  = mt.Event()
-        self._watcher        = mt.Thread(target=self._watch)
-        self._watcher.daemon = True
-        self._watcher.start()
-
-        # main thread waits for tasks to arrive from the scheduler
-        self.register_input(rps.AGENT_SCHEDULING,
-                            rpc.AGENT_EXECUTING_QUEUE, self.work)
-
-        # wait for some time to get watcher and listener initialized
-        start = time.time()
-        while time.time() - start < 10.0:
-            if self._watcher_setup.is_set() and \
-               self._listener_setup.is_set():
-                break
-
-        assert self._watcher_setup.is_set()
-        assert self._listener_setup.is_set()
+        lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
+        lm_cfg['pid']       = self.session.cfg.pid
+        lm_cfg['reg_addr']  = self.session.cfg.reg_addr
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg,
+                                                  self.session.cfg,
+                                                  self._log, self._prof)
+        # local state management
+        self._tasks  = dict()
 
 
     # --------------------------------------------------------------------------
@@ -106,206 +74,138 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
+    def _job_event_cb(self, flux_id, event):
+
+        task = self._tasks.get(flux_id)
+        if not task:
+            self._log.error('no task for flux job %s: %s', flux_id, event.name)
+
+        flux_state = event.name  # event: flux_id, flux_state
+        state = self._event_map.get(flux_state)
+
+        if state is None:
+            # ignore this state transition
+            self._log.debug('ignore flux event %s:%s' %
+                            (task['uid'], flux_state))
+
+        # FIXME: how to get actual event transition timestamp?
+        ts = event.timestamp
+
+        self._log.debug('task state: %s [%s]', state, event)
+
+        if state == rps.AGENT_STAGING_OUTPUT_PENDING:
+
+            task['exit_code'] = event.context.get('status', 1)
+
+            if task['exit_code']:
+                task['target_state'] = rps.FAILED
+            else:
+                task['target_state'] = rps.DONE
+
+            # on completion, push toward output staging
+            self.advance_tasks(task, state, ts=ts, publish=True, push=True)
+
+        elif state == 'unschedule':
+
+            # free task resources
+            self._prof.prof('unschedule_start', uid=task['uid'])
+            self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
+          # self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
+
+        else:
+            # otherwise only push a state update
+            self.advance_tasks(task, state, ts=ts, publish=True, push=False)
+
+
+    # --------------------------------------------------------------------------
+    #
     def work(self, tasks):
 
-        self._task_q.put(ru.as_list(tasks))
+        self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        if self._term.is_set():
-            self._log.warn('threads triggered termination')
-            self.stop()
+        # FIXME: need actual job description, obviously
+        jds = [self.task_to_spec(task) for task in tasks]
+        self._log.debug('submit tasks: %s', [jd for jd in jds])
+        jids = self._lm.fh.submit_jobs([jd for jd in jds])
+        self._log.debug('submitted tasks')
 
+        for task, flux_id in zip(tasks, jids):
 
-    # --------------------------------------------------------------------------
-    #
-    def _listen(self):
+            self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
 
-        lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
-        lm_cfg['pid']       = self.session.cfg.pid
-        lm_cfg['reg_addr']  = self.session.cfg.reg_addr
-        lm                  = LaunchMethod.create('FLUX', lm_cfg,
-                                                  self.session.cfg,
-                                                  self._log, self._prof)
-        flux_handle = None
-        try:
+            md = task['description'].get('metadata') or dict()
+            md['flux_id'] = flux_id
+            task['description']['metadata'] = md
 
-            flux_handle = lm.fh.get_handle()
-            flux_handle.event_subscribe('job-state')
+            self._tasks[flux_id] = task
 
-            # FIXME: how tot subscribe for task return code information?
-            # pylint: disable=import-error
-          # def _flux_cb(self, *args, **kwargs):
-          #     print('--------------- flux cb %s' % [args, kwargs])
-          #
-          # from flux import future as flux_future
-          # fh = self._flux.flux_job_event_watch(jobid, 'eventlog', 0)
-          # f  = flux_future.Future(fh)
-          # f.then(_flux_cb)
-
-
-            # signal successful setup to main thread
-            self._listener_setup.set()
-
-            while True:
-
-                # FIXME: how can recv be timed out or interrupted after work
-                #        completed?
-                event = flux_handle.event_recv()
-
-                if 'transitions' not in event.payload:
-                    self._log.warn('unexpected flux event: %s' %
-                                    event.payload)
-                    continue
-
-                transitions = ru.as_list(event.payload['transitions'])
-
-                self._event_q.put(transitions)
-
-
-        except Exception:
-
-            if flux_handle:
-                flux_handle.event_unsubscribe('job-state')
-
-            self._log.exception('Error in listener loop')
-            self._term.set()
+            self._lm.fh.attach_jobs([flux_id], self._job_event_cb)
+            self._log.debug('handle %s: %s', task['uid'], flux_id)
 
 
     # --------------------------------------------------------------------------
     #
-    def handle_events(self, task, events):
-        '''
-        Return `True` on final events so that caller can clean caches.
-        Note that this relies on Flux events to arrive in order
-        (or at least in ordered bulks).
-        '''
+    def task_to_spec(self, task):
 
-        ret = False
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
-        for event in events:
+        task['stdout'] = ''
+        task['stderr'] = ''
 
-            flux_state = event[1]  # event: flux_id, flux_state
-            state = self._event_map.get(flux_state)
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
 
-            if state is None:
-                # ignore this state transition
-                self._log.debug('ignore flux event %s:%s' %
-                                (task['uid'], flux_state))
+        _, exec_path = self._create_exec_script(self._lm, task)
 
-            # FIXME: how to get actual event transition timestamp?
-          # ts = event.time
-            ts = time.time()
+        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
+                                                   'out': stdout,
+                                                   'err': stderr}
 
-            if state == rps.AGENT_STAGING_OUTPUT_PENDING:
-                task['target_state'] = rps.DONE  # FIXME
-                # on completion, push toward output staging
-                self.advance_tasks(task, state, ts=ts, publish=True, push=True)
-                ret = True
+        spec = {
+            'tasks': [{
+                'slot' : 'task',
+                'count': {
+                    'per_slot': 1
+                },
+                'command': ['/bin/sh', '-c', command],
+            }],
+            'attributes': {
+                'system': {
+                    'cwd'     : sbox,
+                    'duration': 0,
+                },
+            },
+            'version': 1,
+            'resources': [{
+                'count': td['ranks'],
+                'type' : 'slot',
+                'label': 'task',
+                'with' : [{
+                    'count': td['cores_per_rank'],
+                    'type' : 'core'
+              # }, {
+              #     'count': int(td['gpus_per_rank'] or 0),
+              #     'type' : 'gpu'
+                }]
+            }]
+        }
 
-            else:
-                # otherwise only push a state update
-                self.advance_tasks(task, state, ts=ts, publish=True, push=False)
+        if td['gpus_per_rank']:
 
-        return ret
+            gpr = td['gpus_per_rank']
 
+            if gpr != int(gpr):
+                raise ValueError('flux does not support on-integer GPU count')
 
-    # --------------------------------------------------------------------------
-    #
-    def _watch(self):
+            spec['resources'][0]['with'].append({
+                    'count': int(gpr),
+                    'type' : 'gpu'})
 
-        try:
-
-            # thread local initialization
-            tasks  = dict()
-            events = dict()
-
-            self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
-                                 rpc.AGENT_STAGING_OUTPUT_QUEUE)
-
-            # signal successful setup to main thread
-            self._watcher_setup.set()
-
-            while not self._term.is_set():
-
-                active = False
-                tasks  = list()
-                events = list()
-
-
-                try:
-                    for task in self._task_q.get_nowait():
-                        tasks.append(task)
-
-                except queue.Empty:
-                    # nothing found -- no problem, check if we got some events
-                    pass
-
-                for task in tasks:
-
-                    active = True
-                    try:
-
-                        flux_id = task['flux_id']
-                        assert flux_id not in tasks
-                        tasks[flux_id] = task
-
-                        # handle and purge cached events for that task
-                        if flux_id in events:
-                            if self.handle_events(task, events[flux_id]):
-                                # task completed - purge data
-                                # NOTE: this assumes events are ordered
-                                if flux_id in events: del events[flux_id]
-                                if flux_id in tasks : del tasks[flux_id]
-
-                    except Exception as e:
-
-                        self._log.exception("error collecting Task")
-                        task['exception']        = repr(e)
-                        task['exception_detail'] = \
-                                         '\n'.join(ru.get_exception_trace())
-
-                        # can't rely on the executor base to free the
-                        # task resources
-                        self._prof.prof('unschedule_start', uid=task['uid'])
-                        self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-                        self.advance_tasks(task, rps.FAILED, publish=True,
-                                                             push=False)
-
-
-                try:
-                    for event in self._event_q.get_nowait():
-                        events.append(event)
-                except queue.Empty:
-                    # nothing found -- no problem, check if we got some tasks
-                    pass
-
-                for event in events:
-
-                    active = True
-                    flux_id = event[0]  # event: flux_id, flux_state
-
-                    if flux_id in tasks:
-
-                        # known task - handle events
-                        if self.handle_events(tasks[flux_id], [event]):
-                            # task completed - purge data
-                            # NOTE: this assumes events are ordered
-                            if flux_id in events: del events[flux_id]
-                            if flux_id in tasks : del tasks[flux_id]
-
-                    else:
-                        # unknown task, store events for later
-                        if flux_id not in events:
-                            events[flux_id] = list()
-                        events[flux_id].append(event)
-
-
-                if not active:
-                    time.sleep(0.01)
-
-        except Exception:
-            self._log.exception('Error in watcher loop')
-            self._term.set()
+        return spec
 
 
 # ------------------------------------------------------------------------------

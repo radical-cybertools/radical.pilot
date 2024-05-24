@@ -72,9 +72,9 @@ class Default(AgentStagingOutputComponent):
             try:
                 uid = task['uid']
 
-                # From here on, any state update will hand control over to the tmgr
-                # again.  The next task update should thus push *all* task details,
-                # not only state.
+                # From here on, any state update will hand control over to the
+                # tmgr again.  The next task update should thus push *all* task
+                # details, not only state.
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
 
@@ -112,9 +112,10 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging prep error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.FAILED)
 
 
         if no_staging_tasks:
@@ -127,19 +128,15 @@ class Default(AgentStagingOutputComponent):
 
             except Exception as e:
                 self._log.exception('staging error')
-                task['target_state']     = rps.FAILED
                 task['exception']        = repr(e)
                 task['exception_detail'] = '\n'.join(ru.get_exception_trace())
+
+                self.advance(task, rps.FAILED)
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_task_stdio(self, task):
-
-        if task.get('stdio'):
-            # no need to fetch stdio, the LM or launcher did that
-            # FIXME: do we need to pull profile events?
-            return
 
         sbox = task.get('task_sandbox_path')
         uid  = task['uid']
@@ -190,8 +187,9 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        task_prof = "%s/%s.prof" % (sbox, uid)
+        task_prof = '%s/%s.prof' % (sbox, uid)
         if os.path.isfile(task_prof):
+            pids = {}
             try:
                 with ru.ru_open(task_prof, 'r') as prof_f:
                     txt = ru.as_string(prof_f.read())
@@ -205,8 +203,23 @@ class Default(AgentStagingOutputComponent):
                         self._prof.prof(ts=float(ts), event=event,
                                         comp=comp, tid=tid, uid=_uid,
                                         state=state, msg=msg)
+                        # collect task related PIDs
+                        if 'RP_LAUNCH_PID' in msg:
+                            pids['launch_pid'] = int(msg.split('=')[1])
+                        elif 'RP_RANK_PID' in msg:
+                            epid_msg, rpid_msg = msg.split(':')
+                            pids.setdefault('exec_pid', []) \
+                                .append(int(epid_msg.split('=')[1]))
+                            pids.setdefault('rank_pid', [])\
+                                .append(int(rpid_msg.split('=')[1]))
             except Exception as e:
                 self._log.error("Pre/Post profile read failed: `%s`" % e)
+
+            if pids:
+                # keep process IDs within metadata in the task description
+                if not task['description'].get('metadata'):
+                    task['description']['metadata'] = {}
+                task['description']['metadata'].update(pids)
 
         self._prof.prof('staging_uprof_stop', uid=uid)
 
@@ -271,22 +284,11 @@ class Default(AgentStagingOutputComponent):
 
             self._prof.prof('staging_out_start', uid=uid, msg=did)
 
-            assert action in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.TRANSFER], \
-                              'invalid staging action'
-
-            # we only handle staging which does *not* include 'client://' src or
-            # tgt URLs - those are handled by the tmgr staging components
-            if src.startswith('client://'):
-                self._log.debug('skip staging for src %s', src)
-                self._prof.prof('staging_out_skip', uid=uid, msg=did)
+            # agent stager only handles local actions
+            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+                self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
-            if tgt.startswith('client://'):
-                self._log.debug('skip staging for tgt %s', tgt)
-                self._prof.prof('staging_out_skip', uid=uid, msg=did)
-                continue
-
-            # Fix for when the target PATH is empty
             # we assume current directory is the task staging 'task://'
             # and we assume the file to be copied is the base filename
             # of the source
@@ -309,15 +311,14 @@ class Default(AgentStagingOutputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert tgt.schema == 'file', 'staging tgt expected as file://'
 
-            # SAGA will take care of dir creation - but we do it manually
-            # for local ops (copy, link, move)
-            if flags & rpc.CREATE_PARENTS and action != rpc.TRANSFER:
+            # implicitly create target dir if needed - but only for local ops
+            if action != rpc.TRANSFER:
                 tgtdir = os.path.dirname(tgt.path)
                 if tgtdir != task_sandbox.path:
                     self._log.debug("mkdir %s", tgtdir)
                     ru.rec_makedir(tgtdir)
 
-            if   action == rpc.COPY:
+            if action == rpc.COPY:
                 try:
                     shutil.copytree(src.path, tgt.path)
                 except OSError as exc:
@@ -341,21 +342,6 @@ class Default(AgentStagingOutputComponent):
                 # This is currently never executed. Commenting it out.
                 # Uncomment and implement when uploads directly to remote URLs
                 # from tasks are supported.
-                # FIXME: we only handle srm staging right now, and only for
-                #        a specific target proxy. Other TRANSFER directives are
-                #        left to tmgr output staging.  We should use SAGA to
-                #        attempt all staging ops which do not target the client
-                #        machine.
-                # if tgt.schema == 'srm':
-                #     # FIXME: cache saga handles
-                #     srm_dir = rs.filesystem.Directory('srm://proxy/?SFN=bogus')
-                #     srm_dir.copy(src, tgt)
-                #     srm_dir.close()
-                # else:
-                #     self._log.error('no transfer for %s -> %s', src, tgt)
-                #     self._prof.prof('staging_out_fail', uid=uid, msg=did)
-                #     raise NotImplementedError('unsupported transfer %s' % tgt)
-
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging

@@ -40,6 +40,21 @@ General description
       }
       EOF
 
+.. note::
+
+   `Binding MPI ranks to GPUs <https://docs.alcf.anl.gov/polaris/running-jobs/#binding-mpi-ranks-to-gpus>`_:
+   If you want to control GPUs assignment per task, then the following code
+   snippet provides an example of setting ``CUDA_VISIBLE_DEVICES`` for each MPI
+   rank on Polaris:
+
+   .. code-block:: python
+
+      import radical.pilot as rp
+
+      td = rp.TaskDescription()
+      td.pre_exec.append('export CUDA_VISIBLE_DEVICES=$((3 - $PMI_LOCAL_RANK % 4))')
+      td.gpu_type = ''  # reset GPU type, thus RP will not set "CUDA_VISIBLE_DEVICES"
+
 Setup execution environment
 ===========================
 
@@ -104,6 +119,8 @@ Execute launching script as ``./rp_launcher.sh`` or run it in the background:
    nohup ./rp_launcher.sh > OUTPUT 2>&1 </dev/null &
    # check the status of the script running:
    #   jobs -l
+
+**Monitoring page:** https://status.alcf.anl.gov/#/polaris
 
 =====
 

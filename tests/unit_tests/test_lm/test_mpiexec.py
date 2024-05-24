@@ -156,13 +156,13 @@ class TestMPIExec(TestCase):
                 {'node_name': 'node_A',
                  'node_id'  : '1',
                  'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[]],
                  'lfs'      : 0,
                  'mem'      : 0},
                 {'node_name': 'node_B',
                  'node_id'  : '2',
                  'core_map' : [[0, 1, 2, 3]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[]],
                  'lfs'      : 0,
                  'mem'      : 0}
             ]
@@ -208,13 +208,13 @@ class TestMPIExec(TestCase):
                 {'node_name': 'node_A',
                  'node_id'  : '1',
                  'core_map' : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[], [], [], []],
                  'lfs'      : 0,
                  'mem'      : 0},
                 {'node_name': 'node_B',
                  'node_id'  : '2',
                  'core_map' : [[0, 1], [2, 3]],
-                 'gpu_map'  : [],
+                 'gpu_map'  : [[], []],
                  'lfs'      : 0,
                  'mem'      : 0}
             ]

@@ -137,7 +137,8 @@ class TestComponent(TestCase):
             agent_0._start_sub_agents()
 
         agent_0._rm.info = RMInfo({
-            'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000'}],
+            'agent_node_list' : [{'node_id': '1', 'node_name': 'n.0000',
+                                  'cores': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}],
             'cores_per_node'  : 10,
             'threads_per_core': 2})
 
@@ -153,6 +154,9 @@ class TestComponent(TestCase):
             # check "cores_per_rank" attribute
             self.assertEqual(agent_td.cores_per_rank,
                              agent_0._rm.info.cores_per_node)
+            self.assertEqual(
+                len(agent_task['slots']['ranks'][0]['core_map'][0]),
+                agent_0._rm.info.cores_per_node)
             return ''
 
         launcher = mock.Mock()
@@ -262,6 +266,40 @@ class TestComponent(TestCase):
         msg['arg']['uid'] = '102'
         agent_0._control_cb(topic, msg)
         self.assertTrue(agent_0._services_setup.is_set())
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(Agent_0, '__init__', return_value=None)
+    def test_services_startup_cb(self, mocked_init):
+
+        fd, startup_file = tempfile.mkstemp()
+        self._cleanup_files.append(startup_file)
+
+        uri_0 = 'ofi+verbs;ofi_rxm://10.41.0.103:35298'
+        uri_1 = 'ofi+verbs;ofi_rxm://10.41.0.104:38112'
+        with os.fdopen(fd, 'w') as f:
+            f.write('2\n0 %s\n1 %s' % (uri_0, uri_1))
+
+        reg = ru.zmq.Registry()
+        reg.start()
+
+        agent_0 = Agent_0()
+        agent_0._session = self._session
+        agent_0._session._reg = ru.zmq.RegistryClient(url=reg.addr)
+
+        agent_0.publish = mock.Mock()
+
+        cb_data = {'service.0000': {'name'        : 'service.monit',
+                                    'startup_file': startup_file}}
+        agent_0._services_startup_cb(cb_data=cb_data)
+
+        self.assertEqual(agent_0._session._reg['service.monit.0.url'], uri_0)
+        self.assertEqual(agent_0._session._reg['service.monit.1.url'], uri_1)
+
+        agent_0._session._reg.close()
+        reg.stop()
+        reg.wait()
 
 
 # ------------------------------------------------------------------------------
