@@ -208,12 +208,12 @@ class ResourceManager(object):
 
             node_list = [
                 {
-                    'node_name': str                        # node name
-                    'node_id'  : str                        # node uid
-                    'cores'    : [rpc.FREE, rpc.FREE, ...]  # cores per node
-                    'gpus'     : [rpc.FREE, rpc.FREE, ...]  # gpus per node
-                    'lfs'      : int                        # lfs per node (MB)
-                    'mem'      : int                        # mem per node (MB)
+                    'name' : str                        # node name
+                    'index': int                        # node index
+                    'cores': [rpc.FREE, rpc.FREE, ...]  # cores per node
+                    'gpus' : [rpc.FREE, rpc.FREE, ...]  # gpus per node
+                    'lfs'  : int                        # lfs per node (MB)
+                    'mem'  : int                        # mem per node (MB)
                 },
                 ...
             ]
@@ -590,14 +590,14 @@ class ResourceManager(object):
         as required for rm_info.
         '''
 
-        # keep nodes to be indexed (node_id) starting at 1
+        # keep nodes to be indexed (node_index)
         # (required for jsrun ERF spec files and expanded to all other RMs)
-        node_list = [{'node_name': node[0],
-                      'node_id'  : str(idx + 1),
-                      'cores'    : [rpc.FREE] * node[1],
-                      'gpus'     : [rpc.FREE] * rm_info.gpus_per_node,
-                      'lfs'      : rm_info.lfs_per_node,
-                      'mem'      : rm_info.mem_per_node}
+        node_list = [{'name'  : node[0],
+                      'index' : idx,
+                      'cores' : [rpc.FREE] * node[1],
+                      'gpus'  : [rpc.FREE] * rm_info.gpus_per_node,
+                      'lfs'   : rm_info.lfs_per_node,
+                      'mem'   : rm_info.mem_per_node}
                      for idx, node in enumerate(nodes)]
 
         return node_list

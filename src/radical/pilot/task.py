@@ -13,6 +13,7 @@ from . import constants as rpc
 
 from .staging_directives import expand_description
 from .task_description   import TaskDescription
+from .resource_config    import Slot
 
 
 _uids = list()
@@ -94,6 +95,8 @@ class Task(object):
         self._task_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
+        self._slots            = None
+        self._partition        = None
 
         # ensure uid is unique
         if self._uid:
@@ -117,13 +120,6 @@ class Task(object):
         expand_description(self._descr)
 
         self._tmgr.advance(self.as_dict(), rps.NEW, publish=False, push=False)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def __repr__(self):
-
-        return '<%s object, uid %s>' % (self.__class__.__qualname__, self._uid)
 
 
     # --------------------------------------------------------------------------
@@ -171,17 +167,15 @@ class Task(object):
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
                     'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
-                    'exception', 'exception_detail']:
+                    'exception', 'exception_detail', 'slots', 'partition']:
 
             val = task_dict.get(key, None)
             if val is not None:
                 setattr(self, "_%s" % key, val)
 
-      # # RP's internal processes may update metadata
-      # if 'description' not in task_dict:
-      #     # this should not happen!
-      #     import pprint
-      #     self._log.debug('invalid task dict: %s', pprint.pformat(task_dict))
+        metadata = task_dict.get('description', {}).get('metadata')
+        if metadata:
+            self._descr['metadata'] = metadata
 
         if task_dict.get('description', {}).get('metadata'):
             self._descr['metadata'] = task_dict['description']['metadata']
@@ -214,7 +208,9 @@ class Task(object):
             'pilot_sandbox':    self.pilot_sandbox,
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
-            'description':      self.description   # this is a deep copy
+            'slots':            self.slots,
+            'partition':        self.partition,
+            'description':      self.description,   # this is a deep copy
         }
 
         return ret
@@ -438,6 +434,26 @@ class Task(object):
     def description(self):
         """dict: The description the task was started with, as a dictionary."""
         return copy.deepcopy(self._descr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def slots(self):
+        '''dict: The slots assigned for the task's execution'''
+        if self._slots:
+            if isinstance(self._slots[0], dict):
+                for idx,slot in enumerate(self._slots):
+                    self._slots[idx] = Slot(self._slots[idx])
+        return self._slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def partition(self):
+        '''dict: The pilot partition assigned for the task's execution'''
+        return self._partition
 
 
     # --------------------------------------------------------------------------

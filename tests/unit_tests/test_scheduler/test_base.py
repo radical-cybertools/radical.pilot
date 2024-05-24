@@ -7,6 +7,7 @@ import os
 import threading            as mt
 import radical.utils        as ru
 import radical.pilot.states as rps
+import radical.pilot.utils  as rpu
 
 from unittest import mock, TestCase
 
@@ -26,6 +27,7 @@ class TestBaseScheduling(TestCase):
     def setUpClass(cls) -> None:
 
         # provided JSON file (with test cases) should NOT contain any comments
+        print('%s/test_cases/test_base.json' % base)
         cls._test_cases = ru.read_json('%s/test_cases/test_base.json' % base)
 
     # --------------------------------------------------------------------------
@@ -41,9 +43,12 @@ class TestBaseScheduling(TestCase):
                         mocked_reg_close, mocked_reg_put, mocked_reg_init,
                         mocked_init):
 
+        def _mock_schedule_tasks(*args, **kwargs):
+            return None, None
+
         sched = AgentSchedulingComponent(cfg=None, session=None)
         sched._configure          = mock.Mock()
-        sched._schedule_tasks     = mock.Mock()
+        sched._schedule_tasks     = _mock_schedule_tasks
         sched._log                = mock.Mock()
         sched._prof               = mock.Mock()
         sched.slot_status         = mock.Mock()
@@ -87,8 +92,9 @@ class TestBaseScheduling(TestCase):
     def test_change_slot_states(self, mocked_init):
 
         sched = AgentSchedulingComponent(cfg=None, session=None)
+        sched._log = mock.Mock()
 
-        for c in self._test_cases['change_slots']:
+        for c in self._test_cases['change_slot_states']:
             sched.nodes = c['nodes']
             if c['result'] == 'RuntimeError':
                 with self.assertRaises(RuntimeError):
@@ -142,7 +148,8 @@ class TestBaseScheduling(TestCase):
             #        is mocked?
 
             task = c['task']
-            component.schedule_task = mock.Mock(return_value=c['slots'])
+
+            component.schedule_task = mock.Mock(return_value=[c['slots'], None])
             component._try_allocation(task=task)
 
             self.assertEqual(task['slots'], c['slots'])
