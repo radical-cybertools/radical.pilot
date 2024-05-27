@@ -41,7 +41,8 @@ class Flux(LaunchMethod):
                 'n_nodes %d % n_partitions %d != 0' % (n_nodes, n_partitions)
 
 
-        self._log.info('using %d flux partitions', n_partitions)
+        self._log.info('=== using %d flux partitions [%d nodes]',
+                       n_partitions, n_nodes_per_partition)
 
         for n in range(n_partitions):
 
@@ -56,7 +57,7 @@ class Flux(LaunchMethod):
             launcher = ''
             out, err, ret = ru.sh_callout('which srun')
             if ret == 0 and 'srun' in out:
-                launcher = 'srun -n %d' % nodes_per_partition
+                launcher = 'srun -N %d' % nodes_per_partition
 
             fh.start_flux(launcher=launcher)
 
