@@ -56,7 +56,7 @@ class Flux(LaunchMethod):
             launcher = ''
             out, err, ret = ru.sh_callout('which srun')
             if ret == 0 and 'srun' in out:
-                launcher = 'srun -n %s -N %d --ntasks-per-node 1' \
+                launcher = 'srun -n %s -N %d --ntasks-per-node 1 --export=ALL' \
                            % (nodes_per_partition, nodes_per_partition)
 
             fh.start_flux(launcher=launcher)
