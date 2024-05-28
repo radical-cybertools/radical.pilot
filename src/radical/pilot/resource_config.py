@@ -265,25 +265,30 @@ class RankRequirements(ru.TypedDict):
                 self.lfs,     self.mem)
 
 
+    # comparison operators
+    #
+    # NOTE: we are not really interested in strict ordering here,
+    #       but we do care about *fast* and approximate comparisons.
+    #
     def __eq__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         == self.n_cores           and \
-            self.n_gpus          == self.n_gpus            and \
-            self.lfs             == self.lfs               and \
-            self.mem             == self.mem               and \
-            self.core_occupation == self.core_occupation   and \
-            self.gpu_occupation  == self.gpu_occupation:
+        if  self.n_cores         == other.n_cores          and \
+            self.n_gpus          == other.n_gpus           and \
+            self.lfs             == other.lfs              and \
+            self.mem             == other.mem              and \
+            self.core_occupation == other.core_occupation  and \
+            self.gpu_occupation  == other.gpu_occupation:
             return True
         return False
 
     def __lt__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         <  other.n_cores          and \
-            self.n_gpus          <  other.n_gpus           and \
-            self.lfs             <  other.lfs              and \
-            self.mem             <  other.mem              and \
-            self.core_occupation <  other.core_occupation  and \
-            self.gpu_occupation  <  other.gpu_occupation:
+        if  self.n_cores         <= other.n_cores          and \
+            self.n_gpus          <= other.n_gpus           and \
+            self.lfs             <= other.lfs              and \
+            self.mem             <= other.mem              and \
+            self.core_occupation <= other.core_occupation  and \
+            self.gpu_occupation  <= other.gpu_occupation:
             return True
         return False
 
@@ -300,12 +305,12 @@ class RankRequirements(ru.TypedDict):
 
     def __gt__(self, other: 'RankRequirements') -> bool:
 
-        if  self.n_cores         >  other.n_cores          and \
-            self.n_gpus          >  other.n_gpus           and \
-            self.lfs             >  other.lfs              and \
-            self.mem             >  other.mem              and \
-            self.core_occupation >  other.core_occupation  and \
-            self.gpu_occupation  >  other.gpu_occupation:
+        if  self.n_cores         >= other.n_cores          and \
+            self.n_gpus          >= other.n_gpus           and \
+            self.lfs             >= other.lfs              and \
+            self.mem             >= other.mem              and \
+            self.core_occupation >= other.core_occupation  and \
+            self.gpu_occupation  >= other.gpu_occupation:
             return True
         return False
 
