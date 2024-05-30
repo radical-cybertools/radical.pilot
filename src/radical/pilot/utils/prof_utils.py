@@ -641,6 +641,23 @@ def get_session_description(sid, src=None):
         details = pilot['description']
         details = ru.dict_merge(details, pilot['resource_details'])
 
+        # if the pilot was defined by number of nodes, make sure to fill in
+        # number of cores and gpus as well
+        if details.get('nodes'):
+            nodes = details['nodes']
+
+            if not details.get('cores'):
+                cpn = details.get('cores_per_node')
+                assert cpn, 'no cpn'
+
+                details['cores'] = nodes * cpn
+
+            if not details.get('gpus'):
+                gpn = details.get('gpus_per_node')
+                assert gpn, 'no gpn'
+
+                details['gpus'] = nodes * gpn
+
         pilot['cfg']                                = details
         pilot['cfg']['resource_details']            = details
         pilot['cfg']['resource_details']['rm_info'] = details
