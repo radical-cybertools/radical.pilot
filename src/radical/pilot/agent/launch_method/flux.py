@@ -36,6 +36,8 @@ class Flux(LaunchMethod):
         n_partitions        = self._rm_info.details.get('n_partitions', 1)
         n_nodes             = len(self._rm_info.node_list)
         nodes_per_partition = int(n_nodes / n_partitions)
+        threads_per_node    = self._rm_info.cores_per_node * self._rm_info.threads_per_core
+        gpus_per_node       = self._rm_info.gpus_per_node
 
         assert n_nodes % n_partitions == 0, \
                 'n_nodes %d %% n_partitions %d != 0' % (n_nodes, n_partitions)
@@ -56,8 +58,8 @@ class Flux(LaunchMethod):
             launcher = ''
             out, err, ret = ru.sh_callout('which srun')
             if ret == 0 and 'srun' in out:
-                launcher = 'srun -n %s -N %d --ntasks-per-node 1 --export=ALL' \
-                           % (nodes_per_partition, nodes_per_partition)
+                launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
+                           % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
 
             fh.start_flux(launcher=launcher)
 
