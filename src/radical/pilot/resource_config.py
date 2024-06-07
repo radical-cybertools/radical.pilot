@@ -39,7 +39,6 @@ TASK_TMP               = 'task_tmp'
 MEM_PER_NODE           = 'mem_per_node'
 CORES_PER_NODE         = 'cores_per_node'
 GPUS_PER_NODE          = 'gpus_per_node'
-NUMA_DOMAINS_PER_NODE  = 'numa_domains_per_node'
 NUMA_DOMAIN_MAP        = 'numa_domain_map'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 SCATTERED              = 'scattered'
@@ -139,7 +138,6 @@ class ResourceConfig(ru.TypedDict):
         MEM_PER_NODE           : int         ,
         CORES_PER_NODE         : int         ,
         GPUS_PER_NODE          : int         ,
-        NUMA_DOMAINS_PER_NODE  : int         ,
         NUMA_DOMAIN_MAP        : {int: None} ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
@@ -189,7 +187,6 @@ class ResourceConfig(ru.TypedDict):
         MEM_PER_NODE           : 0           ,
         CORES_PER_NODE         : 0           ,
         GPUS_PER_NODE          : 0           ,
-        NUMA_DOMAINS_PER_NODE  : 1           ,
         NUMA_DOMAIN_MAP        : dict()      ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : False       ,
@@ -765,32 +762,29 @@ class NumaNodeResources(NodeResources):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, from_dict: dict):
+    def __init__(self, from_dict: dict, numa_domain_map: dict) -> None:
+
 
         super().__init__(from_dict)
 
-        assert self.numa_domains >= 1
+        self.__domains__   = list()
+        self.__n_domains__ = len(numa_domain_map)
 
-        self.__domains__ = list()
+        if not numa_domain_map:
+            # this instance behaves like a regular NodeResources instance
+            self.__n_domains__ = 1
+            return
 
-        if len(self.cores) % self.numa_domains:
-            raise ValueError('invalid NUMA domain configuration')
 
-        if len(self.gpus) % self.numa_domains:
-            raise ValueError('invalid NUMA domain configuration')
-
-        domain_cores = len(self.cores) // self.numa_domains
-        domain_gpus  = len(self.gpus)  // self.numa_domains
-
-        for i in range(self.numa_domains):
+        for domain_id, domain_map in numa_domain_map.items():
 
             n = NodeResources(from_dict)
-            n.index = self.index
-            n.name  = self.name
-            n.cores = self.cores[i * domain_cores:(i + 1) * domain_cores]
-            n.gpus  = self.gpus [i * domain_gpus :(i + 1) * domain_gpus ]
-            n.lfs   = self.lfs // self.numa_domains
-            n.mem   = self.mem // self.numa_domains
+            n.index = n.index
+            n.name  = '%s.%s' % (self.name, domain_id)
+            n.cores = numa_domain['cores']
+            n.gpus  = numa_domain['gpus']
+            n.lfs   = self.lfs // self.__n_domains__
+            n.mem   = self.mem // self.__n_domains__
 
             self.__domains__.append(n)
 
@@ -798,12 +792,11 @@ class NumaNodeResources(NodeResources):
         pprint.pprint(self.__domains__)
 
 
-
     # --------------------------------------------------------------------------
     #
     def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
 
-        if self.numa_domains == 1:
+        if self.__n_domains__ == 1:
             return super().find_slot(self)
 
         else:
@@ -811,6 +804,10 @@ class NumaNodeResources(NodeResources):
                 slot = nd.find_slot(rr)
                 if slot:
                     return slot
+
+        # TODO: add a flag to the RR to indicate that the request is NUMA aware
+        # TODO: sync the slot allocated by the above with the slot allocated in
+        #       the base class, and vice versa.
 
 
 # ------------------------------------------------------------------------------

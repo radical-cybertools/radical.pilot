@@ -571,7 +571,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         virtenv                 = rcfg.virtenv
         cores_per_node          = rcfg.cores_per_node
         gpus_per_node           = rcfg.gpus_per_node
-        numa_domains_per_node   = rcfg.numa_domains_per_node
         lfs_path_per_node       = rcfg.lfs_path_per_node
         lfs_size_per_node       = rcfg.lfs_size_per_node
         python_dist             = rcfg.python_dist
@@ -799,7 +798,12 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         allocated_gpus  = (
             requested_nodes * avail_gpus_per_node)  or requested_gpus
 
-        self._log.debug('nodes: %s [%s %s %s], cores: %s, gpus: %s',
+        if rcfg.numa_domain_map:
+            numa_domains_per_node = len(rcfg.numa_domain_map)
+        else:
+            numa_domains_per_node = 1
+
+        self._log.debug('nodes: %s [%s %s | %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
                         numa_domains_per_node, allocated_cores, allocated_gpus)
 
@@ -846,7 +850,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['resource_manager']      = resource_manager
         agent_cfg['cores_per_node']        = cores_per_node
         agent_cfg['gpus_per_node']         = gpus_per_node
-        agent_cfg['numa_domains_per_node'] = numa_domains_per_node
         agent_cfg['lfs_path_per_node']     = lfs_path_per_node
         agent_cfg['lfs_size_per_node']     = lfs_size_per_node
         agent_cfg['task_tmp']              = task_tmp

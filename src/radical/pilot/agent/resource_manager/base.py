@@ -53,7 +53,6 @@ class RMInfo(ru.TypedDict):
             'threads_per_core'     : int,           # number of threads per core
 
             'gpus_per_node'        : int,           # number of gpus per node
-            'numa_domains_per_node': int,           # number of numas per node
             'threads_per_gpu'      : int,           # number of threads per gpu
             'mem_per_gpu'          : int,           # memory per gpu (MB)
 
@@ -64,6 +63,8 @@ class RMInfo(ru.TypedDict):
             'details'              : {None: None},  # dict of launch method info
             'lm_info'              : {str : None},  # dict of launch method info
             'launch_methods'       : {str : None},  # dict of launch method cfgs
+
+            'numa_domain_map'      : {int: None],   # resources per numa domain
     }
 
     _defaults = {
@@ -80,7 +81,6 @@ class RMInfo(ru.TypedDict):
             'threads_per_core'     : 0,
 
             'gpus_per_node'        : 0,
-            'numa_domains_per_node': 1,
             'threads_per_gpu'      : 1,
             'mem_per_gpu'          : 0,
 
@@ -91,6 +91,8 @@ class RMInfo(ru.TypedDict):
             'details'              : dict(),
             'lm_info'              : dict(),
             'launch_methods'       : dict(),
+
+            num_domain_map         : dict(),
     }
 
 
@@ -237,13 +239,13 @@ class ResourceManager(object):
         rm_info.requested_gpus        = self._cfg.gpus
         rm_info.cores_per_node        = self._cfg.cores_per_node
         rm_info.gpus_per_node         = self._cfg.gpus_per_node
-        rm_info.numa_domains_per_node = self._cfg.numa_domains_per_node or 1
         rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
         rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
-        rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+        rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
+        rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
 
         system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
@@ -293,40 +295,6 @@ class ResourceManager(object):
         assert alloc_nodes                          >= rm_info.requested_nodes
         assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
         assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
-
-
-        # At this point we have a valid node list and will select agent and
-        # service nodes from it.  Before doing so we check numa domains: if more
-        # than one numa domain is defined for this resource, we virtually split
-        # the nodes into numa-nodes: each domain becomes its own virtual node.
-        if rm_info.numa_domains_per_node > 1:
-
-            ndpm = rm_info.numa_domains_per_node
-
-            # get size for one numa node
-            cores_per_numa = int(rm_info.cores_per_node / ndpm)
-            gpus_per_numa  = int(rm_info.gpus_per_node  / ndpm)
-            lfs_per_numa   = int(rm_info.lfs_per_node   / ndpm)
-            mem_per_numa   = int(rm_info.mem_per_node   / ndpm)
-
-            # blow up node list
-            new_node_list = list()
-            for node in rm_info.node_list:
-                for nd in range(ndpm):
-                    new_node_list.append(
-                            {'node_name': node['node_name'],
-                             'node_id'  : node['node_id'] + '.numa_%d' % nd,
-                             'cores'    : [rpc.FREE] * cores_per_numa,
-                             'gpus'     : [rpc.FREE] * gpus_per_numa,
-                             'lfs'      : lfs_per_numa,
-                             'mem'      : mem_per_numa})
-
-            rm_info.node_list      = new_node_list
-            rm_info.cores_per_node = cores_per_numa
-            rm_info.gpus_per_node  = gpus_per_numa
-            rm_info.lfs_per_node   = lfs_per_numa
-            rm_info.mem_per_node   = mem_per_numa
-
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out

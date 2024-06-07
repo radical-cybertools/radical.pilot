@@ -242,7 +242,6 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "numa_domains_per_node"       : 3,
         "numa_domain_map"             : {
                     "1": {"cores": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13],
                           "gpus" : [ 0, 1]},
@@ -311,7 +310,6 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
@@ -362,7 +360,6 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "task_pre_exec"               : ["export LD_LIBRARY_PATH=/sw/summit/spack-envs/base/opt/linux-rhel8-ppc64le/gcc-9.1.0/spectrum-mpi-10.4.0.3-20210112-6jbupg3thjwhsabgevk6xmwhd2bbyxdc/container/../lib/pami_port:${LD_LIBRARY_PATH}"]
@@ -423,7 +420,6 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
-        "numa_domains_per_node"       : 3,
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
