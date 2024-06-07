@@ -11,7 +11,7 @@ import radical.pilot as rp
 import radical.utils as ru
 
 
-if False:
+if True:
 
     n_nodes        =   9472
     gpus_per_node  =      8
@@ -26,22 +26,39 @@ if False:
     mem_per_task   =      0
     lfs_per_task   =      0
 
+    n_nodes        =      1
+    gpus_per_node  =      2
+    cores_per_node =      8
+    mem_per_node   =    512
+    lfs_per_node   =    512
+
+    n_tasks        =      1
+    ranks_per_task =      2
+    cores_per_task =      2
+    gpus_per_task  =      1
+    mem_per_task   =      0
+    lfs_per_task   =      0
+
     RO    = rp.ResourceOccupation
-    nodes = [{'index'   : i,
-              'name'    : 'node_%05d' % i,
-              'cores'   : [RO(index=x, occupation=rp.FREE)
-                                       for x in range(cores_per_node)],
-              'gpus'    : [RO(index=x, occupation=rp.FREE)
-                                       for x in range(gpus_per_node)],
-              'lfs'     : lfs_per_node,
-              'mem'     : mem_per_node
+    nodes = [{'index'       : i,
+              'name'        : 'node_%05d' % i,
+              'cores'       : [RO(index=x, occupation=rp.FREE)
+                                           for x in range(cores_per_node)],
+              'gpus'        : [RO(index=x, occupation=rp.FREE)
+                                           for x in range(gpus_per_node)],
+              'lfs'         : lfs_per_node,
+              'mem'         : mem_per_node,
+              'numa_domains': 2
              } for i in range(n_nodes)]
 
-    nl = rp.NodeList(nodes=[rp.NodeResources(ni) for ni in nodes])
+    nl = rp.NodeList(nodes=[rp.NumaNodeResources(ni) for ni in nodes])
     rr = rp.RankRequirements(n_cores=cores_per_task,
                              n_gpus=gpus_per_task,
                              mem=mem_per_task,
                              lfs=lfs_per_task)
+
+    import pprint
+    pprint.pprint(nl.as_dict())
 
     allocs = list()
     start  = time.time()
@@ -64,7 +81,7 @@ if False:
 
     for _ in range(5):
 
-        slots = nl.find_slots(rp.RankRequirements(n_cores=1,
+        slots = nl.find_slots(rp.RankRequirements(n_cores=2, n_gpus=1,
                                                   core_occupation=0.5))
         print(slots)
 

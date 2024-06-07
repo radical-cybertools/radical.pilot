@@ -746,4 +746,72 @@ class NodeList(ru.TypedDict):
 
 
 # ------------------------------------------------------------------------------
+#
+class NumaNodeResources(NodeResources):
+    '''
+    Node resources which respects NUMA domain boundaries
+    '''
+
+    NUMA_DOMAINS = 'numa_domains'
+
+    _schema = {
+        NUMA_DOMAINS: int,
+    }
+
+    _defaults = {
+        NUMA_DOMAINS: 1,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict: dict):
+
+        super().__init__(from_dict)
+
+        assert self.numa_domains >= 1
+
+        self.__domains__ = list()
+
+        if len(self.cores) % self.numa_domains:
+            raise ValueError('invalid NUMA domain configuration')
+
+        if len(self.gpus) % self.numa_domains:
+            raise ValueError('invalid NUMA domain configuration')
+
+        domain_cores = len(self.cores) // self.numa_domains
+        domain_gpus  = len(self.gpus)  // self.numa_domains
+
+        for i in range(self.numa_domains):
+
+            n = NodeResources(from_dict)
+            n.index = self.index
+            n.name  = self.name
+            n.cores = self.cores[i * domain_cores:(i + 1) * domain_cores]
+            n.gpus  = self.gpus [i * domain_gpus :(i + 1) * domain_gpus ]
+            n.lfs   = self.lfs // self.numa_domains
+            n.mem   = self.mem // self.numa_domains
+
+            self.__domains__.append(n)
+
+        import pprint
+        pprint.pprint(self.__domains__)
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
+
+        if self.numa_domains == 1:
+            return super().find_slot(self)
+
+        else:
+            for nd in self.__domains__:
+                slot = nd.find_slot(rr)
+                if slot:
+                    return slot
+
+
+# ------------------------------------------------------------------------------
 
