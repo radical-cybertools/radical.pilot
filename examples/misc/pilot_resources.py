@@ -40,15 +40,14 @@ if True:
     lfs_per_task   =      0
 
     RO    = rp.ResourceOccupation
-    nodes = [{'index'   : i,
-              'name'    : 'node_%05d' % i,
-              'cores'   : [RO(index=x, occupation=rp.FREE)
-                                       for x in range(cores_per_node)],
-              'gpus'    : [RO(index=x, occupation=rp.FREE)
-                                       for x in range(gpus_per_node)],
-              'lfs'     : lfs_per_node,
-              'mem'     : mem_per_node,
-
+    nodes = [{'index'       : i,
+              'name'        : 'node_%05d' % i,
+              'cores'       : [RO(index=x, occupation=rp.FREE)
+                                           for x in range(cores_per_node)],
+              'gpus'        : [RO(index=x, occupation=rp.FREE)
+                                           for x in range(gpus_per_node)],
+              'lfs'         : lfs_per_node,
+              'mem'         : mem_per_node,
               'numa_domains': 2
              } for i in range(n_nodes)]
 
