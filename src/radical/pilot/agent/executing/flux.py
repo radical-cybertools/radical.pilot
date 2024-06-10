@@ -49,10 +49,17 @@ class Flux(AgentExecutingComponent) :
                            'exception': rps.FAILED,
                           }
 
+        # we get an instance of the resource manager (init from registry info)
+        rm_name  = self.session.rcfg.resource_manager
+        self._rm = ResourceManager.create(rm_name,
+                                          self.session.cfg,
+                                          self.session.rcfg,
+                                          self._log, self._prof)
+
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
         lm_cfg['reg_addr']  = self.session.cfg.reg_addr
-        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm_info,
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
         # local state management
         self._tasks      = dict()
