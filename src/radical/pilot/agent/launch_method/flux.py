@@ -36,7 +36,7 @@ class Flux(LaunchMethod):
         n_partitions        = self._rm_info.details.get('n_partitions', 1)
         n_nodes             = len(self._rm_info.node_list)
         nodes_per_partition = int(n_nodes / n_partitions)
-        threads_per_node    = self._rm_info.cores_per_node * self._rm_info.threads_per_core
+        threads_per_node    = self._rm_info.cores_per_node  # == hw threads
         gpus_per_node       = self._rm_info.gpus_per_node
 
         assert n_nodes % n_partitions == 0, \

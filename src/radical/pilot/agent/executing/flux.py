@@ -52,8 +52,7 @@ class Flux(AgentExecutingComponent) :
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
         lm_cfg['reg_addr']  = self.session.cfg.reg_addr
-        self._lm            = LaunchMethod.create('FLUX', lm_cfg,
-                                                  self.session.cfg,
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm_info,
                                                   self._log, self._prof)
         # local state management
         self._tasks      = dict()
