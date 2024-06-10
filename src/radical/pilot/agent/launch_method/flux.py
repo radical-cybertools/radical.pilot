@@ -69,7 +69,8 @@ class Flux(LaunchMethod):
 
             self._flux_handles.append(fh)
             self._details.append({'flux_uri': fh.uri,
-                                  'flux_env': fh.env})
+                                  'flux_env': fh.env,
+                                  'flux_uid': fh.uid})
 
             self._log.debug('=== flux partition %d started', n)
 
@@ -97,7 +98,7 @@ class Flux(LaunchMethod):
 
         for details in self._details:
 
-            fh = ru.FluxHelper()
+            fh = ru.FluxHelper(name=details['flux_uid'])
             fh.connect_flux(uri=details['flux_uri'])
             self._flux_handles.append(fh)
 
