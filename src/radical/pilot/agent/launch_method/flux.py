@@ -32,6 +32,8 @@ class Flux(LaunchMethod):
     #
     def _init_from_scratch(self, env, env_sh):
 
+        self._log.debug('=== flux init from scratch')
+
 
         n_partitions        = self._rm_info.details.get('n_partitions', 1)
         n_nodes             = len(self._rm_info.node_list)
@@ -50,7 +52,7 @@ class Flux(LaunchMethod):
             self._prof.prof('flux_start')
             fh = ru.FluxHelper()
 
-            self._log.debug('starting flux')
+            self._log.debug('=== starting flux partition %d', n)
 
             # FIXME: this is a hack for frontier and will only work for slurm
             #        resources.  If Flux is to be used more widely, we need to
@@ -61,11 +63,15 @@ class Flux(LaunchMethod):
                 launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
                            % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
 
+            self._log.debug('=== flux partition %d launcher: %s', n, launcher)
+
             fh.start_flux(launcher=launcher)
 
             self._flux_handles.append(fh)
             self._details.append({'flux_uri': fh.uri,
                                   'flux_env': fh.env})
+
+            self._log.debug('=== flux partition %d started', n)
 
         self._prof.prof('flux_start_ok')
 
@@ -81,6 +87,7 @@ class Flux(LaunchMethod):
     #
     def _init_from_info(self, lm_info):
 
+        self._log.debug('=== flux init from info')
         self._prof.prof('flux_reconnect')
 
         self._env          = lm_info['env']
