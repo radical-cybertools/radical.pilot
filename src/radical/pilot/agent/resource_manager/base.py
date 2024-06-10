@@ -133,12 +133,14 @@ class ResourceManager(object):
         self._log  = log
         self._prof = prof
 
-        self._log.info('Configuring ResourceManager %s', self.name)
+        self._log.info('configuring RM %s', self.name)
 
         reg     = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
         rm_info = reg.get('rm.%s' % self.name.lower())
 
-        if rm_info:
+        from_registry = bool(rm_info)
+
+        if from_registry:
 
             self._log.debug('RM init from registry')
             rm_info = RMInfo(rm_info)
@@ -157,7 +159,9 @@ class ResourceManager(object):
         reg.close()
         self._set_info(rm_info)
 
-        # set up launch methods even when initialized from registry info
+        # set up launch methods even when initialized from registry info.  In
+        # that case, the LM *SHOULD NOT* be re-initialized, but only pick up
+        # information from rm_info.
         self._prepare_launch_methods()
 
 
