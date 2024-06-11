@@ -85,8 +85,8 @@ class Flux(LaunchMethod):
         #        resources.  If Flux is to be used more widely, we need to
         #        pull the launch command from the agent's resource manager.
         launcher = ''
-        out, err, ret = ru.sh_callout('which srun')
-        if ret == 0 and 'srun' in out:
+        srun = ru.which('srun')
+        if srun:
             launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
                        % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
 
@@ -117,7 +117,7 @@ class Flux(LaunchMethod):
         threads = list()
         for details in self._details:
 
-            thread = mt.Thread(target=self._reconnect, args=[details]))
+            thread = mt.Thread(target=self._reconnect, args=[details])
             thread.start()
             threads.append(thread)
 
@@ -130,9 +130,9 @@ class Flux(LaunchMethod):
     #
     def _reconnect(self, details):
 
-            fh = ru.FluxHelper(name=details['flux_uid'])
-            fh.connect_flux(uri=details['flux_uri'])
-            self._flux_handles.append(fh)
+        fh = ru.FluxHelper(name=details['flux_uid'])
+        fh.connect_flux(uri=details['flux_uri'])
+        self._flux_handles.append(fh)
 
 
     # --------------------------------------------------------------------------
