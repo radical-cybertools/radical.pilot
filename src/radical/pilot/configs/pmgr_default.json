@@ -6,8 +6,8 @@
     # time to sleep between database polls (seconds)
 
     "heartbeat"    : {
-        "interval" :  3.0,
-        "timeout"  : 10.0
+        "interval" :  10.0,
+        "timeout"  : 600.0
     },
 
     "db_poll_sleeptime" : 1.0,
