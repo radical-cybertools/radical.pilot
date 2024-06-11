@@ -2,7 +2,9 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import radical.utils   as ru
+import threading     as mt
+
+import radical.utils as ru
 
 from .base import LaunchMethod
 
@@ -33,7 +35,7 @@ class Flux(LaunchMethod):
     def _init_from_scratch(self, env, env_sh):
 
         self._log.debug('=== flux init from scratch')
-
+        self._prof.prof('flux_start')
 
         n_partitions        = self._rm_info.details.get('n_partitions', 1)
         n_nodes             = len(self._rm_info.node_list)
@@ -47,32 +49,18 @@ class Flux(LaunchMethod):
         self._log.info('using %d flux partitions [%d nodes]',
                        n_partitions, nodes_per_partition)
 
+        threads = list()
+
         for n in range(n_partitions):
 
-            self._prof.prof('flux_start')
-            fh = ru.FluxHelper()
+            thread = mt.Thread(target=self._init_partition,
+                               args=[n, nodes_per_partition, threads_per_node,
+                                     gpus_per_node])
+            thread.start()
+            threads.append(thread)
 
-            self._log.debug('=== starting flux partition %d', n)
-
-            # FIXME: this is a hack for frontier and will only work for slurm
-            #        resources.  If Flux is to be used more widely, we need to
-            #        pull the launch command from the agent's resource manager.
-            launcher = ''
-            out, err, ret = ru.sh_callout('which srun')
-            if ret == 0 and 'srun' in out:
-                launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
-                           % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
-
-            self._log.debug('=== flux partition %d launcher: %s', n, launcher)
-
-            fh.start_flux(launcher=launcher)
-
-            self._flux_handles.append(fh)
-            self._details.append({'flux_uri': fh.uri,
-                                  'flux_env': fh.env,
-                                  'flux_uid': fh.uid})
-
-            self._log.debug('=== flux partition %d started', n)
+        for thread in threads:
+            thread.join()
 
         self._prof.prof('flux_start_ok')
 
@@ -82,6 +70,36 @@ class Flux(LaunchMethod):
                    'details'      : self._details}
 
         return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _init_partition(self, n, nodes_per_partition, threads_per_node,
+                        gpus_per_node):
+
+        fh = ru.FluxHelper()
+
+        self._log.debug('=== starting flux partition %d', n)
+
+        # FIXME: this is a hack for frontier and will only work for slurm
+        #        resources.  If Flux is to be used more widely, we need to
+        #        pull the launch command from the agent's resource manager.
+        launcher = ''
+        out, err, ret = ru.sh_callout('which srun')
+        if ret == 0 and 'srun' in out:
+            launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
+                       % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
+
+        self._log.debug('=== flux partition %d launcher: %s', n, launcher)
+
+        fh.start_flux(launcher=launcher)
+
+        self._flux_handles.append(fh)
+        self._details.append({'flux_uri': fh.uri,
+                              'flux_env': fh.env,
+                              'flux_uid': fh.uid})
+
+        self._log.debug('=== flux partition %d started', n)
 
 
     # --------------------------------------------------------------------------
@@ -96,13 +114,25 @@ class Flux(LaunchMethod):
         self._details      = lm_info['details']
         self._n_partitions = lm_info['n_partitions']
 
+        threads = list()
         for details in self._details:
+
+            thread = mt.Thread(target=self._reconnect, args=[details]))
+            thread.start()
+            threads.append(thread)
+
+        for thread in threads:
+            thread.join()
+
+        self._prof.prof('flux_reconnect_ok')
+
+    # --------------------------------------------------------------------------
+    #
+    def _reconnect(self, details):
 
             fh = ru.FluxHelper(name=details['flux_uid'])
             fh.connect_flux(uri=details['flux_uri'])
             self._flux_handles.append(fh)
-
-        self._prof.prof('flux_reconnect_ok')
 
 
     # --------------------------------------------------------------------------
