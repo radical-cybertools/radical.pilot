@@ -130,7 +130,7 @@ class Flux(LaunchMethod):
     #
     def _reconnect(self, details):
 
-        fh = ru.FluxHelper(name=details['flux_uid'])
+        fh = ru.FluxHelper(uid=details['flux_uid'])
         fh.connect_flux(uri=details['flux_uri'])
         self._flux_handles.append(fh)
 
