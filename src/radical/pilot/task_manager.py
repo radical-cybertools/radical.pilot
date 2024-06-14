@@ -1051,14 +1051,14 @@ class TaskManager(rpu.ClientComponent):
         self._log.debug('=== WAIT for %d tasks', len(to_check))
         while to_check and not self._terminate.is_set():
 
-            self._log.debug('=== wait for %d tasks', len(to_check))
+          # self._log.debug('=== wait for %d tasks', len(to_check))
 
             # check timeout
             if timeout and (timeout <= (time.time() - start)):
                 self._log.debug ("=== wait timed out")
                 break
 
-            time.sleep (10.1)
+            time.sleep (0.1)
 
             # FIXME: print percentage...
           # print 'wait tasks: %s' % [[u.uid, u.state] for u in to_check]
@@ -1072,12 +1072,12 @@ class TaskManager(rpu.ClientComponent):
                 if task.state not in rps.FINAL and \
                     rps._task_state_values[task.state] < check_state_val:
                     # this task does not match the wait criteria
-                    self._log.debug('=== wait again for %s [%s]', task.uid, task.state)
+                  # self._log.debug('=== wait again for %s [%s]', task.uid, task.state)
                     check_again.append(task)
 
                 else:
                     # stop watching this task
-                    self._log.debug('=== wait ok    for %s [%s]', task.uid, task.state)
+                  # self._log.debug('=== wait ok    for %s [%s]', task.uid, task.state)
                     if task.state in [rps.FAILED]:
                         self._rep.progress()  # (color='error', c='-')
                     elif task.state in [rps.CANCELED]:
