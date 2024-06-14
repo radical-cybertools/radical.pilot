@@ -63,7 +63,7 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
         # local state management
-        self._tasks      = dict()  # dict[partion_id][flux_id] = task
+        self._tasks      = defaultdict(dict)  # dict[partion_id][flux_id] = task
         self._task_count = 0
 
 
