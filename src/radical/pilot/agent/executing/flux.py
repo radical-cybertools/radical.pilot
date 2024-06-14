@@ -82,8 +82,11 @@ class Flux(AgentExecutingComponent) :
         if not task:
             self._log.error('no task for flux job %s: %s', flux_id, event.name)
 
+
         flux_state = event.name  # event: flux_id, flux_state
         state = self._event_map.get(flux_state)
+
+        self._log.debug('flux event: %s: %s [%s]', flux_id, flux_state, state)
 
         if state is None:
             # ignore this state transition
