@@ -4,6 +4,7 @@ __license__   = 'MIT'
 
 
 from collections import defaultdict
+from functools   import partial
 
 from ...   import states as rps
 
@@ -62,7 +63,7 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
         # local state management
-        self._tasks      = dict()
+        self._tasks      = dict()  # dict[partion_id][flux_id] = task
         self._task_count = 0
 
 
@@ -76,9 +77,9 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, flux_id, event):
+    def _job_event_cb(self, partition_id, flux_id, event):
 
-        task = self._tasks.get(flux_id)
+        task = self._tasks[partition_id].get(flux_id)
         if not task:
             self._log.error('no task for flux job %s: %s', flux_id, event.name)
 
@@ -153,9 +154,11 @@ class Flux(AgentExecutingComponent) :
                 md['flux_id'] = flux_id
                 task['description']['metadata'] = md
 
-                self._tasks[flux_id] = task
+                self._tasks[partition_id][flux_id] = task
 
-                part.attach_jobs([flux_id], self._job_event_cb)
+                event_cb = partial(self._job_event_cb, partition_id)
+
+                part.attach_jobs([flux_id], event_cb)
                 self._log.debug('handle %s: %s', task['uid'], flux_id)
 
 
