@@ -862,6 +862,10 @@ class TaskManager(rpu.ClientComponent):
 
             if len(tasks) >= 1024:
                 # submit this bulk
+                with self._tasks_lock:
+                    for task in tasks:
+                        self._tasks[task.uid] = task
+
                 task_docs = [u.as_dict() for u in tasks]
                 self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                              publish=True, push=True)
@@ -870,15 +874,14 @@ class TaskManager(rpu.ClientComponent):
 
         # submit remaining bulk (if any)
         if tasks:
+            with self._tasks_lock:
+                for task in tasks:
+                    self._tasks[task.uid] = task
+
             task_docs = [t.as_dict() for t in tasks]
             self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                          publish=True, push=True)
             ret += tasks
-
-        # keep tasks around
-        with self._tasks_lock:
-            for task in ret:
-                self._tasks[task.uid] = task
 
         self._rep.progress_done()
 
