@@ -1,25 +1,25 @@
 
 {
-    "amarel":
+    "laplace":
     {
-        "description"                 : "Heterogeneous community-model Linux cluster",
-        "notes"                       : "Access from registered IP address",
+        "description"                 : "",
+        "notes"                       : "",
         "default_schema"              : "local",
         "schemas"                     : {
             "local"                   : {
-                "job_manager_endpoint": "slurm://amarel.rutgers.edu/",
-                "filesystem_endpoint" : "file://amarel.rutgers.edu/"
+                "job_manager_endpoint": "slurm://laplace.nioz.nl/",
+                "filesystem_endpoint" : "file://laplace.nioz.nl/"
             },
             "ssh"                     : {
-                "job_manager_endpoint": "slurm+ssh://amarel.rutgers.edu/",
-                "filesystem_endpoint" : "sftp://amarel.rutgers.edu/"
+                "job_manager_endpoint": "slurm+ssh://laplace.nioz.nl/",
+                "filesystem_endpoint" : "sftp://laplace.nioz.nl/"
             },
             "interactive"             : {
                 "job_manager_endpoint": "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
             }
         },
-        "default_queue"               : "main",
+        "default_queue"               : "HMEMS",
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -27,13 +27,11 @@
                                          "order": ["SRUN"],
                                          "SRUN" : {}
                                         },
-        "pre_bootstrap_0"             :["module use /projects/community/modulefiles",
-                                        "module load gcc/5.4",
-                                        "module load python/3.9.6-gc563",
-                                        "module load intel/17.0.4"
+        "pre_bootstrap_0"             :["module load anaconda/2024.02",
+                                        "module load ohpc",
                                         ],
-        "default_remote_workdir"      : "/scratch/$USER",
-        "python_dist"                 : "default",
+        "default_remote_workdir"      : "$HOME",
+        "python_dist"                 : "anaconda`",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local",
         "system_architecture"         : {"exclusive": true}
