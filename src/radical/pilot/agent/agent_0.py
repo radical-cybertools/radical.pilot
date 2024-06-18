@@ -160,24 +160,31 @@ class Agent_0(rpu.AgentComponent):
     #
     def initialize(self):
 
+        # we  first register outputs, then start known service tasks, and only
+        # once those are up and running we register inputs.  This ensures that
+        # we do not start any incoming tasks before we services are up.
+
+        # forward received tasks to agent input staging
+        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+                             rpc.AGENT_STAGING_INPUT_QUEUE)
+
+        # and return completed tasks to the task manager
+        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
+                             rpc.PROXY_TASK_QUEUE)
+
+        # start any services
+        self._start_services()
+
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.PROXY_TASK_QUEUE,
                             qname=self._pid,
                             cb=self._proxy_input_cb)
 
-        # and forward to agent input staging
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
-
         # listen for completed tasks to forward to client
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
                             cb=self._proxy_output_cb)
-
-        # and register output
-        self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
-                             rpc.PROXY_TASK_QUEUE)
 
         self.register_rpc_handler('prepare_env', self._prepare_env,
                                                  rpc_addr=self._pid)
@@ -193,9 +200,6 @@ class Agent_0(rpu.AgentComponent):
                    }
         self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
                                 rpc_addr=self._pid)
-
-        # start any services if they are requested
-        self._start_services()
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
@@ -352,6 +356,9 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.info('all agent services started')
 
+
+    # --------------------------------------------------------------------------
+    #
     def _services_startup_cb(self, cb_data):
 
         for tid in list(cb_data):
@@ -365,6 +372,7 @@ class Agent_0(rpu.AgentComponent):
                 #        not provided, then we don't wait - this will be
                 #        replaced with another callback (BaseComponent.advance will
                 #        publish control command "service_up" for service tasks)
+                # FIXME: wait at least for AGENT_EXECUTING state
 
             elif os.path.isfile(startup_file):
                 # if file exists then service is up (general approach)
