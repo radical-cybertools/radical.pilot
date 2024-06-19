@@ -891,35 +891,6 @@ class TaskManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _reconnect_tasks(self):
-        """Re-associate tasks on reconnect.
-
-        When reconnecting, we need to dig information about all tasks from the
-        DB for which this tmgr is responsible.
-        """
-
-        from .task             import Task
-        from .task_description import TaskDescription
-
-        # FIXME MongoDB
-
-        # task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
-        #
-        # with self._tasks_lock:
-        #
-        #     for doc in task_docs:
-        #
-        #         td = TaskDescription(doc['description'])
-        #         td.uid = doc['uid']
-        #
-        #         task = Task(tmgr=self, descr=td, origin='client')
-        #         task._update(doc, reconnect=True)
-        #
-        #         self._tasks[task.uid] = task
-
-
-    # --------------------------------------------------------------------------
-    #
     def get_units(self, uids=None):
         """Get one or more tasks identified by their IDs.
 
@@ -1018,10 +989,7 @@ class TaskManager(rpu.ClientComponent):
 
         if not uids:
             with self._tasks_lock:
-                uids = list()
-                for uid,task in self._tasks.items():
-                    if task.state not in rps.FINAL:
-                        uids.append(uid)
+                uids = self._tasks.keys()
 
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
