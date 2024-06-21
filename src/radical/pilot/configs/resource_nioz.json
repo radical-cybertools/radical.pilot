@@ -28,10 +28,10 @@
                                          "SRUN" : {}
                                         },
         "pre_bootstrap_0"             :["module load anaconda/2024.02",
-                                        "module load ohpc",
+                                        "module load ohpc"
                                         ],
         "default_remote_workdir"      : "$HOME",
-        "python_dist"                 : "anaconda`",
+        "python_dist"                 : "anaconda",
         "virtenv_mode"                : "create",
         "rp_version"                  : "local",
         "system_architecture"         : {"exclusive": true}
