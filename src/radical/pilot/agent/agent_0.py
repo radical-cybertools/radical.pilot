@@ -2,11 +2,9 @@
 __copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import copy
 import os
 import stat
 import time
-import pprint
 
 import threading           as mt
 
@@ -172,6 +170,29 @@ class Agent_0(rpu.AgentComponent):
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
+        # before we run any tasks (including service tasks), prepare a named_env
+        # `rp` for tasks which use the pilot's own environment, such as raptors
+        #
+        # register the respective RPC handler...
+        self.register_rpc_handler('prepare_env', self._prepare_env,
+                                                 rpc_addr=self._pid)
+
+        # ...prepare the pilot's own env...
+        env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
+                    'path'    : os.environ['RP_VENV_PATH'],
+                    'pre_exec': ['export PYTHONPATH=%s'
+                                 %  os.environ.get('PYTHONPATH', ''),
+                                 'export PATH=%s'
+                                 %  os.environ.get('PATH', '')]
+                   }
+        self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
+                                rpc_addr=self._pid)
+
+        # ...and prepare all envs which are defined in the pilot description
+        for env_name, env_spec in self._cfg.get('prepare_env', {}).items():
+            self.rpc('prepare_env', env_name=env_name, env_spec=env_spec,
+                                    rpc_addr=self._pid)
+
         # start any services
         self._start_services()
 
@@ -185,21 +206,6 @@ class Agent_0(rpu.AgentComponent):
         self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_COLLECTING_QUEUE,
                             cb=self._proxy_output_cb)
-
-        self.register_rpc_handler('prepare_env', self._prepare_env,
-                                                 rpc_addr=self._pid)
-
-        # before we run any tasks, prepare a named_env `rp` for tasks which use
-        # the pilot's own environment, such as raptors
-        env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
-                    'path'    : os.environ['RP_VENV_PATH'],
-                    'pre_exec': ['export PYTHONPATH=%s'
-                                 %  os.environ.get('PYTHONPATH', ''),
-                                 'export PATH=%s'
-                                 %  os.environ.get('PATH', '')]
-                   }
-        self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
-                                rpc_addr=self._pid)
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
@@ -256,11 +262,11 @@ class Agent_0(rpu.AgentComponent):
 
         out, err, log = '', '', ''
 
-        try   : out = open('./agent_0.out', 'r').read(1024)
+        try   : out = ru.ru_open('./agent_0.out', 'r').read(1024)
         except: pass
-        try   : err = open('./agent_0.err', 'r').read(1024)
+        try   : err = ru.ru_open('./agent_0.err', 'r').read(1024)
         except: pass
-        try   : log = open('./agent_0.log', 'r').read(1024)
+        try   : log = ru.ru_open('./agent_0.log', 'r').read(1024)
         except: pass
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
