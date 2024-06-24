@@ -6,6 +6,8 @@ __license__   = 'MIT'
 from collections import defaultdict
 from functools   import partial
 
+import radical.utils as ru
+
 from ...   import states as rps
 
 from ..    import LaunchMethod
@@ -16,6 +18,8 @@ from .base import AgentExecutingComponent
 # ------------------------------------------------------------------------------
 #
 class Flux(AgentExecutingComponent) :
+
+    _shell = ru.which('bash') or '/bin/sh'
 
     # --------------------------------------------------------------------------
     #
@@ -193,7 +197,7 @@ class Flux(AgentExecutingComponent) :
                 'count': {
                     'per_slot': 1
                 },
-                'command': ['/bin/sh', '-c', command],
+                'command': [self._shell, '-c', command],
             }],
             'attributes': {
                 'system': {
