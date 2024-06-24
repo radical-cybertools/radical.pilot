@@ -987,9 +987,14 @@ class TaskManager(rpu.ClientComponent):
 
         """
 
+        ret_list = True
         if not uids:
             with self._tasks_lock:
                 uids = self._tasks.keys()
+        else:
+            if not isinstance(uids, list):
+                ret_list = False
+                uids = [uids]
 
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
@@ -1002,11 +1007,6 @@ class TaskManager(rpu.ClientComponent):
         for state in states:
             check_state_val = min(check_state_val,
                                   rps._task_state_values[state])
-
-        ret_list = True
-        if not isinstance(uids, list):
-            ret_list = False
-            uids = [uids]
 
         start    = time.time()
         to_check = None
