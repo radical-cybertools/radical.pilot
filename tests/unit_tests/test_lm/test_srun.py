@@ -136,6 +136,9 @@ class TestSrun(TestCase):
                                     get('system_architecture', {}).
                                     get('smt', 1)})
 
+            if 'use_mpi' not in td:
+                td['use_mpi'] = True
+
             command = lm_srun.get_launch_cmds(task, '')
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 
