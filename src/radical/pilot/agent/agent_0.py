@@ -667,7 +667,7 @@ class Agent_0(rpu.AgentComponent):
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/bash %s -d -p %s -t %s ' % (rp_cse, ve_path, etype) + \
                  '%s %s %s '                    % (evers, mods, pre_exec)  + \
-                 '-T %s.env > env.log 2>&1'     % ve_local_path
+                 '-T %s.env > env_%s.log 2>&1'  % (ve_local_path, env_name)
 
         # FIXME: we should export all sandboxes etc. to the prep_env.
         os.environ['RP_RESOURCE_SANDBOX'] = '../../'
