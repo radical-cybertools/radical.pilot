@@ -149,6 +149,9 @@ class Srun(LaunchMethod):
                 gpus_per_task = len(slots['ranks'][0]['gpu_map'][0])
 
         mapping = ''
+        if n_tasks > 1 and td['use_mpi'] is False:
+            mapping += '--kill-on-bad-exit=0 '
+
         if self._exact:
             mapping += '--exact '
 
