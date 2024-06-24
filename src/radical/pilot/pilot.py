@@ -665,7 +665,7 @@ class Pilot(object):
                 like::
 
                     {'type'    : 'shell',
-                     'pre_exec': ['export PATH=/opt/bin']},
+                     'pre_exec': ['export PATH=$PATH:/opt/bin']},
 
                     {'type'    : 'venv',
                      'version' : '3.7',
