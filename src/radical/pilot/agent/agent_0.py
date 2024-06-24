@@ -299,7 +299,7 @@ class Agent_0(rpu.AgentComponent):
     #
     def _start_services(self):
 
-        if not self.session.cfg.services:
+        if not self._cfg.services:
             return
 
         self._log.info('starting agent services')
@@ -307,7 +307,7 @@ class Agent_0(rpu.AgentComponent):
         services      = []
         services_data = {}
 
-        for sd in self.session.cfg.services:
+        for sd in self._cfg.services:
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
@@ -320,16 +320,16 @@ class Agent_0(rpu.AgentComponent):
             task['uid']               = tid
             task['type']              = 'service_task'
             task['origin']            = 'agent'
-            task['pilot']             = self.session.cfg.pid
+            task['pilot']             = self._cfg.pid
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['pilot_sandbox']     = self.session.cfg.pilot_sandbox
-            task['session_sandbox']   = self.session.cfg.session_sandbox
-            task['resource_sandbox']  = self.session.cfg.resource_sandbox
+            task['pilot_sandbox']     = self._cfg.pilot_sandbox
+            task['session_sandbox']   = self._cfg.session_sandbox
+            task['resource_sandbox']  = self._cfg.resource_sandbox
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
 
-            task_sandbox = self.session.cfg.pilot_sandbox + tid + '/'
+            task_sandbox = self._cfg.pilot_sandbox + tid + '/'
             task['task_sandbox']      = task_sandbox
             task['task_sandbox_path'] = task_sandbox
 
@@ -426,10 +426,10 @@ class Agent_0(rpu.AgentComponent):
 
         # FIXME: reroute to agent daemonizer
 
-        if not self.session.cfg.get('agents'):
+        if not self.session.cfg.agents:
             return
 
-        n_agents      = len(self.session.cfg['agents'])
+        n_agents      = len(self.session.cfg.agents)
         n_agent_nodes = len(self._rm.info.agent_node_list)
 
         assert n_agent_nodes >= n_agents
@@ -447,9 +447,9 @@ class Agent_0(rpu.AgentComponent):
 
         bs_name = '%s/bootstrap_2.sh'
 
-        for idx, sa in enumerate(self.session.cfg['agents']):
+        for idx, sa in enumerate(self.session.cfg.agents):
 
-            target  = self.session.cfg['agents'][sa]['target']
+            target  = self.session.cfg.agents[sa]['target']
             bs_args = [self._sid, self.session.cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
@@ -545,13 +545,11 @@ class Agent_0(rpu.AgentComponent):
     def _check_lifetime(self):
 
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
-        if self.session.cfg.runtime:
+        if self._cfg.runtime:
 
-            if time.time() >= self._starttime + \
-                                           (int(self.session.cfg.runtime) * 60):
+            if time.time() >= self._starttime + (int(self._cfg.runtime) * 60):
 
-                self._log.info('runtime limit (%ss).',
-                               self.session.cfg.runtime * 60)
+                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done
