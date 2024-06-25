@@ -562,7 +562,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         cleanup          = pilot['description']['cleanup']
         candidate_hosts  = pilot['description']['candidate_hosts']
         services         = pilot['description']['services']
-        p_config         = pilot['description']['config']
+        enable_ep        = pilot['description']['enable_ep']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -864,7 +864,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['log_lvl']             = self._log.level
         agent_cfg['debug_lvl']           = self._log.debug_level
         agent_cfg['services']            = services
-        agent_cfg['config']              = p_config
+        agent_cfg['enable_ep']           = enable_ep
         agent_cfg['raptor']              = raptor_cfg
 
         pilot['cfg']       = agent_cfg

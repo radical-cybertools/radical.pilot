@@ -705,7 +705,7 @@ class Agent_0(rpu.AgentComponent):
     #
     def _start_service_ep(self):
 
-        if not self._cfg.config.get('agent_ep', False):
+        if not self._cfg.enable_ep:
 
             self._service = ru.zmq.Server(uid='%s.server' % self._uid)
             self._service.register_request('submit_tasks', self._ep_submit_tasks)
