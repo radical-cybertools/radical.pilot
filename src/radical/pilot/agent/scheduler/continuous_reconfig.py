@@ -31,7 +31,7 @@ class ContinuousReconfig(Continuous):
 
         super().initialize()
 
-        reqs_file = self._rm._cfg.get('config', {}).get('task_reqs')
+        reqs_file = self._rm._cfg.reconfig_src
 
         if reqs_file and os.path.isfile(reqs_file):
             self._task_reqs.update(ru.read_json(reqs_file))

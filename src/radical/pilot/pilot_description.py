@@ -23,7 +23,7 @@ CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 LAYOUT            = 'layout'
 SERVICES          = 'services'
-CONFIG            = 'config'
+RECONFIG_SRC      = 'reconfig_src'
 
 NODES             = 'nodes'
 CORES             = 'cores'
@@ -150,8 +150,8 @@ class PilotDescription(ru.TypedDict):
         layout (str | dict, optional): Point to a json file or
             an explicit (dict) description of the pilot layout: number and size of
             partitions and their configuration. Default "default".
-        config (dict, optional): A dictionary with additional configuration
-            settings for the pilot.
+        reconfig_src (string, optional): name of a data file to be used by the
+            agent's `reconfig` scheduler.
 
     """
 
@@ -177,7 +177,7 @@ class PilotDescription(ru.TypedDict):
         PREPARE_ENV     : {str: None},
         LAYOUT          : None       ,
         SERVICES        : [TaskDescription],
-        CONFIG          : {str: None},
+        RECONFIG_SRC    : str        ,
     }
 
     _defaults = {
@@ -202,7 +202,7 @@ class PilotDescription(ru.TypedDict):
         PREPARE_ENV     : {}         ,
         LAYOUT          : 'default'  ,
         SERVICES        : []         ,
-        CONFIG          : {}         ,
+        RECONFIG_SRC    : None       ,
     }
 
 

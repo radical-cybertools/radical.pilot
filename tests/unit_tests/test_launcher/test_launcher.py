@@ -88,7 +88,7 @@ class TestLauncher(TestCase):
                                   'memory'         : 0,
                                   'candidate_hosts': None,
                                   'services'       : [],
-                                  'config'         : {}}}
+                                  'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
 
@@ -120,7 +120,7 @@ class TestLauncher(TestCase):
                                   'memory'         : 0,
                                   'candidate_hosts': None,
                                   'services'       : [],
-                                  'config'         : {}}}
+                                  'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(pilot['jd_dict'].name,
