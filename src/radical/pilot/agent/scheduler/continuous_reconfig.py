@@ -49,31 +49,26 @@ class ContinuousReconfig(Continuous):
         new_tasks = list()
         for task in ru.as_list(tasks):
 
-            if not self._task_reqs:
+            handled = False
+            for attr in ['ranks', 'cores_per_rank']:
+
+                v = int(self._task_reqs.get(attr) or 0)
+
+                if v:
+                    new_task = copy.deepcopy(task)
+                    descr = new_task['description']
+
+                    new_descr = copy.deepcopy(descr)
+                    new_descr[attr] = v
+
+                    if descr['cores_per_rank'] > 1:
+                        descr['threading_type'] = rpc.OpenMP
+
+                    new_tasks.append(new_task)
+                    handled = True
+
+            if not handled:
                 new_tasks.append(task)
-
-            else:
-
-                handled = False
-                for attr in ['ranks', 'cores_per_rank']:
-
-                    v = int(self._task_reqs.get(attr) or 0)
-
-                    if v:
-                        new_task = copy.deepcopy(task)
-                        descr = new_task['description']
-
-                        new_descr = copy.deepcopy(descr)
-                        new_descr[attr] = v
-
-                        if descr['cores_per_rank'] > 1:
-                            descr['threading_type'] = rpc.OpenMP
-
-                        new_tasks.append(new_task)
-                        handled = True
-
-                if not handled:
-                    new_tasks.append(task)
 
         super().work(new_tasks)
 
