@@ -87,7 +87,8 @@ class TestLauncher(TestCase):
                                   'cleanup'        : 0,
                                   'memory'         : 0,
                                   'candidate_hosts': None,
-                                  'services'       : []}}
+                                  'services'       : [],
+                                  'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
 
@@ -118,7 +119,8 @@ class TestLauncher(TestCase):
                                   'cleanup'        : 0,
                                   'memory'         : 0,
                                   'candidate_hosts': None,
-                                  'services'       : []}}
+                                  'services'       : [],
+                                  'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
         self.assertEqual(pilot['jd_dict'].name,
