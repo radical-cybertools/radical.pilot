@@ -426,10 +426,10 @@ class Agent_0(rpu.AgentComponent):
 
         # FIXME: reroute to agent daemonizer
 
-        if not self.session.cfg.agents:
+        if not self._cfg.agents:
             return
 
-        n_agents      = len(self.session.cfg.agents)
+        n_agents      = len(self._cfg.agents)
         n_agent_nodes = len(self._rm.info.agent_node_list)
 
         assert n_agent_nodes >= n_agents
@@ -447,9 +447,9 @@ class Agent_0(rpu.AgentComponent):
 
         bs_name = '%s/bootstrap_2.sh'
 
-        for idx, sa in enumerate(self.session.cfg.agents):
+        for idx, sa in enumerate(self._cfg.agents):
 
-            target  = self.session.cfg.agents[sa]['target']
+            target  = self._cfg.agents[sa]['target']
             bs_args = [self._sid, self.session.cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
