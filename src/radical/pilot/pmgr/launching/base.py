@@ -409,20 +409,27 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             pid = pilot['uid']
             self._prof.prof('staging_in_start', uid=pid)
 
-            for fname in ru.as_list(pilot['description'].get('input_staging')):
-                base = os.path.basename(fname)
-                # checking if input staging file exists
-                if fname.startswith('./'):
-                    fname = fname.split('./', maxsplit=1)[1]
-                if not fname.startswith('/'):
-                    fname = os.path.join(self._cfg.base, fname)
-                if not os.path.exists(fname):
-                    raise RuntimeError('input_staging file does not exists: '
-                                       '%s for pilot %s' % (fname, pid))
+            for sd in ru.as_list(pilot['description'].get('input_staging')):
 
-                ft_list.append({'src': fname,
-                                'tgt': '%s/%s' % (pid, base),
-                                'rem': False})
+                if isinstance(sd, dict):
+                    sd['rem'] = False
+                    ft_list.append(sd)
+
+                else:
+                    fname = sd
+                    base = os.path.basename(fname)
+                    # checking if input staging file exists
+                    if fname.startswith('./'):
+                        fname = fname.split('./', maxsplit=1)[1]
+                    if not fname.startswith('/'):
+                        fname = os.path.join(self._cfg.base, fname)
+                    if not os.path.exists(fname):
+                        raise RuntimeError('input_staging file does not exists: '
+                                           '%s for pilot %s' % (fname, pid))
+
+                    ft_list.append({'source': fname,
+                                    'target': '%s/%s' % (pid, base),
+                                    'rem': False})
 
             output_staging = pilot['description'].get('output_staging')
             if output_staging:
@@ -438,25 +445,26 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
 
         for ft in ft_list:
-            src     = os.path.abspath(ft['src'])
-            tgt     = os.path.relpath(os.path.normpath(ft['tgt']), session_sandbox)
-          # src_dir = os.path.dirname(src)
-            tgt_dir = os.path.dirname(tgt)
+            source     = os.path.abspath(ft['source'])
+            target     = os.path.relpath(os.path.normpath(ft['target']), session_sandbox)
+          # source_dir = os.path.dirname(source)
+            target_dir = os.path.dirname(target)
 
-            if tgt_dir.startswith('..'):
-                tgt = ft['tgt']
-                tgt_dir = os.path.dirname(tgt)
+            if target_dir.startswith('..'):
+                target = ft['target']
+                target_dir = os.path.dirname(target)
 
-            if not os.path.isdir('%s/%s' % (tmp_dir, tgt_dir)):
-                os.makedirs('%s/%s' % (tmp_dir, tgt_dir))
+            if not os.path.isdir('%s/%s' % (tmp_dir, target_dir)):
+                os.makedirs('%s/%s' % (tmp_dir, target_dir))
 
-            if src == '/dev/null':
+            if source == '/dev/null':
                 # we want an empty file -- touch it (tar will refuse to
                 # handle a symlink to /dev/null)
-                ru.ru_open('%s/%s' % (tmp_dir, tgt), 'a').close()
+                ru.ru_open('%s/%s' % (tmp_dir, target), 'a').close()
             else:
                 # use a shell callout to account for wildcard expansion
-                cmd = 'ln -s %s %s/%s' % (os.path.abspath(src), tmp_dir, tgt)
+                cmd = 'ln -s %s %s/%s' % (os.path.abspath(source), tmp_dir,
+                                          target)
                 out, err, ret = ru.sh_callout(cmd, shell=True)
                 if ret:
                     self._log.debug('cmd: %s', cmd)
@@ -478,7 +486,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # remove all files marked for removal-after-pack
         for ft in ft_list:
             if ft['rem']:
-                os.unlink(ft['src'])
+                os.unlink(ft['source'])
 
         fs_endpoint  = rcfg['filesystem_endpoint']
         fs_url       = ru.Url(fs_endpoint)
@@ -554,6 +562,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         cleanup          = pilot['description']['cleanup']
         candidate_hosts  = pilot['description']['candidate_hosts']
         services         = pilot['description']['services']
+        reconfig_src     = pilot['description']['reconfig_src']
 
         # ----------------------------------------------------------------------
         # get parameters from resource cfg, set defaults where needed
@@ -854,6 +863,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['log_lvl']             = self._log.level
         agent_cfg['debug_lvl']           = 9 # self._log.debug_level
         agent_cfg['services']            = services
+        agent_cfg['reconfig_src']        = reconfig_src
         agent_cfg['raptor']              = raptor_cfg
 
         pilot['cfg']       = agent_cfg

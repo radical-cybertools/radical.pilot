@@ -23,6 +23,7 @@
                                          "MPIEXEC": {}
                                         },
         "pre_bootstrap_0"             : [
+                                         "module use /soft/modulefiles",
                                          "module load conda"
                                         ],
         "default_remote_workdir"      : "$HOME",
