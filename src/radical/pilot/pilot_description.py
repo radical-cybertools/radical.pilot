@@ -22,6 +22,7 @@ CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
 SERVICES          = 'services'
 ENABLE_EP         = 'enable_ep'
+RECONFIG_SRC      = 'reconfig_src'
 
 NODES             = 'nodes'
 CORES             = 'cores'
@@ -145,6 +146,8 @@ class PilotDescription(ru.TypedDict):
             node will not be used for any other tasks.
         enable_ep (bool, optional): enable a ZMQ submission endpoint on the
             pilot. Default `False`.
+        reconfig_src (string, optional): name of a data file to be used by the
+            agent's `reconfig` scheduler.
 
     """
 
@@ -169,6 +172,7 @@ class PilotDescription(ru.TypedDict):
         PREPARE_ENV     : {str: None},
         SERVICES        : [TaskDescription],
         ENABLE_EP       : bool       ,
+        RECONFIG_SRC    : str        ,
     }
 
     _defaults = {
@@ -192,6 +196,7 @@ class PilotDescription(ru.TypedDict):
         PREPARE_ENV     : {}         ,
         SERVICES        : []         ,
         ENABLE_EP       : False      ,
+        RECONFIG_SRC    : None       ,
     }
 
 
