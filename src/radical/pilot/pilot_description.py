@@ -20,7 +20,6 @@ RUNTIME           = 'runtime'
 APP_COMM          = 'app_comm'         # FIXME: always create an app pubsub?
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
-LAYOUT            = 'layout'
 SERVICES          = 'services'
 ENABLE_EP         = 'enable_ep'
 
@@ -144,9 +143,6 @@ class PilotDescription(ru.TypedDict):
             commands which get started on a separate service compute node right after
             bootstrapping, and before any RP task is launched.  That service compute
             node will not be used for any other tasks.
-        layout (str | dict, optional): Point to a json file or
-            an explicit (dict) description of the pilot layout: number and size of
-            partitions and their configuration. Default "default".
         enable_ep (bool, optional): enable a ZMQ submission endpoint on the
             pilot. Default `False`.
 
@@ -171,7 +167,6 @@ class PilotDescription(ru.TypedDict):
         INPUT_STAGING   : [str]      ,
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
-        LAYOUT          : None       ,
         SERVICES        : [TaskDescription],
         ENABLE_EP       : bool       ,
     }
@@ -195,7 +190,6 @@ class PilotDescription(ru.TypedDict):
         INPUT_STAGING   : []         ,
         OUTPUT_STAGING  : []         ,
         PREPARE_ENV     : {}         ,
-        LAYOUT          : 'default'  ,
         SERVICES        : []         ,
         ENABLE_EP       : False      ,
     }
