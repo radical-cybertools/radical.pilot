@@ -86,7 +86,6 @@ class TestLauncher(TestCase):
                                   'app_comm'       : 0,
                                   'cleanup'        : 0,
                                   'memory'         : 0,
-                                  'candidate_hosts': None,
                                   'services'       : [],
                                   'config'         : {}}}
 
@@ -118,7 +117,6 @@ class TestLauncher(TestCase):
                                   'app_comm'       : 0,
                                   'cleanup'        : 0,
                                   'memory'         : 0,
-                                  'candidate_hosts': None,
                                   'services'       : [],
                                   'config'         : {}}}
 

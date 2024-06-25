@@ -560,7 +560,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         job_name         = pilot['description']['job_name']
         project          = pilot['description']['project']
         cleanup          = pilot['description']['cleanup']
-        candidate_hosts  = pilot['description']['candidate_hosts']
         services         = pilot['description']['services']
         enable_ep        = pilot['description']['enable_ep']
 
@@ -938,7 +937,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         jd_dict.processes_per_host    = avail_cores_per_node
         jd_dict.wall_time_limit       = runtime
         jd_dict.queue                 = queue
-        jd_dict.candidate_hosts       = candidate_hosts
         jd_dict.file_transfer         = list()
         jd_dict.environment           = dict()
         jd_dict.system_architecture   = dict(system_architecture)
