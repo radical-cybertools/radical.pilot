@@ -61,22 +61,15 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
-Create a **virtual environment** with ``venv``:
+Create a **virtual environment** with ``conda``:
 
 .. code-block:: bash
 
-   export PYTHONNOUSERSITE=True
-   python3 -m venv ve.rp
-   source ve.rp/bin/activate
-
-OR create a **virtual environment** with ``conda``:
-
-.. code-block:: bash
-
-   module load conda; conda activate
+   module use /soft/modulefiles; module load conda
    conda create -y -n ve.rp python=3.9
    conda activate ve.rp
    # OR clone base environment
+   #   conda activate base
    #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
    #   conda activate $HOME/ve.rp
 
@@ -84,8 +77,6 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 
 .. code-block:: bash
 
-   pip install radical.pilot
-   # OR in case of conda environment
    conda install -c conda-forge radical.pilot
 
 Launching script example
@@ -93,21 +84,21 @@ Launching script example
 
 Launching script (e.g., ``rp_launcher.sh``) for the RADICAL-Pilot application
 includes setup processes to activate a certain execution environment and
-launching command for the application itself. In this example we use virtual
-environment with ``conda``.
+launching command for the application itself.
 
 .. code-block:: bash
 
    #!/bin/sh
 
    # - pre run -
-   module load conda
+   module use /soft/modulefiles; module load conda
    eval "$(conda shell.posix hook)"
    conda activate ve.rp
 
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>

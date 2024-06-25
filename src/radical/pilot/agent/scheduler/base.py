@@ -26,13 +26,14 @@ from ..resource_manager  import ResourceManager
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
-SCHEDULER_NAME_CONTINUOUS_DDMD    = "CONTINUOUS_DDMD"
-SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
-SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_NOOP               = "NOOP"
+SCHEDULER_NAME_CONTINUOUS_ORDERED  = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_RECONFIG = "CONTINUOUS_RECONFIG"
+SCHEDULER_NAME_CONTINUOUS_COLO     = "CONTINUOUS_COLO"
+SCHEDULER_NAME_CONTINUOUS_DDMD     = "CONTINUOUS_DDMD"
+SCHEDULER_NAME_CONTINUOUS          = "CONTINUOUS"
+SCHEDULER_NAME_HOMBRE              = "HOMBRE"
+SCHEDULER_NAME_FLUX                = "FLUX"
+SCHEDULER_NAME_NOOP                = "NOOP"
 
 # SCHEDULER_NAME_YARN               = "YARN"
 # SCHEDULER_NAME_SPARK              = "SPARK"
@@ -299,17 +300,19 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         name = session.rcfg.agent_scheduler
 
-        from .continuous_ordered import ContinuousOrdered
-        from .continuous_colo    import ContinuousColo
-        from .continuous_ddmd    import ContinuousDDMD
-        from .continuous         import Continuous
-        from .hombre             import Hombre
-        from .flux               import Flux
-        from .noop               import Noop
+        from .continuous_ordered  import ContinuousOrdered
+        from .continuous_reconfig import ContinuousReconfig
+        from .continuous_colo     import ContinuousColo
+        from .continuous_ddmd     import ContinuousDDMD
+        from .continuous          import Continuous
+        from .hombre              import Hombre
+        from .flux                import Flux
+        from .noop                import Noop
 
         impl = {
 
             SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
+            SCHEDULER_NAME_CONTINUOUS_RECONFIG: ContinuousReconfig,
             SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
             SCHEDULER_NAME_CONTINUOUS_DDMD    : ContinuousDDMD,
             SCHEDULER_NAME_CONTINUOUS         : Continuous,
