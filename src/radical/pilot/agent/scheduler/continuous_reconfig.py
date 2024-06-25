@@ -1,13 +1,10 @@
 
-__copyright__ = 'Copyright 2023, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2023-2024, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
-import copy
 
 import radical.utils as ru
-
-from ... import constants as rpc
 
 from .continuous import Continuous
 
@@ -22,55 +19,33 @@ class ContinuousReconfig(Continuous):
 
         super().__init__(cfg, session)
 
-        self._task_reqs = {}  # resource requirements (ranks, cores_per_rank)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def initialize(self):
-
-        super().initialize()
-
-        reqs_file = self._rm._cfg.reconfig_src
-
-        if reqs_file and os.path.isfile(reqs_file):
-            self._task_reqs.update(ru.read_json(reqs_file))
-            self._log.debug('set task reqs: %s', self._task_reqs)
-
+        # file with updated resource requirements (ranks, cores_per_rank)
+        self._reconfig_src = self._cfg.reconfig_src
+        self._task_reqs    = {}
 
     # --------------------------------------------------------------------------
     #
     def work(self, tasks):
 
+        # check possibly updated task requirements
+        if self._reconfig_src and os.path.isfile(self._reconfig_src):
+            task_reqs = ru.read_json(self._reconfig_src)
+            if self._task_reqs != task_reqs:
+                self._log.debug('set new task reqs: %s', task_reqs)
+                self._task_reqs = task_reqs
+
         if not self._task_reqs:
             return super().work(tasks)
 
+        tasks_updated = ru.as_list(tasks)
+        for attr in ['ranks', 'cores_per_rank']:
+            v = self._task_reqs.get(attr)
+            if v is not None:
+                v = int(v)
+                for task in tasks_updated:
+                    task['description'][attr] = v
 
-        new_tasks = list()
-        for task in ru.as_list(tasks):
-
-            handled = False
-            for attr in ['ranks', 'cores_per_rank']:
-
-                v = int(self._task_reqs.get(attr) or 0)
-
-                if v:
-                    new_task = copy.deepcopy(task)
-                    descr = new_task['description']
-
-                    new_descr = copy.deepcopy(descr)
-                    new_descr[attr] = v
-
-                    if descr['cores_per_rank'] > 1:
-                        descr['threading_type'] = rpc.OpenMP
-
-                    new_tasks.append(new_task)
-                    handled = True
-
-            if not handled:
-                new_tasks.append(task)
-
-        super().work(new_tasks)
+        super().work(tasks_updated)
 
 
 # ------------------------------------------------------------------------------
