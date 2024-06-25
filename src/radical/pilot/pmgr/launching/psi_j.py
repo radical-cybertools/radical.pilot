@@ -1,5 +1,5 @@
 
-__copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
+__copyright__ = 'Copyright 2022-2024, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import datetime
@@ -23,6 +23,15 @@ try:
     import psij
 except ImportError as ex:
     psij_ex = ex
+
+OPTIONS_MAPPING = {
+    'slurm': {'key': 'constraint',  'delim': '&'},
+    'pbs'  : {'key': 'l',           'delim': ','},
+    'lsf'  : {'key': 'alloc_flags', 'delim': ' '}
+}
+SCHEMA_ALIAS = {
+    'pbspro': 'pbs'
+}
 
 
 # ------------------------------------------------------------------------------
@@ -69,6 +78,9 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             return
 
         schema = schemas[0]
+
+        if schema in SCHEMA_ALIAS:
+            schema = SCHEMA_ALIAS[schema]
 
         if schema == 'fork':
             schema = SCHEMA_LOCAL
@@ -152,18 +164,32 @@ class PilotLauncherPSIJ(PilotLauncherBase):
 
             jd = pilot['jd_dict']
 
-            proj, res = None, None
-            if jd.project:
-                if ':' in jd.project:
-                    proj, res = jd.project.split(':', 1)
-                else:
-                    proj = jd.project
+            if jd.project and ':' in jd.project:
+                proj, res = jd.project.split(':', 1)
+            else:
+                proj, res = jd.project, None
+
+            if jd.queue and ':' in jd.queue:
+                part, qos = jd.queue.split(':', 1)
+            else:
+                part, qos = jd.queue, None
 
             attr = psij.JobAttributes()
             attr.duration       = datetime.timedelta(minutes=jd.wall_time_limit)
-            attr.queue_name     = jd.queue
+            attr.queue_name     = part
             attr.project_name   = proj
             attr.reservation_id = res
+
+            if qos:
+                attr.set_custom_attribute(name=f'{schema}.qos', value=qos)
+
+            # define batch options/constraints
+            if (jd.system_architecture.get('options') and
+                    schema in OPTIONS_MAPPING):
+                opts = OPTIONS_MAPPING[schema]
+                attr.set_custom_attribute(
+                    name=f'{schema}.{opts["key"]}',
+                    value=opts['delim'].join(jd.system_architecture['options']))
 
             spec = psij.JobSpec()
             spec.attributes          = attr
@@ -176,9 +202,10 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             # inherit environment for local executor only
             spec.inherit_environment = bool(schema == SCHEMA_LOCAL)
 
-            spec.resources = psij.ResourceSpecV1()
-            spec.resources.node_count            = jd.node_count
-            spec.resources.process_count         = jd.total_cpu_count
+            spec.resources = psij.ResourceSpecV1(
+                node_count=jd.node_count,
+                process_count=jd.total_cpu_count,
+            )
           # spec.resources.cpu_cores_per_process = 1
           # spec.resources.gpu_cores_per_process = jd.total_gpu_count
 
