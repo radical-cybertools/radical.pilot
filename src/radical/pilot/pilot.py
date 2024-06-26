@@ -215,7 +215,7 @@ class Pilot(object):
         # NOTE: this method relies on state updates to arrive in order and
         #       without gaps.
         current = self.state
-        target  = pilot_dict['state']
+        target  = pilot_dict.get('state', self.state)
 
         if target not in [rps.FAILED, rps.CANCELED]:
 
@@ -344,6 +344,16 @@ class Pilot(object):
             self._nodelist.verify()
 
         return self._nodelist
+
+
+    # --------------------------------------------------------------------------
+    #
+    def rest_url(self):
+        '''
+        Returns the agent's rest URL (only in `ACTIVE` state or later)
+        '''
+
+        return self._pilot_dict.get('rest_url')
 
 
     # --------------------------------------------------------------------------
