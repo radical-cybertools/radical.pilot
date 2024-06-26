@@ -717,7 +717,7 @@ class Agent_0(rpu.AgentComponent):
     #
     def _start_service_ep(self):
 
-        if not self._cfg.enable_ep:
+        if self._cfg.enable_ep:
 
             self._service = ru.zmq.Server(uid='%s.server' % self._uid)
             self._service.register_request('submit_tasks', self._ep_submit_tasks)
@@ -752,10 +752,10 @@ class Agent_0(rpu.AgentComponent):
             task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
             task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
             task['pilot']             = os.environ['RP_PILOT_ID']
-            task['resources']         = {'cpu': td.get('cpu_processes', 1) *
-                                                td.get('cpu_threads',   1),
-                                         'gpu': td['gpu_processes'] *
-                                                td.get('cpu_processes', 1)}
+            task['resources']         = {'cpu': td['ranks'] *
+                                                td.get('cores_per_rank', 1),
+                                         'gpu': td['ranks'] *
+                                                td.get('gpus_per_rank',  1)}
 
             self._log.debug('ep: submit %s', td['uid'])
 
