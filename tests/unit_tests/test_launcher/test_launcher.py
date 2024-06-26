@@ -86,9 +86,9 @@ class TestLauncher(TestCase):
                                   'app_comm'       : 0,
                                   'cleanup'        : 0,
                                   'memory'         : 0,
-                                  'candidate_hosts': None,
                                   'services'       : [],
                                   'prepare_env'    : {},
+                                  'enable_ep'      : False,
                                   'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
@@ -119,9 +119,9 @@ class TestLauncher(TestCase):
                                   'app_comm'       : 0,
                                   'cleanup'        : 0,
                                   'memory'         : 0,
-                                  'candidate_hosts': None,
                                   'services'       : [],
                                   'prepare_env'    : {},
+                                  'enable_ep'      : False,
                                   'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
