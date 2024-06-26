@@ -174,7 +174,7 @@
                                                           # 64,  72,  80,  88,
                                                           # 96, 104, 112, 120],
                                          "blocked_gpus"  : [],
-					 "n_partitions"  : 16
+                                         "n_partitions"  : 1
                                         }
     },
 

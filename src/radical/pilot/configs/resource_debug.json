@@ -114,7 +114,7 @@
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
         "fake_resources"              : true,
-        "system_architecture"         : {"n_partitions": 3}
+        "system_architecture"         : {"n_partitions": 1}
     }
 }
 
