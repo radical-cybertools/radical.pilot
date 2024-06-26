@@ -123,7 +123,12 @@ fi
 VERSION=$(echo $VERSION | cut -f 1,2 -d '.')
 
 # check env type
-if test "$ETYPE" = 'conda'
+if test "$ETYPE" = 'shell'
+then
+    # nothing to do for a plain shell environment
+    true
+
+elif test "$ETYPE" = 'conda'
 then
 
     which conda || help "conda not found"

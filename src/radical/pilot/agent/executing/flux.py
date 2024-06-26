@@ -3,6 +3,11 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 
+from collections import defaultdict
+from functools   import partial
+
+import radical.utils as ru
+
 from ...   import states as rps
 
 from ..    import LaunchMethod
@@ -13,6 +18,8 @@ from .base import AgentExecutingComponent
 # ------------------------------------------------------------------------------
 #
 class Flux(AgentExecutingComponent) :
+
+    _shell = ru.which('bash') or '/bin/sh'
 
     # --------------------------------------------------------------------------
     #
@@ -57,11 +64,11 @@ class Flux(AgentExecutingComponent) :
         lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
         lm_cfg['reg_addr']  = self.session.cfg.reg_addr
-        self._lm            = LaunchMethod.create('FLUX', lm_cfg,
-                                                  self.session.cfg,
+        self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
         # local state management
-        self._tasks  = dict()
+        self._tasks      = defaultdict(dict)  # dict[partion_id][flux_id] = task
+        self._task_count = 0
 
 
     # --------------------------------------------------------------------------
@@ -74,14 +81,17 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, flux_id, event):
+    def _job_event_cb(self, partition_id, flux_id, event):
 
-        task = self._tasks.get(flux_id)
+        task = self._tasks[partition_id].get(flux_id)
         if not task:
             self._log.error('no task for flux job %s: %s', flux_id, event.name)
 
+
         flux_state = event.name  # event: flux_id, flux_state
         state = self._event_map.get(flux_state)
+
+        self._log.debug('flux event: %s: %s [%s]', flux_id, flux_state, state)
 
         if state is None:
             # ignore this state transition
@@ -123,24 +133,40 @@ class Flux(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        # FIXME: need actual job description, obviously
-        jds = [self.task_to_spec(task) for task in tasks]
-        self._log.debug('submit tasks: %s', [jd for jd in jds])
-        jids = self._lm.fh.submit_jobs([jd for jd in jds])
-        self._log.debug('submitted tasks')
+        # round robin on available flux partitions
+        parts = defaultdict(list)
+        for task in tasks:
 
-        for task, flux_id in zip(tasks, jids):
+            partition_id = task['description']['partition']
 
-            self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
+            if partition_id is None:
+                partition_id = self._task_count % self._lm.n_partitions
+                self._task_count += 1
 
-            md = task['description'].get('metadata') or dict()
-            md['flux_id'] = flux_id
-            task['description']['metadata'] = md
+            parts[partition_id].append(task)
+            task['description']['environment']['RP_PARTITION_ID'] = partition_id
 
-            self._tasks[flux_id] = task
+        for partition_id, partition_tasks in parts.items():
 
-            self._lm.fh.attach_jobs([flux_id], self._job_event_cb)
-            self._log.debug('handle %s: %s', task['uid'], flux_id)
+            part = self._lm.get_partition(partition_id)
+            jds  = [self.task_to_spec(task) for task in partition_tasks]
+            jids = part.submit_jobs([jd for jd in jds])
+            self._log.debug('submitted tasks: %s', jids)
+
+            for task, flux_id in zip(partition_tasks, jids):
+
+                self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
+
+                md = task['description'].get('metadata') or dict()
+                md['flux_id'] = flux_id
+                task['description']['metadata'] = md
+
+                self._tasks[partition_id][flux_id] = task
+
+                event_cb = partial(self._job_event_cb, partition_id)
+
+                part.attach_jobs([flux_id], event_cb)
+                self._log.debug('handle %s: %s', task['uid'], flux_id)
 
 
     # --------------------------------------------------------------------------
@@ -171,7 +197,7 @@ class Flux(AgentExecutingComponent) :
                 'count': {
                     'per_slot': 1
                 },
-                'command': ['/bin/sh', '-c', command],
+                'command': [self._shell, '-c', command],
             }],
             'attributes': {
                 'system': {
