@@ -1594,11 +1594,16 @@ ping -c 1 "$RADICAL_PILOT_NTPHOST" || true  # ignore errors
 # done to distinguish agent instances.
 
 # NOTE: anaconda only supports bash.  Really.  I am not kidding...
-if test "$PYTHON_DIST" = "anaconda"
+BS_SHELL=$(which bash)
+if test -z "$BS_SHELL"
 then
-    BS_SHELL='/bin/bash'
-else
     BS_SHELL='/bin/sh'
+
+    if test "$PYTHON_DIST" = "anaconda"
+    then
+            echo "ERROR: PYTHON_DIST=anaconda but bash not found"
+            exit 1
+    fi
 fi
 
 # disable user site packages as those can conflict with our virtualenv
