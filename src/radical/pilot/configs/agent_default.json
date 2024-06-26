@@ -12,8 +12,8 @@
     "mode"   : "shared",
 
     "heartbeat"    : {
-        "interval" :  1.0,
-        "timeout"  : 60.0
+        "interval" :  10.0,
+        "timeout"  : 600.0
     },
 
     # Bridges usually run in the main agent
