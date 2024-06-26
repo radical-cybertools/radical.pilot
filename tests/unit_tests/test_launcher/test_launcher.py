@@ -88,6 +88,7 @@ class TestLauncher(TestCase):
                                   'memory'         : 0,
                                   'services'       : [],
                                   'prepare_env'    : {},
+                                  'enable_ep'      : False,
                                   'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
@@ -120,6 +121,7 @@ class TestLauncher(TestCase):
                                   'memory'         : 0,
                                   'services'       : [],
                                   'prepare_env'    : {},
+                                  'enable_ep'      : False,
                                   'reconfig_src'   : None}}
 
         component._prepare_pilot(resource, rcfg, pilot, {}, '')
