@@ -146,6 +146,10 @@ class PilotDescription(ru.TypedDict):
             node will not be used for any other tasks.
         enable_ep (bool, optional): enable a ZMQ submission endpoint on the
             pilot. Default `False`.
+        prepare_env (dict, optional): A dictionary of `{env_name: env_spec}` as
+            documented for the pilot's `prepare_env(env_name, env_spec)` method.
+            The given specifications will be enacted during pilot startup and
+            can be used for service tasks.
         reconfig_src (string, optional): name of a data file to be used by the
             agent's `reconfig` scheduler.
 

@@ -2,11 +2,9 @@
 __copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import copy
 import os
 import stat
 import time
-import pprint
 
 import threading           as mt
 
@@ -165,30 +163,26 @@ class Agent_0(rpu.AgentComponent):
     #
     def initialize(self):
 
-        # listen for new tasks from the client
-        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
-                            rpc.PROXY_TASK_QUEUE,
-                            qname=self._pid,
-                            cb=self._proxy_input_cb)
+        # we  first register outputs, then start known service tasks, and only
+        # once those are up and running we register inputs.  This ensures that
+        # we do not start any incoming tasks before we services are up.
 
-        # and forward to agent input staging
+        # forward received tasks to agent input staging
         self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
                              rpc.AGENT_STAGING_INPUT_QUEUE)
 
-        # listen for completed tasks to forward to client
-        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
-                            rpc.AGENT_COLLECTING_QUEUE,
-                            cb=self._proxy_output_cb)
-
-        # and register output
+        # and return completed tasks to the task manager
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
+        # before we run any tasks (including service tasks), prepare a named_env
+        # `rp` for tasks which use the pilot's own environment, such as raptors
+        #
+        # register the respective RPC handler...
         self.register_rpc_handler('prepare_env', self._prepare_env,
                                                  rpc_addr=self._pid)
 
-        # before we run any tasks, prepare a named_env `rp` for tasks which use
-        # the pilot's own environment, such as raptors
+        # ...prepare the pilot's own env...
         env_spec = {'type'    : os.environ['RP_VENV_TYPE'],
                     'path'    : os.environ['RP_VENV_PATH'],
                     'pre_exec': ['export PYTHONPATH=%s'
@@ -199,8 +193,24 @@ class Agent_0(rpu.AgentComponent):
         self.rpc('prepare_env', env_name='rp', env_spec=env_spec,
                                 rpc_addr=self._pid)
 
-        # start any services if they are requested
+        # ...and prepare all envs which are defined in the pilot description
+        for env_name, env_spec in self._cfg.get('prepare_env', {}).items():
+            self.rpc('prepare_env', env_name=env_name, env_spec=env_spec,
+                                    rpc_addr=self._pid)
+
+        # start any services
         self._start_services()
+
+        # listen for new tasks from the client
+        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
+                            rpc.PROXY_TASK_QUEUE,
+                            qname=self._pid,
+                            cb=self._proxy_input_cb)
+
+        # listen for completed tasks to forward to client
+        self.register_input(rps.TMGR_STAGING_OUTPUT_PENDING,
+                            rpc.AGENT_COLLECTING_QUEUE,
+                            cb=self._proxy_output_cb)
 
         # sub-agents are started, components are started, bridges are up: we are
         # ready to roll!  Send state update
@@ -262,11 +272,11 @@ class Agent_0(rpu.AgentComponent):
 
         out, err, log = '', '', ''
 
-        try   : out = open('./agent_0.out', 'r').read(1024)
+        try   : out = ru.ru_open('./agent_0.out', 'r').read(1024)
         except: pass
-        try   : err = open('./agent_0.err', 'r').read(1024)
+        try   : err = ru.ru_open('./agent_0.err', 'r').read(1024)
         except: pass
-        try   : log = open('./agent_0.log', 'r').read(1024)
+        try   : log = ru.ru_open('./agent_0.log', 'r').read(1024)
         except: pass
 
         if   self._final_cause == 'timeout'  : state = rps.DONE
@@ -299,7 +309,7 @@ class Agent_0(rpu.AgentComponent):
     #
     def _start_services(self):
 
-        if not self.session.cfg.services:
+        if not self._cfg.services:
             return
 
         self._log.info('starting agent services')
@@ -307,7 +317,7 @@ class Agent_0(rpu.AgentComponent):
         services      = []
         services_data = {}
 
-        for sd in self.session.cfg.services:
+        for sd in self._cfg.services:
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
@@ -320,16 +330,16 @@ class Agent_0(rpu.AgentComponent):
             task['uid']               = tid
             task['type']              = 'service_task'
             task['origin']            = 'agent'
-            task['pilot']             = self.session.cfg.pid
+            task['pilot']             = self._cfg.pid
             task['description']       = td.as_dict()
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['pilot_sandbox']     = self.session.cfg.pilot_sandbox
-            task['session_sandbox']   = self.session.cfg.session_sandbox
-            task['resource_sandbox']  = self.session.cfg.resource_sandbox
+            task['pilot_sandbox']     = self._cfg.pilot_sandbox
+            task['session_sandbox']   = self._cfg.session_sandbox
+            task['resource_sandbox']  = self._cfg.resource_sandbox
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
 
-            task_sandbox = self.session.cfg.pilot_sandbox + tid + '/'
+            task_sandbox = self._cfg.pilot_sandbox + tid + '/'
             task['task_sandbox']      = task_sandbox
             task['task_sandbox_path'] = task_sandbox
 
@@ -362,6 +372,9 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.info('all agent services started')
 
+
+    # --------------------------------------------------------------------------
+    #
     def _services_startup_cb(self, cb_data):
 
         for tid in list(cb_data):
@@ -375,6 +388,7 @@ class Agent_0(rpu.AgentComponent):
                 #        not provided, then we don't wait - this will be
                 #        replaced with another callback (BaseComponent.advance will
                 #        publish control command "service_up" for service tasks)
+                # FIXME: wait at least for AGENT_EXECUTING state
 
             elif os.path.isfile(startup_file):
                 # if file exists then service is up (general approach)
@@ -422,10 +436,10 @@ class Agent_0(rpu.AgentComponent):
 
         # FIXME: reroute to agent daemonizer
 
-        if not self.session.cfg.get('agents'):
+        if not self._cfg.agents:
             return
 
-        n_agents      = len(self.session.cfg['agents'])
+        n_agents      = len(self._cfg.agents)
         n_agent_nodes = len(self._rm.info.agent_node_list)
 
         assert n_agent_nodes >= n_agents
@@ -443,9 +457,9 @@ class Agent_0(rpu.AgentComponent):
 
         bs_name = '%s/bootstrap_2.sh'
 
-        for idx, sa in enumerate(self.session.cfg['agents']):
+        for idx, sa in enumerate(self._cfg.agents):
 
-            target  = self.session.cfg['agents'][sa]['target']
+            target  = self._cfg.agents[sa]['target']
             bs_args = [self._sid, self.session.cfg.reg_addr, sa]
 
             if target not in ['local', 'node']:
@@ -541,13 +555,11 @@ class Agent_0(rpu.AgentComponent):
     def _check_lifetime(self):
 
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
-        if self.session.cfg.runtime:
+        if self._cfg.runtime:
 
-            if time.time() >= self._starttime + \
-                                           (int(self.session.cfg.runtime) * 60):
+            if time.time() >= self._starttime + (int(self._cfg.runtime) * 60):
 
-                self._log.info('runtime limit (%ss).',
-                               self.session.cfg.runtime * 60)
+                self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done
