@@ -120,14 +120,15 @@ class TestComponent(TestCase):
         agent_0._log = mock.Mock()
         agent_0._sid = 'rp.session.0'
 
-        agent_0._session     = mock.Mock()
-        agent_0._session.cfg = ru.Config(from_dict={
+        agent_0._cfg = ru.Config({
             'agents': {
                 'agent_1': {'target'    : 'node',
                             'components': {'agent_executing': {'count': 1}}}
-            },
-            'reg_addr': 'tcp://location'
+            }
         })
+
+        agent_0._session     = mock.Mock()
+        agent_0._session.cfg = ru.Config({'reg_addr': 'tcp://location'})
 
         agent_0._rm = mock.Mock()
 
@@ -175,7 +176,7 @@ class TestComponent(TestCase):
             os.unlink(agent_file)
 
         # incorrect config setup for agent ('target' is in ['local', 'node'])
-        agent_0._session.cfg['agents']['agent_1']['target'] = 'incorrect_target'
+        agent_0._cfg['agents']['agent_1']['target'] = 'incorrect_target'
         with self.assertRaises(ValueError):
             agent_0._start_sub_agents()
 
@@ -199,20 +200,20 @@ class TestComponent(TestCase):
         agent_0._service_uids_launched = list()
         agent_0._services_setup        = mock.Mock()
 
+        agent_0._cfg = ru.Config({'pid': 12,
+                                  'pilot_sandbox': '/',
+                                  'services': []})
+
         agent_0.advance = local_advance
 
         agent_0._session = self._session
-        agent_0._session._cfg = ru.Config(from_dict={'pid'          : 12,
-                                                     'pilot_sandbox': '/',
-                                                     'services'     : []})
 
-        agent_0._session._cfg.services = [{}]
+        agent_0._cfg.services = [{}]
         with self.assertRaises(ValueError):
             # no executable provided
             agent_0._start_services()
 
-        agent_0._session._cfg.services = [{'executable': 'test',
-                                           'ranks'     : 'zero'}]
+        agent_0._cfg.services = [{'executable': 'test', 'ranks': 'zero'}]
         with self.assertRaises(TypeError):
             # type mismatch
             agent_0._start_services()
@@ -220,7 +221,7 @@ class TestComponent(TestCase):
         services = [{'executable'    : '/bin/ls',
                      'cores_per_rank': '3',
                      'metadata'      : {}}]
-        agent_0._session._cfg.services = services
+        agent_0._cfg.services = services
 
         agent_0._services_setup.wait = mock.Mock(return_value=True)
         agent_0._start_services()
