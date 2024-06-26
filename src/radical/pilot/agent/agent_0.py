@@ -321,11 +321,18 @@ class Agent_0(rpu.AgentComponent):
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
+
             # ensure that the description is viable
             td.verify()
 
-            tid = ru.generate_id('service.%(item_counter)04d',
-                                 ru.ID_CUSTOM, ns=self.session.uid)
+            tid = td.uid
+
+            if not tid:
+                tid = ru.generate_id('service.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self.session.uid)
+
+            sbox = self._cfg.pilot_sandbox + '/' + tid
+
             task = dict()
             task['uid']               = tid
             task['type']              = 'service_task'
@@ -339,9 +346,8 @@ class Agent_0(rpu.AgentComponent):
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
 
-            task_sandbox = self._cfg.pilot_sandbox + tid + '/'
-            task['task_sandbox']      = task_sandbox
-            task['task_sandbox_path'] = task_sandbox
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['task_sandbox_path'] = sbox
 
             # TODO: use `type='service_task'` in RADICAL-Analytics
 
@@ -737,25 +743,27 @@ class Agent_0(rpu.AgentComponent):
 
         for task in tasks:
 
-            td = task['description']
+            td  = task['description']
+            tid = task.get('uid')
 
-            if not task.get('uid'):
-                task['uid'] = ru.generate_id('task.ep.%(item_counter)04d',
-                                             ru.ID_CUSTOM, ns=self._pid)
+            if not tid:
+                tid = ru.generate_id('task.ep.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self._pid)
 
-            sbox = '%s/%s' % (os.environ['RP_PILOT_SANDBOX'], td['uid'])
+            sbox = self._cfg.pilot_sandbox + '/' + tid
 
+            task['uid']               = tid
+            task['origin']            = 'agent'
+            task['pilot']             = self._cfg.pid
             task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['task_sandbox_path'] = sbox
+            task['pilot_sandbox']     = self._cfg.pilot_sandbox
+            task['session_sandbox']   = self._cfg.session_sandbox
+            task['resource_sandbox']  = self._cfg.resource_sandbox
+            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                         'gpu': td.ranks * td.gpus_per_rank}
+
             task['task_sandbox']      = 'file://localhost/' + sbox
-            task['pilot_sandbox']     = os.environ['RP_PILOT_SANDBOX']
-            task['session_sandbox']   = os.environ['RP_SESSION_SANDBOX']
-            task['resource_sandbox']  = os.environ['RP_RESOURCE_SANDBOX']
-            task['pilot']             = os.environ['RP_PILOT_ID']
-            task['resources']         = {'cpu': td['ranks'] *
-                                                td.get('cores_per_rank', 1),
-                                         'gpu': td['ranks'] *
-                                                td.get('gpus_per_rank',  1)}
+            task['task_sandbox_path'] = sbox
 
             self._log.debug('ep: submit %s', td['uid'])
 
