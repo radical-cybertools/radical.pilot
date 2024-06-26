@@ -26,18 +26,18 @@ if True:
     mem_per_task   =      0
     lfs_per_task   =      0
 
-    n_nodes        =      1
-    gpus_per_node  =      2
-    cores_per_node =      8
-    mem_per_node   =    512
-    lfs_per_node   =    512
-
-    n_tasks        =      1
-    ranks_per_task =      2
-    cores_per_task =      2
-    gpus_per_task  =      1
-    mem_per_task   =      0
-    lfs_per_task   =      0
+  # n_nodes        =      2
+  # gpus_per_node  =      2
+  # cores_per_node =      8
+  # mem_per_node   =    512
+  # lfs_per_node   =    512
+  #
+  # n_tasks        =      1
+  # ranks_per_task =      2
+  # cores_per_task =      2
+  # gpus_per_task  =      1
+  # mem_per_task   =      0
+  # lfs_per_task   =      0
 
     RO    = rp.ResourceOccupation
     nodes = [{'index'       : i,
@@ -48,17 +48,25 @@ if True:
                                            for x in range(gpus_per_node)],
               'lfs'         : lfs_per_node,
               'mem'         : mem_per_node,
-              'numa_domains': 2
              } for i in range(n_nodes)]
 
-    nl = rp.NodeList(nodes=[rp.NumaNodeResources(ni) for ni in nodes])
+    # FIXME: intorduce `NumaDomainMap` as type
+    NDN = rp.NumaDomainDescription
+    ndm = rp.NumaDomainMap({0: NDN(cores=list(range( 0,   8)), gpus=[0]),
+                            1: NDN(cores=list(range( 8,  16)), gpus=[1]),
+                            2: NDN(cores=list(range(16,  24)), gpus=[2]),
+                            3: NDN(cores=list(range(24,  32)), gpus=[3]),
+                            4: NDN(cores=list(range(32,  40)), gpus=[4]),
+                            5: NDN(cores=list(range(40,  48)), gpus=[5]),
+                            6: NDN(cores=list(range(48,  56)), gpus=[6]),
+                            7: NDN(cores=list(range(56,  46)), gpus=[7])})
+
+
+    nl = rp.NodeList(nodes=[rp.NumaNodeResources(ni, ndm) for ni in nodes])
     rr = rp.RankRequirements(n_cores=cores_per_task,
                              n_gpus=gpus_per_task,
                              mem=mem_per_task,
                              lfs=lfs_per_task)
-
-    import pprint
-    pprint.pprint(nl.as_dict())
 
     allocs = list()
     start  = time.time()

@@ -64,7 +64,7 @@ class RMInfo(ru.TypedDict):
             'lm_info'              : {str : None},  # dict of launch method info
             'launch_methods'       : {str : None},  # dict of launch method cfgs
 
-            'numa_domain_map'      : {int: None],   # resources per numa domain
+            'numa_domain_map'      : {int: None},   # resources per numa domain
     }
 
     _defaults = {
@@ -92,7 +92,7 @@ class RMInfo(ru.TypedDict):
             'lm_info'              : dict(),
             'launch_methods'       : dict(),
 
-            num_domain_map         : dict(),
+            'numa_domain_map'      : dict(),
     }
 
 

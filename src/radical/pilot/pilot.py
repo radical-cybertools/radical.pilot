@@ -343,7 +343,7 @@ class Pilot(object):
                 return None
 
             numa_domain_map = resource_details.get('numa_domain_map')
-            node_list       = resource_details.get('node_list')]
+            node_list       = resource_details.get('node_list')
 
             if not node_list:
                 return None
