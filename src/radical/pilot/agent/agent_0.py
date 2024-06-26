@@ -69,6 +69,11 @@ class Agent_0(rpu.AgentComponent):
         # regularly check for lifetime limit
         self.register_timed_cb(self._check_lifetime, timer=10)
 
+        # also open a service endpoint so that a ZMQ client can submit tasks to
+        # this agent
+        self._service = None
+        self._start_service_ep()
+
 
     # --------------------------------------------------------------------------
     #
@@ -214,10 +219,15 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug('advance to PMGR_ACTIVE')
 
+        rest_url = None
+        if self._service:
+            rest_url = self._service.addr
+
         pilot = {'$all'     : True,              # pass full info to client side
                  'type'     : 'pilot',
                  'uid'      : self._pid,
                  'state'    : rps.PMGR_ACTIVE,
+                 'rest_url' : rest_url,
                  'resources': {'rm_info': rm_info,
                                'cpu'    : rm_info['cores_per_node'] * n_nodes,
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
@@ -311,11 +321,18 @@ class Agent_0(rpu.AgentComponent):
 
             td      = TaskDescription(sd)
             td.mode = AGENT_SERVICE
+
             # ensure that the description is viable
             td.verify()
 
-            tid = ru.generate_id('service.%(item_counter)04d',
-                                 ru.ID_CUSTOM, ns=self.session.uid)
+            tid = td.uid
+
+            if not tid:
+                tid = ru.generate_id('service.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self.session.uid)
+
+            sbox = self._cfg.pilot_sandbox + '/' + tid
+
             task = dict()
             task['uid']               = tid
             task['type']              = 'service_task'
@@ -329,9 +346,8 @@ class Agent_0(rpu.AgentComponent):
             task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                          'gpu': td.ranks * td.gpus_per_rank}
 
-            task_sandbox = self._cfg.pilot_sandbox + tid + '/'
-            task['task_sandbox']      = task_sandbox
-            task['task_sandbox_path'] = task_sandbox
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['task_sandbox_path'] = sbox
 
             # TODO: use `type='service_task'` in RADICAL-Analytics
 
@@ -701,6 +717,66 @@ class Agent_0(rpu.AgentComponent):
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'register_named_env',
                                           'arg': {'env_name': env_name}})
         return out
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _start_service_ep(self):
+
+        if self._cfg.enable_ep:
+
+            self._service = ru.zmq.Server(uid='%s.server' % self._uid)
+            self._service.register_request('submit_tasks', self._ep_submit_tasks)
+            self._service.start()
+
+            self._log.info('service_url : %s', self._service.addr)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _ep_submit_tasks(self, request):
+
+      # import pprint
+      # self._log.debug('service request: %s', pprint.pformat(request))
+
+        tasks = request['tasks']
+
+        for task in tasks:
+
+            td  = task['description']
+            tid = task.get('uid')
+
+            if not tid:
+                tid = ru.generate_id('task.ep.%(item_counter)04d',
+                                     ru.ID_CUSTOM, ns=self._pid)
+
+            sbox = self._cfg.pilot_sandbox + '/' + tid
+
+            task['uid']               = tid
+            task['origin']            = 'agent'
+            task['pilot']             = self._cfg.pid
+            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['pilot_sandbox']     = self._cfg.pilot_sandbox
+            task['session_sandbox']   = self._cfg.session_sandbox
+            task['resource_sandbox']  = self._cfg.resource_sandbox
+            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                         'gpu': td.ranks * td.gpus_per_rank}
+
+            task['task_sandbox']      = 'file://localhost/' + sbox
+            task['task_sandbox_path'] = sbox
+
+            self._log.debug('ep: submit %s', td['uid'])
+
+        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+                            publish=True, push=True)
+
+
+  # # --------------------------------------------------------------------------
+  # #
+  # def _ep_get_task_updates(self, request):
+  #
+  #     import pprint
+  #     self._log.debug('update request: %s', pprint.pformat(request))
 
 
 # ------------------------------------------------------------------------------
