@@ -562,6 +562,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         cleanup          = pilot['description']['cleanup']
         candidate_hosts  = pilot['description']['candidate_hosts']
         services         = pilot['description']['services']
+        prepare_env      = pilot['description']['prepare_env']
         reconfig_src     = pilot['description']['reconfig_src']
 
         # ----------------------------------------------------------------------
@@ -870,6 +871,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['log_lvl']               = self._log.level
         agent_cfg['debug_lvl']             = self._log.debug_level
         agent_cfg['services']              = services
+        agent_cfg['prepare_env']           = prepare_env
         agent_cfg['reconfig_src']          = reconfig_src
         agent_cfg['raptor']                = raptor_cfg
 
