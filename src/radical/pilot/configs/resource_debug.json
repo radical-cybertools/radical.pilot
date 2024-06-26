@@ -113,7 +113,8 @@
         "python_dist"                 : "default",
         "cores_per_node"              : 8,
         "gpus_per_node"               : 1,
-        "fake_resources"              : true
+        "fake_resources"              : true,
+        "system_architecture"         : {"n_partitions": 1}
     }
 }
 

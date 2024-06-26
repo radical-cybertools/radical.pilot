@@ -35,8 +35,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
     PendingExecution to Executing, and then to a final state (or PendingStageOut
     of course).
     '''
-
-    _header    = '#!/bin/sh\n'
+    _shell     = ru.which('bash') or '/bin/sh'
+    _header    = '#!%s\n' % _shell
     _separator = '\n# ' + '-' * 78 + '\n'
 
 
