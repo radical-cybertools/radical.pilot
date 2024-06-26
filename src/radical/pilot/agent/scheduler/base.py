@@ -25,13 +25,14 @@ from ..resource_manager  import ResourceManager
 #
 # 'enum' for RPs's pilot scheduler types
 #
-SCHEDULER_NAME_CONTINUOUS_ORDERED = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_COLO    = "CONTINUOUS_COLO"
-SCHEDULER_NAME_CONTINUOUS_JSRUN   = "CONTINUOUS_JSRUN"
-SCHEDULER_NAME_CONTINUOUS         = "CONTINUOUS"
-SCHEDULER_NAME_HOMBRE             = "HOMBRE"
-SCHEDULER_NAME_FLUX               = "FLUX"
-SCHEDULER_NAME_NOOP               = "NOOP"
+SCHEDULER_NAME_CONTINUOUS_ORDERED  = "CONTINUOUS_ORDERED"
+SCHEDULER_NAME_CONTINUOUS_RECONFIG = "CONTINUOUS_RECONFIG"
+SCHEDULER_NAME_CONTINUOUS_COLO     = "CONTINUOUS_COLO"
+SCHEDULER_NAME_CONTINUOUS_JSRUN    = "CONTINUOUS_JSRUN"
+SCHEDULER_NAME_CONTINUOUS          = "CONTINUOUS"
+SCHEDULER_NAME_HOMBRE              = "HOMBRE"
+SCHEDULER_NAME_FLUX                = "FLUX"
+SCHEDULER_NAME_NOOP                = "NOOP"
 
 # SCHEDULER_NAME_YARN               = "YARN"
 # SCHEDULER_NAME_SPARK              = "SPARK"
@@ -295,13 +296,14 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         name = session.rcfg.agent_scheduler
 
-        from .continuous_ordered import ContinuousOrdered
-        from .continuous_colo    import ContinuousColo
-        from .continuous_jsrun   import ContinuousJsrun
-        from .continuous         import Continuous
-        from .hombre             import Hombre
-        from .flux               import Flux
-        from .noop               import Noop
+        from .continuous_ordered  import ContinuousOrdered
+        from .continuous_reconfig import ContinuousReconfig
+        from .continuous_colo     import ContinuousColo
+        from .continuous_jsrun    import ContinuousJsrun
+        from .continuous          import Continuous
+        from .hombre              import Hombre
+        from .flux                import Flux
+        from .noop                import Noop
 
         # if `jsrun` is used as lauunch method, then we switch the CONTINUOUS
         # scheduler with CONTINUOUS_JSRUN
@@ -311,13 +313,14 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         impl = {
 
-            SCHEDULER_NAME_CONTINUOUS_ORDERED : ContinuousOrdered,
-            SCHEDULER_NAME_CONTINUOUS_COLO    : ContinuousColo,
-            SCHEDULER_NAME_CONTINUOUS_JSRUN   : ContinuousJsrun,
-            SCHEDULER_NAME_CONTINUOUS         : Continuous,
-            SCHEDULER_NAME_HOMBRE             : Hombre,
-            SCHEDULER_NAME_FLUX               : Flux,
-            SCHEDULER_NAME_NOOP               : Noop,
+            SCHEDULER_NAME_CONTINUOUS_ORDERED  : ContinuousOrdered,
+            SCHEDULER_NAME_CONTINUOUS_RECONFIG : ContinuousReconfig,
+            SCHEDULER_NAME_CONTINUOUS_COLO     : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS_JSRUN    : ContinuousJsrun,
+            SCHEDULER_NAME_CONTINUOUS          : Continuous,
+            SCHEDULER_NAME_HOMBRE              : Hombre,
+            SCHEDULER_NAME_FLUX                : Flux,
+            SCHEDULER_NAME_NOOP                : Noop,
         }
 
         if name not in impl:
