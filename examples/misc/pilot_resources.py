@@ -21,10 +21,10 @@ if True:
 
     n_tasks        =  10000
     ranks_per_task =      2
-    cores_per_task =     16
-    gpus_per_task  =      2
-    mem_per_task   =      0
-    lfs_per_task   =      0
+    cores_per_rank =      4
+    gpus_per_rank  =      1
+    mem_per_rank   =      0
+    lfs_per_rank   =      0
 
   # n_nodes        =      2
   # gpus_per_node  =      2
@@ -34,10 +34,10 @@ if True:
   #
   # n_tasks        =      1
   # ranks_per_task =      2
-  # cores_per_task =      2
-  # gpus_per_task  =      1
-  # mem_per_task   =      0
-  # lfs_per_task   =      0
+  # cores_per_rank =      2
+  # gpus_per_rank  =      1
+  # mem_per_rank   =      0
+  # lfs_per_rank   =      0
 
     RO    = rp.ResourceOccupation
     nodes = [{'index'       : i,
@@ -62,11 +62,11 @@ if True:
                             7: NDN(cores=list(range(56,  46)), gpus=[7])})
 
 
-    nl = rp.NodeList(nodes=[rp.NumaNodeResources(ni, ndm) for ni in nodes])
-    rr = rp.RankRequirements(n_cores=cores_per_task,
-                             n_gpus=gpus_per_task,
-                             mem=mem_per_task,
-                             lfs=lfs_per_task)
+    nl = rp.NodeList(nodes=[rp.NumaNodeResources(node, ndm) for node in nodes])
+    rr = rp.RankRequirements(n_cores=cores_per_rank,
+                             n_gpus=gpus_per_rank,
+                             mem=mem_per_rank,
+                             lfs=lfs_per_rank)
 
     allocs = list()
     start  = time.time()
@@ -81,17 +81,18 @@ if True:
             allocs.remove(to_release)
             nl.release_slots(to_release)
 
+      # if slots:
+      #     for slot in slots:
+      #         print('=== %s' % slot)
+      #     print()
+      # else:
+      #     print('---')
+
     stop = time.time()
     print('find_slots: %.2f' % (stop - start))
 
     for slots in allocs:
         nl.release_slots(slots)
-
-    for _ in range(5):
-
-        slots = nl.find_slots(rp.RankRequirements(n_cores=2, n_gpus=1,
-                                                  core_occupation=0.5))
-        print(slots)
 
     sys.exit()
 
