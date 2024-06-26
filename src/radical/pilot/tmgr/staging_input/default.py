@@ -23,7 +23,7 @@ from ...staging_directives import complete_url, expand_staging_directives
 # the definition of the bulk mechanism used to create the sandboxes:
 #   tar : unpack a locally created tar which contains all sandboxes
 
-TASK_BULK_MKDIR_THRESHOLD = 16
+TASK_BULK_MKDIR_THRESHOLD = 1024 * 1024
 TASK_BULK_MKDIR_MECHANISM = 'tar'
 
 

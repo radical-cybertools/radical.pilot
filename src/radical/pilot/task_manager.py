@@ -863,6 +863,10 @@ class TaskManager(rpu.ClientComponent):
 
             if len(tasks) >= 1024:
                 # submit this bulk
+                with self._tasks_lock:
+                    for task in tasks:
+                        self._tasks[task.uid] = task
+
                 task_docs = [u.as_dict() for u in tasks]
                 self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                              publish=True, push=True)
@@ -871,49 +875,19 @@ class TaskManager(rpu.ClientComponent):
 
         # submit remaining bulk (if any)
         if tasks:
+            with self._tasks_lock:
+                for task in tasks:
+                    self._tasks[task.uid] = task
+
             task_docs = [t.as_dict() for t in tasks]
             self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
                          publish=True, push=True)
             ret += tasks
 
-        # keep tasks around
-        with self._tasks_lock:
-            for task in ret:
-                self._tasks[task.uid] = task
-
         self._rep.progress_done()
 
         if ret_list: return ret
         else       : return ret[0]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _reconnect_tasks(self):
-        """Re-associate tasks on reconnect.
-
-        When reconnecting, we need to dig information about all tasks from the
-        DB for which this tmgr is responsible.
-        """
-
-        from .task             import Task
-        from .task_description import TaskDescription
-
-        # FIXME MongoDB
-
-        # task_docs = self._session._dbs.get_tasks(tmgr_uid=self.uid)
-        #
-        # with self._tasks_lock:
-        #
-        #     for doc in task_docs:
-        #
-        #         td = TaskDescription(doc['description'])
-        #         td.uid = doc['uid']
-        #
-        #         task = Task(tmgr=self, descr=td, origin='client')
-        #         task._update(doc, reconnect=True)
-        #
-        #         self._tasks[task.uid] = task
 
 
     # --------------------------------------------------------------------------
@@ -1014,12 +988,14 @@ class TaskManager(rpu.ClientComponent):
 
         """
 
+        ret_list = True
         if not uids:
             with self._tasks_lock:
-                uids = list()
-                for uid,task in self._tasks.items():
-                    if task.state not in rps.FINAL:
-                        uids.append(uid)
+                uids = self._tasks.keys()
+        else:
+            if not isinstance(uids, list):
+                ret_list = False
+                uids = [uids]
 
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
@@ -1033,11 +1009,6 @@ class TaskManager(rpu.ClientComponent):
             check_state_val = min(check_state_val,
                                   rps._task_state_values[state])
 
-        ret_list = True
-        if not isinstance(uids, list):
-            ret_list = False
-            uids = [uids]
-
         start    = time.time()
         to_check = None
 
@@ -1049,11 +1020,14 @@ class TaskManager(rpu.ClientComponent):
         # create a list from which we drop the tasks as we find them in
         # a matching state
         self._rep.progress_tgt(len(to_check), label='wait')
+        self._log.debug('=== WAIT for %d tasks', len(to_check))
         while to_check and not self._terminate.is_set():
+
+          # self._log.debug('=== wait for %d tasks', len(to_check))
 
             # check timeout
             if timeout and (timeout <= (time.time() - start)):
-                self._log.debug ("wait timed out")
+                self._log.debug ("=== wait timed out")
                 break
 
             time.sleep (0.1)
@@ -1070,10 +1044,12 @@ class TaskManager(rpu.ClientComponent):
                 if task.state not in rps.FINAL and \
                     rps._task_state_values[task.state] < check_state_val:
                     # this task does not match the wait criteria
+                  # self._log.debug('=== wait again for %s [%s]', task.uid, task.state)
                     check_again.append(task)
 
                 else:
                     # stop watching this task
+                  # self._log.debug('=== wait ok    for %s [%s]', task.uid, task.state)
                     if task.state in [rps.FAILED]:
                         self._rep.progress()  # (color='error', c='-')
                     elif task.state in [rps.CANCELED]:
@@ -1082,6 +1058,8 @@ class TaskManager(rpu.ClientComponent):
                         self._rep.progress()  # (color='ok', c='+')
 
             to_check = check_again
+
+        self._log.debug('=== wait completed')
 
         self._rep.progress_done()
 

@@ -153,12 +153,14 @@ class ResourceManager(object):
         self._log  = log
         self._prof = prof
 
-        self._log.info('Configuring ResourceManager %s', self.name)
+        self._log.info('configuring RM %s', self.name)
 
         reg     = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
         rm_info = reg.get('rm.%s' % self.name.lower())
 
-        if rm_info:
+        from_registry = bool(rm_info)
+
+        if from_registry:
 
             self._log.debug('RM init from registry')
             rm_info = RMInfo(rm_info)
@@ -179,7 +181,9 @@ class ResourceManager(object):
         reg.close()
         self._set_info(rm_info)
 
-        # set up launch methods even when initialized from registry info
+        # set up launch methods even when initialized from registry info.  In
+        # that case, the LM *SHOULD NOT* be re-initialized, but only pick up
+        # information from rm_info.
         self._prepare_launch_methods()
 
 
@@ -250,7 +254,12 @@ class ResourceManager(object):
         system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
-        rm_info.details['exact'] = bool(system_architecture.get('exclusive'))
+
+
+        rm_info.details = {
+                'exact'       : system_architecture.get('exclusive', False),
+                'n_partitions': system_architecture.get('n_partitions', 1)
+        }
 
         # let the specific RM instance fill out the RMInfo attributes
         rm_info = self._init_from_scratch(rm_info)

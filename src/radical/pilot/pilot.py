@@ -702,6 +702,9 @@ class Pilot(object):
             env_spec (dict): specification of the environment to prepare,
                 like::
 
+                    {'type'    : 'shell',
+                     'pre_exec': ['export PATH=$PATH:/opt/bin']},
+
                     {'type'    : 'venv',
                      'version' : '3.7',
                      'pre_exec': ['module load python'],

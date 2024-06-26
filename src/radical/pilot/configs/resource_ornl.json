@@ -122,8 +122,10 @@
         "system_architecture"         : {
                                          "smt"           : 2,
                                        # "options"       : ["nvme"],
-                                         "blocked_cores" : [ 0,  8, 16, 24, 32,  40,  48,  56,
-                                                            64, 72, 80, 88, 96, 104, 112, 120],
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56,
+                                                            64,  72,  80,  88,
+                                                            96, 104, 112, 120],
                                          "blocked_gpus"  : []
                                         }
     },
@@ -146,14 +148,18 @@
                                          "order" : ["FLUX"],
                                          "FLUX"  : {
                                              "pre_exec_cached": [
+                                                 "module load flux",
                                                  "module load rocm",
-                                                 "module load flux/0.56.0"
+                                                 "module load craype-accel-amd-gfx90a",
+                                                 "export MPICH_GPU_SUPPORT_ENABLED=1"
                                              ]
                                          }
                                         },
         "pre_bootstrap_0"             : [
+                                         "module load flux",
                                          "module load rocm",
-                                         "module load flux/0.56.0",
+                                         "module load craype-accel-amd-gfx90a",
+                                         "export MPICH_GPU_SUPPORT_ENABLED=1",
                                          "module load cray-python"
                                         ],
         "default_remote_workdir"      : "$MEMBERWORK/%(pd.project)s",
@@ -161,11 +167,14 @@
         "cores_per_node"              : 64,
         "gpus_per_node"               : 8,
         "system_architecture"         : {
-                                         "smt"           : 2,
+                                         "smt"           : 1,
                                        # "options"       : ["nvme"],
-                                         "blocked_cores" : [ 0,  8, 16, 24, 32,  40,  48,  56,
-                                                            64, 72, 80, 88, 96, 104, 112, 120],
-                                         "blocked_gpus"  : []
+                                         "blocked_cores" : [ 0,   8,  16,  24,
+                                                            32,  40,  48,  56],
+                                                          # 64,  72,  80,  88,
+                                                          # 96, 104, 112, 120],
+                                         "blocked_gpus"  : [],
+                                         "n_partitions"  : 1
                                         }
     },
 

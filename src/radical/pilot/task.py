@@ -73,12 +73,12 @@ class Task(object):
 
         # 'static' members
         self._tmgr   = tmgr
-        self._descr  = descr.as_dict()
+        self._descr  = descr
         self._origin = origin
 
         # initialize state
         self._session          = self._tmgr.session
-        self._uid              = self._descr.get('uid')
+        self._uid              = self._descr.uid
         self._state            = rps.NEW
         self._log              = tmgr._log
         self._exit_code        = None
@@ -87,7 +87,7 @@ class Task(object):
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
-        self._pilot            = descr.get('pilot')
+        self._pilot            = self._descr.pilot
         self._endpoint_fs      = None
         self._resource_sandbox = None
         self._session_sandbox  = None
@@ -245,7 +245,7 @@ class Task(object):
     @property
     def name(self):
         """str: The task's application specified name."""
-        return self._descr.get('name')
+        return self._descr.name
 
 
     # --------------------------------------------------------------------------
@@ -253,7 +253,7 @@ class Task(object):
     @property
     def mode(self):
         """str: The task mode."""
-        return self._descr['mode']
+        return self._descr.mode
 
 
     # --------------------------------------------------------------------------
@@ -433,7 +433,7 @@ class Task(object):
     @property
     def description(self):
         """dict: The description the task was started with, as a dictionary."""
-        return copy.deepcopy(self._descr)
+        return self._descr
 
 
     # --------------------------------------------------------------------------
@@ -461,7 +461,7 @@ class Task(object):
     @property
     def metadata(self):
         """The metadata field of the task's description."""
-        return copy.deepcopy(self._descr.get('metadata'))
+        return self._descr.metadata
 
 
     # --------------------------------------------------------------------------
