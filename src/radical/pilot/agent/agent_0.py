@@ -29,6 +29,9 @@ class Agent_0(rpu.AgentComponent):
     communication bridges and callback mechanisms.
     '''
 
+    _shell   = ru.which('bash') or '/bin/sh'
+
+
     # --------------------------------------------------------------------------
     #
     def __init__(self):
@@ -475,8 +478,9 @@ class Agent_0(rpu.AgentComponent):
             if target == 'local':
 
                 # start agent locally
-                bs_path = bs_name % self._pwd
-                cmdline = '/bin/sh -l %s' % ' '.join([bs_path] + bs_args)
+                bs_path  = bs_name % self._pwd
+                cmdline  = self._shell
+                cmdline += ' -l %s' % ' '.join([bs_path] + bs_args)
 
             else:  # target == 'node':
 
@@ -505,7 +509,7 @@ class Agent_0(rpu.AgentComponent):
                         'uid'           : sa,
                         'ranks'         : 1,
                         'cores_per_rank': self._rm.info.cores_per_node,
-                        'executable'    : '/bin/sh',
+                        'executable'    : self._shell,
                         'arguments'     : [bs_name % self._pwd] + bs_args
                     }).as_dict(),
                     'slots': {'ranks'   : [{'node_name': node['node_name'],
@@ -523,7 +527,7 @@ class Agent_0(rpu.AgentComponent):
 
                 # FIXME: set RP environment (as in Popen Executor)
 
-                tmp  = '#!/bin/sh\n\n'
+                tmp  = '#!%s\n\n' % self._shell
                 tmp += 'export RP_PILOT_SANDBOX="%s"\n\n' % self._pwd
                 cmds = launcher.get_launcher_env()
                 for cmd in cmds:
@@ -534,8 +538,9 @@ class Agent_0(rpu.AgentComponent):
                 with ru.ru_open(launch_script, 'w') as fout:
                     fout.write(tmp)
 
-                tmp  = '#!/bin/sh\n\n'
-                tmp += '/bin/sh -l %s\n\n' % ' '.join([bs_name % '.'] + bs_args)
+                tmp  = '#!%s\n\n' % self._shell
+                tmp += self._shell
+                tmp += ' -l %s\n\n' % ' '.join([bs_name % '.'] + bs_args)
                 with ru.ru_open(exec_script, 'w') as fout:
                     fout.write(tmp)
 
@@ -690,7 +695,7 @@ class Agent_0(rpu.AgentComponent):
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/bash %s -d -p %s -t %s ' % (rp_cse, ve_path, etype) + \
                  '%s %s %s '                    % (evers, mods, pre_exec)  + \
-                 '-T %s.env > env.log 2>&1'     % ve_local_path
+                 '-T %s.env > env_%s.log 2>&1'  % (ve_local_path, env_name)
 
         # FIXME: we should export all sandboxes etc. to the prep_env.
         os.environ['RP_RESOURCE_SANDBOX'] = '../../'

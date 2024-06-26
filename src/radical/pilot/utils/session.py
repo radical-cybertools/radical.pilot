@@ -157,7 +157,7 @@ def fetch_filetype(ext, name, sid, src=None, tgt=None, access=None,
             tarball = tarfile.open('%s/%s' % (tgt_url.path, tar_name), mode='r:gz')
             tarball.extractall("%s/%s" % (tgt_url.path, pid))
 
-            found = glob.glob("%s/%s/**.%s" % (tgt_url.path, pid, ext))
+            found = glob.glob("%s/%s/*.%s" % (tgt_url.path, pid, ext))
             files.extend(found)
 
             if rep:

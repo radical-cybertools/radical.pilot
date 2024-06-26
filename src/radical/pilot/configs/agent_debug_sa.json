@@ -8,8 +8,8 @@
     "bulk_size"    : 4096,
 
     "heartbeat"    : {
-        "interval" : 10.0,
-        "timeout"  : 30.0
+        "interval" :  10.0,
+        "timeout"  : 600.0
     },
 
     "target"  : "local",

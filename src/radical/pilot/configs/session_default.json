@@ -9,8 +9,8 @@
     "base"         : "${RADICAL_PILOT_BASE:$PWD}",
 
     "heartbeat"    : {
-        "interval" :  1.0,
-        "timeout"  : 60.0
+        "interval" :  10.0,
+        "timeout"  : 600.0
     },
 
     "bridges" : {

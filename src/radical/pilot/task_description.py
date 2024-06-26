@@ -67,6 +67,7 @@ THREADING_TYPE   = 'threading_type'           # OpenMP?
 GPU_TYPE         = 'gpu_type'                 # CUDA / ROCm?
 LFS_PER_RANK     = 'lfs_per_rank'             # disk space per rank
 MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
+PARTITION        = 'partition'                # partition to run on
 
 # deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
@@ -266,6 +267,8 @@ class TaskDescription(ru.TypedDict):
             rank.
 
             `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
+
+        partition (int, optional): The id of the partition to run the task on.
 
         environment (dict, optional): Environment variables to set in the
             environment before the execution (launching picked `LaunchMethod`).
@@ -543,6 +546,7 @@ class TaskDescription(ru.TypedDict):
         GPU_TYPE        : str         ,
         LFS_PER_RANK    : int         ,
         MEM_PER_RANK    : int         ,
+        PARTITION       : int         ,
 
         # deprecated
         CPU_PROCESSES   : int         ,  # RANKS
@@ -604,6 +608,7 @@ class TaskDescription(ru.TypedDict):
         GPU_TYPE        : ''          ,
         LFS_PER_RANK    : 0           ,
         MEM_PER_RANK    : 0           ,
+        PARTITION       : None        ,
 
         # deprecated
         CPU_PROCESSES   : 0           ,

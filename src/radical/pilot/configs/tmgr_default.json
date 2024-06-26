@@ -10,8 +10,8 @@
     "db_poll_sleeptime" : 10.0,
 
     "heartbeat"    : {
-        "interval" :  3.0,
-        "timeout"  : 10.0
+        "interval" :  10.0,
+        "timeout"  : 600.0
     },
 
     # The threashold on which we decide to trigger bulk mkdir
