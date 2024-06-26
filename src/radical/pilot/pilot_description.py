@@ -15,14 +15,13 @@ ACCESS_SCHEMA     = 'access_schema'
 QUEUE             = 'queue'
 JOB_NAME          = 'job_name'
 PROJECT           = 'project'
-CANDIDATE_HOSTS   = 'candidate_hosts'
 SANDBOX           = 'sandbox'
 RUNTIME           = 'runtime'
-APP_COMM          = 'app_comm'
+APP_COMM          = 'app_comm'         # FIXME: always create an app pubsub?
 CLEANUP           = 'cleanup'
 EXIT_ON_ERROR     = 'exit_on_error'
-LAYOUT            = 'layout'
 SERVICES          = 'services'
+ENABLE_EP         = 'enable_ep'
 RECONFIG_SRC      = 'reconfig_src'
 
 NODES             = 'nodes'
@@ -121,8 +120,6 @@ class PilotDescription(ru.TypedDict):
             charge for used CPU time. If *project* is set in the resource
             configuration (:attr:`resource`), defining `project` will override it
             explicitly.
-        candidate_hosts (list[str], optional): The list of host names where this
-            pilot is allowed to start on.
         app_comm (list[str], optional): The list of names is interpreted as communication
             channels to start within the pilot agent, for the purpose of
             application communication, i.e., that tasks running on that pilot are
@@ -147,13 +144,12 @@ class PilotDescription(ru.TypedDict):
             commands which get started on a separate service compute node right after
             bootstrapping, and before any RP task is launched.  That service compute
             node will not be used for any other tasks.
+        enable_ep (bool, optional): enable a ZMQ submission endpoint on the
+            pilot. Default `False`.
         prepare_env (dict, optional): A dictionary of `{env_name: env_spec}` as
             documented for the pilot's `prepare_env(env_name, env_spec)` method.
             The given specifications will be enacted during pilot startup and
             can be used for service tasks.
-        layout (str | dict, optional): Point to a json file or
-            an explicit (dict) description of the pilot layout: number and size of
-            partitions and their configuration. Default "default".
         reconfig_src (string, optional): name of a data file to be used by the
             agent's `reconfig` scheduler.
 
@@ -174,13 +170,12 @@ class PilotDescription(ru.TypedDict):
         JOB_NAME        : str        ,
         PROJECT         : str        ,
         CLEANUP         : bool       ,
-        CANDIDATE_HOSTS : [str]      ,
         EXIT_ON_ERROR   : bool       ,
         INPUT_STAGING   : [str]      ,
         OUTPUT_STAGING  : [str]      ,
         PREPARE_ENV     : {str: None},
-        LAYOUT          : None       ,
         SERVICES        : [TaskDescription],
+        ENABLE_EP       : bool       ,
         RECONFIG_SRC    : str        ,
     }
 
@@ -199,13 +194,12 @@ class PilotDescription(ru.TypedDict):
         JOB_NAME        : None       ,
         PROJECT         : None       ,
         CLEANUP         : False      ,
-        CANDIDATE_HOSTS : []         ,
         EXIT_ON_ERROR   : True       ,
         INPUT_STAGING   : []         ,
         OUTPUT_STAGING  : []         ,
         PREPARE_ENV     : {}         ,
-        LAYOUT          : 'default'  ,
         SERVICES        : []         ,
+        ENABLE_EP       : False      ,
         RECONFIG_SRC    : None       ,
     }
 
