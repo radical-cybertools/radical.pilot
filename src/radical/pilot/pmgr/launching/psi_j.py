@@ -207,7 +207,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.inherit_environment = bool(schema == SCHEMA_LOCAL)
 
             spec.resources = psij.ResourceSpecV1(
-                node_count=jd.node_count,
+                node_count=jd.node_count or None,
                 process_count=jd.total_cpu_count,
             )
           # spec.resources.cpu_cores_per_process = 1
