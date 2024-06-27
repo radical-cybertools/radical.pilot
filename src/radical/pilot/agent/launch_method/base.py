@@ -198,11 +198,16 @@ class LaunchMethod(object):
         src  = '%s.env'                 %  base
         tgt  = '%s.%s.sh'               % (base, self.name.lower())
 
+        blacklist = self.get_env_blacklist()
+
+        self._log.debug('=== blacklist: %s', blacklist)
+
         # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
             ru.env_prep(environment=ru.env_read(src),
+                        blacklist=blacklist,
                         unset=list(os.environ.keys()),
                         script_path=tgt)
 
@@ -312,6 +317,28 @@ class LaunchMethod(object):
         self._log.debug('mpi version: %s [%s]', version, flavor)
 
         return version, flavor
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_env_blacklist(self):
+        '''
+        return a list of environment variable names which the launcher needs to
+        ensure are *not* overwritten by the execution script or mechanism.
+        Specifically, we need to make sure that any applied `named_env` will not
+        set these variables.
+
+        Individual launchers may extend this list with additional names.
+        '''
+
+        return [
+                # RP internal variables
+                'RP_*',
+
+                # resource details
+                'ROCR_VISIBLE_DEVICES',
+                'CUDA_VISIBLE_DEVICES',
+        ]
 
 
 # ------------------------------------------------------------------------------
