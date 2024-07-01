@@ -335,7 +335,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         '''
         listen on the control channel for raptor queue registration commands
         '''
-        print('----- b', msg)
 
         # only the scheduler process listens for control messages
         if not self._scheduler_process:
@@ -411,7 +410,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             to_cancel = list()
             with self._lock:
                 for uid in uids:
-                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
@@ -509,8 +507,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                   rpc.DOWN : '!',
                   2        : '!'}  # FIXME: backward compatible, old slots
         ret = "|"
-        import pprint
-        pprint.pprint(glyphs)
         for node in self.nodes:
             for core in node['cores']:
                 ret += glyphs[core]
@@ -899,9 +895,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         to_wait    = list()
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
-
-            print('------------------')
-            print(task['uid'])
 
             td = task['description']
 

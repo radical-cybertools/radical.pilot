@@ -383,13 +383,11 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and slots:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            rank_id  = 0
             rank_env = {}
             for rank_id,slot in enumerate(slots):
                 rank_env[str(rank_id)] = \
                     'export CUDA_VISIBLE_DEVICES=%s' % \
                     ','.join([str(g) for g in slot['gpus']])
-                rank_id += 1
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration
