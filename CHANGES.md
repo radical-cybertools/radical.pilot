@@ -9,6 +9,31 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.61.0 Release                                                    2024-07-01
+
+  - add virtenv mode warning
+  - add SRUN option not to kill all ranks for non-mpi task if a single rank fails
+  - add scheduler capable to reconfigure tasks requirements
+  - better logging
+  - change cfg src for agent info
+  - configurable partitions
+  - ensure proper resource info for RA
+  - expose hook for agent config
+  - fix node count
+  - fix submission race
+  - fix LM SRUN tests
+  - fixes in `_start_service_ep`
+  - longer timeouts for component startup
+  - parallel flux init
+  - remove deep copies to speed up handling of large numbers of tasks
+  - support plain shell as named_env
+  - update raptor_mpi.ipynb
+  - update resource config for Frontier / Flux
+  - update resource configuration for Polaris
+  - adjust PSI/J launcher to use provided batch options/constraints
+
+
+--------------------------------------------------------------------------------
 ### 1.60.0 Release                                                    2024-05-10
 
   - remove rct dist staging
