@@ -14,7 +14,7 @@ import radical.utils as ru
 
 from unittest import TestCase, mock
 
-from radical.pilot.session import Session
+import radical.pilot as rp
 
 
 # ------------------------------------------------------------------------------
@@ -26,17 +26,17 @@ class TestSession(TestCase):
     # --------------------------------------------------------------------------
     #
     @classmethod
-    @mock.patch.object(Session, '_get_logger')
-    @mock.patch.object(Session, '_get_profiler')
-    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_get_logger')
+    @mock.patch.object(rp.Session, '_get_profiler')
+    @mock.patch.object(rp.Session, '_get_reporter')
     def setUpClass(cls, *args, **kwargs) -> None:
 
         def init_primary(self):
             self._reg = mock.Mock()
             self._init_cfg_from_scratch()
 
-        with mock.patch.object(Session, '_init_primary', new=init_primary):
-            cls._session = Session(uid='rp.session.cls_test')
+        with mock.patch.object(rp.Session, '_init_primary', new=init_primary):
+            cls._session = rp.Session(uid='rp.session.cls_test')
             cls._cleanup_files.append(cls._session.uid)
 
     # --------------------------------------------------------------------------
@@ -179,7 +179,7 @@ class TestSession(TestCase):
 
     # --------------------------------------------------------------------------
     #
-    @mock.patch.object(Session, '_get_reporter')
+    @mock.patch.object(rp.Session, '_get_reporter')
     @mock.patch('os.getcwd', return_value=tempfile.mkdtemp())
     def test_paths(self, mocked_getcwd, mocked_reporter):
 
@@ -191,17 +191,20 @@ class TestSession(TestCase):
             session._init_cfg_from_scratch()
 
         s_uid = 'test.session.0000'
-        with mock.patch.object(Session, '_init_primary', new=init_primary):
-            s0 = Session(uid=s_uid, cfg={'base': ''})
+        path  = '/tmp/rp_tests_%s' % os.getuid()
+        ru.rec_makedir(path)
+
+        with mock.patch.object(rp.Session, '_init_primary', new=init_primary):
+            s0 = rp.Session(uid=s_uid, cfg={'base': ''})
 
         self.assertEqual(s0.uid, s_uid)
         self.assertEqual(s0.base, work_dir)
 
         for path_key in ['base', 'path', 'client_sandbox']:
-            with mock.patch.object(Session, '_init_primary', new=init_primary):
+            with mock.patch.object(rp.Session, '_init_primary', new=init_primary):
 
-                s = Session(uid=s_uid, cfg={path_key: 'random_dir'})
-                self.assertEqual(s.cfg[path_key], '%s/random_dir' % os.getcwd())
+                s = rp.Session(uid=s_uid, cfg={path_key: path, 'base': path})
+                self.assertEqual(s.cfg[path_key], path)
 
                 self._cleanup_files.append(s.path)
 
