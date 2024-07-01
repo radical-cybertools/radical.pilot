@@ -113,7 +113,7 @@ class Srun(LaunchMethod):
         td             = task['description']
         sbox           = task['task_sandbox_path']
 
-        n_tasks        = td['ranks']
+        n_tasks        = len(slots)
         n_task_threads = td.get('cores_per_rank', 1)
         gpus_per_task  = td.get('gpus_per_rank', 0.)
 
@@ -128,12 +128,13 @@ class Srun(LaunchMethod):
         nodelist = list()
 
         if not slots:
+            n_tasks = td['ranks']
             n_nodes = int(math.ceil(float(n_tasks) /
                                     self._rm_info.get('cores_per_node', 1)))
         else:
             # the scheduler did place tasks - we can't honor the core and gpu
             # mapping (see above), but we at least honor the nodelist.
-            nodelist = set([str(rank['node_name']) for rank in slots['ranks']])
+            nodelist = set([str(slot['node_name']) for slot in slots])
             n_nodes  = len(nodelist)
 
             # older slurm versions don't accept option `--nodefile`
@@ -145,8 +146,8 @@ class Srun(LaunchMethod):
                     with ru.ru_open(nodefile, 'w') as fout:
                         fout.write(','.join(nodelist) + '\n')
 
-            if slots['ranks'][0]['gpu_map']:
-                gpus_per_task = len(slots['ranks'][0]['gpu_map'][0])
+            if slots[0]['gpus']:
+                gpus_per_task = len(slots[0]['gpus'])
 
         mapping = ''
         if n_tasks > 1 and td['use_mpi'] is False:

@@ -2,19 +2,19 @@
 {
     "task": {
         "uid"               : "task.000012",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "ranks"         : 4,
-            "environment"   : {}
+            "environment"   : {},
+            "cores_per_rank": 4
         },
         "task_sandbox_path" : "/tmp"
     },
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks": []
-            }
+            "slots": []
         }
     },
 

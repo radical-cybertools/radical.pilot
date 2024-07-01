@@ -50,10 +50,10 @@ class Fork(LaunchMethod):
     #
     def can_launch(self, task):
 
-        if len(task['slots']['ranks']) > 1:
+        if len(task['slots']) > 1:
             return False, 'more than one rank'
 
-        node = task['slots']['ranks'][0]['node_name']
+        node = task['slots'][0]['node_name']
         if node not in ['localhost', self.node_name]:
             return False, 'not on localhost'
 

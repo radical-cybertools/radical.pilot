@@ -1,7 +1,11 @@
 
 {
     "task": {
+        "cores_per_node"    : 16,
+        "gpus_per_node"     : 1,
+        "lsf_per_node"      : 0,
         "uid"               : "task.000003",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["10"],
@@ -17,16 +21,12 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "cores_per_node": 16,
-                "gpus_per_node" : 1,
-                "lfs_per_node"  : 0,
-                "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "1",
-                                    "core_map"  : [[0, 1, 2, 3]],
-                                    "gpu_map"   : [[]],
-                                    "lfs"       : 0}]
-            },
+            "slots": [{"node_name" : "node1",
+                       "node_index": 1,
+                       "cores"     : [0, 1, 2, 3],
+                       "gpus"      : [],
+                       "lfs"       : 0}
+            ],
             "task_sandbox": "./",
             "mpi_flavor"  : "PALS"
         }
@@ -38,7 +38,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun"   : {
-                "launch_cmd" : "aprun -N 1 -n 1 -d 4",
+                "launch_cmd" : "aprun -n 1 -d 4",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun"  : {
@@ -58,7 +58,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun -n1 -a1 -c4 -g0 -b rs",
+                "launch_cmd" : "jsrun -n1 -a4 -c4 -g0",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf"   : {
@@ -72,7 +72,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0,1,2,3} }\n"],
+                           "rank: 0,1,2,3 : { host: 1; cpu: {0},{1},{2},{3} }\n"],
             "mpiexec"   : ["node1\n"]
         },
         "resource_filename": {

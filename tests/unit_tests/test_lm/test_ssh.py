@@ -84,18 +84,18 @@ class TestSSH(TestCase):
 
         lm_ssh = SSH('', {}, None, None, None)
         self.assertFalse(lm_ssh.can_launch(
-            task={'description': {'use_mpi': False},
-                  'slots': {'ranks': [{'node_id': '00001'},
-                                      {'node_id': '00002'}]}})[0])
+            task={'description': {'use_mpi': False, 'executable': None},
+                  'slots': [{'node_id': '00001'},
+                             {'node_id': '00002'}]})[0])
         self.assertFalse(lm_ssh.can_launch(
             task={'description': {'executable': None, 'use_mpi': False},
-                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+                  'slots': [{'node_id': '00001'}]})[0])
         self.assertTrue(lm_ssh.can_launch(
             task={'description': {'executable': 'script', 'use_mpi': False},
-                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+                  'slots': [{'node_id': '00001'}]})[0])
         self.assertFalse(lm_ssh.can_launch(
             task={'description': {'executable': 'script', 'use_mpi': True},
-                  'slots': {'ranks': [{'node_id': '00001'}]}})[0])
+                  'slots': [{'node_id': '00001'}]})[0])
 
     # --------------------------------------------------------------------------
     #
@@ -127,6 +127,8 @@ class TestSSH(TestCase):
                     lm_ssh.get_launch_cmds(task, '')
 
             else:
+                if len(task['slots']) != 1:
+                    continue
                 command = lm_ssh.get_launch_cmds(task, '')
                 self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
 

@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"               : "task.000018",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["15"],
@@ -17,30 +18,34 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks": [
-                    {
-                        "node_name" : "node1",
-                        "node_id"   : "1",
-                        "core_map"  : [[0, 1], [2, 3]],
-                        "gpu_map"   : [[0, 1], [1, 2]],
-                        "lfs"       : 0,
-                        "mem"       : 0
-                    }
-                ],
-                "partition_id"   : null,
-                "cores_per_node" : 42,
-                "gpus_per_node"  : 6,
-                "lfs_per_node"   : 0,
-                "mem_per_node"   : 0
-            }
+            "slots": [
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [0, 1],
+                          "gpus"      : [0, 1],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [2, 3],
+                          "gpus"      : [1, 2],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      }
+            ]
         }
     },
 
     "results": {
         "lm": {
-            "jsrun"    : "AssertionError",
-            "jsrun_erf": "AssertionError"
+            "jsrun"    : {
+                "launch_cmd": "jsrun -n2 -a2 -c2 -g1 -r1 -b packed:1 --smpiargs=\"-gpu\"",
+                "rank_exec"  : "/bin/sleep \"15\""
+            },
+            "jsrun_erf": {}
         }
     }
 }
