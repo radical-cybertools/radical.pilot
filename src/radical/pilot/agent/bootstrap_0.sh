@@ -627,6 +627,15 @@ virtenv_setup()
     ve_create=UNDEFINED
     ve_update=UNDEFINED
 
+    if test "$virtenv_mode" = 'local'
+    then
+        if test "$RP_VERSION" = 'local'
+        then
+            printf "WARNING: use installed RP for VE_MODE=local\n"
+            export RP_VERSION='installed'
+        fi
+    fi
+
     if test "$virtenv_mode" = "private"
     then
         if test -d "$virtenv/"
