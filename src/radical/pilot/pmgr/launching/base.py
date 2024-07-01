@@ -566,7 +566,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         reconfig_src     = pilot['description']['reconfig_src']
 
         # ----------------------------------------------------------------------
-        # get parameters from resource cfg, set defaults where needed
+        # get parameters from resource cfg
         agent_spawner           = rcfg.agent_spawner
         agent_config            = rcfg.agent_config
         agent_scheduler         = rcfg.agent_scheduler
@@ -591,6 +591,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         task_post_exec          = rcfg.task_post_exec
         mandatory_args          = rcfg.mandatory_args
         system_architecture     = rcfg.system_architecture
+        services                = rcfg.services
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings
@@ -807,9 +808,14 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         allocated_gpus  = (
             requested_nodes * avail_gpus_per_node)  or requested_gpus
 
-        self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+        if rcfg.numa_domain_map:
+            numa_domains_per_node = len(rcfg.numa_domain_map)
+        else:
+            numa_domains_per_node = 1
+
+        self._log.debug('nodes: %s [%s %s | %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
-                        allocated_cores, allocated_gpus)
+                        numa_domains_per_node, allocated_cores, allocated_gpus)
 
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
@@ -834,41 +840,41 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
-        agent_cfg['uid']                 = 'agent_0'
-        agent_cfg['sid']                 = sid
-        agent_cfg['pid']                 = pid
-        agent_cfg['owner']               = pid
-        agent_cfg['pmgr']                = self._pmgr
-        agent_cfg['resource']            = resource
-        agent_cfg['nodes']               = requested_nodes
-        agent_cfg['cores']               = allocated_cores
-        agent_cfg['gpus']                = allocated_gpus
-        agent_cfg['spawner']             = agent_spawner
-        agent_cfg['scheduler']           = agent_scheduler
-        agent_cfg['runtime']             = runtime
-        agent_cfg['app_comm']            = app_comm
-        agent_cfg['proxy_url']           = proxy_url
-        agent_cfg['pilot_sandbox']       = pilot_sandbox
-        agent_cfg['session_sandbox']     = session_sandbox
-        agent_cfg['resource_sandbox']    = resource_sandbox
-        agent_cfg['resource_manager']    = resource_manager
-        agent_cfg['cores_per_node']      = cores_per_node
-        agent_cfg['gpus_per_node']       = gpus_per_node
-        agent_cfg['lfs_path_per_node']   = lfs_path_per_node
-        agent_cfg['lfs_size_per_node']   = lfs_size_per_node
-        agent_cfg['task_tmp']            = task_tmp
-        agent_cfg['task_pre_launch']     = task_pre_launch
-        agent_cfg['task_pre_exec']       = task_pre_exec
-        agent_cfg['task_post_launch']    = task_post_launch
-        agent_cfg['task_post_exec']      = task_post_exec
-        agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
-        agent_cfg['log_lvl']             = self._log.level
-        agent_cfg['debug_lvl']           = self._log.debug_level
-        agent_cfg['services']            = services
-        agent_cfg['enable_ep']           = enable_ep
-        agent_cfg['prepare_env']         = prepare_env
-        agent_cfg['reconfig_src']        = reconfig_src
-        agent_cfg['raptor']              = raptor_cfg
+        agent_cfg['uid']                   = 'agent_0'
+        agent_cfg['sid']                   = sid
+        agent_cfg['pid']                   = pid
+        agent_cfg['owner']                 = pid
+        agent_cfg['pmgr']                  = self._pmgr
+        agent_cfg['resource']              = resource
+        agent_cfg['nodes']                 = requested_nodes
+        agent_cfg['cores']                 = allocated_cores
+        agent_cfg['gpus']                  = allocated_gpus
+        agent_cfg['spawner']               = agent_spawner
+        agent_cfg['scheduler']             = agent_scheduler
+        agent_cfg['runtime']               = runtime
+        agent_cfg['app_comm']              = app_comm
+        agent_cfg['proxy_url']             = proxy_url
+        agent_cfg['pilot_sandbox']         = pilot_sandbox
+        agent_cfg['session_sandbox']       = session_sandbox
+        agent_cfg['resource_sandbox']      = resource_sandbox
+        agent_cfg['resource_manager']      = resource_manager
+        agent_cfg['cores_per_node']        = cores_per_node
+        agent_cfg['gpus_per_node']         = gpus_per_node
+        agent_cfg['lfs_path_per_node']     = lfs_path_per_node
+        agent_cfg['lfs_size_per_node']     = lfs_size_per_node
+        agent_cfg['task_tmp']              = task_tmp
+        agent_cfg['task_pre_launch']       = task_pre_launch
+        agent_cfg['task_pre_exec']         = task_pre_exec
+        agent_cfg['task_post_launch']      = task_post_launch
+        agent_cfg['task_post_exec']        = task_post_exec
+        agent_cfg['resource_cfg']          = copy.deepcopy(rcfg)
+        agent_cfg['log_lvl']               = self._log.level
+        agent_cfg['debug_lvl']             = self._log.debug_level
+        agent_cfg['services']              = services
+        agent_cfg['enable_ep']             = enable_ep
+        agent_cfg['prepare_env']           = prepare_env
+        agent_cfg['reconfig_src']          = reconfig_src
+        agent_cfg['raptor']                = raptor_cfg
 
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,

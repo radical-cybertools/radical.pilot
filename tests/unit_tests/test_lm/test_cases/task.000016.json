@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"                  : "task.000016",
+        "partition"            : "0",
         "description": {
             "executable"       : "/bin/sleep",
             "arguments"        : ["25"],
@@ -26,7 +27,7 @@
     "results": {
         "lm": {
             "aprun" : {
-                "launch_cmd" : "aprun -N 2 -n 4 -d 15",
+                "launch_cmd" : "aprun -n 4 -d 15",
                 "rank_exec"  : "/bin/sleep \"25\""
             }
         }

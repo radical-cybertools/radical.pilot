@@ -555,7 +555,11 @@ class Session(object):
 
             # also update proxy heartbeat
             if self._proxy:
-                self._proxy.request('heartbeat', {'sid': self._uid})
+                try:
+                    self._proxy.request('heartbeat', {'sid': self._uid})
+                except:
+                    # ignore errors in case proxy went away already
+                    pass
         # --------------------------------------
 
         # --------------------------------------
@@ -711,8 +715,8 @@ class Session(object):
         url_sub = reg['bridges.%s.addr_sub' % src.lower()]
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
-      # self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-      # self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+        self._log.debug_5('XXX cfg fwd for topic:%s to %s', src, tgt)
+        self._log.debug_5('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -728,29 +732,30 @@ class Session(object):
                 # which originated in *this* module in the first place.
 
                 if msg['origin'] == self._module:
-                  # self._log.debug('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
+                    self._log.debug_9('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
-              # self._log.debug('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
+                self._log.debug_9('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
 
             else:
 
                 # only forward messages which have the respective flag set
                 if not msg.get('fwd'):
-                  # self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]', src,
-                  #                 tgt, msg, msg['origin'], self._module)
+                    self._log.debug_9('XXX =>! fwd %s to %s: %s [%s - %s]', src,
+                                      tgt, msg, msg['origin'], self._module)
                     return
 
                 # only forward all messages which originated in *this* module.
                 if not msg['origin'] == self._module:
-                  # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
+                    self._log.debug_9('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
+
+                self._log.debug_9('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
 
                 # avoid message loops (forward only once)
                 msg['fwd'] = False
 
-              # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
 
 
