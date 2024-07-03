@@ -8,8 +8,9 @@ import math as m
 
 import radical.utils as ru
 
-from ...   import constants as rpc
-from .base import AgentSchedulingComponent
+from .base              import AgentSchedulingComponent
+from ...                import constants as rpc
+from ...resource_config import ResourceOccupation as _RO
 
 
 # ------------------------------------------------------------------------------
@@ -197,7 +198,7 @@ class Continuous(AgentSchedulingComponent):
             for core_idx,core in enumerate(node['cores']):
 
                 if core == rpc.FREE:
-                    slot['cores'].append(core_idx)
+                    slot['cores'].append(_RO(index=core_idx))
 
                 if len(slot['cores']) == cores_per_slot:
                     break
@@ -218,7 +219,7 @@ class Continuous(AgentSchedulingComponent):
                 for gpu_idx,gpu in enumerate(node['gpus']):
 
                     if gpu == rpc.FREE:
-                        slot['gpus'].append([gpu_idx, 1.0])
+                        slot['gpus'].append(_RO(index=gpu_idx))
 
                     if len(slot['gpus']) == gpus_per_slot:
                         break
@@ -233,7 +234,8 @@ class Continuous(AgentSchedulingComponent):
                 for gpu_idx,gpu_occ in enumerate(node['gpus']):
 
                     if 1 - gpu_occ >= gpus_per_slot:
-                        slot['gpus'].append([gpu_idx, gpus_per_slot])
+                        slot['gpus'].append(_RO(index=gpu_idx,
+                                                occupation=gpus_per_slot))
                         break
 
                 if len(slot['gpus']) < 1:

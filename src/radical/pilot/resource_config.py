@@ -336,6 +336,7 @@ class Slot(ru.TypedDict):
     MEM         = 'mem'
     NODE_INDEX  = 'node_index'
     NODE_NAME   = 'node_name'
+    VERSION     = 'version'  # use this to distinguish from old slot structure
 
     _schema = {
         CORES      : [_RO],  # list of tuples [(core_id, core_occupation), ...]
@@ -344,6 +345,7 @@ class Slot(ru.TypedDict):
         MEM        : int,
         NODE_INDEX : int,
         NODE_NAME  : str,
+        VERSION    : int,
     }
 
     _defaults = {
@@ -353,6 +355,7 @@ class Slot(ru.TypedDict):
         MEM        : 0,
         NODE_INDEX : 0,
         NODE_NAME  : '',
+        VERSION    : 0,
     }
 
     def __init__(self, from_dict: dict = None, **kwargs):

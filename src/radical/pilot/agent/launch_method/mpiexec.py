@@ -172,7 +172,8 @@ class MPIExec(LaunchMethod):
 
         for slot in slots:
             rf_str += 'rank %d=%s ' % (rank_id, slot['node_name'])
-            rf_str += 'slots=%s\n' % ','.join([str(c) for c in slot['cores']])
+            rf_str += 'slots=%s\n' % ','.join([str(c.index)
+                                               for c in slot['cores']])
             rank_id += 1
 
         rf_name = '%s/%s.rf' % (sandbox, uid)

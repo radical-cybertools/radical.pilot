@@ -442,7 +442,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         see top of `base.py`.
         '''
         # FIXME: remove once Slot structure settles
-        slots = rpu.convert_slots(slots)
+        slots = rpu.convert_slots_to_new(slots)
 
         # for node_name, node_index, cores, gpus in slots['ranks']:
         for slot in slots:
@@ -918,13 +918,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # the same set of resources.
             if td.get('slots'):
 
-                # FIXME: check assembly of slots in the scheduler (jsrun)
-                #        e.g.: GPU sharing  (*)
-                # FIXME: check how blocked cores are handled  (*)
-                # FIXME: bool / int for core list in node resources  (*)
-                # FIXME: complete node name if needed
-                # FIXME: use UIDs instead of node indexes
-                # FIXME: does TD need ranks then still?  Check launch methods!
                 task['slots']     = td['slots']
                 task['partition'] = td['partition']
                 task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],

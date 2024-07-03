@@ -101,7 +101,8 @@ if __name__ == '__main__':
         tds = list()
         for i in range(n):
             slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
-                                                                  lfs=512))
+                                                                  lfs=512),
+                                              n_slots=2)
             print('=== %s' % slots)
 
             td = rp.TaskDescription()

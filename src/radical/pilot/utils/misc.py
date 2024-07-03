@@ -221,7 +221,7 @@ def get_resource_job_url(resource: str,
 
 # ------------------------------------------------------------------------------
 #
-def convert_slots(slots, log=None):
+def convert_slots_to_new(slots, log=None):
 
     from ..resource_config import Slot, ResourceOccupation
 
@@ -230,6 +230,11 @@ def convert_slots(slots, log=None):
 
     new_slots = list()
     for slot in slots:
+
+        # check slot type: only new slots have a version field
+        if slot.get('version'):
+            new_slots.append(slot)
+            continue
 
         cores = slot['cores']
         if cores:
@@ -275,7 +280,7 @@ def convert_slots(slots, log=None):
 
 # ------------------------------------------------------------------------------
 #
-def unconvert_slots(slots, log=None):
+def convert_slots_to_old(slots, log=None):
 
     if not slots:
         return slots
@@ -283,10 +288,13 @@ def unconvert_slots(slots, log=None):
     old_slots = list()
     for slot in slots:
 
+        # if slots do not have a version field, they are old
+        if not slot.get('version'):
+            old_slots.append(slot)
+            continue
+
         cores = slot['cores']
         if cores:
-            print('=============')
-            print('cores:', cores[0])
             if isinstance(cores[0], int):
                 cores = [[c] for c in cores]
             elif isinstance(cores[0], dict):
