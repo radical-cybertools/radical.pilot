@@ -121,7 +121,7 @@ class TestContinuous(TestCase):
             component._schedule_incoming()
 
             slots = test_case['result']['slots']
-            slots = rp.utils.convert_slots(slots)
+            slots = rp.utils.convert_slots_to_new(slots)
             component._change_slot_states(slots, rpc.FREE)
 
             component._set_tuple_size(task)
@@ -203,7 +203,7 @@ class TestContinuous(TestCase):
                     'slots'      : test_case['result']['slots'],
                     'uid'        : 'task.000000'}
 
-            task['slots'] = rp.utils.convert_slots(task['slots'])
+            task['slots'] = rp.utils.convert_slots_to_new(task['slots'])
 
             # set corresponding cores/gpus as busy
             component._change_slot_states(task['slots'], rpc.BUSY)
