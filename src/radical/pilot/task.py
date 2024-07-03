@@ -442,7 +442,7 @@ class Task(object):
     def slots(self):
         '''dict: The slots assigned for the task's execution'''
         if self._slots:
-            if isinstance(self._slots[0], dict):
+            if not self._slots[0].get('version'):
                 for idx,slot in enumerate(self._slots):
                     self._slots[idx] = Slot(self._slots[idx])
         return self._slots

@@ -223,7 +223,7 @@ def get_resource_job_url(resource: str,
 #
 def convert_slots_to_new(slots, log=None):
 
-    from ..resource_config import Slot, ResourceOccupation
+    from ..resource_config import Slot, RO
 
     if not slots:
         return slots
@@ -239,32 +239,32 @@ def convert_slots_to_new(slots, log=None):
         cores = slot['cores']
         if cores:
             if isinstance(cores[0], int):
-                cores = [ResourceOccupation(index=i, occupation=1.0)
+                cores = [RO(index=i, occupation=1.0)
                          for i in slot['cores']]
             elif isinstance(cores[0], dict):
                 cores = list()
                 for ro in slot['cores']:
                     i = ro['index']
                     o = ro['occupation']
-                    cores.append(ResourceOccupation(index=i, occupation=o))
+                    cores.append(RO(index=i, occupation=o))
             else:
-                cores = [ResourceOccupation(index=i, occupation=o)
+                cores = [RO(index=i, occupation=o)
                          for i,o in slot['cores']]
 
 
         gpus = slot['gpus']
         if gpus:
             if isinstance(gpus[0], int):
-                gpus  = [ResourceOccupation(index=i, occupation=1.0)
+                gpus  = [RO(index=i, occupation=1.0)
                          for i in slot['gpus']]
             elif isinstance(gpus[0], dict):
                 gpus = list()
                 for ro in slot['gpus']:
                     i = ro['index']
                     o = ro['occupation']
-                    gpus.append(ResourceOccupation(index=i, occupation=o))
+                    gpus.append(RO(index=i, occupation=o))
             else:
-                gpus  = [ResourceOccupation(index=i, occupation=o)
+                gpus  = [RO(index=i, occupation=o)
                          for i,o in slot['gpus']]
 
         new_slot = Slot(cores=cores,
