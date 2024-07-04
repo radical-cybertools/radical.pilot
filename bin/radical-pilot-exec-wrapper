@@ -1,0 +1,204 @@
+#!/bin/sh
+
+# ------------------------------------------------------------------------------
+#
+# This script is a wrapper around an actual executable.  It's purpose is,
+# depening on the mode of operation, to either watch the executable's stdout for
+# some pattern, or to watch an output file created by the executable for that
+# pattern.  If the pattern is found, the matching data is extracted and sent
+# this script's stdout.  If the executable returns a non-zero exit code, or is
+# a timeout is reached, the script will also return a non-zero exit code.  If
+# The script returns a zero exit code but a pattern is provided byt not found,
+# the script will also return a non-zero exit code.
+#
+# The script is called with the following arguments:
+#
+#   -m mode   : data stream to search through, either `stdout` (default),
+#               `stderr`, or a file name
+#   -p pattern: regex pattern to search for
+#   -o output : file name to store the executable's stdout
+#   -e error  : file name to store the executable's stderr
+#   -t timeout: time in seconds after which the script will terminate if pattern
+#               is not found
+#   --        : marks the end of the script's arguments and the start of the
+#               executable's name and arguments
+
+
+# ------------------------------------------------------------------------------
+# parse and check arguments
+
+uid=''
+name=''
+mode=''
+pattern=''
+f_output=''
+f_error=''
+timeout=0
+verbose=''
+
+while getopts 'u:n:m:p:o:e:t:v' flag; do
+    case "${flag}" in
+      u) uid="${OPTARG}"      ; shift 2;;
+      n) name="${OPTARG}"     ; shift 2;;
+      m) mode="${OPTARG}"     ; shift 2;;
+      p) pattern="${OPTARG}"  ; shift 2;;
+      o) f_output="${OPTARG}" ; shift 2;;
+      e) f_error="${OPTARG}"  ; shift 2;;
+      t) timeout="${OPTARG}"  ; shift 2;;
+      v) verbose=1            ; shift 1;;
+      *)  echo "Unknown option ${flag}"
+          exit 1
+          ;;
+    esac
+done
+
+test "$1" = '--' && shift
+
+command="$@"
+pid=$$
+
+if test -z "$uid"; then
+    echo "missing service uid"
+    exit 1
+fi
+
+test -z "$name"     && name="$uid"
+test -z "$mode"     && mode='stdout'
+test -z "$f_output" && f_output="/tmp/wrapper-$pid.log"
+test -z "$f_error"  && f_error="/tmp/wrapper-$pid.log"
+test -z "$timeout"  && timeout=0
+
+if test "$verbose" = 1; then
+    echo "uid     : $uid"
+    echo "name    : $name"
+    echo "mode    : $mode"
+    echo "pattern : $pattern"
+    echo "output  : $f_output"
+    echo "error   : $f_error"
+    echo "timeout : $timeout"
+    echo "command : $command"
+fi
+
+# ------------------------------------------------------------------------------
+#
+# define a method to find the pattern in the given file
+#
+report_back(){
+
+    uid=$1
+    name=$2
+    match=$3
+    error=$4
+
+    echo "report '$uid' '$name' '$match' - '$error'"
+
+    radical-pilot-send-control \
+        -c 'service_up'        \
+        -a "uid=$uid"          \
+        -a "name=$name"        \
+        -a "error=$error"      \
+        -a "info=$match"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# define a method to find the pattern in the given file
+#
+find_pattern() {
+    local uid=$1
+    local name=$2
+    local file=$3
+    local timeout=$4
+    local pattern=$5
+
+    if test -z "$pattern"; then
+        test -z "$verbose" || echo 'no pattern to wait for'
+        report_back "$uid" "$name" '' 'error=no pattern to wait for'
+        return
+    fi
+
+    # use `tail -F` so we can start watching even if file does not yet exist.
+    # stop watching after timeout seconds.
+    echo "watching $file"
+    start=$(date +%s)
+    tail -F $file | while read line; do
+        test -z "$line"    && sleep 1 && continue
+        test -z "$verbose" || echo found $line
+        match=$(expr match "$line" "$pattern")
+
+        # if pattern is found, report back to agent
+        if ! test -z "$match"; then
+            # success!
+            test -z "$verbose" || echo "match [$match]"
+            echo "=== report match: $match"
+            report_back "$uid" "$name" "$match" ''
+            return
+        fi
+
+        # if timeout is met, signal the parent shell and exit.
+        now=$(date +%s)
+        check=$((now - start))
+        echo "timeout: [$timeout]"
+        if test "$timeout" -gt 0 && test "$check" -gt "$timeout"; then
+            echo "=== report timeout"
+            report_back "$uid" "$name" '' 'timeout'
+            test -z $verbose || echo "timeout"
+            kill -s USR1 $$ >/dev/null 2>&1
+            return
+        fi
+    done
+    echo "after read line: [$match]"
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# start the watcher
+#
+cleanup=0
+if test "$mode" = 'stdout'; then
+    cleanup=1
+    mode="$f_output"
+fi
+
+find_pattern "$uid" "$name" "$mode" "$timeout" "$pattern" &
+watch_pid=$!
+
+
+# The watcher may complete earlier, but then will signal here with USR1 or USR2.
+# In that case we just die with the respective exit code.
+my_exit() {
+    exit_code=$1
+    kill -9 $watch_pid >/dev/null 2>&1
+    test -z $cleanup || rm -f $f_output $f_error
+    exit $exit_code
+}
+
+my_exit_1() {
+    my_exit 1
+}
+
+trap my_exit_1 USR1
+
+
+# ------------------------------------------------------------------------------
+#
+# start the actual executable
+#
+$command 1> $f_output 2> $f_error &
+exec_pid=$!
+
+# wait for the executable to finish.  If the executable completes before the
+# watcher, we will kill the watcher and die with the executable's exit code.
+echo "=== wait for exec"
+wait $exec_pid
+exit_code=$?
+echo "=== wait for exec ok $exit_code"
+
+echo "=== kill watcher"
+kill -9 $watch_pid
+exit $exit_code
+
+# ------------------------------------------------------------------------------
+

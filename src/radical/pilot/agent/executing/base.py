@@ -597,6 +597,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
         else:
             gpr = '%f' % gpr
 
+        ctrl_addr = self._reg['bridges.control_pubsub']['addr_pub']
+
         ret  = '\n'
         ret += 'export RP_TASK_ID="%s"\n'          % tid
         ret += 'export RP_TASK_NAME="%s"\n'        % name
@@ -608,8 +610,17 @@ class AgentExecutingComponent(rpu.AgentComponent):
         ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
         ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self.session.reg_addr
+        ret += 'export RP_CONTROL_PUBSUB=%s\n'     % ctrl_addr
         ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
         ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
+
+        self._reg.dump(tid)
+
+        services = td.get('services') or list()
+        for service in services:
+            val  = self._reg['services.%s' % service]
+            ret += 'export RP_INFO_%s=%s\n' % (service.upper(), str(val))
+
 
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs

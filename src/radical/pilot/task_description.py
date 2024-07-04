@@ -8,6 +8,7 @@ import radical.utils as ru
 
 # task modes
 TASK_EXECUTABLE  = 'task.executable'
+TASK_SERVICE     = 'task.service'
 TASK_FUNCTION    = 'task.function'
 TASK_FUNC        = 'task.function'
 TASK_METHOD      = 'task.method'
@@ -28,6 +29,11 @@ MODE             = 'mode'
 # mode: TASK_EXECUTABLE
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
+
+# mode: TASK_SERVICE
+EXECUTABLE       = 'executable'
+ARGUMENTS        = 'arguments'
+INFO_PATTERN     = 'info_pattern'
 
 # mode: TASK_METHOD
 METHOD           = 'method'
@@ -99,6 +105,7 @@ STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
 TAGS             = 'tags'
+SERVICES         = 'services'
 METADATA         = 'metadata'
 
 
@@ -126,6 +133,17 @@ class TaskDescription(ru.TypedDict):
 
             - TASK_EXECUTABLE: the task is spawned as an external executable via
               a resource specific launch method (srun, aprun, mpiexec, etc).
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            - TASK_SERVICE: exactly like TASK_EXECUTABLE, but the task is
+              handled differently by the agent.  This mode is used to start
+              service tasks whose connection endpoint is made available to other
+              tasks.
+
+              NOTE: the mode `TASK_SERVICE` is only used internally and should
+              not be used by application developers.
 
               - required attributes: `executable`
               - related  attributes: `arguments`
@@ -192,6 +210,16 @@ class TaskDescription(ru.TypedDict):
 
         arguments (list[str]): The command line arguments for the given
             `executable` (`list` of `strings`).
+
+        info_pattern (str): A regular expression pattern to extract service
+            startup information (only for tasks with mode `TASK_SERVICE`).  The
+            pattern is formed like:
+
+                'src:regex'
+
+            where `src` is `stdout`, `stderr`, or a file path, and regex is a
+            regular expression to extract the information from the respective
+            source.
 
         code (str): The code to run.  This field is expected to contain valid
             python code which is executed when the task mode is `TASK_EXEC` or
@@ -375,6 +403,12 @@ class TaskDescription(ru.TypedDict):
 
         metadata (Any, optional): User defined metadata. Default None.
 
+        services ([str], optional): list of service names the task wants to use.
+            If the services are up and running, an envvariable `RP_INFO_XXX`
+            will be set where `XXX` is the uppercased service name, and the
+            variable's value is the service information obtained by the agent
+            during service startup.
+
         timeout (float, optional): Any timeout larger than 0 will result in
             the task process to be killed after the specified amount of seconds.
             The task will then end up in `CANCELED` state.
@@ -518,6 +552,7 @@ class TaskDescription(ru.TypedDict):
 
         EXECUTABLE      : str         ,
         ARGUMENTS       : [str]       ,
+        INFO_PATTERN    : str         ,
         CODE            : str         ,
         FUNCTION        : str         ,
         ARGS            : [None]      ,
@@ -569,6 +604,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_FILE     : str         ,
         RAPTOR_CLASS    : str         ,
         METADATA        : None        ,
+        SERVICES        : [str]       ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
@@ -580,6 +616,7 @@ class TaskDescription(ru.TypedDict):
         MODE            : TASK_EXECUTABLE,
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
+        INFO_PATTERN    : ''          ,
         CODE            : ''          ,
         FUNCTION        : ''          ,
         ARGS            : list()      ,
@@ -631,6 +668,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_FILE     : ''          ,
         RAPTOR_CLASS    : ''          ,
         METADATA        : None        ,
+        SERVICES        : list()      ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
@@ -651,7 +689,7 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, AGENT_SERVICE]:
+        if self.mode in [TASK_EXECUTABLE, TASK_SERVICE, AGENT_SERVICE]:
             if not self.get('executable'):
                 umode = self.mode.upper().replace('.', '_')
                 raise ValueError("%s Task mode needs 'executable'" % umode)

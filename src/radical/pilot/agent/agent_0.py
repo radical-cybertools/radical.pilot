@@ -14,7 +14,7 @@ from ..   import utils     as rpu
 from ..   import states    as rps
 from ..   import constants as rpc
 from ..   import Session
-from ..   import TaskDescription, AGENT_SERVICE
+from ..   import TaskDescription, AGENT_SERVICE, TASK_SERVICE
 
 
 # ------------------------------------------------------------------------------
@@ -56,9 +56,10 @@ class Agent_0(rpu.AgentComponent):
         self._final_cause = None
 
         # keep some state about service startups
-        self._service_uids_launched = list()
-        self._service_uids_running  = list()
-        self._services_setup        = mt.Event()
+        self._service_uid_launched = None
+        self._service_uids_running = list()
+        self._service_start_evt    = mt.Event()
+        self._service_lock         = mt.Lock()  # launch one service at a time
 
         # this is the earliest point to sync bootstrap and agent profiles
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
@@ -84,6 +85,7 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug_8('proxy input cb: %s', len(msg))
 
+        services   = list()
         to_advance = list()
 
         for task in msg:
@@ -104,13 +106,20 @@ class Agent_0(rpu.AgentComponent):
                         task['state'], task.get('states'))
                 continue
 
-            to_advance.append(task)
+            if task['description'].get('mode') == TASK_SERVICE:
+                services.append(task)
+
+            else:
+                to_advance.append(task)
 
         # now we really own the tasks and can start working on them (ie. push
         # them into the pipeline).  We don't publish nor profile as advance,
         # since the state transition happened already on the client side when
         # the state was set.
         self.advance(to_advance, publish=False, push=True)
+
+        for service in services:
+            self._launch_service_task(service)
 
 
     # --------------------------------------------------------------------------
@@ -201,8 +210,8 @@ class Agent_0(rpu.AgentComponent):
             self.rpc('prepare_env', env_name=env_name, env_spec=env_spec,
                                     rpc_addr=self._pid)
 
-        # start any services
-        self._start_services()
+        for sd in self._cfg.services:
+            self._launch_service(TaskDescription(sd))
 
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -310,129 +319,102 @@ class Agent_0(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _start_services(self):
+    def _launch_service(self, td):
 
-        if not self._cfg.services:
-            return
+        if not td.uid:
+            td.uid = ru.generate_id('service.%(item_counter)04d',
+                                    ru.ID_CUSTOM, ns=self.session.uid)
 
-        self._log.info('starting agent services')
+        self._log.info('starting agent service from sd %s', td.uid)
 
-        services      = []
-        services_data = {}
+        sbox = self._cfg.pilot_sandbox + '/' + td.uid
 
-        for sd in self._cfg.services:
+        task = dict()
+        task['uid']               = td.uid
+        task['name']              = td.name or td.uid
+        task['origin']            = 'agent'
+        task['type']              = 'service_task'
+        task['pilot']             = self._cfg.pid
+        task['description']       = td.as_dict()
+        task['pilot_sandbox']     = self._cfg.pilot_sandbox
+        task['session_sandbox']   = self._cfg.session_sandbox
+        task['resource_sandbox']  = self._cfg.resource_sandbox
+        task['task_sandbox']      = 'file://localhost/' + sbox
+        task['task_sandbox_path'] = sbox
+        task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
+                                     'gpu': td.ranks * td.gpus_per_rank}
 
-            td      = TaskDescription(sd)
-            td.mode = AGENT_SERVICE
-
-            # ensure that the description is viable
-            td.verify()
-
-            tid = td.uid
-
-            if not tid:
-                tid = ru.generate_id('service.%(item_counter)04d',
-                                     ru.ID_CUSTOM, ns=self.session.uid)
-
-            sbox = self._cfg.pilot_sandbox + '/' + tid
-
-            task = dict()
-            task['uid']               = tid
-            task['type']              = 'service_task'
-            task['origin']            = 'agent'
-            task['pilot']             = self._cfg.pid
-            task['description']       = td.as_dict()
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
-            task['pilot_sandbox']     = self._cfg.pilot_sandbox
-            task['session_sandbox']   = self._cfg.session_sandbox
-            task['resource_sandbox']  = self._cfg.resource_sandbox
-            task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
-                                         'gpu': td.ranks * td.gpus_per_rank}
-
-            task['task_sandbox']      = 'file://localhost/' + sbox
-            task['task_sandbox_path'] = sbox
-
-            # TODO: use `type='service_task'` in RADICAL-Analytics
-
-            # TaskDescription.metadata will contain service related data:
-            # "name" (unique), "startup_file"
-
-            self._service_uids_launched.append(tid)
-            services.append(task)
-
-            services_data[tid] = dict()
-            metdata = td.metadata or dict()
-            if metdata.get('startup_file'):
-                n = td.metadata.get('name')
-                services_data[tid]['name'] = 'service.%s' % n if n else tid
-                services_data[tid]['startup_file'] = td.metadata['startup_file']
-
-        self.advance(services, publish=False, push=True)
-
-        self.register_timed_cb(cb=self._services_startup_cb,
-                               cb_data=services_data,
-                               timer=2)
-
-        # waiting for all services to start (max waiting time 2 mins)
-        if not self._services_setup.wait(timeout=120):
-            raise RuntimeError('Unable to start services')
-
-        self.unregister_timed_cb(self._services_startup_cb)
-
-        self._log.info('all agent services started')
+        self._launch_service_task(task)
 
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     #
-    def _services_startup_cb(self, cb_data):
+    def _launch_service_task(self, task):
 
-        for tid in list(cb_data):
+        tid = task['uid']
 
-            service_up   = False
-            startup_file = cb_data[tid].get('startup_file')
+        self._log.info('starting agent service %s', tid)
 
-            if not startup_file:
-                service_up = True
-                # FIXME: at this point we assume that since "startup_file" is
-                #        not provided, then we don't wait - this will be
-                #        replaced with another callback (BaseComponent.advance will
-                #        publish control command "service_up" for service tasks)
-                # FIXME: wait at least for AGENT_EXECUTING state
+        td = TaskDescription(task['description'])
 
-            elif os.path.isfile(startup_file):
-                # if file exists then service is up (general approach)
-                service_up = True
+        if not td.name    : td.name     = tid
+        if not td.mode    : td.mode     = AGENT_SERVICE
+        if not td.timeout : td.timeout  = 60
+        if not td.metadata: td.metadata = dict()
 
-                # collect data from the startup file: at this point we look
-                # for URLs only
-                service_urls = {}
-                with ru.ru_open(startup_file, 'r') as fin:
-                    for line in fin.readlines():
-                        if '://' not in line:
-                            continue
-                        parts = line.split()
-                        if len(parts) == 1:
-                            idx, url = '', parts[0]
-                        elif '://' in parts[1]:
-                            idx, url = parts[0], parts[1]
-                        else:
-                            continue
-                        service_urls[idx] = url
+        # we wrap the service
+        exe, args, pat = td.executable, td.arguments, td.info_pattern
 
-                if service_urls:
-                    for idx, url in service_urls.items():
-                        key = cb_data[tid]['name']
-                        if idx:
-                            key += '.%s' % idx
-                        key += '.url'
-                        self.session._reg[key] = url
+        td.executable = 'radical-pilot-exec-wrapper'
+        td.arguments  = ['-t', '%d' % td.timeout]
+        td.arguments += ['-u', tid]
+        td.arguments += ['-n', td.name]
+        td.arguments += ['-v']
 
-            if service_up:
-                self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'service_up',
-                                                  'arg': {'uid': tid}})
-                del cb_data[tid]
+        if pat:
+            pat_src, pat_regex = pat.split(':', 1)
+            td.arguments += ['-m', pat_src, '-p', pat_regex]
 
-        return True
+        td.arguments += ['--']
+        td.arguments += [exe]
+        td.arguments += args
+
+        # ensure that the description is viable
+        td.verify()
+
+        task['name']        = td.name
+        task['description'] = td.as_dict()
+        task['state']       = rps.AGENT_STAGING_INPUT_PENDING
+
+
+        with self._service_lock:
+
+            self._log.debug('=== set agent service id to %s', tid)
+            self._service_uid_launched = tid
+
+            # task info is stored by both name and uid
+            self._reg['services.%s' % td.name] = td.metadata
+            self._reg['services.%s' % tid]     = td.metadata
+
+            self.advance(task, publish=False, push=True)
+
+            # at this point we wait for one of two events to happen: either the
+            # task will go into a state beyond `AGENT_EXECUTING` and will thus
+            # have completed prematurely in which case we declare a failure, or
+            # the service comes up and the wrapper sends a control message.  In
+            # the former case, the state cb will trigger the service startup
+            # event, in the latter case, that message will trigger that event as
+            # well.
+            #
+            # Or we time out of course :-)
+            #
+            timeout = td.timeout or 60
+            if not self._service_start_evt.wait(timeout=timeout):
+                raise RuntimeError('Unable to start service')
+
+
+            self._log.info('agent service started: %s', td.uid)
+
 
     # --------------------------------------------------------------------------
     #
@@ -602,7 +584,7 @@ class Agent_0(rpu.AgentComponent):
             return self._ctrl_cancel_pilots(msg)
 
         elif cmd == 'service_up':
-            return self._ctrl_service_up(msg)
+            return self._ctrl_service_up(msg, arg)
 
 
     # --------------------------------------------------------------------------
@@ -626,32 +608,42 @@ class Agent_0(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _ctrl_service_up(self, msg):
+    def _ctrl_service_up(self, msg, arg):
 
-        uid = msg['arg']['uid']
+        self._log.debug('=== service_up: %s', arg)
+
+        uid  = arg.get('uid')
+        name = arg.get('name') or uid
+        info = arg.get('info')
+
+        if not uid:
+            self._log.warn('=== ignore service startup signal without uid')
+            return True
 
         # This message signals that an agent service instance is up and running.
         # We expect to find the service UID in args and can then unblock the
         # service startup wait for that uid
 
-        if uid not in self._service_uids_launched:
+        if uid != self._service_uid_launched:
             # we do not know this service instance
-            self._log.warn('ignore service startup signal for %s', uid)
+            self._log.warn('=== ignore service startup signal for %s [%s]', uid,
+                           self._service_uid_launched)
             return True
 
         if uid in self._service_uids_running:
-            self._log.warn('duplicated service startup signal for %s', uid)
+            self._log.warn('=== duplicated service startup signal for %s', uid)
             return True
 
         self._service_uids_running.append(uid)
-        self._log.debug('service %s started (%s / %s)', uid,
-                        len(self._service_uids_running),
-                        len(self._service_uids_launched))
+        self._log.debug('=== service %s started (%s): %s', uid,
+                        len(self._service_uids_running), info)
 
-        # signal main thread when all services are up
-        if len(self._service_uids_launched) == \
-           len(self._service_uids_running):
-            self._services_setup.set()
+        # add info to registry
+        if info:
+            self._reg['services.%s' % name] = info
+
+        # signal main thread when that the service is up
+        self._service_start_evt.set()
 
         return True
 
