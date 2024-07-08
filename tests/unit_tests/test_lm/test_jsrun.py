@@ -6,6 +6,7 @@ import glob
 from unittest import mock, TestCase
 
 import radical.utils as ru
+import radical.pilot as rp
 
 from .test_common import setUp
 from radical.pilot.agent.launch_method.jsrun import JSRUN, LaunchMethod
@@ -130,6 +131,10 @@ class TestJSRun(TestCase):
             else:
                 rs_layout = test_case[2]
 
+                slots = rp.utils.convert_slots_to_old(slots)
+                for slot in slots:
+                    slot['version'] = 'old'
+
                 rs_file = lm_jsrun._create_resource_set_file(
                     slots=slots, uid=uid, sandbox=self._sbox)
                 with ru.ru_open(rs_file) as rs_layout_file:
@@ -167,14 +172,19 @@ class TestJSRun(TestCase):
                 if result == 'AssertionError':
                     if not lm_jsrun._erf:
                         with self.assertRaises(AssertionError):
-                            cmd = lm_jsrun.get_launch_cmds(task, '')
+                            lm_jsrun.get_launch_cmds(task, '')
 
                 else:
                     if len(test_case) > 2:
                         lm_jsrun._create_resource_set_file.return_value = \
                             test_case[3]  # resource set file name
 
+
                     command = lm_jsrun.get_launch_cmds(task, '')
+                    print()
+                    print(task['uid'])
+                    print(command)
+                    print(result['launch_cmd'])
                     self.assertEqual(command, result['launch_cmd'], task['uid'])
 
                     command = lm_jsrun.get_exec(task)

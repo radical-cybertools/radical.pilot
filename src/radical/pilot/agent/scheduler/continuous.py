@@ -250,8 +250,8 @@ class Continuous(AgentSchedulingComponent):
                         slot['gpus'].append(RO(index=gpu_idx,
                                                occupation=gpus_per_slot))
                         break
-
-                loop_gpu_idx = gpu_idx + 1
+                    else:
+                        loop_gpu_idx = gpu_idx + 1
 
                 if len(slot['gpus']) < 1:
                     self._log.debug_9('not enough gpus on %s (2)', node_name)

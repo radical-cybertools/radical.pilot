@@ -23,8 +23,9 @@
         "lm": {
             "slots": [{"node_name" : "node1",
                        "node_index": 1,
-                       "cores"     : [0],
-                       "gpus"      : [0, 1],
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
                        "lfs"       : 0}
             ]
         }
@@ -52,7 +53,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"  : {
-                "launch_cmd" : "jsrun -n1 -a1 -c1 -g1 -r1 -b rs --smpiargs=\"off\"",
+                "launch_cmd" : "jsrun -n1 -a1 -c2 -g2 -r1 -b rs --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf": {

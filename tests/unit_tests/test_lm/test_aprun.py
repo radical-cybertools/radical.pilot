@@ -83,12 +83,8 @@ class TestAPRun(TestCase):
             if 'cores_per_node' in task.get('slots', {}):
                 os.environ['SAGA_PPN'] = str(task['slots']['cores_per_node'])
 
-            import pprint
-            pprint.pprint(task['slots'])
             command = lm_aprun.get_launch_cmds(task, '')
-            print(command)
             self.assertEqual(command, result['launch_cmd'], msg=task['uid'])
-            print('ok')
 
             command = lm_aprun.get_exec(task)
             self.assertEqual(command, result['rank_exec'], msg=task['uid'])

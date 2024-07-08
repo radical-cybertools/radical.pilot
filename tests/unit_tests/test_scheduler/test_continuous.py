@@ -66,7 +66,6 @@ class TestContinuous(TestCase):
             alc = rp.utils.convert_slots_to_new(alc_slots)
             cmp = rp.utils.convert_slots_to_new(test_case['result']['slots'][:ranks])
             self.assertEqual(alc, cmp)
-            print('==== uid ok: %s', test_case['task']['uid'])
 
     # --------------------------------------------------------------------------
     #
@@ -111,8 +110,6 @@ class TestContinuous(TestCase):
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
-                    import pprint
-                    pprint.pprint(task)
                     td = t['description']
                     self.assertEqual(
                         t['resources'], {'cpu': td['ranks'] *
@@ -121,9 +118,6 @@ class TestContinuous(TestCase):
                                                 td['gpus_per_rank']})
 
             component.advance = advance
-
-            import pprint
-            pprint.pprint(component.nodes)
 
             self.assertIsNone(task.get('resources'))
             component._queue_sched.put([task])
@@ -169,13 +163,9 @@ class TestContinuous(TestCase):
 
             slots, partition = component.schedule_task(task)
 
-            import pprint
-            pprint.pprint(slots)
-            pprint.pprint(task)
-            pprint.pprint(component.nodes)
-
-            self.maxDiff = None
-            self.assertEqual(slots[0], test_case['result']['slots'][0])
+            alc = rp.utils.convert_slots_to_new(slots)
+            cmp = rp.utils.convert_slots_to_new(test_case['result']['slots'])
+            self.assertEqual(alc[0], cmp[0])
             self.assertEqual(component._colo_history,
                              test_case['result']['colo_history'])
 

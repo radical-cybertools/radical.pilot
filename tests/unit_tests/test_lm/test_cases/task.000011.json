@@ -17,7 +17,7 @@
         "lm": {
             "slots": [{"node_name" : "node2",
                        "node_index": 2,
-                       "cores"     : [0],
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
                        "gpus"      : [],
                        "lfs"       : 0}
             ],
