@@ -752,7 +752,7 @@ def get_node_index(node_list, node_uid, pn):
 
     if not _node_index:
         for idx, n in enumerate(node_list):
-            _node_index[n['node_id']] = idx
+            _node_index[n['index']] = idx
 
     r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
