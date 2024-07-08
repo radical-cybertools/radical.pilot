@@ -387,7 +387,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
             for rank_id,slot in enumerate(slots):
                 rank_env[str(rank_id)] = \
                     'export CUDA_VISIBLE_DEVICES=%s' % \
-                    ','.join([str(g.index) for g in slot['gpus']])
+                    ','.join([str(g['index']) for g in slot['gpus']])
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration

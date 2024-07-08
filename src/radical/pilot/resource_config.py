@@ -211,7 +211,7 @@ class RO(ru.TypedDict):
 
     _defaults = {
         INDEX     : 0,
-        OCCUPATION: FREE,
+        OCCUPATION: None,
     }
 
     def __init__(self, from_dict: Optional[dict] = None,
@@ -224,6 +224,11 @@ class RO(ru.TypedDict):
         if self.occupation == DOWN:
             return '%d:----' % self.index
         return '%d:%.2f' % (self.index, self.occupation)
+
+    def _verify(self):
+
+        if self.occupation is None:
+            raise ValueError('missing occupation: %s' % self.occupation)
 
 
 ResourceOccupation = RO
@@ -371,17 +376,19 @@ class Slot(ru.TypedDict):
             if cores:
                 # this is much faster than `isinstance`
                 if cores[0].__class__.__name__ == 'dict':
-                    from_dict['cores'] =  [RO(c) for c in cores]
+                    from_dict['cores'] =  [RO(d) for d in cores]
 
                 elif isinstance(cores[0], int):
-                    from_dict['cores'] =  [RO(index=i) for i in cores]
+                    from_dict['cores'] =  [RO(index=i, occupation=BUSY)
+                                                 for i in cores]
 
             if gpus:
                 if gpus[0].__class__.__name__ == 'dict':
-                    from_dict['gpus'] =  [RO(g) for g in gpus]
+                    from_dict['gpus'] =  [RO(d) for d in gpus]
 
                 elif isinstance(gpus[0], int):
-                    from_dict['gpus'] =  [RO(index=i) for i in gpus]
+                    from_dict['gpus'] =  [RO(index=i, occupation=BUSY)
+                                                for i in gpus]
 
 
         super().__init__(from_dict, **kwargs)
@@ -428,12 +435,12 @@ class NodeResources(ru.TypedDict):
 
         if cores:
             if not isinstance(cores[0], RO):
-                from_dict['cores'] = [RO(index=i,occupation=o)
+                from_dict['cores'] = [RO(index=i, occupation=o)
                                                     for i,o in enumerate(cores)]
 
         if gpus:
             if not isinstance(gpus[0], RO):
-                from_dict['gpus'] = [RO(index=i,occupation=o)
+                from_dict['gpus'] = [RO(index=i, occupation=o)
                                                      for i,o in enumerate(gpus)]
 
         super().__init__(from_dict)
@@ -461,10 +468,10 @@ class NodeResources(ru.TypedDict):
 
                 # we allow for core indexes but convert into full occupancy then
                 if cores and isinstance(cores[0], int):
-                    cores = [RO(index=core) for core in cores]
+                    cores = [RO(index=core, occupation=BUSY) for core in cores]
 
                 if gpus and isinstance(gpus[0], int):
-                    gpus = [RO(index=gpu) for gpu in gpus]
+                    gpus = [RO(index=gpu, occupation=BUSY) for gpu in gpus]
 
                 # make sure the selected cores exist, are not down, and
                 # occupancy is compatible with the request

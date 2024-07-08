@@ -23,8 +23,8 @@
         "lm": {
             "slots": [{"node_name" : "node1",
                        "node_index": 1,
-                       "cores"     : [0],
-                       "gpus"      : [0],
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0}],
                        "lfs"       : 0}
             ],
             "dvm_list"          : {"0": {"dvm_uri": "dvm_uri",

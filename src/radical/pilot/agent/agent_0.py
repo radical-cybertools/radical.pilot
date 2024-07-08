@@ -501,13 +501,18 @@ class Agent_0(rpu.AgentComponent):
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
-                node_cores = [RO(index=cid) for cid, cstate
-                                            in enumerate(node['cores'])
-                                            if cstate == rpc.FREE]
+                import pprint
+                pprint.pprint(node)
 
-                node_gpus  = [RO(index=cid) for gid, gstate
-                                            in enumerate(node['gpus'])
-                                            if gstate == rpc.FREE]
+                node_cores = [RO(index=cid, occuapation=rpc.BUSY)
+                                            for cid, cstate
+                                            in  enumerate(node['cores'])
+                                            if  cstate == rpc.FREE]
+
+                node_gpus  = [RO(index=gid, occuapation=rpc.BUSY)
+                                            for gid, gstate
+                                            in  enumerate(node['gpus'])
+                                            if  gstate == rpc.FREE]
 
                 agent_task = {
                     'uid'               : sa,

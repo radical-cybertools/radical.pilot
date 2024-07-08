@@ -238,7 +238,9 @@ def convert_slots_to_new(slots, log=None):
 
         cores = slot['cores']
         if cores:
-            if isinstance(cores[0], int):
+            if isinstance(cores[0], RO):
+                pass
+            elif isinstance(cores[0], int):
                 cores = [RO(index=i, occupation=1.0)
                          for i in slot['cores']]
             elif isinstance(cores[0], dict):
@@ -254,7 +256,9 @@ def convert_slots_to_new(slots, log=None):
 
         gpus = slot['gpus']
         if gpus:
-            if isinstance(gpus[0], int):
+            if isinstance(gpus[0], RO):
+                pass
+            elif isinstance(gpus[0], int):
                 gpus  = [RO(index=i, occupation=1.0)
                          for i in slot['gpus']]
             elif isinstance(gpus[0], dict):

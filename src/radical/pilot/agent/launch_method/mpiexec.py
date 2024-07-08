@@ -172,7 +172,7 @@ class MPIExec(LaunchMethod):
 
         for slot in slots:
             rf_str += 'rank %d=%s ' % (rank_id, slot['node_name'])
-            rf_str += 'slots=%s\n' % ','.join([str(c.index)
+            rf_str += 'slots=%s\n' % ','.join([str(c['index'])
                                                for c in slot['cores']])
             rank_id += 1
 
@@ -248,9 +248,9 @@ class MPIExec(LaunchMethod):
             for slot in slots:
                 cores = slot['cores']
                 if len(cores) > 1:
-                    tmp.append('%s-%s' % (cores[0], cores[-1]))
+                    tmp.append('%s-%s' % (cores[0]['index'], cores[-1]['index']))
                 else:
-                    tmp.append(str(cores[0]))
+                    tmp.append(str(cores[0]['index']))
             core_ids = ':'.join(tmp)
 
           # # FIXME: make this readable please

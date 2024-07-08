@@ -63,8 +63,10 @@ class TestContinuous(TestCase):
 
             # number of ranks to run on a single node
             ranks = len(alc_slots)
-            self.assertEqual(alc_slots,
-                             test_case['result']['slots'][:ranks])
+            alc = rp.utils.convert_slots_to_new(alc_slots)
+            cmp = rp.utils.convert_slots_to_new(test_case['result']['slots'][:ranks])
+            self.assertEqual(alc, cmp)
+            print('==== uid ok: %s', test_case['task']['uid'])
 
     # --------------------------------------------------------------------------
     #
@@ -73,7 +75,9 @@ class TestContinuous(TestCase):
 
         component = Continuous(cfg=None, session=None)
         component._uid  = 'agent_scheduling.0002'
-        component._log  = ru.Logger('foo', targets=None, level='OFF')
+        component._log  = mock.Mock()
+        component._log  = ru.Logger('radical.pilot', targets='/tmp/t.log',
+                                    level='DEBUG_9')
         component._prof = mock.Mock()
 
         component._log._debug_level = 0
@@ -107,6 +111,8 @@ class TestContinuous(TestCase):
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
                 for t in tasks:
+                    import pprint
+                    pprint.pprint(task)
                     td = t['description']
                     self.assertEqual(
                         t['resources'], {'cpu': td['ranks'] *
@@ -115,6 +121,9 @@ class TestContinuous(TestCase):
                                                 td['gpus_per_rank']})
 
             component.advance = advance
+
+            import pprint
+            pprint.pprint(component.nodes)
 
             self.assertIsNone(task.get('resources'))
             component._queue_sched.put([task])
@@ -131,12 +140,13 @@ class TestContinuous(TestCase):
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Continuous, '__init__', return_value=None)
-    @mock.patch('radical.utils.Logger')
-    def test_schedule_task(self, mocked_logger, mocked_init):
+    def test_schedule_task(self, mocked_init):
 
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0003'
-        component._log = mocked_logger
+        component._log  = mock.Mock()
+        component._log  = ru.Logger('radical.pilot', targets='/tmp/t.log',
+                                    level='DEBUG_9')
 
         for test_case in self._test_cases:
 
@@ -158,6 +168,11 @@ class TestContinuous(TestCase):
             component.nodes         = nodes
 
             slots, partition = component.schedule_task(task)
+
+            import pprint
+            pprint.pprint(slots)
+            pprint.pprint(task)
+            pprint.pprint(component.nodes)
 
             self.maxDiff = None
             self.assertEqual(slots[0], test_case['result']['slots'][0])

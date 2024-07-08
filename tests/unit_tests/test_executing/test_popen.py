@@ -148,8 +148,9 @@ class TestPopen(TestCase):
                  'gpus_per_rank' : 1,
                  'gpu_type'      : '',
                  'pre_exec'      : []}
-        slots = [{'cores': [0, 1],
-                  'gpus' : [5   ]}]
+        slots = [{'cores': [{'index': 0, 'occupation': 1.0},
+                            {'index': 1, 'occupation': 1.0}],
+                  'gpus' : [{'index': 5, 'occupation': 1.0}]}]
 
         pex._extend_pre_exec(td, slots)
         self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])
