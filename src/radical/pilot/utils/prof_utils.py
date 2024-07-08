@@ -736,11 +736,23 @@ def get_session_description(sid, src=None):
 
 # ------------------------------------------------------------------------------
 #
+def reset_node_index():
+
+    global _node_index
+
+    if _node_index:
+        _node_index = {}
+
+
+# ------------------------------------------------------------------------------
+#
 def get_node_index(node_list, node_uid, pn):
 
+    global _node_index
+
     if not _node_index:
-        for idx,n in enumerate(node_list):
-            _node_index[n['index']] = idx
+        for idx, n in enumerate(node_list):
+            _node_index[n['node_id']] = idx
 
     r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
@@ -751,7 +763,6 @@ def get_node_index(node_list, node_uid, pn):
 # ------------------------------------------------------------------------------
 #
 def get_duration(thing, dur):
-
 
     for e in dur:
         if ru.STATE in e and ru.EVENT not in e:
@@ -864,6 +875,8 @@ def get_provided_resources(session, rtype='cpu'):
     if rtype not in ['cpu', 'gpu']:
         raise Exception('unknown resource type: %s' % rtype)
 
+    reset_node_index()
+
     provided = dict()
     for p in session.get(etype='pilot'):
 
@@ -916,6 +929,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     '''
 
     log = ru.Logger('radical.pilot.utils')
+    reset_node_index()
 
     consumed = dict()
     for e in session.get(etype=['pilot', 'task']):
