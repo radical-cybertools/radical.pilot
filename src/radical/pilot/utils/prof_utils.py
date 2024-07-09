@@ -1223,6 +1223,8 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
         r0, _ = get_node_index(nodes, slot['node_index'], pn)
 
         for resource in slot[rkey]:
+            if isinstance(resource, dict):
+                resource = resource['index']
             resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
