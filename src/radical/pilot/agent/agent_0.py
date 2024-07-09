@@ -501,9 +501,6 @@ class Agent_0(rpu.AgentComponent):
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
-                import pprint
-                pprint.pprint(node)
-
                 node_cores = [RO(index=cid, occuapation=rpc.BUSY)
                                             for cid, cstate
                                             in  enumerate(node['cores'])

@@ -104,15 +104,12 @@ class IBRun(LaunchMethod):
                 tasks_offset += tasks_per_node
                 continue
 
-            print('=== uid: %s, node: %s' % (task['uid'], node['name']))
             # cores contains core ids for each thread,
             # but threads are ignored for offset
             core_id_min = min([slot['cores'][0]['index']
                                for slot in slots
                                if  slot['node_index'] == node['index']])
             # offset into processor (cpus) hostlist
-            print('=== core_id_min:', core_id_min)
-            print('=== n_threads_per_rank:', n_threads_per_rank)
             ibrun_offset = tasks_offset + (core_id_min // n_threads_per_rank)
             break
 
