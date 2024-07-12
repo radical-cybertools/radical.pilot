@@ -22,6 +22,7 @@ from .constants  import *
 # import API
 from .session                   import Session
 from .proxy                     import Proxy
+from .client                    import Client
 
 from .task_manager              import TaskManager
 from .task                      import Task
