@@ -536,6 +536,7 @@ class BaseComponent(object):
         self._cancel_list = list()
         self._cancel_lock = mt.RLock()
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+        self._log.debug('=== registered control cb')
 
         # call component level initialize
         self.initialize()

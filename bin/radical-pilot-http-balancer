@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+
+import os
+import flask
+
+import radical.utils as ru
+
+
+# ------------------------------------------------------------------------------
+#
+
+rid  = 0
+urls = list()
+for k,v in os.environ.items():
+    if k.startswith('LB_TGT_'):
+        urls.append(v)
+
+
+app = flask.Flask(__name__)
+
+
+# ------------------------------------------------------------------------------
+#
+@app.route("/")
+def entrypoint():
+
+    url = urls[rid % len(urls)]
+
+    print('Redirecting client to: ' + url, flush=True)
+
+    return flask.redirect(url, code=302)
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == "__main__":
+
+    url = os.environ.get('LB_URL')
+
+    if not url:
+        app.run()
+
+    else:
+        url = ru.Url(url)
+        app.run(host=url.host, port=url.port, debug=True)
+
+
+
+
+# ------------------------------------------------------------------------------
+

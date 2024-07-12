@@ -1,14 +1,32 @@
-#!/bin/sh
+#!/usr/bin/env python3
+
+import re
+import os
+import sys
+import time
+import pprint
+import select
+import argparse
+import threading
+import subprocess
+
+import radical.utils as ru
+
+
+def print(msg):
+    sys.stdout.write('%.2f %s\n' % (time.time(), msg))
+    sys.stdout.flush()
+
 
 # ------------------------------------------------------------------------------
 #
 # This script is a wrapper around an actual executable.  It's purpose is,
 # depening on the mode of operation, to either watch the executable's stdout for
 # some pattern, or to watch an output file created by the executable for that
-# pattern.  If the pattern is found, the matching data is extracted and sent
-# this script's stdout.  If the executable returns a non-zero exit code, or is
+# pattern.  If the pattern is found, the matching data is extracted and sent to
+# *this* script's stdout.  If the executable returns a non-zero exit code, or if
 # a timeout is reached, the script will also return a non-zero exit code.  If
-# The script returns a zero exit code but a pattern is provided byt not found,
+# The script returns a zero exit code but a pattern is provided but not found,
 # the script will also return a non-zero exit code.
 #
 # The script is called with the following arguments:
@@ -24,181 +42,221 @@
 #               executable's name and arguments
 
 
-# ------------------------------------------------------------------------------
-# parse and check arguments
-
-uid=''
-name=''
-mode=''
-pattern=''
-f_output=''
-f_error=''
-timeout=0
-verbose=''
-
-while getopts 'u:n:m:p:o:e:t:v' flag; do
-    case "${flag}" in
-      u) uid="${OPTARG}"      ; shift 2;;
-      n) name="${OPTARG}"     ; shift 2;;
-      m) mode="${OPTARG}"     ; shift 2;;
-      p) pattern="${OPTARG}"  ; shift 2;;
-      o) f_output="${OPTARG}" ; shift 2;;
-      e) f_error="${OPTARG}"  ; shift 2;;
-      t) timeout="${OPTARG}"  ; shift 2;;
-      v) verbose=1            ; shift 1;;
-      *)  echo "Unknown option ${flag}"
-          exit 1
-          ;;
-    esac
-done
-
-test "$1" = '--' && shift
-
-command="$@"
-pid=$$
-
-if test -z "$uid"; then
-    echo "missing service uid"
-    exit 1
-fi
-
-test -z "$name"     && name="$uid"
-test -z "$mode"     && mode='stdout'
-test -z "$f_output" && f_output="/tmp/wrapper-$pid.log"
-test -z "$f_error"  && f_error="/tmp/wrapper-$pid.log"
-test -z "$timeout"  && timeout=0
-
-if test "$verbose" = 1; then
-    echo "uid     : $uid"
-    echo "name    : $name"
-    echo "mode    : $mode"
-    echo "pattern : $pattern"
-    echo "output  : $f_output"
-    echo "error   : $f_error"
-    echo "timeout : $timeout"
-    echo "command : $command"
-fi
+CHANNEL = 'control_pubsub'
 
 # ------------------------------------------------------------------------------
 #
-# define a method to find the pattern in the given file
-#
-report_back(){
+def main():
 
-    uid=$1
-    name=$2
-    match=$3
-    error=$4
+    print('==== starting')
 
-    echo "report '$uid' '$name' '$match' - '$error'"
+    parser = argparse.ArgumentParser(description='')
 
-    radical-pilot-send-control \
-        -c 'service_up'        \
-        -a "uid=$uid"          \
-        -a "name=$name"        \
-        -a "error=$error"      \
-        -a "info=$match"
-}
+    parser.add_argument('-c', '--command',  dest='command')
+    parser.add_argument('-r', '--registry', dest='reg_url')
+    parser.add_argument('-u', '--uid',      dest='uid')
+    parser.add_argument('-n', '--name',     dest='name')
+    parser.add_argument('-m', '--mode',     dest='mode')
+    parser.add_argument('-p', '--pattern',  dest='pattern')
+    parser.add_argument('-o', '--output',   dest='output')
+    parser.add_argument('-e', '--error',    dest='error')
+    parser.add_argument('-v', '--verbose',  dest='verbose', action='store_true')
+    parser.add_argument('-t', '--timeout',  dest='timeout')
+
+    args    = parser.parse_args()
+    command = args.command or None
+    reg_url = args.reg_url or os.environ.get('RP_REGISTRY_ADDRESS')
+    uid     = args.uid     or os.environ.get('RP_TASK_ID')
+    name    = args.name    or uid
+    mode    = args.mode    or 'stdout'
+    pattern = args.pattern or '\\<http[s]?://[0-9a-zA-Z\\.:_-]*\\>'
+    output  = args.output  or '%s.stdout' % uid
+    error   = args.error   or '%s.stderr' % uid
+    verbose = args.verbose or False
+    timeout = args.timeout or 0
+
+    timeout = int(timeout) if timeout else 0
+
+    if not command: raise ValueError('no command given')
+    if not uid    : raise ValueError('no uid given')
+    if not reg_url: raise ValueError('RP_REGISTRY_ADDRESS not set')
+
+  # # get control pubsub from registry
+  # print('=== reg_url x: %s' % reg_url)
+  # reg = ru.zmq.RegistryClient(url=reg_url)
+  #
+  # # test registry
+  # reg.put('test', 'test')
+  # reg.dump('test')
+  #
+  # cfg = reg['bridges.%s' % CHANNEL]
+  #
+  # print('=== pub_url: %s' % cfg['addr_pub'])
+  # pub = ru.zmq.Publisher(channel=CHANNEL, url=cfg['addr_pub'])
+  #
+  # # let zmq settle
+  # time.sleep(1.0)
+
+    # run the command
+    cmd     = '%s >%s 2>%s' % (command, output, error)
+    proc    = None
+    match   = None
+    err_msg = ''
+
+  # watch_event   = threading.Event()
+  # timeout_event = threading.Event()
+
+    try:
+        print('==== executing: %s' % cmd)
+        proc = subprocess.Popen(cmd, shell=True)
+        print('==== pid: %s' % proc.poll())
+
+      # if timeout is not None:
+      #     def watch(_proc, _timeout):
+      #         start = time.time()
+      #         while _proc.poll() is None:
+      #             time.sleep(0.1)
+      #             if watch_event.is_set():
+      #                 break
+      #             if _timeout and time.time() - start > _timeout:
+      #                 if verbose:
+      #                     print('==== timeout')
+      #                     timeout_event.set()
+      #                 _proc.kill()
+      #                 break
+      #
+      #     watcher = threading.Thread(target=watch, args=(proc, timeout))
+      #     watcher.daemon = True
+      #     watcher.start()
+      #
+      # # open the stream to watch
+      # fname = None
+      # if   mode == 'stdout'        : fname = output
+      # elif mode == 'stderr'        : fname = error
+      # elif mode.startswith('file:'): fname = mode[5:]
+      #
+      # if not fname:
+      #     if mode:
+      #         raise ValueError('unknown mode %s' % mode)
+      #     return
+      #
+      # fstream = None
+      # while proc.poll() is None:
+      #     try:
+      #         fstream = open(fname, 'r')
+      #         break
+      #     except:
+      #         time.sleep(0.1)
+      #         continue
+      #
+      # # find pattern
+      # start = time.time()
+      # regex = re.compile('^.*(%s).*$' % pattern)
+      # data  = ''
+      #
+      # print('==== watching: %s for pattern [%s]' % (fname, pattern))
+      # if fstream:
+      #     print('==== watching: %s' % fstream)
+      #     while proc.poll() is None:
+      #
+      #         r, _, _ = select.select([fstream], [], [], 0.1)
+      #         if fstream in r:
+      #
+      #             data += str(os.read(fstream.fileno(), 1).decode())
+      #
+      #             if not data.endswith('\n'):
+      #                 continue
+      #
+      #             line = data[:-1]
+      #             data = ''
+      #
+      #             if verbose:
+      #                 print('==== line: %s' % line)
+      #
+      #             match = regex.match(line)
+      #             if match:
+      #                 match = match.groups()[-1]
+      #                 break
+      #
+      #         if timeout and time.time() - start > timeout:
+      #             raise ValueError('timeout')
+
+    except Exception as e:
+        err_msg = repr(e)
+        raise
+
+    finally:
+
+      # # stop the watcher
+      # if timeout_event.is_set():
+      #     err_msg = 'timeout'
+      # else:
+      #     watch_event.set()
+      #
+      # if verbose:
+      #     print('==== stop watcher: %s' % err_msg)
+
+        if proc:
+            ret = proc.poll()
+            if ret is not None and ret > 0:
+                err_msg = 'command failed: %s' % ret
+
+  # time.sleep(1)
+  # print('==== env: %s', ru.sh_callout('env > %s.env' % uid, shell=True))
+
+  # # add info to registry
+  # info = {'uid'  : uid,
+  #         'name' : name,
+  #         'error': err_msg,
+  #         'info' : match}
+  # reg['services'] = {name: info}
+  #
+  # print('======= info: %s' % info)
+  # reg.dump(uid)
+
+
+  # update = 'radical-pilot-send-control ' \
+  #              + '-c "service_up" ' \
+  #              + '-a "uid=%s" '   % uid \
+  #              + '-a "name=%s" '  % name \
+  #              + '-a "error=%s" ' % err_msg \
+  #              + '-a "info=%s" '  % match
+  #
+  # print('==== update: %s' % update)
+  # out, err, ret = ru.sh_callout(update, shell=True)
+  # print('==== out: %s' % out)
+  # print('==== err: %s' % err)
+  # print('==== ret: %s' % ret)
+  #
+  # # send the result to the agent
+  # print('==== send result: %s [%s]' % (match, err_msg))
+  # msg = {'cmd': 'service_up',
+  #        'arg': {'uid'  : uid,
+  #                'name' : name,
+  #                'error': err_msg,
+  #                'info' : match}}
+  #
+  # print(CHANNEL)
+  # pprint.pprint(msg)
+  # pub.put(CHANNEL, msg)
+
+    # now just run intil `cmd` completes and return its exit code
+    while proc.poll() is None:
+        print('==== wait: %s' % proc.poll())
+        time.sleep(1.0)
+
+    ret = proc.poll()
+
+    print('==== done: %s' % ret)
+
+    sys.exit(ret)
 
 
 # ------------------------------------------------------------------------------
 #
-# define a method to find the pattern in the given file
-#
-find_pattern() {
-    local uid=$1
-    local name=$2
-    local file=$3
-    local timeout=$4
-    local pattern=$5
+if __name__ == '__main__':
+    main()
 
-    if test -z "$pattern"; then
-        test -z "$verbose" || echo 'no pattern to wait for'
-        report_back "$uid" "$name" '' 'error=no pattern to wait for'
-        return
-    fi
-
-    # use `tail -F` so we can start watching even if file does not yet exist.
-    # stop watching after timeout seconds.
-    echo "watching $file"
-    start=$(date +%s)
-    tail -F $file | while read line; do
-        test -z "$line"    && sleep 1 && continue
-        test -z "$verbose" || echo found $line
-        match=$(expr match "$line" "$pattern")
-
-        # if pattern is found, report back to agent
-        if ! test -z "$match"; then
-            # success!
-            test -z "$verbose" || echo "match [$match]"
-            echo "=== report match: $match"
-            report_back "$uid" "$name" "$match" ''
-            return
-        fi
-
-        # if timeout is met, signal the parent shell and exit.
-        now=$(date +%s)
-        check=$((now - start))
-        echo "timeout: [$timeout]"
-        if test "$timeout" -gt 0 && test "$check" -gt "$timeout"; then
-            echo "=== report timeout"
-            report_back "$uid" "$name" '' 'timeout'
-            test -z $verbose || echo "timeout"
-            kill -s USR1 $$ >/dev/null 2>&1
-            return
-        fi
-    done
-    echo "after read line: [$match]"
-}
-
-
-# ------------------------------------------------------------------------------
-#
-# start the watcher
-#
-cleanup=0
-if test "$mode" = 'stdout'; then
-    cleanup=1
-    mode="$f_output"
-fi
-
-find_pattern "$uid" "$name" "$mode" "$timeout" "$pattern" &
-watch_pid=$!
-
-
-# The watcher may complete earlier, but then will signal here with USR1 or USR2.
-# In that case we just die with the respective exit code.
-my_exit() {
-    exit_code=$1
-    kill -9 $watch_pid >/dev/null 2>&1
-    test -z $cleanup || rm -f $f_output $f_error
-    exit $exit_code
-}
-
-my_exit_1() {
-    my_exit 1
-}
-
-trap my_exit_1 USR1
-
-
-# ------------------------------------------------------------------------------
-#
-# start the actual executable
-#
-$command 1> $f_output 2> $f_error &
-exec_pid=$!
-
-# wait for the executable to finish.  If the executable completes before the
-# watcher, we will kill the watcher and die with the executable's exit code.
-echo "=== wait for exec"
-wait $exec_pid
-exit_code=$?
-echo "=== wait for exec ok $exit_code"
-
-echo "=== kill watcher"
-kill -9 $watch_pid
-exit $exit_code
 
 # ------------------------------------------------------------------------------
 

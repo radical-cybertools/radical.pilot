@@ -359,25 +359,23 @@ class Agent_0(rpu.AgentComponent):
 
         if not td.name    : td.name     = tid
         if not td.mode    : td.mode     = AGENT_SERVICE
-        if not td.timeout : td.timeout  = 60
         if not td.metadata: td.metadata = dict()
 
         # we wrap the service
         exe, args, pat = td.executable, td.arguments, td.info_pattern
 
         td.executable = 'radical-pilot-exec-wrapper'
-        td.arguments  = ['-t', '%d' % td.timeout]
+        td.arguments  = ['-c', '%s %s' % (exe, ' '.join(args))]
         td.arguments += ['-u', tid]
         td.arguments += ['-n', td.name]
         td.arguments += ['-v']
 
+        if td.timeout:
+            td.arguments += ['-t', '%d' % td.timeout]
+
         if pat:
             pat_src, pat_regex = pat.split(':', 1)
             td.arguments += ['-m', pat_src, '-p', pat_regex]
-
-        td.arguments += ['--']
-        td.arguments += [exe]
-        td.arguments += args
 
         # ensure that the description is viable
         td.verify()
@@ -392,9 +390,10 @@ class Agent_0(rpu.AgentComponent):
             self._log.debug('=== set agent service id to %s', tid)
             self._service_uid_launched = tid
 
-            # task info is stored by both name and uid
-            self._reg['services.%s' % td.name] = td.metadata
-            self._reg['services.%s' % tid]     = td.metadata
+          # # task info is stored by both name and uid
+          # FIXME AM
+          # self._reg['services.%s' % td.name] = td.metadata
+          # self._reg['services.%s' % tid]     = td.metadata
 
             self.advance(task, publish=False, push=True)
 
@@ -408,12 +407,24 @@ class Agent_0(rpu.AgentComponent):
             #
             # Or we time out of course :-)
             #
-            timeout = td.timeout or 60
-            if not self._service_start_evt.wait(timeout=timeout):
-                raise RuntimeError('Unable to start service')
 
+            if td.timeout:
 
-            self._log.info('agent service started: %s', td.uid)
+              # if not self._service_start_evt.wait(timeout=td.timeout):
+              #     raise RuntimeError('Unable to start service')
+
+                # instead of the above, we wait for the registry info to appear
+                start = time.time()
+                while True:
+                    info = self._reg.get('services.%s' % td.name)
+                    self._log.debug('=== check service %s: %s', td.name, info)
+                    if info:
+                        break
+                    if time.time() - start > td.timeout:
+                        raise RuntimeError('Unable to start service')
+                    time.sleep(1)
+
+            self._log.info('agent service started: %s: %s', td.uid, info)
 
 
     # --------------------------------------------------------------------------
@@ -638,9 +649,9 @@ class Agent_0(rpu.AgentComponent):
         self._log.debug('=== service %s started (%s): %s', uid,
                         len(self._service_uids_running), info)
 
-        # add info to registry
-        if info:
-            self._reg['services.%s' % name] = info
+      # # add info to registry
+      # if info:
+      #     self._reg['services.%s' % name] = info
 
         # signal main thread when that the service is up
         self._service_start_evt.set()
@@ -661,7 +672,11 @@ class Agent_0(rpu.AgentComponent):
         pre   = env_spec.get('pre_exec') or []
         out   = None
 
-        pre_exec = '-P ". env/bs0_pre_0.sh" '
+        if env_name == 'rp':
+            pre_exec = '-P ". env/bs0_pre_0.sh" '
+        else:
+            pre_exec = '-P ". env/bs0_pre_0.sh" '
+
         for cmd in pre:
             pre_exec += '-P "%s" ' % cmd
 
