@@ -638,8 +638,8 @@ class TaskManager(rpu.ClientComponent):
     # FIXME RPC
     def control_cb(self, topic, msg):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'rpc_res':
 

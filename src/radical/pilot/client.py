@@ -18,7 +18,8 @@ class Client(object):
     #
     def __init__(self, uid=None, reg_addr=None):
 
-        print('===== client init: %s: %s' % (reg_addr, os.environ.get('RP_REGISTRY_ADDRESS')
+        print('===== client init: %s: %s' % (reg_addr,
+                                             os.environ.get('RP_REGISTRY_ADDRESS')))
 
         self._uid      = uid      or os.environ.get('RP_SESSION_ID')
         self._reg_addr = reg_addr or os.environ.get('RP_REGISTRY_ADDRESS')

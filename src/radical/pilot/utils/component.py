@@ -346,7 +346,7 @@ class BaseComponent(object):
         # handle any other message types
         self._log.debug_5('command incoming: %s', msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         if cmd == 'cancel_tasks':

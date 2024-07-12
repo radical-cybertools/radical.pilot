@@ -330,11 +330,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         if not self._scheduler_process:
             return
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'register_named_env':
-
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
