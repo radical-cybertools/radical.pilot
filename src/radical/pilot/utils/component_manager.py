@@ -55,9 +55,6 @@ class ComponentManager(object):
                                  level=self._cfg.log_lvl,
                                  debug=self._cfg.debug_lvl)
 
-        self._log.debug('===== cmgr: %s: %s', self._reg_addr,
-                        self._reg['bridges.control_pubsub'])
-
         self._prof.prof('init2', uid=self._uid, msg=self._cfg.path)
 
         self._log.debug('cmgr %s (%s)', self._uid, self._owner)

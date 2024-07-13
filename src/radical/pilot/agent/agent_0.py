@@ -34,18 +34,6 @@ class Agent_0(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def client_test(self):
-
-        from ..client import Client
-
-        self._log.debug('===== client test: %s: %s', self.session.reg_addr,
-                        self.session._reg['bridges.control_pubsub']['addr_pub'])
-        client = Client(uid=self._sid, reg_addr=self.session.reg_addr)
-        client.send_control_msg({'agent_0': 'hello client world'})
-
-
-    # --------------------------------------------------------------------------
-    #
     def __init__(self):
 
         cfg = ru.Config(path='./agent_0.cfg')
@@ -89,8 +77,6 @@ class Agent_0(rpu.AgentComponent):
         # this agent
         self._service = None
         self._start_service_ep()
-
-        self.client_test()
 
 
     # --------------------------------------------------------------------------

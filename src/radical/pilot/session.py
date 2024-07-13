@@ -216,10 +216,7 @@ class Session(object):
         if self._role == self._PRIMARY:
             self._rep.ok('>>ok\n')
 
-        assert(self._reg)
-
-        self._log.debug('===== session start %s: %s: %s', _reg_addr, self.reg_addr,
-                        self._reg['bridges.control_pubsub']['addr_pub'])
+        assert self._reg
 
 
     # --------------------------------------------------------------------------
@@ -861,12 +858,8 @@ class Session(object):
         # primary sessions and agents have a component manager which also
         # manages heartbeat.  'self._cmgr.close()` should be called during
         # termination
-        self._log.debug('===== comp start 1 %s: %s: %s', self._uid, self.reg_addr,
-                        self._reg['bridges.control_pubsub'])
         self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr, self._uid)
         self._cmgr.start_bridges(self._cfg.bridges)
-        self._log.debug('===== comp start 2 %s: %s: %s', self._uid, self.reg_addr,
-                        self._reg['bridges.control_pubsub']['addr_pub'])
         self._cmgr.start_components(self._cfg.components)
 
 
