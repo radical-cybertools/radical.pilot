@@ -15,7 +15,8 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from .task_description import TaskDescription, RAPTOR_MASTER, RAPTOR_WORKER
+from .task_description import TaskDescription
+from .task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_SERVICE
 from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
@@ -182,10 +183,15 @@ class TaskManager(rpu.ClientComponent):
         # hook into the control pubsub for rpc handling
         self._rpc_queue = queue.Queue()
         ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
 
         self._ctrl_pub  = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                            log=self._log, prof=self._prof)
 
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                          log=self._log, prof=self._prof,
+                          cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -389,6 +395,7 @@ class TaskManager(rpu.ClientComponent):
                 current = task.state
                 target  = task_dict['state']
                 if current == target:
+                    self._log.debug('tmgr: state known: %s', uid)
                     continue
 
                 target, passed = rps._task_state_progress(uid, current, target)
@@ -398,8 +405,10 @@ class TaskManager(rpu.ClientComponent):
                     passed = passed[-1:]
 
                 for s in passed:
+
                     task_dict['state'] = s
                     self._tasks[uid]._update(task_dict)
+
                     to_notify.append([task, s])
 
                 self._task_info[uid] = task_dict
@@ -627,7 +636,7 @@ class TaskManager(rpu.ClientComponent):
                     raise ValueError('pilot %s not removed' % pid)
                 del self._pilots[pid]
 
-        # publish to the command channel for the scheduler to pick up
+        # publish to the control channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids,
                                                    'tmgr'  : self.uid}})
@@ -636,7 +645,9 @@ class TaskManager(rpu.ClientComponent):
     # --------------------------------------------------------------------------
     #
     # FIXME RPC
-    def control_cb(self, topic, msg):
+    def _control_cb(self, topic, msg):
+
+        self._log.debug('=== control cb: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -645,6 +656,26 @@ class TaskManager(rpu.ClientComponent):
 
             self._log.debug('rpc res: %s', arg)
             self._rpc_queue.put(arg)
+
+
+        elif cmd == 'service_up':
+
+            self._log.debug('=== service up: %s', arg)
+            self._service_update(arg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _service_update(self, arg):
+
+        uid  = arg['uid']
+        task = self._tasks.get(uid)
+
+        if not task:
+            return
+
+        task._set_info(arg['info'])
+        self._log.debug('=== service update: %s: %s', uid, task.info)
 
 
     # --------------------------------------------------------------------------
@@ -999,6 +1030,8 @@ class TaskManager(rpu.ClientComponent):
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
         else                            : states =  state
+
+        self._log.debug('=== wait for %s: %s', uids, states)
 
         # we simplify state check by waiting for the *earliest* of the given
         # states - if the task happens to be in any later state, we are sure the

@@ -1,50 +1,55 @@
 #!/usr/bin/env python3
 
 import os
+import sys
 import flask
-
-import radical.utils as ru
+import requests
 
 
 # ------------------------------------------------------------------------------
 #
-
 rid  = 0
-urls = list()
-for k,v in os.environ.items():
-    if k.startswith('LB_TGT_'):
-        urls.append(v)
+urls = sys.argv[1:]
+app  = flask.Flask(__name__)
 
+assert urls, 'no target urls given'
 
-app = flask.Flask(__name__)
-
-
-# ------------------------------------------------------------------------------
-#
-@app.route("/")
-def entrypoint():
-
-    url = urls[rid % len(urls)]
-
-    print('Redirecting client to: ' + url, flush=True)
-
-    return flask.redirect(url, code=302)
+for i in range(len(urls)):
+    if not urls[i].startswith('http'):
+        urls[i] = 'http://%s' % urls[i]
 
 
 # ------------------------------------------------------------------------------
 #
-if __name__ == "__main__":
 
-    url = os.environ.get('LB_URL')
+@app.route("/", defaults={"path": ""}, methods=['GET', 'POST'])
+@app.route("/<string:path>",           methods=['GET', 'POST'])
+@app.route("/<path:path>",             methods=['GET', 'POST'])
+def ollama(path):
 
-    if not url:
-        app.run()
+    global rid
+    global urls
 
-    else:
-        url = ru.Url(url)
-        app.run(host=url.host, port=url.port, debug=True)
+    url  = urls[rid % len(urls)]
+    url += '/' + path
+    rid += 1
+
+    data    = flask.request.get_data()
+    headers = dict(flask.request.headers)
+    del headers['Host']
+
+    print('proxy to %s' % url)
+    response = requests.post(url, headers=headers, data=data)
+
+    print('proxy to %s: %d' % (url, response.status_code))
+    return response.text
 
 
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    app.run(threaded=True)
 
 
 # ------------------------------------------------------------------------------

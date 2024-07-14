@@ -416,6 +416,15 @@ class Agent_0(rpu.AgentComponent):
             info = self._reg.get('services.%s' % td.name)
             self._log.info('agent service started: %s - %s', td.uid, info)
 
+            # send a notification around, specifically also to the client side
+            if not info:
+                info = 'service is up'
+
+            self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'service_up',
+                                              'arg' : {'uid' : td.uid,
+                                                       'info': info},
+                                              'fwd' : True})
+
 
     # --------------------------------------------------------------------------
     #
@@ -584,8 +593,8 @@ class Agent_0(rpu.AgentComponent):
         elif cmd == 'cancel_pilots':
             return self._ctrl_cancel_pilots(msg)
 
-        elif cmd == 'service_up':
-            return self._ctrl_service_up(msg, arg)
+        elif cmd == 'service_info':
+            return self._ctrl_service_info(msg, arg)
 
 
     # --------------------------------------------------------------------------
@@ -609,7 +618,7 @@ class Agent_0(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _ctrl_service_up(self, msg, arg):
+    def _ctrl_service_info(self, msg, arg):
 
         uid  = arg.get('uid')
         name = arg.get('name') or uid

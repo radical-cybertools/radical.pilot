@@ -209,7 +209,7 @@ def main():
 
     # send the result to the agent
     print('send result: %s [%s]' % (match, err_msg))
-    msg = {'cmd': 'service_up',
+    msg = {'cmd': 'service_info',
            'arg': {'uid'  : uid,
                    'name' : name,
                    'error': err_msg,
