@@ -44,11 +44,12 @@ def print(msg):
 
 CHANNEL = 'control_pubsub'
 
+
 # ------------------------------------------------------------------------------
 #
 def main():
 
-    print('==== starting')
+    print('starting')
 
     parser = argparse.ArgumentParser(description='')
 
@@ -81,21 +82,21 @@ def main():
     if not uid    : raise ValueError('no uid given')
     if not reg_url: raise ValueError('RP_REGISTRY_ADDRESS not set')
 
-  # # get control pubsub from registry
-  # print('=== reg_url x: %s' % reg_url)
-  # reg = ru.zmq.RegistryClient(url=reg_url)
-  #
-  # # test registry
-  # reg.put('test', 'test')
-  # reg.dump('test')
-  #
-  # cfg = reg['bridges.%s' % CHANNEL]
-  #
-  # print('=== pub_url: %s' % cfg['addr_pub'])
-  # pub = ru.zmq.Publisher(channel=CHANNEL, url=cfg['addr_pub'])
-  #
-  # # let zmq settle
-  # time.sleep(1.0)
+    # get control pubsub from registry
+    print('reg_url x: %s' % reg_url)
+    reg = ru.zmq.RegistryClient(url=reg_url)
+
+    # test registry
+    reg.put('test', 'test')
+    reg.dump('test')
+
+    cfg = reg['bridges.%s' % CHANNEL]
+
+    print('pub_url: %s' % cfg['addr_pub'])
+    pub = ru.zmq.Publisher(channel=CHANNEL, url=cfg['addr_pub'])
+
+    # let zmq settle
+    time.sleep(1.0)
 
     # run the command
     cmd     = '%s >%s 2>%s' % (command, output, error)
@@ -103,83 +104,86 @@ def main():
     match   = None
     err_msg = ''
 
-  # watch_event   = threading.Event()
-  # timeout_event = threading.Event()
+    watch_event   = threading.Event()
+    timeout_event = threading.Event()
 
     try:
-        print('==== executing: %s' % cmd)
+        print('executing: %s' % cmd)
         proc = subprocess.Popen(cmd, shell=True)
-        print('==== pid: %s' % proc.poll())
+        print('pid: %s' % proc.poll())
 
-      # if timeout is not None:
-      #     def watch(_proc, _timeout):
-      #         start = time.time()
-      #         while _proc.poll() is None:
-      #             time.sleep(0.1)
-      #             if watch_event.is_set():
-      #                 break
-      #             if _timeout and time.time() - start > _timeout:
-      #                 if verbose:
-      #                     print('==== timeout')
-      #                     timeout_event.set()
-      #                 _proc.kill()
-      #                 break
-      #
-      #     watcher = threading.Thread(target=watch, args=(proc, timeout))
-      #     watcher.daemon = True
-      #     watcher.start()
-      #
-      # # open the stream to watch
-      # fname = None
-      # if   mode == 'stdout'        : fname = output
-      # elif mode == 'stderr'        : fname = error
-      # elif mode.startswith('file:'): fname = mode[5:]
-      #
-      # if not fname:
-      #     if mode:
-      #         raise ValueError('unknown mode %s' % mode)
-      #     return
-      #
-      # fstream = None
-      # while proc.poll() is None:
-      #     try:
-      #         fstream = open(fname, 'r')
-      #         break
-      #     except:
-      #         time.sleep(0.1)
-      #         continue
-      #
-      # # find pattern
-      # start = time.time()
-      # regex = re.compile('^.*(%s).*$' % pattern)
-      # data  = ''
-      #
-      # print('==== watching: %s for pattern [%s]' % (fname, pattern))
-      # if fstream:
-      #     print('==== watching: %s' % fstream)
-      #     while proc.poll() is None:
-      #
-      #         r, _, _ = select.select([fstream], [], [], 0.1)
-      #         if fstream in r:
-      #
-      #             data += str(os.read(fstream.fileno(), 1).decode())
-      #
-      #             if not data.endswith('\n'):
-      #                 continue
-      #
-      #             line = data[:-1]
-      #             data = ''
-      #
-      #             if verbose:
-      #                 print('==== line: %s' % line)
-      #
-      #             match = regex.match(line)
-      #             if match:
-      #                 match = match.groups()[-1]
-      #                 break
-      #
-      #         if timeout and time.time() - start > timeout:
-      #             raise ValueError('timeout')
+        if timeout is not None:
+
+            def watch(_proc, _timeout):
+                print('start watcher')
+                start = time.time()
+                while _proc.poll() is None:
+                    print('check watcher')
+                    time.sleep(0.1)
+                    if watch_event.is_set():
+                        break
+                    if _timeout and time.time() - start > _timeout:
+                        print('timeout')
+                        timeout_event.set()
+                        _proc.kill()
+                        break
+                print('stop watcher: %s' % _proc.poll())
+
+            watcher = threading.Thread(target=watch, args=(proc, timeout))
+            watcher.daemon = True
+            watcher.start()
+
+        # open the stream to watch
+        fname = None
+        if   mode == 'stdout'        : fname = output
+        elif mode == 'stderr'        : fname = error
+        elif mode.startswith('file:'): fname = mode[5:]
+
+        if not fname:
+            if mode:
+                raise ValueError('unknown mode %s' % mode)
+            return
+
+        fstream = None
+        while proc.poll() is None:
+            try:
+                fstream = open(fname, 'r')
+                break
+            except:
+                time.sleep(0.1)
+                continue
+
+        # find pattern
+        start = time.time()
+        regex = re.compile('^.*(%s).*$' % pattern)
+        data  = ''
+
+        print('watching: %s for pattern [%s]' % (fname, pattern))
+        if fstream:
+            print('watching: %s' % fstream)
+            while proc.poll() is None:
+
+                r, _, _ = select.select([fstream], [], [], 0.1)
+                if fstream in r:
+
+                    data += str(os.read(fstream.fileno(), 1).decode())
+
+                    if not data.endswith('\n'):
+                        continue
+
+                    line = data[:-1]
+                    data = ''
+
+                    if verbose:
+                        print('line: %s' % line)
+
+                    match = regex.match(line)
+                    if match:
+                        match = match.groups()[-1]
+                        break
+
+                if timeout and time.time() - start > timeout:
+                    raise ValueError('timeout')
 
     except Exception as e:
         err_msg = repr(e)
@@ -187,67 +191,42 @@ def main():
 
     finally:
 
-      # # stop the watcher
-      # if timeout_event.is_set():
-      #     err_msg = 'timeout'
-      # else:
-      #     watch_event.set()
-      #
-      # if verbose:
-      #     print('==== stop watcher: %s' % err_msg)
+        # stop the watcher
+        if timeout_event.is_set():
+            err_msg = 'timeout'
+        else:
+            watch_event.set()
+
+        if verbose:
+            print('stop watcher: %s' % err_msg)
 
         if proc:
             ret = proc.poll()
             if ret is not None and ret > 0:
                 err_msg = 'command failed: %s' % ret
 
-  # time.sleep(1)
-  # print('==== env: %s', ru.sh_callout('env > %s.env' % uid, shell=True))
+    time.sleep(1)
 
-  # # add info to registry
-  # info = {'uid'  : uid,
-  #         'name' : name,
-  #         'error': err_msg,
-  #         'info' : match}
-  # reg['services'] = {name: info}
-  #
-  # print('======= info: %s' % info)
-  # reg.dump(uid)
+    # send the result to the agent
+    print('send result: %s [%s]' % (match, err_msg))
+    msg = {'cmd': 'service_up',
+           'arg': {'uid'  : uid,
+                   'name' : name,
+                   'error': err_msg,
+                   'info' : match}}
 
-
-  # update = 'radical-pilot-send-control ' \
-  #              + '-c "service_up" ' \
-  #              + '-a "uid=%s" '   % uid \
-  #              + '-a "name=%s" '  % name \
-  #              + '-a "error=%s" ' % err_msg \
-  #              + '-a "info=%s" '  % match
-  #
-  # print('==== update: %s' % update)
-  # out, err, ret = ru.sh_callout(update, shell=True)
-  # print('==== out: %s' % out)
-  # print('==== err: %s' % err)
-  # print('==== ret: %s' % ret)
-  #
-  # # send the result to the agent
-  # print('==== send result: %s [%s]' % (match, err_msg))
-  # msg = {'cmd': 'service_up',
-  #        'arg': {'uid'  : uid,
-  #                'name' : name,
-  #                'error': err_msg,
-  #                'info' : match}}
-  #
-  # print(CHANNEL)
-  # pprint.pprint(msg)
-  # pub.put(CHANNEL, msg)
+    print(CHANNEL)
+    pprint.pprint(msg)
+    pub.put(CHANNEL, msg)
 
     # now just run intil `cmd` completes and return its exit code
     while proc.poll() is None:
-        print('==== wait: %s' % proc.poll())
+        print('wait: %s' % proc.poll())
         time.sleep(1.0)
 
     ret = proc.poll()
 
-    print('==== done: %s' % ret)
+    print('done: %s' % ret)
 
     sys.exit(ret)
 

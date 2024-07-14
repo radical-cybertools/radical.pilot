@@ -372,6 +372,7 @@ class Agent_0(rpu.AgentComponent):
 
         if td.timeout:
             td.arguments += ['-t', '%d' % td.timeout]
+            td.timeout    = 0.0    # service tasks will never time out!
 
         if pat:
             pat_src, pat_regex = pat.split(':', 1)
@@ -387,17 +388,14 @@ class Agent_0(rpu.AgentComponent):
 
         with self._service_lock:
 
-            self._log.debug('=== set agent service id to %s', tid)
-            self._service_uid_launched = tid
+            self._service_start_evt.clear()
 
-          # # task info is stored by both name and uid
-          # FIXME AM
-          # self._reg['services.%s' % td.name] = td.metadata
-          # self._reg['services.%s' % tid]     = td.metadata
+            self._log.debug('set agent service id to %s', tid)
+            self._service_uid_launched = tid
 
             self.advance(task, publish=False, push=True)
 
-            # at this point we wait for one of two events to happen: either the
+            # At this point we wait for one of two events to happen: either the
             # task will go into a state beyond `AGENT_EXECUTING` and will thus
             # have completed prematurely in which case we declare a failure, or
             # the service comes up and the wrapper sends a control message.  In
@@ -407,24 +405,16 @@ class Agent_0(rpu.AgentComponent):
             #
             # Or we time out of course :-)
             #
+            # FIXME: need to watch state updates
 
             if td.timeout:
+                if not self._service_start_evt.wait(timeout=td.timeout):
+                    raise RuntimeError('Unable to start service')
+            else:
+                self._service_start_evt.wait()
 
-              # if not self._service_start_evt.wait(timeout=td.timeout):
-              #     raise RuntimeError('Unable to start service')
-
-                # instead of the above, we wait for the registry info to appear
-                start = time.time()
-                while True:
-                    info = self._reg.get('services.%s' % td.name)
-                    self._log.debug('=== check service %s: %s', td.name, info)
-                    if info:
-                        break
-                    if time.time() - start > td.timeout:
-                        raise RuntimeError('Unable to start service')
-                    time.sleep(1)
-
-            self._log.info('agent service started: %s: %s', td.uid, info)
+            info = self._reg.get('services.%s' % td.name)
+            self._log.info('agent service started: %s - %s', td.uid, info)
 
 
     # --------------------------------------------------------------------------
@@ -621,14 +611,12 @@ class Agent_0(rpu.AgentComponent):
     #
     def _ctrl_service_up(self, msg, arg):
 
-        self._log.debug('=== service_up: %s', arg)
-
         uid  = arg.get('uid')
         name = arg.get('name') or uid
-        info = arg.get('info')
+        info = arg.get('info', '')
 
         if not uid:
-            self._log.warn('=== ignore service startup signal without uid')
+            self._log.warn('ignore service startup signal without uid')
             return True
 
         # This message signals that an agent service instance is up and running.
@@ -637,21 +625,20 @@ class Agent_0(rpu.AgentComponent):
 
         if uid != self._service_uid_launched:
             # we do not know this service instance
-            self._log.warn('=== ignore service startup signal for %s [%s]', uid,
+            self._log.warn('ignore service startup signal for %s [%s]', uid,
                            self._service_uid_launched)
             return True
 
         if uid in self._service_uids_running:
-            self._log.warn('=== duplicated service startup signal for %s', uid)
+            self._log.warn('duplicated service startup signal for %s', uid)
             return True
 
         self._service_uids_running.append(uid)
-        self._log.debug('=== service %s started (%s): %s', uid,
+        self._log.debug('service %s started (%s): %s', uid,
                         len(self._service_uids_running), info)
 
-      # # add info to registry
-      # if info:
-      #     self._reg['services.%s' % name] = info
+        # add info to registry (might be empty!)
+        self._reg['services.%s' % name] = info
 
         # signal main thread when that the service is up
         self._service_start_evt.set()
