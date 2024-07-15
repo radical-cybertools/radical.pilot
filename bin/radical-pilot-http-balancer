@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-import os
 import sys
+import time
 import flask
 import requests
+
+
+def print(msg):
+    sys.stdout.write('%.2f %s\n' % (time.time(), msg))
+    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -26,6 +31,8 @@ for i in range(len(urls)):
 @app.route("/<string:path>",           methods=['GET', 'POST'])
 @app.route("/<path:path>",             methods=['GET', 'POST'])
 def ollama(path):
+
+    print('got request for %s' % path)
 
     global rid
     global urls

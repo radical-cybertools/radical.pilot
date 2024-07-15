@@ -76,6 +76,12 @@ def main():
     verbose = args.verbose or False
     timeout = args.timeout or 0
 
+    ranks   = int(os.environ.get('RP_RANKS'))
+    rank    = int(os.environ.get('RP_RANK'))
+
+    output  = '%s.%04d' % (output, rank)
+    error   = '%s.%04d' % (error,  rank)
+
     timeout = int(timeout) if timeout else 0
 
     if not command: raise ValueError('no command given')
@@ -211,11 +217,12 @@ def main():
     print('send result: %s [%s]' % (match, err_msg))
     msg = {'cmd': 'service_info',
            'arg': {'uid'  : uid,
+                   'ranks': ranks,
+                   'rank' : rank,
                    'name' : name,
                    'error': err_msg,
                    'info' : match}}
 
-    print(CHANNEL)
     pprint.pprint(msg)
     pub.put(CHANNEL, msg)
 

@@ -60,6 +60,7 @@ class Agent_0(rpu.AgentComponent):
         self._service_uids_running = list()
         self._service_start_evt    = mt.Event()
         self._service_lock         = mt.Lock()  # launch one service at a time
+        self._service_infos        = dict()
 
         # this is the earliest point to sync bootstrap and agent profiles
         self._prof.prof('hostname', uid=cfg.pid, msg=ru.get_hostname())
@@ -364,7 +365,7 @@ class Agent_0(rpu.AgentComponent):
         # we wrap the service
         exe, args, pat = td.executable, td.arguments, td.info_pattern
 
-        td.executable = 'radical-pilot-exec-wrapper'
+        td.executable = 'radical-pilot-service-wrapper'
         td.arguments  = ['-c', '%s %s' % (exe, ' '.join(args))]
         td.arguments += ['-u', tid]
         td.arguments += ['-n', td.name]
@@ -392,6 +393,7 @@ class Agent_0(rpu.AgentComponent):
 
             self._log.debug('set agent service id to %s', tid)
             self._service_uid_launched = tid
+            self._service_infos[tid] = dict()
 
             self.advance(task, publish=False, push=True)
 
@@ -620,13 +622,11 @@ class Agent_0(rpu.AgentComponent):
     #
     def _ctrl_service_info(self, msg, arg):
 
-        uid  = arg.get('uid')
-        name = arg.get('name') or uid
-        info = arg.get('info', '')
-
-        if not uid:
-            self._log.warn('ignore service startup signal without uid')
-            return True
+        uid   = arg['uid']
+        name  = arg['name']
+        info  = arg['info']
+        ranks = arg['ranks']
+        rank  = arg['rank']
 
         # This message signals that an agent service instance is up and running.
         # We expect to find the service UID in args and can then unblock the
@@ -642,15 +642,27 @@ class Agent_0(rpu.AgentComponent):
             self._log.warn('duplicated service startup signal for %s', uid)
             return True
 
-        self._service_uids_running.append(uid)
-        self._log.debug('service %s started (%s): %s', uid,
-                        len(self._service_uids_running), info)
+        # collect all rank info before we consider sucess
+        service_info = self._service_infos[name]
 
-        # add info to registry (might be empty!)
-        self._reg['services.%s' % name] = info
+        assert rank not in service_info
+        service_info[str(rank)] = info
 
-        # signal main thread when that the service is up
-        self._service_start_evt.set()
+        if len(service_info) < ranks:
+            self._log.debug('service rank %d for %s started: %s', rank,
+                            uid, info)
+
+        else:
+            self._service_uids_running.append(uid)
+            self._log.debug('all ranks for %s started (%s): %s', uid,
+                            len(self._service_uids_running), info)
+
+            # add info to registry (might be empty!)
+            self._reg['services.%s' % name] = service_info
+
+            # signal main thread when that the service is up
+            self._log.debug('set service start event for %s', uid)
+            self._service_start_evt.set()
 
         return True
 
