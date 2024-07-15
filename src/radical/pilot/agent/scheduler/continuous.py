@@ -291,6 +291,7 @@ class Continuous(AgentSchedulingComponent):
         lfs_per_node   = self._rm.info.lfs_per_node
         mem_per_node   = self._rm.info.mem_per_node
 
+        ranks_per_node = td['ranks_per_node']
         cores_per_slot = td['cores_per_rank']
         gpus_per_slot  = td['gpus_per_rank']
         lfs_per_slot   = td['lfs_per_rank']
@@ -344,6 +345,9 @@ class Continuous(AgentSchedulingComponent):
         tmp = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
         tmp.append([cores_per_node, cores_per_slot, slots_per_node])
+
+        if ranks_per_node:
+            slots_per_node = min(slots_per_node, ranks_per_node)
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,

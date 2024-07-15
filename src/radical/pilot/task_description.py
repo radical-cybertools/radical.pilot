@@ -67,6 +67,7 @@ SANDBOX          = 'sandbox'
 # resource requirements
 USE_MPI          = 'use_mpi'                  # default `True if RANKS > 1`
 RANKS            = 'ranks'                    # ranks
+RANKS_PER_NODE   = 'ranks_per_node'           # ranks per node
 CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
 GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
 THREADING_TYPE   = 'threading_type'           # OpenMP?
@@ -257,6 +258,10 @@ class TaskDescription(ru.TypedDict):
             attribute `cpu_process_type` was previously used to signal the need
             for an MPI communicator - that attribute is now also deprecated and
             will be ignored.
+
+        ranks_per_node (int, optional): The number of ranks to start on each
+            node.  If not set, the number of ranks per node will be determined
+            by the scheduler depending on resource availability.
 
         cores_per_rank (int, optional): The number of cpu cores each process
             will have available to start its own threads or processes on.  By
@@ -575,6 +580,7 @@ class TaskDescription(ru.TypedDict):
 
         USE_MPI         : bool        ,
         RANKS           : int         ,
+        RANKS_PER_NODE  : int         ,
         CORES_PER_RANK  : int         ,
         GPUS_PER_RANK   : float       ,
         THREADING_TYPE  : str         ,
@@ -639,6 +645,7 @@ class TaskDescription(ru.TypedDict):
 
         USE_MPI         : None        ,
         RANKS           : 1           ,
+        RANKS_PER_NODE  : None        ,
         CORES_PER_RANK  : 1           ,
         GPUS_PER_RANK   : 0.          ,
         THREADING_TYPE  : ''          ,
