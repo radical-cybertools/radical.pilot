@@ -87,6 +87,7 @@ MEM_PER_PROCESS  = 'mem_per_process'          # memory per rank
 INPUT_STAGING    = 'input_staging'
 OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
+PRIORITY         = 'priority'
 PRE_LAUNCH       = 'pre_launch'
 PRE_EXEC         = 'pre_exec'
 PRE_EXEC_SYNC    = 'pre_exec_sync'
@@ -299,6 +300,12 @@ class TaskDescription(ru.TypedDict):
             attempted either way. This may though lead to additional errors if
             the tasks did not manage to produce the expected output files to
             stage. Default False.
+
+        priority: (int, optional): The priority of the task.  Tasks with higher
+            priority will be scheduled first.  The default priority is 0.
+            The task process will not be strictly enforced strictly - under
+            certain conditions the task may be started later than lower priority
+            tasks.
 
         pre_launch (list, optional): Actions (shell commands) to perform
             before launching (i.e., before LaunchMethod is submitted),
@@ -537,6 +544,7 @@ class TaskDescription(ru.TypedDict):
         INPUT_STAGING   : [None]      ,
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
+        PRIORITY        : int         ,
 
         USE_MPI         : bool        ,
         RANKS           : int         ,
@@ -599,6 +607,7 @@ class TaskDescription(ru.TypedDict):
         INPUT_STAGING   : list()      ,
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
+        PRIORITY        : 0           ,
 
         USE_MPI         : None        ,
         RANKS           : 1           ,
