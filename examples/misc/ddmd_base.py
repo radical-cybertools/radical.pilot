@@ -33,6 +33,7 @@ class DDMD_Base(object):
         self._lock           = mt.RLock()
         self._tasks          = defaultdict(dict)
         self._final_tasks    = list()
+        self._closed         = mt.Event()
 
         # silence RP reporter, use own
         os.environ['RADICAL_REPORT'] = 'false'
@@ -75,6 +76,18 @@ class DDMD_Base(object):
         if self._session is not None:
             self._session.close()
             self._session = None
+
+        self._closed.set()
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait(self):
+
+        while not self._closed.is_set():
+          # self.dump()
+            time.sleep(1)
 
 
     # --------------------------------------------------------------------------

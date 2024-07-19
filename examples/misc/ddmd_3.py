@@ -452,10 +452,7 @@ if __name__ == '__main__':
 
     try:
         ddmd.start()
-
-        while True:
-          # ddmd.dump()
-            time.sleep(1)
+        ddmd.wait()
 
     finally:
         ddmd.close()
