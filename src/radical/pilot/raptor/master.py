@@ -221,7 +221,7 @@ class Master(rpu.AgentComponent):
         `worker_rank_heartbeat` and `rpc_req` messages.
         '''
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         if cmd == 'worker_register':

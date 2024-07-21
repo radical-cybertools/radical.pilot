@@ -248,7 +248,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         # configure the scheduler instance
         self._configure()
-        self.slot_status("slot status after  init")
+        self.slot_status("after  init")
 
         # register task input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -324,17 +324,15 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         '''
         listen on the control channel for raptor queue registration commands
         '''
-        print('----- b', msg)
 
         # only the scheduler process listens for control messages
         if not self._scheduler_process:
             return
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'register_named_env':
-
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
@@ -392,6 +390,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     for task in tasks:
                         self._fail_task(task, RuntimeError('raptor gone'),
                                               'raptor queue disappeared')
+
 
         # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
@@ -1023,9 +1022,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
-            self.slot_status("slot status before unschedule %s", task['uid'])
+            self.slot_status("before unschedule", task['uid'])
             self.unschedule_task(task)
-            self.slot_status("slot status after  unschedule %s", task['uid'])
+            self.slot_status("after  unschedule", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
         # we placed some previously waiting tasks, and need to remove those from

@@ -588,7 +588,7 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug_1('control msg %s: %s', topic, msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
