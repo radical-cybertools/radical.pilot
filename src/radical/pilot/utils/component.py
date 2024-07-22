@@ -380,8 +380,8 @@ class BaseComponent(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
-            # FIXME RPC: scheduler handles cancelation itself
-            if 'AgentSchedulingComponent' not in repr(self):
+            # scheduler handles cancelation itself
+            if 'AgentSchedulingComponent' in repr(self):
                 self.control_cb(topic, msg)
                 return
 

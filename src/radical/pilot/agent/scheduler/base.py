@@ -399,7 +399,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             to_cancel = list()
             with self._lock:
                 for uid in uids:
-                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
