@@ -163,7 +163,8 @@ class Default(AgentStagingOutputComponent):
 
         # TODO: disable this at scale?
         if task.get('stderr_file') and os.path.isfile(task['stderr_file']):
-            with ru.ru_open(task['stderr_file'], 'r') as stderr_f:
+            with ru.ru_open(task['stderr_file'], 'r', errors='ignore') \
+                 as stderr_f:
                 try:
                     txt = ru.as_string(stderr_f.read())
                 except UnicodeDecodeError:
@@ -173,7 +174,8 @@ class Default(AgentStagingOutputComponent):
 
             # to help with ID mapping, also parse for PRTE output:
             # [batch3:122527] JOB [3673,4] EXECUTING
-            with ru.ru_open(task['stderr_file'], 'r') as stderr_f:
+            with ru.ru_open(task['stderr_file'], 'r', errors='ignore') \
+                 as stderr_f:
 
                 for line in stderr_f.readlines():
                     line = line.strip()
@@ -191,7 +193,7 @@ class Default(AgentStagingOutputComponent):
         if os.path.isfile(task_prof):
             pids = {}
             try:
-                with ru.ru_open(task_prof, 'r') as prof_f:
+                with ru.ru_open(task_prof, 'r', errors='ignore') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
                         if not line:
