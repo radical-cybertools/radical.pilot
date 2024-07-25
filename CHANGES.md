@@ -11,6 +11,14 @@ This is the latest release - if uncertain, use this release.
 --------------------------------------------------------------------------------
 ### 1.61.0 Release                                                    2024-07-01
 
+  - add laplace config
+  - update Rivanna config
+  - fix node indexing for analytics (RA)
+
+
+--------------------------------------------------------------------------------
+### 1.61.0 Release                                                    2024-07-01
+
   - add virtenv mode warning
   - add SRUN option not to kill all ranks for non-mpi task if a single rank fails
   - add scheduler capable to reconfigure tasks requirements
