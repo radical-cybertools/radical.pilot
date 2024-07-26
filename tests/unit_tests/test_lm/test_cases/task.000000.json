@@ -24,7 +24,7 @@
             "partition": 1,
             "slots": [{"node_name" : "node1",
                        "node_index": 1,
-                       "cores"     : [0],
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
                        "gpus"      : [],
                        "lfs"       : 0}
             ],
@@ -57,7 +57,7 @@
                 "rank_exec"  : "/bin/sleep"
             },
             "jsrun"   : {
-                "launch_cmd" : "jsrun -n1 -a1 -c1 -g0 -b rs",
+                "launch_cmd" : "jsrun -n1 -a1 -c2 -g0 -b rs",
                 "rank_exec"  : "/bin/sleep"
             },
             "jsrun_erf": {

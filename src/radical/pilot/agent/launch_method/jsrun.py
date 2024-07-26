@@ -8,7 +8,7 @@ import radical.utils as ru
 
 from ...      import constants as rpc
 from .base    import LaunchMethod
-from ...utils import unconvert_slots
+from ...utils import convert_slots_to_old
 
 
 # ------------------------------------------------------------------------------
@@ -125,7 +125,7 @@ class JSRUN(LaunchMethod):
         # NOTE: our tests feed us the new slot structure, the jsrun scheduler
         #       provides the old one.  We need to detect that and convert.
         if self._in_pytest:
-            slots = unconvert_slots(slots)
+            slots = convert_slots_to_old(slots)
 
         base_id = 0
         for slot_ranks in slots:
@@ -170,7 +170,7 @@ class JSRUN(LaunchMethod):
         # NOTE: our tests feed us the new slot structure, the jsrun scheduler
         #       provides the old one.  We need to detect that and convert.
         if self._in_pytest:
-            slots = unconvert_slots(slots)
+            slots = convert_slots_to_old(slots)
 
         if self._erf:
 

@@ -22,13 +22,15 @@
         "lm": {
             "slots": [{"node_name" : "node1",
                        "node_index": 1,
-                       "cores"     : [0, 1],
+                       "cores"     : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
                        "gpus"      : [],
                        "lfs"       : 0
                        },
                       {"node_name" : "node2",
                        "node_index": 2,
-                       "cores"     : [0, 1],
+                       "cores"     : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
                        "gpus"      : [],
                        "lfs"       : 0
                       }

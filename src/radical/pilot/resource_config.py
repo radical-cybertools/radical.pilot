@@ -205,7 +205,7 @@ class ResourceConfig(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class ResourceOccupation(ru.TypedDict):
+class RO(ru.TypedDict):
 
     INDEX      = 'index'
     OCCUPATION = 'occupation'
@@ -217,7 +217,7 @@ class ResourceOccupation(ru.TypedDict):
 
     _defaults = {
         INDEX     : 0,
-        OCCUPATION: FREE,
+        OCCUPATION: None,
     }
 
     def __init__(self, from_dict: Optional[dict] = None,
@@ -231,8 +231,13 @@ class ResourceOccupation(ru.TypedDict):
             return '%d:----' % self.index
         return '%d:%.2f' % (self.index, self.occupation)
 
+    def _verify(self):
 
-_RO = ResourceOccupation
+        if self.occupation is None:
+            raise ValueError('missing occupation: %s' % self.occupation)
+
+
+ResourceOccupation = RO
 
 
 # ------------------------------------------------------------------------------
@@ -349,14 +354,16 @@ class Slot(ru.TypedDict):
     MEM         = 'mem'
     NODE_INDEX  = 'node_index'
     NODE_NAME   = 'node_name'
+    VERSION     = 'version'  # use this to distinguish from old slot structure
 
     _schema = {
-        CORES      : [_RO],  # list of tuples [(core_id, core_occupation), ...]
-        GPUS       : [_RO],  # list of tuples [(gpu_id,  core_occupation), ...]
+        CORES      : [RO],  # list of tuples [(core_id, core_occupation), ...]
+        GPUS       : [RO],  # list of tuples [(gpu_id,  core_occupation), ...]
         LFS        : int,
         MEM        : int,
         NODE_INDEX : int,
         NODE_NAME  : str,
+        VERSION    : int,
     }
 
     _defaults = {
@@ -366,6 +373,7 @@ class Slot(ru.TypedDict):
         MEM        : 0,
         NODE_INDEX : 0,
         NODE_NAME  : '',
+        VERSION    : 0,
     }
 
     def __init__(self, from_dict: dict = None, **kwargs):
@@ -379,12 +387,22 @@ class Slot(ru.TypedDict):
             gpus  = from_dict.get('gpus')
 
             if cores:
-                if not isinstance(cores[0], _RO):
-                    from_dict['cores'] = [_RO(index=i) for i in cores]
+                # this is much faster than `isinstance`
+                if cores[0].__class__.__name__ == 'dict':
+                    from_dict['cores'] =  [RO(d) for d in cores]
+
+                elif isinstance(cores[0], int):
+                    from_dict['cores'] =  [RO(index=i, occupation=BUSY)
+                                                 for i in cores]
 
             if gpus:
-                if not isinstance(gpus[0], _RO):
-                    from_dict['gpus'] = [_RO(index=i) for i in gpus]
+                if gpus[0].__class__.__name__ == 'dict':
+                    from_dict['gpus'] =  [RO(d) for d in gpus]
+
+                elif isinstance(gpus[0], int):
+                    from_dict['gpus'] =  [RO(index=i, occupation=BUSY)
+                                                for i in gpus]
+
 
         super().__init__(from_dict, **kwargs)
 
@@ -451,8 +469,8 @@ class NodeResources(ru.TypedDict):
     _schema = {
         INDEX    : int,
         NAME     : str,
-        CORES    : [_RO],
-        GPUS     : [_RO],
+        CORES    : [RO],
+        GPUS     : [RO],
         LFS      : int,
         MEM      : int,
     }
@@ -474,13 +492,13 @@ class NodeResources(ru.TypedDict):
         gpus  = from_dict.get('gpus')
 
         if cores:
-            if not isinstance(cores[0], _RO):
-                from_dict['cores'] = [_RO(index=i,occupation=o)
+            if not isinstance(cores[0], RO):
+                from_dict['cores'] = [RO(index=i, occupation=o)
                                                     for i,o in enumerate(cores)]
 
         if gpus:
-            if not isinstance(gpus[0], _RO):
-                from_dict['gpus'] = [_RO(index=i,occupation=o)
+            if not isinstance(gpus[0], RO):
+                from_dict['gpus'] = [RO(index=i, occupation=o)
                                                      for i,o in enumerate(gpus)]
 
         super().__init__(from_dict)
@@ -530,10 +548,10 @@ class NodeResources(ru.TypedDict):
 
                 # we allow for core indexes but convert into full occupancy then
                 if cores and isinstance(cores[0], int):
-                    cores = [_RO(index=core) for core in cores]
+                    cores = [RO(index=core, occupation=BUSY) for core in cores]
 
                 if gpus and isinstance(gpus[0], int):
-                    gpus = [_RO(index=gpu) for gpu in gpus]
+                    gpus = [RO(index=gpu, occupation=BUSY) for gpu in gpus]
 
                 # make sure the selected cores exist, are not down, and
                 # occupancy is compatible with the request
@@ -615,8 +633,8 @@ class NodeResources(ru.TypedDict):
                     if ro.occupation is DOWN:
                         continue
                     if rr.core_occupation <= BUSY - ro.occupation:
-                        cores.append(_RO(index=ro.index,
-                                         occupation=rr.core_occupation))
+                        cores.append(RO(index=ro.index,
+                                        occupation=rr.core_occupation))
                     if len(cores) == rr.n_cores:
                         break
 
@@ -628,8 +646,8 @@ class NodeResources(ru.TypedDict):
                     if ro.occupation is DOWN:
                         continue
                     if rr.gpu_occupation <= BUSY - ro.occupation:
-                        gpus.append(_RO(index=ro.index,
-                                        occupation=rr.gpu_occupation))
+                        gpus.append(RO(index=ro.index,
+                                       occupation=rr.gpu_occupation))
                     if len(gpus) == rr.n_gpus:
                         break
 

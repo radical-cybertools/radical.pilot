@@ -819,9 +819,6 @@ class Session(object):
                                           rcfg=self._rcfg,
                                           log=self._log, prof=self._prof)
 
-        import pprint
-        self._log.debug(pprint.pformat(self._rm.info))
-
 
     # --------------------------------------------------------------------------
     #

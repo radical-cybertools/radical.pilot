@@ -27,7 +27,6 @@ class TestBaseScheduling(TestCase):
     def setUpClass(cls) -> None:
 
         # provided JSON file (with test cases) should NOT contain any comments
-        print('%s/test_cases/test_base.json' % base)
         cls._test_cases = ru.read_json('%s/test_cases/test_base.json' % base)
 
     # --------------------------------------------------------------------------

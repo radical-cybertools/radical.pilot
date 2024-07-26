@@ -8,8 +8,9 @@ import math as m
 
 import radical.utils as ru
 
-from ...   import constants as rpc
-from .base import AgentSchedulingComponent
+from .base              import AgentSchedulingComponent
+from ...                import constants as rpc
+from ...resource_config import RO
 
 
 # ------------------------------------------------------------------------------
@@ -78,6 +79,9 @@ class Continuous(AgentSchedulingComponent):
     def __init__(self, cfg, session):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
+
+        self._log = ru.Logger('radical.pilot', targets=['/tmp/t.log'], level='DEBUG')
+        self._log.info('test')
 
         self._colo_history = dict()
         self._tagged_nodes = set()
@@ -152,8 +156,8 @@ class Continuous(AgentSchedulingComponent):
             {
                 'node_name'  : 'node_name',
                 'node_index' : 1,
-                'cores'      : [1, 2, 4, 5],
-                'gpus'       : [1, 3],
+                'cores'      : [[1, 1.0], [2, 1.0], [4, 1.0], [5, 1.0]],
+                'gpus'       : [[1, 1.0], [3, 1.0]],
                 'lfs'        : 1234,
                 'mem'        : 4321
             }
@@ -178,6 +182,8 @@ class Continuous(AgentSchedulingComponent):
         slots = list()
 
         # find at most `n_slots`
+        loop_core_idx = 0
+        loop_gpu_idx  = 0
         while len(slots) < n_slots:
 
             node_idx  = node['index']
@@ -194,13 +200,16 @@ class Continuous(AgentSchedulingComponent):
                      'lfs'       : lfs_per_slot,
                      'mem'       : mem_per_slot}
 
-            for core_idx,core in enumerate(node['cores']):
-
+            for core_idx,core in enumerate(node['cores'][loop_core_idx:],
+                                                         loop_core_idx):
                 if core == rpc.FREE:
-                    slot['cores'].append(core_idx)
+                    slot['cores'].append(RO(index=core_idx,
+                                            occupation=rpc.BUSY))
 
                 if len(slot['cores']) == cores_per_slot:
                     break
+
+            loop_core_idx = core_idx + 1
 
             if len(slot['cores']) < cores_per_slot:
                 self._log.debug_9('not enough cores on %s', node_name)
@@ -215,29 +224,37 @@ class Continuous(AgentSchedulingComponent):
                     raise ValueError('cannot share GPUs>1')
                 gpus_per_slot = tmp
 
-                for gpu_idx,gpu in enumerate(node['gpus']):
+                for gpu_idx,gpu in enumerate(node['gpus'][loop_gpu_idx:],
+                                                          loop_gpu_idx):
 
                     if gpu == rpc.FREE:
-                        slot['gpus'].append([gpu_idx, 1.0])
+                        slot['gpus'].append(RO(index=gpu_idx,
+                                               occupation=rpc.BUSY))
 
                     if len(slot['gpus']) == gpus_per_slot:
                         break
 
+                loop_gpu_idx = gpu_idx + 1
+
                 if len(slot['gpus']) < gpus_per_slot:
-                    self._log.debug_9('not enough gpus on %s', node_name)
+                    self._log.debug_9('not enough gpus on %s (1)', node_name)
                     break
 
             elif gpus_per_slot > 0.0:
 
                 # find a GPU which has sufficient space left
-                for gpu_idx,gpu_occ in enumerate(node['gpus']):
+                for gpu_idx,gpu_occ in enumerate(node['gpus'][loop_gpu_idx:],
+                                                              loop_gpu_idx):
 
-                    if 1 - gpu_occ >= gpus_per_slot:
-                        slot['gpus'].append([gpu_idx, gpus_per_slot])
+                    if gpus_per_slot <= rpc.BUSY - gpu_occ:
+                        slot['gpus'].append(RO(index=gpu_idx,
+                                               occupation=gpus_per_slot))
                         break
+                    else:
+                        loop_gpu_idx = gpu_idx + 1
 
                 if len(slot['gpus']) < 1:
-                    self._log.debug_9('not enough gpus on %s', node_name)
+                    self._log.debug_9('not enough gpus on %s (2)', node_name)
                     break
 
             self._log.debug_9('found resources on %s: %s', node_name, slot)
@@ -247,8 +264,7 @@ class Continuous(AgentSchedulingComponent):
         self._log.debug_9('found resources on %s', node_name)
         self._log.debug_9(pprint.pformat(slots))
 
-
-        if partial and len(slots) < n_slots:
+        if not partial and len(slots) < n_slots:
             return None
 
         return slots

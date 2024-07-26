@@ -39,15 +39,14 @@ if True:
   # mem_per_rank   =      0
   # lfs_per_rank   =      0
 
-    RO    = rp.ResourceOccupation
-    nodes = [{'index'       : i,
-              'name'        : 'node_%05d' % i,
-              'cores'       : [RO(index=x, occupation=rp.FREE)
-                                           for x in range(cores_per_node)],
-              'gpus'        : [RO(index=x, occupation=rp.FREE)
-                                           for x in range(gpus_per_node)],
-              'lfs'         : lfs_per_node,
-              'mem'         : mem_per_node,
+    nodes = [{'index'   : i,
+              'name'    : 'node_%05d' % i,
+              'cores'   : [rp.RO(index=x, occupation=rp.FREE)
+                                          for x in range(cores_per_node)],
+              'gpus'    : [rp.RO(index=x, occupation=rp.FREE)
+                                          for x in range(gpus_per_node)],
+              'lfs'     : lfs_per_node,
+              'mem'     : mem_per_node,
              } for i in range(n_nodes)]
 
     # FIXME: intorduce `NumaDomainMap` as type
@@ -114,34 +113,47 @@ if __name__ == '__main__':
 
         pd_init = {'resource': 'local.localhost',
                    'runtime' : 15,
-                   'cores'   : 32}
+                   'nodes'   : 1}
         pdesc = rp.PilotDescription(pd_init)
         pilot = pmgr.submit_pilots(pdesc)
 
         tmgr.add_pilots(pilot)
         pilot.wait([rp.PMGR_ACTIVE, rp.FAILED])
 
-        n = 5
+        n = 1
         report.header('submit %d tasks' % n)
 
         tds = list()
         for i in range(n):
-            slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
-                                                                  lfs=512))
-            print('=== %s' % slots)
+          # slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
+          #                                                       lfs=512),
+          #                                   n_slots=2)
+          #
+          # print()
+          # if slots:
+          #     for slot in slots:
+          #         print('=== %s' % slots)
+
 
             td = rp.TaskDescription()
-            td.executable   = '/bin/date'
-            td.slots        = slots
+            td.executable     = '/bin/date'
+            td.ranks          = 2
+            td.cores_per_rank = 2
+          # td.slots          = slots
 
             tds.append(td)
 
         tasks = tmgr.submit_tasks(tds)
         tmgr.wait_tasks()
 
+        import pprint
         for task in tasks:
             print('  * %s: %s [%s], %s' % (task.uid, task.state, task.exit_code,
                                            task.stdout.strip()))
+
+            print()
+            for slot in task.slots:
+                print(slot)
 
     finally:
         report.header('finalize')
