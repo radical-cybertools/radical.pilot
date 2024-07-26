@@ -150,7 +150,8 @@ class Default(AgentStagingOutputComponent):
 
         # TODO: disable this at scale?
         if task.get('stdout_file') and os.path.isfile(task['stdout_file']):
-            with ru.ru_open(task['stdout_file'], 'r') as stdout_f:
+            with ru.ru_open(task['stdout_file'], 'r', errors='ignore') \
+                 as stdout_f:
                 try:
                     txt = ru.as_string(stdout_f.read())
                 except UnicodeDecodeError:
@@ -163,26 +164,14 @@ class Default(AgentStagingOutputComponent):
 
         # TODO: disable this at scale?
         if task.get('stderr_file') and os.path.isfile(task['stderr_file']):
-            with ru.ru_open(task['stderr_file'], 'r') as stderr_f:
+            with ru.ru_open(task['stderr_file'], 'r', errors='ignore') \
+                 as stderr_f:
                 try:
                     txt = ru.as_string(stderr_f.read())
                 except UnicodeDecodeError:
                     txt = "task stderr is binary -- use file staging"
 
                 task['stderr'] += rpu.tail(txt)
-
-            # to help with ID mapping, also parse for PRTE output:
-            # [batch3:122527] JOB [3673,4] EXECUTING
-            with ru.ru_open(task['stderr_file'], 'r') as stderr_f:
-
-                for line in stderr_f.readlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if line[0] == '[' and line.endswith('EXECUTING'):
-                        elems = line.replace('[', '').replace(']', '').split()
-                        tid   = elems[2]
-                        self._log.info('PRTE IDMAP: %s:%s' % (tid, uid))
 
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
@@ -191,7 +180,7 @@ class Default(AgentStagingOutputComponent):
         if os.path.isfile(task_prof):
             pids = {}
             try:
-                with ru.ru_open(task_prof, 'r') as prof_f:
+                with ru.ru_open(task_prof, 'r', errors='ignore') as prof_f:
                     txt = ru.as_string(prof_f.read())
                     for line in txt.split("\n"):
                         if not line:
