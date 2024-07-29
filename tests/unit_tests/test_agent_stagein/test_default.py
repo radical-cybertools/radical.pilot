@@ -11,6 +11,8 @@ from radical.pilot.agent.staging_input.default import Default
 
 base = os.path.abspath(os.path.dirname(__file__))
 
+path = '/tmp/rp_test_%s' % os.getpid()
+
 
 # ------------------------------------------------------------------------------
 #
@@ -53,7 +55,7 @@ class StageInTC(TestCase):
         component._handle_task_staging = mock.MagicMock(
                                        side_effect=_handle_task_side_effect)
         component.advance = mock.MagicMock(side_effect=_advance_side_effect)
-        component._log = ru.Logger('dummy')
+        component._log = ru.Logger('dummy', path=path)
 
         for test in self._test_cases:
             global_things = []

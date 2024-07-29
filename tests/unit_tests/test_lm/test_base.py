@@ -1,10 +1,14 @@
 # pylint: disable=protected-access,unused-argument,no-value-for-parameter,abstract-method
 
+import os
+
 import radical.utils as ru
 
 from unittest import mock, TestCase
 
 from radical.pilot.agent.launch_method.base import LaunchMethod
+
+os.environ['RADICAL_BASE'] = '/tmp/rp_tests_%s' % os.getuid()
 
 
 # ------------------------------------------------------------------------------
@@ -28,7 +32,8 @@ class TestBaseLaunchMethod(TestCase):
 
         # check initialization from registry data only,
 
-        reg = ru.zmq.Registry()
+        ru.rec_makedir('/tmp/rp_tests_%s' % os.getuid())
+        reg = ru.zmq.Registry(path='/tmp/rp_tests_%s' % os.getuid())
         reg.start()
 
         lm_name = 'NewLaunchMethod'
