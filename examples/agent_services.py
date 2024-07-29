@@ -46,6 +46,11 @@ if __name__ == '__main__':
 
         # Define an [n]-core local pilot that runs for [x] minutes
         # Here we use a dict to initialize the description object
+
+        sd = rp.TaskDescription({'executable': '/bin/sh',
+                                 'arguments' : ['-c', 'radical-pilot-service-signal'],
+                                 'named_env' : 'rp'})
+
         pd_init = {'resource'      : resource,
                    'runtime'       : 30,  # pilot runtime (min)
                    'exit_on_error' : True,
