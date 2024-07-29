@@ -86,6 +86,8 @@ if __name__ == '__main__':
             td.executable     = '/bin/date'
             td.ranks          = 1
             td.cores_per_rank = 1
+            td.gpus_per_rank  = 1
+            td.gpu_type       = rp.CUDA
 
             tds.append(td)
             report.progress()

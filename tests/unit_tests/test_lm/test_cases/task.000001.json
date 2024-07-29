@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"               : "task.000001",
+        "partition"         : "0",
         "description": {
             "executable"    : "python",
             "arguments"     : ["test.py"],
@@ -16,11 +17,9 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks"         : [],
-                "cores_per_node": 24,
-                "gpus_per_node" : 0
-            }
+            "slots": [],
+            "cores_per_node": 24,
+            "gpus_per_node" : 0
         }
     },
 
