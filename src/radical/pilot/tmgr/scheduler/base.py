@@ -203,7 +203,7 @@ class TMGRSchedulingComponent(rpu.ClientComponent):
         #
         # make sure command is for *this* scheduler by matching the tmgr uid.
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
 
         self._log.debug('got cmd %s', cmd)
 

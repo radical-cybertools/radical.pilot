@@ -346,7 +346,7 @@ class BaseComponent(object):
         # handle any other message types
         self._log.debug_5('command incoming: %s', msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         if cmd == 'cancel_tasks':
@@ -536,6 +536,7 @@ class BaseComponent(object):
         self._cancel_list = list()
         self._cancel_lock = mt.RLock()
         self.register_subscriber(rpc.CONTROL_PUBSUB, self._control_cb)
+        self._log.debug('=== registered control cb')
 
         # call component level initialize
         self.initialize()
@@ -907,7 +908,6 @@ class BaseComponent(object):
 
         self._publishers[pubsub] = ru.zmq.Publisher(channel=pubsub,
                                                     url=cfg['addr_pub'],
-                                                    log=self._log,
                                                     prof=self._prof)
 
         self._log.debug('registered publisher for %s', pubsub)
@@ -937,7 +937,6 @@ class BaseComponent(object):
         if pubsub not in self._subscribers:
             self._subscribers[pubsub] = ru.zmq.Subscriber(channel=pubsub,
                                                           url=cfg['addr_sub'],
-                                                          log=self._log,
                                                           prof=self._prof)
 
         self._subscribers[pubsub].subscribe(topic=pubsub, cb=cb,

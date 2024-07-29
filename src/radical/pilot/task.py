@@ -6,6 +6,8 @@ __license__   = "MIT"
 import copy
 import time
 
+import threading     as mt
+
 import radical.utils as ru
 
 from . import states    as rps
@@ -86,6 +88,8 @@ class Task(object):
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
+        self._info             = None
+        self._info_evt         = mt.Event()
         self._pilot            = self._descr.pilot
         self._endpoint_fs      = None
         self._resource_sandbox = None
@@ -214,6 +218,7 @@ class Task(object):
             'pilot_sandbox':    self.pilot_sandbox,
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
+            'info':             self.info,
             'description':      self.description   # this is a deep copy
         }
 
@@ -446,6 +451,23 @@ class Task(object):
     def metadata(self):
         """The metadata field of the task's description."""
         return self._descr.metadata
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def info(self):
+        """The metadata field of the task's description."""
+        return self._info
+
+    def _set_info(self, info):
+        self._info = info
+        self._info_evt.set()
+
+    def wait_info(self, timeout=None):
+
+        self._info_evt.wait(timeout=timeout)
+        return self.info
 
 
     # --------------------------------------------------------------------------
