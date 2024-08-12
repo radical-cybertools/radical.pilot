@@ -741,7 +741,8 @@ class PilotManager(rpu.ClientComponent):
         self._log.debug('issue cancel_pilots for %s', uids)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,
-                                                   'uids' : uids}})
+                                                   'uids' : uids},
+                                          'fwd' : True})
         # wait for the cancel to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
 
