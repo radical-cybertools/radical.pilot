@@ -613,6 +613,7 @@ class Agent_0(rpu.AgentComponent):
 
         if self._pid not in arg.get('uids'):
             self._log.debug('ignore cancel %s', msg)
+            return True
 
         self._log.info('cancel pilot cmd')
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',

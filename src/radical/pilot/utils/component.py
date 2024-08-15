@@ -315,7 +315,7 @@ class BaseComponent(object):
         message which is not already handled by the component base class.
         '''
 
-        self._log.debug('ctrl msg ignored: %s:%s', topic, msg.get('cmd'))
+        self._log.debug_4('ctrl msg ignored: %s:%s', topic, msg.get('cmd'))
 
 
     # --------------------------------------------------------------------------
@@ -359,7 +359,7 @@ class BaseComponent(object):
         except Exception as e:
 
             # could not be handled - fall through to legacy handlers
-            self._log.debug('fall back to legacy msg handlers [%s]', repr(e))
+            self._log.debug_6('fall back to legacy msg handlers [%s]', repr(e))
 
 
         # handle any other message types
