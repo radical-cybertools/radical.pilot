@@ -282,7 +282,9 @@ class TestComponent(TestCase):
         with os.fdopen(fd, 'w') as f:
             f.write('2\n0 %s\n1 %s' % (uri_0, uri_1))
 
-        reg = ru.zmq.Registry()
+        path = '/tmp/rp_tests_%s' % os.getuid()
+        ru.rec_makedir(path)
+        reg = ru.zmq.Registry(path=path)
         reg.start()
 
         agent_0 = Agent_0()
