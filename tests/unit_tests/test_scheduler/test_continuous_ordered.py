@@ -3,6 +3,7 @@
 
 from unittest import mock, TestCase
 
+import os
 import threading     as mt
 import radical.utils as ru
 
@@ -10,6 +11,8 @@ from radical.pilot import states as rps
 
 from radical.pilot.agent.scheduler.continuous         import Continuous
 from radical.pilot.agent.scheduler.continuous_ordered import ContinuousOrdered
+
+path = '/tmp/rp_test_%s' % os.getpid()
 
 
 class TestContinuousOrdered(TestCase):
@@ -32,7 +35,7 @@ class TestContinuousOrdered(TestCase):
         component._cfg            = cfg
         component._ru_terminating = True
         component._uid            = None
-        component._log            = ru.Logger('dummy')
+        component._log            = ru.Logger('dummy', path=path)
         component._tasks          = dict()
         component._unordered      = list()
         component._ns             = dict()
@@ -57,7 +60,7 @@ class TestContinuousOrdered(TestCase):
         component = ContinuousOrdered(cfg=None, session=None)
         component._ru_terminating = True
         component._lock           = mt.RLock()
-        component._log            = ru.Logger('dummy')
+        component._log            = ru.Logger('dummy', path=path)
         component._unordered      = list()
         tasks = [
                 {"uid"        : "task.000001",
@@ -100,7 +103,7 @@ class TestContinuousOrdered(TestCase):
         '''
         component = ContinuousOrdered(cfg=None, session=None)
         component._lock      = mt.RLock()
-        component._log       = ru.Logger('dummy')
+        component._log       = ru.Logger('dummy', path=path)
         component._unordered = list()
         component._ns        = dict()
         component._try_schedule()
@@ -117,7 +120,7 @@ class TestContinuousOrdered(TestCase):
         '''
         component = ContinuousOrdered(cfg=None, session=None)
         component._lock = mt.RLock()
-        component._log  = ru.Logger('dummy')
+        component._log  = ru.Logger('dummy', path=path)
 
         msg   = {'cmd':'', 'arg':''}
         topic = None
