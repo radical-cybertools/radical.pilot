@@ -30,7 +30,9 @@ class RMBaseTestCase(TestCase):
         # check initialization from registry data only,
         # initialization from scratch will be tested separately
 
-        reg = ru.zmq.Registry()
+        path = '/tmp/rp_tests_%s' % os.getuid()
+        ru.rec_makedir(path)
+        reg = ru.zmq.Registry(path='/tmp/rp_tests_%s' % os.getuid())
         reg.start()
 
         rm_info = RMInfo({'requested_nodes': 1,
