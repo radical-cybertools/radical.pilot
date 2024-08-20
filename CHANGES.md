@@ -9,7 +9,15 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
-### 1.61.0 Release                                                    2024-07-01
+### 1.63.0 Release                                                    2024-08-20
+
+  - add missing file
+  - ensure that stdout/stderr strings are utf8
+  - test temp files moved to /tmp/
+
+
+--------------------------------------------------------------------------------
+### 1.62.0 Release                                                    2024-07-01
 
   - add laplace config
   - update Rivanna config
