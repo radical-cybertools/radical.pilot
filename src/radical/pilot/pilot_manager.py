@@ -317,8 +317,8 @@ class PilotManager(rpu.ClientComponent):
         if self._terminate.is_set():
             return False
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         self._log.debug_9('got control cmd %s: %s', cmd, arg)
 
