@@ -129,8 +129,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         self._log.info('command_cb [%s]: %s', topic, msg)
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         # FIXME RPC: already handled in the component base class
         if cmd == 'cancel_tasks':

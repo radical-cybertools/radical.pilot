@@ -251,8 +251,8 @@ class ContinuousOrdered(Continuous):
         previously scheduled by us reaches the trigger state.
         '''
 
-        cmd    = msg['cmd']
-        things = msg['arg']
+        cmd    = msg.get('cmd')
+        things = msg.get('arg')
 
         if cmd not in ['update']:
             self._log.info('ignore cmd %s', cmd)

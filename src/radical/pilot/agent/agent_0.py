@@ -597,7 +597,7 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug_1('control msg %s: %s', topic, msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         self._log.debug('pilot command: %s: %s', cmd, arg)
@@ -622,11 +622,12 @@ class Agent_0(rpu.AgentComponent):
 
         if self._pid not in arg.get('uids'):
             self._log.debug('ignore cancel %s', msg)
+            return True
 
         self._log.info('cancel pilot cmd')
+        self._final_cause = 'cancel'
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'terminate',
                                           'arg' : None})
-        self._final_cause = 'cancel'
         self.stop()
 
         # work is done - unregister this cb
