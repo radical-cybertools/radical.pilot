@@ -32,9 +32,6 @@ End user
     * - .. envvar:: RADICAL_PILOT_BULK_CB
       - Enables bulk callbacks to boost performance. This changes the callback signature
       - FALSE
-    * - .. envvar:: RADICAL_PILOT_STRICT_CANCEL
-      - Limits task cancelation by not forcing the state "CANCELLED" on the Task Manager.
-      - {NOT_SET}
     * - .. envvar:: RADICAL_DEFAULT_LOG_TGT
       - Log target
       - .
