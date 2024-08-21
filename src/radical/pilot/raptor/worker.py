@@ -160,7 +160,7 @@ class Worker(object):
             cmd = msg.get('cmd')
             arg = msg.get('arg')
 
-            if cmd != 'update':
+            if cmd not in ['update']:
                 continue
 
             for thing in arg:
