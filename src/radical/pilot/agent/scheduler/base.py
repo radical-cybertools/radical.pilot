@@ -255,7 +255,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         # configure the scheduler instance
         self._configure()
-        self.slot_status("slot status after  init")
+        self.slot_status("after  init")
 
         # register task input channels
         self.register_input(rps.AGENT_SCHEDULING_PENDING,
@@ -338,11 +338,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         if not self._scheduler_process:
             return
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         if cmd == 'register_named_env':
-
 
             env_name = arg['env_name']
             self._named_envs.append(env_name)
@@ -401,6 +400,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         self._fail_task(task, RuntimeError('raptor gone'),
                                               'raptor queue disappeared')
 
+
         # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
@@ -408,7 +408,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             to_cancel = list()
             with self._lock:
                 for uid in uids:
-                    print('---------- cancel', uid)
                     if uid in self._waitpool:
                         to_cancel.append(self._waitpool[uid])
                         del self._waitpool[uid]
@@ -1088,9 +1087,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
-            self.slot_status("slot status before unschedule %s", task['uid'])
+            self.slot_status("before unschedule", task['uid'])
             self.unschedule_task(task)
-            self.slot_status("slot status after  unschedule %s", task['uid'])
+            self.slot_status("after  unschedule", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
         # we placed some previously waiting tasks, and need to remove those from

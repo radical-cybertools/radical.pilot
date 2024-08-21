@@ -131,8 +131,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         self._log.info('command_cb [%s]: %s', topic, msg)
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
 
     # --------------------------------------------------------------------------

@@ -27,19 +27,6 @@ if os.environ.get('RADICAL_PILOT_BULK_CB', '').lower() in ['true', 'yes', '1']:
 
 # ------------------------------------------------------------------------------
 #
-# make sure deprecation warning is shown only once per type
-#
-_seen = list()
-
-
-def _warn(old_type, new_type):
-    if old_type not in _seen:
-        _seen.append(old_type)
-        sys.stderr.write('%s is deprecated - use %s\n' % (old_type, new_type))
-
-
-# ------------------------------------------------------------------------------
-#
 class TaskManager(rpu.ClientComponent):
     """
     A TaskManager manages :class:`radical.pilot.Task` instances which
@@ -355,9 +342,12 @@ class TaskManager(rpu.ClientComponent):
         things = ru.as_list(arg)
         tasks  = [thing for thing in things if thing.get('type') == 'task']
 
+      # for task in tasks:
+      #     self._log.debug('tmgr: task state update: %s [%s]',
+      #                     task['uid'], task['state'])
+
         try   : self._update_tasks(tasks)
         except: self._log.exception('state callback failed')
-
         return True
 
 
@@ -389,6 +379,10 @@ class TaskManager(rpu.ClientComponent):
                 # only update on state changes
                 current = task.state
                 target  = task_dict['state']
+
+                if 'target_state' in task_dict:
+                    target = task_dict['target_state']
+
                 if current == target:
                     continue
 
@@ -644,8 +638,8 @@ class TaskManager(rpu.ClientComponent):
     # FIXME RPC
     def control_cb(self, topic, msg):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'rpc_res':
 
@@ -671,20 +665,6 @@ class TaskManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def list_units(self):
-        """Get Task UIDs.
-
-        .. deprecated:: 1.5.12
-
-            use :func:`list_tasks()`
-
-        """
-        _warn(self.list_units, self.list_tasks)
-        return self.list_tasks()
-
-
-    # --------------------------------------------------------------------------
-    #
     def list_tasks(self):
         """Get the UIDs of the tasks managed by this task manager.
 
@@ -695,20 +675,6 @@ class TaskManager(rpu.ClientComponent):
 
         with self._pilots_lock:
             return list(self._tasks.keys())
-
-
-    # --------------------------------------------------------------------------
-    #
-    def submit_units(self, descriptions):
-        """Submit tasks for execution.
-
-        .. deprecated:: 1.5.12
-
-            use :py:func:`submit_tasks()`
-
-        """
-        _warn(self.submit_units, self.submit_tasks)
-        return self.submit_tasks(descriptions=descriptions)
 
 
     # --------------------------------------------------------------------------
@@ -897,20 +863,6 @@ class TaskManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def get_units(self, uids=None):
-        """Get one or more tasks identified by their IDs.
-
-        .. deprecated:: 1.5.12
-
-            use :py:func:`get_tasks()`
-
-        """
-        _warn(self.get_units, self.get_tasks)
-        return self.get_tasks(uids=uids)
-
-
-    # --------------------------------------------------------------------------
-    #
     def get_tasks(self, uids=None):
         """Get one or more tasks identified by their IDs.
 
@@ -942,20 +894,6 @@ class TaskManager(rpu.ClientComponent):
 
         if ret_list: return ret
         else       : return ret[0]
-
-
-    # --------------------------------------------------------------------------
-    #
-    def wait_units(self, uids=None, state=None, timeout=None):
-        """Block for state transition.
-
-        .. deprecated:: 1.5.12
-
-            use :py:func:`wait_tasks()`
-
-        """
-        _warn(self.wait_units, self.wait_tasks)
-        return self.wait_tasks(uids=uids, state=state, timeout=timeout)
 
 
     # --------------------------------------------------------------------------
@@ -1025,14 +963,14 @@ class TaskManager(rpu.ClientComponent):
         # create a list from which we drop the tasks as we find them in
         # a matching state
         self._rep.progress_tgt(len(to_check), label='wait')
-        self._log.debug('=== WAIT for %d tasks', len(to_check))
+        self._log.debug('WAIT for %d tasks', len(to_check))
         while to_check and not self._terminate.is_set():
 
-          # self._log.debug('=== wait for %d tasks', len(to_check))
+          # self._log.debug('wait for %d tasks', len(to_check))
 
             # check timeout
             if timeout and (timeout <= (time.time() - start)):
-                self._log.debug ("=== wait timed out")
+                self._log.debug ("wait timed out")
                 break
 
             time.sleep (0.1)
@@ -1045,13 +983,14 @@ class TaskManager(rpu.ClientComponent):
                 # those states
                 if task.state not in rps.FINAL and \
                     rps._task_state_values[task.state] < check_state_val:
+
                     # this task does not match the wait criteria
-                  # self._log.debug('=== wait again for %s [%s]', task.uid, task.state)
+                  # self._log.debug('wait again for %s [%s]', task.uid, task.state)
                     check_again.append(task)
 
                 else:
                     # stop watching this task
-                  # self._log.debug('=== wait ok    for %s [%s]', task.uid, task.state)
+                  # self._log.debug('wait ok    for %s [%s]', task.uid, task.state)
                     if task.state in [rps.FAILED]:
                         self._rep.progress()  # (color='error', c='-')
                     elif task.state in [rps.CANCELED]:
@@ -1061,7 +1000,7 @@ class TaskManager(rpu.ClientComponent):
 
             to_check = check_again
 
-        self._log.debug('=== wait completed')
+        self._log.debug('wait completed')
 
         self._rep.progress_done()
 
@@ -1085,38 +1024,17 @@ class TaskManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_units(self, uids=None):
-        """Cancel one or more :class:`radical.pilot.Task` s.
-
-        .. deprecated:: 1.5.12
-
-            use :py:func:`cancel_tasks()`
-
-        """
-        _warn(self.cancel_units, self.cancel_tasks)
-        return self.cancel_tasks(uids=uids)
-
-
-    # --------------------------------------------------------------------------
-    #
     def cancel_tasks(self, uids=None):
         """Cancel one or more :class:`radical.pilot.Task` s.
 
-        Note that cancellation of tasks is *immediate*, i.e. their state is
-        immediately set to `CANCELED`, even if some RP component may still
-        operate on the tasks.  Specifically, other state transitions, including
-        other final states (`DONE`, `FAILED`) can occur *after* cancellation.
-        This is a side effect of an optimization: we consider this
-        acceptable tradeoff in the sense "Oh, that task was DONE at point of
-        cancellation -- ok, we can use the results, sure!".
-
-        If that behavior is not wanted, set the environment variable::
-
-            export RADICAL_PILOT_STRICT_CANCEL=True
+        Note that cancellation of tasks is not immediate, i.e. their state is
+        not necessarily `CANCELED` after this method returns.  Instead, the
+        cancellation request is sent to the components which currently manage
+        the tasks and which then will enact the request at their discretion,
+        eventually leading to the state transition to `CANCELLED`.
 
         Arguments:
             uids (str | list[str]): The IDs of the tasks to cancel.
-
         """
 
         if not uids:
@@ -1126,47 +1044,15 @@ class TaskManager(rpu.ClientComponent):
             if not isinstance(uids, list):
                 uids = [uids]
 
-        # NOTE: We advance all tasks to cancelled, and send a cancellation
-        #       control command.  If that command is picked up *after* some
-        #       state progression, we'll see state transitions after cancel.
-        #       For non-final states that is not a problem, as it is equivalent
-        #       with a state update message race, which our state collapse
-        #       mechanism accounts for.  For an eventual non-canceled final
-        #       state, we do get an invalid state transition.  That is also
-        #       corrected eventually in the state collapse, but the point
-        #       remains, that the state model is temporarily violated.  We
-        #       consider this a side effect of the fast-cancel optimization.
-        #
-        #       The env variable 'RADICAL_PILOT_STRICT_CANCEL == True' will
-        #       disable this optimization.
-        #
-        # FIXME: the effect of the env var is not well tested
-        if 'RADICAL_PILOT_STRICT_CANCEL' not in os.environ:
-            with self._tasks_lock:
-                tasks = [self._tasks[uid] for uid  in uids ]
-            task_docs = [task.as_dict()   for task in tasks]
-            self.advance(task_docs, state=rps.CANCELED, publish=True, push=True)
-
         # we *always* issue the cancellation command to the local components
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_tasks',
                                           'arg' : {'uids' : uids,
-                                                   'tmgr' : self.uid}})
+                                                   'tmgr' : self.uid},
+                                          'fwd' : True})
 
-        # we also inform all pilots about the cancelation request
-        # FIXME: MongoDB
-      # self._session._dbs.pilot_command(cmd='cancel_tasks', arg={'uids':uids})
-
-        # In the default case of calling 'advance' above, we just set the state,
-        # so we *know* tasks are canceled.
-        #
         # We do not wait and block the call until all the tasks are marked
         # cancelled.  This means when inspecting for state just after a state
         # change, we may observe a old state, instead of CANCELLED.
-        #
-        # This is done so cyclic state change do not get hanged.  Example if
-        # task is changing state and user requests for task to be cancelled, the
-        # cancelling of task will hang because a previous state change operation
-        # is ongoing.
 
 
     # --------------------------------------------------------------------------
