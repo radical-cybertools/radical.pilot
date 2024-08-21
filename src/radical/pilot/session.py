@@ -20,6 +20,10 @@ from .proxy           import Proxy
 from .resource_config import ResourceConfig, ENDPOINTS_DEFAULT
 
 
+try   : LOG_ENABLED = ru.zmq.utils.LOG_ENABLED
+except: LOG_ENABLED = False
+
+
 # ------------------------------------------------------------------------------
 #
 class _CloseOptions(ru.TypedDict):
@@ -711,8 +715,9 @@ class Session(object):
         url_sub = reg['bridges.%s.addr_sub' % src.lower()]
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
-      # self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-      # self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+        if LOG_ENABLED:
+            self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
+            self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -728,29 +733,36 @@ class Session(object):
                 # which originated in *this* module in the first place.
 
                 if msg['origin'] == self._module:
-                  # self._log.debug('XXX >=! fwd %s to topic:%s: %s', src, tgt, msg)
+                    if LOG_ENABLED:
+                        self._log.debug('XXX >=! fwd %s to topic:%s: %s',
+                                        src, tgt, msg)
                     return
 
-              # self._log.debug('XXX >=> fwd %s to topic:%s: %s', src, tgt, msg)
+                if LOG_ENABLED:
+                    self._log.debug('XXX >=> fwd %s to topic:%s: %s',
+                                    src, tgt, msg)
                 publisher.put(tgt, msg)
 
             else:
 
                 # only forward messages which have the respective flag set
                 if not msg.get('fwd'):
-                  # self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]', src,
-                  #                 tgt, msg, msg['origin'], self._module)
+                    if LOG_ENABLED:
+                        self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]',
+                                        src, tgt, msg, msg['origin'], self._module)
                     return
 
                 # only forward all messages which originated in *this* module.
                 if not msg['origin'] == self._module:
-                  # self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
+                    if LOG_ENABLED:
+                        self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
                     return
 
                 # avoid message loops (forward only once)
                 msg['fwd'] = False
 
-              # self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                if LOG_ENABLED:
+                    self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
                 publisher.put(tgt, msg)
 
 
@@ -888,7 +900,8 @@ class Session(object):
             # terminate all components
             if self._role == self._PRIMARY:
                 self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'terminate',
-                                                        'arg': None})
+                                                        'arg': None,
+                                                        'fwd': True})
 
         for tmgr_uid, tmgr in self._tmgrs.items():
             self._log.debug("session %s closes tmgr   %s", self._uid, tmgr_uid)
