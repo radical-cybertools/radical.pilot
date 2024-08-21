@@ -317,8 +317,8 @@ class PilotManager(rpu.ClientComponent):
         if self._terminate.is_set():
             return False
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         self._log.debug_9('got control cmd %s: %s', cmd, arg)
 
@@ -741,7 +741,8 @@ class PilotManager(rpu.ClientComponent):
         self._log.debug('issue cancel_pilots for %s', uids)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,
-                                                   'uids' : uids}})
+                                                   'uids' : uids},
+                                          'fwd' : True})
         # wait for the cancel to be enacted
         self.wait_pilots(uids=uids, timeout=_timeout)
 

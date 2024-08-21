@@ -204,8 +204,8 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
     #
     def control_cb(self, topic, msg):
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         self._log.debug_9('launcher got %s', msg)
 

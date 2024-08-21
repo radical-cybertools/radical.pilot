@@ -157,10 +157,10 @@ class Worker(object):
 
         for msg in ru.as_list(msgs):
 
-            cmd = msg['cmd']
-            arg = msg['arg']
+            cmd = msg.get('cmd')
+            arg = msg.get('arg')
 
-            if cmd != 'update':
+            if cmd not in ['update']:
                 continue
 
             for thing in arg:

@@ -314,7 +314,8 @@ class BaseComponent(object):
         This callback can be overloaded by the component to handle any control
         message which is not already handled by the component base class.
         '''
-        pass
+
+        self._log.debug_4('ctrl msg ignored: %s:%s', topic, msg.get('cmd'))
 
 
     # --------------------------------------------------------------------------
@@ -335,18 +336,36 @@ class BaseComponent(object):
 
         # try to handle message as RPC message
         try:
-            self._handle_zmq_msg(msg)
-            # handled successfully
-            return
+            msg = ru.zmq.Message.deserialize(msg)
 
-        except:
+            if isinstance(msg, RPCRequestMessage):
+
+                self._log.debug_4('handle rpc request %s', msg)
+                self._handle_rpc_msg(msg)
+                return
+
+            elif isinstance(msg, RPCResultMessage):
+
+                if msg.uid in self._rpc_reqs:
+                    self._log.debug_4('handle rpc result %s', msg)
+                    self._rpc_reqs[msg.uid]['res'] = msg
+                    self._rpc_reqs[msg.uid]['evt'].set()
+
+                return
+
+            else:
+                raise ValueError('message type not handled')
+
+        except Exception as e:
+
             # could not be handled - fall through to legacy handlers
-            pass
+            self._log.debug_6('fall back to legacy msg handlers [%s]', repr(e))
+
 
         # handle any other message types
         self._log.debug_5('command incoming: %s', msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
         arg = msg.get('arg')
 
         if cmd == 'cancel_tasks':
@@ -361,9 +380,10 @@ class BaseComponent(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
-            # FIXME RPC: scheduler handles cancelation itself
+            # scheduler handles cancelation itself
             if 'AgentSchedulingComponent' in repr(self):
                 self.control_cb(topic, msg)
+                return
 
         elif cmd == 'terminate':
             self._log.info('got termination command')
@@ -372,28 +392,6 @@ class BaseComponent(object):
         else:
             self._log.debug_1('command handled by implementation: %s', cmd)
             self.control_cb(topic, msg)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_zmq_msg(self, msg_data):
-
-        msg = ru.zmq.Message.deserialize(msg_data)
-
-        if isinstance(msg, RPCRequestMessage):
-            self._log.debug_4('handle rpc request %s', msg)
-            self._handle_rpc_msg(msg)
-
-        elif isinstance(msg, RPCResultMessage):
-
-            if msg.uid in self._rpc_reqs:
-                self._log.debug_4('handle rpc result %s', msg)
-                self._rpc_reqs[msg.uid]['res'] = msg
-                self._rpc_reqs[msg.uid]['evt'].set()
-
-        else:
-            raise ValueError('message type not handled')
-
 
 
     # --------------------------------------------------------------------------
