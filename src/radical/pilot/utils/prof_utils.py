@@ -1021,7 +1021,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
             try:
                 slots  = task.cfg['slots']
                 tts    = task.timestamps
-                task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
+                task_min  = tts(event=task['consume']['schedule_ok'][0]) [0]
                 task_max  = tts(event=task['consume']['unschedule'][1])[-1]
 
             except:

@@ -394,8 +394,8 @@ class TaskDescription(ru.TypedDict):
             submitted to the pilot with the given ID. If that pilot is not known
             to the TaskManager, an exception is raised.
 
-        slots (rp.Slots, optional): information on where exactly each rank of
-            the task should be placed.
+        slots (radical.pilot.Slots, optional): information on where exactly each
+            rank of the task should be placed.
 
         partition (int, optional): index of pilot partition to use to run that
         task.
