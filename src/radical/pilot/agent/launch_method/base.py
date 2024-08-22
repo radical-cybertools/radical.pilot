@@ -200,7 +200,7 @@ class LaunchMethod(object):
 
         blacklist = self.get_env_blacklist()
 
-        self._log.debug('=== blacklist: %s', blacklist)
+        self._log.debug_5('blacklist: %s', blacklist)
 
         # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
