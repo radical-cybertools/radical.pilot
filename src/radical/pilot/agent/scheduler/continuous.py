@@ -81,7 +81,6 @@ class Continuous(AgentSchedulingComponent):
         AgentSchedulingComponent.__init__(self, cfg, session)
 
         self._log = ru.Logger('radical.pilot', targets=['/tmp/t.log'], level='DEBUG')
-        self._log.info('test')
 
         self._colo_history = dict()
         self._tagged_nodes = set()
