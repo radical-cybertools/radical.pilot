@@ -231,8 +231,8 @@ def convert_slots_to_new(slots, log=None):
     new_slots = list()
     for slot in slots:
 
-        # check slot type: only new slots have a version field
-        if slot.get('version'):
+        # check slot type: no need to convert if it is already new (>=1)
+        if slot.get('version', 0) >= 1:
             new_slots.append(slot)
             continue
 

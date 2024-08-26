@@ -130,12 +130,7 @@ class TestJSRun(TestCase):
 
             else:
                 rs_layout = test_case[2]
-
-                slots = rp.utils.convert_slots_to_old(slots)
-                for slot in slots:
-                    slot['version'] = 'old'
-
-                rs_file = lm_jsrun._create_resource_set_file(
+                rs_file   = lm_jsrun._create_resource_set_file(
                     slots=slots, uid=uid, sandbox=self._sbox)
                 with ru.ru_open(rs_file) as rs_layout_file:
                     lines = rs_layout_file.readlines()
