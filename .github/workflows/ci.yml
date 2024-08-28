@@ -127,3 +127,49 @@ jobs:
             name: artifacts
             path: artifacts
 
+  examples:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m venv testenv
+          . testenv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install .
+      - name: run examples
+        timeout-minutes: 10
+        run: |
+          . testenv/bin/activate
+          ./examples/00_getting_started.py
+          ./examples/01_task_details.py
+          ./examples/02_failing_tasks.py
+          ./examples/03_multiple_pilots.py
+          ./examples/04_scheduler_selection.py
+          ./examples/05_task_input_data.py
+          ./examples/06_task_output_data.py
+          ./examples/07_shared_task_data.py
+          ./examples/08_task_environment.py
+          ./examples/09_mpi_tasks.py
+          ./examples/10_pre_and_post_exec.py
+          ./examples/11_task_input_data_tar.py
+          ./examples/11_task_input_folder.py
+          ./examples/12_task_env.py
+          mkdir artifacts
+          ls -la
+          cp -R rp.session.* artifacts
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+            name: artifacts
+            path: artifacts
+
