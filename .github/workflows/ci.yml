@@ -149,6 +149,13 @@ jobs:
       - name: run examples
         timeout-minutes: 10
         run: |
+          export RADICAL_LOG_LVL=DEBUG_9
+          export RADICAL_PROFILE=True
+          export RADICAL_DEBUG=TRUE
+          export RADICAL_DEBUG_HELPER=TRUE
+          export RADICAL_REPORT=TRUE
+          export RADICAL_UTILS_ZMQ_LOG_LVL=INFO
+          export RADICAL_UTILS_HEARTBEAT_LOG_LVL=INFO
           . testenv/bin/activate
           ./examples/00_getting_started.py
           ./examples/01_task_details.py
