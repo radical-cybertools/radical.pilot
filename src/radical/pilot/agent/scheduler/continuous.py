@@ -152,8 +152,18 @@ class Continuous(AgentSchedulingComponent):
             {
                 'node_name'  : 'node_name',
                 'node_index' : 1,
-                'cores'      : [[1, 1.0], [2, 1.0], [4, 1.0], [5, 1.0]],
-                'gpus'       : [[1, 1.0], [3, 1.0]],
+                'cores'      : [{'index'     : 1,
+                                 'occupation': 1.0},
+                                {'index'     : 2,
+                                 'occupation': 1.0},
+                                {'index'     : 4,
+                                 'occupation': 1.0},
+                                {'index'     : 5,
+                                 'occupation': 1.0}],
+                'gpus'       : [{'index'     : 1,
+                                 'occupation': 1.0},
+                                {'index'     : 2,
+                                 'occupation': 1.0}],
                 'lfs'        : 1234,
                 'mem'        : 4321
             }
