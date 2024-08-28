@@ -75,6 +75,7 @@ class TestPopen(TestCase):
 
         task = dict(self._test_case['task'])
         task['slots'] = self._test_case['setup']['slots']
+        task['partition'] = 0
 
         pex = Popen(cfg=None, session=None)
 
@@ -147,10 +148,11 @@ class TestPopen(TestCase):
                  'gpus_per_rank' : 1,
                  'gpu_type'      : '',
                  'pre_exec'      : []}
-        ranks = [{'core_map': [[0, 1]],
-                  'gpu_map' : [[5]]}]
+        slots = [{'cores': [{'index': 0, 'occupation': 1.0},
+                            {'index': 1, 'occupation': 1.0}],
+                  'gpus' : [{'index': 5, 'occupation': 1.0}]}]
 
-        pex._extend_pre_exec(td, ranks)
+        pex._extend_pre_exec(td, slots)
         self.assertNotIn('export OMP_NUM_THREADS=2', td['pre_exec'])
         self.assertFalse(bool(td['pre_exec']))
 
@@ -160,7 +162,7 @@ class TestPopen(TestCase):
         # we target attribute "task_pre_exec"
         pex._session.rcfg = {'task_pre_exec': ['export TEST_ENV=test']}
 
-        pex._extend_pre_exec(td, ranks)
+        pex._extend_pre_exec(td, slots)
         self.assertIn('export OMP_NUM_THREADS=2',             td['pre_exec'])
         self.assertIn({'0': 'export CUDA_VISIBLE_DEVICES=5'}, td['pre_exec'])
         self.assertIn('export TEST_ENV=test', td['pre_exec'])

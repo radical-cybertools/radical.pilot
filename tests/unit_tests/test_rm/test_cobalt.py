@@ -28,7 +28,7 @@ class CobaltTestCase(TestCase):
 
         rm_info = rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
 
-        self.assertEqual(rm_info.node_list[0]['node_name'], 'nid00001')
+        self.assertEqual(rm_info.node_list[0]['name'], 'nid00001')
         self.assertEqual(rm_info.node_list[0]['cores'], [0])  # list of cores
 
     # --------------------------------------------------------------------------
