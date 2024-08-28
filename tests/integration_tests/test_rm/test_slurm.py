@@ -50,7 +50,7 @@ class SlurmTestCase(TestCase):
                                                       'gpus_per_node' : 0}))
 
         node = os.environ['SLURM_NODELIST'].split(',')[0]
-        self.assertEqual(rm_info.node_list[0]['node_name'], node)
+        self.assertEqual(rm_info.node_list[0]['name'], node)
 
         self.assertEqual(rm_info.cores_per_node,
                          self.resource['cores_per_node'])

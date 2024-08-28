@@ -145,14 +145,14 @@ class TestSrun(TestCase):
             if task.get('slots'):
 
                 # mimic that we have n_nodes more than MIN_NNODES_IN_LIST
-                if len(task['slots']['ranks']) <= MIN_NNODES_IN_LIST:
-                    rank_base = task['slots']['ranks'][0]
-                    del task['slots']['ranks'][:]
+                if len(task['slots']) <= MIN_NNODES_IN_LIST:
+                    rank_base = task['slots'][0]
+                    del task['slots'][:]
                     for idx in range(MIN_NNODES_IN_LIST + 1):
-                        task['slots']['ranks'].append(dict(rank_base))
-                        task['slots']['ranks'][-1]['node_name'] = str(idx)
+                        task['slots'].append(dict(rank_base))
+                        task['slots'][-1]['node_name'] = str(idx)
 
-                if len(task['slots']['ranks']) > MIN_NNODES_IN_LIST:
+                if len(task['slots']) > MIN_NNODES_IN_LIST:
                     nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
 
                     # `nodefile` will be (or is already) created

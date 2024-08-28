@@ -21,9 +21,8 @@ class TestPilot(TestCase):
         pmgr._uid     = 'pmgr.0000'
         pmgr._log     = mock.Mock()
         pmgr._prof    = mock.Mock()
-        pmgr._session = ru.Config(from_dict={'_reg': {
-            'bridges.control_pubsub.addr_sub': 'tcp://localhost',
-            'bridges.control_pubsub.addr_pub': 'tcp://localhost'}})
+        pmgr._session = ru.Config()
+
 
         ru.zmq.Subscriber  = mock.Mock()
         ru.zmq.Publisher   = mock.Mock()
@@ -35,6 +34,9 @@ class TestPilot(TestCase):
 
         session = pmgr._session
 
+        session._reg                  = {
+                'bridges.control_pubsub.addr_sub': 'tcp://localhost',
+                'bridges.control_pubsub.addr_pub': 'tcp://localhost'}
         session._get_endpoint_fs      = mock.Mock(return_value = sandbox_url)
         session._get_resource_sandbox = mock.Mock(return_value = sandbox_url)
         session._get_session_sandbox  = mock.Mock(return_value = sandbox_url)
@@ -42,11 +44,15 @@ class TestPilot(TestCase):
         session._get_client_sandbox   = mock.Mock(return_value = sandbox_url)
         session._get_jsurl            = mock.Mock(return_value = ('ssh',
                                                                   sandbox_url))
+        session._prof                 = mock.Mock()
+        session._log                  = mock.Mock()
+
 
         descr = rp.PilotDescription({'resource': 'foo',
                                      'uid'     : 'foo',
                                      'cores'   : 1})
-        self.assertEqual(rp.Pilot(pmgr, descr).uid, 'foo')
+        pilot = rp.Pilot(pmgr, descr)
+        self.assertEqual(pilot.uid, 'foo')
 
         with self.assertRaises(ValueError):
             rp.Pilot(pmgr, descr)
