@@ -178,6 +178,7 @@ jobs:
           ls -la
           cp -R rp.session.* example_artifacts
       - name: upload example_artifacts
+        if:   always()
         uses: actions/upload-artifact@v3
         with:
             name: example_artifacts
