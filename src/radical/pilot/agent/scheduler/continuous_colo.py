@@ -81,7 +81,7 @@ class ContinuousColo(Continuous):
             if not colo_tag:
               # self._log.debug('no tags for %s', uid)
                 self._unordered.append(task)
-                return
+                return None, None
 
             # this uniit wants to be ordered - keep it in our registry
             assert uid not in self._tasks, 'duplicated task %s' % uid
@@ -107,7 +107,7 @@ class ContinuousColo(Continuous):
         # try to schedule known tasks
         self._try_schedule()
 
-        return
+        return None, None
 
 
     # --------------------------------------------------------------------------
@@ -233,31 +233,13 @@ class ContinuousColo(Continuous):
 
         # we got an allocation for the pseudo task, not dissassemble the slots
         # and assign back to the individual tasks in the bag
-        slots = copy.deepcopy(pseudo['slots'])
-        cpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['core_map'])
-        gpus  = copy.deepcopy(pseudo['slots']['ranks'][0]['gpu_map'])
-
-        slots['ranks'][0]['core_map'] = list()
-        slots['ranks'][0]['gpu_map']  = list()
-
         for task in tasks:
 
-            tslots = copy.deepcopy(slots)
-            descr  = task['description']
+            ranks = task['description']['ranks']
+            task['slots'] = list()
 
-            for _ in range(descr['threads_per_rank']):
-                block = list()
-                for _ in range(descr['cores_per_rank']):
-                    block.append(cpus.pop(0)[0])
-                tslots['ranks'][0]['core_map'].append(block)
-
-            for _ in range(descr['gpus_pre_rank']):
-
-                block = list()
-                block.append(gpus.pop(0)[0])
-                tslots['ranks'][0]['gpu_map'].append(block)
-
-            task['slots'] = tslots
+            for rank in range(ranks):
+                task['slots'].append(pseudo['slots'].pop(0))
 
         return True
 
