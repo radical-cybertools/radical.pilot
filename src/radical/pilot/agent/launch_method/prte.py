@@ -293,7 +293,7 @@ class PRTE(LaunchMethod):
             except Exception as e:
                 # use the same event name as for runtime failures - those are
                 # not distinguishable at the moment from termination failures
-                self._log.debug('prte-%s termination failed (%d)', p_id, dvm_uri)
+                self._log.debug('prte-%d termination failed (%s)', p_id, dvm_uri)
                 self._prof.prof(event='dvm_fail', uid=self._lm_cfg['pid'],
                                 msg='dvm_id=%s | error: %s' % (p_id, e))
 

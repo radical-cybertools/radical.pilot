@@ -19,7 +19,6 @@ from . import constants as rpc
 
 from .task_description import RAPTOR_MASTER, RAPTOR_WORKER
 from .raptor_tasks     import RaptorMaster, RaptorWorker
-from .resource_config  import Slot
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.

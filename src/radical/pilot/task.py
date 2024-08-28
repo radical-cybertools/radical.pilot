@@ -177,9 +177,6 @@ class Task(object):
         if metadata:
             self._descr['metadata'] = metadata
 
-        if task_dict.get('description', {}).get('metadata'):
-            self._descr['metadata'] = task_dict['description']['metadata']
-
         # callbacks are not invoked here, but are bulked in the tmgr
 
 

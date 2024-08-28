@@ -373,7 +373,7 @@ class Slot(ru.TypedDict):
         MEM        : 0,
         NODE_INDEX : 0,
         NODE_NAME  : '',
-        VERSION    : 0,
+        VERSION    : 1,
     }
 
     def __init__(self, from_dict: dict = None, **kwargs):
