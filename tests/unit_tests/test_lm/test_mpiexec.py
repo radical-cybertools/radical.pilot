@@ -151,50 +151,65 @@ class TestMPIExec(TestCase):
 
         uid     = 'test_task.hf.0000'
         sandbox = './'
-        slots   = {
-            'ranks': [
-                {'node_name': 'node_A',
-                 'node_id'  : '1',
-                 'core_map' : [[1, 2, 4, 5], [6, 7, 8, 9]],
-                 'gpu_map'  : [[]],
-                 'lfs'      : 0,
-                 'mem'      : 0},
-                {'node_name': 'node_B',
-                 'node_id'  : '2',
-                 'core_map' : [[0, 1, 2, 3]],
-                 'gpu_map'  : [[]],
-                 'lfs'      : 0,
-                 'mem'      : 0}
-            ]
-        }
+        slots   = [{'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 1, 'occupation': 1.0},
+                                   {'index': 2, 'occupation': 1.0},
+                                   {'index': 4, 'occupation': 1.0},
+                                   {'index': 5, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 6, 'occupation': 1.0},
+                                   {'index': 7, 'occupation': 1.0},
+                                   {'index': 8, 'occupation': 1.0},
+                                   {'index': 9, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_B',
+                    'node_index': 2,
+                    'cores'     : [{'index': 0, 'occupation': 1.0},
+                                   {'index': 1, 'occupation': 1.0},
+                                   {'index': 2, 'occupation': 1.0},
+                                   {'index': 3, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0}
+        ]
 
-        lm_mpiexec = MPIExec('', {}, None, None, None)
+        try:
+            lm_mpiexec = MPIExec('', {}, None, None, None)
 
-        host_file_expected = '%s/%s.hf' % (sandbox, uid)
-        self.assertFalse(os.path.isfile(host_file_expected))
+            host_file_expected = '%s/%s.hf' % (sandbox, uid)
+            self.assertFalse(os.path.isfile(host_file_expected))
 
-        host_file = lm_mpiexec._get_host_file(slots, uid, sandbox)
-        self.assertEqual(host_file_expected, host_file)
-        self.assertTrue(os.path.isfile(host_file))
+            host_file = lm_mpiexec._get_host_file(slots, uid, sandbox)
+            self.assertEqual(host_file_expected, host_file)
+            self.assertTrue(os.path.isfile(host_file))
 
-        # simple host file
-        with ru.ru_open(host_file) as hfd:
-            hfd_content = hfd.read()
-        self.assertEqual(hfd_content, 'node_A\nnode_B\n')
+            # simple host file
+            with ru.ru_open(host_file) as hfd:
+                hfd_content = hfd.read()
+            self.assertEqual(hfd_content, 'node_A\nnode_B\n')
 
-        # host file with "slots=" as delimiter for ranks
-        lm_mpiexec._get_host_file(slots, uid, sandbox, simple=False, mode=0)
-        with ru.ru_open(host_file) as hfd:
-            hfd_content = hfd.read()
-        self.assertEqual(hfd_content, 'node_A slots=2\nnode_B slots=1\n')
+            # host file with "slots=" as delimiter for ranks
+            lm_mpiexec._get_host_file(slots, uid, sandbox, mode=1)
+            with ru.ru_open(host_file) as hfd:
+                hfd_content = hfd.read()
+            self.assertEqual(hfd_content, 'node_A slots=2\nnode_B slots=1\n')
 
-        # host file with ":" as delimiter for ranks
-        lm_mpiexec._get_host_file(slots, uid, sandbox, simple=False, mode=1)
-        with ru.ru_open(host_file) as hfd:
-            hfd_content = hfd.read()
-        self.assertEqual(hfd_content, 'node_A:2\nnode_B:1\n')
+            # host file with ":" as delimiter for ranks
+            lm_mpiexec._get_host_file(slots, uid, sandbox, mode=2)
+            with ru.ru_open(host_file) as hfd:
+                hfd_content = hfd.read()
+            self.assertEqual(hfd_content, 'node_A:2\nnode_B:1\n')
 
-        os.unlink(host_file)
+        finally:
+            if os.path.isfile(host_file_expected):
+                os.unlink(host_file)
 
     # --------------------------------------------------------------------------
     #
@@ -203,23 +218,49 @@ class TestMPIExec(TestCase):
 
         uid     = 'test_task.rf.0001'
         sandbox = './'
-        slots   = {
-            'ranks': [
-                {'node_name': 'node_A',
-                 'node_id'  : '1',
-                 'core_map' : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                 'gpu_map'  : [[], [], [], []],
-                 'lfs'      : 0,
-                 'mem'      : 0},
-                {'node_name': 'node_B',
-                 'node_id'  : '2',
-                 'core_map' : [[0, 1], [2, 3]],
-                 'gpu_map'  : [[], []],
-                 'lfs'      : 0,
-                 'mem'      : 0}
-            ]
-
-        }
+        slots   = [{'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 0, 'occupation': 1.0},
+                                   {'index': 1, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 2, 'occupation': 1.0},
+                                   {'index': 3, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 4, 'occupation': 1.0},
+                                   {'index': 5, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_A',
+                    'node_index': 1,
+                    'cores'     : [{'index': 6, 'occupation': 1.0},
+                                   {'index': 7, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_B',
+                    'node_index': 2,
+                    'cores'     : [{'index': 0, 'occupation': 1.0},
+                                   {'index': 1, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0},
+                   {'node_name' : 'node_B',
+                    'node_index': 2,
+                    'cores'     : [{'index': 2, 'occupation': 1.0},
+                                   {'index': 3, 'occupation': 1.0}],
+                    'gpus'      : [],
+                    'lfs'       : 0,
+                    'mem'       : 0}
+        ]
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
 
@@ -277,7 +318,7 @@ class TestMPIExec(TestCase):
                 f_name   = test_case[3]
                 with ru.ru_open(f_name) as fd:
                     self.assertEqual(fd.readlines(), f_layout)
-                os.unlink(f_name)
+              # os.unlink(f_name)
 
     # --------------------------------------------------------------------------
     #

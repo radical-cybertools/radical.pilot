@@ -19,7 +19,6 @@ from . import constants as rpc
 
 from .task_description import TaskDescription
 from .task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_SERVICE
-from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.

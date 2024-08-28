@@ -8,9 +8,8 @@ import math as m
 
 import radical.utils as ru
 
-from .base              import AgentSchedulingComponent
-from ...                import constants as rpc
-from ...resource_config import RO
+from ...   import constants as rpc
+from .base import AgentSchedulingComponent
 
 
 # ------------------------------------------------------------------------------
@@ -68,7 +67,7 @@ from ...resource_config import RO
 #
 # ------------------------------------------------------------------------------
 #
-class Continuous(AgentSchedulingComponent):
+class ContinuousJsrun(AgentSchedulingComponent):
     '''
     The Continuous scheduler attempts to place threads and processes of
     a tasks onto nodes in the cluster.
@@ -84,6 +83,7 @@ class Continuous(AgentSchedulingComponent):
         self._tagged_nodes = set()
         self._scattered    = None
         self._node_offset  = 0
+
 
 
     # --------------------------------------------------------------------------
@@ -142,7 +142,7 @@ class Continuous(AgentSchedulingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _find_resources(self, node, n_slots, cores_per_slot,
+    def _find_resources(self, node, n_slots, ranks_per_slot, cores_per_slot,
                         gpus_per_slot, lfs_per_slot, mem_per_slot, partial):
         '''
         Find up to the requested number of slots, where each slot features the
@@ -150,22 +150,12 @@ class Continuous(AgentSchedulingComponent):
         slots of the following structure:
 
             {
-                'node_name'  : 'node_name',
-                'node_index' : 1,
-                'cores'      : [{'index'     : 1,
-                                 'occupation': 1.0},
-                                {'index'     : 2,
-                                 'occupation': 1.0},
-                                {'index'     : 4,
-                                 'occupation': 1.0},
-                                {'index'     : 5,
-                                 'occupation': 1.0}],
-                'gpus'       : [{'index'     : 1,
-                                 'occupation': 1.0},
-                                {'index'     : 2,
-                                 'occupation': 1.0}],
-                'lfs'        : 1234,
-                'mem'        : 4321
+                'node_name' : 'node_name',
+                'node_index': '1',
+                'core_map'  : [[1, 2, 4, 5], [6, 7, 8, 9]],
+                'gpu_map'   : [[1, 3], [1, 3]],
+                'lfs'       : 1234,
+                'mem'       : 4321
             }
 
         The call will *not* change the allocation status of the node, atomicity
@@ -185,95 +175,136 @@ class Continuous(AgentSchedulingComponent):
                thread count and using physical core IDs for process placement?
         '''
 
-        slots = list()
+      # self._log.debug('find on %s: %s * [%s, %s]', node['uid'], )
 
-        # find at most `n_slots`
-        loop_core_idx = 0
-        loop_gpu_idx  = 0
-        while len(slots) < n_slots:
+        # check if the node can host the request
+        free_cores = node['cores'].count(rpc.FREE)
+        free_gpus  = node['gpus'].count(rpc.FREE)
+        free_lfs   = node['lfs']
+        free_mem   = node['mem']
 
-            node_idx  = node['index']
-            node_name = node['name']
+        # check how many slots we can serve, at most
+        alc_slots = 1
+        if cores_per_slot:
+            alc_slots = int(m.floor(free_cores / cores_per_slot))
 
-            self._log.debug_9('find resources on %s:%d', node_name, node_idx)
-            self._log.debug_9('node: %s', pprint.pformat(node))
-            self._log.debug_9('cps : %s', cores_per_slot)
+        if gpus_per_slot:
+            alc_slots = min(alc_slots, int(m.floor(free_gpus / gpus_per_slot)))
 
-            slot  = {'node_name' : node_name,
-                     'node_index': node_idx,
-                     'cores'     : list(),
-                     'gpus'      : list(),
-                     'lfs'       : lfs_per_slot,
-                     'mem'       : mem_per_slot}
+        if lfs_per_slot:
+            alc_slots = min(alc_slots, int(m.floor(free_lfs / lfs_per_slot)))
 
-            for core_idx,core in enumerate(node['cores'][loop_core_idx:],
-                                                         loop_core_idx):
-                if core == rpc.FREE:
-                    slot['cores'].append(RO(index=core_idx,
-                                            occupation=rpc.BUSY))
+        if mem_per_slot:
+            alc_slots = min(alc_slots, int(m.floor(free_mem / mem_per_slot)))
 
-                if len(slot['cores']) == cores_per_slot:
-                    break
-
-            loop_core_idx = core_idx + 1
-
-            if len(slot['cores']) < cores_per_slot:
-                self._log.debug_9('not enough cores on %s', node_name)
-                break
-
-            # gpus can be shared, so we need proper resource tracking.  If
-            # a slot requires one or more GPUs, GPU sharing is disabled.
-            if gpus_per_slot >= 1.0:
-
-                tmp = int(gpus_per_slot)
-                if tmp != gpus_per_slot:
-                    raise ValueError('cannot share GPUs>1')
-                gpus_per_slot = tmp
-
-                for gpu_idx,gpu in enumerate(node['gpus'][loop_gpu_idx:],
-                                                          loop_gpu_idx):
-
-                    if gpu == rpc.FREE:
-                        slot['gpus'].append(RO(index=gpu_idx,
-                                               occupation=rpc.BUSY))
-
-                    if len(slot['gpus']) == gpus_per_slot:
-                        break
-
-                loop_gpu_idx = gpu_idx + 1
-
-                if len(slot['gpus']) < gpus_per_slot:
-                    self._log.debug_9('not enough gpus on %s (1)', node_name)
-                    break
-
-            elif gpus_per_slot > 0.0:
-
-                # find a GPU which has sufficient space left
-                for gpu_idx,gpu_occ in enumerate(node['gpus'][loop_gpu_idx:],
-                                                              loop_gpu_idx):
-
-                    if gpus_per_slot <= rpc.BUSY - gpu_occ:
-                        slot['gpus'].append(RO(index=gpu_idx,
-                                               occupation=gpus_per_slot))
-                        break
-                    else:
-                        loop_gpu_idx = gpu_idx + 1
-
-                if len(slot['gpus']) < 1:
-                    self._log.debug_9('not enough gpus on %s (2)', node_name)
-                    break
-
-            self._log.debug_9('found resources on %s: %s', node_name, slot)
-
-            slots.append(slot)
-
-        self._log.debug_9('found resources on %s', node_name)
-        self._log.debug_9(pprint.pformat(slots))
-
-        if not partial and len(slots) < n_slots:
+        # is this enough?
+        if not alc_slots:
             return None
 
+        if not partial:
+            if alc_slots < n_slots:
+                return None
+
+        # find at most `n_slots`
+        alc_slots = min(alc_slots, n_slots)
+
+        # we should be able to host the slots - dig out the precise resources
+        slots      = list()
+        node_index = node['index']
+        node_name  = node['name']
+
+        core_idx   = 0
+        gpu_idx    = 0
+
+        for _ in range(alc_slots):
+
+            cores = list()
+            gpus  = list()
+
+            while len(cores) < cores_per_slot:
+
+                if node['cores'][core_idx] == rpc.FREE:
+                    cores.append(core_idx)
+                core_idx += 1
+
+            while len(gpus) < gpus_per_slot:
+
+                if node['gpus'][gpu_idx] == rpc.FREE:
+                    gpus.append(gpu_idx)
+                gpu_idx += 1
+
+            cores_per_rank = cores_per_slot // ranks_per_slot
+            # create number of lists (equal to `ranks_per_slot`) with
+            # cores indices (i.e., cores per rank)
+            core_map = [cores[i:i + cores_per_rank]
+                        for i in range(0, len(cores), cores_per_rank)]
+            # gpus per rank are the same within the slot
+            gpu_map  = [gpus] * len(core_map)
+
+            slots.append({'node_name' : node_name,
+                          'node_index': node_index,
+                          'cores'     : core_map,
+                          'gpus'      : gpu_map,
+                          'lfs'       : lfs_per_slot,
+                          'mem'       : mem_per_slot})
+
+        # consistency check
+        assert (len(slots) == n_slots) or (len(slots) and partial)
+
         return slots
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _change_slot_states(self, slots, new_state):
+        '''
+        This function is used to update the state for a list of slots that
+        have been allocated or deallocated.  For details on the data structure,
+        see top of `base.py`.
+        '''
+
+        # for node_name, node_index, cores, gpus in slots['ranks']:
+        for slot in slots:
+
+            # Find the entry in the slots list
+
+            # TODO: [Optimization] Assuming 'node_index' is the ID of the node,
+            #       it seems a bit wasteful to have to look at all of the nodes
+            #       available for use if at most one node can have that uid.
+            #       Maybe it would be worthwhile to simply keep a list of nodes
+            #       that we would read, and keep a dictionary that maps the uid
+            #       of the node to the location on the list?
+
+            node = None
+            node_found = False
+            for node in self.nodes:
+                if node['index'] == slot['node_index']:
+                    node_found = True
+                    break
+
+            if not node_found:
+                raise RuntimeError('inconsistent node information')
+
+            # iterate over cores/gpus in the slot, and update state
+            for core_map in slot['cores']:
+                for core in core_map:
+                    node['cores'][core] = new_state
+
+            for gpu_map in slot['gpus']:
+                for gpu in gpu_map:
+                    node['gpus'][gpu] = new_state
+
+            if slot['lfs']:
+                if new_state == rpc.BUSY:
+                    node['lfs'] -= slot['lfs']
+                else:
+                    node['lfs'] += slot['lfs']
+
+            if slot['mem']:
+                if new_state == rpc.BUSY:
+                    node['mem'] -= slot['mem']
+                else:
+                    node['mem'] += slot['mem']
 
 
     # --------------------------------------------------------------------------
@@ -313,20 +344,35 @@ class Continuous(AgentSchedulingComponent):
         lfs_per_node   = self._rm.info.lfs_per_node
         mem_per_node   = self._rm.info.mem_per_node
 
-        ranks_per_node = td['ranks_per_node']
         cores_per_slot = td['cores_per_rank']
         gpus_per_slot  = td['gpus_per_rank']
         lfs_per_slot   = td['lfs_per_rank']
         mem_per_slot   = td['mem_per_rank']
-        req_slots      = td['ranks']
 
         # make sure that processes are at least single-threaded
         if not cores_per_slot:
             cores_per_slot = 1
 
-        self._log.debug_7('req : %s %s %s %s %s',
-                          req_slots, cores_per_slot, gpus_per_slot,
-                                     lfs_per_slot, mem_per_slot)
+        # check if there is a GPU sharing
+        if gpus_per_slot and not gpus_per_slot.is_integer():
+            gpus           = m.ceil(td['ranks'] * gpus_per_slot)
+            # find the greatest common divisor
+            req_slots      = m.gcd(td['ranks'], gpus)
+            ranks_per_slot = td['ranks'] // req_slots
+            gpus_per_slot  = gpus        // req_slots
+
+            cores_per_slot *= ranks_per_slot
+            lfs_per_slot   *= ranks_per_slot
+            mem_per_slot   *= ranks_per_slot
+
+        else:
+            req_slots      = td['ranks']
+            ranks_per_slot = 1
+            gpus_per_slot  = int(gpus_per_slot)
+
+        self._log.debug_7('req : %s %s %s %s %s %s',
+                          req_slots, ranks_per_slot, cores_per_slot,
+                          gpus_per_slot, lfs_per_slot, mem_per_slot)
 
         # First and last nodes can be a partial allocation - all other nodes
         # can only be partial when `scattered` is set.
@@ -351,9 +397,6 @@ class Continuous(AgentSchedulingComponent):
         tmp = list()
         slots_per_node = int(m.floor(cores_per_node / cores_per_slot))
         tmp.append([cores_per_node, cores_per_slot, slots_per_node])
-
-        if ranks_per_node:
-            slots_per_node = min(slots_per_node, ranks_per_node)
 
         if gpus_per_slot:
             slots_per_node = min(slots_per_node,
@@ -473,6 +516,7 @@ class Continuous(AgentSchedulingComponent):
             # under the constraints so derived, check what we find on this node
             new_slots = self._find_resources(node           = node,
                                              n_slots        = n_slots,
+                                             ranks_per_slot = ranks_per_slot,
                                              cores_per_slot = cores_per_slot,
                                              gpus_per_slot  = gpus_per_slot,
                                              lfs_per_slot   = lfs_per_slot,

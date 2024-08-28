@@ -6,6 +6,9 @@ __license__   = 'MIT'
 
 import radical.utils as ru
 
+from .resource_config import Slot
+
+
 # task modes
 TASK_EXECUTABLE  = 'task.executable'
 TASK_SERVICE     = 'task.service'
@@ -102,6 +105,8 @@ POST_EXEC        = 'post_exec'
 TIMEOUT          = 'timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
+SLOTS            = 'slots'
+PARTITION        = 'partition'
 STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
@@ -428,6 +433,12 @@ class TaskDescription(ru.TypedDict):
             submitted to the pilot with the given ID. If that pilot is not known
             to the TaskManager, an exception is raised.
 
+        slots (radical.pilot.Slots, optional): information on where exactly each
+            rank of the task should be placed.
+
+        partition (int, optional): index of pilot partition to use to run that
+        task.
+
     **Task Ranks**
 
     The notion of `ranks` is central to RP's `TaskDescription` class.  We here
@@ -614,6 +625,8 @@ class TaskDescription(ru.TypedDict):
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
+        SLOTS           : [Slot]      ,
+        PARTITION       : int         ,
     }
 
     _defaults = {
@@ -679,6 +692,8 @@ class TaskDescription(ru.TypedDict):
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
+        SLOTS           : list()      ,
+        PARTITION       : 0           ,
     }
 
 

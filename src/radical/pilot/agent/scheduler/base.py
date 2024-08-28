@@ -26,8 +26,9 @@ from ..resource_manager  import ResourceManager
 # 'enum' for RPs's pilot scheduler types
 #
 SCHEDULER_NAME_CONTINUOUS_ORDERED  = "CONTINUOUS_ORDERED"
-SCHEDULER_NAME_CONTINUOUS_COLO     = "CONTINUOUS_COLO"
 SCHEDULER_NAME_CONTINUOUS_RECONFIG = "CONTINUOUS_RECONFIG"
+SCHEDULER_NAME_CONTINUOUS_COLO     = "CONTINUOUS_COLO"
+SCHEDULER_NAME_CONTINUOUS_JSRUN    = "CONTINUOUS_JSRUN"
 SCHEDULER_NAME_CONTINUOUS          = "CONTINUOUS"
 SCHEDULER_NAME_HOMBRE              = "HOMBRE"
 SCHEDULER_NAME_FLUX                = "FLUX"
@@ -134,11 +135,13 @@ SCHEDULER_NAME_NOOP                = "NOOP"
 #       'ranks'         : 4,
 #       'cores_per_rank': 2,
 #       'gpus_per_rank  : 2.,
-#       'slots' :
-#       {               # [[node,   node_id,   [cpu map],        [gpu map]]]
-#         'ranks'       : [[node_1, node_id_1, [[0, 2], [4, 6]], [[0]    ]],
-#                          [node_2, node_id_2, [[1, 3], [5, 7]], [[0]    ]]],
-#       }
+#       'slots'         :
+#                       # [[node,   node_index, [cpu map], [gpu map]]]
+#                         [[node_1, 0,          [0, 2],    [0],
+#                          [node_1, 0,          [4, 6],    [0],
+#                          [node_2, 1,          [5, 7],    [0],
+#                          [node_2, 1,          [1, 3]],   [0]],
+#
 #     }
 #
 # The `cpu idx` field is a list of sets, where in each set the first core is
@@ -190,10 +193,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     # self.nodes:
     #
     #   self.nodes = [
-    #     { 'node_name' : 'name-of-node',
-    #       'node_id'   : 'uid-of-node',
-    #       'cores'     : '###---##-##-----',  # 16 cores, free/busy markers
-    #       'gpus'      : '--',                #  2 GPUs,  free/busy markers
+    #     { 'name'  : 'name-of-node',
+    #       'index' : 'idx-of-node',
+    #       'cores' : '###---##-##-----',  # 16 cores, free/busy markers
+    #       'gpus'  : '--',                #  2 GPUs,  free/busy markers
     #     }, ...
     #   ]
     #
@@ -223,7 +226,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        self._partitions = self._rm.get_partitions()  # {plabel : [node_ids]}
+        self._partitions = self._rm.get_partitions()
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -294,22 +297,30 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         name = session.rcfg.agent_scheduler
 
         from .continuous_ordered  import ContinuousOrdered
-        from .continuous_colo     import ContinuousColo
         from .continuous_reconfig import ContinuousReconfig
+        from .continuous_colo     import ContinuousColo
+        from .continuous_jsrun    import ContinuousJsrun
         from .continuous          import Continuous
         from .hombre              import Hombre
         from .flux                import Flux
         from .noop                import Noop
 
+        # if `jsrun` is used as lauunch method, then we switch the CONTINUOUS
+        # scheduler with CONTINUOUS_JSRUN
+        if 'JSRUN' in session.rcfg.launch_methods:
+            if name == SCHEDULER_NAME_CONTINUOUS:
+                name = SCHEDULER_NAME_CONTINUOUS_JSRUN
+
         impl = {
 
             SCHEDULER_NAME_CONTINUOUS_ORDERED  : ContinuousOrdered,
-            SCHEDULER_NAME_CONTINUOUS_COLO     : ContinuousColo,
             SCHEDULER_NAME_CONTINUOUS_RECONFIG : ContinuousReconfig,
+            SCHEDULER_NAME_CONTINUOUS_COLO     : ContinuousColo,
+            SCHEDULER_NAME_CONTINUOUS_JSRUN    : ContinuousJsrun,
             SCHEDULER_NAME_CONTINUOUS          : Continuous,
             SCHEDULER_NAME_HOMBRE              : Hombre,
             SCHEDULER_NAME_FLUX                : Flux,
-            SCHEDULER_NAME_NOOP                : Noop
+            SCHEDULER_NAME_NOOP                : Noop,
         }
 
         if name not in impl:
@@ -430,15 +441,16 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         have been allocated or deallocated.  For details on the data structure,
         see top of `base.py`.
         '''
-        # This method needs to change if the DS changes.
+        # FIXME: remove once Slot structure settles
+        slots = rpu.convert_slots_to_new(slots)
 
-        # for node_name, node_id, cores, gpus in slots['ranks']:
-        for rank in slots['ranks']:
+        # for node_name, node_index, cores, gpus in slots['ranks']:
+        for slot in slots:
 
             # Find the entry in the slots list
 
-            # TODO: [Optimization] Assuming 'node_id' is the ID of the node, it
-            #       seems a bit wasteful to have to look at all of the nodes
+            # TODO: [Optimization] Assuming 'node_index' is the ID of the node,
+            #       it seems a bit wasteful to have to look at all of the nodes
             #       available for use if at most one node can have that uid.
             #       Maybe it would be worthwhile to simply keep a list of nodes
             #       that we would read, and keep a dictionary that maps the uid
@@ -447,7 +459,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             node = None
             node_found = False
             for node in self.nodes:
-                if node['node_id'] == rank['node_id']:
+                if node['index'] == slot['node_index']:
                     node_found = True
                     break
 
@@ -455,25 +467,23 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 raise RuntimeError('inconsistent node information')
 
             # iterate over cores/gpus in the slot, and update state
-            for core_map in rank['core_map']:
-                for core in core_map:
-                    node['cores'][core] = new_state
+            for core in slot['cores']:
+                node['cores'][core['index']] = new_state
 
-            for gpu_map in rank['gpu_map']:
-                for gpu in gpu_map:
-                    node['gpus'][gpu] = new_state
+            for gpu in slot['gpus']:
+                node['gpus'][gpu['index']] = new_state
 
-            if rank['lfs']:
+            if slot['lfs']:
                 if new_state == rpc.BUSY:
-                    node['lfs'] -= rank['lfs']
+                    node['lfs'] -= slot['lfs']
                 else:
-                    node['lfs'] += rank['lfs']
+                    node['lfs'] += slot['lfs']
 
-            if rank['mem']:
+            if slot['mem']:
                 if new_state == rpc.BUSY:
-                    node['mem'] -= rank['mem']
+                    node['mem'] -= slot['mem']
                 else:
-                    node['mem'] += rank['mem']
+                    node['mem'] += slot['mem']
 
 
 
@@ -494,7 +504,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         glyphs = {rpc.FREE : '-',
                   rpc.BUSY : '#',
-                  rpc.DOWN : '!'}
+                  rpc.DOWN : '!',
+                  2        : '!'}  # FIXME: backward compatible, old slots
         ret = "|"
         for node in self.nodes:
             for core in node['cores']:
@@ -745,13 +756,13 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                  reverse=True)
 
         # cycle through waitpool, and see if we get anything placed now.
-      # self._log.debug_9('before bisec: %d', len(to_test))
+        self._log.debug_9('before bisec: %d', len(to_test))
         scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                 check=self._try_allocation,
                                                 on_skip=self._prof_sched_skip,
                                                 log=self._log)
-      # self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
-      #                                           len(unscheduled), len(failed))
+        self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
+                                                  len(unscheduled), len(failed))
 
         for task, error in failed:
 
@@ -764,7 +775,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # update task resources
         for task in scheduled:
             td = task['description']
-            task['$set']      = ['resources']
             task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
                                  'gpu': td['ranks'] * td['gpus_per_rank']}
         self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
@@ -886,6 +896,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         for task in sorted(to_schedule, key=lambda x: x['tuple_size'][0],
                            reverse=True):
 
+            td = task['description']
+
             # FIXME: This is a slow and inefficient way to wait for named VEs.
             #        The semantics should move to the upcoming eligibility
             #        checker
@@ -898,14 +910,28 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                     task['uid'], named_env)
                     continue
 
+            # we actually only schedule tasks which do not yet have a `slots`
+            # structure attached.  Those which do were presumably scheduled
+            # earlier (by the applicaiton of some other client side scheduler),
+            # and we honor that decision.  We though will mark the respective
+            # resources as being used, to avoid other tasks being scheduled onto
+            # the same set of resources.
+            if td.get('slots'):
+
+                task['slots']     = td['slots']
+                task['partition'] = td['partition']
+                task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
+                                     'gpu': td['ranks'] * td['gpus_per_rank']}
+                self.advance(task, rps.AGENT_EXECUTING_PENDING,
+                             publish=True, push=True, fwd=True)
+                continue
+
             # either we can place the task straight away, or we have to
             # put it in the wait pool.
             try:
                 if self._try_allocation(task):
                     # task got scheduled - advance state, notify world about the
                     # state change, and push it out toward the next component.
-                    td = task['description']
-                    task['$set']      = ['resources']
                     task['resources'] = {'cpu': td['ranks'] *
                                                 td['cores_per_rank'],
                                          'gpu': td['ranks'] *
@@ -917,7 +943,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     to_wait.append(task)
 
             except Exception as e:
-
                 self._fail_task(task, e, '\n'.join(ru.get_exception_trace()))
 
         # all tasks which could not be scheduled are added to the waitpool
@@ -1047,7 +1072,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
           # td  = task['description']
 
           # self._prof.prof('schedule_try', uid=uid)
-            slots = self.schedule_task(task)
+            slots, partition = self.schedule_task(task)
             if not slots:
 
                 # schedule failure
@@ -1066,7 +1091,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # nodelist state (BUSY) and pass placement to the task, to have
             # it enacted by the executor
             self._change_slot_states(slots, rpc.BUSY)
-            task['slots'] = slots
+            task['slots']     = slots
+            task['partition'] = partition
 
             self.slot_status('after scheduled task', task['uid'])
 

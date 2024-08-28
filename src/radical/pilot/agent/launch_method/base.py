@@ -54,6 +54,7 @@ class LaunchMethod(object):
         self._prof     = prof
         self._pwd      = os.getcwd()
         self._env_orig = ru.env_eval('env/bs0_orig.env')
+        self._in_pytest = False
 
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
