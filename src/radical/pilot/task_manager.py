@@ -17,7 +17,7 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from .task_description import TaskDescription, RAPTOR_MASTER, RAPTOR_WORKER
+from .task_description import RAPTOR_MASTER, RAPTOR_WORKER
 from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
