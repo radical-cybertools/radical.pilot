@@ -559,7 +559,11 @@ class Session(object):
 
             # also update proxy heartbeat
             if self._proxy:
-                self._proxy.request('heartbeat', {'sid': self._uid})
+                try:
+                    self._proxy.request('heartbeat', {'sid': self._uid})
+                except:
+                    # ignore errors in case proxy went away already
+                    pass
         # --------------------------------------
 
         # --------------------------------------
@@ -734,12 +738,12 @@ class Session(object):
 
                 if msg['origin'] == self._module:
                     if LOG_ENABLED:
-                        self._log.debug_8('XXX >=! fwd %s to topic:%s: %s',
+                        self._log.debug_9('XXX >=! fwd %s to topic:%s: %s',
                                           src, tgt, msg)
                     return
 
                 if LOG_ENABLED:
-                    self._log.debug_8('XXX >=> fwd %s to topic:%s: %s',
+                    self._log.debug_9('XXX >=> fwd %s to topic:%s: %s',
                                       src, tgt, msg)
                 publisher.put(tgt, msg)
 
@@ -748,7 +752,7 @@ class Session(object):
                 # only forward messages which have the respective flag set
                 if not msg.get('fwd'):
                     if LOG_ENABLED:
-                        self._log.debug_8('XXX =>! fwd %s to %s: %s [%s - %s]',
+                        self._log.debug_9('XXX =>! fwd %s to %s: %s [%s - %s]',
                                           src, tgt, msg, msg['origin'],
                                           self._module)
                     return
@@ -756,11 +760,11 @@ class Session(object):
                 # only forward all messages which originated in *this* module.
                 if not msg['origin'] == self._module:
                     if LOG_ENABLED:
-                        self._log.debug_8('XXX =>| fwd %s to topic:%s: %s',
+                        self._log.debug_9('XXX =>| fwd %s to topic:%s: %s',
                                           src, tgt, msg)
                     return
 
-                self._log.debug_8('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                self._log.debug_9('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
 
                 # avoid message loops (forward only once)
                 msg['fwd'] = False
@@ -830,9 +834,6 @@ class Session(object):
                                           cfg=self._cfg,
                                           rcfg=self._rcfg,
                                           log=self._log, prof=self._prof)
-
-        import pprint
-        self._log.debug(pprint.pformat(self._rm.info))
 
 
     # --------------------------------------------------------------------------

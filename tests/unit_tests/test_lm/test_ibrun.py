@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
@@ -5,7 +7,7 @@ from unittest import mock, TestCase
 import radical.pilot.constants as rpc
 from radical.pilot.agent.resource_manager.base import RMInfo
 
-from .test_common import setUp
+from . import test_common as tc
 from radical.pilot.agent.launch_method.ibrun import IBRun
 
 
@@ -74,7 +76,7 @@ class TestIBRun(TestCase):
         lm_ibrun = IBRun('', {}, None, None, None)
         lm_ibrun._command = 'ibrun'
 
-        test_cases = setUp('lm', 'ibrun')
+        test_cases = tc.setUp('lm', 'ibrun')
         for task, result in test_cases:
 
             if result == 'AssertionError':
@@ -82,21 +84,21 @@ class TestIBRun(TestCase):
                     lm_ibrun.get_launch_cmds(task, '')
                 continue
 
-            cores_per_node = task['slots'].get('cores_per_node', 1)
-            gpus_per_node  = task['slots'].get('gpus_per_node',  0)
+            cores_per_node = task.get('cores_per_node', 1)
+            gpus_per_node  = task.get('gpus_per_node',  0)
 
             lm_ibrun._rm_info = RMInfo({
                 'cores_per_node': cores_per_node,
                 'gpus_per_node' : gpus_per_node,
                 'node_list'     : [
-                    {'node_name': 'node1',
-                     'node_id'  : 'node1',
+                    {'name'     : 'node1',
+                     'index'    : 1,
                      'cores'    : [rpc.FREE] * cores_per_node,
                      'gpus'     : [rpc.FREE] * gpus_per_node,
                      'lfs'      : 0,
                      'mem'      : 0},
-                    {'node_name': 'node2',
-                     'node_id'  : 'node2',
+                    {'name'     : 'node2',
+                     'index'    : 2,
                      'cores'    : [rpc.FREE] * cores_per_node,
                      'gpus'     : [rpc.FREE] * gpus_per_node,
                      'lfs'      : 0,

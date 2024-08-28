@@ -270,7 +270,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         n_ranks = td['ranks']
         slots   = task.setdefault('slots', {})
 
-        self._extend_pre_exec(td, slots.get('ranks'))
+        self._extend_pre_exec(td, slots)
 
         with ru.ru_open(exec_fullpath, 'w') as fout:
 
@@ -320,7 +320,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         # need to set `DEBUG_5` or higher to get slot debug logs
         if self._log._debug_level >= 5:
-            ru.write_json('%s/%s.sl' % (sbox, tid), slots)
+            ru.write_json(slots, '%s/%s.sl' % (sbox, tid))
 
         return exec_path, exec_fullpath
 
@@ -374,7 +374,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _extend_pre_exec(self, td, ranks=None):
+    def _extend_pre_exec(self, td, slots=None):
 
         # FIXME: this assumes that the rank has a `gpu_maps` and `core_maps`
         #        with exactly one entry, corresponding to the rank process to be
@@ -383,22 +383,19 @@ class AgentExecutingComponent(rpu.AgentComponent):
         # FIXME: need to distinguish between logical and physical IDs
 
         if td['threading_type'] == rpc.OpenMP:
-            # for future updates: if task ranks are heterogeneous in terms of
+            # for future updates: if task slots are heterogeneous in terms of
             #                     number of threads, then the following string
             #                     should be converted into dictionary (per rank)
             num_threads = td.get('cores_per_rank', 1)
             td['pre_exec'].append('export OMP_NUM_THREADS=%d' % num_threads)
 
-        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and ranks:
+        if td['gpus_per_rank'] and td['gpu_type'] == rpc.CUDA and slots:
             # equivalent to the 'physical' value for original `cvd_id_mode`
-            rank_id  = 0
             rank_env = {}
-            for slot_ranks in ranks:
-                for gpu_map in slot_ranks['gpu_map']:
-                    rank_env[str(rank_id)] = \
-                        'export CUDA_VISIBLE_DEVICES=%s' % \
-                        ','.join([str(g) for g in gpu_map])
-                    rank_id += 1
+            for rank_id,slot in enumerate(slots):
+                rank_env[str(rank_id)] = \
+                    'export CUDA_VISIBLE_DEVICES=%s' % \
+                    ','.join([str(g['index']) for g in slot['gpus']])
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration

@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"                  : "task.000015",
+        "partition"            : "0",
         "description": {
             "executable"       : "/bin/sleep",
             "arguments"        : ["15"],
@@ -15,16 +16,24 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "cores_per_node": 24,
-                "gpus_per_node" : 4,
-                "lfs_per_node"  : 0,
-                "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "node1",
-                                    "core_map"  : [[0, 1], [2, 3]],
-                                    "gpu_map"   : [[0, 1], [0, 1]],
-                                    "lfs"       : 0}]
-            },
+            "slots": [
+                      {"node_name" : "node1",
+                       "node_index": 1,
+                       "cores"     : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
+                       "lfs"       : 0
+                      },
+                      {"node_name" : "node1",
+                       "node_index": 1,
+                       "cores"     : [{"index": 2, "occupation": 1.0},
+                                      {"index": 3, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
+                       "lfs"       : 0
+                      }
+            ],
             "task_sandbox": "./",
             "mpi_flavor"  : "SPECTRUM"
         }
