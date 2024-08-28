@@ -39,14 +39,16 @@
     "setup": {
         "slots": [{"node_name" : "a",
                    "node_index": 1,
-                   "cores"     : [0],
-                   "gpus"      : [0, 1],
+                   "cores"     : [{"index": 0, "occupation": 1.0}],
+                   "gpus"      : [{"index": 0, "occupation": 1.0},
+                                  {"index": 1, "occupation": 1.0}],
                    "mem"       : 0,
                    "lfs"       : 0},
                   {"node_name" : "a",
                    "node_index": 1,
-                   "cores"     : [1],
-                   "gpus"      : [2, 3],
+                   "cores"     : [{"index": 1, "occupation": 1.0}],
+                   "gpus"      : [{"index": 2, "occupation": 1.0},
+                                  {"index": 3, "occupation": 1.0}],
                    "mem"       : 0,
                    "lfs"       : 0}]
     }

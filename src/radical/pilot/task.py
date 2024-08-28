@@ -177,9 +177,6 @@ class Task(object):
         if metadata:
             self._descr['metadata'] = metadata
 
-        if task_dict.get('description', {}).get('metadata'):
-            self._descr['metadata'] = task_dict['description']['metadata']
-
         # callbacks are not invoked here, but are bulked in the tmgr
 
 
@@ -442,7 +439,7 @@ class Task(object):
     def slots(self):
         '''dict: The slots assigned for the task's execution'''
         if self._slots:
-            if isinstance(self._slots[0], dict):
+            if not self._slots[0].get('version'):
                 for idx,slot in enumerate(self._slots):
                     self._slots[idx] = Slot(self._slots[idx])
         return self._slots

@@ -16,6 +16,8 @@ from ..   import constants as rpc
 from ..   import Session
 from ..   import TaskDescription, AGENT_SERVICE
 
+from ..resource_config import RO
+
 
 # ------------------------------------------------------------------------------
 #
@@ -499,8 +501,15 @@ class Agent_0(rpu.AgentComponent):
                 launch_script = '%s/%s.launch.sh'   % (self._pwd, sa)
                 exec_script   = '%s/%s.exec.sh'     % (self._pwd, sa)
 
-                node_cores = [cid for cid, cstate in enumerate(node['cores'])
-                              if cstate == rpc.FREE]
+                node_cores = [RO(index=cid, occuapation=rpc.BUSY)
+                                            for cid, cstate
+                                            in  enumerate(node['cores'])
+                                            if  cstate == rpc.FREE]
+
+                node_gpus  = [RO(index=gid, occuapation=rpc.BUSY)
+                                            for gid, gstate
+                                            in  enumerate(node['gpus'])
+                                            if  gstate == rpc.FREE]
 
                 agent_task = {
                     'uid'               : sa,
@@ -515,7 +524,7 @@ class Agent_0(rpu.AgentComponent):
                     'slots'             : [{'node_name' : node['name'],
                                             'node_index': node['index'],
                                             'cores'     : node_cores,
-                                            'gpus'      : [],
+                                            'gpus'      : node_gpus,
                                             'lfs'       : 0,
                                             'mem'       : 0}]
                 }

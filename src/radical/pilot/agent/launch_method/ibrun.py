@@ -106,7 +106,7 @@ class IBRun(LaunchMethod):
 
             # cores contains core ids for each thread,
             # but threads are ignored for offset
-            core_id_min = min([slot['cores'][0]
+            core_id_min = min([slot['cores'][0]['index']
                                for slot in slots
                                if  slot['node_index'] == node['index']])
             # offset into processor (cpus) hostlist

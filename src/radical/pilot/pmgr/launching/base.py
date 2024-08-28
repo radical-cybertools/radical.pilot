@@ -862,7 +862,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['task_post_exec']      = task_post_exec
         agent_cfg['resource_cfg']        = copy.deepcopy(rcfg)
         agent_cfg['log_lvl']             = self._log.level
-        agent_cfg['debug_lvl']           = 9 # self._log.debug_level
+        agent_cfg['debug_lvl']           = self._log.debug_level
         agent_cfg['services']            = services
         agent_cfg['enable_ep']           = enable_ep
         agent_cfg['prepare_env']         = prepare_env

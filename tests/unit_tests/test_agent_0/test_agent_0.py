@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import glob
@@ -138,8 +140,10 @@ class TestComponent(TestCase):
             agent_0._start_sub_agents()
 
         agent_0._rm.info = RMInfo({
-            'agent_node_list' : [{'index': 1, 'name': 'n.0000',
-                                  'cores': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}],
+            'agent_node_list' : [{'index': 1,
+                                  'name' : 'n.0000',
+                                  'cores': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                                  'gpus' : [0]}],
             'cores_per_node'  : 10,
             'threads_per_core': 2})
 

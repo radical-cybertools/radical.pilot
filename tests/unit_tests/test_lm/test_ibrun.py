@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 from unittest import mock, TestCase
@@ -5,7 +7,7 @@ from unittest import mock, TestCase
 import radical.pilot.constants as rpc
 from radical.pilot.agent.resource_manager.base import RMInfo
 
-from .test_common import setUp
+from . import test_common as tc
 from radical.pilot.agent.launch_method.ibrun import IBRun
 
 
@@ -74,10 +76,8 @@ class TestIBRun(TestCase):
         lm_ibrun = IBRun('', {}, None, None, None)
         lm_ibrun._command = 'ibrun'
 
-        test_cases = setUp('lm', 'ibrun')
+        test_cases = tc.setUp('lm', 'ibrun')
         for task, result in test_cases:
-
-            print(task['uid'])
 
             if result == 'AssertionError':
                 with self.assertRaises(AssertionError):

@@ -22,16 +22,20 @@
                       {
                           "node_name" : "node1",
                           "node_index": 1,
-                          "cores"     : [0, 1],
-                          "gpus"      : [0, 1],
+                          "cores"     : [{"index": 0, "occupation": 1.0},
+                                         {"index": 1, "occupation": 1.0}],
+                          "gpus"      : [{"index": 0, "occupation": 1.0},
+                                         {"index": 1, "occupation": 1.0}],
                           "lfs"       : 0,
                           "mem"       : 0
                       },
                       {
                           "node_name" : "node1",
                           "node_index": 1,
-                          "cores"     : [2, 3],
-                          "gpus"      : [1, 2],
+                          "cores"     : [{"index": 2, "occupation": 1.0},
+                                         {"index": 3, "occupation": 1.0}],
+                          "gpus"      : [{"index": 1, "occupation": 1.0},
+                                         {"index": 2, "occupation": 1.0}],
                           "lfs"       : 0,
                           "mem"       : 0
                       }
@@ -42,7 +46,7 @@
     "results": {
         "lm": {
             "jsrun"    : {
-                "launch_cmd": "jsrun -n2 -a1 -c2 -g2 -r2 -b rs --smpiargs=\"-gpu\"",
+                "launch_cmd": "jsrun -n2 -a2 -c4 -g2 -r2 -b packed:2 --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "jsrun_erf": {}

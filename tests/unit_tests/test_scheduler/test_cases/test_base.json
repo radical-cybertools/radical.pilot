@@ -55,7 +55,7 @@
         }
     ],
 
-    "change_slots": [
+    "change_slot_states": [
         {
             "nodes": [{"name"       : "node-0000",
                        "index"      : 0,

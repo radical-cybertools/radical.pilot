@@ -112,7 +112,6 @@ class RMBaseTestCase(TestCase):
     @mock.patch.object(ResourceManager, '__init__', return_value=None)
     def test_cores_cpus_map(self, mocked_init):
 
-        print('%s/test_cases/test_cores_gpus_map.json' % base)
         tc_map = ru.read_json('%s/test_cases/test_cores_gpus_map.json' % base)
 
         rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)

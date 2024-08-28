@@ -752,7 +752,7 @@ def get_node_index(node_list, node_uid, pn):
 
     if not _node_index:
         for idx, n in enumerate(node_list):
-            _node_index[n['node_id']] = idx
+            _node_index[n['index']] = idx
 
     r0 = _node_index[node_uid] * pn
     r1 = r0 + pn - 1
@@ -1021,7 +1021,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
             try:
                 slots  = task.cfg['slots']
                 tts    = task.timestamps
-                task_min  = tts(event=task['consume']['exec_queue'][0]) [0]
+                task_min  = tts(event=task['consume']['schedule_ok'][0]) [0]
                 task_max  = tts(event=task['consume']['unschedule'][1])[-1]
 
             except:
@@ -1223,6 +1223,8 @@ def _get_task_consumption(session, task, rtype, tdurations=None):
         r0, _ = get_node_index(nodes, slot['node_index'], pn)
 
         for resource in slot[rkey]:
+            if isinstance(resource, dict):
+                resource = resource['index']
             resources.append(r0 + resource)
 
     # find continuous stretched of resources to minimize number of boxes
