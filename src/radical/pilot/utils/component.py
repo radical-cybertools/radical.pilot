@@ -1111,9 +1111,8 @@ class BaseComponent(object):
             to_publish = list()
 
             # If '$all' is set, we update the complete thing_dict.
-            # Things in final state are also published in full.
-            # If '$set' is set, we also publish all keys listed in there.
-            # In all other cases, we only send 'uid', 'type' and 'state'.
+            # Things in final state are also published in full,
+            # otherwise we only send 'uid', 'type' and 'state'.
             for thing in things:
 
                 if '$all' in thing:

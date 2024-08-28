@@ -42,7 +42,7 @@ class LSFTestCase(TestCase):
 
         rm_info = rm_lsf._init_from_scratch(RMInfo({'cores_per_node': None}))
 
-        node_names = sorted([n['node_name'] for n in rm_info.node_list])
+        node_names = sorted([n['name'] for n in rm_info.node_list])
         self.assertEqual(node_names, ['nodes1', 'nodes2'])
         self.assertEqual(rm_info.cores_per_node,   20)
 

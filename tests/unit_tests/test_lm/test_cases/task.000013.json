@@ -1,7 +1,11 @@
 
 {
     "task": {
+        "cores_per_node"    : 16,
+        "gpus_per_node"     : 1,
+        "lsf_per_node"      : 0,
         "uid"               : "task.000013",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["10"],
@@ -17,16 +21,13 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "cores_per_node": 16,
-                "gpus_per_node" : 2,
-                "lfs_per_node"  : 0,
-                "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "1",
-                                    "core_map"  : [[0]],
-                                    "gpu_map"   : [[0, 1]],
-                                    "lfs"       : 0}]
-            }
+            "slots": [{"node_name" : "node1",
+                       "node_index": 1,
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0},
+                                      {"index": 1, "occupation": 1.0}],
+                       "lfs"       : 0}
+            ]
         }
     },
 
@@ -36,7 +37,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun"  : {
-                "launch_cmd" : "aprun -N 1 -n 1 -d 1",
+                "launch_cmd" : "aprun -n 1 -d 1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun" : {
@@ -52,7 +53,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun"  : {
-                "launch_cmd" : "jsrun -n1 -a1 -c1 -g2 -r1 -b rs --smpiargs=\"off\"",
+                "launch_cmd" : "jsrun -n1 -a1 -c2 -g2 -r1 -b rs --smpiargs=\"off\"",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "jsrun_erf": {
@@ -62,7 +63,7 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0 : { host: 1; cpu: {0}; gpu: {0,1} }\n"]
+                           "rank: 0 : { host: 1; cpu: {0}; gpu: {0} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000013"

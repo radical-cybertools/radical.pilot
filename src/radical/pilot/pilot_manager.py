@@ -234,12 +234,12 @@ class PilotManager(rpu.ClientComponent):
 
         # dump json
         json = self.as_dict()
-      # json['_id']    = self.uid
         json['type']   = 'pmgr'
         json['uid']    = self.uid
         json['pilots'] = [pilot.as_dict() for pilot in self._pilots.values()]
 
         tgt = '%s/%s.json' % (self._session.path, self.uid)
+
         ru.write_json(json, tgt)
 
 
@@ -736,8 +736,6 @@ class PilotManager(rpu.ClientComponent):
         self._log.debug('pilot(s).need(s) cancellation %s', uids)
 
         # send the cancellation request to the pilots
-        # FIXME: MongoDB
-        # self._session._dbs.pilot_command('cancel_pilot', [], uids)
         self._log.debug('issue cancel_pilots for %s', uids)
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'cancel_pilots',
                                           'arg' : {'pmgr' : self.uid,

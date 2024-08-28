@@ -1,7 +1,11 @@
 
 {
     "task": {
+        "cores_per_node"    : 16,
+        "gpus_per_node"     : 1,
+        "lsf_per_node"      : 0,
         "uid"               : "task.000004",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["10"],
@@ -15,16 +19,12 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "cores_per_node": 16,
-                "gpus_per_node" : 1,
-                "lfs_per_node"  : 0,
-                "ranks"         : [{"node_name" : "node1",
-                                    "node_id"   : "node1",
-                                    "core_map"  : [[0]],
-                                    "gpu_map"   : [[0]],
-                                    "lfs"       : 0}]
-            },
+            "slots": [{"node_name" : "node1",
+                       "node_index": 1,
+                       "cores"     : [{"index": 0, "occupation": 1.0}],
+                       "gpus"      : [{"index": 0, "occupation": 1.0}],
+                       "lfs"       : 0}
+            ],
             "mpi_flavor": "SPECTRUM"
         }
     },
@@ -35,7 +35,7 @@
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "aprun" : {
-                "launch_cmd" : "aprun -N 1 -n 1 -d 1",
+                "launch_cmd" : "aprun -n 1 -d 1",
                 "rank_exec"  : "/bin/sleep \"10\""
             },
             "mpirun": {

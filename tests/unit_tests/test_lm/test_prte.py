@@ -119,10 +119,10 @@ class TestPRTE(TestCase):
         lm_prte._verbose = True
         lm_prte._rm_info = RMInfo({
             'cores_per_node': 42,
-            'node_list'     : [{'node_name': 'name_0', 'node_id': '0'},
-                               {'node_name': 'name_1', 'node_id': '1'},
-                               {'node_name': 'name_2', 'node_id': '2'},
-                               {'node_name': 'name_3', 'node_id': '3'}]
+            'node_list'     : [{'name': 'name_0', 'index': 0},
+                               {'name': 'name_1', 'index': 1},
+                               {'name': 'name_2', 'index': 2},
+                               {'name': 'name_3', 'index': 3}]
         })
         lm_prte._lm_cfg = {'pid'      : 11111,
                            'dvm_count': 2}

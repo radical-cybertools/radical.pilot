@@ -2,6 +2,7 @@
 {
     "task": {
         "uid"               : "task.000017",
+        "partition"         : "0",
         "description": {
             "executable"    : "/bin/sleep",
             "arguments"     : ["15"],
@@ -17,30 +18,51 @@
 
     "setup": {
         "lm": {
-            "slots": {
-                "ranks": [
-                    {
-                        "node_name" : "node1",
-                        "node_id"   : "1",
-                        "core_map"  : [[0, 1], [2, 3], [4, 5], [6, 7]],
-                        "gpu_map"   : [[0], [0], [0], [0]],
-                        "lfs"       : 0,
-                        "mem"       : 0
-                    }
-                ],
-                "partition_id"   : null,
-                "cores_per_node" : 42,
-                "gpus_per_node"  : 6,
-                "lfs_per_node"   : 0,
-                "mem_per_node"   : 0
-            }
+            "slots": [
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [{"index": 0, "occupation": 1.0},
+                                         {"index": 1, "occupation": 1.0}],
+                          "gpus"      : [{"index": 0, "occupation": 1.0}],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [{"index": 2, "occupation": 1.0},
+                                         {"index": 3, "occupation": 1.0}],
+                          "gpus"      : [{"index": 0, "occupation": 1.0}],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [{"index": 4, "occupation": 1.0},
+                                         {"index": 5, "occupation": 1.0}],
+                          "gpus"      : [{"index": 0, "occupation": 1.0}],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      },
+                      {
+                          "node_name" : "node1",
+                          "node_index": 1,
+                          "cores"     : [{"index": 5, "occupation": 1.0},
+                                         {"index": 6, "occupation": 1.0}],
+                          "gpus"      : [{"index": 0, "occupation": 1.0}],
+                          "lfs"       : 0,
+                          "mem"       : 0
+                      }
+            ]
         }
     },
 
     "results": {
         "lm": {
             "jsrun" : {
-                "launch_cmd" : "jsrun -n1 -a4 -c8 -g1 -r1 -b packed:2 --smpiargs=\"-gpu\"",
+                "launch_cmd" : "jsrun -n4 -a2 -c4 -g2 -r4 -b packed:2 --smpiargs=\"-gpu\"",
                 "rank_exec"  : "/bin/sleep \"15\""
             },
             "jsrun_erf": {
@@ -50,7 +72,10 @@
         },
         "resource_file": {
             "jsrun_erf" : ["cpu_index_using: logical\n",
-                           "rank: 0,1,2,3 : { host: 1; cpu: {0,1},{2,3},{4,5},{6,7}; gpu: {0} }\n"]
+                           "rank: 0,1 : { host: 1; cpu: {0},{1}; gpu: {0} }\n",
+                           "rank: 2,3 : { host: 1; cpu: {2},{3}; gpu: {0} }\n",
+                           "rank: 4,5 : { host: 1; cpu: {4},{5}; gpu: {0} }\n",
+                           "rank: 6,7 : { host: 1; cpu: {5},{6}; gpu: {0} }\n"]
         },
         "resource_filename": {
             "jsrun_erf" : "rs_layout_task_000017"

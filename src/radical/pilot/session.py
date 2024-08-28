@@ -559,7 +559,11 @@ class Session(object):
 
             # also update proxy heartbeat
             if self._proxy:
-                self._proxy.request('heartbeat', {'sid': self._uid})
+                try:
+                    self._proxy.request('heartbeat', {'sid': self._uid})
+                except:
+                    # ignore errors in case proxy went away already
+                    pass
         # --------------------------------------
 
         # --------------------------------------
@@ -716,8 +720,8 @@ class Session(object):
         url_pub = reg['bridges.%s.addr_pub' % tgt.lower()]
 
         if LOG_ENABLED:
-            self._log.debug('XXX cfg fwd for topic:%s to %s', src, tgt)
-            self._log.debug('XXX cfg fwd for %s to %s', url_sub, url_pub)
+            self._log.debug_5('XXX cfg fwd for topic:%s to %s', src, tgt)
+            self._log.debug_5('XXX cfg fwd for %s to %s', url_sub, url_pub)
 
         publisher = ru.zmq.Publisher(channel=tgt, path=path, url=url_pub,
                                      log=self._log, prof=self._prof)
@@ -734,13 +738,13 @@ class Session(object):
 
                 if msg['origin'] == self._module:
                     if LOG_ENABLED:
-                        self._log.debug('XXX >=! fwd %s to topic:%s: %s',
-                                        src, tgt, msg)
+                        self._log.debug_9('XXX >=! fwd %s to topic:%s: %s',
+                                          src, tgt, msg)
                     return
 
                 if LOG_ENABLED:
-                    self._log.debug('XXX >=> fwd %s to topic:%s: %s',
-                                    src, tgt, msg)
+                    self._log.debug_9('XXX >=> fwd %s to topic:%s: %s',
+                                      src, tgt, msg)
                 publisher.put(tgt, msg)
 
             else:
@@ -748,21 +752,26 @@ class Session(object):
                 # only forward messages which have the respective flag set
                 if not msg.get('fwd'):
                     if LOG_ENABLED:
-                        self._log.debug('XXX =>! fwd %s to %s: %s [%s - %s]',
-                                        src, tgt, msg, msg['origin'], self._module)
+                        self._log.debug_9('XXX =>! fwd %s to %s: %s [%s - %s]',
+                                          src, tgt, msg, msg['origin'],
+                                          self._module)
                     return
 
                 # only forward all messages which originated in *this* module.
                 if not msg['origin'] == self._module:
                     if LOG_ENABLED:
-                        self._log.debug('XXX =>| fwd %s to topic:%s: %s', src, tgt, msg)
+                        self._log.debug_9('XXX =>| fwd %s to topic:%s: %s',
+                                          src, tgt, msg)
                     return
+
+                self._log.debug_9('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
 
                 # avoid message loops (forward only once)
                 msg['fwd'] = False
 
                 if LOG_ENABLED:
-                    self._log.debug('XXX =>> fwd %s to topic:%s: %s', src, tgt, msg)
+                    self._log.debug_3('XXX =>> fwd %s to topic:%s: %s',
+                                      src, tgt, msg)
                 publisher.put(tgt, msg)
 
 
@@ -825,9 +834,6 @@ class Session(object):
                                           cfg=self._cfg,
                                           rcfg=self._rcfg,
                                           log=self._log, prof=self._prof)
-
-        import pprint
-        self._log.debug(pprint.pformat(self._rm.info))
 
 
     # --------------------------------------------------------------------------

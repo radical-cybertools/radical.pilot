@@ -53,11 +53,11 @@ class RSH(LaunchMethod):
     def can_launch(self, task):
 
         # ensure single rank
-        if len(task['slots']['ranks']) > 1:
+        if len(task['slots']) > 1:
             return False, 'more than one rank'
 
         # ensure non-MPI
-        if task['description']['use_mpi']:
+        if task['description'].get('use_mpi'):
             return False, 'cannot launch MPI tasks'
 
         return True, ''
@@ -76,10 +76,10 @@ class RSH(LaunchMethod):
 
         slots = task['slots']
 
-        if len(slots['ranks']) != 1:
+        if len(slots) != 1:
             raise RuntimeError('rsh cannot run multi-rank tasks')
 
-        host = slots['ranks'][0]['node_name']
+        host = slots[0]['node_name']
         cmd  = '%s %s %s' % (self._command, host, exec_path)
         return cmd.rstrip()
 

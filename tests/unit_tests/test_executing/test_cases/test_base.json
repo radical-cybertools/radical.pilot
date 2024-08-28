@@ -37,19 +37,20 @@
      },
 
     "setup": {
-        "slots": {"ranks" : [{"node_name" : "a",
-                              "node_id"   : "1",
-                              "core_map"  : [[0]],
-                              "gpu_map"   : [[0, 1]],
-                              "mem"       : 0,
-                              "lfs"       : 0},
-                             {"node_name" : "a",
-                              "node_id"   : "1",
-                              "core_map"  : [[1]],
-                              "gpu_map"   : [[2, 3]],
-                              "mem"       : 0,
-                              "lfs"       : 0}]
-        }
+        "slots": [{"node_name" : "a",
+                   "node_index": 1,
+                   "cores"     : [{"index": 0, "occupation": 1.0}],
+                   "gpus"      : [{"index": 0, "occupation": 1.0},
+                                  {"index": 1, "occupation": 1.0}],
+                   "mem"       : 0,
+                   "lfs"       : 0},
+                  {"node_name" : "a",
+                   "node_index": 1,
+                   "cores"     : [{"index": 1, "occupation": 1.0}],
+                   "gpus"      : [{"index": 2, "occupation": 1.0},
+                                  {"index": 3, "occupation": 1.0}],
+                   "mem"       : 0,
+                   "lfs"       : 0}]
     }
 }
 
