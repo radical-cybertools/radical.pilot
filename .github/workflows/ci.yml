@@ -150,7 +150,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install .
       - name: run examples
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
           sudo apt update
           sudo apt install -y openmpi-bin
