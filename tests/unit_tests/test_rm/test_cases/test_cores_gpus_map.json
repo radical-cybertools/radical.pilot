@@ -3,8 +3,8 @@
         {
             "node_list" : [
                 {
-                    "node_name" : "a",
-                    "node_id"   : "1",
+                    "name"      : "a",
+                    "index"     : 1,
                     "cores"     : [0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus"      : [0, 0],
                     "lfs"       : 0,
@@ -17,8 +17,8 @@
         {
             "node_list" : [
                 {
-                    "node_name" : "b",
-                    "node_id"   : "1",
+                    "name"      : "b",
+                    "index"     : 1,
                     "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus"      : [0, 0],
                     "lfs"       : 0,
@@ -31,8 +31,8 @@
         {
             "node_list" : [
                 {
-                    "node_name" : "c",
-                    "node_id"   : "1",
+                    "name"      : "c",
+                    "index"     : 1,
                     "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus"      : [0, 0],
                     "lfs"       : 0,
@@ -45,8 +45,8 @@
         {
             "node_list" : [
                 {
-                    "node_name" : "d",
-                    "node_id"   : "1",
+                    "name"      : "d",
+                    "index"     : 1,
                     "cores"     : [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     "gpus"      : [0, 0],
                     "lfs"       : 0,
@@ -115,8 +115,8 @@
     "result": [
         [
             {
-                "node_name"  : "a",
-                "node_id"    : "1",
+                "name"       : "a",
+                "index"      : 1,
                 "cores"      : [0, 0, 0, 0, 0, 0, 0, 0],
                 "gpus"       : [0, 0],
                 "lfs"        : 0,
@@ -125,10 +125,10 @@
         ],
         [
             {
-                "node_name"  : "b",
-                "node_id"    : "1",
-                "cores"      : [2, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                "gpus"       : [0, 2],
+                "name"       : "b",
+                "index"      : 1,
+                "cores"      : [null, 0, null, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                "gpus"       : [0, null],
                 "lfs"        : 0,
                 "mem"        : 128
             }

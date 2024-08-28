@@ -47,7 +47,6 @@ class StagerTestCase(TestCase):
 
         self.assertTrue(os.path.isdir(tgt_dir))
         tgt_file = os.path.join(tgt_dir, 'stager_test', 'file_to_be_staged')
-        print('===', tgt_file)
         self.assertTrue(os.path.isfile(tgt_file))
 
         # file to file

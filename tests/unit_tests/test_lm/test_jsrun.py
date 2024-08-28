@@ -6,9 +6,12 @@ import glob
 from unittest import mock, TestCase
 
 import radical.utils as ru
+import radical.pilot as rp
 
 from .test_common import setUp
 from radical.pilot.agent.launch_method.jsrun import JSRUN, LaunchMethod
+
+JSRUN._in_pytest = True
 
 
 # ------------------------------------------------------------------------------
@@ -127,11 +130,15 @@ class TestJSRun(TestCase):
 
             else:
                 rs_layout = test_case[2]
+                slots     = rp.utils.convert_slots_to_old(slots)
+                for slot in slots:
+                    slot['version'] = 1
 
-                rs_file = lm_jsrun._create_resource_set_file(
+                rs_file   = lm_jsrun._create_resource_set_file(
                     slots=slots, uid=uid, sandbox=self._sbox)
                 with ru.ru_open(rs_file) as rs_layout_file:
-                    self.assertEqual(rs_layout_file.readlines(), rs_layout)
+                    lines = rs_layout_file.readlines()
+                    self.assertEqual(lines, rs_layout)
 
     # --------------------------------------------------------------------------
     #
@@ -153,12 +160,11 @@ class TestJSRun(TestCase):
 
             test_cases = setUp('lm', lm_name)
             for test_case in test_cases:
-
                 task   = test_case[0]
                 result = test_case[1]
 
                 lm_jsrun._rm_info = {
-                    'gpus_per_node'   : task['slots']['gpus_per_node'],
+                    'gpus_per_node'   : 1,
                     'threads_per_core': 1
                 }
 
@@ -172,7 +178,12 @@ class TestJSRun(TestCase):
                         lm_jsrun._create_resource_set_file.return_value = \
                             test_case[3]  # resource set file name
 
+
                     command = lm_jsrun.get_launch_cmds(task, '')
+                    print()
+                    print(task['uid'])
+                    print(command)
+                    print(result['launch_cmd'])
                     self.assertEqual(command, result['launch_cmd'], task['uid'])
 
                     command = lm_jsrun.get_exec(task)

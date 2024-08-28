@@ -34,7 +34,7 @@ class Noop(AgentSchedulingComponent):
     def schedule_task(self, task):
 
         # this abstract method is not used in this implementation
-        pass
+        return None, None
 
 
     # --------------------------------------------------------------------------
