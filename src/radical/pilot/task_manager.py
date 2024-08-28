@@ -7,7 +7,9 @@ import os
 import sys
 import time
 import queue
-import threading as mt
+import collections
+
+import threading     as mt
 
 import radical.utils as ru
 
@@ -106,7 +108,7 @@ class TaskManager(rpu.ClientComponent):
         self._tcb_lock    = mt.RLock()
         self._terminate   = mt.Event()
         self._closed      = False
-        self._task_info   = dict()
+        self._task_info   = collections.defaultdict(dict)
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
@@ -402,7 +404,7 @@ class TaskManager(rpu.ClientComponent):
                     self._tasks[uid]._update(task_dict)
                     to_notify.append([task, s])
 
-                self._task_info[uid] = task_dict
+                ru.dict_merge(self._task_info[uid], task_dict, ru.OVERWRITE)
 
         if to_notify:
             if _USE_BULK_CB:
