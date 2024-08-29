@@ -322,11 +322,19 @@ class Agent_0(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _launch_service(self, td):
+    def _launch_service(self, td_orig):
+
+        td = TaskDescription(td_orig)
 
         if not td.uid:
             td.uid = ru.generate_id('service.%(item_counter)04d',
                                     ru.ID_CUSTOM, ns=self.session.uid)
+
+        if not td_orig.get('name')    : td.name     = td.uid
+        if not td_orig.get('mode')    : td.mode     = AGENT_SERVICE
+        if not td_orig.get('metadata'): td.metadata = dict()
+
+        td.verify()
 
         self._log.info('starting agent service from sd %s', td.uid)
 
@@ -360,9 +368,9 @@ class Agent_0(rpu.AgentComponent):
 
         td = TaskDescription(task['description'])
 
-        if not td.name    : td.name     = tid
-        if not td.mode    : td.mode     = AGENT_SERVICE
-        if not td.metadata: td.metadata = dict()
+        if not task['description'].get('name')    : td.name     = tid
+        if not task['description'].get('mode')    : td.mode     = AGENT_SERVICE
+        if not task['description'].get('metadata'): td.metadata = dict()
 
         # we wrap the service
         exe, args, pat = td.executable, td.arguments, td.info_pattern
@@ -373,9 +381,11 @@ class Agent_0(rpu.AgentComponent):
         td.arguments += ['-n', td.name]
         td.arguments += ['-v']
 
+        orig_timeout  = td.timeout
+
         if td.timeout:
             td.arguments += ['-t', '%d' % td.timeout]
-            td.timeout    = 0.0    # service tasks will never time out!
+            td.timeout    = 0.0
 
         if pat:
             pat_src, pat_regex = pat.split(':', 1)
@@ -411,8 +421,10 @@ class Agent_0(rpu.AgentComponent):
             #
             # FIXME: need to watch state updates
 
-            if td.timeout:
-                if not self._service_start_evt.wait(timeout=td.timeout):
+            # The service task timeout is watched by the wrapper, but we also
+            # watch the wrapper itself.
+            if orig_timeout:
+                if not self._service_start_evt.wait(timeout=orig_timeout):
                     raise RuntimeError('Unable to start service')
             else:
                 self._service_start_evt.wait()
@@ -765,9 +777,6 @@ class Agent_0(rpu.AgentComponent):
     # --------------------------------------------------------------------------
     #
     def _ep_submit_tasks(self, request):
-
-      # import pprint
-      # self._log.debug('service request: %s', pprint.pformat(request))
 
         tasks = request['tasks']
 

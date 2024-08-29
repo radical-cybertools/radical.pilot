@@ -76,10 +76,8 @@ class APRun(LaunchMethod):
     def get_launch_cmds(self, task, exec_path):
 
         td             = task['description']
-
         ranks          = td['ranks']
         cores_per_rank = td.get('cores_per_rank', 1)
-        total_cores    = ranks * cores_per_rank
 
         # aprun options
         # –  Number of MPI ranks per node:                –N <n_ranks_per_node>
