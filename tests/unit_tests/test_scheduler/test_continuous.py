@@ -139,8 +139,8 @@ class TestContinuous(TestCase):
         component = Continuous(cfg=None, session=None)
         component._uid = 'agent_scheduling.0003'
         component._log  = mock.Mock()
-        component._log  = ru.Logger('radical.pilot', targets='/tmp/t.log',
-                                    level='DEBUG_9')
+      # component._log  = ru.Logger('radical.pilot', targets='/tmp/t.log',
+      #                             level='DEBUG_9')
 
         for test_case in self._test_cases:
 
