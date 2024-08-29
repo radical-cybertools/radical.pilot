@@ -171,8 +171,6 @@ class ResourceManager(object):
 
             # let the base class collect some data, then let the impl take over
             rm_info = self.init_from_scratch()
-            import pprint
-            pprint.pprint(rm_info.as_dict())
             rm_info.verify()
 
             # have a valid info - store in registry and complete initialization
