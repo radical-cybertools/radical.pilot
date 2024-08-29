@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import sys
 import time
 import queue
 import collections
@@ -17,8 +16,8 @@ from . import utils     as rpu
 from . import states    as rps
 from . import constants as rpc
 
-from .task_description import TaskDescription
-from .task_description import RAPTOR_MASTER, RAPTOR_WORKER, TASK_SERVICE
+from .task_description import RAPTOR_MASTER, RAPTOR_WORKER
+from .raptor_tasks     import RaptorMaster, RaptorWorker
 
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
@@ -312,21 +311,18 @@ class TaskManager(rpu.ClientComponent):
 
             if state in rps.FINAL:
 
-                self._log.debug('pilot %s is final', pilot.uid)
+                self._log.debug('pilot %s is final', pid)
 
-                # FIXME: MongoDB
-                # TODO: fail all non-final tasks which were assigned to that
-                # pilot
-                continue
+                tasks = list()
+                for task in self._tasks.values():
 
-             ## for task in tasks:
-             ##
-             ##     task['exception']        = 'RuntimeError("pilot died")'
-             ##     task['exception_detail'] = 'pilot %s is final' % pid
-             ##     task['state'] = rps.FAILED
-             ##
-             ## # final tasks are not pushed
-             ## self.advance(tasks, publish=True, push=False)
+                    task['exception']        = 'RuntimeError("pilot died")'
+                    task['exception_detail'] = 'pilot %s is final' % pid
+                    task['state'] = rps.FAILED
+                    tasks.append(task)
+
+                # final tasks are not pushed
+                self.advance(tasks, publish=True, push=False)
 
         # keep cb registered
         return True
