@@ -208,5 +208,21 @@ class Srun(LaunchMethod):
         return ret
 
 
+    # --------------------------------------------------------------------------
+    #
+    def get_env_blacklist(self):
+        '''
+        extend the base blacklist by SLURM specific environment variables
+        '''
+
+        ret = super().get_env_blacklist()
+
+        ret.extend([
+                    'SLURM_*',
+                   ])
+
+        return ret
+
+
 # ------------------------------------------------------------------------------
 

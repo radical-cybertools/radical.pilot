@@ -309,5 +309,22 @@ class MPIExec(LaunchMethod):
         return ret
 
 
+    # --------------------------------------------------------------------------
+    #
+    def get_env_blacklist(self):
+        '''
+        extend the base blacklist by SLURM specific environment variables
+        '''
+
+        ret = super().get_env_blacklist()
+
+        ret.extend([
+                    'OMPI_*',
+                    'PMIX_*',
+                   ])
+
+        return ret
+
+
 # ------------------------------------------------------------------------------
 
