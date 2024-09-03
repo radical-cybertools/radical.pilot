@@ -1,6 +1,6 @@
 
-radical.utils>=1.60
-radical.gtod>=1.60
+radical.utils~=1.70
+radical.gtod~=1.70
 
 psij-python
 setproctitle
