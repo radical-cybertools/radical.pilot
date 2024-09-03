@@ -9,6 +9,16 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.70.0 Release                                                    2024-09-03
+
+  - support for application level scheduling
+  - apply LM blacklist
+  - avoid uneccessary repr implementations
+  - ensure cancellation request is forwarded to agent and scheduler
+  - ensure full task info dict
+
+
+--------------------------------------------------------------------------------
 ### 1.63.0 Release                                                    2024-08-20
 
   - add missing file
