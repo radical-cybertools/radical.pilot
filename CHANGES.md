@@ -9,7 +9,7 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
-### 1.80.0 Release                                                    2024-09-03
+### 1.81.0 Release                                                    2024-09-03
 
   - support for application level scheduling
   - apply LM blacklist
@@ -2152,4 +2152,5 @@ API Changes:
 
 --------------------------------------------------------------------------------
 
+  - (HEAD -> master, origin/devel, origin/HEAD, devel) devel version bump
   - (HEAD -> master, origin/devel, origin/HEAD, devel) devel version bump
