@@ -519,7 +519,7 @@ class Session(object):
                                         level=self._cfg.get('log_lvl'),
                                         debug=self._cfg.get('debug_lvl'))
 
-        self._log_setup()
+        self._log_version()
 
         self._prof.prof('session_start', uid=self._uid)
 
