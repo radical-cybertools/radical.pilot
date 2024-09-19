@@ -350,13 +350,13 @@ class TaskManager(rpu.ClientComponent):
 
         try   : self._update_tasks(tasks)
         except: self._log.exception('state callback failed')
+
         return True
 
 
     # --------------------------------------------------------------------------
     #
     def _update_tasks(self, task_dicts):
-
 
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
@@ -404,6 +404,7 @@ class TaskManager(rpu.ClientComponent):
                     self._tasks[uid]._update(task_dict)
                     to_notify.append([task, s])
 
+                task_dict['state'] = target
                 ru.dict_merge(self._task_info[uid], task_dict, ru.OVERWRITE)
 
         if to_notify:
