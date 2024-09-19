@@ -62,25 +62,37 @@ Setup execution environment
 Python virtual environment
 --------------------------
 
+`Using Python at NCSA Delta <https://docs.ncsa.illinois.edu/systems/delta/en/latest/user_guide/software.html#python>`_
+
 Create a **virtual environment** with ``venv``:
 
 .. code-block:: bash
 
    export PYTHONNOUSERSITE=True
-   module load python
+   module load python/3.9.18
    python3 -m venv ve.rp
    source ve.rp/bin/activate
+
+OR create a **virtual environment** with ``conda``:
+
+.. code-block:: bash
+
+   # for CPU-only nodes
+   module load anaconda3_cpu
+   # for GPU nodes
+   #   module load anaconda3_gpu    # for CUDA
+   #   module load anaconda3_mi100  # for ROCm
+   conda create -y -n ve.rp python=3.9
+   eval "$(conda shell.posix hook)"
+   conda activate ve.rp
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
 .. code-block:: bash
 
    pip install radical.pilot
-
-.. note::
-
-   Polaris does not provide virtual environments with ``conda``.
-
+   # OR in case of conda environment
+   conda install -c conda-forge radical.pilot
 
 Launching script example
 ========================
@@ -94,12 +106,17 @@ launching command for the application itself.
    #!/bin/sh
 
    # - pre run -
-   module load python
+   module load python/3.9.18
    source ve.rp/bin/activate
+   # OR in case of conda environment
+   #   module load anaconda3_cpu
+   #   eval "$(conda shell.posix hook)"
+   #   conda activate ve.rp
 
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>

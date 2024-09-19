@@ -28,7 +28,7 @@
                                         },
         "pre_bootstrap_0"             : [
                                          "module reset",
-                                         "module load python"
+                                         "module load anaconda3_cpu"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
@@ -64,7 +64,7 @@
                                         },
         "pre_bootstrap_0"             : [
                                          "module reset",
-                                         "module load python"
+                                         "module load anaconda3_gpu"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
@@ -100,7 +100,7 @@
                                         },
         "pre_bootstrap_0"             : [
                                          "module reset",
-                                         "module load python"
+                                         "module load anaconda3_gpu"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
@@ -136,7 +136,7 @@
                                         },
         "pre_bootstrap_0"             : [
                                          "module reset",
-                                         "module load python"
+                                         "module load anaconda3_gpu"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
@@ -172,7 +172,7 @@
                                         },
         "pre_bootstrap_0"             : [
                                          "module reset",
-                                         "module load python"
+                                         "module load anaconda3_mi100"
                                         ],
         "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
