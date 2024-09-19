@@ -452,14 +452,26 @@ class Session(object):
                                         level=self._cfg.get('log_lvl'),
                                         debug=self._cfg.get('debug_lvl'))
 
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.utils version: %s', ru.version_detail)
+        self._log_version()
 
         self._prof.prof('session_start', uid=self._uid)
 
         self._rep.info ('<<new session: ')
         self._rep.plain('[%s]' % self._uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _log_version(self):
+
+        from . import version        as rp_version
+        from . import version_detail as rp_version_detail
+
+        self._log.info('Session(%s, %s)', self._uid, self._role)
+        self._log.info('radical.pilot version: %s (%s)', rp_version,
+                                                         rp_version_detail)
+        self._log.info('radical.utils version: %s (%s)', ru.version,
+                                                         ru.version_detail)
 
 
     # --------------------------------------------------------------------------
@@ -504,9 +516,7 @@ class Session(object):
                                         level=self._cfg.get('log_lvl'),
                                         debug=self._cfg.get('debug_lvl'))
 
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.utils version: %s', ru.version_detail)
+        self._log_version()
 
         self._prof.prof('session_start', uid=self._uid)
 
@@ -533,11 +543,8 @@ class Session(object):
                                         level=self._cfg.get('log_lvl'),
                                         debug=self._cfg.get('debug_lvl'))
 
-        from . import version_detail as rp_version_detail
-        self._log.info('radical.pilot version: %s', rp_version_detail)
-        self._log.info('radical.utils version: %s', ru.version_detail)
+        self._log_version()
 
-        self._log.debug('Session(%s, %s)', self._uid, self._role)
         self._prof.prof('session_start', uid=self._uid)
 
 
