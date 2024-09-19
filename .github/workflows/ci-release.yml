@@ -1,0 +1,66 @@
+
+name: CI
+
+on:
+  push:
+    branches:
+      - 'devel*'
+  schedule:
+    - cron:  '45 6 * * *'
+
+jobs:
+  examples:
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m venv testenv
+          . testenv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install .
+      - name: run examples
+        timeout-minutes: 15
+        run: |
+          sudo apt update
+          sudo apt install -y openmpi-bin
+          export RADICAL_LOG_LVL=DEBUG_9
+          export RADICAL_PROFILE=True
+          export RADICAL_DEBUG=TRUE
+          export RADICAL_DEBUG_HELPER=TRUE
+          export RADICAL_REPORT=TRUE
+          export RADICAL_UTILS_ZMQ_LOG_LVL=INFO
+          export RADICAL_UTILS_HEARTBEAT_LOG_LVL=INFO
+          . testenv/bin/activate
+          mkdir example_artifacts/
+          cd example_artifacts/
+          ../examples/00_getting_started.py
+          ../examples/09_mpi_tasks.py
+          ../examples/01_task_details.py
+          ../examples/02_failing_tasks.py
+          ../examples/03_multiple_pilots.py
+          ../examples/04_scheduler_selection.py
+          ../examples/05_task_input_data.py
+          ../examples/06_task_output_data.py
+          ../examples/07_shared_task_data.py
+          ../examples/08_task_environment.py
+          ../examples/10_pre_and_post_exec.py
+          ../examples/11_task_input_data_tar.py
+          ../examples/11_task_input_folder.py
+      - name: upload example_artifacts
+        if:   always()
+        uses: actions/upload-artifact@v3
+        with:
+            name: example_artifacts
+            path: example_artifacts
+
