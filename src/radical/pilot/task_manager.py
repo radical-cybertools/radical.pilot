@@ -344,10 +344,6 @@ class TaskManager(rpu.ClientComponent):
         things = ru.as_list(arg)
         tasks  = [thing for thing in things if thing.get('type') == 'task']
 
-      # for task in tasks:
-      #     self._log.debug('tmgr: task state update: %s [%s]',
-      #                     task['uid'], task['state'])
-
         self._update_tasks(tasks)
 
         return True
@@ -356,7 +352,6 @@ class TaskManager(rpu.ClientComponent):
     # --------------------------------------------------------------------------
     #
     def _update_tasks(self, task_dicts):
-
 
         # return information about needed callback and advance activities, so
         # that we don't break bulks here.
@@ -399,6 +394,7 @@ class TaskManager(rpu.ClientComponent):
                     self._tasks[uid]._update(task_dict)
                     to_notify.append([task, s])
 
+                task_dict['state'] = target
                 ru.dict_merge(self._task_info[uid], task_dict, ru.OVERWRITE)
 
         if to_notify:
