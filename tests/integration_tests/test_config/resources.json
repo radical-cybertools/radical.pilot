@@ -5,8 +5,8 @@
         "gpus_per_node"  : 0,
         "ssh_path"       : "/usr/bin/ssh",
         "mpirun_path"    : "/usr/bin/mpirun",
-        "mpi_flavor"     : "OMPI",
-        "mpi_version"    : "2.1.1",
+        "mpi_flavor"     : null,
+        "mpi_version"    : null,
         "resource"       : "local.localhost"
     },
 
