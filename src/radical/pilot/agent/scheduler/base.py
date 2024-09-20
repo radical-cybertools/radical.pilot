@@ -418,7 +418,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         if uid in self._waitpool[priority]:
                             task = self._waitpool[priority][uid]
                             to_cancel.append(task)
-                            del self._waitpool[uid]
+                            del self._waitpool[priority][uid]
 
             with self._raptor_lock:
                 for queue in self._raptor_tasks:
