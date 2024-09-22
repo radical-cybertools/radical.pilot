@@ -14,7 +14,7 @@ from . import states    as rps
 from . import constants as rpc
 
 from .staging_directives import expand_description
-from .task_description   import TaskDescription
+from .task_description   import TaskDescription, TASK_SERVICE
 from .resource_config    import Slot
 
 
@@ -180,6 +180,12 @@ class Task(object):
         metadata = task_dict.get('description', {}).get('metadata')
         if metadata:
             self._descr['metadata'] = metadata
+
+        # if this is a service and is finalized, set info_wait event
+        if target in rps.FINAL:
+            if self._descr.mode == TASK_SERVICE:
+                # singal failure in case we are still waitring for the service
+                self._set_info(None)
 
         # callbacks are not invoked here, but are bulked in the tmgr
 
@@ -474,12 +480,18 @@ class Task(object):
         return self._info
 
     def _set_info(self, info):
-        self._info = info
+        self._info = info or ''
         self._info_evt.set()
 
     def wait_info(self, timeout=None):
-
         self._info_evt.wait(timeout=timeout)
+
+        import pprint
+        pprint.pprint(self._info)
+
+        if self._info['0'] is None:
+            raise RuntimeError('no service info: %s / %s'
+                              % (self.stdout, self.stderr))
         return self.info
 
 

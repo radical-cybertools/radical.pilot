@@ -47,7 +47,7 @@ class Client(object):
         self._pubsub_cbs = defaultdict(list)
         self._queue_cbs  = defaultdict(list)
 
-        # ======================================================================
+        # ----------------------------------------------------------------------
         # control pubsub
         bname    = 'bridges.%s' % rpc.CONTROL_PUBSUB
         ctrl_cfg = ru.Config(self._session._reg[bname])
@@ -61,7 +61,7 @@ class Client(object):
                                            prof=self._prof)
 
 
-        # ======================================================================
+        # ----------------------------------------------------------------------
         # state pubsub (no publisher!)
         bname     = 'bridges.%s' % rpc.STATE_PUBSUB
         state_cfg = ru.Config(self._session._reg[bname])
@@ -71,7 +71,7 @@ class Client(object):
                                             prof=self._prof)
 
 
-        # ======================================================================
+        # ----------------------------------------------------------------------
         # client pubsub
         bname      = 'bridges.%s' % rpc.CLIENT_PUBSUB
         pubsub_cfg = ru.Config(self._session._reg[bname])
@@ -84,7 +84,7 @@ class Client(object):
                                       log=self._log,
                                       prof=self._prof)
 
-        # ======================================================================
+        # ----------------------------------------------------------------------
         # client queue
         bname       = 'bridges.%s' % rpc.CLIENT_QUEUE
         queue_cfg   = ru.Config(self._session._reg[bname])
@@ -101,7 +101,7 @@ class Client(object):
         time.sleep(1.1)
 
 
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     #
     # control pubsub
     #
@@ -147,7 +147,7 @@ class Client(object):
         self._ctrl_pub.put(topic, msg)
 
 
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     #
     # state pubsub
     #
@@ -183,7 +183,7 @@ class Client(object):
         self._state_cbs[topic].append(cb)
 
 
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     #
     # client pubsub
     #
@@ -226,7 +226,7 @@ class Client(object):
         self._pub.put(topic, msg)
 
 
-    # ==========================================================================
+    # --------------------------------------------------------------------------
     #
     # client queue
     #

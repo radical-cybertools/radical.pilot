@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import pprint
+import signal
 import select
 import argparse
 import threading
@@ -42,12 +43,15 @@ def print(msg):
 #               executable's name and arguments
 
 
-CHANNEL = 'control_pubsub'
+CHANNEL  = 'control_pubsub'
+last_msg = None
 
 
 # ------------------------------------------------------------------------------
 #
 def main():
+
+    global last_msg
 
     print('starting')
 
@@ -226,9 +230,25 @@ def main():
     pprint.pprint(msg)
     pub.put(CHANNEL, msg)
 
+    # register to control pubsub and wait for (hb) messages
+    ctrl_addr_sub = reg.get('bridges.%s' % CHANNEL)['addr_sub']
+
+    last_msg = time.time()
+
+    def _ctrl_cb(topic, msg):
+        global last_msg
+        last_msg = time.time()
+
+    ru.zmq.Subscriber(CHANNEL, ctrl_addr_sub, cb=_ctrl_cb, topic=CHANNEL)
+
     # now just run intil `cmd` completes and return its exit code
     while proc.poll() is None:
         print('wait: %s' % proc.poll())
+        if time.time() - last_msg > 10:
+            print('timeout: %s' % proc.poll())
+            print('kill %d' % proc.pid)
+            print(ru.sh_callout('kill %d' % proc.pid))
+            break
         time.sleep(1.0)
 
     ret = proc.poll()

@@ -589,27 +589,27 @@ class AgentExecutingComponent(rpu.AgentComponent):
             sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
 
         gpr = td['gpus_per_rank']
-        if int(gpr) == gpr:
-            gpr = '%d' % gpr
-        else:
-            gpr = '%f' % gpr
+        if int(gpr) == gpr: gpr = '%d' % gpr
+        else              : gpr = '%f' % gpr
 
-        ctrl_addr = self._reg['bridges.control_pubsub']['addr_pub']
+        ctrl_pub_addr = self._reg['bridges.control_pubsub']['addr_pub']
+        ctrl_sub_addr = self._reg['bridges.control_pubsub']['addr_pub']
 
         ret  = '\n'
-        ret += 'export RP_TASK_ID="%s"\n'          % tid
-        ret += 'export RP_TASK_NAME="%s"\n'        % name
-        ret += 'export RP_PILOT_ID="%s"\n'         % self.pid
-        ret += 'export RP_SESSION_ID="%s"\n'       % self.sid
-        ret += 'export RP_RESOURCE="%s"\n'         % self.resource
-        ret += 'export RP_RESOURCE_SANDBOX="%s"\n' % self.rsbox
-        ret += 'export RP_SESSION_SANDBOX="%s"\n'  % self.ssbox
-        ret += 'export RP_PILOT_SANDBOX="%s"\n'    % self.psbox
-        ret += 'export RP_TASK_SANDBOX="%s"\n'     % sbox
-        ret += 'export RP_REGISTRY_ADDRESS="%s"\n' % self.session.reg_addr
-        ret += 'export RP_CONTROL_PUBSUB=%s\n'     % ctrl_addr
-        ret += 'export RP_CORES_PER_RANK=%d\n'     % td['cores_per_rank']
-        ret += 'export RP_GPUS_PER_RANK=%s\n'      % gpr
+        ret += 'export RP_TASK_ID="%s"\n'            % tid
+        ret += 'export RP_TASK_NAME="%s"\n'          % name
+        ret += 'export RP_PILOT_ID="%s"\n'           % self.pid
+        ret += 'export RP_SESSION_ID="%s"\n'         % self.sid
+        ret += 'export RP_RESOURCE="%s"\n'           % self.resource
+        ret += 'export RP_RESOURCE_SANDBOX="%s"\n'   % self.rsbox
+        ret += 'export RP_SESSION_SANDBOX="%s"\n'    % self.ssbox
+        ret += 'export RP_PILOT_SANDBOX="%s"\n'      % self.psbox
+        ret += 'export RP_TASK_SANDBOX="%s"\n'       % sbox
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n'   % self.session.reg_addr
+        ret += 'export RP_CONTROL_PUB_ADDRESS=%s\n'  % ctrl_pub_addr
+        ret += 'export RP_CONTROL_SUB_UADDRESS=%s\n' % ctrl_sub_addr
+        ret += 'export RP_CORES_PER_RANK=%d\n'       % td['cores_per_rank']
+        ret += 'export RP_GPUS_PER_RANK=%s\n'        % gpr
 
         self._reg.dump(tid)
 

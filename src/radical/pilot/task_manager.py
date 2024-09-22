@@ -635,7 +635,7 @@ class TaskManager(rpu.ClientComponent):
     # FIXME RPC
     def _control_cb(self, topic, msg):
 
-        self._log.debug_5('=== control cb: %s', msg)
+        self._log.debug_5('control cb: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -662,7 +662,7 @@ class TaskManager(rpu.ClientComponent):
         if not task:
             return
 
-        task._set_info(arg['info'])
+        task._set_info(arg['info'] or '')  # `None` would indicate an error
         self._log.debug('=== service update: %s: %s', uid, task.info)
 
 

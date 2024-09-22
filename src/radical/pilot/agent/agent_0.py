@@ -31,7 +31,7 @@ class Agent_0(rpu.AgentComponent):
     communication bridges and callback mechanisms.
     '''
 
-    _shell   = ru.which('bash') or '/bin/sh'
+    _shell = ru.which('bash') or '/bin/sh'
 
 
     # --------------------------------------------------------------------------
@@ -397,7 +397,6 @@ class Agent_0(rpu.AgentComponent):
         task['name']        = td.name
         task['description'] = td.as_dict()
         task['state']       = rps.AGENT_STAGING_INPUT_PENDING
-
 
         with self._service_lock:
 
