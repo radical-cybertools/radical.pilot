@@ -419,6 +419,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                             task = self._waitpool[priority][uid]
                             to_cancel.append(task)
                             del self._waitpool[priority][uid]
+                            break
 
             with self._raptor_lock:
                 for queue in self._raptor_tasks:
@@ -903,7 +904,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # no resource change, no activity
             return None, False
 
-        self.slot_status("before schedule incoming [%d]" % len(to_schedule))
+        n_tasks = sum([len(x) for x in to_schedule.values()])
+        self.slot_status("before schedule incoming [%d]" % n_tasks)
 
         # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
