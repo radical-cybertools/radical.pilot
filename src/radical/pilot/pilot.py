@@ -245,17 +245,18 @@ class Pilot(object):
 
         # invoke pilot specific callbacks
         # FIXME: this iteration needs to be thread-locked!
-        for _,cb_val in self._callbacks[rpc.PILOT_STATE].items():
+        with self._cb_lock:
+            for _,cb_val in self._callbacks[rpc.PILOT_STATE].items():
 
-            cb      = cb_val['cb']
-            cb_data = cb_val['cb_data']
+                cb      = cb_val['cb']
+                cb_data = cb_val['cb_data']
 
-            self._log.debug('call %s', cb)
+                self._log.debug('call %s', cb)
 
-            self._log.debug('%s calls cb %s', self.uid, cb)
+                self._log.debug('%s calls cb %s', self.uid, cb)
 
-            if cb_data: cb([self], cb_data)
-            else      : cb([self])
+                if cb_data: cb([self], cb_data)
+                else      : cb([self])
 
         # ask pmgr to invoke any global callbacks
         self._pmgr._call_pilot_callbacks(self)
