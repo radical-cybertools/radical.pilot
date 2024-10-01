@@ -7,6 +7,7 @@ from .agent_n          import Agent_n
 
 from .resource_manager import ResourceManager
 from .launch_method    import LaunchMethod
+from .resolver         import Resolver
 from .scheduler        import Scheduler
 from .executing        import Executing
 from .staging_input    import Input

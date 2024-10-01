@@ -101,8 +101,8 @@ class Master(rpu.AgentComponent):
                                   rpc_addr=self.uid)
 
         # send new worker tasks and agent input staging / agent scheduler
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
+        self.register_output(rps.AGENT_RESOLVER_PENDING,
+                             rpc.AGENT_RESOLVER_QUEUE)
 
         # set up zmq queues between the agent scheduler and this master so that
         # we can receive new requests from RP tasks
@@ -407,7 +407,7 @@ class Master(rpu.AgentComponent):
 
             task['origin']            = 'raptor'
             task['description']       = td.as_dict()
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['state']             = rps.AGENT_RESOLVER_PENDING
             task['status']            = self.NEW
             task['type']              = 'task'
             task['uid']               = td.uid
@@ -734,7 +734,7 @@ class Master(rpu.AgentComponent):
             td = task['description']
 
           # task['uid']               = td.get('uid')
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['state']             = rps.AGENT_RESOLVER_PENDING
             task['pilot_sandbox']     = self._psbox
             task['session_sandbox']   = self._ssbox
             task['resource_sandbox']  = self._rsbox
@@ -751,7 +751,7 @@ class Master(rpu.AgentComponent):
             self._log.debug('insert %s', td['uid'])
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
-        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+        self.advance(tasks, state=rps.AGENT_RESOLVING_PENDING,
                             publish=True, push=True)
 
 

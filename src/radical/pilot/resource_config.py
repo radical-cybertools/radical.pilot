@@ -23,6 +23,7 @@ DEFAULT_REMOTE_WORKDIR = 'default_remote_workdir'
 DEFAULT_QUEUE          = 'default_queue'
 RESOURCE_MANAGER       = 'resource_manager'
 AGENT_CONFIG           = 'agent_config'
+AGENT_RESOLVER         = 'agent_resolver'
 AGENT_SCHEDULER        = 'agent_scheduler'
 AGENT_SPAWNER          = 'agent_spawner'
 PRE_BOOTSTRAP_0        = 'pre_bootstrap_0'
@@ -120,6 +121,7 @@ class ResourceConfig(ru.TypedDict):
         DEFAULT_QUEUE          : str         ,
         RESOURCE_MANAGER       : str         ,
         AGENT_CONFIG           : str         ,
+        AGENT_RESOLVER         : str         ,
         AGENT_SCHEDULER        : str         ,
         AGENT_SPAWNER          : str         ,
         PRE_BOOTSTRAP_0        : [str]       ,
@@ -167,6 +169,7 @@ class ResourceConfig(ru.TypedDict):
         DEFAULT_QUEUE          : ''          ,
         RESOURCE_MANAGER       : ''          ,
         AGENT_CONFIG           : 'default'   ,
+        AGENT_RESOLVER         : 'RESOLVER_ENV',
         AGENT_SCHEDULER        : 'CONTINUOUS',
         AGENT_SPAWNER          : 'POPEN'     ,
         PRE_BOOTSTRAP_0        : list()      ,

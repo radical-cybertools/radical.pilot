@@ -101,7 +101,7 @@ class Agent_0(rpu.AgentComponent):
                     task['description']['environment'][k] = v
 
             # FIXME: raise or fail task!
-            if task['state'] != rps.AGENT_STAGING_INPUT_PENDING:
+            if task['state'] != rps.AGENT_RESOLVING_PENDING:
                 self._log.error('invalid state: %s:%s:%s', task['uid'],
                         task['state'], task.get('states'))
                 continue
@@ -173,8 +173,8 @@ class Agent_0(rpu.AgentComponent):
         # we do not start any incoming tasks before we services are up.
 
         # forward received tasks to agent input staging
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
-                             rpc.AGENT_STAGING_INPUT_QUEUE)
+        self.register_output(rps.AGENT_RESOLVING_PENDING,
+                             rpc.AGENT_RESOLVING_QUEUE)
 
         # and return completed tasks to the task manager
         self.register_output(rps.TMGR_STAGING_OUTPUT_PENDING,
@@ -207,7 +207,7 @@ class Agent_0(rpu.AgentComponent):
         self._start_services()
 
         # listen for new tasks from the client
-        self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
+        self.register_input(rps.AGENT_RESOLVING_PENDING,
                             rpc.PROXY_TASK_QUEUE,
                             qname=self._pid,
                             cb=self._proxy_input_cb)
@@ -344,7 +344,7 @@ class Agent_0(rpu.AgentComponent):
             task['origin']            = 'agent'
             task['pilot']             = self._cfg.pid
             task['description']       = td.as_dict()
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['state']             = rps.AGENT_RESOLVING_PENDING
             task['pilot_sandbox']     = self._cfg.pilot_sandbox
             task['session_sandbox']   = self._cfg.session_sandbox
             task['resource_sandbox']  = self._cfg.resource_sandbox
@@ -770,7 +770,7 @@ class Agent_0(rpu.AgentComponent):
             task['uid']               = tid
             task['origin']            = 'agent'
             task['pilot']             = self._cfg.pid
-            task['state']             = rps.AGENT_STAGING_INPUT_PENDING
+            task['state']             = rps.AGENT_RESOLVING_PENDING
             task['pilot_sandbox']     = self._cfg.pilot_sandbox
             task['session_sandbox']   = self._cfg.session_sandbox
             task['resource_sandbox']  = self._cfg.resource_sandbox
@@ -782,7 +782,7 @@ class Agent_0(rpu.AgentComponent):
 
             self._log.debug('ep: submit %s', td['uid'])
 
-        self.advance(tasks, state=rps.AGENT_STAGING_INPUT_PENDING,
+        self.advance(tasks, state=rps.AGENT_RESOLVING_PENDING,
                             publish=True, push=True)
 
 

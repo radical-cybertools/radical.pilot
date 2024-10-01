@@ -288,6 +288,7 @@ class BaseComponent(object):
                 rpc.TMGR_SCHEDULING_COMPONENT      : rptm.Scheduler,
                 rpc.TMGR_STAGING_OUTPUT_COMPONENT  : rptm.Output,
 
+                rpc.AGENT_RESOLVING_COMPONENT      : rpa.Resolver,
                 rpc.AGENT_STAGING_INPUT_COMPONENT  : rpa.Input,
                 rpc.AGENT_SCHEDULING_COMPONENT     : rpa.Scheduler,
                 rpc.AGENT_EXECUTING_COMPONENT      : rpa.Executing,

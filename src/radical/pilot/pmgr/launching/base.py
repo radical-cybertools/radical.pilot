@@ -569,6 +569,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # get parameters from resource cfg, set defaults where needed
         agent_spawner           = rcfg.agent_spawner
         agent_config            = rcfg.agent_config
+        agent_resolver          = rcfg.agent_resolver
         agent_scheduler         = rcfg.agent_scheduler
         default_queue           = rcfg.default_queue
         forward_tunnel_endpoint = rcfg.forward_tunnel_endpoint
@@ -745,6 +746,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         RE = RuntimeError
         if not python_dist     : raise RE("missing python distribution")
         if not agent_spawner   : raise RE("missing agent spawner")
+        if not agent_resolver  : raise RE("missing agent resolver")
         if not agent_scheduler : raise RE("missing agent scheduler")
         if not resource_manager: raise RE("missing resource manager")
 
@@ -844,6 +846,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['cores']               = allocated_cores
         agent_cfg['gpus']                = allocated_gpus
         agent_cfg['spawner']             = agent_spawner
+        agent_cfg['resolver']            = agent_resolver
         agent_cfg['scheduler']           = agent_scheduler
         agent_cfg['runtime']             = runtime
         agent_cfg['app_comm']            = app_comm

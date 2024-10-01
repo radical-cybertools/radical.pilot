@@ -14,6 +14,7 @@
         "default_queue"               : "",
         "resource_manager"            : "FORK",
         "agent_config"                : "default_sa",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "SLEEP",
         "launch_methods"              : {
@@ -55,6 +56,7 @@
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
         "agent_config"                : "default",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
       # "agent_scheduler"             : "CONTINUOUS_COLO",
         "agent_spawner"               : "POPEN",
@@ -91,6 +93,7 @@
         "default_remote_workdir"      : "$HOME",
         "resource_manager"            : "FORK",
         "agent_config"                : "default",
+        "agent_resolver"              : "RESOLVER_ENV",
       # "agent_scheduler"             : "CONTINUOUS",
       # "agent_spawner"               : "POPEN",
         "agent_scheduler"             : "FLUX",

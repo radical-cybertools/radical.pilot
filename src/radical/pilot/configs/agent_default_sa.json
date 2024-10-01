@@ -23,10 +23,12 @@
     # stall_hwm and batch_size is 1 (no stalling, no bulking).
     #
     "bridges" : {
+        "agent_resolving_queue"      : {"kind": "queue",  "log_lvl": "error"},
         "agent_staging_input_queue"  : {"kind": "queue",  "log_lvl": "error"},
         "agent_scheduling_queue"     : {"kind": "queue",  "log_lvl": "error"},
 
-        # with multiple executors (in sub-agents) we control the number of tasks ("bulk_size"),
+        # with multiple executors (in sub-agents) we control the number of
+        # tasks ("bulk_size"),
         # which each executor can collect at once
         "agent_executing_queue"      : {"kind": "queue",  "log_lvl": "error",  "bulk_size" : 64},
 
@@ -45,6 +47,7 @@
     },
 
     "components" : {
+        "agent_resolving"      : {"count" : 1},
         "agent_staging_input"  : {"count" : 1},
         "agent_scheduling"     : {"count" : 1},
       # "agent_executing"      : {"count" : 1},

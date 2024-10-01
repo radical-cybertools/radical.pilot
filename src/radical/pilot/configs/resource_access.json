@@ -18,6 +18,7 @@
         "default_queue"               : "compute",
         "resource_manager"            : "SLURM",
         "agent_config"                : "default",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "pre_bootstrap_0"             : ["module load slurm"],
@@ -60,6 +61,7 @@
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -107,6 +109,7 @@
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -151,6 +154,7 @@
         "cores_per_node"              : 68,
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -198,6 +202,7 @@
         "cores_per_node"              : 68,
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -241,6 +246,7 @@
         },
         "default_queue"               : "normal",
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -279,6 +285,7 @@
         "lfs_path_per_node"           : "/scratch/$USER/$SLURM_JOB_ID",
         "lfs_size_per_node"           : 176105,
         "resource_manager"            : "SLURM",
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
@@ -327,6 +334,7 @@
         "resource_manager"            : "SLURM",
         "lfs_path_per_node"           : "${LOCAL}",
         "lfs_size_per_node"           : 2516582,
+        "agent_resolver"              : "RESOLVER_ENV",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
