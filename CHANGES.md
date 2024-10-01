@@ -9,6 +9,14 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.81.0 Release                                                    2024-10-01
+
+  - always log full version also
+  - ensure state setting
+  - updated docs and configs for Delta (NCSA)
+
+
+--------------------------------------------------------------------------------
 ### 1.81.0 Release                                                    2024-09-03
 
   - support for application level scheduling
@@ -2152,5 +2160,3 @@ API Changes:
 
 --------------------------------------------------------------------------------
 
-  - (HEAD -> master, origin/devel, origin/HEAD, devel) devel version bump
-  - (HEAD -> master, origin/devel, origin/HEAD, devel) devel version bump
