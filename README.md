@@ -110,6 +110,10 @@ RP documentation uses tutorials coded as Jupyter notebooks. `Sphinx` and
 the documentation also serves as a validation of your local development
 environment.
 
+## Docker
+
+Please refer to the RADICAL-Cybertools [tutorial repository](https://github.com/radical-cybertools/tutorials) for instructions on how to build, use, and configure the Docker image of RP.
+
 ## Provide Feedback
 
 Have a question, feature request or you found a bug? Feel free to open a 
