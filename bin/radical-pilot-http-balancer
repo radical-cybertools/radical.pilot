@@ -30,7 +30,7 @@ for i in range(len(urls)):
 @app.route("/", defaults={"path": ""}, methods=['GET', 'POST'])
 @app.route("/<string:path>",           methods=['GET', 'POST'])
 @app.route("/<path:path>",             methods=['GET', 'POST'])
-def ollama(path):
+def balance(path):
 
     print('got request for %s' % path)
 

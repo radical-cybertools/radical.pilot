@@ -241,7 +241,7 @@ def main():
 
     ru.zmq.Subscriber(CHANNEL, ctrl_addr_sub, cb=_ctrl_cb, topic=CHANNEL)
 
-    # now just run intil `cmd` completes and return its exit code
+    # now just run until `cmd` completes and return its exit code
     while proc.poll() is None:
         print('wait: %s' % proc.poll())
         if time.time() - last_msg > 10:

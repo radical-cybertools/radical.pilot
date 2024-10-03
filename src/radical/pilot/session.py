@@ -149,7 +149,7 @@ class Session(object):
                 the RP agent.  Those sessions will inherit the original session
                 ID, but will not attempt to create a new proxies or registries.
 
-            **close_options (optional): If additiocfg_addrnal key word arguments are
+            **close_options (optional): If additional key word arguments are
                 provided, they will be used as the default arguments to
                 Session.close(). This can be useful when the Session is used as
                 a Python context manager, such that close() is called

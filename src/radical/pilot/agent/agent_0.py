@@ -701,11 +701,8 @@ class Agent_0(rpu.AgentComponent):
         pre   = env_spec.get('pre_exec') or []
         out   = None
 
-        if env_name == 'rp':
-            pre_exec = '-P ". env/bs0_pre_0.sh" '
-        else:
-            pre_exec = '-P ". env/bs0_pre_0.sh" '
-
+        # always load the original pilot env first.
+        pre_exec = '-P ". env/bs0_pre_0.sh" '
         for cmd in pre:
             pre_exec += '-P "%s" ' % cmd
 
