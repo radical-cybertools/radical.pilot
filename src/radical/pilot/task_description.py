@@ -90,6 +90,7 @@ MEM_PER_PROCESS  = 'mem_per_process'          # memory per rank
 INPUT_STAGING    = 'input_staging'
 OUTPUT_STAGING   = 'output_staging'
 STAGE_ON_ERROR   = 'stage_on_error'
+PRIORITY         = 'priority'
 PRE_LAUNCH       = 'pre_launch'
 PRE_EXEC         = 'pre_exec'
 PRE_EXEC_SYNC    = 'pre_exec_sync'
@@ -273,8 +274,6 @@ class TaskDescription(ru.TypedDict):
 
             `mem_per_rank` replaces the deprecated attribute `mem_per_process`.
 
-        partition (int, optional): The id of the partition to run the task on.
-
         environment (dict, optional): Environment variables to set in the
             environment before the execution (launching picked `LaunchMethod`).
 
@@ -304,6 +303,12 @@ class TaskDescription(ru.TypedDict):
             attempted either way. This may though lead to additional errors if
             the tasks did not manage to produce the expected output files to
             stage. Default False.
+
+        priority: (int, optional): The priority of the task.  Tasks with higher
+            priority will be scheduled first.  The default priority is 0.
+            Note that task priorities are not guaranteed to be enforced
+            strictly, under certain conditions the task may be started later
+            than lower priority tasks.
 
         pre_launch (list, optional): Actions (shell commands) to perform
             before launching (i.e., before LaunchMethod is submitted),
@@ -398,7 +403,7 @@ class TaskDescription(ru.TypedDict):
             rank of the task should be placed.
 
         partition (int, optional): index of pilot partition to use to run that
-        task.
+            task.
 
     **Task Ranks**
 
@@ -548,6 +553,7 @@ class TaskDescription(ru.TypedDict):
         INPUT_STAGING   : [None]      ,
         OUTPUT_STAGING  : [None]      ,
         STAGE_ON_ERROR  : bool        ,
+        PRIORITY        : int         ,
 
         USE_MPI         : bool        ,
         RANKS           : int         ,
@@ -557,7 +563,6 @@ class TaskDescription(ru.TypedDict):
         GPU_TYPE        : str         ,
         LFS_PER_RANK    : int         ,
         MEM_PER_RANK    : int         ,
-        PARTITION       : int         ,
 
         # deprecated
         CPU_PROCESSES   : int         ,  # RANKS
@@ -612,6 +617,7 @@ class TaskDescription(ru.TypedDict):
         INPUT_STAGING   : list()      ,
         OUTPUT_STAGING  : list()      ,
         STAGE_ON_ERROR  : False       ,
+        PRIORITY        : 0           ,
 
         USE_MPI         : None        ,
         RANKS           : 1           ,
@@ -621,7 +627,6 @@ class TaskDescription(ru.TypedDict):
         GPU_TYPE        : ''          ,
         LFS_PER_RANK    : 0           ,
         MEM_PER_RANK    : 0           ,
-        PARTITION       : None        ,
 
         # deprecated
         CPU_PROCESSES   : 0           ,
