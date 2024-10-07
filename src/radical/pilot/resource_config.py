@@ -8,7 +8,7 @@ from typing import Optional, List
 import threading     as mt
 import radical.utils as ru
 
-from .constants import FREE, BUSY, DOWN
+from .constants import BUSY, DOWN
 
 
 LABEL                  = 'label'
@@ -873,7 +873,7 @@ class NumaNodeResources(NodeResources):
             for domain_id, domain_descr in numa_domain_map.items():
 
                 n = NodeResources(from_dict)
-                n.index = n.index
+              # n.index = n.index
                 n.name  = '%s.%s' % (self.name, domain_id)
                 n.cores = [RO(index=i) for i in domain_descr.cores]
                 n.gpus  = [RO(index=i) for i in domain_descr.gpus]
