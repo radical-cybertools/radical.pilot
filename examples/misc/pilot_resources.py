@@ -21,10 +21,23 @@ if True:
 
     n_tasks        =  10000
     ranks_per_task =      2
-    cores_per_task =     16
-    gpus_per_task  =      2
-    mem_per_task   =      0
-    lfs_per_task   =      0
+    cores_per_rank =      4
+    gpus_per_rank  =      1
+    mem_per_rank   =      0
+    lfs_per_rank   =      0
+
+  # n_nodes        =      2
+  # gpus_per_node  =      2
+  # cores_per_node =      8
+  # mem_per_node   =    512
+  # lfs_per_node   =    512
+  #
+  # n_tasks        =      1
+  # ranks_per_task =      2
+  # cores_per_rank =      2
+  # gpus_per_rank  =      1
+  # mem_per_rank   =      0
+  # lfs_per_rank   =      0
 
     nodes = [{'index'   : i,
               'name'    : 'node_%05d' % i,
@@ -33,14 +46,26 @@ if True:
               'gpus'    : [rp.RO(index=x, occupation=rp.FREE)
                                           for x in range(gpus_per_node)],
               'lfs'     : lfs_per_node,
-              'mem'     : mem_per_node
+              'mem'     : mem_per_node,
              } for i in range(n_nodes)]
 
-    nl = rp.NodeList(nodes=[rp.NodeResources(ni) for ni in nodes])
-    rr = rp.RankRequirements(n_cores=cores_per_task,
-                             n_gpus=gpus_per_task,
-                             mem=mem_per_task,
-                             lfs=lfs_per_task)
+    # FIXME: intorduce `NumaDomainMap` as type
+    NDN = rp.NumaDomainDescription
+    ndm = rp.NumaDomainMap({0: NDN(cores=list(range( 0,   8)), gpus=[0]),
+                            1: NDN(cores=list(range( 8,  16)), gpus=[1]),
+                            2: NDN(cores=list(range(16,  24)), gpus=[2]),
+                            3: NDN(cores=list(range(24,  32)), gpus=[3]),
+                            4: NDN(cores=list(range(32,  40)), gpus=[4]),
+                            5: NDN(cores=list(range(40,  48)), gpus=[5]),
+                            6: NDN(cores=list(range(48,  56)), gpus=[6]),
+                            7: NDN(cores=list(range(56,  46)), gpus=[7])})
+
+
+    nl = rp.NodeList(nodes=[rp.NumaNodeResources(node, ndm) for node in nodes])
+    rr = rp.RankRequirements(n_cores=cores_per_rank,
+                             n_gpus=gpus_per_rank,
+                             mem=mem_per_rank,
+                             lfs=lfs_per_rank)
 
     allocs = list()
     start  = time.time()
@@ -55,17 +80,18 @@ if True:
             allocs.remove(to_release)
             nl.release_slots(to_release)
 
+      # if slots:
+      #     for slot in slots:
+      #         print('=== %s' % slot)
+      #     print()
+      # else:
+      #     print('---')
+
     stop = time.time()
     print('find_slots: %.2f' % (stop - start))
 
     for slots in allocs:
         nl.release_slots(slots)
-
-    for _ in range(5):
-
-        slots = nl.find_slots(rp.RankRequirements(n_cores=1,
-                                                  core_occupation=0.5))
-        print(slots)
 
     sys.exit()
 

@@ -123,8 +123,9 @@ class RMBaseTestCase(TestCase):
                                            tc_map['result']):
 
             def _init_from_scratch(rm_info_tc, rm_info_input):
-                _rm_info = ru.TypedDict(rm_info_tc)
-                _rm_info.update(rm_info_input)
+
+                _rm_info = ru.TypedDict(rm_info_input)
+                _rm_info.update(rm_info_tc)
 
                 return _rm_info
 
@@ -150,8 +151,8 @@ class RMBaseTestCase(TestCase):
 
         rm = ResourceManager(cfg=None, rcfg=None, log=None, prof=None)
 
-        with self.assertRaises(KeyError):
-            # required attributes are missed
+        with self.assertRaises(AssertionError):
+            # required attributes are not set
             rm._set_info(RMInfo())
 
         rm_info = RMInfo({'requested_nodes': 1,
@@ -168,6 +169,7 @@ class RMBaseTestCase(TestCase):
         with self.assertRaises(AssertionError):
             # required attribute is not set
             rm._set_info(RMInfo(rm_info))
+
 
     # --------------------------------------------------------------------------
     #
