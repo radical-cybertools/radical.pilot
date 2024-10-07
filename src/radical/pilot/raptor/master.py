@@ -285,8 +285,8 @@ class Master(rpu.AgentComponent):
         check for state updates originating directly from our workers.
         '''
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         # state update for tasks created by raptor
         if cmd == 'raptor_state_update':
