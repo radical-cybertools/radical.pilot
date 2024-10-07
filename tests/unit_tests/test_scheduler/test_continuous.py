@@ -128,7 +128,8 @@ class TestContinuous(TestCase):
             component._change_slot_states(slots, rpc.FREE)
 
             component._set_tuple_size(task)
-            component._waitpool = {task['uid']: task}
+            component._waitpool = {0: {task['uid']: task}}
+
             component._schedule_waitpool()
 
     # --------------------------------------------------------------------------

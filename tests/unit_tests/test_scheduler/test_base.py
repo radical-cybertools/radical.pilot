@@ -178,8 +178,7 @@ class TestBaseScheduling(TestCase):
         sched._cancel_lock  = mt.RLock()
         sched._cancel_list  = list()
 
-        task0000            = {}
-        sched._waitpool     = {'task.0000': task0000}
+        sched._waitpool     = {0: {'task.0000': dict()}}
         sched._raptor_tasks = {}
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
@@ -192,7 +191,7 @@ class TestBaseScheduling(TestCase):
         sched._control_cb(topic=None, msg=msg)
 
         # task from `waitpool` was cancelled
-        self.assertFalse(sched._waitpool)
+        self.assertFalse(sched._waitpool[0])
 
 
 # ------------------------------------------------------------------------------
@@ -205,6 +204,7 @@ if __name__ == '__main__':
     tc.test_change_slot_states()
     tc.test_slot_status()
     tc.test_try_allocation()
+    tc.test_control_cb()
 
 
 # ------------------------------------------------------------------------------
