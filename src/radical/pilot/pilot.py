@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import copy
 import time
-import queue
 
 import threading     as mt
 
@@ -17,7 +16,7 @@ from . import constants as rpc
 
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
-from .resource_config      import NodeResources, NodeList
+from .resource_config      import NodeResources, NodeList, NumaNodeResources
 
 
 # ------------------------------------------------------------------------------

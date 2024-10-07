@@ -875,8 +875,8 @@ class NumaNodeResources(NodeResources):
                 n = NodeResources(from_dict)
                 n.index = n.index
                 n.name  = '%s.%s' % (self.name, domain_id)
-                n.cores = [_RO(index=i) for i in domain_descr.cores]
-                n.gpus  = [_RO(index=i) for i in domain_descr.gpus]
+                n.cores = [RO(index=i) for i in domain_descr.cores]
+                n.gpus  = [RO(index=i) for i in domain_descr.gpus]
                 n.lfs   = self.lfs // self.__n_domains__
                 n.mem   = self.mem // self.__n_domains__
 

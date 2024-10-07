@@ -61,7 +61,6 @@ class RMInfo(ru.TypedDict):
             'mem_per_node'         : int,           # memory per node (MB)
 
             'details'              : {None: None},  # dict of launch method info
-            'lm_info'              : {str : None},  # dict of launch method info
             'launch_methods'       : {str : None},  # dict of launch method cfgs
 
             'numa_domain_map'      : {int: None},   # resources per numa domain
@@ -89,7 +88,6 @@ class RMInfo(ru.TypedDict):
             'mem_per_node'         : 0,
 
             'details'              : dict(),
-            'lm_info'              : dict(),
             'launch_methods'       : dict(),
 
             'numa_domain_map'      : dict(),
