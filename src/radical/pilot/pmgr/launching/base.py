@@ -591,7 +591,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         task_post_exec          = rcfg.task_post_exec
         mandatory_args          = rcfg.mandatory_args
         system_architecture     = rcfg.system_architecture
-        services                = rcfg.services
         raptor_cfg              = rcfg.raptor
 
         # part of the core specialization settings

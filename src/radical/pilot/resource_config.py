@@ -42,7 +42,6 @@ GPUS_PER_NODE          = 'gpus_per_node'
 NUMA_DOMAIN_MAP        = 'numa_domain_map'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 SCATTERED              = 'scattered'
-SERVICES               = 'services'
 
 FAKE_RESOURCES         = 'fake_resources'
 MANDATORY_ARGS         = 'mandatory_args'
@@ -141,7 +140,6 @@ class ResourceConfig(ru.TypedDict):
         NUMA_DOMAIN_MAP        : {int: None} ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
-        SERVICES               : [str]       ,
 
         FAKE_RESOURCES         : bool        ,
         MANDATORY_ARGS         : [str]       ,
@@ -190,7 +188,6 @@ class ResourceConfig(ru.TypedDict):
         NUMA_DOMAIN_MAP        : dict()      ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : False       ,
-        SERVICES               : list()      ,
 
         FAKE_RESOURCES         : False       ,
         MANDATORY_ARGS         : list()      ,
