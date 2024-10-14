@@ -5,7 +5,6 @@ __license__   = "MIT"
 
 import copy
 import time
-import queue
 
 import threading     as mt
 
@@ -17,7 +16,7 @@ from . import constants as rpc
 
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
-from .resource_config      import NodeResources, NodeList
+from .resource_config      import NodeResources, NodeList, NumaNodeResources
 
 
 # ------------------------------------------------------------------------------
@@ -343,8 +342,19 @@ class Pilot(object):
             if not resource_details:
                 return None
 
-            nodes = [NodeResources(node) for node
-                                         in  resource_details.get('node_list')]
+            numa_domain_map = resource_details.get('numa_domain_map')
+            node_list       = resource_details.get('node_list')
+
+            if not node_list:
+                return None
+
+            # only create NUMA resources if a numa domain map is available
+            if not numa_domain_map:
+                nodes = [NodeResources(node) for node in node_list]
+            else:
+                nodes = [NumaNodeResources(node, numa_domain_map)
+                                       for node in node_list]
+
             self._nodelist = NodeList(nodes=nodes)
             self._nodelist.verify()
 
