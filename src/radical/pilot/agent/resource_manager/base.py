@@ -40,39 +40,57 @@ class RMInfo(ru.TypedDict):
     '''
 
     _schema = {
-            'requested_nodes'  : int,           # number of requested nodes
-            'requested_cores'  : int,           # number of requested cores
-            'requested_gpus'   : int,           # number of requested gpus
+            'requested_nodes'      : int,           # number of requested nodes
+            'requested_cores'      : int,           # number of requested cores
+            'requested_gpus'       : int,           # number of requested gpus
 
-            'partitions'       : {int: None},   # partition setup
-            'node_list'        : [None],        # tuples of node uids and names
-            'agent_node_list'  : [None],        # nodes reserved for sub-agents
-            'service_node_list': [None],        # nodes reserved for services
+            'partitions'           : {int: None},   # partition setup
+            'node_list'            : [None],        # tuples of node uids and names
+            'agent_node_list'      : [None],        # nodes reserved for sub-agents
+            'service_node_list'    : [None],        # nodes reserved for services
 
-            'cores_per_node'   : int,           # number of cores per node
-            'threads_per_core' : int,           # number of threads per core
+            'cores_per_node'       : int,           # number of cores per node
+            'threads_per_core'     : int,           # number of threads per core
 
-            'gpus_per_node'    : int,           # number of gpus per node
-            'threads_per_gpu'  : int,           # number of threads per gpu
-            'mem_per_gpu'      : int,           # memory per gpu (MB)
+            'gpus_per_node'        : int,           # number of gpus per node
+            'threads_per_gpu'      : int,           # number of threads per gpu
+            'mem_per_gpu'          : int,           # memory per gpu (MB)
 
-            'lfs_per_node'     : int,           # node local FS size (MB)
-            'lfs_path'         : str,           # node local FS path
-            'mem_per_node'     : int,           # memory per node (MB)
+            'lfs_per_node'         : int,           # node local FS size (MB)
+            'lfs_path'             : str,           # node local FS path
+            'mem_per_node'         : int,           # memory per node (MB)
 
-            'details'          : {None: None},  # dict of launch method info
-            'launch_methods'   : {str: None},   # dict of launch method info
+            'details'              : {None: None},  # dict of launch method info
+            'launch_methods'       : {str : None},  # dict of launch method cfgs
+
+            'numa_domain_map'      : {int: None},   # resources per numa domain
     }
 
     _defaults = {
-            'agent_node_list'  : [],            # no sub-agents run by default
-            'service_node_list': [],            # no services run by default
-            'cores_per_node'   : 1,
-            'threads_per_core' : 1,
-            'gpus_per_node'    : 0,
-            'threads_per_gpu'  : 1,
-            'details'          : {},
-            'launch_methods'   : {},
+            'requested_nodes'      : 0,
+            'requested_cores'      : 0,
+            'requested_gpus'       : 0,
+
+            'partitions'           : dict(),
+            'node_list'            : list(),
+            'agent_node_list'      : list(),
+            'service_node_list'    : list(),
+
+            'cores_per_node'       : 0,
+            'threads_per_core'     : 0,
+
+            'gpus_per_node'        : 0,
+            'threads_per_gpu'      : 1,
+            'mem_per_gpu'          : 0,
+
+            'lfs_per_node'         : 0,
+            'lfs_path'             : '/tmp/',
+            'mem_per_node'         : 0,
+
+            'details'              : dict(),
+            'launch_methods'       : dict(),
+
+            'numa_domain_map'      : dict(),
     }
 
 
@@ -216,17 +234,18 @@ class ResourceManager(object):
         rm_info = RMInfo()
 
         # fill well defined default attributes
-        rm_info.requested_nodes  = self._cfg.nodes
-        rm_info.requested_cores  = self._cfg.cores
-        rm_info.requested_gpus   = self._cfg.gpus
-        rm_info.cores_per_node   = self._cfg.cores_per_node
-        rm_info.gpus_per_node    = self._cfg.gpus_per_node
-        rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
-        rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
+        rm_info.requested_nodes       = self._cfg.nodes
+        rm_info.requested_cores       = self._cfg.cores
+        rm_info.requested_gpus        = self._cfg.gpus
+        rm_info.cores_per_node        = self._cfg.cores_per_node
+        rm_info.gpus_per_node         = self._cfg.gpus_per_node
+        rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
+        rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
-        rm_info.mem_per_node     = self._rcfg.mem_per_node or 0
+        rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
+        rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
 
         system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
