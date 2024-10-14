@@ -8,7 +8,7 @@ from typing import Optional, List
 import threading     as mt
 import radical.utils as ru
 
-from .constants import FREE, BUSY, DOWN
+from .constants import BUSY, DOWN
 
 
 LABEL                  = 'label'
@@ -39,6 +39,7 @@ TASK_TMP               = 'task_tmp'
 MEM_PER_NODE           = 'mem_per_node'
 CORES_PER_NODE         = 'cores_per_node'
 GPUS_PER_NODE          = 'gpus_per_node'
+NUMA_DOMAIN_MAP        = 'numa_domain_map'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 SCATTERED              = 'scattered'
 
@@ -136,6 +137,7 @@ class ResourceConfig(ru.TypedDict):
         MEM_PER_NODE           : int         ,
         CORES_PER_NODE         : int         ,
         GPUS_PER_NODE          : int         ,
+        NUMA_DOMAIN_MAP        : {int: None} ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
 
@@ -183,6 +185,7 @@ class ResourceConfig(ru.TypedDict):
         MEM_PER_NODE           : 0           ,
         CORES_PER_NODE         : 0           ,
         GPUS_PER_NODE          : 0           ,
+        NUMA_DOMAIN_MAP        : dict()      ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : False       ,
 
@@ -244,6 +247,7 @@ class RankRequirements(ru.TypedDict):
     GPU_OCCUPATION  = 'gpu_occupation'
     LFS             = 'lfs'
     MEM             = 'mem'
+    NUMA            = 'numa'
 
     _schema = {
         N_CORES        : int,
@@ -252,6 +256,7 @@ class RankRequirements(ru.TypedDict):
         GPU_OCCUPATION : float,
         LFS            : int,
         MEM            : int,
+        NUMA           : bool,
     }
 
     _defaults = {
@@ -261,19 +266,24 @@ class RankRequirements(ru.TypedDict):
         GPU_OCCUPATION : BUSY,
         LFS            : 0,
         MEM            : 0,
+        NUMA           : False,
     }
 
     def __str__(self):
-        return 'RR(%d:%.2f, %d:%.2f, %d, %d)' % (
+        return 'RR(%d:%.2f, %d:%.2f, %d, %d [%s])' % (
                 self.n_cores, self.core_occupation,
                 self.n_gpus,  self.gpu_occupation,
-                self.lfs,     self.mem)
+                self.lfs,     self.mem,
+                'numa' if self.numa else 'non-numa')
 
 
     # comparison operators
     #
     # NOTE: we are not really interested in strict ordering here,
     #       but we do care about *fast* and approximate comparisons.
+    #
+    # NOTE: we ignore `numa` settings for now, as we do not have a good
+    #       way to compare them.
     #
     def __eq__(self, other: 'RankRequirements') -> bool:
 
@@ -396,6 +406,51 @@ class Slot(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
+class NumaDomainMap(ru.TypedDict):
+
+    # The expected format is:
+    #
+    #   {
+    #       1: NumaDomainDescription(...)
+    #       2: NumaDomainDescription(...)
+    #   }
+    #
+    # we use the TypedDict base class to enable serialization / deserialization
+
+    pass
+
+
+
+# ------------------------------------------------------------------------------
+#
+class NumaDomainDescription(ru.TypedDict):
+
+    CORES = 'cores'
+    GPUS  = 'gpus'
+
+    _schema = {
+            CORES: [int],
+            GPUS : [int],
+    }
+
+    _defaults = {
+            CORES: list(),
+            GPUS : list(),
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, cores, gpus):
+
+        super().__init__()
+
+        self.cores = cores
+        self.gpus  = gpus
+
+
+# ------------------------------------------------------------------------------
+#
 class NodeResources(ru.TypedDict):
     '''
     Node resources as reported by the resource manager, used by the scheduler
@@ -448,6 +503,28 @@ class NodeResources(ru.TypedDict):
 
     # --------------------------------------------------------------------------
     #
+    def _get_core_index(self, ro):
+
+        for i, _ro in enumerate(self.cores):
+            if _ro.index == ro.index:
+                return i
+
+        raise ValueError('invalid core index %s' % ro.index)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _get_gpu_index(self, ro):
+
+        for i, _ro in enumerate(self.gpus):
+            if _ro.index == ro.index:
+                return i
+
+        raise ValueError('invalid gpu index %s' % ro.index)
+
+
+    # --------------------------------------------------------------------------
+    #
     def allocate_slot(self, slot  : Slot,
                             _check: bool = True) -> None:
 
@@ -496,10 +573,12 @@ class NodeResources(ru.TypedDict):
 
             # slot is valid = apply the respective changes
             for ro in cores:
-                self.cores[ro.index].occupation += ro.occupation
+                c_idx = self._get_core_index(ro)
+                self.cores[c_idx].occupation += ro.occupation
 
             for ro in gpus:
-                self.gpus[ro.index].occupation += ro.occupation
+                g_idx = self._get_gpu_index(ro)
+                self.gpus[g_idx].occupation += ro.occupation
 
             self.lfs -= lfs
             self.mem -= mem
@@ -740,6 +819,71 @@ class NodeList(ru.TypedDict):
 
         self.__last_failed_rr__ = None
         self.__last_failed_n__  = None
+
+
+# ------------------------------------------------------------------------------
+#
+class NumaNodeResources(NodeResources):
+    '''
+    Node resources which respects NUMA domain boundaries
+    '''
+
+    NUMA_DOMAINS = 'numa_domains'
+
+    _schema = {
+        NUMA_DOMAINS: int,
+    }
+
+    _defaults = {
+        NUMA_DOMAINS: 1,
+    }
+
+
+    # --------------------------------------------------------------------------
+    #
+    def __init__(self, from_dict: dict, numa_domain_map: dict = None) -> None:
+
+        super().__init__(from_dict)
+
+        if not numa_domain_map:
+
+            # this instance behaves like a regular NodeResources instance
+            self.__domains__   = None
+            self.__n_domains__ = 1
+
+        else:
+            self.__domains__   = list()
+            self.__n_domains__ = len(numa_domain_map)
+
+            for domain_id, domain_descr in numa_domain_map.items():
+
+                n = NodeResources(from_dict)
+              # n.index = n.index
+                n.name  = '%s.%s' % (self.name, domain_id)
+                n.cores = [RO(index=i) for i in domain_descr.cores]
+                n.gpus  = [RO(index=i) for i in domain_descr.gpus]
+                n.lfs   = self.lfs // self.__n_domains__
+                n.mem   = self.mem // self.__n_domains__
+
+                self.__domains__.append(n)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def find_slot(self, rr: RankRequirements) -> Optional[Slot]:
+
+        if self.__n_domains__ == 1:
+            return super().find_slot(rr)
+
+        else:
+            for nd in self.__domains__:
+                slot = nd.find_slot(rr)
+                if slot:
+                    return slot
+
+        # TODO: add a flag to the RR to indicate that the request is NUMA aware
+        # TODO: sync the slot allocated by the above with the slot allocated in
+        #       the base class, and vice versa.
 
 
 # ------------------------------------------------------------------------------

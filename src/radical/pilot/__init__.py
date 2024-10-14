@@ -40,6 +40,8 @@ from .resource_config           import ResourceConfig
 from .resource_config           import ResourceOccupation, RO, Slot
 from .resource_config           import RankRequirements
 from .resource_config           import NodeResources, NodeList
+from .resource_config           import NumaDomainMap, NumaDomainDescription
+from .resource_config           import NumaNodeResources
 
 from .pilot_manager             import PilotManager
 from .pilot                     import Pilot
