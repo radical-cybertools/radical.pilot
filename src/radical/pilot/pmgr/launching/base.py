@@ -566,7 +566,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         reconfig_src     = pilot['description']['reconfig_src']
 
         # ----------------------------------------------------------------------
-        # get parameters from resource cfg, set defaults where needed
+        # get parameters from resource cfg
         agent_spawner           = rcfg.agent_spawner
         agent_config            = rcfg.agent_config
         agent_scheduler         = rcfg.agent_scheduler
@@ -807,9 +807,14 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         allocated_gpus  = (
             requested_nodes * avail_gpus_per_node)  or requested_gpus
 
-        self._log.debug('nodes: %s [%s %s], cores: %s, gpus: %s',
+        if rcfg.numa_domain_map:
+            numa_domains_per_node = len(rcfg.numa_domain_map)
+        else:
+            numa_domains_per_node = 1
+
+        self._log.debug('nodes: %s [%s %s | %s], cores: %s, gpus: %s',
                         requested_nodes, cores_per_node, gpus_per_node,
-                        allocated_cores, allocated_gpus)
+                        numa_domains_per_node, allocated_cores, allocated_gpus)
 
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
