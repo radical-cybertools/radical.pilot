@@ -251,6 +251,15 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 42,
         "gpus_per_node"               : 6,
+        "numa_domain_map"             : {
+                    "1": {"cores": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13],
+                          "gpus" : [ 0, 1]},
+                    "2": {"cores": [14,15,16,17,18,19,20,21,22,23,24,25,26,27],
+                          "gpus" : [ 2, 3]},
+                    "3": {"cores": [28,29,30,31,32,33,34,35,36,37,38,39,40,41],
+                          "gpus" : [ 4, 5]}
+                                        },
+
         "lfs_path_per_node"           : "/tmp",
         "lfs_size_per_node"           : 0,
         "system_architecture"         : {
