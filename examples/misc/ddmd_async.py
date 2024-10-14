@@ -21,12 +21,11 @@ class AsyncDDMD(DDMD_Base):
 
         super().__init__()
 
-        # define the protocol
-        self.register(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
-        self.register(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
-        self.register(self.TASK_MD_SIM,      self.control_md_sim,      's')
-        self.register(self.TASK_MD_CHECK,    self.control_md_check,    'c')
-        self.register(self.TASK_DFT,         self.control_dft,         'd')
+        self.register_task_type(self.TASK_TRAIN_MODEL, self.control_train_model, 'T')
+        self.register_task_type(self.TASK_TRAIN_FF,    self.control_train_ff,    't')
+        self.register_task_type(self.TASK_MD_SIM,      self.control_md_sim,      's')
+        self.register_task_type(self.TASK_MD_CHECK,    self.control_md_check,    'c')
+        self.register_task_type(self.TASK_DFT,         self.control_dft,         'd')
 
 
 
@@ -154,10 +153,7 @@ if __name__ == '__main__':
         ddmd.seed(ddmd.TASK_MD_SIM,     10)
 
         ddmd.start()
-
-        while True:
-            ddmd.dump()
-            time.sleep(1)
+        ddmd.wait()
 
     finally:
         ddmd.close()

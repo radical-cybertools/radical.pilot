@@ -33,6 +33,7 @@ class DDMD_Base(object):
         self._lock           = mt.RLock()
         self._tasks          = defaultdict(dict)
         self._final_tasks    = list()
+        self._closed         = mt.Event()
 
         # silence RP reporter, use own
         os.environ['RADICAL_REPORT'] = 'false'
@@ -55,7 +56,7 @@ class DDMD_Base(object):
 
     # --------------------------------------------------------------------------
     #
-    def register(self, ttype, on_final, glyph):
+    def register_task_type(self, ttype, on_final, glyph):
 
         self._task_types[ttype] = {'on_final': on_final,
                                    'glyph'   : glyph}
@@ -75,6 +76,18 @@ class DDMD_Base(object):
         if self._session is not None:
             self._session.close()
             self._session = None
+
+        self._closed.set()
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def wait(self):
+
+        while not self._closed.is_set():
+          # self.dump()
+            time.sleep(1)
 
 
     # --------------------------------------------------------------------------
@@ -100,11 +113,11 @@ class DDMD_Base(object):
                         '| %4d [%4d]' % (self._cores_used, self._cores))
 
         if task and msg:
-            self._rep.plain(' %-25s: %s\n' % (task.uid, msg))
+            self._rep.plain(' %-15s: %s\n' % (task.uid, msg))
         else:
             if task:
                 msg = task
-            self._rep.plain(' %-25s: %s\n' % (' ', msg))
+            self._rep.plain(' %-15s: %s\n' % (' ', msg))
 
 
     # --------------------------------------------------------------------------
