@@ -9,7 +9,19 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
-### 1.81.0 Release                                                    2024-10-01
+### 1.83.0 Release                                                    2024-10-15
+
+  - support numa aware app level scheduling
+  - apply cb lock to pilot updates
+  - fix task cancellation
+  - initial implementation of task priorities
+  - remove docker folder and link the tutorial repo in the README
+  - rename artifacts
+  - run example ci tests separately
+
+
+--------------------------------------------------------------------------------
+### 1.82.0 Release                                                    2024-10-01
 
   - always log full version also
   - ensure state setting
