@@ -264,8 +264,8 @@ class Pilot(object):
                 if cb_data: cb([self], cb_data)
                 else      : cb([self])
 
-        # ask pmgr to invoke any global callbacks
-        self._pmgr._call_pilot_callbacks(self)
+            # ask pmgr to invoke any global callbacks
+            self._pmgr._call_pilot_callbacks(self)
 
 
     # --------------------------------------------------------------------------

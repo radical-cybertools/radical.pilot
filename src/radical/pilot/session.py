@@ -88,6 +88,7 @@ class Session(object):
     _PRIMARY = 'primary'
     _AGENT_0 = 'agent_0'
     _AGENT_N = 'agent_n'
+    _CLIENT  = 'client'
     _DEFAULT = 'default'
 
 
@@ -140,12 +141,13 @@ class Session(object):
             _role (`bool`): only `PRIMARY` sessions created by the original
                 application process (via `rp.Session()`), will create proxies
                 and Registry Services.  `AGENT` sessions will also create
-                a Registry but no proxies.  All other `DEFAULT` session
-                instances are instantiated internally in processes spawned
-                (directly or indirectly) by the initial session, for example in
-                some of it's components, or by the RP agent.  Those sessions
-                will inherit the original session ID, but will not attempt to
-                create a new proxies or registries.
+                a Registry but no proxies.  `CLIENT` sessions will be limited to
+                allow client interactions with RP components.
+                All other `DEFAULT` session instances are instantiated
+                internally in processes spawned (directly or indirectly) by the
+                initial session, for example in some of it's components, or by
+                the RP agent.  Those sessions will inherit the original session
+                ID, but will not attempt to create a new proxies or registries.
 
             **close_options (optional): If additional key word arguments are
                 provided, they will be used as the default arguments to
@@ -162,7 +164,6 @@ class Session(object):
         self._role          = _role
         self._uid           = uid
         self._cfg           = ru.Config(cfg=cfg)
-        self._reg_addr      = _reg_addr
         self._proxy_url     = proxy_url
         self._proxy_cfg     = None
         self._closed        = False
@@ -178,6 +179,14 @@ class Session(object):
         self._rm       = None    # resource manager (agent_0 sessions)
         self._hb       = None    # heartbeat monitor
 
+        if _reg_addr:
+
+            if self._cfg.reg_addr:
+                if self._cfg.reg_addr != _reg_addr:
+                    raise ValueError('session config and ctor arg mismatch')
+            else:
+                self._cfg.reg_addr = _reg_addr
+
         # this session is either living in the client application or lives in
         # the scope of a pilot.  In the latter case we expect `RP_PILOT_ID` to
         # be set - we derive the session module scope from that env variable.
@@ -192,6 +201,7 @@ class Session(object):
         if   self._role == self._PRIMARY: self._init_primary()
         elif self._role == self._AGENT_0: self._init_agent_0()
         elif self._role == self._AGENT_N: self._init_agent_n()
+        elif self._role == self._CLIENT : self._init_client()
         else                            : self._init_default()
 
         # cache sandboxes etc.
@@ -210,7 +220,7 @@ class Session(object):
         if self._role == self._PRIMARY:
             self._rep.ok('>>ok\n')
 
-        assert(self._reg)
+        assert self._reg
 
 
     # --------------------------------------------------------------------------
@@ -263,6 +273,8 @@ class Session(object):
         # crosswire local channels and proxy channels
         self._crosswire_proxy()
 
+        self._reg.dump(self._role)
+
 
     # --------------------------------------------------------------------------
     #
@@ -293,6 +305,8 @@ class Session(object):
         self._start_components()
         self._crosswire_proxy()
 
+        self._reg.dump(self._role)
+
 
     # --------------------------------------------------------------------------
     #
@@ -321,6 +335,19 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
+    def _init_client(self):
+
+        # clients connect to an existing registry (owned by the `primary`
+        # session or `agent_0`) and load config settings from there.
+
+        assert self._role == self._CLIENT
+
+        self._connect_registry()
+        self._init_cfg_from_registry()
+
+
+    # --------------------------------------------------------------------------
+    #
     def _init_default(self):
 
         # sub-agents and components connect to an existing registry (owned by
@@ -338,7 +365,7 @@ class Session(object):
     def _start_registry(self):
 
         # make sure that no other registry is used
-        if self._reg_addr:
+        if self.reg_addr:
             raise ValueError('cannot start registry when providing `reg_addr`')
 
         self._reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid,
@@ -352,13 +379,10 @@ class Session(object):
     #
     def _connect_registry(self):
 
-        if not self._cfg.reg_addr:
-            self._cfg.reg_addr = self._reg_addr
-
-        if not self._cfg.reg_addr:
+        if not self.reg_addr:
             raise ValueError('session needs a registry address')
 
-        self._reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
+        self._reg = ru.zmq.RegistryClient(url=self.reg_addr)
 
 
     # --------------------------------------------------------------------------
