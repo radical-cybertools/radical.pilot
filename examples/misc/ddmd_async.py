@@ -28,7 +28,6 @@ class AsyncDDMD(DDMD_Base):
         self.register_task_type(self.TASK_DFT,         self.control_dft,         'd')
 
 
-
     # --------------------------------------------------------------------------
     #
     def control_train_model(self, task):
