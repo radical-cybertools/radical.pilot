@@ -194,119 +194,108 @@ class TestComponent(TestCase):
 
         def local_advance(things, publish, push):
             nonlocal advanced_services
-            advanced_services = things
+            advanced_services.append(things)
 
-        agent_0 = Agent_0()
-        agent_0._uid                   = 'agent_0'
-        agent_0._cb_lock               = mt.RLock()
-        agent_0._threads               = dict()
-        agent_0._log                   = mock.Mock()
-        agent_0._service_uids_launched = list()
-        agent_0._services_setup        = mock.Mock()
+        def local_publish(pubsub, msg, topic=None):
+            pass
+
+        agent_0          = Agent_0()
+        agent_0._cfg     = ru.Config()
+        agent_0._session = self._session
+
+        agent_0.advance = local_advance
+        agent_0.publish = local_publish
+
+        agent_0._pid  = 'pilot_test.0000'
+        agent_0._reg  = dict()
+        agent_0._log  = mock.Mock()
+        agent_0._prof = mock.Mock()
+
+        agent_0._service_uids_running = list()
+        agent_0._service_infos        = {'101': {},
+                                         '102': {}}
+        agent_0._service_start_evt    = mt.Event()
+        agent_0._service_lock         = mt.Lock()
 
         agent_0._cfg = ru.Config({'pid': 12,
                                   'pilot_sandbox': '/',
                                   'services': []})
 
-        agent_0.advance = local_advance
+        # no executable provided
+        agent_0._cfg.services = [{'timeout': 1}]
+        for sd in agent_0._cfg.services:
+            with self.assertRaises(ValueError):
+                agent_0._launch_service(sd)
 
-        agent_0._session = self._session
-
-        agent_0._cfg.services = [{}]
-        with self.assertRaises(ValueError):
-            # no executable provided
-            agent_0._start_services()
-
+        # type mismatch
         agent_0._cfg.services = [{'executable': 'test', 'ranks': 'zero'}]
-        with self.assertRaises(TypeError):
-            # type mismatch
-            agent_0._start_services()
+        for sd in agent_0._cfg.services:
+            with self.assertRaises(TypeError):
+                agent_0._launch_service(sd)
 
         services = [{'executable'    : '/bin/ls',
                      'cores_per_rank': '3',
                      'metadata'      : {}}]
         agent_0._cfg.services = services
 
-        agent_0._services_setup.wait = mock.Mock(return_value=True)
-        agent_0._start_services()
+        for sd in services:
+            agent_0._service_start_evt.wait = mock.Mock(return_value=True)
+            agent_0._launch_service(sd)
 
         self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
         self.assertEqual(advanced_services[0]['type'], 'service_task')
 
         service_td = advanced_services[0]['description']
-        self.assertEqual(service_td['executable'], services[0]['executable'])
+        self.assertEqual(service_td['executable'],
+                         'radical-pilot-service-wrapper')
         self.assertEqual(service_td['ranks'], 1)
         self.assertEqual(service_td['mode'], rp.AGENT_SERVICE)
 
-        agent_0._services_setup.wait = mock.Mock(return_value=False)
+        agent_0._service_start_evt.wait = mock.Mock(return_value=False)
+        sd['timeout'] = 1
         with self.assertRaises(RuntimeError):
-            agent_0._start_services()
+            agent_0._launch_service(sd)
 
 
     # --------------------------------------------------------------------------
     #
     @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_ctrl_service_up(self, mocked_init):
+    def test_ctrl_service_info(self, mocked_init):
 
         agent_0 = Agent_0()
-        agent_0._cfg                   = ru.Config()
-        agent_0._session               = self._session
-        agent_0._service_uids_launched = ['101', '102']
-        agent_0._service_uids_running  = []
+        agent_0._cfg     = ru.Config()
+        agent_0._session = self._session
 
         agent_0._pid  = 'pilot_test.0000'
+        agent_0._reg  = dict()
         agent_0._log  = mock.Mock()
         agent_0._prof = mock.Mock()
 
-        agent_0._services_setup = mt.Event()
+        agent_0._service_uids_running = list()
+        agent_0._service_infos        = {'101': {},
+                                         '102': {}}
+        agent_0._service_start_evt    = mt.Event()
 
         topic = 'test_topic'
-        msg   = {'cmd': 'service_up',
-                 'arg': {}}
+        msg   = {'cmd' : 'service_info',
+                 'arg' : {'info': {'url': 'foo://bar'},
+                          'ranks': 1,
+                          'rank' : 0,}}
 
-        msg['arg']['uid'] = '101'
-        agent_0._control_cb(topic, msg)
-        self.assertFalse(agent_0._services_setup.is_set())
+        self.assertTrue('101' not in agent_0._service_uids_running)
+        self.assertTrue('102' not in agent_0._service_uids_running)
 
-        msg['arg']['uid'] = '102'
-        agent_0._control_cb(topic, msg)
-        self.assertTrue(agent_0._services_setup.is_set())
+        for uid in ['101', '102']:
+            msg['arg']['uid'] = uid
+            msg['arg']['name'] = uid
 
+            self.assertTrue(uid not in agent_0._service_uids_running)
 
-    # --------------------------------------------------------------------------
-    #
-    @mock.patch.object(Agent_0, '__init__', return_value=None)
-    def test_services_startup_cb(self, mocked_init):
+            agent_0._service_uid_launched = uid
+            agent_0._control_cb(topic, msg)
 
-        fd, startup_file = tempfile.mkstemp()
-        self._cleanup_files.append(startup_file)
-
-        uri_0 = 'ofi+verbs;ofi_rxm://10.41.0.103:35298'
-        uri_1 = 'ofi+verbs;ofi_rxm://10.41.0.104:38112'
-        with os.fdopen(fd, 'w') as f:
-            f.write('2\n0 %s\n1 %s' % (uri_0, uri_1))
-
-        path = '/tmp/rp_tests_%s' % os.getuid()
-        ru.rec_makedir(path)
-        reg = ru.zmq.Registry(path=path)
-        reg.start()
-
-        agent_0 = Agent_0()
-        agent_0._session = self._session
-        agent_0._session._reg = ru.zmq.RegistryClient(url=reg.addr)
-
-        agent_0.publish = mock.Mock()
-
-        cb_data = {'service.0000': {'name'        : 'service.monit',
-                                    'startup_file': startup_file}}
-        agent_0._services_startup_cb(cb_data=cb_data)
-
-        self.assertEqual(agent_0._session._reg['service.monit.0.url'], uri_0)
-        self.assertEqual(agent_0._session._reg['service.monit.1.url'], uri_1)
-
-        agent_0._session._reg.close()
-        reg.stop()
-        reg.wait()
+            self.assertTrue(uid in agent_0._service_uids_running)
+            self.assertTrue(agent_0._service_infos[uid]['0']['url'] == 'foo://bar')
 
 
 # ------------------------------------------------------------------------------
@@ -317,7 +306,7 @@ if __name__ == '__main__':
     tc.test_check_control_cb()
     tc.test_start_sub_agents()
     tc.test_start_services()
-    tc.test_ctrl_service_up()
+    tc.test_ctrl_service_info()
 
 
 # ------------------------------------------------------------------------------
