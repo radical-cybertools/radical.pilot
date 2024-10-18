@@ -5,7 +5,7 @@ Delta (NCSA)
 Platform user guide
 ===================
 
-https://wiki.ncsa.illinois.edu/display/DSC/Delta+User+Guide
+https://docs.ncsa.illinois.edu/systems/delta/en/latest/
 
 General description
 ===================
@@ -49,12 +49,12 @@ General description
 .. note::
 
    Use the ``accounts`` command to list the accounts available for charging
-   (`Local Account Charging <https://wiki.ncsa.illinois.edu/display/DSC/Delta+User+Guide#DeltaUserGuide-LocalAccountCharging>`_).
+   (`Local Account Charging <https://docs.ncsa.illinois.edu/systems/delta/en/latest/user_guide/job_accounting.html#local-account-charging>`_).
 
 .. note::
 
    Use the ``quota`` command to view your use of the file systems and use by
-   your projects (`Quota Usage <https://wiki.ncsa.illinois.edu/display/DSC/Delta+User+Guide#DeltaUserGuide-quotausage>`_).
+   your projects (`Quota Usage <https://docs.ncsa.illinois.edu/systems/delta/en/latest/user_guide/architecture.html#quota-usage>`_).
 
 Setup execution environment
 ===========================
