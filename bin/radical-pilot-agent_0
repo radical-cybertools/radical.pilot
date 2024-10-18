@@ -3,16 +3,28 @@
 __copyright__ = "Copyright 2014-2019, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import radical.pilot as rp
+import os
+import sys
+
 import setproctitle  as spt
+
+import radical.utils as ru
+import radical.pilot as rp
 
 
 # ------------------------------------------------------------------------------
 #
 if __name__ == "__main__":
 
-    uid = 'agent.0'
+    ppid = sys.argv[1]
+    uid  = 'agent.0'
     spt.setproctitle('rp.%s' % uid)
+
+    # process watcher
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid)
+    pwatcher.watch(int(ppid))
+    pwatcher.watch(os.getpid())
+
 
     agent = rp.Agent_0()
     agent.start()

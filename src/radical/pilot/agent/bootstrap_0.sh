@@ -1629,7 +1629,7 @@ uid=\$3
 $PREBOOTSTRAP2_EXPANDED
 
 # start (sub) agent
-exec radical-pilot-agent_n "\$sid" "\$reg_addr" "\$uid" \\
+exec radical-pilot-agent_n "\$sid" "\$reg_addr" "\$uid" "$$" \\
                    1>>"bootstrap_2.\$uid.out" \\
                    2>>"bootstrap_2.\$uid.err"
 
@@ -1640,7 +1640,7 @@ chmod 0755 bootstrap_2.sh
 # start the master agent instance (agent_0) in the bs0 environment
 profile_event 'bootstrap_0_ok'
 
-$LAUNCHER radical-pilot-agent_0 1>>agent_0.out 2>>agent_0.err &
+$LAUNCHER radical-pilot-agent_0 "$$" 1>>agent_0.out 2>>agent_0.err &
 
 AGENT_PID=$!
 pilot_state="PMGR_ACTIVE"
