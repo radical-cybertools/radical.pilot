@@ -214,7 +214,7 @@ class Agent_0(rpu.AgentComponent):
                                     rpc_addr=self._pid)
 
         for sd in self._cfg.services:
-            self._launch_service(TaskDescription(sd))
+            self._launch_service(sd)
 
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -368,7 +368,6 @@ class Agent_0(rpu.AgentComponent):
 
         td = TaskDescription(task['description'])
 
-        if not task['description'].get('name')    : td.name     = tid
         if not task['description'].get('mode')    : td.mode     = AGENT_SERVICE
         if not task['description'].get('metadata'): td.metadata = dict()
 
@@ -378,7 +377,6 @@ class Agent_0(rpu.AgentComponent):
         td.executable = 'radical-pilot-service-wrapper'
         td.arguments  = ['-c', '%s %s' % (exe, ' '.join(args))]
         td.arguments += ['-u', tid]
-        td.arguments += ['-n', td.name]
         td.arguments += ['-v']
 
         orig_timeout  = td.timeout
@@ -394,7 +392,6 @@ class Agent_0(rpu.AgentComponent):
         # ensure that the description is viable
         td.verify()
 
-        task['name']        = td.name
         task['description'] = td.as_dict()
         task['state']       = rps.AGENT_STAGING_INPUT_PENDING
 
@@ -428,12 +425,12 @@ class Agent_0(rpu.AgentComponent):
             else:
                 self._service_start_evt.wait()
 
-            info = self._reg.get('services.%s' % td.name)
+            info = self._reg.get('services.%s' % td.uid)
             self._log.info('agent service started: %s - %s', td.uid, info)
 
             # send a notification around, specifically also to the client side
             if not info:
-                info = 'service is up'
+                info = {0: 'service is up'}
 
             self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'service_up',
                                               'arg' : {'uid' : td.uid,
@@ -664,7 +661,7 @@ class Agent_0(rpu.AgentComponent):
             return True
 
         # collect all rank info before we consider sucess
-        service_info = self._service_infos[name]
+        service_info = self._service_infos[uid]
 
         assert rank not in service_info
         service_info[str(rank)] = info
@@ -679,7 +676,7 @@ class Agent_0(rpu.AgentComponent):
                             len(self._service_uids_running), info)
 
             # add info to registry (might be empty!)
-            self._reg['services.%s' % name] = service_info
+            self._reg['services.%s' % uid] = service_info
 
             # signal main thread when that the service is up
             self._log.debug('set service start event for %s', uid)

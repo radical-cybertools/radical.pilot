@@ -60,7 +60,6 @@ def main():
     parser.add_argument('-c', '--command',  dest='command')
     parser.add_argument('-r', '--registry', dest='reg_url')
     parser.add_argument('-u', '--uid',      dest='uid')
-    parser.add_argument('-n', '--name',     dest='name')
     parser.add_argument('-m', '--mode',     dest='mode')
     parser.add_argument('-p', '--pattern',  dest='pattern')
     parser.add_argument('-o', '--output',   dest='output')
@@ -72,7 +71,6 @@ def main():
     command = args.command or None
     reg_url = args.reg_url or os.environ.get('RP_REGISTRY_ADDRESS')
     uid     = args.uid     or os.environ.get('RP_TASK_ID')
-    name    = args.name    or uid
     mode    = args.mode    or 'stdout'
     pattern = args.pattern or '\\<http[s]?://[0-9a-zA-Z\\.:_-]*\\>'
     output  = args.output  or '%s.stdout' % uid
@@ -223,7 +221,6 @@ def main():
            'arg': {'uid'  : uid,
                    'ranks': ranks,
                    'rank' : rank,
-                   'name' : name,
                    'error': err_msg,
                    'info' : match}}
 

@@ -480,16 +480,14 @@ class Task(object):
         return self._info
 
     def _set_info(self, info):
-        self._info = info or ''
+        self._info = info or dict()
         self._info_evt.set()
 
     def wait_info(self, timeout=None):
+
         self._info_evt.wait(timeout=timeout)
 
-        import pprint
-        pprint.pprint(self._info)
-
-        if self._info['0'] is None:
+        if self._info.get[0] is None:
             raise RuntimeError('no service info: %s / %s'
                               % (self.stdout, self.stderr))
         return self.info
