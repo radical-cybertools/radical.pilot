@@ -690,6 +690,18 @@ class Pilot(object):
 
     # --------------------------------------------------------------------------
     #
+    def register_service(self, uid, info):
+        '''
+        Instead of running a service task and injecting the obtained service
+        info into other task environments, we can register an external service
+        with the pilot, and have the pilot inject the service info the same way.
+        '''
+
+        self.rpc('register_service', uid=uid, info=info)
+
+
+    # --------------------------------------------------------------------------
+    #
     def prepare_env(self, env_name, env_spec):
         """Prepare a virtual environment.
 

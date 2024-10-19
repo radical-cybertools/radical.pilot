@@ -22,6 +22,13 @@ def app():
         pilot = pmgr.submit_pilots(pdesc)
         tmgr.add_pilots(pilot)
 
+        pilot.register_service('ext_service', 'tcp://localhost:12345')
+
+        td = rp.TaskDescription({'executable': '/bin/date',
+                                 'services'  : ['ext_service']})
+        task = tmgr.submit_tasks(td)
+        tmgr.wait_tasks(task.uid)
+
         # ---------------------------------------------------------------------
         # start SERVICE instance and wait for startup info
         sd = rp.TaskDescription(
