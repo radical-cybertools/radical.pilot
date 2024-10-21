@@ -487,7 +487,7 @@ class Task(object):
 
         self._info_evt.wait(timeout=timeout)
 
-        if self._info.get[0] is None:
+        if self._info is None:
             raise RuntimeError('no service info: %s / %s'
                               % (self.stdout, self.stderr))
         return self.info

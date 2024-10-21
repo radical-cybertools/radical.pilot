@@ -9,14 +9,15 @@ import signal
 import select
 import argparse
 import threading
-import subprocess
+
+import subprocess    as sp
 
 import radical.utils as ru
 
 
-def print(msg):
-    sys.stdout.write('%.2f %s\n' % (time.time(), msg))
-    sys.stdout.flush()
+# def print(msg):
+#     sys.stdout.write('%.2f %s\n' % (time.time(), msg))
+#     sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -51,9 +52,24 @@ last_msg = None
 #
 def main():
 
+    # only rank 0 will wait for a pattern match - all other ranks will just
+    # execute the service command
+    if 'RP_RANK' not in os.environ:
+        raise ValueError('no RP_RANK set')
+
+    if os.environ['RP_RANK'] == '0':
+        return rank_0()
+    else:
+        return rank_n()
+
+
+# ------------------------------------------------------------------------------
+#
+def rank_0():
+
     global last_msg
 
-    print('starting')
+    print('starting rank 0')
 
     parser = argparse.ArgumentParser(description='')
 
@@ -78,12 +94,6 @@ def main():
     verbose = args.verbose or False
     timeout = args.timeout or 0
 
-    ranks   = int(os.environ.get('RP_RANKS'))
-    rank    = int(os.environ.get('RP_RANK'))
-
-    output  = '%s.%04d' % (output, rank)
-    error   = '%s.%04d' % (error,  rank)
-
     timeout = int(timeout) if timeout else 0
 
     if not command: raise ValueError('no command given')
@@ -94,9 +104,9 @@ def main():
     print('reg_url x: %s' % reg_url)
     reg = ru.zmq.RegistryClient(url=reg_url)
 
-    # test registry
-    reg.put('test', 'test')
-    reg.dump('test')
+  # # test registry
+  # reg.put('test', 'test')
+  # reg.dump('test')
 
     cfg = reg['bridges.%s' % CHANNEL]
 
@@ -117,7 +127,7 @@ def main():
 
     try:
         print('executing: %s' % cmd)
-        proc = subprocess.Popen(cmd, shell=True)
+        proc = sp.Popen(cmd, shell=True)
         print('pid: %s' % proc.poll())
 
         if timeout is not None:
@@ -219,8 +229,6 @@ def main():
     print('send result: %s [%s]' % (match, err_msg))
     msg = {'cmd': 'service_info',
            'arg': {'uid'  : uid,
-                   'ranks': ranks,
-                   'rank' : rank,
                    'error': err_msg,
                    'info' : match}}
 
@@ -257,7 +265,40 @@ def main():
 
 # ------------------------------------------------------------------------------
 #
+def rank_n():
+
+    global last_msg
+
+    print('starting rank %s' % os.environ['RP_RANK'])
+
+    parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument('-c', '--command',  dest='command')
+    parser.add_argument('-o', '--output',   dest='output')
+    parser.add_argument('-e', '--error',    dest='error')
+    parser.add_argument('-u', '--uid',      dest='uid')
+
+    command = args.command or None
+    output  = args.output  or '%s.stdout' % uid
+    error   = args.error   or '%s.stderr' % uid
+
+    if not command: raise ValueError('no command given')
+    if not uid    : raise ValueError('no uid given')
+
+    # run the command
+    cmd     = '%s >%s 2>%s' % (command, output, error)
+    proc    = None
+
+    proc = sp.Popen(cmd, shell=True)
+    proc.wait()
+
+    sys.exit(proc.poll())
+
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
+
     main()
 
 
