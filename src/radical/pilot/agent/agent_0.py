@@ -423,8 +423,6 @@ class Agent_0(rpu.AgentComponent):
             info = self._reg.get('services.%s' % td.uid)
             self._log.info('agent service started: %s - %s', td.uid, info)
 
-            assert info is not None, td.uid
-
             # send a notification, specifically also to the client side
             if not info:
                 info = 'service is up'

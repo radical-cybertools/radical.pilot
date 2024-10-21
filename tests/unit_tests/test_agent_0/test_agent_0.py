@@ -212,8 +212,8 @@ class TestComponent(TestCase):
         agent_0._prof = mock.Mock()
 
         agent_0._service_uids_running = list()
-        agent_0._service_infos        = {'101': {},
-                                         '102': {}}
+        agent_0._service_infos        = {'101': '',
+                                         '102': ''}
         agent_0._service_start_evt    = mt.Event()
         agent_0._service_lock         = mt.Lock()
 
@@ -293,7 +293,7 @@ class TestComponent(TestCase):
             agent_0._control_cb(topic, msg)
 
             self.assertTrue(uid in agent_0._service_uids_running)
-            self.assertEqual(agent_0._service_infos[uid], 'foo://bar')
+            self.assertEqual(agent_0._reg['services.%s' % uid], 'foo://bar')
 
 
 # ------------------------------------------------------------------------------
