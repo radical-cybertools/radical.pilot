@@ -378,11 +378,8 @@ class Agent_0(rpu.AgentComponent):
         td.arguments += ['-u', tid]
         td.arguments += ['-v']
 
-        orig_timeout  = td.timeout
-
-        if td.timeout:
-            td.arguments += ['-t', '%d' % td.timeout]
-            td.timeout    = 0.0
+        if td.startup_timeout:
+            td.arguments += ['-t', '%d' % td.startup_timeout]
 
         if pat:
             pat_src, pat_regex = pat.split(':', 1)
@@ -417,8 +414,8 @@ class Agent_0(rpu.AgentComponent):
 
             # The service task timeout is watched by the wrapper, but we also
             # watch the wrapper itself.
-            if orig_timeout:
-                if not self._service_start_evt.wait(timeout=orig_timeout):
+            if td.startup_timeout:
+                if not self._service_start_evt.wait(timeout=td.startup_timeout):
                     raise RuntimeError('Unable to start service')
             else:
                 self._service_start_evt.wait()

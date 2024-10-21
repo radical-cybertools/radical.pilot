@@ -252,7 +252,7 @@ class TestComponent(TestCase):
         self.assertEqual(service_td['mode'], rp.AGENT_SERVICE)
 
         agent_0._service_start_evt.wait = mock.Mock(return_value=False)
-        sd['timeout'] = 1
+        sd['startup_timeout'] = 1
         with self.assertRaises(RuntimeError):
             agent_0._launch_service(sd)
 
@@ -278,16 +278,14 @@ class TestComponent(TestCase):
 
         topic = 'test_topic'
         msg   = {'cmd' : 'service_info',
-                 'arg' : {'info': {'url': 'foo://bar'},
-                          'ranks': 1,
-                          'rank' : 0,}}
+                 'arg' : {'info': 'foo://bar'}}
 
         self.assertTrue('101' not in agent_0._service_uids_running)
         self.assertTrue('102' not in agent_0._service_uids_running)
 
         for uid in ['101', '102']:
-            msg['arg']['uid'] = uid
-            msg['arg']['name'] = uid
+            msg['arg']['uid']   = uid
+            msg['arg']['error'] = ''
 
             self.assertTrue(uid not in agent_0._service_uids_running)
 
@@ -295,7 +293,7 @@ class TestComponent(TestCase):
             agent_0._control_cb(topic, msg)
 
             self.assertTrue(uid in agent_0._service_uids_running)
-            self.assertTrue(agent_0._service_infos[uid]['0']['url'] == 'foo://bar')
+            self.assertEqual(agent_0._service_infos[uid], 'foo://bar')
 
 
 # ------------------------------------------------------------------------------
