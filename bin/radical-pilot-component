@@ -19,7 +19,7 @@ from radical.pilot.messages import HeartbeatMessage
 
 # ------------------------------------------------------------------------------
 #
-def main(sid, reg_addr, uid, evt):
+def main(sid, reg_addr, uid, ppid, evt):
     '''
     This thin wrapper starts a RCT component It expects a single argument:
     a config to use for the component's configuration.  The config must contain:
@@ -61,7 +61,7 @@ def main(sid, reg_addr, uid, evt):
     try:
         prof.prof('comp_start', uid=uid)
         prof.disable()
-        wrapped_main(sid, reg_addr, uid, log, prof, evt)
+        wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt)
 
     finally:
         prof.enable()
@@ -70,9 +70,14 @@ def main(sid, reg_addr, uid, evt):
 
 # ------------------------------------------------------------------------------
 #
-def wrapped_main(sid, reg_addr, uid, log, prof, evt):
+def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
 
     spt.setproctitle('rp.%s' % uid)
+
+    # process watcher
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid)
+    pwatcher.watch(int(ppid))
+    pwatcher.watch(os.getpid())
 
     term = mt.Event()
     reg  = ru.zmq.RegistryClient(url=reg_addr)
@@ -133,18 +138,21 @@ def wrapped_main(sid, reg_addr, uid, log, prof, evt):
 #
 if __name__ == "__main__":
 
-    if len(sys.argv) != 4:
-        sys.stderr.write('error: invalid arguments\n'
-                         'usage: %s <sid> <reg_addr> <uid>\n'  % sys.argv[0])
+    if len(sys.argv) != 5:
+        sys.stderr.write(
+                'error: invalid arguments\n'
+                'usage: %s <sid> <reg_addr> <uid> <ppid>\n'
+                         % sys.argv[0])
         raise RuntimeError('invalid arguments: %s' % sys.argv)
 
     sid      = sys.argv[1]
     reg_addr = sys.argv[2]
     uid      = sys.argv[3]
+    ppid     = sys.argv[4]
 
     evt      = mp.Event()
 
-    ru.daemonize(main=main, args=[sid, reg_addr, uid, evt],
+    ru.daemonize(main=main, args=[sid, reg_addr, uid, ppid, evt],
                  stdout='%s.out' % uid, stderr='%s.err' % uid)
 
     evt.wait(3.0)
