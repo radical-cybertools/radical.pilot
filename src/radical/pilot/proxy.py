@@ -134,7 +134,8 @@ class Proxy(ru.zmq.Server):
         self._lock    = mt.Lock()
         self._clients = dict()
 
-        ru.zmq.Server.__init__(self, url='tcp://*:10000+', path=path)
+        ru.zmq.Server.__init__(self, uid='radical.pilot.proxy',
+                               url='tcp://*:10000+', path=path)
 
         self._monitor_thread = mt.Thread(target=self._monitor)
         self._monitor_thread.daemon = True
