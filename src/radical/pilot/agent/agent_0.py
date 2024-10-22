@@ -212,8 +212,13 @@ class Agent_0(rpu.AgentComponent):
             self.rpc('prepare_env', env_name=env_name, env_spec=env_spec,
                                     rpc_addr=self._pid)
 
+        # launch predefined services
         for sd in self._cfg.services:
             self._launch_service(sd)
+
+        # allow registration of external services
+        self.register_rpc_handler('register_service', self._register_service,
+                                                      rpc_addr=self._pid)
 
         # listen for new tasks from the client
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
@@ -673,6 +678,16 @@ class Agent_0(rpu.AgentComponent):
         # signal main thread when that the service is up
         self._log.debug('=== set service start event for %s', uid)
         self._service_start_evt.set()
+
+        return True
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _register_service(self, uid, info):
+
+        # add info to registry (might be empty!)
+        self._reg['services.%s' % uid] = info
 
         return True
 
