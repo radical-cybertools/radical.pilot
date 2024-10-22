@@ -615,10 +615,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         services = td.get('services') or list()
         for service in services:
-            info_dict = self._reg['services.%s' % service]
-            val = ','.join([str(v) for v in info_dict.values()
-                                   if  v is not None])
-            ret += 'export RP_INFO_%s="%s"\n' % (service.upper(), str(val))
+            info = self._reg['services.%s' % service]
+            ret += 'export RP_INFO_%s="%s"\n' % (service.upper(), str(info))
 
 
         # FIXME AM

@@ -104,6 +104,7 @@ PRE_EXEC_SYNC    = 'pre_exec_sync'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
 TIMEOUT          = 'timeout'
+STARTUP_TIMEOUT  = 'startup_timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 SLOTS            = 'slots'
@@ -428,6 +429,11 @@ class TaskDescription(ru.TypedDict):
             the task process to be killed after the specified amount of seconds.
             The task will then end up in `CANCELED` state.
 
+        startup_timeout (float, optional): This setting is specific for service
+            tasks: any value larger than 0 will abort the service if after that
+            time no service information has been obtaines, i.e., if the service
+            startup takes too long.  The service will end up in `FAILED` state.
+
         cleanup (bool, optional): If cleanup flag is set, the pilot will
             delete the entire task sandbox upon termination. This includes all
             generated output data in that sandbox. Output staging will be
@@ -628,6 +634,7 @@ class TaskDescription(ru.TypedDict):
         METADATA        : None        ,
         SERVICES        : [str]       ,
         TIMEOUT         : float       ,
+        STARTUP_TIMEOUT : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
         SLOTS           : [Slot]      ,
@@ -695,6 +702,7 @@ class TaskDescription(ru.TypedDict):
         METADATA        : None        ,
         SERVICES        : list()      ,
         TIMEOUT         : 0.0         ,
+        STARTUP_TIMEOUT : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
         SLOTS           : list()      ,

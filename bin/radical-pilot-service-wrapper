@@ -9,14 +9,10 @@ import signal
 import select
 import argparse
 import threading
-import subprocess
+
+import subprocess    as sp
 
 import radical.utils as ru
-
-
-def print(msg):
-    sys.stdout.write('%.2f %s\n' % (time.time(), msg))
-    sys.stdout.flush()
 
 
 # ------------------------------------------------------------------------------
@@ -51,9 +47,26 @@ last_msg = None
 #
 def main():
 
+    # only rank 0 will wait for a pattern match - all other ranks will just
+    # execute the service command
+    if 'RP_RANK' not in os.environ:
+        raise ValueError('no RP_RANK set')
+
+    if os.environ['RP_RANK'] == '0':
+        return rank_0()
+    else:
+        return rank_n()
+
+
+# ------------------------------------------------------------------------------
+#
+def rank_0():
+
     global last_msg
 
-    print('starting')
+    log = ru.Logger('radical.pilot.service_wrapper',
+                    targets='./%s.log' % os.environ['RP_TASK_ID'])
+    log.debug('starting rank 0')
 
     parser = argparse.ArgumentParser(description='')
 
@@ -72,17 +85,11 @@ def main():
     reg_url = args.reg_url or os.environ.get('RP_REGISTRY_ADDRESS')
     uid     = args.uid     or os.environ.get('RP_TASK_ID')
     mode    = args.mode    or 'stdout'
-    pattern = args.pattern or '\\<http[s]?://[0-9a-zA-Z\\.:_-]*\\>'
+    pattern = args.pattern or None
     output  = args.output  or '%s.stdout' % uid
     error   = args.error   or '%s.stderr' % uid
     verbose = args.verbose or False
     timeout = args.timeout or 0
-
-    ranks   = int(os.environ.get('RP_RANKS'))
-    rank    = int(os.environ.get('RP_RANK'))
-
-    output  = '%s.%04d' % (output, rank)
-    error   = '%s.%04d' % (error,  rank)
 
     timeout = int(timeout) if timeout else 0
 
@@ -90,17 +97,21 @@ def main():
     if not uid    : raise ValueError('no uid given')
     if not reg_url: raise ValueError('RP_REGISTRY_ADDRESS not set')
 
+    if not pattern:
+        self._log.debug('no pattern given - just run the command')
+        return rank_n()
+
     # get control pubsub from registry
-    print('reg_url x: %s' % reg_url)
+    log.debug('reg_url x: %s' % reg_url)
     reg = ru.zmq.RegistryClient(url=reg_url)
 
-    # test registry
-    reg.put('test', 'test')
-    reg.dump('test')
+  # # test registry
+  # reg.put('test', 'test')
+  # reg.dump('test')
 
     cfg = reg['bridges.%s' % CHANNEL]
 
-    print('pub_url: %s' % cfg['addr_pub'])
+    log.debug('pub_url: %s' % cfg['addr_pub'])
     pub = ru.zmq.Publisher(channel=CHANNEL, url=cfg['addr_pub'])
 
     # let zmq settle
@@ -116,26 +127,26 @@ def main():
     timeout_event = threading.Event()
 
     try:
-        print('executing: %s' % cmd)
-        proc = subprocess.Popen(cmd, shell=True)
-        print('pid: %s' % proc.poll())
+        log.debug('executing: %s' % cmd)
+        proc = sp.Popen(cmd, shell=True)
+        log.debug('pid: %s' % proc.poll())
 
         if timeout is not None:
 
             def watch(_proc, _timeout):
-                print('start watcher')
+                log.debug('start watcher')
                 start = time.time()
                 while _proc.poll() is None:
-                    print('check watcher')
+                    log.debug('check watcher')
                     time.sleep(0.1)
                     if watch_event.is_set():
                         break
                     if _timeout and time.time() - start > _timeout:
-                        print('timeout')
+                        log.debug('timeout')
                         timeout_event.set()
                         _proc.kill()
                         break
-                print('stop watcher: %s' % _proc.poll())
+                log.debug('stop watcher: %s' % _proc.poll())
 
             watcher = threading.Thread(target=watch, args=(proc, timeout))
             watcher.daemon = True
@@ -166,9 +177,9 @@ def main():
         regex = re.compile('^.*(%s).*$' % pattern)
         data  = ''
 
-        print('watching: %s for pattern [%s]' % (fname, pattern))
+        log.debug('watching: %s for pattern [%s]' % (fname, pattern))
         if fstream:
-            print('watching: %s' % fstream)
+            log.debug('watching: %s' % fstream)
             while proc.poll() is None:
 
                 r, _, _ = select.select([fstream], [], [], 0.1)
@@ -183,7 +194,7 @@ def main():
                     data = ''
 
                     if verbose:
-                        print('line: %s' % line)
+                        log.debug('line: %s' % line)
 
                     match = regex.match(line)
                     if match:
@@ -206,7 +217,7 @@ def main():
             watch_event.set()
 
         if verbose:
-            print('stop watcher: %s' % err_msg)
+            log.debug('stop watcher: %s' % err_msg)
 
         if proc:
             ret = proc.poll()
@@ -216,15 +227,13 @@ def main():
     time.sleep(1)
 
     # send the result to the agent
-    print('send result: %s [%s]' % (match, err_msg))
+    log.debug('send result: %s [%s]' % (match, err_msg))
     msg = {'cmd': 'service_info',
            'arg': {'uid'  : uid,
-                   'ranks': ranks,
-                   'rank' : rank,
                    'error': err_msg,
                    'info' : match}}
 
-    pprint.pprint(msg)
+    log.debug(pprint.pformat(msg))
     pub.put(CHANNEL, msg)
 
     # register to control pubsub and wait for (hb) messages
@@ -240,24 +249,59 @@ def main():
 
     # now just run until `cmd` completes and return its exit code
     while proc.poll() is None:
-        print('wait: %s' % proc.poll())
+        log.debug('wait: %s' % proc.poll())
         if time.time() - last_msg > 10:
-            print('timeout: %s' % proc.poll())
-            print('kill %d' % proc.pid)
-            print(ru.sh_callout('kill %d' % proc.pid))
+            log.debug('timeout: %s' % proc.poll())
+            log.debug('kill %d' % proc.pid)
+            log.debug(ru.sh_callout('kill %d' % proc.pid))
             break
         time.sleep(1.0)
 
     ret = proc.poll()
 
-    print('done: %s' % ret)
+    log.debug('done: %s' % ret)
 
     sys.exit(ret)
 
 
 # ------------------------------------------------------------------------------
 #
+def rank_n():
+
+    global last_msg
+
+    log = ru.Logger('radical.pilot.service_wrapper',
+                    targets='./%s.log' % os.environ['RP_TASK_ID'])
+    log.debug('starting rank %s' % os.environ['RP_RANK'])
+
+    parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument('-c', '--command',  dest='command')
+    parser.add_argument('-o', '--output',   dest='output')
+    parser.add_argument('-e', '--error',    dest='error')
+    parser.add_argument('-u', '--uid',      dest='uid')
+
+    command = args.command or None
+    output  = args.output  or '%s.stdout' % uid
+    error   = args.error   or '%s.stderr' % uid
+
+    if not command: raise ValueError('no command given')
+    if not uid    : raise ValueError('no uid given')
+
+    # run the command
+    cmd     = '%s >%s 2>%s' % (command, output, error)
+    proc    = None
+
+    proc = sp.Popen(cmd, shell=True)
+    proc.wait()
+
+    sys.exit(proc.poll())
+
+
+# ------------------------------------------------------------------------------
+#
 if __name__ == '__main__':
+
     main()
 
 
