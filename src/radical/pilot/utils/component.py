@@ -38,8 +38,6 @@ def _atfork_child():
 ru.atfork(ru.noop, ru.noop, _atfork_child)
 
 
-
-
 # ------------------------------------------------------------------------------
 #
 class BaseComponent(object):
