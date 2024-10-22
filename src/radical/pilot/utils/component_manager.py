@@ -5,14 +5,10 @@ __license__   = 'MIT'
 # pylint: disable=global-statement   # W0603 global `_components`
 
 import os
-import copy
 import time
 
-import threading       as mt
 import radical.utils   as ru
 
-from ..          import constants      as rpc
-from ..          import states         as rps
 from ..messages  import HeartbeatMessage
 
 
@@ -145,13 +141,15 @@ class ComponentManager(object):
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
-            cmd = 'radical-pilot-bridge %s %s %s' \
-                % (self._sid, self._reg.url, bname)
+            cmd = 'radical-pilot-bridge %s %s %s %s' \
+                % (self._sid, self._reg.url, bname, os.getpid())
 
             out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
 
             if ret:
-                raise RuntimeError('bridge startup failed')
+                msg = 'bridge startup failed [%s] [%s]', out, err
+                self._log.error(msg)
+                raise RuntimeError(msg)
 
             self._heartbeats[bname] = None
             self._log.info('created bridge %s [%s]', bname, bname)
@@ -201,8 +199,8 @@ class ComponentManager(object):
 
                 self._log.info('create  component %s [%s]', cname, uid)
 
-                cmd = 'radical-pilot-component %s %s %s' \
-                    % (self._sid, self._reg.url, uid)
+                cmd = 'radical-pilot-component %s %s %s %s' \
+                      % (self._sid, self._reg.url, uid, os.getpid())
                 out, err, ret = ru.sh_callout(cmd, cwd=self._cfg.path)
 
                 self._log.debug('component startup out: %s' , out)
@@ -228,3 +226,4 @@ class ComponentManager(object):
 
 
 # ------------------------------------------------------------------------------
+
