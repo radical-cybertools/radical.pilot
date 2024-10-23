@@ -4,6 +4,8 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -53,7 +55,8 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.napoleon',
     'sphinx.ext.imgconverter',
-    'myst_parser'
+    'myst_parser',
+    'rtds_action'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -120,3 +123,10 @@ napoleon_numpy_docstring = False
 # napoleon_preprocess_types = False
 # napoleon_type_aliases = None
 # napoleon_attr_annotations = True
+
+# -- rtds settings -------------------------------------------------------------
+# The "prefix" used in the `upload-artifact` step of the action
+rtds_action_artifact_prefix = "notebooks-for-"
+rtds_action_github_token = os.environ["GITHUB_TOKEN"]
+rtds_action_error_if_missing = False
+
