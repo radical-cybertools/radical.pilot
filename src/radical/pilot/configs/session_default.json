@@ -14,9 +14,11 @@
     },
 
     "bridges" : {
-        "log_pubsub"            : {"kind": "pubsub"},
-        "state_pubsub"          : {"kind": "pubsub"},
-        "control_pubsub"        : {"kind": "pubsub"}
+        "log_pubsub"    : {"kind": "pubsub"},
+        "state_pubsub"  : {"kind": "pubsub"},
+        "control_pubsub": {"kind": "pubsub"},
+        "client_pubsub" : {"kind": "pubsub"},
+        "client_queue"  : {"kind": "queue"}
     },
 
     "components" : {

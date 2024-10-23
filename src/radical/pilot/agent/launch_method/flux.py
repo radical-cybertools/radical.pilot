@@ -34,7 +34,7 @@ class Flux(LaunchMethod):
     #
     def _init_from_scratch(self, env, env_sh):
 
-        self._log.debug('=== flux init from scratch')
+        self._log.debug('flux init from scratch')
         self._prof.prof('flux_start')
 
         n_partitions        = self._rm_info.details.n_partitions
@@ -79,7 +79,7 @@ class Flux(LaunchMethod):
 
         fh = ru.FluxHelper()
 
-        self._log.debug('=== starting flux partition %d', n)
+        self._log.debug('starting flux partition %d', n)
 
         # FIXME: this is a hack for frontier and will only work for slurm
         #        resources.  If Flux is to be used more widely, we need to
@@ -87,10 +87,13 @@ class Flux(LaunchMethod):
         launcher = ''
         srun = ru.which('srun')
         if srun:
-            launcher = 'srun -n %s -N %d --ntasks-per-node 1 --cpus-per-task=%d --gpus-per-task=%d --export=ALL' \
-                       % (nodes_per_partition, nodes_per_partition, threads_per_node, gpus_per_node)
+            launcher = 'srun -n %s -N %d --ntasks-per-node 1 ' \
+                       '--cpus-per-task=%d --gpus-per-task=%d ' \
+                       '--export=ALL' \
+                       % (nodes_per_partition, nodes_per_partition,
+                          threads_per_node, gpus_per_node)
 
-        self._log.debug('=== flux partition %d launcher: %s', n, launcher)
+        self._log.debug('flux partition %d launcher: %s', n, launcher)
 
         fh.start_flux(launcher=launcher)
 
@@ -99,14 +102,14 @@ class Flux(LaunchMethod):
                               'flux_env': fh.env,
                               'flux_uid': fh.uid})
 
-        self._log.debug('=== flux partition %d started', n)
+        self._log.debug('flux partition %d started', n)
 
 
     # --------------------------------------------------------------------------
     #
     def _init_from_info(self, lm_info):
 
-        self._log.debug('=== flux init from info')
+        self._log.debug('flux init from info')
         self._prof.prof('flux_reconnect')
 
         self._env          = lm_info['env']
