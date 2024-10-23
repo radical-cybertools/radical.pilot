@@ -47,21 +47,6 @@ last_msg = None
 #
 def main():
 
-    # only rank 0 will wait for a pattern match - all other ranks will just
-    # execute the service command
-    if 'RP_RANK' not in os.environ:
-        raise ValueError('no RP_RANK set')
-
-    if os.environ['RP_RANK'] == '0':
-        return rank_0()
-    else:
-        return rank_n()
-
-
-# ------------------------------------------------------------------------------
-#
-def rank_0():
-
     global last_msg
 
     log = ru.Logger('radical.pilot.service_wrapper',
@@ -97,9 +82,25 @@ def rank_0():
     if not uid    : raise ValueError('no uid given')
     if not reg_url: raise ValueError('RP_REGISTRY_ADDRESS not set')
 
-    if not pattern:
-        self._log.debug('no pattern given - just run the command')
-        return rank_n()
+    rank = int(os.environ.get('RP_RANK', 0))
+
+    # most of the code below is only relevant for rank 0 *and* if a pattern is
+    # given.  In all other cases, we can just run the command and exit.
+    if rank or not pattern:
+
+        if not pattern:
+            log.debug('no pattern given - just run the command')
+        else:
+            log.debug('rank %s > 0 - just run the command' % rank)
+
+        # run the command
+        cmd     = '%s >%s 2>%s' % (command, output, error)
+        proc    = None
+
+        proc = sp.Popen(cmd, shell=True)
+        proc.wait()
+
+        sys.exit(proc.poll())
 
     # get control pubsub from registry
     log.debug('reg_url x: %s' % reg_url)
@@ -262,40 +263,6 @@ def rank_0():
     log.debug('done: %s' % ret)
 
     sys.exit(ret)
-
-
-# ------------------------------------------------------------------------------
-#
-def rank_n():
-
-    global last_msg
-
-    log = ru.Logger('radical.pilot.service_wrapper',
-                    targets='./%s.log' % os.environ['RP_TASK_ID'])
-    log.debug('starting rank %s' % os.environ['RP_RANK'])
-
-    parser = argparse.ArgumentParser(description='')
-
-    parser.add_argument('-c', '--command',  dest='command')
-    parser.add_argument('-o', '--output',   dest='output')
-    parser.add_argument('-e', '--error',    dest='error')
-    parser.add_argument('-u', '--uid',      dest='uid')
-
-    command = args.command or None
-    output  = args.output  or '%s.stdout' % uid
-    error   = args.error   or '%s.stderr' % uid
-
-    if not command: raise ValueError('no command given')
-    if not uid    : raise ValueError('no uid given')
-
-    # run the command
-    cmd     = '%s >%s 2>%s' % (command, output, error)
-    proc    = None
-
-    proc = sp.Popen(cmd, shell=True)
-    proc.wait()
-
-    sys.exit(proc.poll())
 
 
 # ------------------------------------------------------------------------------

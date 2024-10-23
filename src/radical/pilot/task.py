@@ -184,7 +184,7 @@ class Task(object):
         # if this is a service and is finalized, set info_wait event
         if target in rps.FINAL:
             if self._descr.mode == TASK_SERVICE:
-                # singal failure in case we are still waitring for the service
+                # signal failure in case we are still waiting for the service
                 self._set_info(None)
 
         # callbacks are not invoked here, but are bulked in the tmgr
@@ -480,7 +480,7 @@ class Task(object):
         return self._info
 
     def _set_info(self, info):
-        self._info = info or dict()
+        self._info = info
         self._info_evt.set()
 
     def wait_info(self, timeout=None):
