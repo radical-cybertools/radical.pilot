@@ -35,7 +35,7 @@ jobs:
         run: |
           sphinx-build -M html docs/source docs/build
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: notebooks-for-${{ github.sha }}
           path: docs/build
