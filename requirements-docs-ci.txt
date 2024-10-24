@@ -10,4 +10,5 @@ sphinx_copybutton
 sphinx_rtd_theme>=0.5.1
 myst_parser
 docutils==0.17.1
+rtds_action
 
