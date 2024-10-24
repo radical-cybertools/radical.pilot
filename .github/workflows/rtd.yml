@@ -1,10 +1,4 @@
-name: 'Test Jupyter notebooks'
-
-# **What**: runs all the notebooks of RP documentation
-# **Why** : integration testing of RADICAL-Pilot on GNU/Linux localhost;
-#           make sure that the documentation works for the current
-#           RADICAL-Pilot release
-# **Who** : Docs content and testing.
+name: 'Build RTD'
 
 on:
   push:
@@ -21,7 +15,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   rtd:
     name: "Build documentation"
     runs-on: ubuntu-latest
@@ -38,7 +31,7 @@ jobs:
           python -m pip install -U pip
           python -m pip install -r requirements-docs-ci.txt
 
-      - name: Execute the notebooks
+      - name: Build the docs
         run: |
           sphinx-build -M html docs/source docs/build
 
