@@ -126,7 +126,8 @@ napoleon_numpy_docstring = False
 
 # -- rtds settings -------------------------------------------------------------
 # The "prefix" used in the `upload-artifact` step of the action
-rtds_action_artifact_prefix = "notebooks-for-"
+rtds_action_github_repo = "radical-cybertools/radical.pilot"
+rtds_action_artifact_prefix = "rtd-"
 rtds_action_github_token = os.environ.get("GITHUB_TOKEN")
 rtds_action_error_if_missing = False
 
