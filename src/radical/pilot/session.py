@@ -689,7 +689,7 @@ class Session(object):
 
         # configure proxy channels
         try:
-            self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
+            self._proxy = ru.zmq.Client(url=self._cfg.proxy_url, log=self._log)
             self._proxy_cfg = self._proxy.request('register', {'sid':self._uid})
 
         except:
