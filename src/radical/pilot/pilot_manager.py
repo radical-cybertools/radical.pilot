@@ -410,7 +410,8 @@ class PilotManager(rpu.ClientComponent):
     def _pilot_send_hb(self, pid=None):
 
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'pmgr_heartbeat',
-                                          'arg' : {'pmgr' : self.uid}})
+                                          'arg' : {'pmgr' : self.uid},
+                                          'fwd' : True})
 
 
     # --------------------------------------------------------------------------

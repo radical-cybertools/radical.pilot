@@ -36,13 +36,13 @@ class EnvPrep(AgentResolvingComponent):
 
     # --------------------------------------------------------------------------
     #
-    def _control_cb(self, topic, msg):
+    def control_cb(self, topic, msg):
         '''
         listen on the control channel for raptor queue registration commands
         '''
 
-        cmd = msg['cmd']
-        arg = msg['arg']
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
 
         if cmd == 'register_named_env':
 

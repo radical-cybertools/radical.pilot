@@ -170,6 +170,7 @@ class BaseComponent(object):
         self._cfg     = cfg
         self._uid     = self._cfg.uid
         self._sid     = self._cfg.sid
+        self._pwd     = os.getcwd()
         self._session = session
 
         # we always need an UID
@@ -838,14 +839,16 @@ class BaseComponent(object):
                     self._term.set()
 
                 def run(self):
+
                     try:
                         self._log.debug('start idle thread: %s', self._cb)
-                        ret = True
-                        while ret and not self._term.is_set():
+
+                        while not self._term.is_set():
+
                             if self._timeout and \
                                self._timeout > (time.time() - self._last):
                                 # not yet
-                                time.sleep(0.01)  # FIXME: make configurable
+                                time.sleep(0.1)  # FIXME: make configurable
                                 continue
 
                             with self._cb_lock:
@@ -853,6 +856,10 @@ class BaseComponent(object):
                                     ret = self._cb(cb_data=self._cb_data)
                                 else:
                                     ret = self._cb()
+
+                            if not ret:
+                                break
+
                             if self._timeout:
                                 self._last = time.time()
                     except:

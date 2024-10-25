@@ -46,6 +46,7 @@ class Agent_0(rpu.AgentComponent):
         self._owner   = cfg.owner
         self._pmgr    = cfg.pmgr
         self._pwd     = cfg.pilot_sandbox
+        self._last_hb = None
 
         self._session = Session(uid=cfg.sid, cfg=cfg, _role=Session._AGENT_0)
 
@@ -72,7 +73,7 @@ class Agent_0(rpu.AgentComponent):
         self._start_sub_agents()
 
         # regularly check for lifetime limit
-        self.register_timed_cb(self._check_lifetime, timer=10)
+        self.register_timed_cb(self._check_lifetime, timer=1)
 
         # also open a service endpoint so that a ZMQ client can submit tasks to
         # this agent
@@ -238,6 +239,9 @@ class Agent_0(rpu.AgentComponent):
                                'gpu'    : rm_info['gpus_per_node']  * n_nodes}}
 
         self.advance(pilot, publish=True, push=False, fwd=True)
+
+        # start heartbeat checking
+        self._last_hb = time.time()
 
 
     # --------------------------------------------------------------------------
@@ -574,15 +578,23 @@ class Agent_0(rpu.AgentComponent):
     #
     def _check_lifetime(self):
 
+        now = time.time()
+
         # Make sure that we haven't exceeded the runtime - otherwise terminate.
         if self._cfg.runtime:
 
-            if time.time() >= self._starttime + (int(self._cfg.runtime) * 60):
+            if now >= self._starttime + (int(self._cfg.runtime) * 60):
 
                 self._log.info('runtime limit (%ss).', self._cfg.runtime * 60)
                 self._final_cause = 'timeout'
                 self.stop()
                 return False  # we are done
+
+        # also make sure we are not missing pmgr heartbeats
+        if self._last_hb:
+            if now - self._last_hb > 3:
+                self._log.info('pmgr heartbeat missed - cancel')
+                self._ctrl_cancel_pilots({'arg': {'uids': [self._pid]}})
 
         return True
 
@@ -605,6 +617,7 @@ class Agent_0(rpu.AgentComponent):
 
         if cmd == 'pmgr_heartbeat' and arg['pmgr'] == self._pmgr:
             self._session._hb.beat(uid=self._pmgr)
+            self._last_hb = time.time()
             return True
 
         elif cmd == 'cancel_pilots':

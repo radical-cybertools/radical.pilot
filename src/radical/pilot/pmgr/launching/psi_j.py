@@ -226,6 +226,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             if pid not in pids:
                 continue
 
+            self._log.debug('cancel pilot %s', pid)
             self._jobs[pid].cancel()
 
 

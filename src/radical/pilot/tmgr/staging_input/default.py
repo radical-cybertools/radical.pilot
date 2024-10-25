@@ -60,7 +60,7 @@ class Default(TMGRStagingInputComponent):
                             rpc.TMGR_STAGING_INPUT_QUEUE, self.work)
 
         # this queue is inaccessible, needs routing via mongodb
-        self.register_output(rps.AGENT_STAGING_INPUT_PENDING,
+        self.register_output(rps.AGENT_RESOLVING_PENDING,
                              rpc.PROXY_TASK_QUEUE)
 
         self._mkdir_threshold = self.cfg.get('task_bulk_mkdir_threshold',
@@ -108,7 +108,7 @@ class Default(TMGRStagingInputComponent):
     def _advance_tasks(self, tasks, pid=None, state=None, push=True):
 
         if not state:
-            state = rps.AGENT_STAGING_INPUT_PENDING
+            state = rps.AGENT_RESOLVING_PENDING
 
         # perform and publish state update
         # push to the proxy queue
