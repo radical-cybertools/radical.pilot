@@ -32,11 +32,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python-version }}
       - name: Install dependencies
@@ -61,13 +61,13 @@ jobs:
         if: always()
         run: |
           SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
-          echo "SIDCLIENT collect session : $SIDCLIENT"
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
-          echo "SIDAGENT collect session : $SIDAGENT"
           CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
-          echo "CLIENTNAME collect session : $CLIENTNAME"
           AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
-          echo "AGENTNAME collect session : $AGENTNAME"
+          echo "SIDCLIENT  : $SIDCLIENT"
+          echo "SIDAGENT   : $SIDAGENT"
+          echo "CLIENTNAME : $CLIENTNAME"
+          echo "AGENTNAME  : $AGENTNAME"
           mkdir sessions_notebooks
           tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
           cp -R $CLIENTNAME.tar.bz2 sessions_notebooks
@@ -75,9 +75,9 @@ jobs:
             tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
             cp -R $AGENTNAME.tar.bz2 sessions_notebooks
           fi
-      - name: upload session
+      - name: Upload sessions
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: sessions_notebooks
             path: sessions_notebooks

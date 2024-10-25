@@ -17,10 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: 3.7
       - name: Install dependencies
@@ -46,17 +46,16 @@ jobs:
           pylint $FILTERED
 
   tests:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     continue-on-error: true
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -72,7 +71,7 @@ jobs:
           radical-stack
           coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
           coverage xml
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         if: ${{ matrix.python-version == '3.7' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -82,7 +81,7 @@ jobs:
   notebook_integration_test:
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: ${{ matrix.python-version }}
@@ -90,16 +89,15 @@ jobs:
       notebook-name: 'getting_started.ipynb'
 
   analytics:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ ubuntu-latest ]
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
@@ -112,14 +110,17 @@ jobs:
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install -r requirements-ci.txt
-      - name: analyze example session
+      - name: Analyse example session
         timeout-minutes: 5
         if: always()
+        env:
+          RADICAL_LOG_LVL: 'DEBUG'
+          RADICAL_REPORT: 'TRUE'
         run: |
           . testenv/bin/activate
           ./examples/00_getting_started.py local.localhost
           SID=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
-          echo "SID analyse example session: $SID"
+          echo "SID: $SID"
           radical-analytics-inspect "$SID"
           mkdir artifacts
           ls -la
@@ -128,8 +129,9 @@ jobs:
         if: always()
         run: |
           SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
-          echo "SIDCLIENT collect session : $SIDCLIENT"
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
+          echo "SIDCLIENT : $SIDCLIENT"
+          echo "SIDAGENT  : $SIDAGENT"
           CLIENTNAME="analytics_client_$SIDCLIENT"
           AGENTNAME="analytics_agent_$SIDCLIENT"
           mkdir sessions_analytics
@@ -140,16 +142,16 @@ jobs:
             tar cvfj $AGENTNAME.tar.bz2 `find $SIDAGENT -type d -print`
             cp -R $AGENTNAME.tar.bz2 sessions_analytics
           fi
-      - name: upload artifacts
+      - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: artifacts
             path: artifacts
             retention-days: 5
-      - name: upload sessions
+      - name: Upload sessions
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: sessions_analytics
             path: sessions_analytics
