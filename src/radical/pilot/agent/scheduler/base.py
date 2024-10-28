@@ -241,7 +241,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         self._ts_map     = defaultdict(set)   # tasks binned by tuple size
         self._ts_valid   = False              # set to False to trigger re-binning
         self._active_cnt = 0                  # count of currently scheduled tasks
-        self._named_envs = list()             # record available named environments
 
         # the scheduler algorithms have two inputs: tasks to be scheduled, and
         # slots becoming available (after tasks complete).
@@ -347,13 +346,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         cmd = msg.get('cmd')
         arg = msg.get('arg')
 
-        if cmd == 'register_named_env':
-
-            env_name = arg['env_name']
-            self._named_envs.append(env_name)
-
-
-        elif cmd == 'register_raptor_queue':
+        if  cmd == 'register_raptor_queue':
 
             name  = arg['name']
             queue = arg['queue']
@@ -747,23 +740,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # We define `tuple_size` as
         #     `ranks * cores_per_rank * gpus_per_rank`
         #
-        to_wait    = list()
-        to_test    = list()
-
         active    = False  # nothing happeend yet
         resources = True   # fresh start, all is free
 
         for priority in sorted(self._waitpool.keys(), reverse=True):
-            for task in self._waitpool[priority].values():
-                named_env = task['description'].get('named_env')
-                if named_env:
-                    if named_env in self._named_envs:
-                        to_test.append(task)
-                    else:
-                        to_wait.append(task)
-                else:
-                    to_test.append(task)
 
+            to_test = listself._waitpool[priority].values())
             to_test.sort(key=lambda x:
                     x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                      reverse=True)
@@ -784,7 +766,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 self._log.error('bisect failed on %s: %s', task['uid'], error)
 
             self._waitpool[priority] = {task['uid']: task
-                                            for task in (unscheduled + to_wait)}
+                                            for task in unscheduled}
 
             # update task resources
             for task in scheduled:
@@ -917,18 +899,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                reverse=True):
 
                 td = task['description']
-
-                # FIXME: This is a slow, inefficient way to wait for named VEs.
-                #        The semantics should move to the upcoming eligibility
-                #        checker
-                # FIXME: Note that this code is duplicated in _schedule_waitpool
-                named_env = td.get('named_env')
-                if named_env:
-                    if named_env not in self._named_envs:
-                        to_wait.append(task)
-                        self._log.debug('delay %s, no env %s',
-                                        task['uid'], named_env)
-                        continue
 
                 # we actually only schedule tasks which do not yet have
                 # a `slots` structure attached.  Those which do were presumably
