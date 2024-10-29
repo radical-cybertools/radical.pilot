@@ -648,7 +648,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_ID       : ''          ,
         RAPTOR_FILE     : ''          ,
         RAPTOR_CLASS    : ''          ,
-        METADATA        : None        ,
+        METADATA        : dict()      ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
