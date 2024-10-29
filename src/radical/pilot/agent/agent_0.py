@@ -664,7 +664,7 @@ class Agent_0(rpu.AgentComponent):
             self._log.warn('duplicated service startup signal for %s', uid)
             return True
 
-        if info is None:
+        if error is not None:
             self._log.error('service %s failed: %s', uid, error)
             return True
 
