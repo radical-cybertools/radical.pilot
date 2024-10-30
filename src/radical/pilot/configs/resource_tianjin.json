@@ -5,7 +5,7 @@
         "notes"                       : "Access from: https://www.scnet.cn/ui/mall/",
         "default_schema"              : "local",
         "schemas"                     : {
-            "interactive"             : {
+            "local"             : {
                 "job_manager_endpoint": "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
             }
