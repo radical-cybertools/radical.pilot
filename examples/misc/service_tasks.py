@@ -41,7 +41,9 @@ def app():
         pilot = pmgr.submit_pilots(pdesc)
         tmgr.add_pilots(pilot)
 
-        td = rp.TaskDescription({'executable': '/bin/date'})
+        td = rp.TaskDescription({'executable': '/bin/date',
+                                 'services'  : ['my_service_00',
+                                                'my_service_01']})
         task = tmgr.submit_tasks(td)
         tmgr.wait_tasks(task.uid)
 

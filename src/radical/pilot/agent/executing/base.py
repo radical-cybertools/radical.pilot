@@ -615,9 +615,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         services = td.get('services') or list()
         for service in services:
-            info = self._reg['services.%s' % service]
+            info = self._reg['services.%s' % service] or ''
             ret += 'export RP_INFO_%s="%s"\n' % (service.upper(), str(info))
-
 
         # FIXME AM
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
