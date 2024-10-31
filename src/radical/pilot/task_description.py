@@ -417,7 +417,7 @@ class TaskDescription(ru.TypedDict):
         raptor_file (str, optional): Optional application supplied Python
             source file to load `raptor_class` from.
 
-        metadata (Any, optional): User defined metadata. Default None.
+        metadata (dict, optional): User defined metadata. Default None.
 
         services ([str], optional): list of service names the task wants to use.
             If the services are up and running, an envvariable `RP_INFO_XXX`
@@ -631,7 +631,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_ID       : str         ,
         RAPTOR_FILE     : str         ,
         RAPTOR_CLASS    : str         ,
-        METADATA        : None        ,
+        METADATA        : {str: None} ,
         SERVICES        : [str]       ,
         TIMEOUT         : float       ,
         STARTUP_TIMEOUT : float       ,
@@ -699,7 +699,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_ID       : ''          ,
         RAPTOR_FILE     : ''          ,
         RAPTOR_CLASS    : ''          ,
-        METADATA        : None        ,
+        METADATA        : dict()      ,
         SERVICES        : list()      ,
         TIMEOUT         : 0.0         ,
         STARTUP_TIMEOUT : 0.0         ,

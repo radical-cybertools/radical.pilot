@@ -59,6 +59,9 @@ class TestTask(TestCase):
         if self.resource['mpi_flavor']:
             self.assertEqual(component._mpi_flavor,  self.resource['mpi_flavor'])
 
+        # we don't match a specific version, but just if the version is set
+        self.assertTrue(bool(component._mpi_version))
+
 
 # ------------------------------------------------------------------------------
 #
