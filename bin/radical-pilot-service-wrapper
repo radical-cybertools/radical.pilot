@@ -118,7 +118,7 @@ class ServiceWrapper(object):
         send the result to the agent
         '''
 
-        self._log.error('sending result - ignore %s:%s', self._match, err_msg)
+        self._log.error('sending result %s:%s', self._match, err_msg)
 
         if self._result_sent:
             self._log.error('duplicated?')
