@@ -241,6 +241,7 @@ echo "---------------------------------------------------------------------"
 echo
 echo "PWD       : $(pwd)"
 echo "ENV       : $EDUMP"
+echo "TYPE      : $ETYPE"
 echo "SCRIPT    : $SCRIPT"
 echo "PREFIX    : $PREFIX"
 echo "VERSION   : $VERSION"
