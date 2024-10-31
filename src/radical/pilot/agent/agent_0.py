@@ -383,6 +383,12 @@ class Agent_0(rpu.AgentComponent):
         td.arguments += ['-u', tid]
         td.arguments += ['-v']
 
+        if td.stdout:
+            td.arguments += ['-o', td.stdout]
+
+        if td.stderr:
+            td.arguments += ['-e', td.stderr]
+
         if td.startup_timeout:
             td.arguments += ['-t', '%d' % td.startup_timeout]
 
