@@ -383,7 +383,7 @@ class TaskDescription(ru.TypedDict):
         raptor_file (str, optional): Optional application supplied Python
             source file to load `raptor_class` from.
 
-        metadata (Any, optional): User defined metadata. Default None.
+        metadata (dict, optional): User defined metadata. Default None.
 
         timeout (float, optional): Any timeout larger than 0 will result in
             the task process to be killed after the specified amount of seconds.
@@ -584,7 +584,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_ID       : str         ,
         RAPTOR_FILE     : str         ,
         RAPTOR_CLASS    : str         ,
-        METADATA        : None        ,
+        METADATA        : {str: None} ,
         TIMEOUT         : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
@@ -648,7 +648,7 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_ID       : ''          ,
         RAPTOR_FILE     : ''          ,
         RAPTOR_CLASS    : ''          ,
-        METADATA        : None        ,
+        METADATA        : dict()      ,
         TIMEOUT         : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
