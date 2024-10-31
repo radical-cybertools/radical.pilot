@@ -118,13 +118,11 @@ class ServiceWrapper(object):
         send the result to the agent
         '''
 
-        self._log.error('sending result %s:%s', self._match, err_msg)
-
         if self._result_sent:
             self._log.error('duplicated?')
             return
 
-        self._log.debug('send result: %s [%s]', self._match, err_msg)
+        self._log.info('send result: %s [%s]', self._match, err_msg)
         msg = {'cmd': 'service_info',
                'arg': {'uid'  : self._uid,
                        'error': err_msg,
