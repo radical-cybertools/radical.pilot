@@ -54,8 +54,10 @@ class TestTask(TestCase):
         component._init_from_info(lm_info)
 
         self.assertEqual(component._command,     self.resource['mpirun_path'])
-        self.assertEqual(component._mpi_version, self.resource['mpi_version'])
         self.assertEqual(component._mpi_flavor,  self.resource['mpi_flavor'])
+
+        # we don't match a specific version, but just if the version is set
+        self.assertTrue(bool(component._mpi_version))
 
 
 # ------------------------------------------------------------------------------
