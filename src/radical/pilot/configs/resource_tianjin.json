@@ -6,7 +6,7 @@
         "default_schema"              : "local",
         "schemas"                     : {
             "local"             : {
-                "job_manager_endpoint": "fork://localhost/",
+                "job_manager_endpoint": "slurm://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
             }
         },
