@@ -113,16 +113,17 @@ class ServiceWrapper(object):
 
     # --------------------------------------------------------------------------
     #
-    def send_result(self, err_msg):
+    def send_result(self, err_msg=None):
         '''
         send the result to the agent
         '''
+
+        self._log.info('send result: %s [%s]', self._match, err_msg)
 
         if self._result_sent:
             self._log.error('duplicated?')
             return
 
-        self._log.info('send result: %s [%s]', self._match, err_msg)
         msg = {'cmd': 'service_info',
                'arg': {'uid'  : self._uid,
                        'error': err_msg,
@@ -201,6 +202,7 @@ class ServiceWrapper(object):
 
             if not self._pattern:
                 self._log.info('no pattern to watch')
+                self.send_result()
                 return
 
             if self._rank > 0:
@@ -256,7 +258,7 @@ class ServiceWrapper(object):
                     match = regex.match(line)
                     if match:
                         self._match = match.groups()[-1]
-                        self._timeout_evt.set()
+                        self.send_result()
                         break
 
         except Exception as e:

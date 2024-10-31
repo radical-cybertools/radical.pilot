@@ -8,7 +8,7 @@ import socket
 import radical.pilot as rp
 
 
-n_nodes = 2
+n_nodes = 1
 
 # ------------------------------------------------------------------------------
 #
@@ -97,7 +97,7 @@ def service():
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.settimeout(0.2)
+    sock.settimeout(1.0)
     sock.bind(('localhost', 12345))
 
     sys.stdout.write('port: 12345\n')
@@ -106,13 +106,18 @@ def service():
     sock.listen(1)
     start = time.time()
     while True:
+
+        print('%.2f: service loop' % time.time())
+
         try:
             client, _ = sock.accept()
             client.send(client.recv(1024))
             client.close()
+            print('%.2f: service served' % time.time())
+
         except socket.timeout:
             # run for 60 seconds, at most
-            if time.time() - start > 10:
+            if time.time() - start > 3600:
                 break
 
 
