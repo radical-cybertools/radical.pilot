@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+
+import sys
+import time
+import flask
+import requests
+
+
+def print(msg):
+    sys.stdout.write('%.2f %s\n' % (time.time(), msg))
+    sys.stdout.flush()
+
+
+# ------------------------------------------------------------------------------
+#
+rid  = 0
+urls = sys.argv[1:]
+app  = flask.Flask(__name__)
+
+assert urls, 'no target urls given'
+
+for i in range(len(urls)):
+    if not urls[i].startswith('http'):
+        urls[i] = 'http://%s' % urls[i]
+
+
+# ------------------------------------------------------------------------------
+#
+
+@app.route("/", defaults={"path": ""}, methods=['GET', 'POST'])
+@app.route("/<string:path>",           methods=['GET', 'POST'])
+@app.route("/<path:path>",             methods=['GET', 'POST'])
+def balance(path):
+
+    print('got request for %s' % path)
+
+    global rid
+    global urls
+
+    url  = urls[rid % len(urls)]
+    url += '/' + path
+    rid += 1
+
+    data    = flask.request.get_data()
+    headers = dict(flask.request.headers)
+    del headers['Host']
+
+    print('proxy to %s' % url)
+    response = requests.post(url, headers=headers, data=data)
+
+    print('proxy to %s: %d' % (url, response.status_code))
+    return response.text
+
+
+# ------------------------------------------------------------------------------
+#
+if __name__ == '__main__':
+
+    app.run(threaded=True)
+
+
+# ------------------------------------------------------------------------------
+
