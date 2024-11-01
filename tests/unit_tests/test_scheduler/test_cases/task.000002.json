@@ -7,6 +7,7 @@
             "arguments"        : ["12"],
             "environment"      : {},
             "ranks"            : 9,
+            "ranks_per_node"   : null,
             "cores_per_rank"   : 2,
             "gpus_per_rank"    : 0.3333333333333333,
             "gpu_type"         : "",

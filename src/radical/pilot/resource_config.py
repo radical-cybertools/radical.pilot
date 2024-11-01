@@ -575,7 +575,6 @@ class NodeResources(ru.TypedDict):
                 if mem: assert self.mem >= mem
 
             # slot is valid = apply the respective changes
-          # print('      -> %s' % self)
             for ro in cores:
                 c_idx = self._get_core_index(ro)
                 self.cores[c_idx].occupation += ro.occupation
@@ -587,10 +586,6 @@ class NodeResources(ru.TypedDict):
             self.lfs -= lfs
             self.mem -= mem
 
-          # print('      => %s' % self)
-          # print('allocate %s' % slot)
-          # print()
-
 
     # --------------------------------------------------------------------------
     #
@@ -598,8 +593,6 @@ class NodeResources(ru.TypedDict):
 
         with self.__lock__:
 
-          # print('release  %s' % slot)
-          # print('     ->  %s' % self)
             for ro in slot.cores:
                 self.cores[ro.index].occupation -= ro.occupation
               # assert self.cores[ro.index].occupation >= 0.0, \
@@ -612,8 +605,6 @@ class NodeResources(ru.TypedDict):
 
             self.lfs += slot.lfs
             self.mem += slot.mem
-
-          # print('     =>  %s' % self)
 
 
     # --------------------------------------------------------------------------
@@ -794,7 +785,6 @@ class NodeList(ru.TypedDict):
             while True:
                 count += 1
                 slot = node.find_slot(rr)
-              # print('--- got slot %s' % slot)
                 if not slot:
                     break
 
@@ -813,12 +803,10 @@ class NodeList(ru.TypedDict):
                 node.deallocate_slot(slot)
             self.__last_failed_rr__ = rr
             self.__last_failed_n__  = n_slots
-          # print(' --- %5d' % count)
             return None
 
         self.__index__ = stop
 
-      # print(' === %5d' % count)
         return slots
 
 

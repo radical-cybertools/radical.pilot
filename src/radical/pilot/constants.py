@@ -51,6 +51,9 @@ PROXY_CONTROL_PUBSUB           = 'proxy_control_pubsub'
 PROXY_STATE_PUBSUB             = 'proxy_state_pubsub'
 PROXY_TASK_QUEUE               = 'proxy_task_queue'
 
+CLIENT_PUBSUB                  = 'client_pubsub'
+CLIENT_QUEUE                   = 'client_queue'
+
 
 # ------------------------------------------------------------------------------
 #
