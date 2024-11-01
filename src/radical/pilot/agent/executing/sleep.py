@@ -155,7 +155,7 @@ class Sleep(AgentExecutingComponent) :
 
         self._log.info('control_cb [%s]: %s', topic, msg)
 
-        cmd = msg['cmd']
+        cmd = msg.get('cmd')
 
         # FIXME RPC: already handled in the component base class
         if cmd == 'cancel_tasks':

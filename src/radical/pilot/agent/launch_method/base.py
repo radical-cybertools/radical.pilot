@@ -336,6 +336,9 @@ class LaunchMethod(object):
                 # RP internal variables
                 'RP_*',
 
+                # SANDBOX location
+                'PWD',
+
                 # resource details
                 'ROCR_VISIBLE_DEVICES',
                 'CUDA_VISIBLE_DEVICES',

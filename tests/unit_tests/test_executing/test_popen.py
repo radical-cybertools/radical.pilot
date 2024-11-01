@@ -98,6 +98,11 @@ class TestPopen(TestCase):
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher
 
+        pex._reg = ru.TypedDict(
+                {'bridges.control_pubsub': {'addr_pub': 'addr_pub',
+                                            'addr_sub': 'addr_sub'}})
+        pex._reg.dump = mock.Mock()
+
         pex._handle_task(task)
 
         popen_input_kwargs = mocked_sp_popen.call_args_list[0][1]

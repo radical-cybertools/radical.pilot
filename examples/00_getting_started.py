@@ -82,11 +82,7 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable     = '/bin/date'
-            td.ranks          = 1
-            td.cores_per_rank = 1
-            td.gpus_per_rank  = 1
-            td.gpu_type       = rp.CUDA
+            td.executable = '/bin/date'
 
             tds.append(td)
             report.progress()

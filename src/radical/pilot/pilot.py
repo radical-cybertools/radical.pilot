@@ -257,8 +257,8 @@ class Pilot(object):
                 if cb_data: cb([self], cb_data)
                 else      : cb([self])
 
-        # ask pmgr to invoke any global callbacks
-        self._pmgr._call_pilot_callbacks(self)
+            # ask pmgr to invoke any global callbacks
+            self._pmgr._call_pilot_callbacks(self)
 
 
     # --------------------------------------------------------------------------
@@ -682,6 +682,18 @@ class Pilot(object):
             raise RuntimeError('pilot is not attached to a task manager, yet')
 
         return self._tmgr.submit_raptors(descriptions, self.uid)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def register_service(self, uid, info):
+        '''
+        Instead of running a service task and injecting the obtained service
+        info into other task environments, we can register an external service
+        with the pilot, and have the pilot inject the service info the same way.
+        '''
+
+        self.rpc('register_service', uid=uid, info=info)
 
 
     # --------------------------------------------------------------------------

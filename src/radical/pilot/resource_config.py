@@ -789,6 +789,7 @@ class NodeList(ru.TypedDict):
             while True:
                 count += 1
                 slot = node.find_slot(rank_reqs)
+              # print('--- got slot %s' % slot)
                 if not slot:
                     break
 
