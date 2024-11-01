@@ -285,7 +285,7 @@ class TestComponent(TestCase):
 
         for uid in ['101', '102']:
             msg['arg']['uid']   = uid
-            msg['arg']['error'] = ''
+            msg['arg']['error'] = None
 
             self.assertTrue(uid not in agent_0._service_uids_running)
 
