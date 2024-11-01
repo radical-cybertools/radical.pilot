@@ -29,7 +29,7 @@ def app():
                     'uid'           : 'test_service_%02d' % idx,
                     'executable'     : __file__,
                     'arguments'      : ['service', 1024 + 1 + idx],
-                    'stdout'         : '/tmp/watcher_%d.out' % idx,
+                  # 'stdout'         : '/tmp/watcher_%d.out' % idx,
                     'ranks'          : 1,
                     'cores_per_rank' : 1,
                     'named_env'      : 'rp',
@@ -67,13 +67,13 @@ def app():
 
         # collect the endpoint port
         info = service.wait_info()
-        print('found %s: %s' % (service.uid, info))
+        print(' * %s: %s' % (service.uid, info))
 
 
         # ---------------------------------------------------------------------
         # run the clients
         cds = list()
-        for i in range(4):
+        for i in range(3):
             cd = rp.TaskDescription({'services'   : [service.uid],
                                      'executable' : __file__,
                                      'arguments'  : ['client']})
@@ -101,6 +101,7 @@ def service(port):
     sock.bind(('localhost', port))
 
     sys.stdout.write('port: %d\n' % port)
+    sys.stdout.write('pid : %d\n' % os.getpid())
     sys.stdout.flush()
 
     sock.listen(1)

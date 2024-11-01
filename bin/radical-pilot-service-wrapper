@@ -53,6 +53,7 @@ class ServiceWrapper(object):
         parser.add_argument('-e', '--error',    dest='error')
         parser.add_argument('-v', '--verbose',  dest='verbose', action='store_true')
         parser.add_argument('-t', '--timeout',  dest='timeout')
+        parser.add_argument('-P', '--ppid',     dest='ppid')
 
         args = parser.parse_args()
         self._command = args.command or None
@@ -64,6 +65,8 @@ class ServiceWrapper(object):
         self._error   = args.error   or '%s.stderr' % self._uid
         self._verbose = args.verbose or False
         self._timeout = args.timeout or 0
+        self._ppid    = args.ppid    or None
+        self._pwatch  = None
 
         self._timeout = int(self._timeout) if self._timeout else 0
 
@@ -76,9 +79,10 @@ class ServiceWrapper(object):
                                targets='%s/%s.log' % (self._sbox, self._uid))
         self._log.debug('starting service')
 
-        print('target : %s/%s.log' % (self._sbox, self._uid))
-        print('uid    : %s' % self._uid)
-        print('sandbox: %s' % self._sbox)
+        if self._ppid:
+            self._pwatch = ru.PWatcher(uid='%s.pw' % self._uid,
+                                       action=ru.PWatcher.KILLALL)
+            self._pwatch.watch(int(self._ppid))
 
         self._stop_evt      = threading.Event()
         self._timeout_evt   = threading.Event()
@@ -200,6 +204,9 @@ class ServiceWrapper(object):
             self._log.debug('executing: %s', cmd)
             self._proc = sp.Popen(cmd, shell=True)
 
+            self._pwatch.watch(self._proc.pid)
+            self._log.debug('proc_pid: %s', self._proc.pid)
+
             if not self._pattern:
                 self._log.info('no pattern to watch')
                 self.send_result()
@@ -274,7 +281,7 @@ class ServiceWrapper(object):
         '''
 
         while self._proc.poll() is None:
-            self._log.debug('wait: %s', self._proc.poll())
+          # self._log.debug('wait: %s', self._proc.poll())
             time.sleep(1.0)
 
         ret = self._proc.poll()

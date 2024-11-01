@@ -381,6 +381,7 @@ class Agent_0(rpu.AgentComponent):
         td.executable = 'radical-pilot-service-wrapper'
         td.arguments  = ['-c', '%s %s' % (exe, ' '.join(args))]
         td.arguments += ['-u', tid]
+        td.arguments += ['-P', os.getpid()]
         td.arguments += ['-v']
 
         if td.stdout:
