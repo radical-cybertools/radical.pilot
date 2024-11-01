@@ -11,6 +11,7 @@ from .resource_config import Slot
 
 # task modes
 TASK_EXECUTABLE  = 'task.executable'
+TASK_SERVICE     = 'task.service'
 TASK_FUNCTION    = 'task.function'
 TASK_FUNC        = 'task.function'
 TASK_METHOD      = 'task.method'
@@ -31,6 +32,11 @@ MODE             = 'mode'
 # mode: TASK_EXECUTABLE
 EXECUTABLE       = 'executable'
 ARGUMENTS        = 'arguments'
+
+# mode: TASK_SERVICE
+EXECUTABLE       = 'executable'
+ARGUMENTS        = 'arguments'
+INFO_PATTERN     = 'info_pattern'
 
 # mode: TASK_METHOD
 METHOD           = 'method'
@@ -64,6 +70,7 @@ SANDBOX          = 'sandbox'
 # resource requirements
 USE_MPI          = 'use_mpi'                  # default `True if RANKS > 1`
 RANKS            = 'ranks'                    # ranks
+RANKS_PER_NODE   = 'ranks_per_node'           # ranks per node
 CORES_PER_RANK   = 'cores_per_rank'           # cores per rank
 GPUS_PER_RANK    = 'gpus_per_rank'            # gpus per rank
 THREADING_TYPE   = 'threading_type'           # OpenMP?
@@ -97,6 +104,7 @@ PRE_EXEC_SYNC    = 'pre_exec_sync'
 POST_LAUNCH      = 'post_launch'
 POST_EXEC        = 'post_exec'
 TIMEOUT          = 'timeout'
+STARTUP_TIMEOUT  = 'startup_timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 SLOTS            = 'slots'
@@ -105,6 +113,7 @@ STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
 TAGS             = 'tags'
+SERVICES         = 'services'
 METADATA         = 'metadata'
 
 
@@ -132,6 +141,17 @@ class TaskDescription(ru.TypedDict):
 
             - TASK_EXECUTABLE: the task is spawned as an external executable via
               a resource specific launch method (srun, aprun, mpiexec, etc).
+
+              - required attributes: `executable`
+              - related  attributes: `arguments`
+
+            - TASK_SERVICE: exactly like TASK_EXECUTABLE, but the task is
+              handled differently by the agent.  This mode is used to start
+              service tasks whose connection endpoint is made available to other
+              tasks.
+
+              NOTE: the mode `TASK_SERVICE` is only used internally and should
+              not be used by application developers.
 
               - required attributes: `executable`
               - related  attributes: `arguments`
@@ -199,6 +219,16 @@ class TaskDescription(ru.TypedDict):
         arguments (list[str]): The command line arguments for the given
             `executable` (`list` of `strings`).
 
+        info_pattern (str): A regular expression pattern to extract service
+            startup information (only for tasks with mode `TASK_SERVICE`).  The
+            pattern is formed like:
+
+                'src:regex'
+
+            where `src` is `stdout`, `stderr`, or a file path, and regex is a
+            regular expression to extract the information from the respective
+            source.
+
         code (str): The code to run.  This field is expected to contain valid
             python code which is executed when the task mode is `TASK_EXEC` or
             `TASK_EVAL`.
@@ -235,6 +265,10 @@ class TaskDescription(ru.TypedDict):
             attribute `cpu_process_type` was previously used to signal the need
             for an MPI communicator - that attribute is now also deprecated and
             will be ignored.
+
+        ranks_per_node (int, optional): The number of ranks to start on each
+            node.  If not set, the number of ranks per node will be determined
+            by the scheduler depending on resource availability.
 
         cores_per_rank (int, optional): The number of cpu cores each process
             will have available to start its own threads or processes on.  By
@@ -385,9 +419,20 @@ class TaskDescription(ru.TypedDict):
 
         metadata (dict, optional): User defined metadata. Default None.
 
+        services ([str], optional): list of service names the task wants to use.
+            If the services are up and running, an envvariable `RP_INFO_XXX`
+            will be set where `XXX` is the uppercased service name, and the
+            variable's value is the service information obtained by the agent
+            during service startup.
+
         timeout (float, optional): Any timeout larger than 0 will result in
             the task process to be killed after the specified amount of seconds.
             The task will then end up in `CANCELED` state.
+
+        startup_timeout (float, optional): This setting is specific for service
+            tasks: any value larger than 0 will abort the service if after that
+            time no service information has been obtaines, i.e., if the service
+            startup takes too long.  The service will end up in `FAILED` state.
 
         cleanup (bool, optional): If cleanup flag is set, the pilot will
             delete the entire task sandbox upon termination. This includes all
@@ -534,6 +579,7 @@ class TaskDescription(ru.TypedDict):
 
         EXECUTABLE      : str         ,
         ARGUMENTS       : [str]       ,
+        INFO_PATTERN    : str         ,
         CODE            : str         ,
         FUNCTION        : str         ,
         ARGS            : [None]      ,
@@ -557,6 +603,7 @@ class TaskDescription(ru.TypedDict):
 
         USE_MPI         : bool        ,
         RANKS           : int         ,
+        RANKS_PER_NODE  : int         ,
         CORES_PER_RANK  : int         ,
         GPUS_PER_RANK   : float       ,
         THREADING_TYPE  : str         ,
@@ -585,7 +632,9 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_FILE     : str         ,
         RAPTOR_CLASS    : str         ,
         METADATA        : {str: None} ,
+        SERVICES        : [str]       ,
         TIMEOUT         : float       ,
+        STARTUP_TIMEOUT : float       ,
         CLEANUP         : bool        ,
         PILOT           : str         ,
         SLOTS           : [Slot]      ,
@@ -598,6 +647,7 @@ class TaskDescription(ru.TypedDict):
         MODE            : TASK_EXECUTABLE,
         EXECUTABLE      : ''          ,
         ARGUMENTS       : list()      ,
+        INFO_PATTERN    : ''          ,
         CODE            : ''          ,
         FUNCTION        : ''          ,
         ARGS            : list()      ,
@@ -621,6 +671,7 @@ class TaskDescription(ru.TypedDict):
 
         USE_MPI         : None        ,
         RANKS           : 1           ,
+        RANKS_PER_NODE  : None        ,
         CORES_PER_RANK  : 1           ,
         GPUS_PER_RANK   : 0.          ,
         THREADING_TYPE  : ''          ,
@@ -649,7 +700,9 @@ class TaskDescription(ru.TypedDict):
         RAPTOR_FILE     : ''          ,
         RAPTOR_CLASS    : ''          ,
         METADATA        : dict()      ,
+        SERVICES        : list()      ,
         TIMEOUT         : 0.0         ,
+        STARTUP_TIMEOUT : 0.0         ,
         CLEANUP         : False       ,
         PILOT           : ''          ,
         SLOTS           : list()      ,
@@ -671,7 +724,7 @@ class TaskDescription(ru.TypedDict):
         if not self.get('mode'):
             self['mode'] = TASK_EXECUTABLE
 
-        if self.mode in [TASK_EXECUTABLE, AGENT_SERVICE]:
+        if self.mode in [TASK_EXECUTABLE, TASK_SERVICE, AGENT_SERVICE]:
             if not self.get('executable'):
                 umode = self.mode.upper().replace('.', '_')
                 raise ValueError("%s Task mode needs 'executable'" % umode)

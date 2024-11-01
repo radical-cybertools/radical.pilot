@@ -6,13 +6,15 @@ __license__   = "MIT"
 import copy
 import time
 
+import threading     as mt
+
 import radical.utils as ru
 
 from . import states    as rps
 from . import constants as rpc
 
 from .staging_directives import expand_description
-from .task_description   import TaskDescription
+from .task_description   import TaskDescription, TASK_SERVICE
 from .resource_config    import Slot
 
 
@@ -87,6 +89,8 @@ class Task(object):
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
+        self._info             = None
+        self._info_evt         = mt.Event()
         self._pilot            = self._descr.pilot
         self._endpoint_fs      = None
         self._resource_sandbox = None
@@ -177,6 +181,12 @@ class Task(object):
         if metadata:
             self._descr['metadata'] = metadata
 
+        # if this is a service and is finalized, set info_wait event
+        if target in rps.FINAL:
+            if self._descr.mode == TASK_SERVICE:
+                # signal failure in case we are still waiting for the service
+                self._set_info(None)
+
         # callbacks are not invoked here, but are bulked in the tmgr
 
 
@@ -205,6 +215,7 @@ class Task(object):
             'pilot_sandbox':    self.pilot_sandbox,
             'task_sandbox':     self.task_sandbox,
             'client_sandbox':   self.client_sandbox,
+            'info':             self.info,
             'slots':            self.slots,
             'partition':        self.partition,
             'description':      self.description,   # this is a deep copy
@@ -459,6 +470,27 @@ class Task(object):
     def metadata(self):
         """The metadata field of the task's description."""
         return self._descr.metadata
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def info(self):
+        """The metadata field of the task's description."""
+        return self._info
+
+    def _set_info(self, info):
+        self._info = info
+        self._info_evt.set()
+
+    def wait_info(self, timeout=None):
+
+        self._info_evt.wait(timeout=timeout)
+
+        if self._info is None:
+            raise RuntimeError('no service info: %s / %s'
+                              % (self.stdout, self.stderr))
+        return self.info
 
 
     # --------------------------------------------------------------------------
