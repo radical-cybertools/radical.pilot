@@ -4,7 +4,6 @@ __license__   = "MIT"
 
 
 import os
-import sys
 import time
 import queue
 import collections
@@ -171,10 +170,15 @@ class TaskManager(rpu.ClientComponent):
         # hook into the control pubsub for rpc handling
         self._rpc_queue = queue.Queue()
         ctrl_addr_pub   = self._session._reg['bridges.control_pubsub.addr_pub']
+        ctrl_addr_sub   = self._session._reg['bridges.control_pubsub.addr_sub']
 
         self._ctrl_pub  = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                            log=self._log, prof=self._prof)
 
+        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                          log=self._log, prof=self._prof,
+                          cb=self._control_cb,
+                          topic=rpc.CONTROL_PUBSUB)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -307,21 +311,18 @@ class TaskManager(rpu.ClientComponent):
 
             if state in rps.FINAL:
 
-                self._log.debug('pilot %s is final', pilot.uid)
+                self._log.debug('pilot %s is final', pid)
 
-                # FIXME: MongoDB
-                # TODO: fail all non-final tasks which were assigned to that
-                # pilot
-                continue
+                tasks = list()
+                for task in self._tasks.values():
 
-             ## for task in tasks:
-             ##
-             ##     task['exception']        = 'RuntimeError("pilot died")'
-             ##     task['exception_detail'] = 'pilot %s is final' % pid
-             ##     task['state'] = rps.FAILED
-             ##
-             ## # final tasks are not pushed
-             ## self.advance(tasks, publish=True, push=False)
+                    task['exception']        = 'RuntimeError("pilot died")'
+                    task['exception_detail'] = 'pilot %s is final' % pid
+                    task['state'] = rps.FAILED
+                    tasks.append(task)
+
+                # final tasks are not pushed
+                self.advance(tasks, publish=True, push=False)
 
         # keep cb registered
         return True
@@ -386,6 +387,7 @@ class TaskManager(rpu.ClientComponent):
                     target = task_dict['target_state']
 
                 if current == target:
+                    self._log.debug('tmgr: state known: %s', uid)
                     continue
 
                 if current in [rps.DONE] and \
@@ -400,8 +402,10 @@ class TaskManager(rpu.ClientComponent):
                     passed = passed[-1:]
 
                 for s in passed:
+
                     task_dict['state'] = s
                     self._tasks[uid]._update(task_dict)
+
                     to_notify.append([task, s])
 
                 task_dict['state'] = target
@@ -630,7 +634,7 @@ class TaskManager(rpu.ClientComponent):
                     raise ValueError('pilot %s not removed' % pid)
                 del self._pilots[pid]
 
-        # publish to the command channel for the scheduler to pick up
+        # publish to the control channel for the scheduler to pick up
         self.publish(rpc.CONTROL_PUBSUB, {'cmd' : 'remove_pilots',
                                           'arg' : {'pids'  : pilot_ids,
                                                    'tmgr'  : self.uid}})
@@ -639,7 +643,9 @@ class TaskManager(rpu.ClientComponent):
     # --------------------------------------------------------------------------
     #
     # FIXME RPC
-    def control_cb(self, topic, msg):
+    def _control_cb(self, topic, msg):
+
+        self._log.debug_5('control cb: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -648,6 +654,26 @@ class TaskManager(rpu.ClientComponent):
 
             self._log.debug('rpc res: %s', arg)
             self._rpc_queue.put(arg)
+
+
+        elif cmd == 'service_up':
+
+            self._log.debug('=== service up: %s', arg)
+            self._service_update(arg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _service_update(self, arg):
+
+        uid  = arg['uid']
+        task = self._tasks.get(uid)
+
+        if not task:
+            return
+
+        task._set_info(arg['info'] or '')  # `None` would indicate an error
+        self._log.debug('=== service update: %s: %s', uid, task.info)
 
 
     # --------------------------------------------------------------------------
@@ -946,6 +972,8 @@ class TaskManager(rpu.ClientComponent):
         if   not state                  : states = rps.FINAL
         elif not isinstance(state, list): states = [state]
         else                            : states =  state
+
+        self._log.debug('=== wait for %s: %s', uids, states)
 
         # we simplify state check by waiting for the *earliest* of the given
         # states - if the task happens to be in any later state, we are sure the

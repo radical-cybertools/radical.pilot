@@ -44,6 +44,7 @@ done
 test -z "$PREFIX"  && echo "no prefix" && exit
 
 test "$ETYPE" = 'anaconda'   && ETYPE='conda'
+test "$ETYPE" = 'virtenv'    && ETYPE='venv'
 test "$ETYPE" = 'virtualenv' && ETYPE='venv'
 
 # sanitize name (remove trailing slashes etc)
