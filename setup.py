@@ -29,12 +29,14 @@ descr    = "RADICAL-Cybertools Pilot Job Framework"
 keywords = ['radical', 'cybertools', 'pilot job']
 
 share    = 'share/%s' % name
-data     = [('%s/examples'      % share, glob('examples/*.{py,cfg,json,sh}')),
-            ('%s/examples'      % share, glob('examples/hello*'            )),
-            ('%s/examples/docs' % share, glob('examples/docs/*.py'         )),
-            ('%s/examples/misc' % share, glob('examples/misc/*.py'         )),
-            ('%s/examples/misc' % share, glob('examples/misc/*.cfg'        )),
-            ('%s/examples/misc' % share, glob('examples/data_staging/*.py' ))]
+data     = [('%s/examples'      % share, glob('examples/*.py'             )),
+            ('%s/examples'      % share, glob('examples/*.json'           )),
+            ('%s/examples'      % share, glob('examples/*.sh'             )),
+            ('%s/examples'      % share, glob('examples/hello*'           )),
+            ('%s/examples/docs' % share, glob('examples/docs/*.py'        )),
+            ('%s/examples/misc' % share, glob('examples/misc/*.py'        )),
+            ('%s/examples/misc' % share, glob('examples/misc/*.cfg'       )),
+            ('%s/examples/misc' % share, glob('examples/data_staging/*.py'))]
 
 
 # ------------------------------------------------------------------------------
