@@ -1028,7 +1028,6 @@ virtenv_create()
                 "easy_install pip" \
              || echo "Couldn't install pip! Uh oh...."
     fi
-    PIP="$PYTHON -m pip"
 
     # update required base modules
     # of the RADICAL stack
@@ -1036,7 +1035,7 @@ virtenv_create()
             "pip --no-cache-dir install --upgrade pip setuptools wheel" \
          || echo "Couldn't update venv! Lets see how far we get ..."
 
-    # make sure the new pip version is used (but keep the python executable)
+    # make sure the new pip version is used
     rehash
 
     # collect ve info
