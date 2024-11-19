@@ -773,7 +773,10 @@ class Agent_0(rpu.AgentComponent):
 
         # prepare the env to be loaded in task exec scripts
         with ru.ru_open('%s.sh' % ve_local_path, 'w') as fout:
-            fout.write('\n. %s/bin/activate\n\n' % ve_path)
+            if etype == 'shell':
+                fout.write('\n. %s.env\n\n' % ve_local_path)
+            else:
+                fout.write('\n. %s/bin/activate\n\n' % ve_path)
 
         # publish the venv creation to the scheduler
         self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'register_named_env',

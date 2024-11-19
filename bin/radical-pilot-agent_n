@@ -25,7 +25,7 @@ def main(sid, reg_addr, uid, ppid):
     prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
 
     # process watcher
-    pwatcher = ru.PWatcher(uid='%s.pw' % uid)
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=log)
     pwatcher.watch(os.getpid())
     pwatcher.watch(int(ppid))
 
