@@ -141,8 +141,8 @@
                                          "FORK" : {}
                                         },
         "rp_version"                  : "installed",
-        "virtenv"                     : "/home/merzky/radical.pilot.sandbox/ve3/",
-        "virtenv_mode"                : "use",
+      # "virtenv"                     : "/home/merzky/radical.pilot.sandbox/ve3/",
+        "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 64,
         "gpus_per_node"               : 0,
