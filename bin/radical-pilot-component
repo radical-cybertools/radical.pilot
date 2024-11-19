@@ -75,7 +75,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
     spt.setproctitle('rp.%s' % uid)
 
     # process watcher
-    pwatcher = ru.PWatcher(uid='%s.pw' % uid)
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=log)
     pwatcher.watch(int(ppid))
     pwatcher.watch(os.getpid())
 
