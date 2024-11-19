@@ -729,9 +729,10 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
                 python_dist = 'anaconda'
                 virtenv     = os.environ['CONDA_PREFIX']
             else:
-                # we can't use local
-                self._log.error('virtenv_mode is local, no local env found')
-                raise ValueError('no local env found')
+                # we are not in a virtualenv, just use Python as-is.
+                python_dist  = 'default'
+                virtenv_mode = 'none'
+                virtenv      = ''
 
         if not rp_version.startswith('@') and \
                rp_version not in ['installed', 'local', 'release']:
