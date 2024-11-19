@@ -81,7 +81,8 @@ class ServiceWrapper(object):
 
         if self._ppid:
             self._pwatch = ru.PWatcher(uid='%s.pw' % self._uid,
-                                       action=ru.PWatcher.KILLALL)
+                                       action=ru.PWatcher.KILLALL,
+                                       log=self._log)
             self._pwatch.watch(int(self._ppid))
 
         self._stop_evt      = threading.Event()
