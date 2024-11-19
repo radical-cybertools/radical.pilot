@@ -637,6 +637,8 @@ virtenv_setup()
                 printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
                 exit 1
             fi
+            ve_create=FALSE
+            ve_update=FALSE
             ;;
 
         none)
@@ -871,7 +873,7 @@ virtenv_activate()
     VIRTENV_IS_ACTIVATED=TRUE
     echo "VIRTENV activated : $virtenv"
 
-    if "$VIRTENV_MODE" != 'none'; then
+    if test "$VIRTENV_MODE" != 'none'; then
         RP_PATH="$virtenv/bin"
         echo "RP_PATH           : $RP_PATH"
 
