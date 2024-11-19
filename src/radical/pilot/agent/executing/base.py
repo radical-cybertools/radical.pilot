@@ -619,8 +619,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
         ret += 'export RP_CORES_PER_RANK=%d\n'      % td['cores_per_rank']
         ret += 'export RP_GPUS_PER_RANK=%s\n'       % gpr
 
-        self._reg.dump(tid)
-
         services = td.get('services') or list()
         for service in services:
             info = self._reg['services.%s' % service] or ''
