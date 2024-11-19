@@ -586,59 +586,73 @@ virtenv_setup()
     ve_create=UNDEFINED
     ve_update=UNDEFINED
 
-    if test "$virtenv_mode" = 'local'
-    then
-        if test "$RP_VERSION" = 'local'
-        then
-            printf "WARNING: use installed RP for VE_MODE=local\n"
-            export RP_VERSION='installed'
-        fi
-    fi
+    case "$virtenv_mode" in
+        local)
+            if test "$RP_VERSION" = 'local'; then
+                printf "WARNING: use installed RP for VE_MODE=local\n"
+                export RP_VERSION='installed'
+            fi
+            if ! test -d "$virtenv/"; then
+                printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
+                exit 1
+            fi
+            ve_create=FALSE
+            ve_update=FALSE
+            ;;
 
-    if test "$virtenv_mode" = "private"
-    then
-        if test -d "$virtenv/"
-        then
-            printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+        none)
+            if test "$RP_VERSION" = 'local'; then
+                printf "WARNING: use installed RP for VE_MODE=none\n"
+                export RP_VERSION='installed'
+            fi
+            virtenv=''
+            ve_create=FALSE
+            ve_update=FALSE
+            ;;
+
+        private)
+            if test -d "$virtenv/"; then
+                printf "\nERROR: private virtenv already exists at $virtenv\n\n"
+                exit 1
+            fi
+            ve_create=TRUE
+            ve_update=FALSE
+            ;;
+
+        update)
+            ve_create=FALSE
+            ve_update=TRUE
+            test -d "$virtenv/" || ve_create=TRUE
+            ;;
+
+        create)
+            ve_create=TRUE
+            ve_update=FALSE
+            ;;
+
+        use)
+            if ! test -d "$virtenv/"; then
+                printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
+                exit 1
+            fi
+            ve_create=FALSE
+            ve_update=FALSE
+            ;;
+
+        recreate)
+            test -d "$virtenv/" && rm -r "$virtenv"
+            ve_create=TRUE
+            ve_update=FALSE
+            ;;
+
+        *)
+            ve_create=FALSE
+            ve_update=FALSE
+            printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
             exit 1
-        fi
-        ve_create=TRUE
-        ve_update=FALSE
+            ;;
+    esac
 
-    elif test "$virtenv_mode" = "update"
-    then
-        ve_create=FALSE
-        ve_update=TRUE
-        test -d "$virtenv/" || ve_create=TRUE
-
-    elif test "$virtenv_mode" = "create"
-    then
-        ve_create=TRUE
-        ve_update=FALSE
-
-    elif test "$virtenv_mode" = "use" \
-         -o   "$virtenv_mode" = "local"
-    then
-        if ! test -d "$virtenv/"
-        then
-            printf "\nERROR: given virtenv does not exist at $virtenv\n\n"
-            exit 1
-        fi
-        ve_create=FALSE
-        ve_update=FALSE
-
-    elif test "$virtenv_mode" = "recreate"
-    then
-        test -d "$virtenv/" && rm -r "$virtenv"
-        ve_create=TRUE
-        ve_update=FALSE
-
-    else
-        ve_create=FALSE
-        ve_update=FALSE
-        printf "\nERROR: virtenv mode invalid: $virtenv_mode\n\n"
-        exit 1
-    fi
 
     if test "$ve_create" = 'TRUE'
     then
@@ -684,7 +698,8 @@ virtenv_setup()
     # NOTE: for any immutable virtenv (VIRTENV_MODE==use), we have to choose
     #       a SANDBOX install target.
     if test "$virtenv_mode" = "use" \
-       -o   "$virtenv_mode" = "local"
+       -o   "$virtenv_mode" = "local" \
+       -o   "$virtenv_mode" = "none"
     then
         if test "$RP_INSTALL_TARGET" = "VIRTENV"
         then
@@ -777,7 +792,12 @@ virtenv_activate()
     virtenv="$1"
     python_dist="$2"
 
-    if test "$python_dist" = "anaconda"; then
+    if test "$VIRTENV_MODE" = 'none'; then
+        export RP_VENV_TYPE='shell'
+        # no virtenv to activate
+        true
+
+    elif test "$python_dist" = "anaconda"; then
         export RP_VENV_TYPE='conda'
         if ! test -z "$(which conda)"; then
             eval "$(conda shell.posix hook)"
@@ -795,6 +815,7 @@ virtenv_activate()
             echo "Loading of conda env failed!"
             exit 1
         fi
+
     else
         export RP_VENV_TYPE='venv'
         unset VIRTUAL_ENV
@@ -805,16 +826,19 @@ virtenv_activate()
         fi
     fi
 
+
     export RP_VENV_PATH="$virtenv"
 
     VIRTENV_IS_ACTIVATED=TRUE
     echo "VIRTENV activated : $virtenv"
 
-    RP_PATH="$virtenv/bin"
-    echo "RP_PATH           : $RP_PATH"
+    if test "$VIRTENV_MODE" != 'none'; then
+        RP_PATH="$virtenv/bin"
+        echo "RP_PATH           : $RP_PATH"
 
-    PATH="$RP_PATH:$PATH"
-    export PATH
+        PATH="$RP_PATH:$PATH"
+        export PATH
+    fi
 
     # make sure we use the new python binary
     rehash
@@ -1364,7 +1388,12 @@ profile_event 'bootstrap_0_start'
 #       module path than one would expect from the virtenv path.  We thus
 #       normalize the virtenv path before we use it.
 echo "VIRTENV           : $VIRTENV"
-if test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
+echo "VIRTENV_MODE      : $VIRTENV_MODE"
+
+if test "$VIRTENV_MODE" = 'none'; then
+    VIRTENV=''
+
+elif test "$PYTHON_DIST" = "anaconda" && ! test -d "$VIRTENV/"; then
     case "$VIRTENV_MODE" in
         recreate|update|use|local)
             VIRTENV=$(cd `conda info --envs | awk -v envname="$VIRTENV" \
@@ -1379,7 +1408,7 @@ else
     VIRTENV=`(cd $VIRTENV; pwd -P)`
     rmdir "$VIRTENV" 2>/dev/null
 fi
-echo "VIRTENV normalized: $VIRTENV"
+echo "VIRTENV normalized: $VIRTENV ($PYTHON_DIST)"
 
 # Check that mandatory arguments are set
 # (Currently all that are passed through to the agent)
