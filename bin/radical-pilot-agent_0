@@ -21,10 +21,10 @@ if __name__ == "__main__":
     spt.setproctitle('rp.%s' % uid)
 
     # process watcher
-    pwatcher = ru.PWatcher(uid='%s.pw' % uid)
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=None)
     pwatcher.watch(int(ppid))
     pwatcher.watch(os.getpid())
-
 
     agent = rp.Agent_0()
     agent.start()
