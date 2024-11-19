@@ -4,7 +4,7 @@ RP's documentation uses [Sphinx](https://www.sphinx-doc.org/en/master/index.html
 
 ## Compiling the documentation
 
-1. Clone the RP's GitHub repository on a GNU/Linux system. Currently, RP documentation cannot compile on a MacOS system:
+1. Clone the RP's GitHub repository on a GNU/Linux system:
 
   ```shell
   git clone git@github.com:radical-cybertools/radical.pilot.git
