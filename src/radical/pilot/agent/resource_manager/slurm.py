@@ -35,11 +35,11 @@ class Slurm(ResourceManager):
         description is crafted and returned.
 
         SLURM_CLUSTER_NAME=frontier
+        SLURM_JOB_NUM_NODES=4
         SLURM_CPUS_ON_NODE=64
         SLURM_GPUS_ON_NODE=8
         SLURM_JOB_CPUS_PER_NODE=64(x4)
         SLURM_JOB_END_TIME=1712740416
-        SLURM_JOB_NUM_NODES=4
         SLURM_JOB_START_TIME=1712740356
         SLURM_THREADS_PER_CORE=1
         '''
@@ -56,10 +56,16 @@ class Slurm(ResourceManager):
         for site in sites:
             if resource:
                 break
-            for res, rcfg in sites[site].items():
+            for res in sorted(sites[site].keys()):
                 if hostname in res:
                     resource = '%s.%s' % (site, res)
                     break
+
+        if not resource:
+            raise RuntimeError('hostname %s not in resource config' % hostname)
+
+        if not n_nodes:
+            raise RuntimeError('SLURM_JOB_NUM_NODES not set')
 
         return PilotDescription(resource=resource, nodes=n_nodes)
 

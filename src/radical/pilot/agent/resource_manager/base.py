@@ -204,15 +204,16 @@ class ResourceManager(object):
         from .debug   import Debug
 
         impls = [Slurm, PBSPro, Torque, CCM, LSF, Cobalt, Yarn, Debug, Fork]
+        errs  = list()
         for impl in impls:
             try:
                 pd = impl._inspect()
               # print('got pd from %s: %s' % (impl, pd))
                 return pd
-            except Exception:
-                pass
+            except Exception as e:
+                errs.append('%s: %s' % (impl, e))
 
-        raise RuntimeError('resource inspection failed')
+        raise RuntimeError('`rm.inspect()` failed:\n%s' % '\n  '.join(errs))
 
 
     # --------------------------------------------------------------------------
