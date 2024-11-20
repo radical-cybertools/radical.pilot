@@ -21,8 +21,8 @@ if __name__ == "__main__":
     spt.setproctitle('rp.%s' % uid)
 
     # process watcher
-    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
-    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=None)
+    log      = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    pwatcher = ru.PWatcher(uid='%s.pw' % uid, log=log)
     pwatcher.watch(int(ppid))
     pwatcher.watch(os.getpid())
 
