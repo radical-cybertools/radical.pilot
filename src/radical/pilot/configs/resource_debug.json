@@ -140,8 +140,7 @@
                                          "order": ["FORK"],
                                          "FORK" : {}
                                         },
-        "rp_version"                  : "installed",
-      # "virtenv"                     : "/home/merzky/radical.pilot.sandbox/ve3/",
+        "rp_version"                  : "local",
         "virtenv_mode"                : "create",
         "python_dist"                 : "default",
         "cores_per_node"              : 64,
