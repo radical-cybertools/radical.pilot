@@ -804,6 +804,8 @@ virtenv_setup()
         echo "do not update virtenv $virtenv"
     fi
 
+    virtenv_eval
+
     # install RP
     if test "$RP_INSTALL_LOCK" = 'TRUE'
     then
@@ -881,10 +883,15 @@ virtenv_activate()
         export PATH
     fi
 
+}
+
+
+# ------------------------------------------------------------------------------
+#
+virtenv_eval()
+{
     # make sure we use the new python binary
     rehash
-
-  # prefix="$virtenv/rp_install"
 
     # make sure the lib path into the prefix conforms to the python conventions
     VE_MOD_PREFIX=`$PYTHON -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'`
@@ -1045,16 +1052,18 @@ virtenv_create()
                 "easy_install pip" \
              || echo "Couldn't install pip! Uh oh...."
     fi
-    PIP="$PYTHON -m pip"
-
-    # make sure the new pip version is used (but keep the python executable)
-    rehash "$PYTHON"
 
     # update required base modules
     # of the RADICAL stack
     run_cmd "update  venv" \
-            "$PIP --no-cache-dir install --upgrade pip setuptools wheel" \
+            "pip --no-cache-dir install --upgrade pip setuptools wheel" \
          || echo "Couldn't update venv! Lets see how far we get ..."
+
+    # make sure the new pip version is used
+    rehash
+
+    # collect ve info
+    virtenv_eval
 
     profile_event 've_create_stop'
 }
@@ -1073,6 +1082,7 @@ virtenv_update()
 
     # activate the virtualenv
     virtenv_activate "$virtenv" "$python_dist"
+    virtenv_eval
 
     profile_event 've_update_stop'
 }
@@ -1565,6 +1575,7 @@ rehash "$PYTHON"
 virtenv_setup    "$PILOT_ID"    "$VIRTENV" "$VIRTENV_MODE" \
                  "$PYTHON_DIST"
 virtenv_activate "$VIRTENV" "$PYTHON_DIST"
+virtenv_eval
 create_deactivate
 
 # ------------------------------------------------------------------------------

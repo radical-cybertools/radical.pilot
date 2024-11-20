@@ -273,7 +273,7 @@ class Session(object):
         # crosswire local channels and proxy channels
         self._crosswire_proxy()
 
-        self._reg.dump(self._role)
+      # self._reg.dump(self._role)
 
 
     # --------------------------------------------------------------------------
@@ -305,7 +305,7 @@ class Session(object):
         self._start_components()
         self._crosswire_proxy()
 
-        self._reg.dump(self._role)
+      # self._reg.dump(self._role)
 
 
     # --------------------------------------------------------------------------
@@ -992,8 +992,9 @@ class Session(object):
         if self._role == self._PRIMARY:
 
             # stop registry
+            self._reg.dump()
             self._reg.close()
-            self._reg_service.stop()  # this will dump registry
+            self._reg_service.stop()
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
