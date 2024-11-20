@@ -1,0 +1,30 @@
+{
+    "archer2": {
+        "description"                 : "5,860 nodes",
+        "notes"                       : "https://docs.archer2.ac.uk",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://archer2.ac.uk/",
+                "filesystem_endpoint" : "file://archer2.ac.uk/"
+            }
+        },
+        "default_queue"               : "standard",
+        "resource_manager"            : "SLURM",
+        "cores_per_node"              : 128,
+        "gpus_per_node"               : 0,
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "default_remote_workdir"      : "/work/%(pd.project)s/%(pd.project)s/$USER",
+        "pre_bootstrap_0"             : [
+                                         "module load PrgEnv-gnu",
+                                         "module load cray-python"
+                                        ],
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN": {}
+                                        },
+        "virtenv_mode"                : "local"
+    }
+}
