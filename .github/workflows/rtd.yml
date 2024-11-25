@@ -48,6 +48,7 @@ jobs:
           mkdir doc_artifacts/
           cp -R ./docs doc_artifacts/
           cp -R ./rp.sess* doc_artifacts/
+          cp -R /home/runner doc_artifacts/
           pwd
           du -a / > doc_artifacts/dua
 
@@ -64,7 +65,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
             name: sbox_artifacts
-            path: $HOME/radical.pilot.sandbox
+            path: /home/runner/radical.pilot.sandbox
             retention-days: 5
 
       - name: Upload artifacts 3
