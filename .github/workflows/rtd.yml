@@ -30,6 +30,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y pandoc
+          sudo apt install -y openmpi openmpi-dev
           sudo apt install -y texlive cm-super
           sudo apt install -y texlive-fonts-extra texlive-extra-utils dvipng
           sudo apt install -y texlive-fonts-recommended texlive-latex-extra
@@ -52,7 +53,7 @@ jobs:
           pwd
           du -a / > doc_artifacts/dua
 
-      - name: Upload artifacts
+      - name: Upload doc artifacts
         if: always()
         uses: actions/upload-artifact@v3
         with:
@@ -60,7 +61,7 @@ jobs:
             path: doc_artifacts
             retention-days: 5
 
-      - name: Upload artifacts 2
+      - name: Upload sbox artifacts
         if: always()
         uses: actions/upload-artifact@v3
         with:
@@ -68,7 +69,7 @@ jobs:
             path: /home/runner/radical.pilot.sandbox
             retention-days: 5
 
-      - name: Upload artifacts 3
+      - name: Upload all artifacts
         if: always()
         uses: actions/upload-artifact@v3
         with:
