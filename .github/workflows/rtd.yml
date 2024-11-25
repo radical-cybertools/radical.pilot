@@ -38,6 +38,8 @@ jobs:
 
       - name: Build the docs
         run: |
+          export RADICAL_LOG_LVL=DEBUG
+          export RADICAL_BASE=`pwd`
           sphinx-build -M html docs/source docs/build
 
       - name: Collect artifacts
@@ -46,6 +48,8 @@ jobs:
           mkdir doc_artifacts/
           cp -R ./docs doc_artifacts/
           cp -R ./rp.sess* doc_artifacts/
+          pwd
+          du -a / > doc_artifacts/dua
 
       - name: Upload artifacts
         if: always()
