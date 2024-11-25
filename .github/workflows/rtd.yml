@@ -55,6 +55,22 @@ jobs:
             path: doc_artifacts
             retention-days: 5
 
+      - name: Upload artifacts 2
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+            name: sbox_artifacts
+            path: $HOME/radical.pilot.sandbox
+            retention-days: 5
+
+      - name: Upload artifacts 3
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+            name: all_artifacts
+            path: .
+            retention-days: 5
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
