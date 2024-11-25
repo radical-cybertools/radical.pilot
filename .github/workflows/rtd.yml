@@ -39,8 +39,13 @@ jobs:
       - name: Build the docs
         run: |
           sphinx-build -M html docs/source docs/build
+
+      - name: Collect artifacts
+        if: always()
+        run: |
           mkdir doc_artifacts/
           cp -R ./docs doc_artifacts/
+          cp -R ./rp.sess* doc_artifacts/
 
       - name: Upload artifacts
         if: always()
@@ -51,6 +56,7 @@ jobs:
             retention-days: 5
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: rtd-${{ github.sha }}
           path: docs/build
