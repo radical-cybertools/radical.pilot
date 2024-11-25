@@ -28,12 +28,27 @@ jobs:
 
       - name: Install dependencies
         run: |
+          sudo apt update
+          sudo apt install -y pandoc
+          sudo apt install -y texlive cm-super
+          sudo apt install -y texlive-fonts-extra texlive-extra-utils dvipng
+          sudo apt install -y texlive-fonts-recommended texlive-latex-extra
           python -m pip install -U pip
           python -m pip install -r requirements-docs-ci.txt
 
       - name: Build the docs
         run: |
           sphinx-build -M html docs/source docs/build
+          mkdir doc_artifacts/
+          cp -R ./docs doc_artifacts/
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+            name: doc_artifacts
+            path: doc_artifacts
+            retention-days: 5
 
       - uses: actions/upload-artifact@v4
         with:
