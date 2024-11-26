@@ -115,6 +115,37 @@
         "gpus_per_node"               : 1,
         "fake_resources"              : true,
         "system_architecture"         : {"n_partitions": 1}
+    },
+
+    "radical": {
+        "description"                 : "",
+        "notes"                       : "",
+        "default_schema"              : "ssh",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "ssh://95.217.193.116/",
+                "filesystem_endpoint" : "sftp://95.217.193.116/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["FORK"],
+                                         "FORK" : {}
+                                        },
+        "rp_version"                  : "local",
+        "virtenv_mode"                : "create",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 0,
+        "fake_resources"              : true
     }
 }
 
