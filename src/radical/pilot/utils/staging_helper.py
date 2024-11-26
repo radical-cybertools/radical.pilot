@@ -23,24 +23,31 @@ class StagingHelper(object):
 
 
     def mkdir(self, tgt, flags=None):
+        self._log.debug('mkdir %s', tgt)
         self._backend.mkdir(tgt, flags)
 
     def rmdir(self, tgt, flags=None):
+        self._log.debug('rmdir %s', tgt)
         self._backend.rmdir(tgt, flags)
 
     def copy(self, src, tgt, flags=None):
+        self._log.debug('copy  %s %s', src, tgt)
         self._backend.copy(src, tgt, flags)
 
     def move(self, src, tgt, flags=None):
+        self._log.debug('move  %s %s', src, tgt)
         self._backend.move(src, tgt, flags)
 
     def link(self, src, tgt, flags=None):
+        self._log.debug('link  %s %s', src, tgt)
         self._backend.link(src, tgt, flags)
 
     def delete(self, tgt, flags=None):
+        self._log.debug('rm    %s', tgt)
         self._backend.delete(tgt, flags)
 
     def sh_callout(self, url, cmd):
+        self._log.debug('shcmd %s %s', url, cmd)
         return self._backend.sh_callout(url, cmd)
 
     def handle_staging_directive(self, sd):
@@ -83,7 +90,6 @@ class StagingHelper_Local(object):
         os.rmdir(tgt)
 
     def copy(self, src, tgt, flags):
-        self._log.debug('copy  %s %s', src, tgt)
         src = ru.Url(src).path
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
@@ -115,7 +121,8 @@ class StagingHelper_Local(object):
 class StagingHelper_SAGA(object):
 
     try:
-        import saga.filesystem              as _rsfs
+        import radical.saga.filesystem      as _rsfs
+        import radical.saga.utils.misc      as _rsum
         import radical.saga.utils.pty_shell as _rsup
         _has_saga = True
     except:
@@ -135,6 +142,10 @@ class StagingHelper_SAGA(object):
 
 
     def copy(self, src, tgt, flags):
+
+      # # FIXME: why??
+      # flags = 0
+
         assert self._has_saga
 
         tmp      = ru.Url(tgt)
@@ -146,6 +157,7 @@ class StagingHelper_SAGA(object):
         if os.path.isdir(src) or src.endswith('/'):
             flags |= self._rsfs.RECURSIVE
 
+      # self._log.debug("copy %s 1 -> %s [%s]" % (src, tgt, flags))
         fs.copy(src, tgt, flags=flags)
 
     def move(self, src, tgt, flags):
