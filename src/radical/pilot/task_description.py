@@ -712,9 +712,9 @@ class TaskDescription(ru.TypedDict):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, from_dict=None):
+    def __init__(self, from_dict=None, **kwargs):
 
-        super().__init__(from_dict=from_dict)
+        super().__init__(from_dict=from_dict, **kwargs)
 
 
     # --------------------------------------------------------------------------

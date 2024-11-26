@@ -49,35 +49,18 @@ jobs:
           mkdir doc_artifacts/
           cp -R ./docs doc_artifacts/
           cp -R ./rp.sess* doc_artifacts/
-          cp -R /home/runner doc_artifacts/
-          pwd
-          du -a / > doc_artifacts/dua
+          cp -R /home/runner/radical.pilot.sandbox doc_artifacts/
 
       - name: Upload doc artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: doc_artifacts
             path: doc_artifacts
             retention-days: 5
 
-      - name: Upload sbox artifacts
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-            name: sbox_artifacts
-            path: /home/runner/radical.pilot.sandbox
-            retention-days: 5
-
-      - name: Upload all artifacts
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-            name: all_artifacts
-            path: .
-            retention-days: 5
-
-      - uses: actions/upload-artifact@v4
+      - name: Upload to RTD
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: rtd-${{ github.sha }}
@@ -86,7 +69,7 @@ jobs:
       - name: Trigger RTDs build
         uses: dfm/rtds-action@v1
         with:
-          webhook_url: ${{ secrets.RTD_URL }}
+          webhook_url:   ${{ secrets.RTD_URL }}
           webhook_token: ${{ secrets.RTD_TOKEN }}
-          commit_ref: ${{ github.ref }}
+          commit_ref:    ${{ github.ref }}
 
