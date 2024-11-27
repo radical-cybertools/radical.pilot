@@ -156,7 +156,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         `self._cancel_task(task)`.  That has to be implemented by al executors.
         '''
 
-        while True:
+        while not self._term.is_set():
 
             # check once per second at most
             time.sleep(1)

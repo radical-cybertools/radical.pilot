@@ -130,8 +130,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
                       log=log, prof=prof)
 
     # all is set up - we can sit idle 'til end of time.
-    while not term.is_set():
-        time.sleep(1)
+    comp.wait()
 
 
 # ------------------------------------------------------------------------------
