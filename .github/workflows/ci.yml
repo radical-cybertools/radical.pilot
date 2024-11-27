@@ -157,7 +157,7 @@ jobs:
             path: sessions_analytics
             retention-days: 5
 
-  examples
+  examples:
     runs-on: ubuntu-latest
     strategy:
       matrix:
