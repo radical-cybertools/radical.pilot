@@ -45,9 +45,6 @@ jobs:
           mkdir example_artifacts/
           cd example_artifacts/
           radical-stack
-          pwd
-          ls -l $HOME
-          ls -l /home/runner || echo 'no runner home'
           ../examples/00_getting_started.py
           ../examples/09_mpi_tasks.py
           ../examples/01_task_details.py
