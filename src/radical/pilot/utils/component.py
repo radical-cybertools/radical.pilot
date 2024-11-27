@@ -236,7 +236,7 @@ class BaseComponent(object):
     def wait(self):
 
         while not self._term.is_set():
-            time.sleep(1)
+            time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------
