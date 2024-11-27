@@ -32,7 +32,7 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           python -m pip install .
       - name: run examples
-        timeout-minutes: 15
+        timeout-minutes: 10
         run: |
           export RADICAL_LOG_LVL=DEBUG_9
           export RADICAL_PROFILE=True
@@ -60,10 +60,16 @@ jobs:
           $RP_ROOT/examples/10_pre_and_post_exec.py
           $RP_ROOT/examples/11_task_input_data_tar.py
           $RP_ROOT/examples/11_task_input_folder.py
-      - name: upload example_artifacts
+
+      - name: prepare example_artifacts
+        if:   always()
+        run: |
+            tar zcf /home/runner/example_artifacts.tgz /home/runner/radical.pilot.sandbox/
+
+      - name: prepare example_artifacts
         if:   always()
         uses: actions/upload-artifact@v3
         with:
             name: example_artifacts
-            path: /home/runner/radical.pilot.sandbox/
+            path: /home/runner/example_artifacts.tgz
 
