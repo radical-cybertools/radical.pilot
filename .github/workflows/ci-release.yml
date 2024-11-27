@@ -25,6 +25,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          sudo apt update
+          sudo apt install -y openmpi-bin
           python -m venv testenv
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
@@ -32,8 +34,6 @@ jobs:
       - name: run examples
         timeout-minutes: 15
         run: |
-          sudo apt update
-          sudo apt install -y openmpi-bin
           export RADICAL_LOG_LVL=DEBUG_9
           export RADICAL_PROFILE=True
           export RADICAL_DEBUG=TRUE
@@ -44,6 +44,10 @@ jobs:
           . testenv/bin/activate
           mkdir example_artifacts/
           cd example_artifacts/
+          radical-stack
+          pwd
+          ls -l $HOME
+          ls -l /home/runner || echo 'no runner home'
           ../examples/00_getting_started.py
           ../examples/09_mpi_tasks.py
           ../examples/01_task_details.py
