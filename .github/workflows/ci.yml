@@ -197,19 +197,7 @@ jobs:
           mkdir -p $BASE/client_sessions
           cd $BASE/client_sessions
           radical-stack
-          $RP_ROOT/examples/00_getting_started.py
-          $RP_ROOT/examples/09_mpi_tasks.py
-          $RP_ROOT/examples/01_task_details.py
-          $RP_ROOT/examples/02_failing_tasks.py
-          $RP_ROOT/examples/03_multiple_pilots.py
-          $RP_ROOT/examples/04_scheduler_selection.py
-          $RP_ROOT/examples/05_task_input_data.py
-          $RP_ROOT/examples/06_task_output_data.py
-          $RP_ROOT/examples/07_shared_task_data.py
-          $RP_ROOT/examples/08_task_environment.py
-          $RP_ROOT/examples/10_pre_and_post_exec.py
-          $RP_ROOT/examples/11_task_input_data_tar.py
-          $RP_ROOT/examples/11_task_input_folder.py
+          for f in $RP_ROOT/examples/[01]*.py; do echo "=== $f"; $f; done
 
       - name: prepare example_artifacts
         if:   always()

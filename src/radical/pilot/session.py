@@ -15,7 +15,6 @@ import radical.utils    as ru
 from . import constants as rpc
 from . import utils     as rpu
 
-from .messages        import HeartbeatMessage
 from .proxy           import Proxy
 from .resource_config import ResourceConfig, ENDPOINTS_DEFAULT
 
@@ -64,16 +63,6 @@ class Session(object):
     instances, and several other components which operate on those stateful
     entities.
     """
-
-    # In that role, the session will create a special pubsub channel `heartbeat`
-    # which is used by all components in its hierarchy to exchange heartbeat
-    # messages.  Those messages are used to watch component health - if
-    # a (parent or child) component fails to send heartbeats for a certain
-    # amount of time, it is considered dead and the process tree will terminate.
-    # That heartbeat management is implemented in the `ru.Heartbeat` class.
-    # Only primary sessions instantiate a heartbeat channel (i.e., only the root
-    # sessions of RP client or agent modules), but all components need to call
-    # the sessions `heartbeat()` method at regular intervals.
 
     # the reporter is an application-level singleton
     _reporter = None
@@ -177,7 +166,6 @@ class Session(object):
         self._tmgrs    = dict()  # map IDs to tmgr instances
         self._cmgr     = None    # only primary sessions have a cmgr
         self._rm       = None    # resource manager (agent_0 sessions)
-        self._hb       = None    # heartbeat monitor
 
         if _reg_addr:
 
@@ -252,16 +240,11 @@ class Session(object):
         # only primary sessions start and initialize the proxy service
         self._start_proxy()
 
-        # start heartbeat channel
-        self._start_heartbeat()
-
         # push the session config into the registry
         self._publish_cfg()
 
         # start bridges and components
         self._start_components()
-
-        time.sleep(1)
 
         # primary session hooks into the control pubsub
         bcfg = self._reg['bridges.%s' % rpc.CONTROL_PUBSUB]
@@ -299,7 +282,6 @@ class Session(object):
         self._start_registry()
         self._connect_registry()
         self._connect_proxy()
-        self._start_heartbeat()
         self._publish_cfg()
         self._init_rm()
         self._start_components()
@@ -550,93 +532,6 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
-    def _start_heartbeat(self):
-
-        # only primary and agent_0 sessions manage heartbeats
-        assert self._role in [self._PRIMARY, self._AGENT_0]
-
-        # start the embedded heartbeat pubsub bridge
-        self._hb_pubsub = ru.zmq.PubSub('heartbeat_pubsub',
-                                        cfg={'uid'    : 'heartbeat_pubsub',
-                                             'type'   : 'pubsub',
-                                             'log_lvl': 'debug',
-                                             'path'   : self._cfg.path})
-        self._hb_pubsub.start()
-        time.sleep(1)
-
-        # re-enable the test below if timing issues crop up
-      # ru.zmq.test_pubsub(self._hb_pubsub.channel,
-      #                    self._hb_pubsub.addr_pub,
-      #                    self._hb_pubsub.addr_sub),
-
-        # fill 'cfg.heartbeat' section
-        self._cfg.heartbeat.addr_pub = str(self._hb_pubsub.addr_pub)
-        self._cfg.heartbeat.addr_sub = str(self._hb_pubsub.addr_sub)
-
-        # create a publisher for that channel to publish own heartbeat
-        self._hb_pub = ru.zmq.Publisher(channel='heartbeat_pubsub',
-                                        url=self._cfg.heartbeat.addr_pub,
-                                        log=self._log,
-                                        prof=self._prof)
-
-
-        # --------------------------------------
-        # start the heartbeat monitor, but first
-        # define its callbacks
-        def _hb_beat_cb():
-            # called on every heartbeat: cfg.heartbeat.interval`
-            # publish own heartbeat
-            self._hb_pub.put('heartbeat', HeartbeatMessage(uid=self._uid))
-
-            # also update proxy heartbeat
-            if self._proxy:
-                try:
-                    self._proxy.request('heartbeat', {'sid': self._uid})
-                except:
-                    # ignore errors in case proxy went away already
-                    pass
-        # --------------------------------------
-
-        # --------------------------------------
-        # called when some entity misses
-        # heartbeats: `cfg.heartbeat.timeout`
-        def _hb_term_cb(hb_uid):
-            if self._cmgr:
-                self._cmgr.close()
-            return False
-        # --------------------------------------
-
-        # create heartbeat manager which monitors all components in this session
-      # self._log.debug('hb %s from session', self._uid)
-        self._hb = ru.Heartbeat(uid=self._uid,
-                                timeout=self._cfg.heartbeat.timeout,
-                                interval=self._cfg.heartbeat.interval,
-                                beat_cb=_hb_beat_cb,
-                                term_cb=_hb_term_cb,
-                                log=self._log)
-        self._hb.start()
-
-        # --------------------------------------
-        # subscribe to heartbeat msgs and inform
-        # self._hb about every heartbeat
-        def _hb_msg_cb(topic, msg):
-
-            hb_msg = HeartbeatMessage(from_dict=msg)
-
-            if hb_msg.uid != self._uid:
-                self._hb.beat(uid=hb_msg.uid)
-        # --------------------------------------
-
-        ru.zmq.Subscriber(channel='heartbeat_pubsub',
-                          topic='heartbeat',
-                          url=self._cfg.heartbeat.addr_sub,
-                          cb=_hb_msg_cb,
-                          log=self._log,
-                          prof=self._prof)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _publish_cfg(self):
 
         # The primary session and agent_0 push their configs into the registry.
@@ -644,15 +539,13 @@ class Session(object):
 
         assert self._role in [self._PRIMARY, self._AGENT_0]
 
-        # push proxy, bridges, components and heartbeat subsections separately
+        # push proxy, bridges, and components subsections separately
         flat_cfg = copy.deepcopy(self._cfg)
 
-        del flat_cfg['heartbeat']
         del flat_cfg['bridges']
         del flat_cfg['components']
 
         self._reg['cfg']        = flat_cfg
-        self._reg['heartbeat']  = self._cfg.heartbeat
         self._reg['bridges']    = self._cfg.bridges  # proxy bridges
         self._reg['components'] = {}
 
@@ -880,9 +773,8 @@ class Session(object):
 
         assert self._role in [self._PRIMARY, self._AGENT_0, self._AGENT_N]
 
-        # primary sessions and agents have a component manager which also
-        # manages heartbeat.  'self._cmgr.close()` should be called during
-        # termination
+        # primary sessions and agents have a component manager
+        # 'self._cmgr.close()` should be called during termination
         self._cmgr = rpu.ComponentManager(self.uid, self.reg_addr, self._uid)
         self._cmgr.start_bridges(self._cfg.bridges)
         self._cmgr.start_components(self._cfg.components)
@@ -952,11 +844,6 @@ class Session(object):
 
         if self._cmgr:
             self._cmgr.close()
-
-        # stop heartbeats
-        if self._hb:
-            self._hb.stop()
-            self._hb_pubsub.stop()
 
         if self._proxy:
 

@@ -16,6 +16,7 @@ import radical.utils   as ru
 from .. import constants as rpc
 from .. import states    as rps
 
+from ..messages  import ComponentStartedMessage
 from ..messages  import RPCRequestMessage, RPCResultMessage
 
 
@@ -103,9 +104,8 @@ class BaseComponent(object):
     the session under which to run this component, and a uid for the component
     itself which MUST be unique within the scope of the given session.
 
-    All components and the component managers will continuously sent heartbeat
-    messages on the control pubsub - missing heartbeats will by default lead to
-    component termination.
+    Components will send a startup message to the component manager upon
+    successful initialization.
 
     Further, the class must implement the registered work methods, with a
     signature of::
@@ -229,6 +229,15 @@ class BaseComponent(object):
             time.sleep(0.01)
 
         assert self._thread.is_alive()
+
+        # send startup message
+        if self._cfg.cmgr_url:
+            self._log.debug('send startup message to %s', self._cfg.cmgr_url)
+            pipe = ru.zmq.Pipe(mode=ru.zmq.MODE_PUSH, url=self._cfg.cmgr_url)
+            pipe.put(ComponentStartedMessage(uid=self.uid))
+
+        # give the message some time to get out
+        time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------
