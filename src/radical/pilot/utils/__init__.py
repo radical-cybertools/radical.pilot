@@ -35,7 +35,6 @@ if os.uname()[0] == 'Darwin':
 from .prof_utils        import *
 from .misc              import *
 from .session           import *
-from .bridge            import *
 from .component         import *
 from .component_manager import *
 from .serializer        import *
