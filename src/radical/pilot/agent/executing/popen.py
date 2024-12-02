@@ -317,9 +317,17 @@ class Popen(AgentExecutingComponent):
                     # process group (which should include the actual launch
                     # method)
                     try:
-                        # kill the whole process group
+                        # kill the whole process group.
+                        # Try SIGINT first to allow signal handlers, then
+                        # SIGTERM to allow clean termination, then SIGKILL to
+                        # enforce termination.
                         pgrp = os.getpgid(task['proc'].pid)
+                        os.killpg(pgrp, signal.SIGINT)
+                        time.sleep(0.1)
+                        os.killpg(pgrp, signal.SIGTERM)
+                        time.sleep(0.1)
                         os.killpg(pgrp, signal.SIGKILL)
+
                     except OSError:
                         # lost race: task is already gone, we ignore this
                         # FIXME: collect and move to DONE/FAILED
