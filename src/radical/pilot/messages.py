@@ -18,6 +18,7 @@ class RPBaseMessage(ru.Message):
 
     @classmethod
     def register(cls):
+        # TODO: this should be moved to the RU base class
         cls._defaults['_msg_type'] = cls._msg_type
         ru.Message.register_msg_type(cls._msg_type, cls)
 

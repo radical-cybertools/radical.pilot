@@ -45,9 +45,7 @@ if __name__ == '__main__':
         # read the config used for resource details
         config = ru.read_json('%s/config.json' %
                               os.path.dirname(__file__)).get(resource, {})
-        print('=== create pmgr')
         pmgr   = rp.PilotManager(session=session)
-        print('=== got pmgr')
         tmgr   = rp.TaskManager(session=session)
 
         report.header('submit pilots')
