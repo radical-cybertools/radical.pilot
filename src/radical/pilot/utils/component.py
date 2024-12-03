@@ -378,8 +378,9 @@ class BaseComponent(object):
             with self._cancel_lock:
                 self._cancel_list += uids
 
-            # scheduler handles cancelation itself
-            if 'AgentSchedulingComponent' in repr(self):
+            # scheduler and executor handle cancelation directly
+            if 'agent.scheduling' in repr(self) or \
+               'agent.executing' in repr(self):
                 self.control_cb(topic, msg)
                 return
 
