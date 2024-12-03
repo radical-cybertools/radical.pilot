@@ -123,10 +123,7 @@ class PilotManager(rpu.ClientComponent):
         cfg.heartbeat      = session.cfg.heartbeat
         cfg.client_sandbox = session._get_client_sandbox()
 
-        print('pmgr init')
-
         super().__init__(cfg, session=session)
-        print('pmgr start')
         self.start()
 
         self._log.info('started pmgr %s', self._uid)

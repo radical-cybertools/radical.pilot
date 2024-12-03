@@ -77,6 +77,7 @@ class Pilot(object):
         self._uid        = self._descr.get('uid')
         self._state      = rps.NEW
         self._log        = pmgr._log
+        self._sub        = None
         self._pilot_dict = dict()
         self._callbacks  = dict()
         self._cb_lock    = ru.RLock()
@@ -167,9 +168,10 @@ class Pilot(object):
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                           log=self._log, prof=self._prof)
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
-                          log=self._log, prof=self._prof, cb=self._control_cb,
-                          topic=rpc.CONTROL_PUBSUB)
+        self._sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                                      log=self._log, prof=self._prof,
+                                      cb=self._control_cb,
+                                      topic=rpc.CONTROL_PUBSUB)
 
 
     # --------------------------------------------------------------------------
@@ -233,6 +235,10 @@ class Pilot(object):
                                    self.uid, current, target)
 
         self._state = target
+
+        if self._state in rps.FINAL:
+            if self._sub:
+                self._sub.stop()
 
         # FIXME: this is a hack to get the resource details into the pilot
         resources = pilot_dict.get('resources') or {}
@@ -610,6 +616,7 @@ class Pilot(object):
 
 
         if self.state in rps.FINAL:
+
             # we will never see another state progression.  Raise an error
             # (unless we waited for this)
             if self.state in states:
