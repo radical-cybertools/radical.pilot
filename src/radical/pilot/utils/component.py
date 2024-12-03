@@ -379,7 +379,7 @@ class BaseComponent(object):
                 self._cancel_list += uids
 
             # scheduler and executor handle cancelation directly
-            if 'agent.scheduling' in repr(self) or \
+            if 'agent.scheduler' in repr(self) or \
                'agent.executing' in repr(self):
                 self.control_cb(topic, msg)
                 return
