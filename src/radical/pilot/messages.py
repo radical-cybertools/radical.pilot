@@ -34,9 +34,11 @@ class ComponentStartedMessage(RPBaseMessage):
     # startup messages are never forwarded
 
     _msg_type = 'component_start'
-    _schema   = {'uid': str}
+    _schema   = {'uid': str,
+                 'pid': int}
     _defaults = {'fwd': False,
-                 'uid': None}
+                 'uid': None,
+                 'pid': None}
 
 
 ComponentStartedMessage.register()

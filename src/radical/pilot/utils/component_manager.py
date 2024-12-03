@@ -6,6 +6,7 @@ __license__   = 'MIT'
 
 import os
 import time
+import signal
 
 import radical.utils   as ru
 
@@ -36,6 +37,7 @@ class ComponentManager(object):
         self._sid      = sid
         self._reg_addr = reg_addr
         self._owner    = owner
+        self._to_kill  = list()
 
         self._reg    = ru.zmq.RegistryClient(url=self._reg_addr)
         self._cfg    = ru.Config(from_dict=self._reg['cfg'])
@@ -63,6 +65,7 @@ class ComponentManager(object):
             msg = ru.zmq.Message.deserialize(msg)
             if isinstance(msg, ComponentStartedMessage):
                 self._startups[msg.uid] = msg
+                self._to_kill.append(msg.pid)
             else:
                 self._log.error('unknown message type: %s', type(msg))
 
@@ -219,6 +222,18 @@ class ComponentManager(object):
     def close(self):
 
         self._prof.prof('close', uid=self._uid)
+
+        for pid in self._to_kill:
+
+            self._log.debug('kill %s', pid)
+
+            try:
+                os.kill(pid, signal.SIGKILL)
+
+            except ProcessLookupError:
+                pass
+
+        self._pipe.stop()
 
 
 # ------------------------------------------------------------------------------

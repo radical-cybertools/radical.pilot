@@ -157,15 +157,17 @@ class Session(object):
         self._proxy_cfg     = None
         self._closed        = False
         self._created       = time.time()
+        self._to_stop       = list()
         self._close_options = _CloseOptions(close_options)
         self._close_options.verify()
 
-        self._proxy    = None    # proxy client instance
-        self._reg      = None    # registry client instance
-        self._pmgrs    = dict()  # map IDs to pmgr instances
-        self._tmgrs    = dict()  # map IDs to tmgr instances
-        self._cmgr     = None    # only primary sessions have a cmgr
-        self._rm       = None    # resource manager (agent_0 sessions)
+        self._proxy        = None    # proxy server instance
+        self._proxy_client = None    # proxy client instance
+        self._reg          = None    # registry client instance
+        self._pmgrs        = dict()  # map IDs to pmgr instances
+        self._tmgrs        = dict()  # map IDs to tmgr instances
+        self._cmgr         = None    # only primary sessions have a cmgr
+        self._rm           = None    # resource manager (agent_0 sessions)
 
         if _reg_addr:
 
@@ -606,8 +608,8 @@ class Session(object):
 
         # configure proxy channels
         try:
-            self._proxy = ru.zmq.Client(url=self._cfg.proxy_url, log=self._log)
-            self._proxy_cfg = self._proxy.request('register', {'sid':self._uid})
+            self._proxy_client = ru.zmq.Client(url=self._cfg.proxy_url, log=self._log)
+            self._proxy_cfg = self._proxy_client.request('register', {'sid':self._uid})
 
         except:
             self._log.exception('%s: failed to start proxy', self._role)
@@ -624,8 +626,8 @@ class Session(object):
         assert self._cfg.proxy_url
 
         # query the proxy service to fetch proxy cfg created by primary session
-        self._proxy = ru.zmq.Client(url=self._cfg.proxy_url)
-        self._proxy_cfg = self._proxy.request('lookup', {'sid': self._uid})
+        self._proxy_client = ru.zmq.Client(url=self._cfg.proxy_url)
+        self._proxy_cfg = self._proxy_client.request('lookup', {'sid': self._uid})
         self._log.debug('proxy response: %s', self._proxy_cfg)
 
 
@@ -699,8 +701,11 @@ class Session(object):
                 publisher.put(tgt, msg)
 
 
-        ru.zmq.Subscriber(channel=src, topic=src, path=path, cb=pubsub_fwd,
-                          url=url_sub, log=self._log, prof=self._prof)
+        sub = ru.zmq.Subscriber(channel=src, topic=src, path=path,
+                                cb=pubsub_fwd, url=url_sub,
+                                log=self._log, prof=self._prof)
+
+        self._to_stop.append(sub)
 
 
     # --------------------------------------------------------------------------
@@ -826,6 +831,7 @@ class Session(object):
         options = self._close_options
 
         if options.terminate:
+
             # terminate all components
             if self._role == self._PRIMARY:
                 self._ctrl_pub.put(rpc.CONTROL_PUBSUB, {'cmd': 'terminate',
@@ -845,17 +851,25 @@ class Session(object):
         if self._cmgr:
             self._cmgr.close()
 
-        if self._proxy:
+        if self._proxy_client:
 
             if self._role == self._PRIMARY:
                 try:
                     self._log.debug('session %s closes service', self._uid)
-                    self._proxy.request('unregister', {'sid': self._uid})
+                    self._proxy_client.request('unregister', {'sid': self._uid})
                 except:
                     pass
 
             if self._role in [self._PRIMARY, self._AGENT_0]:
-                self._proxy.close()
+                self._proxy_client.close()
+                self._proxy_client = None
+
+        if self._proxy:
+
+            if self._role in [self._PRIMARY, self._AGENT_0]:
+
+                self._proxy.stop()
+                self._proxy.wait()
                 self._proxy = None
 
         self._log.debug("session %s closed", self._uid)
@@ -889,24 +903,27 @@ class Session(object):
             self._rep.ok('>>ok\n')
 
 
+        for thing in self._to_stop:
+            thing.stop()
+
+
     # --------------------------------------------------------------------------
     #
     def _run_proxy(self):
 
-        proxy = Proxy(path=self._cfg.path)
+        self._proxy = Proxy(path=self._cfg.path)
 
         try:
-            proxy.start()
+            self._proxy.start()
 
-            self._proxy_url = proxy.addr
+            self._proxy_url = self._proxy.addr
             self._proxy_event.set()
 
             # run forever until process is interrupted or killed
-            proxy.wait()
+            self._proxy.wait()
 
         finally:
-            proxy.stop()
-            proxy.wait()
+            self._proxy.stop()
 
 
     # --------------------------------------------------------------------------

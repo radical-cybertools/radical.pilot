@@ -98,7 +98,7 @@ def wrapped_main(sid, reg_addr, uid, log, prof, ppid, evt):
     evt.set()
 
     pipe = ru.zmq.Pipe(mode=ru.zmq.MODE_PUSH, url=b_cfg.cmgr_url)
-    pipe.put(ComponentStartedMessage(uid=uid))
+    pipe.put(ComponentStartedMessage(uid=uid, pid=os.getpid()))
 
     # all is set up - we can sit idle 'til end of time.
     bridge.wait()
