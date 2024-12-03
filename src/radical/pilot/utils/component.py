@@ -561,9 +561,6 @@ class BaseComponent(object):
         # call component level finalize, before we tear down channels
         self.finalize()
 
-        for thread in self._threads.values():
-            thread.stop()
-
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
