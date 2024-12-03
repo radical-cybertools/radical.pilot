@@ -70,6 +70,7 @@ class Popen(AgentExecutingComponent):
     #
     def cancel_task(self, uid):
 
+        self._log.debug('request cancel task %s', uid)
         self._watch_queue.put([self.TO_CANCEL, uid])
 
 
@@ -289,7 +290,6 @@ class Popen(AgentExecutingComponent):
     # next step.  Also check for a requested cancellation for the tasks.
     def _check_running(self, to_watch, to_cancel):
 
-        #
         action = False
 
         # `to_watch.remove()` in the loop requires copy to iterate over the list
