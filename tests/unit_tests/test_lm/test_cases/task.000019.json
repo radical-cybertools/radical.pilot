@@ -61,7 +61,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --export=ALL --kill-on-bad-exit=0 --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
+                "launch_cmd" : "srun --export=ALL -K0 --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
                 "rank_exec"  : "/bin/sleep \"12\""
             }
         }
