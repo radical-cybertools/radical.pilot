@@ -3,8 +3,11 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+import sys
 import copy
 import time
+import signal
 
 import threading     as mt
 
@@ -191,13 +194,17 @@ class Pilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", uid, state)
 
         if state == rps.FAILED and self._exit_on_error:
+
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
+            self._sub.stop()
+            self._sub = None
 
             # There are different ways to tell main...
-            ru.cancel_main_thread('int')
+          # ru.print_stacktrace()
+            sys.stderr.write('=== pilot failed, exit_on_error ===\n')
+            ru.cancel_main_thread('term')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-          # os.kill(os.getpid())
-          # sys.exit()
+          # os.kill(os.getpid(), signal.SIGTERM)
 
 
     # --------------------------------------------------------------------------
