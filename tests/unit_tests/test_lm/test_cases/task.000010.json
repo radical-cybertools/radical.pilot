@@ -23,7 +23,7 @@
     "results": {
         "lm": {
             "srun" : {
-                "launch_cmd" : "srun --export=ALL --nodes 2 --ntasks 2 --cpus-per-task 4 --mem 0",
+                "launch_cmd" : "srun --export=ALL -K1 --quit-on-interrupt --nodes 2 --ntasks 2 --cpus-per-task 4 --mem 0",
                 "rank_exec"  : "/bin/sleep"
             },
             "aprun": {

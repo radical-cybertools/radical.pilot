@@ -150,8 +150,14 @@ class Srun(LaunchMethod):
                 gpus_per_task = len(slots[0]['gpus'])
 
         mapping = ''
-        if n_tasks > 1 and td['use_mpi'] is False:
-            mapping += '--kill-on-bad-exit=0 '
+        if n_tasks > 1:
+            if td['use_mpi'] is False:
+                mapping += '-K0 '  # '--kill-on-bad-exit=0 '
+            else:
+                # ensure that all ranks are killed if one rank fails
+                mapping += '-K1 '  # '--kill-on-bad-exit=1 '
+                # allow step cancellation with single SIGINT
+                mapping += '--quit-on-interrupt '
 
         if self._exact:
             mapping += '--exact '
