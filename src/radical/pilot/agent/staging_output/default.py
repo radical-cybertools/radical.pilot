@@ -211,6 +211,17 @@ class Default(AgentStagingOutputComponent):
                 task['description']['metadata'].update(pids)
 
         self._prof.prof('staging_uprof_stop', uid=uid)
+        self._prof.prof('staging_ofile_start', uid=uid)
+
+        task_ofile = '%s/%s.ofiles' % (sbox, uid)
+        if os.path.isfile(task_ofile):
+            try:
+                with ru.ru_open(task_ofile, 'r', errors='ignore') as fin:
+                    task['ofiles'] = [l.strip() for l in fin.readlines()]
+            except Exception as e:
+                self._log.error("Pre/Post ofile read failed: `%s`" % e)
+
+        self._prof.prof('staging_uprof_stop', uid=uid)
 
 
     # --------------------------------------------------------------------------
