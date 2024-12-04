@@ -70,6 +70,7 @@ class Popen(AgentExecutingComponent):
     #
     def cancel_task(self, uid):
 
+        self._log.debug('request cancel task %s', uid)
         self._watch_queue.put([self.TO_CANCEL, uid])
 
 
@@ -289,7 +290,6 @@ class Popen(AgentExecutingComponent):
     # next step.  Also check for a requested cancellation for the tasks.
     def _check_running(self, to_watch, to_cancel):
 
-        #
         action = False
 
         # `to_watch.remove()` in the loop requires copy to iterate over the list
@@ -317,14 +317,22 @@ class Popen(AgentExecutingComponent):
                     # process group (which should include the actual launch
                     # method)
                     try:
-                        # kill the whole process group
-                        pid  = task['proc'].pid
-
+                        # kill the whole process group.
+                        #
                         # NOTE: when `Popen` is used with `preexec_fn=os.setsid`
                         #       then we should kill `pgrp` ID instead of the pid
-                      # pgrp = os.getpgid(pid)
+                        #       pgrp = os.getpgid(pid)
+                        #
+                        # Try SIGINT first to allow signal handlers, then
+                        # SIGTERM to allow clean termination, then SIGKILL to
+                        # enforce termination.
+                        pgrp = os.getpgid(task['proc'].pid)
+                        os.killpg(pgrp, signal.SIGINT)
+                        time.sleep(0.1)
+                        os.killpg(pgrp, signal.SIGTERM)
+                        time.sleep(0.1)
+                        os.killpg(pgrp, signal.SIGKILL)
 
-                        os.killpg(pid, signal.SIGKILL)
                     except OSError:
                         # lost race: task is already gone, we ignore this
                         # FIXME: collect and move to DONE/FAILED
