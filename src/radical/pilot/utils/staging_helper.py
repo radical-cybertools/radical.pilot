@@ -143,6 +143,9 @@ class StagingHelper_SAGA(object):
 
     def copy(self, src, tgt, flags):
 
+        src = ru.Url(src)
+        tgt = ru.Url(tgt)
+
       # # FIXME: why??
       # flags = 0
 
