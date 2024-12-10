@@ -143,6 +143,9 @@ class StagingHelper_SAGA(object):
 
     def copy(self, src, tgt, flags):
 
+        src = ru.Url(src)
+        tgt = ru.Url(tgt)
+
       # # FIXME: why??
       # flags = 0
 
@@ -154,7 +157,7 @@ class StagingHelper_SAGA(object):
         fs     = self._rsfs.Directory(str(tmp))
         flags |= self._rsfs.CREATE_PARENTS
 
-        if os.path.isdir(src) or src.endswith('/'):
+        if os.path.isdir(src.path) or src.path.endswith('/'):
             flags |= self._rsfs.RECURSIVE
 
       # self._log.debug("copy %s 1 -> %s [%s]" % (src, tgt, flags))
