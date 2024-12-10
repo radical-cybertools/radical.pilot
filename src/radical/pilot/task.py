@@ -86,6 +86,7 @@ class Task(object):
         self._exit_code        = None
         self._stdout           = str()
         self._stderr           = str()
+        self._ofiles           = None
         self._return_value     = None
         self._exception        = None
         self._exception_detail = None
@@ -171,7 +172,8 @@ class Task(object):
         for key in ['state', 'stdout', 'stderr', 'exit_code', 'return_value',
                     'endpoint_fs', 'resource_sandbox', 'session_sandbox',
                     'pilot', 'pilot_sandbox', 'task_sandbox', 'client_sandbox',
-                    'exception', 'exception_detail', 'slots', 'partition']:
+                    'exception', 'exception_detail', 'slots', 'partition',
+                    'ofiles']:
 
             val = task_dict.get(key, None)
             if val is not None:
@@ -320,6 +322,24 @@ class Task(object):
 
         """
         return self._stderr
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def output_files(self):
+        """list[str]: A list of output file names.
+
+        If this property is queried before the task has reached
+        'DONE' or 'FAILED' state it will return None.
+
+        Warning:
+            This can be incomplete: the heuristics will not detect files which
+            start with `<task_id>.`, for example.  It will also not detect files
+            which are not created in the task sandbox.
+
+        """
+        return self._ofiles
 
 
     # --------------------------------------------------------------------------
