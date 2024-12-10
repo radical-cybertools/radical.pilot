@@ -745,7 +745,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         for priority in sorted(self._waitpool.keys(), reverse=True):
 
-            to_test = listself._waitpool[priority].values())
+            to_test = list(self._waitpool[priority].values())
             to_test.sort(key=lambda x:
                     x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                      reverse=True)
