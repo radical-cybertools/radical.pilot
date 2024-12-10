@@ -97,10 +97,10 @@ class Continuous(AgentSchedulingComponent):
           a *continuous* set of cores/nodes for a task.  It does, however,
           also allow to scatter the allocation over discontinuous nodes if
           this option is set.  This implementation is not optimized for the
-          scattered mode!  The default is 'False'.
+          scattered mode!  The default is 'True'.
         '''
 
-        self._scattered = self.session.rcfg.get('scattered', False)
+        self._scattered = self.session.rcfg.get('scattered', True)
 
 
     # --------------------------------------------------------------------------
