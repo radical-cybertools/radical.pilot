@@ -197,7 +197,6 @@ class Pilot(object):
 
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
             self._sub.stop()
-            self._sub = None
 
             # There are different ways to tell main...
           # ru.print_stacktrace()
@@ -244,9 +243,7 @@ class Pilot(object):
         self._state = target
 
         if self._state in rps.FINAL:
-            if self._sub:
-                self._sub.stop()
-                self._sub = None
+            self._sub.stop()
 
         # FIXME: this is a hack to get the resource details into the pilot
         resources = pilot_dict.get('resources') or {}
