@@ -91,13 +91,16 @@ if __name__ == '__main__':
             # Here we don't use dict initialization.
             td = rp.TaskDescription()
             td.executable     = '/usr/bin/wc'
-            td.arguments      = ['-c', 'input.dat']
+            td.arguments      = ['-c', 'input_1.dat', 'input_2.dat']
           # td.input_staging  = ['input.dat']
 
           # this is a shortcut for:
-            td.input_staging  = {'source': 'client:///input.dat',
-                                 'target': 'task:///input.dat',
-                                 'action': rp.TRANSFER}
+            td.input_staging  = [{'source': 'client:///input.dat',
+                                  'target': 'task:///input_1.dat',
+                                  'action': rp.TRANSFER},
+                                 {'source': 'https://1.1.1.1/',
+                                  'target': 'task:///input_2.dat',
+                                  'action': rp.DOWNLOAD}]
             tds.append(td)
             report.progress()
         report.ok('>>ok\n')
