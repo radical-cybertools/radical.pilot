@@ -246,6 +246,7 @@ class Pilot(object):
         if self._state in rps.FINAL:
             if self._sub:
                 self._sub.stop()
+                self._sub = None
 
         # FIXME: this is a hack to get the resource details into the pilot
         resources = pilot_dict.get('resources') or {}
