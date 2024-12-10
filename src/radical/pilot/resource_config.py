@@ -187,7 +187,7 @@ class ResourceConfig(ru.TypedDict):
         GPUS_PER_NODE          : 0           ,
         NUMA_DOMAIN_MAP        : dict()      ,
         SYSTEM_ARCHITECTURE    : dict()      ,
-        SCATTERED              : False       ,
+        SCATTERED              : True        ,
 
         FAKE_RESOURCES         : False       ,
         MANDATORY_ARGS         : list()      ,
