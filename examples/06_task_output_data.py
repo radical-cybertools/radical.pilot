@@ -113,9 +113,9 @@ if __name__ == '__main__':
 
         report.info('\n')
         for task in tasks:
-            report.plain('  * %s: %s, exit: %3s, out: %s\n'
-                    % (task.uid, task.state[:4],
-                        task.exit_code, task.stdout.strip()[:35]))
+            report.plain('  * %s: %s, exit: %3s, out: %s - %s\n'
+                    % (task.uid, task.state[:4], task.exit_code,
+                       task.stdout.strip()[:35], task.output_files))
 
         # delete the sample input files
         report.info('\nresulting data files:\n\n')

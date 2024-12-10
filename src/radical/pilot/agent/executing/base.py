@@ -253,7 +253,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
         ru.rec_makedir(sbox)
         self._prof.prof('task_mkdir_done', uid=tid)
 
-
         # the exec shell script runs the same set of commands for all ranks.
         # However, if the ranks need different GPU's assigned, or if either pre-
         # or post-exec directives contain per-rank dictionaries, then we switch
@@ -285,12 +284,21 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._get_prep_exec(task, n_ranks, sig='pre_exec')
 
             tmp += self._separator
+            tmp += '# output file detection (i)\n'
+            tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
+
+            tmp += self._separator
             tmp += '# execute rank\n'
             tmp += self._get_prof('rank_start')
             tmp += self._get_exec(task, launcher)
             tmp += self._get_prof('rank_stop',
                                   msg='RP_EXEC_PID=$RP_EXEC_PID:'
                                       'RP_RANK_PID=$RP_RANK_PID')
+
+            tmp += self._separator
+            tmp += '# output file detection (ii)\n'
+            tmp += 'ls | sort | comm -23 - ' \
+                   "%s.files | grep -ve '^%s\\.' > %s.ofiles\n" % (tid, tid, tid)
 
             tmp += self._separator
             tmp += '# post-exec commands\n'
