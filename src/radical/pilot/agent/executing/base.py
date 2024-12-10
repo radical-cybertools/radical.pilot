@@ -284,7 +284,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._get_prep_exec(task, n_ranks, sig='pre_exec')
 
             tmp += self._separator
-            tmp += '# output file detection (prepare)\n'
+            tmp += '# output file detection (i)\n'
             tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
 
             tmp += self._separator
@@ -296,7 +296,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
                                       'RP_RANK_PID=$RP_RANK_PID')
 
             tmp += self._separator
-            tmp += '# output file detection (prepare)\n'
+            tmp += '# output file detection (ii)\n'
             tmp += 'ls | sort | comm -23 - ' \
                    "%s.files | grep -ve '^%s\\.' > %s.ofiles\n" % (tid, tid, tid)
 

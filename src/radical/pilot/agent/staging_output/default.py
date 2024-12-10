@@ -221,7 +221,7 @@ class Default(AgentStagingOutputComponent):
             except Exception as e:
                 self._log.error("Pre/Post ofile read failed: `%s`" % e)
 
-        self._prof.prof('staging_uprof_stop', uid=uid)
+        self._prof.prof('staging_ofile_stop', uid=uid)
 
 
     # --------------------------------------------------------------------------
