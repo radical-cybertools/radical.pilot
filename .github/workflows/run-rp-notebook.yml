@@ -79,7 +79,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: sessions_notebooks_${{ inputs.python-version }}
+            name: sessions_notebooks_${{inputs.notebook-name}}
             path: sessions_notebooks
             retention-days: 5
             overwrite: true
