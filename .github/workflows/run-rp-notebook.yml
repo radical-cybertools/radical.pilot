@@ -77,7 +77,7 @@ jobs:
           fi
       - name: Upload sessions
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: sessions_notebooks
             path: sessions_notebooks

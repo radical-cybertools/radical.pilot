@@ -17,7 +17,7 @@ jobs:
         os: [ ubuntu-latest ]
         python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11' ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
       - uses: actions/setup-python@v4
@@ -59,7 +59,7 @@ jobs:
           ../examples/11_task_input_folder.py
       - name: upload example_artifacts
         if:   always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
             name: example_artifacts
             path: example_artifacts
