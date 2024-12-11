@@ -156,4 +156,5 @@ jobs:
             name: sessions_analytics
             path: sessions_analytics
             retention-days: 5
+            overwrite: true
 
