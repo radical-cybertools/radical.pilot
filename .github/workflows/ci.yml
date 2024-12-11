@@ -146,14 +146,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: artifacts
+            name: artifacts_${{ matrix.python-version }}
             path: artifacts
             retention-days: 5
+            overwrite: true
       - name: Upload sessions
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: sessions_analytics
+            name: sessions_analytics_${{ matrix.python-version }}
             path: sessions_analytics
             retention-days: 5
             overwrite: true
