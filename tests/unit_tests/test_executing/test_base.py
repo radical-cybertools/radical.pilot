@@ -75,10 +75,15 @@ class TestBaseExecuting(TestCase):
             'resource_manager': 'FORK',
             'agent_spawner'   : 'POPEN'})
 
-        ec._log               = ec._prof               = mock.Mock()
-        ec.work               = ec.control_cb          = mock.Mock()
-        ec.register_input     = ec.register_output     = mock.Mock()
-        ec.register_publisher = ec.register_subscriber = mock.Mock()
+        ec._term               = mock.Mock()
+        ec._log                = mock.Mock()
+        ec._prof               = mock.Mock()
+        ec.work                = mock.Mock()
+        ec.control_cb          = mock.Mock()
+        ec.register_input      = mock.Mock()
+        ec.register_output     = mock.Mock()
+        ec.register_publisher  = mock.Mock()
+        ec.register_subscriber = mock.Mock()
 
         mocked_rm.create.return_value = mocked_rm
         ec.initialize()

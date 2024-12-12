@@ -302,6 +302,8 @@ class Agent_0(rpu.AgentComponent):
         try   : log = ru.ru_open('./agent_0.log', 'r').read(1024)
         except: pass
 
+        self._log.debug('final cause: %s', self._final_cause)
+
         if   self._final_cause == 'timeout'  : state = rps.DONE
         elif self._final_cause == 'cancel'   : state = rps.CANCELED
         elif self._final_cause == 'sys.exit' : state = rps.CANCELED
@@ -633,11 +635,21 @@ class Agent_0(rpu.AgentComponent):
             return self._ctrl_cancel_pilots(msg)
 
         elif cmd == 'service_info':
-            self._log.debug('=== PILOT COMMAND: %s: %s', cmd, arg)
+            self._log.debug('PILOT COMMAND: %s: %s', cmd, arg)
             return self._ctrl_service_info(msg, arg)
 
         else:
             self._log.error('invalid command: [%s]', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def stop(self):
+
+        self._log.info('stop agent')
+        self._final_cause = 'cancel'
+        super().stop()
+        self._session.close()
 
 
     # --------------------------------------------------------------------------
@@ -668,7 +680,7 @@ class Agent_0(rpu.AgentComponent):
         error = arg['error']
         info  = arg['info']
 
-        self._log.debug('=== service info: %s: %s', uid, info)
+        self._log.debug('service info: %s: %s', uid, info)
 
         # This message signals that an agent service instance is up and running.
         # We expect to find the service UID in args and can then unblock the
@@ -696,7 +708,7 @@ class Agent_0(rpu.AgentComponent):
         self._reg['services.%s' % uid] = info
 
         # signal main thread when that the service is up
-        self._log.debug('=== set service start event for %s', uid)
+        self._log.debug('set service start event for %s', uid)
         self._service_start_evt.set()
 
         return True

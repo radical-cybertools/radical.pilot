@@ -68,10 +68,10 @@ def _pilot_state_progress(pid, current, target):
         if target in [DONE, FAILED, CANCELED]:
             return [target, []]
 
-    # allow to transition from FAILED to DONE (done gets picked up from DB,
+    # allow to transition from FAILED to DONE (done gets picked up from proxy,
     # sometimes after pilot watcher detects demise)
     if current == FAILED:
-        if target in [DONE, FAILED]:
+        if target in FINAL:
             return [target, []]
 
     if current in FINAL and target != current:
