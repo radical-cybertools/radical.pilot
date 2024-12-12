@@ -77,7 +77,6 @@ THREADING_TYPE   = 'threading_type'           # OpenMP?
 GPU_TYPE         = 'gpu_type'                 # CUDA / ROCm?
 LFS_PER_RANK     = 'lfs_per_rank'             # disk space per rank
 MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
-PARTITION        = 'partition'                # partition to run on
 
 # deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
@@ -114,6 +113,7 @@ STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
 TAGS             = 'tags'
 SERVICES         = 'services'
+LAUNCH_SCRIPT    = 'launch_script'            # custom launch script
 METADATA         = 'metadata'
 
 
@@ -450,6 +450,10 @@ class TaskDescription(ru.TypedDict):
         partition (int, optional): index of pilot partition to use to run that
             task.
 
+        launch_script (str, optional): path to a custom launch script to be
+            executed.  That launch script needs to interpret
+            `RP_TASK_EXEC_SCRIPT` as the task execution script provided by RP.
+
     **Task Ranks**
 
     The notion of `ranks` is central to RP's `TaskDescription` class.  We here
@@ -639,6 +643,7 @@ class TaskDescription(ru.TypedDict):
         PILOT           : str         ,
         SLOTS           : [Slot]      ,
         PARTITION       : int         ,
+        LAUNCH_SCRIPT   : str         ,
     }
 
     _defaults = {
@@ -707,6 +712,7 @@ class TaskDescription(ru.TypedDict):
         PILOT           : ''          ,
         SLOTS           : list()      ,
         PARTITION       : 0           ,
+        LAUNCH_SCRIPT   : ''          ,
     }
 
 

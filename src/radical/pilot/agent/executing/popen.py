@@ -4,6 +4,7 @@ __copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import stat
 import time
 import queue
 import atexit
@@ -196,15 +197,33 @@ class Popen(AgentExecutingComponent):
         # ...
 
         launcher = self._rm.find_launcher(task)
+        exec_path, exec_fullpath = self._create_exec_script(launcher, task)
 
-        exec_path  , _ = self._create_exec_script(launcher, task)
-        _, launch_path = self._create_launch_script(launcher, task, exec_path)
+        launch_script = td.get('launch_script')
+        if launch_script:
+            _, launch_fullpath = self._get_launch_script_path(task, exec_path)
+
+            with open(launch_fullpath, 'w') as fout:
+                fout.write('#!/bin/sh\n')
+                fout.write(launch_script)
+                fout.write('\n')
+
+            st_l = os.stat(launch_fullpath)
+            os.chmod(launch_fullpath, st_l.st_mode | stat.S_IEXEC)
+
+        else:
+            _, launch_fullpath = \
+                           self._create_launch_script(launcher, task, exec_path)
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']
 
+        env = os.environ.copy()
+        env['RP_TASK_SANDBOX']     = sbox
+        env['RP_TASK_EXEC_SCRIPT'] = exec_fullpath
+
         # launch and exec script are done, get ready for execution.
-        self._log.info('Launching task %s via %s in %s', tid, launch_path, sbox)
+        self._log.info('Launching task %s via %s in %s', tid, launch_fullpath, sbox)
 
         _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
 
@@ -214,7 +233,7 @@ class Popen(AgentExecutingComponent):
         _start_new_session = self.session.rcfg.new_session_per_task or False
 
         self._prof.prof('task_run_start', uid=tid)
-        task['proc'] = sp.Popen(args              = launch_path,
+        task['proc'] = sp.Popen(args              = launch_fullpath,
                                 executable        = None,
                                 shell             = False,
                                 stdin             = None,
@@ -222,7 +241,8 @@ class Popen(AgentExecutingComponent):
                                 stderr            = sp.STDOUT,
                                 start_new_session = _start_new_session,
                                 close_fds         = True,
-                                cwd               = sbox)
+                                cwd               = sbox,
+                                env               = env)
         self._prof.prof('task_run_ok', uid=tid)
 
         # store pid for last-effort termination

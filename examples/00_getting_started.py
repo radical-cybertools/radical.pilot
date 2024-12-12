@@ -84,6 +84,7 @@ if __name__ == '__main__':
             # create a new task description, and fill it.
             td = rp.TaskDescription()
             td.executable = '/bin/date'
+            td.launch_script = 'echo $RP_TASK_EXEC_SCRIPT'
 
             tds.append(td)
             report.progress()

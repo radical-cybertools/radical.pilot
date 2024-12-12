@@ -465,6 +465,20 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
+    def _get_launch_script_path(self, task, exec_path):
+
+        tid  = task['uid']
+        sbox = task['task_sandbox_path']
+
+        launch_script   = '%s.launch.sh' % tid
+        launch_path     = '$RP_TASK_SANDBOX/%s' % launch_script
+        launch_fullpath = '%s/%s' % (sbox, launch_script)
+
+        return launch_path, launch_fullpath
+
+
+    # --------------------------------------------------------------------------
+    #
     # methods to prepare task launch scripts
     #
     def _create_launch_script(self, launcher, task, exec_path):
@@ -477,9 +491,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         self._log.debug('Launching task with %s', launcher.name)
 
-        launch_script   = '%s.launch.sh' % tid
-        launch_path     = '$RP_TASK_SANDBOX/%s' % launch_script
-        launch_fullpath = '%s/%s' % (sbox, launch_script)
+        launch_path, launch_fullpath = \
+                                   self._get_launch_script_path(task, exec_path)
 
         ru.rec_makedir(sbox)
 
