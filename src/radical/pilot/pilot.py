@@ -3,8 +3,11 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
+import os
+import sys
 import copy
 import time
+import signal
 
 import threading     as mt
 
@@ -70,6 +73,7 @@ class Pilot(object):
         self._uid        = self._descr.get('uid')
         self._state      = rps.NEW
         self._log        = pmgr._log
+        self._sub        = None
         self._pilot_dict = dict()
         self._callbacks  = dict()
         self._cb_lock    = ru.Lock()
@@ -160,9 +164,10 @@ class Pilot(object):
         self._ctrl_pub = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                           log=self._log, prof=self._prof)
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
-                          log=self._log, prof=self._prof, cb=self._control_cb,
-                          topic=rpc.CONTROL_PUBSUB)
+        self._sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                                      log=self._log, prof=self._prof,
+                                      cb=self._control_cb,
+                                      topic=rpc.CONTROL_PUBSUB)
 
 
     # --------------------------------------------------------------------------
@@ -182,13 +187,16 @@ class Pilot(object):
         self._log.info("[Callback]: pilot %s state: %s.", uid, state)
 
         if state == rps.FAILED and self._exit_on_error:
+
             self._log.error("[Callback]: pilot '%s' failed (exit)", uid)
+            self._sub.stop()
 
             # There are different ways to tell main...
-            ru.cancel_main_thread('int')
+          # ru.print_stacktrace()
+            sys.stderr.write('=== pilot failed, exit_on_error ===\n')
+            ru.cancel_main_thread('term')
           # raise RuntimeError('pilot %s failed - fatal!' % self.uid)
-          # os.kill(os.getpid())
-          # sys.exit()
+          # os.kill(os.getpid(), signal.SIGTERM)
 
 
     # --------------------------------------------------------------------------
@@ -226,6 +234,9 @@ class Pilot(object):
                                    self.uid, current, target)
 
         self._state = target
+
+        if self._state in rps.FINAL:
+            self._sub.stop()
 
         # FIXME: this is a hack to get the resource details into the pilot
         resources = pilot_dict.get('resources') or {}
@@ -606,6 +617,7 @@ class Pilot(object):
 
 
         if self.state in rps.FINAL:
+
             # we will never see another state progression.  Raise an error
             # (unless we waited for this)
             if self.state in states:
