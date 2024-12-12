@@ -18,6 +18,7 @@ import radical.utils   as ru
 from .. import constants as rpc
 from .. import states    as rps
 
+from ..messages  import ComponentStartedMessage
 from ..messages  import RPCRequestMessage, RPCResultMessage
 
 
@@ -105,9 +106,8 @@ class BaseComponent(object):
     the session under which to run this component, and a uid for the component
     itself which MUST be unique within the scope of the given session.
 
-    All components and the component managers will continuously sent heartbeat
-    messages on the control pubsub - missing heartbeats will by default lead to
-    component termination.
+    Components will send a startup message to the component manager upon
+    successful initialization.
 
     Further, the class must implement the registered work methods, with a
     signature of::
@@ -232,13 +232,22 @@ class BaseComponent(object):
 
         assert self._thread.is_alive()
 
+        # send startup message
+        if self._cfg.cmgr_url:
+            self._log.debug('send startup message to %s', self._cfg.cmgr_url)
+            pipe = ru.zmq.Pipe(mode=ru.zmq.MODE_PUSH, url=self._cfg.cmgr_url)
+            pipe.put(ComponentStartedMessage(uid=self.uid, pid=os.getpid()))
+
+        # give the message some time to get out
+        time.sleep(0.1)
+
 
     # --------------------------------------------------------------------------
     #
     def wait(self):
 
         while not self._term.is_set():
-            time.sleep(1)
+            time.sleep(0.1)
 
 
     # --------------------------------------------------------------------------
@@ -572,9 +581,6 @@ class BaseComponent(object):
         # call component level finalize, before we tear down channels
         self.finalize()
 
-        for thread in self._threads.values():
-            thread.stop()
-
         self._log.debug('%s close prof', self.uid)
         try:
             self._prof.prof('component_final')
@@ -840,28 +846,28 @@ class BaseComponent(object):
             class Idler(mt.Thread):
 
                 # --------------------------------------------------------------
-                def __init__(self, name, log, timer, cb, cb_data, cb_lock):
+                def __init__(self, name, log, timer, cb, cb_data, cb_lock, term):
                     self._name    = name
                     self._log     = log
                     self._timeout = timer
                     self._cb      = cb
                     self._cb_data = cb_data
                     self._cb_lock = cb_lock
+                    self._term    = term
                     self._last    = 0.0
-                    self._term    = mt.Event()
 
-                    super(Idler, self).__init__()
+                    super().__init__()
                     self.daemon = True
                     self.start()
-
-                def stop(self):
-                    self._term.set()
 
                 def run(self):
                     try:
                         self._log.debug('start idle thread: %s', self._cb)
                         ret = True
-                        while ret and not self._term.is_set():
+                        while ret:
+                            if self._term.is_set():
+                                break
+
                             if self._timeout and \
                                self._timeout > (time.time() - self._last):
                                 # not yet
@@ -880,7 +886,8 @@ class BaseComponent(object):
             # ------------------------------------------------------------------
 
             idler = Idler(name=name, timer=timer, log=self._log,
-                          cb=cb, cb_data=cb_data, cb_lock=self._cb_lock)
+                          cb=cb, cb_data=cb_data, cb_lock=self._cb_lock,
+                          term=self._term)
             self._threads[name] = idler
 
         self._log.debug('%s registered idler %s', self.uid, name)
@@ -1222,6 +1229,22 @@ class BaseComponent(object):
             topic = pubsub
 
         self._publishers[pubsub].put(topic, msg)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def close(self):
+
+        self._term.set()
+
+        for inp in self._inputs:
+            self._inputs[inp]['queue'].stop()
+
+        for sub in self._subscribers:
+            self._subscribers[sub].stop()
+
+        self._prof.close()
+        self._log.close()
 
 
 # ------------------------------------------------------------------------------
