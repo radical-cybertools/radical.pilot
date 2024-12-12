@@ -175,10 +175,10 @@ class TaskManager(rpu.ClientComponent):
         self._ctrl_pub  = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                            log=self._log, prof=self._prof)
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
-                          log=self._log, prof=self._prof,
-                          cb=self._control_cb,
-                          topic=rpc.CONTROL_PUBSUB)
+        self._ctrl_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                                           log=self._log, prof=self._prof,
+                                           cb=self._control_cb,
+                                           topic=rpc.CONTROL_PUBSUB)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -247,6 +247,10 @@ class TaskManager(rpu.ClientComponent):
 
         tgt = '%s/%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
+
+        self._ctrl_sub.stop()
+
+        super().close()
 
 
     # --------------------------------------------------------------------------
