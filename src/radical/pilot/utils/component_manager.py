@@ -6,10 +6,11 @@ __license__   = 'MIT'
 
 import os
 import time
+import signal
 
 import radical.utils   as ru
 
-from ..messages  import HeartbeatMessage
+from ..messages  import ComponentStartedMessage
 
 
 # ------------------------------------------------------------------------------
@@ -22,8 +23,8 @@ class ComponentManager(object):
     etc. This ComponentManager centralises the code needed to spawn, manage and
     terminate such components. Any code which needs to create component should
     create a ComponentManager instance and pass the required component and
-    bridge layout and configuration.  Callng `stop()` on the cmgr will terminate
-    the components and brisged.
+    bridge layout and configuration.  Calling `stop()` on the cmgr will
+    terminate the components and bridges.
     '''
 
     # --------------------------------------------------------------------------
@@ -36,10 +37,10 @@ class ComponentManager(object):
         self._sid      = sid
         self._reg_addr = reg_addr
         self._owner    = owner
+        self._to_kill  = list()
 
         self._reg    = ru.zmq.RegistryClient(url=self._reg_addr)
         self._cfg    = ru.Config(from_dict=self._reg['cfg'])
-        self._hb_cfg = ru.Config(from_dict=self._reg['heartbeat'])
 
         self._uid    = ru.generate_id('cmgr.%(item_counter)04d',
                                       ru.ID_CUSTOM, ns=self._sid)
@@ -55,30 +56,29 @@ class ComponentManager(object):
 
         self._log.debug('cmgr %s (%s)', self._uid, self._owner)
 
-        # component managers listen on the heartbeat pubsub to see if spawned
-        # components come alive
-        self._heartbeats = dict()  # heartbeats we have seen
-        ru.zmq.Subscriber(channel='heartbeat_pubsub',
-                          topic='heartbeat',
-                          url=self._hb_cfg.addr_sub,
-                          cb=self._hb_msg_cb,
-                          log=self._log,
-                          prof=self._prof)
+        # component managers open a zmq pipe so that components and bridges can
+        # send registration messages.
+        self._startups = dict()  # startup messages we have seen
 
+        def register_cb(msg):
+            self._log.debug('=== got message: %s', msg)
+            msg = ru.zmq.Message.deserialize(msg)
+            if isinstance(msg, ComponentStartedMessage):
+                self._startups[msg.uid] = msg
+                self._to_kill.append(msg.pid)
+            else:
+                self._log.error('unknown message type: %s', type(msg))
 
-    # --------------------------------------------------------------------------
-    #
-    def _hb_msg_cb(self, topic, msg):
-
-        hb_msg = HeartbeatMessage(from_dict=msg)
-        self._heartbeats[hb_msg.uid] = time.time()
+        self._pipe = ru.zmq.Pipe(mode=ru.zmq.MODE_PULL)
+        self._pipe.register_cb(register_cb)
+        self._cfg.cmgr_url = str(self._pipe.url)
 
 
     # --------------------------------------------------------------------------
     #
     def _wait_startup(self, uids, timeout):
         '''
-        Wait for the first heartbeat of the given component UIDs to appear.  If
+        Wait for the startup message of the given component UIDs to appear.  If
         that does not happen before timeout, an exception is raised.
         '''
 
@@ -89,7 +89,7 @@ class ComponentManager(object):
 
             self._log.debug('wait for : %s', nok)
 
-            ok  = [uid for uid in uids if uid     in self._heartbeats]
+            ok  = [uid for uid in uids if uid     in self._startups]
             nok = [uid for uid in uids if uid not in ok]
 
             if len(ok) == len(uids):
@@ -131,13 +131,13 @@ class ComponentManager(object):
             bcfg.uid       = uid
             bcfg.channel   = bname
             bcfg.cmgr      = self.uid
+            bcfg.cmgr_url  = self._cfg.cmgr_url
             bcfg.owner     = self._owner
             bcfg.sid       = self._cfg.sid
             bcfg.path      = self._cfg.path
             bcfg.reg_addr  = self._cfg.reg_addr
             bcfg.log_lvl   = self._cfg.log_lvl
             bcfg.debug_lvl = self._cfg.debug_lvl
-            bcfg.heartbeat = self._hb_cfg
 
             self._reg['bridges.%s.cfg' % bname] = bcfg
 
@@ -151,12 +151,11 @@ class ComponentManager(object):
                 self._log.error(msg)
                 raise RuntimeError(msg)
 
-            self._heartbeats[bname] = None
             self._log.info('created bridge %s [%s]', bname, bname)
 
-        # all bridges are started, wait for their heartbeats
+        # all bridges are started, wait for their startup messages
         self._log.debug('wait   for %s', buids)
-        self._wait_startup(buids, timeout=self._hb_cfg.timeout)
+        self._wait_startup(buids, timeout=10.0)
 
         self._prof.prof('start_bridges_stop', uid=self._uid)
 
@@ -184,13 +183,13 @@ class ComponentManager(object):
                 ccfg.owner     = self._owner
                 ccfg.sid       = self._cfg.sid
                 ccfg.cmgr      = self._cfg.uid
+                ccfg.cmgr_url  = self._cfg.cmgr_url
                 ccfg.base      = self._cfg.base
                 ccfg.path      = self._cfg.path
                 ccfg.reg_addr  = self._cfg.reg_addr
                 ccfg.proxy_url = self._cfg.proxy_url
                 ccfg.log_lvl   = self._cfg.log_lvl
                 ccfg.debug_lvl = self._cfg.debug_lvl
-                ccfg.heartbeat = self._hb_cfg
 
                 if cfg:
                     ru.dict_merge(ccfg, cfg, ru.OVERWRITE)
@@ -213,7 +212,7 @@ class ComponentManager(object):
 
         # all components should start now, wait for heartbeats to appear.
         self._log.debug('wait   for %s', cuids)
-        self._wait_startup(cuids, timeout=self._hb_cfg.timeout)
+        self._wait_startup(cuids, timeout=10.0)
 
         self._prof.prof('start_components_stop', uid=self._uid)
 
@@ -223,6 +222,18 @@ class ComponentManager(object):
     def close(self):
 
         self._prof.prof('close', uid=self._uid)
+
+        for pid in self._to_kill:
+
+            self._log.debug('kill %s', pid)
+
+            try:
+                os.kill(pid, signal.SIGKILL)
+
+            except ProcessLookupError:
+                pass
+
+        self._pipe.stop()
 
 
 # ------------------------------------------------------------------------------

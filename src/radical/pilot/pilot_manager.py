@@ -242,6 +242,8 @@ class PilotManager(rpu.ClientComponent):
 
         ru.write_json(json, tgt)
 
+        super().close()
+
 
     # --------------------------------------------------------------------------
     #

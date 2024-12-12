@@ -164,6 +164,9 @@ class StagingHelper_SAGA(object):
       # # FIXME: why??
       # flags = 0
 
+        src = ru.Url(src)
+        tgt = ru.Url(tgt)
+
         assert self._has_saga
 
         tmp      = ru.Url(tgt)
