@@ -1,6 +1,7 @@
 
 import os
 import shutil
+import urllib
 
 import radical.utils as ru
 
@@ -116,7 +117,7 @@ class StagingHelper_Local(object):
     def download(self, src, tgt, flags):
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
-        ru.sh_callout('wget -r %s -O %s' % (src, tgt))
+        urllib.request.urlretrieve(src, tgt)
 
     def delete(self, tgt, flags):
         tgt = ru.Url(tgt).path
