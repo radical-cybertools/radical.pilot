@@ -8,10 +8,10 @@ import multiprocessing as mp
 import radical.utils   as ru
 
 
-_TIMEOUT         =   300  # time to keep the bridge alive
-_LINGER_TIMEOUT  =   250  # ms to linger after close
-_HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
-                          # 0:  infinite
+_TIMEOUT         =  24 * 3600  # time to keep the bridge alive for a day
+_LINGER_TIMEOUT  = 250         # ms to linger after close
+_HIGH_WATER_MARK =   0         # number of messages to buffer before dropping
+                               # 0:  infinite
 
 
 # ------------------------------------------------------------------------------
