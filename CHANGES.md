@@ -9,6 +9,34 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.90.0 Release                                                    2024-12-16
+
+  - `glob` does not understand POSIX globs :-(
+  - add `DOWNLOAD` staging action
+  - add resource configuration for `epcc.archer2`
+  - improve process watching
+  - ensure cancel arrives at executor
+  - external service support
+  - fix delta config
+  - fix example
+  - fix io redirection for service tasks
+  - generously increase proxy timeout
+  - remove MacOS support
+  - support non-ve mode
+  - only service rank 0 provides info string
+  - run examples in PR CI
+  - safer srun termination
+  - set default `scattered=False`
+  - support multi-rank services
+  - support ranks per node
+  - target state is interpreted *after* output staging
+  - track output files
+  - updated action versions
+  - use python to fetch URLs
+  - we expect task metadata to be a dict - enforce and document
+
+
+--------------------------------------------------------------------------------
 ### 1.83.0 Release                                                    2024-10-15
 
   - support numa aware app level scheduling
