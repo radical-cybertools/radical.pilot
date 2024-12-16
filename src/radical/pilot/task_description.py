@@ -561,10 +561,11 @@ class TaskDescription(ru.TypedDict):
 
     *Action operators*
 
-    - rp.TRANSFER : remote file transfer from `source` URL to `target` URL
+    - rp.TRANSFER : remote file transfer from `source` to `target` URL (client)
     - rp.COPY     : local file copy, i.e., not crossing host boundaries
     - rp.MOVE     : local file move
     - rp.LINK     : local file symlink
+    - rp.DOWNLOAD : fetch remote file from `source` URL to `target` URL (agent)
 
     *Flags*
 

@@ -4,5 +4,6 @@ radical.gtod>=1.80.0,<1.90
 
 psij-python
 setproctitle
+requests
 dill
 
