@@ -1,7 +1,7 @@
 
 -r requirements.txt
 
-radical.pilot>=1.80
+radical.pilot>=1.90
 
 sphinx==5.3.0
 ipython
