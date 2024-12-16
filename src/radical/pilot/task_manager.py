@@ -320,10 +320,13 @@ class TaskManager(rpu.ClientComponent):
                 tasks = list()
                 for task in self._tasks.values():
 
-                    task['exception']        = 'RuntimeError("pilot died")'
-                    task['exception_detail'] = 'pilot %s is final' % pid
-                    task['state'] = rps.FAILED
-                    tasks.append(task)
+                    update = {'uid'             : task.uid,
+                              'exception'       : 'RuntimeError("pilot died")',
+                              'exception_detail': 'pilot %s is final' % pid,
+                              'state'           : rps.FAILED}
+
+                    task._update(update)
+                    tasks.append(task.as_dict())
 
                 # final tasks are not pushed
                 self.advance(tasks, publish=True, push=False)
