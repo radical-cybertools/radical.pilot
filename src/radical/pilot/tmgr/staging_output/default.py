@@ -67,6 +67,13 @@ class Default(TMGRStagingOutputComponent):
 
         for task in tasks:
 
+            # we only handle staging for tasks which end up in `DONE` state
+            target_state = task.get('target_state')
+            if target_state and target_state != rps.DONE:
+                self._log.debug('skip staging for %s', task['uid'])
+                no_staging_tasks.append(task)
+                continue
+
             # check if we have any staging directives to be enacted in this
             # component
             actionables = list()
