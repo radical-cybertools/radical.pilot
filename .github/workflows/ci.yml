@@ -135,25 +135,27 @@ jobs:
           CLIENTNAME="analytics_client_$SIDCLIENT"
           AGENTNAME="analytics_agent_$SIDCLIENT"
           mkdir sessions_analytics
-          # tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
-          tar cvfj $CLIENTNAME.tar.bz2 `find $SIDCLIENT -type d -print`
+          # tar cfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          tar cfj $CLIENTNAME.tar.bz2 `find $SIDCLIENT -type d -print`
           cp -R $CLIENTNAME.tar.bz2 sessions_analytics
           if [ -d "$SIDAGENT" ]; then
-            tar cvfj $AGENTNAME.tar.bz2 `find $SIDAGENT -type d -print`
+            tar cfj $AGENTNAME.tar.bz2 `find $SIDAGENT -type d -print`
             cp -R $AGENTNAME.tar.bz2 sessions_analytics
           fi
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-            name: artifacts
+            name: artifacts_${{ matrix.python-version }}
             path: artifacts
             retention-days: 5
+            overwrite: true
       - name: Upload sessions
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-            name: sessions_analytics
+            name: sessions_analytics_${{ matrix.python-version }}
             path: sessions_analytics
             retention-days: 5
+            overwrite: true
 

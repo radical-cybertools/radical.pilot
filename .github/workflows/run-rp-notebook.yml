@@ -69,16 +69,17 @@ jobs:
           echo "CLIENTNAME : $CLIENTNAME"
           echo "AGENTNAME  : $AGENTNAME"
           mkdir sessions_notebooks
-          tar cvfj $CLIENTNAME.tar.bz2 $SIDCLIENT
+          tar cfj $CLIENTNAME.tar.bz2 $SIDCLIENT
           cp -R $CLIENTNAME.tar.bz2 sessions_notebooks
           if [ -d "$SIDAGENT" ]; then
-            tar cvfj $AGENTNAME.tar.bz2 $SIDAGENT
+            tar cfj $AGENTNAME.tar.bz2 $SIDAGENT
             cp -R $AGENTNAME.tar.bz2 sessions_notebooks
           fi
       - name: Upload sessions
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-            name: sessions_notebooks
+            name: sessions_notebooks${{inputs.notebook-name}}_${{inputs.python-version}}
             path: sessions_notebooks
             retention-days: 5
+            overwrite: true
