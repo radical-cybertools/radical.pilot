@@ -318,16 +318,9 @@ class Default(TMGRStagingInputComponent):
                 new_actionables.append(sd)
 
             else:
-
-                action = sd['action']
                 did    = sd['uid']
                 src    = sd['source']
                 tgt    = sd['target']
-
-                # client stager only handles remote actions
-                if action not in [rpc.TRANSFER, rpc.TARBALL]:
-                    self._prof.prof('staging_in_skip', uid=uid, msg=did)
-                    continue
 
                 src = complete_url(src, src_context, self._log)
                 tgt = complete_url(tgt, tgt_context, self._log)
