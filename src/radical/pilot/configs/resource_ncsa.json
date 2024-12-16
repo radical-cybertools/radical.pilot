@@ -30,7 +30,7 @@
                                          "module reset",
                                          "module load anaconda3_cpu"
                                         ],
-        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "default_remote_workdir"      : "/projects/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
     },
 
@@ -66,7 +66,7 @@
                                          "module reset",
                                          "module load anaconda3_gpu"
                                         ],
-        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "default_remote_workdir"      : "/projects/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
     },
 
@@ -102,7 +102,7 @@
                                          "module reset",
                                          "module load anaconda3_gpu"
                                         ],
-        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "default_remote_workdir"      : "/projects/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
     },
 
@@ -138,7 +138,7 @@
                                          "module reset",
                                          "module load anaconda3_gpu"
                                         ],
-        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "default_remote_workdir"      : "/projects/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
     },
 
@@ -174,7 +174,7 @@
                                          "module reset",
                                          "module load anaconda3_mi100"
                                         ],
-        "default_remote_workdir"      : "/scratch/%(pd.project)s/$USER",
+        "default_remote_workdir"      : "/projects/%(pd.project)s/$USER",
         "virtenv_mode"                : "local"
     }
 }
