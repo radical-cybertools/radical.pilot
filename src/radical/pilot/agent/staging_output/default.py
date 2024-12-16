@@ -45,6 +45,7 @@ class Default(AgentStagingOutputComponent):
     def initialize(self):
 
         self._pwd = os.getcwd()
+        self._stager = rpu.StagingHelper(log=self._log)
 
         self.register_input(rps.AGENT_STAGING_OUTPUT_PENDING,
                             rpc.AGENT_STAGING_OUTPUT_QUEUE, self.work)
@@ -311,37 +312,12 @@ class Default(AgentStagingOutputComponent):
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
                 assert tgt.schema == 'file', 'staging tgt expected as file://'
 
-            # implicitly create target dir if needed - but only for local ops
-            if action != rpc.TRANSFER:
-                tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != task_sandbox.path:
-                    self._log.debug("mkdir %s", tgtdir)
-                    ru.rec_makedir(tgtdir)
+            self._stager.handle_staging_directive({'source': src,
+                                                   'target': tgt,
+                                                   'action': action,
+                                                   'flags' : flags})
 
-            if action == rpc.COPY:
-                try:
-                    shutil.copytree(src.path, tgt.path)
-                except OSError as exc:
-                    if exc.errno == errno.ENOTDIR:
-                        shutil.copy(src.path, tgt.path)
-                    else:
-                        raise
 
-            elif action == rpc.LINK:
-                # Fix issue/1513 if link source is file and target is folder
-                # should support POSIX standard where link is created
-                # with the same name as the source
-                if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink(src.path,
-                               os.path.join(tgt.path,
-                                            os.path.basename(src.path)))
-                else:  # default behavior
-                    os.symlink(src.path, tgt.path)
-            elif action == rpc.MOVE: shutil.move(src.path, tgt.path)
-            elif action == rpc.TRANSFER: pass
-                # This is currently never executed. Commenting it out.
-                # Uncomment and implement when uploads directly to remote URLs
-                # from tasks are supported.
             self._prof.prof('staging_out_stop', uid=uid, msg=did)
 
         # all agent staging is done -- pass on to tmgr output staging

@@ -41,6 +41,7 @@ class Default(AgentStagingInputComponent):
     def initialize(self):
 
         self._pwd = os.getcwd()
+        self._stager = rpu.StagingHelper(log=self._log)
 
         self.register_input(rps.AGENT_STAGING_INPUT_PENDING,
                             rpc.AGENT_STAGING_INPUT_QUEUE, self.work)
@@ -67,7 +68,8 @@ class Default(AgentStagingInputComponent):
             actionables = list()
             for sd in task['description'].get('input_staging', []):
 
-                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE, rpc.TARBALL]:
+                if sd['action'] in [rpc.LINK, rpc.COPY, rpc.MOVE,
+                                    rpc.TARBALL, rpc.DOWNLOAD]:
                     actionables.append(sd)
 
             if actionables:
@@ -147,11 +149,12 @@ class Default(AgentStagingInputComponent):
             did    = sd['uid']
             src    = sd['source']
             tgt    = sd['target']
+            flags  = sd.get('flags', 0)
 
             self._prof.prof('staging_in_start', uid=uid, msg=did)
 
             # agent stager only handles local actions
-            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE]:
+            if action not in [rpc.COPY, rpc.LINK, rpc.MOVE, rpc.DOWNLOAD]:
                 self._prof.prof('staging_in_skip', uid=uid, msg=did)
                 continue
 
@@ -169,60 +172,13 @@ class Default(AgentStagingInputComponent):
             elif os.path.exists(tgt.strip()) and os.path.isdir(tgt.strip()):
                 tgt = os.path.join(tgt, os.path.basename(src))
 
-
             src = complete_url(src, src_context, self._log)
             tgt = complete_url(tgt, tgt_context, self._log)
 
-            # Currently, we use the same schema for files and folders.
-            assert tgt.schema == 'file', 'staging tgt must be file://'
-
             if action in [rpc.COPY, rpc.LINK, rpc.MOVE]:
-                assert src.schema == 'file', 'staging src expected as file://'
+                assert tgt.schema == 'file', 'staging tgt expected as file://'
 
-            # implicitly create target dir if needed - but only for local ops
-            if action != rpc.TRANSFER:
-                tgtdir = os.path.dirname(tgt.path)
-                if tgtdir != task_sandbox.path:
-                    self._log.debug("mkdir %s", tgtdir)
-                    ru.rec_makedir(tgtdir)
-
-            if action == rpc.COPY:
-                try:
-                    shutil.copytree(src.path, tgt.path)
-                except OSError as exc:
-                    if exc.errno == errno.ENOTDIR:
-                        shutil.copy(src.path, tgt.path)
-                    else:
-                        raise
-
-            elif action == rpc.LINK:
-
-                # Fix issue/1513 if link source is file and target is folder.
-                # should support POSIX standard where link is created
-                # with the same name as the source
-                if os.path.isfile(src.path) and os.path.isdir(tgt.path):
-                    os.symlink(src.path,
-                               '%s/%s' % (tgt.path, os.path.basename(src.path)))
-
-                else:
-                    os.symlink(src.path, tgt.path)
-
-            elif action == rpc.MOVE:
-                shutil.move(src.path, tgt.path)
-
-            elif action == rpc.TRANSFER:
-
-                # NOTE:  TRANSFER directives don't arrive here right now.
-                # FIXME: we only handle srm staging right now, and only for
-                #        a specific target proxy. Other TRANSFER directives are
-                #        left to tmgr input staging.  We should use SAGA to
-                #        attempt all staging ops which do not involve the client
-                #        machine.
-                self._log.error('no transfer for %s -> %s', src, tgt)
-                self._prof.prof('staging_in_fail', uid=uid, msg=did)
-                raise NotImplementedError('unsupported transfer %s' % src)
-
-            elif action == rpc.TARBALL:
+            if action == rpc.TARBALL:
 
                 # If somethig was staged via the tarball method, the tarball is
                 # extracted and then removed from the task folder.  The target
@@ -237,6 +193,14 @@ class Default(AgentStagingInputComponent):
 
               # FIXME: make tarball removal dependent on debug settings
               # os.remove(os.path.dirname(tgt.path) + '/' + uid + '.tar')
+
+            else:
+
+                self._stager.handle_staging_directive({'source': src,
+                                                       'target': tgt,
+                                                       'action': action,
+                                                       'flags' : flags})
+
 
             self._prof.prof('staging_in_stop', uid=uid, msg=did)
 
