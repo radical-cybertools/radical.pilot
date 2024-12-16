@@ -175,10 +175,10 @@ class TaskManager(rpu.ClientComponent):
         self._ctrl_pub  = ru.zmq.Publisher(rpc.CONTROL_PUBSUB, url=ctrl_addr_pub,
                                            log=self._log, prof=self._prof)
 
-        ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
-                          log=self._log, prof=self._prof,
-                          cb=self._control_cb,
-                          topic=rpc.CONTROL_PUBSUB)
+        self._ctrl_sub = ru.zmq.Subscriber(rpc.CONTROL_PUBSUB, url=ctrl_addr_sub,
+                                           log=self._log, prof=self._prof,
+                                           cb=self._control_cb,
+                                           topic=rpc.CONTROL_PUBSUB)
 
         self._prof.prof('setup_done', uid=self._uid)
         self._rep.ok('>>ok\n')
@@ -248,6 +248,10 @@ class TaskManager(rpu.ClientComponent):
         tgt = '%s/%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
 
+        self._ctrl_sub.stop()
+
+        super().close()
+
 
     # --------------------------------------------------------------------------
     #
@@ -316,10 +320,13 @@ class TaskManager(rpu.ClientComponent):
                 tasks = list()
                 for task in self._tasks.values():
 
-                    task['exception']        = 'RuntimeError("pilot died")'
-                    task['exception_detail'] = 'pilot %s is final' % pid
-                    task['state'] = rps.FAILED
-                    tasks.append(task)
+                    update = {'uid'             : task.uid,
+                              'exception'       : 'RuntimeError("pilot died")',
+                              'exception_detail': 'pilot %s is final' % pid,
+                              'state'           : rps.FAILED}
+
+                    task._update(update)
+                    tasks.append(task.as_dict())
 
                 # final tasks are not pushed
                 self.advance(tasks, publish=True, push=False)

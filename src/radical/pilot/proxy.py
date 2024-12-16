@@ -8,10 +8,10 @@ import multiprocessing as mp
 import radical.utils   as ru
 
 
-_TIMEOUT         =   300  # time to keep the bridge alive
-_LINGER_TIMEOUT  =   250  # ms to linger after close
-_HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
-                          # 0:  infinite
+_TIMEOUT         =  24 * 3600  # time to keep the bridge alive for a day
+_LINGER_TIMEOUT  = 250         # ms to linger after close
+_HIGH_WATER_MARK =   0         # number of messages to buffer before dropping
+                               # 0:  infinite
 
 
 # ------------------------------------------------------------------------------
@@ -123,8 +123,7 @@ _HIGH_WATER_MARK =     0  # number of messages to buffer before dropping
 # To any request other than the above, the ZMQ bridge will respond:
 #      'err': 'invalid request'
 #
-# ------------------------------------------------------------------------------
-
+#
 # ------------------------------------------------------------------------------
 #
 class Proxy(ru.zmq.Server):
@@ -132,6 +131,7 @@ class Proxy(ru.zmq.Server):
     def __init__(self, path=None):
 
         self._lock    = mt.Lock()
+        self._term    = mt.Event()
         self._clients = dict()
 
         ru.zmq.Server.__init__(self, uid='radical.pilot.proxy',
@@ -153,9 +153,9 @@ class Proxy(ru.zmq.Server):
     def _monitor(self):
 
         # this is a daemon thread - it never exits until process termination
-        while True:
+        while not self._term.is_set():
 
-            time.sleep(10)
+            time.sleep(0.5)
             now  = time.time()
 
             # iterate w/o lock, and thus get a snapshot of the known sids
@@ -191,6 +191,8 @@ class Proxy(ru.zmq.Server):
     # --------------------------------------------------------------------------
     #
     def stop(self):
+
+        self._term.set()
 
         for sid in self._clients:
             self._log.info('stop client %s' % sid)
