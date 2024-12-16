@@ -1,10 +1,11 @@
 
 import os
 import shutil
+import requests
 
 import radical.utils as ru
 
-from ..constants import COPY, LINK, MOVE, TRANSFER
+from ..constants import COPY, LINK, MOVE, TRANSFER, DOWNLOAD
 from ..constants import TARBALL  # , CREATE_PARENTS, RECURSIVE
 
 
@@ -42,6 +43,10 @@ class StagingHelper(object):
         self._log.debug('link  %s %s', src, tgt)
         self._backend.link(src, tgt, flags)
 
+    def download(self, src, tgt, flags=None):
+        self._log.debug('download %s %s', src, tgt)
+        self._backend.download(src, tgt, flags)
+
     def delete(self, tgt, flags=None):
         self._log.debug('rm    %s', tgt)
         self._backend.delete(tgt, flags)
@@ -55,10 +60,9 @@ class StagingHelper(object):
         action  = sd['action']
         src     = sd['source']
         tgt     = sd['target']
-        uid     = sd.get('uid', '')
         flags   = sd.get('flags', 0)
 
-        assert action in [COPY, LINK, MOVE, TRANSFER]
+        assert action in [COPY, LINK, MOVE, TRANSFER, DOWNLOAD]
 
         self._log.info('%-10s %s', action, src)
         self._log.info('%-10s %s', '', tgt)
@@ -71,6 +75,9 @@ class StagingHelper(object):
 
         elif action == MOVE:
             self.move(src, tgt, flags)
+
+        elif action in [DOWNLOAD]:
+            self.download(src, tgt, flags)
 
 
 # ------------------------------------------------------------------------------
@@ -106,6 +113,14 @@ class StagingHelper_Local(object):
         tgt = ru.Url(tgt).path
         self.mkdir(os.path.dirname(tgt), flags)
         os.link(src, tgt)
+
+    def download(self, src, tgt, flags):
+        tgt = ru.Url(tgt).path
+        self.mkdir(os.path.dirname(tgt), flags)
+        r = requests.get(src, stream=True)
+        with open(tgt, 'wb') as fout:
+            for chunk in r.iter_content():
+                fout.write(chunk)
 
     def delete(self, tgt, flags):
         tgt = ru.Url(tgt).path
@@ -172,6 +187,11 @@ class StagingHelper_SAGA(object):
 
     def link(self, src, tgt, flags):
         assert self._has_saga
+
+    def download(self, src, tgt, flags):
+        assert self._has_saga
+
+        self.copy(src, tgt, flags)
 
 
     def delete(self, tgt, flags):

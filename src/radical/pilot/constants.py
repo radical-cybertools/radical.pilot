@@ -84,6 +84,7 @@ PMGR_METRICS         = [PILOT_STATE]
 COPY     = 'Copy'      # local cp
 LINK     = 'Link'      # local ln -s
 MOVE     = 'Move'      # local mv
+DOWNLOAD = 'Download'  # remote download by agent
 TRANSFER = 'Transfer'  # remote transfer from / to client
 TARBALL  = 'Tarball'   # remote staging will be executed using a tarball.
 
