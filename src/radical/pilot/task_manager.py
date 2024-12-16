@@ -390,8 +390,8 @@ class TaskManager(rpu.ClientComponent):
                 current = task.state
                 target  = task_dict['state']
 
-                if 'target_state' in task_dict:
-                    target = task_dict['target_state']
+              # if 'target_state' in task_dict:
+              #     target = task_dict['target_state']
 
                 if current == target:
                     self._log.debug('tmgr: state known: %s', uid)
