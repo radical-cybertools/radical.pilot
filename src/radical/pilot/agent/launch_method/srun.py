@@ -184,12 +184,13 @@ class Srun(LaunchMethod):
             mapping += ' --mem 0'
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('requested_gpus') and gpus_per_task:
-            if self._traverse:
-                mapping += ' --gpus-per-task=%d' % gpus_per_task
-            else:
-                mapping += ' --gpus-per-task %d' % gpus_per_task + \
-                           ' --gpu-bind closest'
+        if not td.get('metadata', {}).get('lm_skip_gpus', False):
+            if self._rm_info.get('requested_gpus') and gpus_per_task:
+                if self._traverse:
+                    mapping += ' --gpus-per-task=%d' % gpus_per_task
+                else:
+                    mapping += ' --gpus-per-task %d' % gpus_per_task + \
+                               ' --gpu-bind closest'
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
