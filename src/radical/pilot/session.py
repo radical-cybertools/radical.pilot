@@ -359,18 +359,6 @@ class Session(object):
         self._cfg.reg_addr = self._reg_service.addr
 
 
-        def reg_watcher():
-            reg = ru.zmq.RegistryClient(url=self._cfg.reg_addr)
-            while True:
-                time.sleep(60 * 10)
-                self._log.debug('===== registry dump %s', self.uid)
-                reg.dump(self.uid)
-
-        self._reg_watcher = mt.Thread(target=reg_watcher)
-        self._reg_watcher.daemon = True
-        self._reg_watcher.start()
-
-
     # --------------------------------------------------------------------------
     #
     def _connect_registry(self):
