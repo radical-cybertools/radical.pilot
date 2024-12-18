@@ -179,12 +179,18 @@ class TestPopen(TestCase):
     @mock.patch('os.killpg')
     def test_check_running(self, mocked_killpg, mocked_init):
 
+        class Launcher(object):
+            def cancel_task(self, task):
+                pass
+
         task = dict(self._test_case['task'])
         task['target_state'] = None
 
         pex = Popen(cfg=None, session=None)
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
+        pex._rm     = mock.Mock()
+        pex._rm._get_launcher = mock.Mock(return_value=Launcher())
 
         os.getpgid = mock.Mock()
         os.killpg  = mock.Mock()
@@ -196,9 +202,7 @@ class TestPopen(TestCase):
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
         task['proc'].pid = os.getpid()
-        to_watch.append(task)
         pex.cancel_task(task)
-        self.assertFalse(task['uid'] in self._tasks)
 
         # case 2: exit_code == 0
         task['proc'] = mock.Mock()

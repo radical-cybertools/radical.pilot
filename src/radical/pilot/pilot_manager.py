@@ -236,9 +236,9 @@ class PilotManager(rpu.ClientComponent):
         super().close()
 
 
-     # --------------------------------------------------------------------------
-     #
-     def dump(self):
+    # --------------------------------------------------------------------------
+    #
+    def dump(self):
 
         # dump json
         json = self.as_dict()
