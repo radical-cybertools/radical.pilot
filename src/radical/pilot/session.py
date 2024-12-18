@@ -809,6 +809,19 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
+    def dump(self):
+
+        self._reg.dump()
+
+        for tmgr in self._tmgrs.values():
+            tmgr.dump()
+
+        for pmgr in self._pmgrs.values():
+            pmgr.dump()
+
+
+    # --------------------------------------------------------------------------
+    #
     def close(self, **kwargs):
         """Close the session.
 

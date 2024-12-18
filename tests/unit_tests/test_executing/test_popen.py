@@ -45,6 +45,7 @@ class TestPopen(TestCase):
 
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
+        pex._tasks           = dict()
         pex._cancel_lock     = mt.RLock()
         pex._watch_queue     = queue.Queue()
 
@@ -196,9 +197,8 @@ class TestPopen(TestCase):
         task['proc'].poll.return_value = None
         task['proc'].pid = os.getpid()
         to_watch.append(task)
-        to_cancel.append(task['uid'])
-        pex._check_running(to_watch, to_cancel)
-        self.assertFalse(to_cancel)
+        pex.cancel_task(task)
+        self.assertFalse(task['uid'] in self._tasks)
 
         # case 2: exit_code == 0
         task['proc'] = mock.Mock()
