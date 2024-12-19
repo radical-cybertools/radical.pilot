@@ -340,16 +340,21 @@ class Popen(AgentExecutingComponent):
         # `to_watch.remove()` in the loop requires copy to iterate over the list
         for task in list(to_watch):
 
+            task_proc = task.get('proc')
+            if task_proc is None:
+                to_watch.remove(task)
+                continue
+
             tid = task['uid']
 
             # poll subprocess object
-            exit_code = task['proc'].poll()
+            exit_code = task_proc.poll()
             if exit_code is not None:
 
                 self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
-                task['proc'].wait()
+                task_proc.wait()
 
                 # we have a valid return code -- task is final
                 self._log.info("Task %s has return code %s.", tid, exit_code)
