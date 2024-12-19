@@ -54,7 +54,8 @@ class Popen(AgentExecutingComponent):
       # self._log.debug('popen initialize start')
         super().initialize()
 
-        self._tasks = dict()
+        self._tasks       = dict()
+        self._check_lock  = mt.Lock()
         self._watch_queue = queue.Queue()
 
         # run watcher thread
@@ -89,6 +90,15 @@ class Popen(AgentExecutingComponent):
             self._log.debug('task %s is already done', tid)
             return
 
+        # remove from tasks dictionary, thus "watcher" will not pick it up
+        with self._check_lock:
+            if tid not in self._tasks:
+                return
+            try:
+                del self._tasks[tid]
+            except KeyError:
+                pass
+
         # task is still running -- cancel it
         self._log.debug('cancel %s', tid)
         self._prof.prof('task_run_cancel_start', uid=tid)
@@ -96,7 +106,7 @@ class Popen(AgentExecutingComponent):
         launcher = self._rm.get_launcher(task['launcher_name'])
         launcher.cancel_task(task, proc.pid)
 
-        proc.wait() # make sure proc is collected
+        proc.wait()  # make sure proc is collected
 
         try:
             # might race with task collection
@@ -113,11 +123,6 @@ class Popen(AgentExecutingComponent):
 
         self.advance([task], rps.AGENT_STAGING_OUTPUT_PENDING,
                              publish=True, push=True)
-
-        try:
-            del self._tasks[tid]
-        except KeyError:
-            pass
 
 
     # --------------------------------------------------------------------------
@@ -341,7 +346,6 @@ class Popen(AgentExecutingComponent):
             exit_code = task['proc'].poll()
             if exit_code is not None:
 
-                action = True
                 self._prof.prof('task_run_stop', uid=tid)
 
                 # make sure proc is collected
@@ -358,6 +362,14 @@ class Popen(AgentExecutingComponent):
                     del task['proc']  # proc is not json serializable
                 except KeyError:
                     pass
+
+                with self._check_lock:
+                    if tid not in self._tasks:
+                        continue
+                    try:
+                        del self._tasks[tid]
+                    except KeyError:
+                        pass
 
                 tasks_to_advance.append(task)
 
@@ -383,12 +395,6 @@ class Popen(AgentExecutingComponent):
         if tasks_to_advance:
             self.advance(tasks_to_advance, rps.AGENT_STAGING_OUTPUT_PENDING,
                                            publish=True, push=True)
-
-            for task in tasks_to_advance:
-                try:
-                    del self._tasks[task['uid']]
-                except KeyError:
-                    pass
 
 
 # ------------------------------------------------------------------------------
