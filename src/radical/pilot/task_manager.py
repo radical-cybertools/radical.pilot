@@ -238,6 +238,17 @@ class TaskManager(rpu.ClientComponent):
         self._closed = True
         self._rep.ok('>>ok\n')
 
+        self.dump()
+
+        self._ctrl_sub.stop()
+
+        super().close()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def dump(self):
+
         # dump json
         json = self.as_dict()
       # json['_id']   = self.uid
@@ -247,11 +258,6 @@ class TaskManager(rpu.ClientComponent):
 
         tgt = '%s/%s.json' % (self._session.path, self.uid)
         ru.write_json(json, tgt)
-
-        self._ctrl_sub.stop()
-
-        super().close()
-
 
     # --------------------------------------------------------------------------
     #
