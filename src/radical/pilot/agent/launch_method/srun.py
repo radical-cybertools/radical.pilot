@@ -3,6 +3,9 @@ __copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import math
+import os
+import signal
+import time
 
 import radical.utils as ru
 
@@ -94,7 +97,7 @@ class Srun(LaunchMethod):
         launch process identified by its process ID.
         '''
 
-        # according to ORNL, SIGINT should be sent twice for effective rank
+        # according to OLCF, SIGINT should be sent twice for effective rank
         # cancellation
         try:
             self._log.debug('killing task %s (%d)', task['uid'], pid)
