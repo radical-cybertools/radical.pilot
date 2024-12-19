@@ -180,13 +180,17 @@ class AgentExecutingComponent(rpu.AgentComponent):
             to_list.sort(key=lambda x: x[1])
 
             # cancel all tasks which have timed out
+            offset = 0
             for task, cancel_time in to_list:
                 now = time.time()
                 if now > cancel_time:
                     self._prof.prof('task_timeout', uid=task['uid'])
                     self.cancel_task(task=task)
+                    offset += 1
                 else:
                     break
+            # skip canceled tasks (reset the list)
+            to_list = to_list[offset:]
 
 
     # --------------------------------------------------------------------------
