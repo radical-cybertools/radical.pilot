@@ -7,16 +7,13 @@ API Reference
 
 .. toctree::
 
-Sessions
+Session
 --------
 .. autoclass:: radical.pilot.Session
    :members:
    :special-members: __init__
 
-Pilots and PilotManagers
-========================
-
-PilotManagers
+PilotManager
 -------------
 .. autoclass:: radical.pilot.PilotManager
    :members:
@@ -27,13 +24,10 @@ PilotDescription
 .. autoclass:: radical.pilot.PilotDescription
    :members:
 
-Pilots
+Pilot
 ------
 .. autoclass:: radical.pilot.Pilot
    :members:
-
-Tasks and TaskManagers
-======================
 
 TaskManager
 -----------
@@ -67,7 +61,7 @@ The object returned to the client is a `Task` subclass with additional features.
     :members:
 
 Utilities and helpers
-=====================
+---------------------
 .. autoclass:: radical.pilot.agent.scheduler.base.AgentSchedulingComponent
    :members:
 .. autoclass:: radical.pilot.agent.scheduler.continuous.Continuous
