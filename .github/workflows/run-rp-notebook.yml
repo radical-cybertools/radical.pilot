@@ -61,6 +61,7 @@ jobs:
         if: always()
         run: |
           SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
+          test -z "$SIDCLIENT" && echo 'nothing to collect' && exit 0
           SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
           CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
           AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
@@ -79,7 +80,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: sessions_notebooks${{inputs.notebook-name}}_${{inputs.python-version}}
+            name: sessions_notebooks_${{inputs.notebook-name}}_${{inputs.python-version}}
             path: sessions_notebooks
             retention-days: 5
             overwrite: true
