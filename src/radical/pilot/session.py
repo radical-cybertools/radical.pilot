@@ -254,11 +254,12 @@ class Session(object):
                                           url=bcfg['addr_pub'],
                                           log=self._log,
                                           prof=self._prof)
-        ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB, url=bcfg['addr_sub'],
-                          log=self._log, prof=self._prof,
-                          cb=self._control_cb,
-                          topic=rpc.CONTROL_PUBSUB)
-
+        self._ctrl_sub = ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB,
+                                           url=bcfg['addr_sub'],
+                                           log=self._log,
+                                           prof=self._prof,
+                                           cb=self._control_cb,
+                                           topic=rpc.CONTROL_PUBSUB)
 
         # crosswire local channels and proxy channels
         self._crosswire_proxy()
@@ -930,6 +931,8 @@ class Session(object):
             self._reg.dump()
             self._reg.close()
             self._reg_service.stop()
+
+            self._ctrl_sub.close()
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
