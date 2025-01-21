@@ -23,7 +23,7 @@ jobs:
   test-getting_started:
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
-      python-version: 3.7
+      python-version: 3.8
       requirements-file: 'requirements-docs-ci.txt'
       notebook-name: 'getting_started.ipynb'
 
@@ -43,7 +43,7 @@ jobs:
         ]
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
-      python-version: 3.7
+      python-version: 3.8
       requirements-file: 'requirements-docs-ci.txt'
       notebook-name: ${{ matrix.tutorial }}
       notebook-path: 'tutorials'
