@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import os
 import copy
 import time
 import queue
@@ -271,6 +272,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         self._p = mp.Process(target=self._schedule_tasks)
         self._p.daemon = True
         self._p.start()
+
+        self._pwatcher = ru.PWatcher(uid='%s.pw' % self._uid, log=self._log)
+        self._pwatcher.watch(os.getpid())
+        self._pwatcher.watch(self._p.pid)
 
 
     # --------------------------------------------------------------------------
