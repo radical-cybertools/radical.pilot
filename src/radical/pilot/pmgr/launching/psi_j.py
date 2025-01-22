@@ -209,6 +209,7 @@ class PilotLauncherPSIJ(PilotLauncherBase):
             spec.resources = psij.ResourceSpecV1(
                 node_count=jd.node_count or None,
                 process_count=jd.total_cpu_count,
+                exclusive_node_use=bool(jd.system_architecture.get('exclusive'))
             )
           # spec.resources.cpu_cores_per_process = 1
           # spec.resources.gpu_cores_per_process = jd.total_gpu_count
