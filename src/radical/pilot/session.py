@@ -932,7 +932,7 @@ class Session(object):
             self._reg.close()
             self._reg_service.stop()
 
-            self._ctrl_sub.close()
+            self._ctrl_sub.stop()
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'
