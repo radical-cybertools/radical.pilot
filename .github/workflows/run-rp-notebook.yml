@@ -41,7 +41,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install dependencies
         run: |
-          sudo apt update -y && sudo apt install -y mpich
+          sudo apt update -y && sudo apt install -y openmpi-bin libopenmpi-dev
           python -m venv testenv
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
