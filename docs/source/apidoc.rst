@@ -7,47 +7,33 @@ API Reference
 
 .. toctree::
 
-Sessions
---------
+Session and Managers
+--------------------
 .. autoclass:: radical.pilot.Session
    :members:
    :special-members: __init__
 
-Pilots and PilotManagers
-========================
-
-PilotManagers
--------------
 .. autoclass:: radical.pilot.PilotManager
    :members:
    :special-members: __init__
 
-PilotDescription
-----------------
-.. autoclass:: radical.pilot.PilotDescription
-   :members:
-
-Pilots
-------
-.. autoclass:: radical.pilot.Pilot
-   :members:
-
-Tasks and TaskManagers
-======================
-
-TaskManager
------------
 .. autoclass:: radical.pilot.TaskManager
    :members:
    :special-members: __init__
 
-TaskDescription
----------------
-.. autoclass:: radical.pilot.TaskDescription
+Pilot
+-----
+.. autoclass:: radical.pilot.PilotDescription
+   :members:
+
+.. autoclass:: radical.pilot.Pilot
    :members:
 
 Task
 ----
+.. autoclass:: radical.pilot.TaskDescription
+   :members:
+
 .. autoclass:: radical.pilot.Task
    :members:
 
@@ -58,16 +44,17 @@ Raptor
 .. autoclass:: radical.pilot.raptor.Worker
    :members:
 
-A `radical.pilot.Task` managing a `radical.pilot.raptor.Master` instance is created using
+A :py:class:`radical.pilot.Task` managing a
+:py:class:`radical.pilot.raptor.Master` instance is created using
 :py:attr:`radical.pilot.TaskDescription.mode`
-``rp.RAPTOR_MASTER``, or through :py:func:`~radical.pilot.Pilot.submit_raptors()`.
+``rp.RAPTOR_MASTER``, or through :py:func:`radical.pilot.Pilot.submit_raptors()`.
 The object returned to the client is a `Task` subclass with additional features.
 
 .. autoclass:: radical.pilot.raptor_tasks.Raptor
     :members:
 
 Utilities and helpers
-=====================
+---------------------
 .. autoclass:: radical.pilot.agent.scheduler.base.AgentSchedulingComponent
    :members:
 .. autoclass:: radical.pilot.agent.scheduler.continuous.Continuous
