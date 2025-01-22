@@ -21,7 +21,7 @@ import os
 # -- Project information -----------------------------------------------------
 
 project = 'RADICAL-Pilot'
-copyright = '2023, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
+copyright = '2025, The RADICAL-Cybertools Team (info@radical-cybertools.org)'
 author = 'RADICAL-Cybertools Team'
 
 # The version info for the project you're documenting, acts as replacement for
