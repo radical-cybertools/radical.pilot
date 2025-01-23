@@ -34,12 +34,12 @@ if __name__ == "__main__":
   # log  = ru.Logger(name='radical.pilot', targets='-')
     reg  = ru.Config(ru.read_json(f'{sid}/{sid}.reg.init.json'))
     addr = reg.bridges.control_pubsub.addr_pub
-    pub  = ru.zmq.Publisher('control_pubsub', url=addr, log=log)
+    pub  = ru.zmq.Publisher(rp.CONTROL_PUBSUB, url=addr, log=log)
 
     msg  = {'cmd' : cmd,
             'arg' : {x:v for x,v in [a.split('=') for a in args]}}
 
-    pub.put('control_pubsub', msg)
+    pub.put(rp.CONTROL_PUBSUB, msg)
     time.sleep(0.1)
 
 
