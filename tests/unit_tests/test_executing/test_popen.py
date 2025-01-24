@@ -196,12 +196,12 @@ class TestPopen(TestCase):
         pex._rm     = mock.Mock()
         pex._rm._get_launcher = mock.Mock(return_value=Launcher())
         pex._tasks  = {task['uid']: task}
+        pex._check_lock = mt.Lock()
 
         os.getpgid = mock.Mock()
         os.killpg  = mock.Mock()
 
         to_watch  = list()
-        to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()

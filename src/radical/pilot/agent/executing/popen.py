@@ -369,12 +369,11 @@ class Popen(AgentExecutingComponent):
                     pass
 
                 with self._check_lock:
-                    if tid not in self._tasks:
-                        continue
-                    try:
-                        del self._tasks[tid]
-                    except KeyError:
-                        pass
+                    if tid in self._tasks:
+                        try:
+                            del self._tasks[tid]
+                        except KeyError:
+                            pass
 
                 tasks_to_advance.append(task)
 
