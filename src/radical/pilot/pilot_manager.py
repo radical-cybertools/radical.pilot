@@ -231,6 +231,14 @@ class PilotManager(rpu.ClientComponent):
         self._closed = True
         self._rep.ok('>>ok\n')
 
+        self.dump()
+
+        super().close()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def dump(self, name=None):
 
         # dump json
         json = self.as_dict()
@@ -238,12 +246,12 @@ class PilotManager(rpu.ClientComponent):
         json['uid']    = self.uid
         json['pilots'] = [pilot.as_dict() for pilot in self._pilots.values()]
 
-        tgt = '%s/%s.json' % (self._session.path, self.uid)
+        if name:
+            tgt = '%s/%s.%s.json' % (self._session.path, self.uid, name)
+        else:
+            tgt = '%s/%s.json' % (self._session.path, self.uid)
 
         ru.write_json(json, tgt)
-
-        super().close()
-
 
     # --------------------------------------------------------------------------
     #
