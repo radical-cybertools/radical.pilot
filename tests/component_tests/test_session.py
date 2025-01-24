@@ -131,6 +131,7 @@ class TestSession(TestCase):
         self._session._hb          = mock.Mock()
         self._session._hb_pubsub   = mock.Mock()
         self._session._reg_service = mock.Mock()
+        self._session._ctrl_sub    = mock.Mock()
 
         # only `True` values are targeted
         self._session.close(download=True)
