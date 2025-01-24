@@ -254,11 +254,33 @@ class Session(object):
                                           url=bcfg['addr_pub'],
                                           log=self._log,
                                           prof=self._prof)
+        self._ctrl_sub = ru.zmq.Subscriber(channel=rpc.CONTROL_PUBSUB,
+                                           url=bcfg['addr_sub'],
+                                           log=self._log,
+                                           prof=self._prof,
+                                           cb=self._control_cb,
+                                           topic=rpc.CONTROL_PUBSUB)
 
         # crosswire local channels and proxy channels
         self._crosswire_proxy()
 
-      # self._reg.dump(self._role)
+        self.dump('init')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _control_cb(self, topic, msg):
+
+        self._log.debug('==== control msg: %s', msg)
+
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        if not cmd:
+            return
+
+        if cmd == 'dump':
+            self.dump(arg.get('name'))
 
 
     # --------------------------------------------------------------------------
@@ -797,15 +819,15 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
-    def dump(self):
+    def dump(self, name=None):
 
-        self._reg.dump()
+        self._reg.dump(name)
 
         for tmgr in self._tmgrs.values():
-            tmgr.dump()
+            tmgr.dump(name)
 
         for pmgr in self._pmgrs.values():
-            pmgr.dump()
+            pmgr.dump(name)
 
 
     # --------------------------------------------------------------------------
@@ -909,6 +931,8 @@ class Session(object):
             self._reg.dump()
             self._reg.close()
             self._reg_service.stop()
+
+            self._ctrl_sub.stop()
 
             self._t_stop = time.time()
             self._rep.info('<<session lifetime: %.1fs'

@@ -247,7 +247,7 @@ class TaskManager(rpu.ClientComponent):
 
     # --------------------------------------------------------------------------
     #
-    def dump(self):
+    def dump(self, name=None):
 
         # dump json
         json = self.as_dict()
@@ -256,7 +256,11 @@ class TaskManager(rpu.ClientComponent):
         json['uid']   = self.uid
         json['tasks'] = self._task_info
 
-        tgt = '%s/%s.json' % (self._session.path, self.uid)
+        if name:
+            tgt = '%s/%s.%s.json' % (self._session.path, self.uid, name)
+        else:
+            tgt = '%s/%s.json' % (self._session.path, self.uid)
+
         ru.write_json(json, tgt)
 
     # --------------------------------------------------------------------------
