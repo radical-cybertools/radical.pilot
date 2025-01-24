@@ -653,8 +653,7 @@ def get_session_description(sid, src=None):
                 details['cores'] = nodes * cpn
 
             if not details.get('gpus'):
-                gpn = details.get('gpus_per_node')
-                assert gpn, 'no gpn'
+                gpn = details.get('gpus_per_node', 0)
 
                 details['gpus'] = nodes * gpn
 
