@@ -43,10 +43,16 @@ class TestPopen(TestCase):
 
         mocked_logger._debug_level = 1
 
+        check = list()
+        def cancel_task(task):
+            check.append(task['uid'])
+
         pex = Popen(cfg=None, session=None)
         pex._log             = mocked_logger()
         pex._cancel_lock     = mt.RLock()
-        pex._watch_queue     = queue.Queue()
+        pex.cancel_task      = cancel_task
+        pex._tasks           = {'task.0000': {'uid': 'task.0000'},
+                                'task.0001': {'uid': 'task.0001'}}
 
         msg = {'cmd': '', 'arg': {'uids': ['task.0000', 'task.0001']}}
         self.assertIsNone(pex.control_cb(topic=None, msg=msg))
@@ -54,9 +60,7 @@ class TestPopen(TestCase):
         msg['cmd'] = 'cancel_tasks'
         self.assertIsNone(pex.control_cb(topic=None, msg=msg))
         for uid in msg['arg']['uids']:
-            mode, tid = pex._watch_queue.get()
-            self.assertEqual(mode, pex.TO_CANCEL)
-            self.assertEqual(tid, uid)
+            self.assertIn(uid, check)
 
     # --------------------------------------------------------------------------
     #
@@ -71,7 +75,7 @@ class TestPopen(TestCase):
         launcher.name     = 'APRUN'
         launcher._command = '/bin/aprun'
         launcher._env_sh  = 'env/lm_aprun.sh'
-        mocked_find_launcher.return_value = launcher
+        mocked_find_launcher.return_value = (launcher, 'APRUN')
 
         task = dict(self._test_case['task'])
         task['slots'] = self._test_case['setup']['slots']
@@ -178,40 +182,46 @@ class TestPopen(TestCase):
     @mock.patch('os.killpg')
     def test_check_running(self, mocked_killpg, mocked_init):
 
+        class Launcher(object):
+            def cancel_task(self, task):
+                pass
+
         task = dict(self._test_case['task'])
-        task['target_state'] = None
+        task['target_state']  = None
+        task['launcher_name'] = None
 
         pex = Popen(cfg=None, session=None)
         pex._log    = pex._prof   = mock.Mock()
         pex.advance = pex.publish = mock.Mock()
+        pex._rm     = mock.Mock()
+        pex._rm._get_launcher = mock.Mock(return_value=Launcher())
+        pex._tasks  = {task['uid']: task}
+        pex._check_lock = mt.Lock()
 
         os.getpgid = mock.Mock()
         os.killpg  = mock.Mock()
 
         to_watch  = list()
-        to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = None
         task['proc'].pid = os.getpid()
-        to_watch.append(task)
-        to_cancel.append(task['uid'])
-        pex._check_running(to_watch, to_cancel)
-        self.assertFalse(to_cancel)
+        pex.cancel_task(task)
+        self.assertNotIn(task['uid'], pex._tasks)
 
         # case 2: exit_code == 0
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 0
         to_watch.append(task)
-        pex._check_running(to_watch, to_cancel)
+        pex._check_running(to_watch)
         self.assertEqual(task['target_state'], rps.DONE)
 
         # case 3: exit_code == 1
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 1
         to_watch.append(task)
-        pex._check_running(to_watch, to_cancel)
+        pex._check_running(to_watch)
         self.assertEqual(task['target_state'], rps.FAILED)
 
     # --------------------------------------------------------------------------

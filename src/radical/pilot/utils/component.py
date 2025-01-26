@@ -1188,6 +1188,14 @@ class BaseComponent(object):
                         output.channel)
                 output.put(_things, qname=qname)
 
+                # if a file `'/tmp/rp_wait_%s' % _state.lower()` exists, we
+                # wait for that file to disappear before continuing
+                waitfile = '/tmp/rp_wait_%s' % _state.lower()
+                while os.path.isfile(waitfile):
+                  self._log.debug('===== wait for file %s', waitfile)
+                  time.sleep(1)
+
+
               # ts = time.time()
               # for thing in _things:
               #     self._prof.prof('put', uid=thing['uid'], state=_state,
