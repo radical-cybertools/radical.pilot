@@ -211,6 +211,7 @@ class TestPopen(TestCase):
         self.assertNotIn(task['uid'], pex._tasks)
 
         # case 2: exit_code == 0
+        pex._tasks   = {task['uid']: task}
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 0
         to_watch.append(task)
@@ -218,6 +219,7 @@ class TestPopen(TestCase):
         self.assertEqual(task['target_state'], rps.DONE)
 
         # case 3: exit_code == 1
+        pex._tasks   = {task['uid']: task}
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 1
         to_watch.append(task)
