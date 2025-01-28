@@ -204,12 +204,13 @@ class RMBaseTestCase(TestCase):
             return False, 'error'
         mocked_lm.can_launch = mocked_can_launch_false
 
-        self.assertIsNone(rm.find_launcher(task={'uid': 'task0000'}))
+        self.assertEqual((None, None), rm.find_launcher(task={'uid': 'task0000'}))
 
         def mocked_can_launch_true(task):
             return True, ''
         mocked_lm.can_launch = mocked_can_launch_true
-        self.assertIs(rm.find_launcher(task={'uid': 'task0000'}), mocked_lm)
+        self.assertEqual(rm.find_launcher(task={'uid': 'task0000'}),
+                         (mocked_lm, 'SRUN'))
 
     # --------------------------------------------------------------------------
     #

@@ -470,7 +470,7 @@ class ResourceManager(object):
             launcher = self._launchers[name]
             lm_can_launch, err_message = launcher.can_launch(task)
             if lm_can_launch:
-                return launcher
+                return launcher, name
             else:
                 errors.append([name, err_message])
 
@@ -478,7 +478,17 @@ class ResourceManager(object):
         for name, error in errors:
             self._log.debug('    %s: %s', name, error)
 
-        return None
+        return None, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher(self, lname):
+
+        if lname not in self._launchers:
+            raise ValueError('no such launcher %s' % lname)
+
+        return self._launchers[lname]
 
 
     # --------------------------------------------------------------------------

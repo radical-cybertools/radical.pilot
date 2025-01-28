@@ -545,9 +545,11 @@ class Agent_0(rpu.AgentComponent):
                 }
 
                 # find a launcher to use
-                launcher = self._rm.find_launcher(agent_task)
+                launcher, lname = self._rm.find_launcher(agent_task)
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
+
+                self._log.debug('found sa launcher %s', lname)
 
                 # FIXME: set RP environment (as in Popen Executor)
 
