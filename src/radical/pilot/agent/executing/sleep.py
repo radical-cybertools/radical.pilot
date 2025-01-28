@@ -88,7 +88,7 @@ class Sleep(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def cancel_task(self, task):
 
         raise NotImplementedError('no cancellation support in sleep executor')
 
