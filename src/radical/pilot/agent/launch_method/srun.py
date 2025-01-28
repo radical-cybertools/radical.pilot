@@ -2,10 +2,10 @@
 __copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import math
 import os
-import signal
+import math
 import time
+import signal
 
 import radical.utils as ru
 

@@ -370,6 +370,7 @@ class Popen(AgentExecutingComponent):
 
                 with self._check_lock:
                     if tid not in self._tasks:
+                        # task was canceled before, nothing to do
                         continue
                     try:
                         del self._tasks[tid]

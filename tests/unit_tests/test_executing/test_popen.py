@@ -196,12 +196,12 @@ class TestPopen(TestCase):
         pex._rm     = mock.Mock()
         pex._rm._get_launcher = mock.Mock(return_value=Launcher())
         pex._tasks  = {task['uid']: task}
+        pex._check_lock = mt.Lock()
 
         os.getpgid = mock.Mock()
         os.killpg  = mock.Mock()
 
         to_watch  = list()
-        to_cancel = list()
 
         # case 1: exit_code is None, task to be cancelled
         task['proc'] = mock.Mock()
@@ -211,6 +211,7 @@ class TestPopen(TestCase):
         self.assertNotIn(task['uid'], pex._tasks)
 
         # case 2: exit_code == 0
+        pex._tasks   = {task['uid']: task}
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 0
         to_watch.append(task)
@@ -218,6 +219,7 @@ class TestPopen(TestCase):
         self.assertEqual(task['target_state'], rps.DONE)
 
         # case 3: exit_code == 1
+        pex._tasks   = {task['uid']: task}
         task['proc'] = mock.Mock()
         task['proc'].poll.return_value = 1
         to_watch.append(task)
