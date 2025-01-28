@@ -5,6 +5,8 @@ __copyright__ = 'Copyright 2016-2023, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import time
+import signal
 
 import radical.utils as ru
 
@@ -186,6 +188,32 @@ class LaunchMethod(object):
     def get_launcher_env(self):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, task, pid):
+        '''
+        This method cancels the task, in the default case by killing the task's
+        launch process identified by its process ID.
+        '''
+
+        # kill the process group which should include the actual launch method
+        try:
+            self._log.debug('killing task %s (%d)', task['uid'], pid)
+            os.killpg(pid, signal.SIGTERM)
+
+            # also send a SIGKILL to drive the message home.
+            # NOTE: the `sleep` will limit the cancel throughput!
+            try:
+                time.sleep(0.1)
+                os.killpg(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+        except OSError:
+            # lost race: task is already gone, we ignore this
+            self._log.debug('task already gone: %s', task['uid'])
 
 
     # --------------------------------------------------------------------------
