@@ -150,7 +150,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def cancel_task(self, task):
 
         raise NotImplementedError('cancel_task is not implemented')
 
@@ -164,24 +164,39 @@ class AgentExecutingComponent(rpu.AgentComponent):
         `self._cancel_task(task)`.  That has to be implemented by al executors.
         '''
 
+        # tasks to watch for timeout, sorted by absolut timeout timestamp
+        to_list = list()
+
         while not self._term.is_set():
 
-            # check once per second at most
-            time.sleep(1)
-
-            now = time.time()
+            # collect new tasks to watch
             with self._to_lock:
 
-                # running tasks for next check
-                to_list = list()
-                for to, start, task in self._to_tasks:
-                    if now - start > to:
-                        self._prof.prof('task_timeout', uid=task['uid'])
-                        self.cancel_task(uid=task['uid'])
-                    else:
-                        to_list.append([to, start, task])
+                for task, cancel_time in self._to_tasks:
+                    to_list.append([task, cancel_time])
 
-                self._to_tasks = to_list
+                self._to_tasks = list()
+
+            # avoid busy wait
+            if not to_list:
+                time.sleep(1)
+                continue
+
+            # sort by timeout, smallest first
+            to_list.sort(key=lambda x: x[1])
+
+            # cancel all tasks which have timed out
+            offset = 0
+            for task, cancel_time in to_list:
+                now = time.time()
+                if now > cancel_time:
+                    self._prof.prof('task_timeout', uid=task['uid'])
+                    self.cancel_task(task=task)
+                    offset += 1
+                else:
+                    break
+            # skip canceled tasks (reset the list)
+            to_list = to_list[offset:]
 
 
     # --------------------------------------------------------------------------
@@ -192,7 +207,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         if to > 0.0:
             with self._to_lock:
-                self._to_tasks.append([to, time.time(), task])
+                cancel_time = time.time() + to
+                self._to_tasks.append([task, cancel_time])
 
 
     # --------------------------------------------------------------------------
