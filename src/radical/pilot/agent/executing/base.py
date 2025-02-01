@@ -141,9 +141,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
                 if task:
                     self.cancel_task(task)
 
-        elif cmd == 'startup_done':
+        elif cmd == 'task_startup_done':
 
-            self._log.info('startup_done command (%s)', arg)
+            self._log.info('task_startup_done command (%s)', arg)
             task = self.get_task(arg['uid'])
             if task:
                 # if execution timeout is 0., then we will reset cancellation
@@ -190,6 +190,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
                 time.sleep(1)
                 continue
 
+            # list of pairs <task, timeout> sorted by timeout, smallest first
             to_list = sorted(to_tasks.values(), key=lambda x: x[1])
             # cancel all tasks which have timed out
             for task, cancel_time in to_list:
@@ -210,7 +211,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         startup_to = task['description'].get('startup_timeout', 0.)
         exec_to    = task['description'].get('timeout',         0.)
 
-        if startup_to > 0. or exec_to > 0.:
+        if startup_to or exec_to:
             with self._to_lock:
                 cancel_time = time.time() + (startup_to or exec_to)
                 has_started = not bool(startup_to)

@@ -68,8 +68,7 @@ class Popen(AgentExecutingComponent):
     #
     def get_task(self, tid):
 
-        with self._check_lock:
-            return self._tasks.get(tid)
+        return self._tasks.get(tid)
 
 
     # --------------------------------------------------------------------------
