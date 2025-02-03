@@ -271,7 +271,7 @@ class Session(object):
     #
     def _control_cb(self, topic, msg):
 
-        self._log.debug('==== control msg: %s', msg)
+        self._log.debug('control msg: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')

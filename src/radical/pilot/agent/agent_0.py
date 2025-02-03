@@ -640,12 +640,9 @@ class Agent_0(rpu.AgentComponent):
         listen on a command port, relay incoming commands to the control pubsub
         '''
 
-        self._log.debug('=== start command port %.2f', time.time())
-
         sock = None
         while True:
             port = ru.find_port()
-            self._log.debug('=== try port %s', port)
             try:
                 # we only listen on localhost!
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -657,13 +654,10 @@ class Agent_0(rpu.AgentComponent):
 
         assert sock
 
-        self._log.debug('=== bound to port %s %.2f', port, time.time())
+        self._log.debug('bound cmd handler to port %s', port)
 
         ru.write_json('agent_0.ports.json', {'command': port})
-        self._log.debug('=== wrote portfile agent_0.ports.json')
-        self._log.debug('=== pwd %s', os.getcwd())
         sock.listen(1)
-        self._log.debug('=== listening on port %s', port)
 
         while True:
             connection, client_address = sock.accept()

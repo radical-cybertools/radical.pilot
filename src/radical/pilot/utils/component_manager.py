@@ -61,7 +61,7 @@ class ComponentManager(object):
         self._startups = dict()  # startup messages we have seen
 
         def register_cb(msg):
-            self._log.debug('=== got message: %s', msg)
+            self._log.debug('got message: %s', msg)
             msg = ru.zmq.Message.deserialize(msg)
             if isinstance(msg, ComponentStartedMessage):
                 self._startups[msg.uid] = msg
