@@ -311,7 +311,7 @@ class Session(object):
         self._start_components()
         self._crosswire_proxy()
 
-      # self._reg.dump(self._role)
+        self._reg.dump(self._role)
 
 
     # --------------------------------------------------------------------------

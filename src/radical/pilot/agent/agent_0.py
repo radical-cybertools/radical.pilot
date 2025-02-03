@@ -3,8 +3,10 @@ __copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import json
 import stat
 import time
+import socket
 
 import threading           as mt
 
@@ -628,7 +630,67 @@ class Agent_0(rpu.AgentComponent):
             return self._ctrl_service_info(msg, arg)
 
         else:
-            self._log.error('invalid command: [%s]', cmd)
+            self._log.warn('invalid command: [%s]', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_port(self):
+        '''
+        listen on a command port, relay incoming commands to the control pubsub
+        '''
+
+        self._log.debug('=== start command port %.2f', time.time())
+
+        sock = None
+        while True:
+            port = ru.find_port()
+            self._log.debug('=== try port %s', port)
+            try:
+                # we only listen on localhost!
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.bind(('127.0.0.1', port))
+                break
+            except Exception as e:
+                self._log.error('port %s unusable: %s', port, e)
+                pass
+
+        assert sock
+
+        self._log.debug('=== bound to port %s %.2f', port, time.time())
+
+        ru.write_json('agent_0.ports.json', {'command': port})
+        self._log.debug('=== wrote portfile agent_0.ports.json')
+        self._log.debug('=== pwd %s', os.getcwd())
+        sock.listen(1)
+        self._log.debug('=== listening on port %s', port)
+
+        while True:
+            connection, client_address = sock.accept()
+
+            try:
+                self._log.info('command connection from %s', client_address)
+
+                while True:
+
+                    data = connection.recv(1024)
+                    msg  = json.loads(data)
+
+                    # don't forward to the client
+                    if 'fwd' not in msg:
+                        msg['fwd'] = False
+
+                    self._log.debug('command: %s', msg)
+
+                    self.publish(rpc.CONTROL_PUBSUB, msg)
+                    connection.sendall(b'OK')
+
+            except Exception as e:
+                connection.sendall(('ERROR: %s' % e).encode('utf-8'))
+
+            finally:
+                connection.close()
+
 
 
     # --------------------------------------------------------------------------
@@ -796,6 +858,11 @@ class Agent_0(rpu.AgentComponent):
             self._service.start()
 
             self._log.info('service_url : %s', self._service.addr)
+
+        # always listen on a local port for commands
+        self._cmd_port = mt.Thread(target=self.command_port)
+        self._cmd_port.daemon = True
+        self._cmd_port.start()
 
 
     # --------------------------------------------------------------------------
