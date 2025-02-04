@@ -245,7 +245,8 @@ class MPIExec(LaunchMethod):
         if self._use_rf:
             rankfile     = self._get_rank_file(slots, uid, sbox)
             hosts        = set([slot['node_name'] for slot in slots])
-            cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
+          # cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
+            cmd_options += '-rf %s' % rankfile
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
             hostfile     = self._get_host_file(slots, uid, sbox)
