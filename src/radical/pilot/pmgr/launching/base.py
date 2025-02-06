@@ -128,8 +128,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
-
-        # load all launcher implementations
         self._launchers = dict()
 
         from .saga  import PilotLauncherSAGA
@@ -143,12 +141,15 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         exceptions = dict()
         for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
             try:
-                ctor = impl[name]
-                self._launchers[name] = ctor(name, self._log, self._prof,
-                                             self._state_cb)
+                self._launchers[name] = impl[name](name, self._log, self._prof,
+                                                   self._state_cb)
             except Exception as e:
                 self._log.warn('skip launcher %s' % name)
                 exceptions[name] = e
+            else:
+                # check SAGA only if PSI/J is not available
+                self._log.debug('enabled launcher: %s', list(self._launchers))
+                break
 
         # if no launcher is usable, log the found exceptions
         if not self._launchers:
