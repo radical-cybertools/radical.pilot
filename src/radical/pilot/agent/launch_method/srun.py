@@ -2,7 +2,10 @@
 __copyright__ = 'Copyright 2016-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
+import os
 import math
+import time
+import signal
 
 import radical.utils as ru
 
@@ -84,6 +87,39 @@ class Srun(LaunchMethod):
     def finalize(self):
 
         pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, task, pid):
+        '''
+        This method cancels the task, in the default case by killing the task's
+        launch process identified by its process ID.
+        '''
+
+        # according to ORNL, SIGINT should be sent twice for effective rank
+        # cancellation
+        try:
+            self._log.debug('killing task %s (%d)', task['uid'], pid)
+            os.killpg(pid, signal.SIGINT)
+
+            try:
+                time.sleep(0.1)
+                os.killpg(pid, signal.SIGINT)
+            except OSError:
+                pass
+
+            # also send a SIGKILL to drive the message home.
+            # NOTE: the `sleep` will limit the cancel throughput!
+            try:
+                time.sleep(0.1)
+                os.killpg(pid, signal.SIGKILL)
+            except OSError:
+                pass
+
+        except OSError:
+            # lost race: task is already gone, we ignore this
+            self._log.debug('task already gone: %s', task['uid'])
 
 
     # --------------------------------------------------------------------------
