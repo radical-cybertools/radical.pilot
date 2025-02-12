@@ -41,7 +41,7 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install dependencies
         run: |
-          sudo apt update -y && sudo apt install -y mpich
+          sudo apt update -y && sudo apt install -y openmpi-bin libopenmpi-dev
           python -m venv testenv
           . testenv/bin/activate
           python -m pip install --upgrade pip setuptools wheel
@@ -60,26 +60,27 @@ jobs:
       - name: Collect sessions
         if: always()
         run: |
-          SIDCLIENT=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
-          SIDAGENT="$HOME/radical.pilot.sandbox/$SIDCLIENT"
-          CLIENTNAME="${{inputs.notebook-name}}_client_$SIDCLIENT"
-          AGENTNAME="${{inputs.notebook-name}}_agent_$SIDCLIENT"
-          echo "SIDCLIENT  : $SIDCLIENT"
-          echo "SIDAGENT   : $SIDAGENT"
-          echo "CLIENTNAME : $CLIENTNAME"
-          echo "AGENTNAME  : $AGENTNAME"
+          SID=$(find . -name "rp.session*" -type d -exec basename {} "rp.session" \;)
+          test -z "$SID" && echo 'Session not created' && exit 0
+          AGENT_SBOX="$HOME/radical.pilot.sandbox/$SID"
+          CLIENT_NAME="${{ inputs.notebook-name }}_client_$SID"
+          AGENT_NAME="${{ inputs.notebook-name }}_agent_$SID"
+          echo "SID         : $SID"
+          echo "AGENT_SBOX  : $AGENT_SBOX"
+          echo "CLIENT_NAME : $CLIENT_NAME"
+          echo "AGENT_NAME  : $AGENT_NAME"
           mkdir sessions_notebooks
-          tar cfj $CLIENTNAME.tar.bz2 $SIDCLIENT
-          cp -R $CLIENTNAME.tar.bz2 sessions_notebooks
-          if [ -d "$SIDAGENT" ]; then
-            tar cfj $AGENTNAME.tar.bz2 $SIDAGENT
-            cp -R $AGENTNAME.tar.bz2 sessions_notebooks
+          tar -cjf sessions_notebooks/$CLIENT_NAME.tar.bz2 $SID && \
+              echo "Client tarball created OK" || echo "NO client tarball"
+          if [ -d "$AGENT_SBOX" ]; then
+            tar -cjf sessions_notebooks/$AGENT_NAME.tar.bz2 -P $AGENT_SBOX && \
+                echo "Agent tarball created OK" || echo "NO agent tarball"
           fi
       - name: Upload sessions
         if: always()
         uses: actions/upload-artifact@v4
         with:
-            name: sessions_notebooks${{inputs.notebook-name}}_${{inputs.python-version}}
+            name: sessions_notebooks_${{inputs.notebook-name}}_${{inputs.python-version}}
             path: sessions_notebooks
             retention-days: 5
             overwrite: true

@@ -5,7 +5,7 @@ Bridges2 (ACCESS)
 Platform user guide
 ===================
 
-https://www.psc.edu/resources/bridges-2/user-guide-2-2/
+https://www.psc.edu/resources/bridges-2/user-guide/
 
 General description
 ===================
