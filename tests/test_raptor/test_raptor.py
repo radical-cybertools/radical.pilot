@@ -89,6 +89,7 @@ class TestWorker(TestCase):
         os.environ['gpus_per_rank']       = '2'
         os.environ['RP_TASK_ID']          = 'task.000000'
         os.environ['RP_TASK_SANDBOX']     = '/tmp'
+        os.environ['RP_TASK_RUNDIR']      = '/tmp'
         os.environ['RP_PILOT_SANDBOX']    = '/tmp'
         os.environ['RP_RANKS']            = str(8)
         os.environ['RP_SESSION_ID']       = 'foo'

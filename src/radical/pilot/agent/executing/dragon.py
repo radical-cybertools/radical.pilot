@@ -97,7 +97,7 @@ class Dragon(Popen):
         '''
 
         # send cancel request to dragon
-        self._pipe_out.put({'cmd': 'cancel', 'uid': uid})
+        self._pipe_out.put({'cmd': 'cancel', 'uid': task['uid']})
 
 
     # --------------------------------------------------------------------------

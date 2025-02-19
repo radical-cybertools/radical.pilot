@@ -232,7 +232,7 @@ class MPIExec(LaunchMethod):
 
         uid   = task['uid']
         slots = task['slots']
-        sbox  = task['task_sandbox_path']
+        rdir  = task['task_rundir_path']
 
         assert slots, 'task.slots not defined'
 
@@ -243,13 +243,14 @@ class MPIExec(LaunchMethod):
         cmd_options = '-np %d ' % sum(host_slots.values())
 
         if self._use_rf:
-            rankfile     = self._get_rank_file(slots, uid, sbox)
-            hosts        = set([slot['node_name'] for slot in slots])
+          # hosts        = set([slot['node_name'] for slot in slots])
           # cmd_options += '-H %s -rf %s' % (','.join(hosts), rankfile)
+
+            rankfile     = self._get_rank_file(slots, uid, rdir)
             cmd_options += '-rf %s' % rankfile
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
-            hostfile     = self._get_host_file(slots, uid, sbox)
+            hostfile     = self._get_host_file(slots, uid, rdir)
 
             tmp = list()
             for slot in slots:
@@ -282,10 +283,10 @@ class MPIExec(LaunchMethod):
             #    cmd_options   += '--depth=%d --cpu-bind depth' % cores_per_rank
 
         elif self._use_hf:
-            hostfile = self._get_host_file(slots, uid, sbox, mode=2)
+            hostfile = self._get_host_file(slots, uid, rdir, mode=2)
             cmd_options += '-f %s' % hostfile
         else:
-            hostfile     = self._get_host_file(slots, uid, sbox, mode=1)
+            hostfile     = self._get_host_file(slots, uid, rdir, mode=1)
             cmd_options += '--hostfile %s' % hostfile
 
         if self._omplace:

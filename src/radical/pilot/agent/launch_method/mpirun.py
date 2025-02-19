@@ -150,7 +150,7 @@ class MPIRun(LaunchMethod):
         slots      = task['slots']
         uid        = task['uid']
         td         = task['description']
-        sandbox    = task['task_sandbox_path']
+        rdir       = task['task_rundir_path']
         task_cores = td.get('cores_per_rank', 1)
         task_gpus  = td.get('gpus_per_rank', 0.)
 
@@ -187,8 +187,7 @@ class MPIRun(LaunchMethod):
         if len(host_list) > 42:
 
             # Create a hostfile from the list of hosts
-            hostfile = ru.create_hostfile(sandbox, uid, host_list,
-                                          impaired=True)
+            hostfile = ru.create_hostfile(rdir, uid, host_list, impaired=True)
             if self._mpt: hosts_string = '-file %s'     % hostfile
             else        : hosts_string = '-hostfile %s' % hostfile
 

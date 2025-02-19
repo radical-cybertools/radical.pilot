@@ -28,7 +28,7 @@ class TestBaseExecuting(TestCase):
             def control_cb(self, topic, msg):
                 pass
 
-            def cancel_task(self, uid):
+            def cancel_task(self, task):
                 pass
 
             def work(self, tasks):
