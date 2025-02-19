@@ -93,7 +93,7 @@ if True:
     for slots in allocs:
         nl.release_slots(slots)
 
-    sys.exit()
+  # sys.exit()
 
 
 # ------------------------------------------------------------------------------
