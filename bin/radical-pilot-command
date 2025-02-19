@@ -4,71 +4,11 @@ __copyright__ = "Copyright 2024, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import os
 import sys
 import time
 
-
-# ------------------------------------------------------------------------------
-#
-def run_agent_command(sid, cmd, args):
-
-    import json
-    import socket
-
-    portfile = f'{sbox}/agent_0.ports.json'
-
-    if not os.path.isfile(portfile):
-        raise RuntimeError('portfile not found: %s' % portfile)
-
-    port = None
-    with open(portfile) as fin:
-        info = json.load(fin)
-        port = info.get('command')
-
-    print('command port: {%s} {%s}: %.2f' % (port, type(port), time.time()))
-
-    if not port:
-        raise RuntimeError('command port not found in %s' % portfile)
-
-    msg  = {'cmd' : cmd,
-            'arg' : {x:v for x,v in [a.split('=') for a in args]}}
-
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('127.0.0.1', port))
-
-    try:
-        sock.sendall(json.dumps(msg).encode('utf-8'))
-        data = sock.recv(1024)
-        assert data == b'OK'
-
-    finally:
-        sock.close()
-
-
-# ------------------------------------------------------------------------------
-#
-def run_client_command(sid, cmd, args):
-
-    import radical.utils   as ru
-    import radical.pilot   as rp
-
-    regfile = f'{sid}/{sid}.reg.init.json'
-
-    if not os.path.isfile(regfile):
-        raise RuntimeError('registry not found: %s' % regfile)
-
-    log  = ru.Logger(name='radical.pilot', targets='/dev/null')
-  # log  = ru.Logger(name='radical.pilot', targets='-')
-    reg  = ru.Config(ru.read_json(regfile))
-    addr = reg.bridges.control_pubsub.addr_pub
-    pub  = ru.zmq.Publisher(rp.CONTROL_PUBSUB, url=addr, log=log)
-
-    msg  = {'cmd' : cmd,
-            'arg' : {x:v for x,v in [a.split('=') for a in args]}}
-
-    pub.put(rp.CONTROL_PUBSUB, msg)
-    time.sleep(0.1)
+import radical.utils   as ru
+import radical.pilot   as rp
 
 
 # ------------------------------------------------------------------------------
@@ -89,16 +29,18 @@ if __name__ == "__main__":
     else:
         args = []
 
-    # to avoid activating the agent env when this command is executed in the
-    # scope of the agent, we will instead use the agent's command port to send
-    # a message.
-    #
-    # NOTE: the command port will only listen on localhost!
 
-    # the registry paths differ for client and pilot
-    sbox = os.environ.get('RP_PILOT_SANDBOX')
-    if sbox: run_agent_command(sid, cmd, args)
-    else   : run_client_command(sid, cmd, args)
+    log  = ru.Logger(name='radical.pilot', targets='/dev/null')
+  # log  = ru.Logger(name='radical.pilot', targets='-')
+    reg  = ru.Config(ru.read_json(f'{sid}/{sid}.reg.init.json'))
+    addr = reg.bridges.control_pubsub.addr_pub
+    pub  = ru.zmq.Publisher(rp.CONTROL_PUBSUB, url=addr, log=log)
+
+    msg  = {'cmd' : cmd,
+            'arg' : {x:v for x,v in [a.split('=') for a in args]}}
+
+    pub.put(rp.CONTROL_PUBSUB, msg)
+    time.sleep(0.1)
 
 
 # ------------------------------------------------------------------------------
