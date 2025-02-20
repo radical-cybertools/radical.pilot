@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         report.info('\n')
         for task in tasks[:10]:
-            report.plain('  * %s: %s, exit: %3s, out: %s'
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
                     % (task.uid, task.state[:4],
                         task.exit_code, task.stdout))
 

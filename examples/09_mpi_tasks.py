@@ -114,7 +114,7 @@ if __name__ == '__main__':
 
         report.info('\n')
         for task in tasks:
-            report.plain('  * %s: %s, exit: %3s, ranks: %s\n'
+            report.plain('  * %s: %s, exit: %3s, ranks: \n%s\n'
                     % (task.uid, task.state[:4], task.exit_code, task.stdout))
             ranks = list()
             for line in task.stdout.split('\n'):

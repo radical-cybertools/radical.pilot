@@ -153,7 +153,7 @@ class TestSrun(TestCase):
                         task['slots'][-1]['node_name'] = str(idx)
 
                 if len(task['slots']) > MIN_NNODES_IN_LIST:
-                    nodefile = '%(task_sandbox_path)s/%(uid)s.nodes' % task
+                    nodefile = '%(task_rundir_path)s/%(uid)s.nodes' % task
 
                     # `nodefile` will be (or is already) created
                     lm_srun.get_launch_cmds(task, '')

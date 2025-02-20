@@ -14,6 +14,7 @@
             "gpus_per_rank" : 1.0,
             "environment"   : {}
         },
+        "task_rundir_path"  : "/tmp",
         "task_sandbox_path" : "/tmp"
     },
 
