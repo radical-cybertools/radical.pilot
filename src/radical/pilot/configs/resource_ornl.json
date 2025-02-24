@@ -102,6 +102,10 @@
             "local"                   : {
                 "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
                 "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
+            },
+            "interactive"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
             }
         },
         "default_queue"               : "batch",

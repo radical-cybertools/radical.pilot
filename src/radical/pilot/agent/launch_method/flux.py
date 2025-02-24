@@ -37,7 +37,7 @@ class Flux(LaunchMethod):
         self._log.debug('flux init from scratch')
         self._prof.prof('flux_start')
 
-        n_partitions        = self._rm_info.details.n_partitions
+        n_partitions        = self._rm_info.details.get('n_partitions', 1)
         n_nodes             = len(self._rm_info.node_list)
         nodes_per_partition = int(n_nodes / n_partitions)
         threads_per_node    = self._rm_info.cores_per_node  # == hw threads
