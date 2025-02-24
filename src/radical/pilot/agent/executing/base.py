@@ -307,6 +307,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# rank ID\n'
             tmp += self._get_rank_ids(n_ranks, launcher)
+
+            if td.get('startup_timeout'):
+                tmp += self._separator
+                tmp += '# startup completed\n'
+                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                       '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
+
             tmp += self._separator
             tmp += self._get_prof('exec_start')
 
@@ -320,12 +327,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (i)\n'
             tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
-
-            if td.get('startup_timeout'):
-                tmp += self._separator
-                tmp += '# startup completed\n'
-                tmp += '$RP_CTRL %s task_startup_done uid=%s\n' \
-                        % (self.sid, tid)
 
             tmp += self._separator
             tmp += '# execute rank\n'

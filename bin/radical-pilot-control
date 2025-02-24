@@ -11,7 +11,10 @@ import time
 
 # ------------------------------------------------------------------------------
 #
-def run_agent_command(sid, cmd, args):
+def run_agent_command(sbox, cmd, args):
+
+    if not os.path.isdir(sbox):
+        raise RuntimeError('pilot sandbox not found: %s' % sbox)
 
     import json
     import socket
@@ -49,6 +52,9 @@ def run_agent_command(sid, cmd, args):
 # ------------------------------------------------------------------------------
 #
 def run_client_command(sid, cmd, args):
+
+    if not os.path.isdir(sid):
+        raise RuntimeError('session sandbox not found: %s' % sid)
 
     import radical.utils   as ru
     import radical.pilot   as rp
@@ -97,8 +103,9 @@ if __name__ == "__main__":
 
     # the registry paths differ for client and pilot
     sbox = os.environ.get('RP_PILOT_SANDBOX')
-    if sbox: run_agent_command(sid, cmd, args)
+    if sbox: run_agent_command(sbox, cmd, args)
     else   : run_client_command(sid, cmd, args)
+
 
 
 # ------------------------------------------------------------------------------

@@ -665,19 +665,17 @@ class Agent_0(rpu.AgentComponent):
             try:
                 self._log.info('command connection from %s', client_address)
 
-                while True:
+                data = connection.recv(1024)
+                msg  = json.loads(data)
 
-                    data = connection.recv(1024)
-                    msg  = json.loads(data)
+                # don't forward to the client
+                if 'fwd' not in msg:
+                    msg['fwd'] = False
 
-                    # don't forward to the client
-                    if 'fwd' not in msg:
-                        msg['fwd'] = False
+                self._log.debug('command: %s', msg)
 
-                    self._log.debug('command: %s', msg)
-
-                    self.publish(rpc.CONTROL_PUBSUB, msg)
-                    connection.sendall(b'OK')
+                self.publish(rpc.CONTROL_PUBSUB, msg)
+                connection.sendall(b'OK')
 
             except Exception as e:
                 connection.sendall(('ERROR: %s' % e).encode('utf-8'))
