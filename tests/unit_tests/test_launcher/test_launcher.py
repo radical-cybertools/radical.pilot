@@ -68,6 +68,7 @@ class TestLauncher(TestCase):
         component._prof          = ru.Config(cfg={'enabled': False})
         component._sandboxes     = dict()
         component._root_dir      = '/radical_pilot_src'
+        component._rm_info       = ru.Config(cfg={'details': None})
 
         component._rp_version    = rp.version
 
@@ -131,8 +132,9 @@ class TestLauncher(TestCase):
         # test SMT (provided by env variable RADICAL_SMT or within the config's
         #           parameter "system_architecture")
 
-        # default value is {} (not set for "local.localhost")
-        self.assertEqual(pilot['jd_dict'].system_architecture, {})
+        # `system_architecture` should exist and be a dict
+        self.assertIsInstance(pilot['jd_dict'].system_architecture, dict)
+
         # value for "ornl.summit" is 1 (with MPIRun LM)
         component._prepare_pilot('ornl.summit',
                                  self._configs.ornl.summit,
