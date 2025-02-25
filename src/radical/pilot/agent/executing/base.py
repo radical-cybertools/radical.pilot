@@ -89,6 +89,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self.psbox     = self.session.cfg.pilot_sandbox
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
+        self.rp_ctrl   = ru.which('radical-pilot-control')
+
+        assert self.rp_ctrl, 'radical-pilot-control not found'
 
         # if so configured, let the tasks know what to use as tmp dir
         self._task_tmp = self.session.rcfg.get('task_tmp',
@@ -304,6 +307,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# rank ID\n'
             tmp += self._get_rank_ids(n_ranks, launcher)
+
+            if td.get('startup_timeout'):
+                tmp += self._separator
+                tmp += '# startup completed\n'
+                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                       '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
+
             tmp += self._separator
             tmp += self._get_prof('exec_start')
 
@@ -660,6 +670,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_CTRL="%s"\n'             % self.rp_ctrl
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
