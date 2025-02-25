@@ -9,6 +9,22 @@ This is the latest release - if uncertain, use this release.
 
 
 --------------------------------------------------------------------------------
+### 1.92.0 Release                                                    2025-02-25
+
+  - allow oversubscribe on localhost
+  - close control subscriber on `close()`
+  - control PSI/J `exclusive` parameter for the LRM submission
+  - don't use a gpu in examples - that limits usable systems
+  - ensure scheduler sub-process terminates
+  - fix cancellation procedure (executor modules)
+  - fix rankfile / hostfile checks
+  - fix `task['proc']` handling (in `Popen._check_running()`)
+  - update py-versions for `ubuntu-latest`
+  - update references to RP classes
+  - update tutorials and docs
+
+
+--------------------------------------------------------------------------------
 ### 1.90.0 Release                                                    2024-12-16
 
   - `glob` does not understand POSIX globs :-(
