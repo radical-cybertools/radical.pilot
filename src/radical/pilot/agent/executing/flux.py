@@ -234,5 +234,25 @@ class Flux(AgentExecutingComponent) :
         return spec
 
 
+    # --------------------------------------------------------------------------
+    #
+    def control_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        # FIXME RPC: already handled in the component base class
+        if cmd == 'task_execution_done':
+
+            self._log.info('task_execution_done command (%s)', arg)
+            self._prof.prof('task_execution_done')
+
+        else:
+
+            super().control_cb(topic, msg)
+
+
 # ------------------------------------------------------------------------------
 

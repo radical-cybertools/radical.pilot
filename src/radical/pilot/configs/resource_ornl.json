@@ -151,11 +151,15 @@
         "launch_methods"              : {
                                          "order" : ["FLUX"],
                                          "FLUX"  : {
+                                           # "pre_exec_cached": [
+                                           #     "module load flux",
+                                           #     "module load rocm",
+                                           #     "module load craype-accel-amd-gfx90a",
+                                           #     "export MPICH_GPU_SUPPORT_ENABLED=1"
+                                           # ]
                                              "pre_exec_cached": [
-                                                 "module load flux",
-                                                 "module load rocm",
-                                                 "module load craype-accel-amd-gfx90a",
-                                                 "export MPICH_GPU_SUPPORT_ENABLED=1"
+                                                 ". /ccs/home/matitov/am/spack/share/spack/setup-env.sh",
+                                                 "spack load flux-sched"
                                              ]
                                          }
                                         },

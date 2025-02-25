@@ -327,8 +327,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._get_prof('exec_stop')
             tmp += 'exit $RP_RET\n'
 
-            tmp += self._separator
-            tmp += '\n'
+            if 'flux' in launcher.name.lower():
+                tmp += self._separator
+                tmp += '# execution completed\n'
+                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                       '$RP_SESSION_ID task_execution_done uid=$RP_TASK_ID\n'
+                tmp += self._separator
+                tmp += '\n'
 
             fout.write(tmp)
 

@@ -44,7 +44,7 @@ class Flux(LaunchMethod):
         gpus_per_node       = self._rm_info.gpus_per_node
 
         assert n_nodes % n_partitions == 0, \
-                'n_nodes %d %% n_partitions %d != 0' % (n_nodes, n_partitions)
+                'n_nodes %d %% n_partitions %d != 0' % (n_nodes, n_partitIONS)
 
         self._log.info('using %d flux partitions [%d nodes]',
                        n_partitions, nodes_per_partition)
