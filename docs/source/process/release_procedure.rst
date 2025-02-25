@@ -62,7 +62,7 @@ That last step is hard to automate as it involves resolving conflicts in all bra
 
 
 Preparing a hotfix release
--------------------------
+--------------------------
 
 1. Create branch from latest master: e.g. ``git checkout master; git pull; git
    checkout -b hotfix/issue_123``;
@@ -71,8 +71,8 @@ Preparing a hotfix release
    abcsuperdupercommit890`` (The latter is preferred);
 4. update release notes: ``$EDITOR CHANGES.md``;
 5. commit and push: ``git commit -a; git push``;
-6. create `pull-request <https://github.com/radical-cybertools/radical.pilot/pulls>`__
-   of hotfix branch to master;
+6. create `pull-request <https://github.com/radical-cybertools/radical.pilot/pulls>`__ of hotfix
+    branch to master;
 7. wait on and/or nudge other developer to review and test;
 8. if not approved, ``GOTO 3``.
 
