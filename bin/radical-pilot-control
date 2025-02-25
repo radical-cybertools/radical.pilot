@@ -29,7 +29,7 @@ def run_agent_command(sbox, cmd, args):
         info = json.load(fin)
         port = info.get('command')
 
-    print('command port: {%s} {%s}: %.2f' % (port, type(port), time.time()))
+  # print('command port: {%s} {%s}: %.2f' % (port, type(port), time.time()))
 
     if not port:
         raise RuntimeError('command port not found in %s' % portfile)
