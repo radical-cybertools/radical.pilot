@@ -6,6 +6,7 @@
             "arguments"      : ["|", "sort"],
             "ranks"          : 1
         },
+        "task_rundir_path"   : ".",
         "task_sandbox_path"  : ".",
         "slots": [{"node_name" : "node1",
                    "node_index": 1,

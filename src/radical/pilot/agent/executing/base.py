@@ -73,7 +73,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
     #
     def initialize(self):
 
-
         rm_name  = self.session.rcfg.resource_manager
         self._rm = rpa.ResourceManager.create(rm_name,
                                               self.session.cfg,
@@ -147,6 +146,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
     def cancel_task(self, task):
 
         raise NotImplementedError('cancel_task is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_task(self, tid):
+
+        raise NotImplementedError('get_task is not implemented')
 
 
     # --------------------------------------------------------------------------
@@ -261,14 +267,17 @@ class AgentExecutingComponent(rpu.AgentComponent):
         tid  = task['uid']
         td   = task['description']
         sbox = task['task_sandbox_path']
+        rdir = task['task_rundir_path']
 
         exec_script   = '%s.exec.sh' % tid
-        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
-        exec_fullpath = '%s/%s' % (sbox, exec_script)
+        exec_path     = '$RP_TASK_RUNDIR/%s' % exec_script
+        exec_fullpath = '%s/%s' % (rdir, exec_script)
 
-        # make sure the sandbox exists
+        # make sure both rundir and sandbox dir exists
         self._prof.prof('task_mkdir', uid=tid)
         ru.rec_makedir(sbox)
+        if sbox != rdir:
+            ru.rec_makedir(rdir)
         self._prof.prof('task_mkdir_done', uid=tid)
 
         # the exec shell script runs the same set of commands for all ranks.
@@ -303,7 +312,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
             tmp += self._separator
             tmp += '# output file detection (i)\n'
-            tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
+            tmp += "ls | sort | grep -ve '^%s\\.' > $RP_TASK_RUNDIR/%s.files\n"\
+                                                                    % (tid, tid)
 
             tmp += self._separator
             tmp += '# execute rank\n'
@@ -316,7 +326,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (ii)\n'
             tmp += 'ls | sort | comm -23 - ' \
-                   "%s.files | grep -ve '^%s\\.' > %s.ofiles\n" % (tid, tid, tid)
+                   "%s.files | grep -ve '^%s\\.' > $RP_TASK_RUNDIR/%s.ofiles\n"\
+                                                               % (tid, tid, tid)
 
             tmp += self._separator
             tmp += '# post-exec commands\n'
@@ -338,7 +349,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         # need to set `DEBUG_5` or higher to get slot debug logs
         if self._log._debug_level >= 5:
-            ru.write_json(slots, '%s/%s.sl' % (sbox, tid))
+            ru.write_json(slots, '%s/%s.sl' % (rdir, tid))
 
         return exec_path, exec_fullpath
 
@@ -488,7 +499,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
     def _create_launch_script(self, launcher, task, exec_path):
 
         tid  = task['uid']
-        sbox = task['task_sandbox_path']
+        rdir = task['task_rundir_path']
 
         if not launcher:
             raise RuntimeError('no launcher found for task %s' % tid)
@@ -496,10 +507,10 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self._log.debug('Launching task with %s', launcher.name)
 
         launch_script   = '%s.launch.sh' % tid
-        launch_path     = '$RP_TASK_SANDBOX/%s' % launch_script
-        launch_fullpath = '%s/%s' % (sbox, launch_script)
+        launch_path     = '$RP_TASK_RUNDIR/%s' % launch_script
+        launch_fullpath = '%s/%s' % (rdir, launch_script)
 
-        ru.rec_makedir(sbox)
+        ru.rec_makedir(rdir)
 
         with ru.ru_open(launch_fullpath, 'w') as fout:
 
@@ -610,9 +621,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
         td   = task['description']
         name = task.get('name') or tid
         sbox = os.path.realpath(task['task_sandbox_path'])
+        rdir = os.path.realpath(task['task_rundir_path'])
 
         if sbox.startswith(self._pwd):
             sbox = '$RP_PILOT_SANDBOX%s' % sbox[len(self._pwd):]
+
+        if rdir.startswith(self._pwd):
+            rdir = '$RP_PILOT_SANDBOX%s' % rdir[len(self._pwd):]
 
         gpr = td['gpus_per_rank']
         if int(gpr) == gpr: gpr = '%d' % gpr
@@ -631,6 +646,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         ret += 'export RP_SESSION_SANDBOX="%s"\n'   % self.ssbox
         ret += 'export RP_PILOT_SANDBOX="%s"\n'     % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'      % sbox
+        ret += 'export RP_TASK_RUNDIR="%s"\n'       % rdir
         ret += 'export RP_REGISTRY_ADDRESS="%s"\n'  % self.session.reg_addr
         ret += 'export RP_CONTROL_PUB_ADDRESS=%s\n' % ctrl_pub_addr
         ret += 'export RP_CONTROL_SUB_ADDRESS=%s\n' % ctrl_sub_addr
@@ -649,7 +665,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         ret += 'export RP_PROF="%s"\n'             % self.prof
 
         if self._prof.enabled:
-            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
+            ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (rdir, tid)
         else:
             ret += 'unset  RP_PROF_TGT\n'
 

@@ -10,6 +10,7 @@
             "cores_per_rank": 4,
             "environment"   : {}
         },
+        "task_rundir_path"  : "/tmp",
         "task_sandbox_path" : "/tmp"
     },
 
