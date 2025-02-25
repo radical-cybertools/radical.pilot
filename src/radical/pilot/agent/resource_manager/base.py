@@ -251,10 +251,10 @@ class ResourceManager(object):
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
 
-
         rm_info.details = {
-                'exact'       : system_architecture.get('exclusive', False),
-                'n_partitions': system_architecture.get('n_partitions', 1)
+                'exact'        : system_architecture.get('exclusive', False),
+                'n_partitions' : system_architecture.get('n_partitions', 1),
+                'oversubscribe': system_architecture.get('oversubscribe', False)
         }
 
         # let the specific RM instance fill out the RMInfo attributes
