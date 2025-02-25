@@ -665,7 +665,7 @@ class TaskManager(rpu.ClientComponent):
 
         elif cmd == 'service_up':
 
-            self._log.debug('=== service up: %s', arg)
+            self._log.debug('service up: %s', arg)
             self._service_update(arg)
 
 
@@ -680,7 +680,7 @@ class TaskManager(rpu.ClientComponent):
             return
 
         task._set_info(arg['info'] or '')  # `None` would indicate an error
-        self._log.debug('=== service update: %s: %s', uid, task.info)
+        self._log.debug('service update: %s: %s', uid, task.info)
 
 
     # --------------------------------------------------------------------------
@@ -980,7 +980,7 @@ class TaskManager(rpu.ClientComponent):
         elif not isinstance(state, list): states = [state]
         else                            : states =  state
 
-        self._log.debug('=== wait for %s: %s', uids, states)
+        self._log.debug('wait for %s: %s', uids, states)
 
         # we simplify state check by waiting for the *earliest* of the given
         # states - if the task happens to be in any later state, we are sure the
