@@ -11,7 +11,7 @@ This is the latest release - if uncertain, use this release.
 --------------------------------------------------------------------------------
 ### 1.90.0 Release                                                    2024-12-16
 
-  - `glob` does not understand POSIX globs :-(
+  - `glob` does not understand POSIX globs
   - add `DOWNLOAD` staging action
   - add resource configuration for `epcc.archer2`
   - improve process watching
