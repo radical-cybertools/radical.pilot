@@ -13,6 +13,8 @@ import radical.utils as ru
 
 if True:
 
+    print('benchmarking node list creation and slot allocation')
+
     n_nodes        =   9472
     gpus_per_node  =      8
     cores_per_node =     64
@@ -21,7 +23,7 @@ if True:
 
     n_tasks        =  10000
     ranks_per_task =      2
-    cores_per_rank =      4
+    cores_per_rank =      2
     gpus_per_rank  =      1
     mem_per_rank   =      0
     lfs_per_rank   =      0
@@ -39,7 +41,9 @@ if True:
   # mem_per_rank   =      0
   # lfs_per_rank   =      0
 
-    nodes = [{'index'   : i,
+    start = time.time()
+    nodes = [rp.NodeResources({
+              'index'   : i,
               'name'    : 'node_%05d' % i,
               'cores'   : [rp.RO(index=x, occupation=rp.FREE)
                                           for x in range(cores_per_node)],
@@ -47,21 +51,13 @@ if True:
                                           for x in range(gpus_per_node)],
               'lfs'     : lfs_per_node,
               'mem'     : mem_per_node,
-             } for i in range(n_nodes)]
+             }) for i in range(n_nodes)]
+    nl   = rp.NodeList(nodes=nodes)
+    stop = time.time()
 
-    # FIXME: intorduce `NumaDomainMap` as type
-    NDN = rp.NumaDomainDescription
-    ndm = rp.NumaDomainMap({0: NDN(cores=list(range( 0,   8)), gpus=[0]),
-                            1: NDN(cores=list(range( 8,  16)), gpus=[1]),
-                            2: NDN(cores=list(range(16,  24)), gpus=[2]),
-                            3: NDN(cores=list(range(24,  32)), gpus=[3]),
-                            4: NDN(cores=list(range(32,  40)), gpus=[4]),
-                            5: NDN(cores=list(range(40,  48)), gpus=[5]),
-                            6: NDN(cores=list(range(48,  56)), gpus=[6]),
-                            7: NDN(cores=list(range(56,  46)), gpus=[7])})
+    print('create nodelist: %8.2f' % (stop - start))
 
 
-    nl = rp.NodeList(nodes=[rp.NumaNodeResources(node, ndm) for node in nodes])
     rr = rp.RankRequirements(n_cores=cores_per_rank,
                              n_gpus=gpus_per_rank,
                              mem=mem_per_rank,
@@ -69,6 +65,8 @@ if True:
 
     allocs = list()
     start  = time.time()
+    found  = 0
+    missed = 0
     for i in range(n_tasks):
 
         slots = nl.find_slots(rr, n_slots=ranks_per_task)
@@ -80,15 +78,19 @@ if True:
             allocs.remove(to_release)
             nl.release_slots(to_release)
 
-      # if slots:
-      #     for slot in slots:
-      #         print('=== %s' % slot)
-      #     print()
-      # else:
-      #     print('---')
+        if slots:
+            found += 1
+          # for slot in slots:
+          #     print('=== %s' % slot)
+          # print()
+        else:
+            missed += 1
+          # print('---')
 
     stop = time.time()
-    print('find_slots: %.2f' % (stop - start))
+    print('find slots     : %8.2f' % (stop - start))
+    print('found slots    : %6d' % found)
+    print('missed slots   : %6d' % missed)
 
     for slots in allocs:
         nl.release_slots(slots)
@@ -125,21 +127,20 @@ if __name__ == '__main__':
 
         tds = list()
         for i in range(n):
-          # slots = pilot.nodelist.find_slots(rp.RankRequirements(n_cores=1,
-          #                                                       lfs=512),
-          #                                   n_slots=2)
-          #
-          # print()
-          # if slots:
-          #     for slot in slots:
-          #         print('=== %s' % slots)
+            slots = pilot.nodelist.find_slots(
+                        rp.RankRequirements(n_cores=1, lfs=512), n_slots=2)
+
+            print()
+            if slots:
+                for slot in slots:
+                    print('=== %s' % slot)
 
 
             td = rp.TaskDescription()
             td.executable     = '/bin/date'
             td.ranks          = 2
             td.cores_per_rank = 2
-          # td.slots          = slots
+            td.slots          = slots
 
             tds.append(td)
 
