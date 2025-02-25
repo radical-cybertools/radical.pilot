@@ -38,7 +38,8 @@
         "raptor"                      : {
                                          "hb_delay"     : 100,
                                          "hb_timeout"   : 400,
-                                         "hb_frequency" : 100}
+                                         "hb_frequency" : 100},
+        "system_architecture"         : {"oversubscribe": true}
     },
 
     "localhost_test": {
