@@ -51,6 +51,7 @@ jobs:
         env:
           TARGET_PATH: ${{ format('{0}/{1}/{2}', inputs.documentation-path, inputs.notebook-path, inputs.notebook-name) }}
           RADICAL_LOG_LVL: DEBUG
+          RADICAL_PILOT_OVERSUBSCRIBE=1
         timeout-minutes: 10
         # continue-on-error: true
         run: |
