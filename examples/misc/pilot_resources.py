@@ -11,9 +11,13 @@ import radical.pilot as rp
 import radical.utils as ru
 
 
-if True:
+# ------------------------------------------------------------------------------
+#
+def benchmark(reporter):
 
-    print('benchmarking node list creation and slot allocation')
+    reporter.title('pilot resource management - benchmark')
+
+    report.header('benchmark node list creation')
 
     n_nodes        =   9472
     gpus_per_node  =      8
@@ -21,7 +25,7 @@ if True:
     mem_per_node   =    512
     lfs_per_node   =   1920
 
-    n_tasks        =  10000
+    n_tasks        =  400000
     ranks_per_task =      2
     cores_per_rank =      2
     gpus_per_rank  =      1
@@ -42,7 +46,10 @@ if True:
   # lfs_per_rank   =      0
 
     start = time.time()
-    nodes = [rp.NodeResources({
+    import yappi
+    yappi.set_clock_type("wall")
+    yappi.start(builtins=True)
+    nl = rp.NodeList(nodes=[rp.NodeResources({
               'index'   : i,
               'name'    : 'node_%05d' % i,
               'cores'   : [rp.RO(index=x, occupation=rp.FREE)
@@ -51,13 +58,17 @@ if True:
                                           for x in range(gpus_per_node)],
               'lfs'     : lfs_per_node,
               'mem'     : mem_per_node,
-             }) for i in range(n_nodes)]
-    nl   = rp.NodeList(nodes=nodes)
+             }) for i in range(n_nodes)])
+    yappi.get_thread_stats().print_all()
+    stats = yappi.convert2pstats(yappi.get_func_stats())
+    stats.dump_stats('pstats.prof')
     stop = time.time()
+    sys.exit()
 
-    print('create nodelist: %8.2f' % (stop - start))
+    report.ok('nodelist      : %8.2f sec / %d nodes\n' % (stop - start, n_nodes))
+    report.ok('                %8.2f nodes / sec\n' % (n_nodes / (stop - start)))
 
-
+    report.header('benchmark slot allocation')
     rr = rp.RankRequirements(n_cores=cores_per_rank,
                              n_gpus=gpus_per_rank,
                              mem=mem_per_rank,
@@ -65,35 +76,36 @@ if True:
 
     allocs = list()
     start  = time.time()
-    found  = 0
-    missed = 0
+    hits   = 0
+    free   = 0
+    miss   = 0
     for i in range(n_tasks):
 
         slots = nl.find_slots(rr, n_slots=ranks_per_task)
         if slots:
+            hits += 1
             allocs.append(slots)
+        else:
+            miss += 1
 
         if allocs and random.random() < 0.5:
+            free += 1
             to_release = random.choice(allocs)
             allocs.remove(to_release)
             nl.release_slots(to_release)
 
-        if slots:
-            found += 1
-          # for slot in slots:
-          #     print('=== %s' % slot)
-          # print()
-        else:
-            missed += 1
-          # print('---')
-
     stop = time.time()
-    print('find slots     : %8.2f' % (stop - start))
-    print('found slots    : %6d' % found)
-    print('missed slots   : %6d' % missed)
+    report.ok('find slots    : %8.2f sec / %d slots\n'
+              % (stop - start, n_tasks * ranks_per_task))
+    report.ok('                %8.2f slots / sec\n'
+              % (n_tasks * ranks_per_task / (stop - start)))
+    report.ok('hits/miss/free: %8d / %d / %d\n' % (hits, miss, free))
 
     for slots in allocs:
         nl.release_slots(slots)
+
+
+    report.header('')
 
   # sys.exit()
 
@@ -102,8 +114,13 @@ if True:
 #
 if __name__ == '__main__':
 
-    report  = ru.Reporter(name='radical.pilot')
-    report.title('pilot resource example')
+    report = ru.Reporter(name='radical.pilot')
+
+    if True:
+        benchmark(report)
+        sys.exit()
+
+    report.title('pilot resource management example')
 
     session = rp.Session()
 
