@@ -435,6 +435,9 @@ class Node(ru.TypedDict):
         MEM      : None,
     }
 
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, from_dict: dict):
 
         self.__lock__ = mt.RLock()
@@ -639,6 +642,9 @@ class NodeList(ru.TypedDict):
         MEM_PER_NODE   : None,
     }
 
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, from_dict: dict = None, **kwargs) -> None:
 
         super().__init__(from_dict=from_dict, **kwargs)
@@ -851,6 +857,19 @@ class NumaNode(Node):
 
     # --------------------------------------------------------------------------
     #
+    def as_dict(self):
+
+        ret = super().as_dict()
+
+        if ret.get('numa_domains'):
+            del ret['cores']
+            del ret['gpus']
+
+        return ret
+
+
+    # --------------------------------------------------------------------------
+    #
     def __init__(self, from_dict: dict, numa_domain_map: dict = None) -> None:
 
         super().__init__(from_dict)
@@ -906,6 +925,17 @@ class NumaNode(Node):
                 slot = nd.find_slot(rr)
                 if slot:
                     return slot
+
+# ------------------------------------------------------------------------------
+#
+class NumaNodeList(NodeList):
+
+
+    NUMA_NODES = 'numa_nodes'
+
+    _schema = {
+        NUMA_NODES: [NumaNode],
+    }
 
 
 # ------------------------------------------------------------------------------

@@ -39,7 +39,8 @@ from .task_description          import AGENT_SERVICE
 from .resource_config           import ResourceConfig
 from .resource_config           import ResourceOccupation, RO, Slot
 from .resource_config           import RankRequirements
-from .resource_config           import Node, NumaNode, NodeList
+from .resource_config           import Node, NumaNode
+from .resource_config           import NodeList, NumaNodeList
 from .resource_config           import NumaDomainMap, NumaDomain
 
 from .pilot_manager             import PilotManager

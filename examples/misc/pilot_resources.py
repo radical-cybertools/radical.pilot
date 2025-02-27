@@ -59,6 +59,15 @@ def benchmark(reporter):
     nl = rp.NodeList(nodes=nodes)
     stop = time.time()
 
+  # numa_domain_map = {0: rp.NumaDomain(cores=range(0, 4), gpus=[0]),
+  #                    1: rp.NumaDomain(cores=range(4, 8), gpus=[1])}
+  # nnl = rp.NumaNodeList(nodes=[rp.NumaNode(node, numa_domain_map)
+  #                              for node in nodes])
+  #
+  # import pprint
+  # pprint.pprint(nnl.as_dict())
+  # pprint.pprint(nnl.nodes[0].as_dict())
+
     report.ok('nodelist      : %8.2f sec / %d nodes\n' % (stop - start, n_nodes))
     report.ok('                %8.2f nodes / sec\n' % (n_nodes / (stop - start)))
 
