@@ -25,7 +25,7 @@ def benchmark(reporter):
     mem_per_node   =    512
     lfs_per_node   =   1920
 
-    n_tasks        =  400000
+    n_tasks        =  10000
     ranks_per_task =      2
     cores_per_rank =      2
     gpus_per_rank  =      1
@@ -46,10 +46,7 @@ def benchmark(reporter):
   # lfs_per_rank   =      0
 
     start = time.time()
-    import yappi
-    yappi.set_clock_type("wall")
-    yappi.start(builtins=True)
-    nl = rp.NodeList(nodes=[rp.NodeResources({
+    nodes = [rp.Node({
               'index'   : i,
               'name'    : 'node_%05d' % i,
               'cores'   : [rp.RO(index=x, occupation=rp.FREE)
@@ -58,12 +55,9 @@ def benchmark(reporter):
                                           for x in range(gpus_per_node)],
               'lfs'     : lfs_per_node,
               'mem'     : mem_per_node,
-             }) for i in range(n_nodes)])
-    yappi.get_thread_stats().print_all()
-    stats = yappi.convert2pstats(yappi.get_func_stats())
-    stats.dump_stats('pstats.prof')
+             }) for i in range(n_nodes)]
+    nl = rp.NodeList(nodes=nodes)
     stop = time.time()
-    sys.exit()
 
     report.ok('nodelist      : %8.2f sec / %d nodes\n' % (stop - start, n_nodes))
     report.ok('                %8.2f nodes / sec\n' % (n_nodes / (stop - start)))
