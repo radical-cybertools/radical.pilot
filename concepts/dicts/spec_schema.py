@@ -3,13 +3,7 @@
 
 from schema import Schema, And, Use, Optional, Or
 
-import spec_attribs  as a
-
-
-schema = Schema([{'name': And(str, len),
-                  'age':  And(Use(int), lambda n: 18 <= n <= 99),
-                  Optional('gender'): And(str, Use(str.lower),
-                                          lambda s: s in ('squid', 'kid'))}])
+import spec_attribs as a
 
 
 class SCHEMA(dict):

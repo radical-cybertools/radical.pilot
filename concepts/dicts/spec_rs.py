@@ -101,7 +101,7 @@ class OLD_CUD(rsa.Attributes):
     #
     def __deepcopy__ (self, memo):
 
-        other = RSA()
+        other = rsa.Attributes()
 
         for key in self.list_attributes ():
             other.set_attribute(key, self.get_attribute (key))

@@ -3,11 +3,9 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import os
 import sys
 import copy
 import time
-import signal
 
 import threading     as mt
 
@@ -19,7 +17,7 @@ from . import constants as rpc
 
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
-from .resource_config      import NodeResources, NodeList, NumaNodeResources
+from .resource_config      import Node, NodeList, NumaNode
 
 
 # ------------------------------------------------------------------------------
@@ -361,9 +359,9 @@ class Pilot(object):
 
             # only create NUMA resources if a numa domain map is available
             if not numa_domain_map:
-                nodes = [NodeResources(node) for node in node_list]
+                nodes = [Node(node) for node in node_list]
             else:
-                nodes = [NumaNodeResources(node, numa_domain_map)
+                nodes = [NumaNode(node, numa_domain_map)
                                        for node in node_list]
 
             self._nodelist = NodeList(nodes=nodes)
