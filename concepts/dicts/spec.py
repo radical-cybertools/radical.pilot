@@ -39,7 +39,7 @@ class PYDICT(dict):
 # ------------------------------------------------------------------------------
 #
 checks = [
-       #  OLD_CUD, GOOD, SCHEMA,
+          OLD_CUD, GOOD, SCHEMA,
           RU_MUNCH, PYDICT, MYDICT, RU_CFG, NEW_CUD, RU_DICT, PYDANTIC
          ]
 
@@ -49,7 +49,7 @@ for check in checks:
 
     results = [check.__name__]
 
-    n = 1024 * 1024
+    n = 1000 * 100
     l = list()
     t = list()
     r = ru.Reporter('radical.test')
