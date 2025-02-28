@@ -857,9 +857,9 @@ class NumaNode(Node):
 
     # --------------------------------------------------------------------------
     #
-    def as_dict(self):
+    def as_dict(self, *args, **kwargs):
 
-        ret = super().as_dict()
+        ret = super().as_dict(*args, **kwargs)
 
         if ret.get('numa_domains'):
             del ret['cores']
