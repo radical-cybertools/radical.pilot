@@ -254,7 +254,8 @@ class ResourceManager(object):
                                        sys_arch.get('smt', 1))
 
         rm_info.details = {
-                'exact': sys_arch.get('exclusive', False)
+                'exact'        : sys_arch.get('exclusive',     False),
+                'oversubscribe': sys_arch.get('oversubscribe', False)
         }
 
         # let the specific RM instance fill out the RMInfo attributes
