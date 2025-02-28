@@ -237,19 +237,19 @@ class ResourceManager(object):
         rm_info  = RMInfo()
 
         # fill well defined default attributes
-        rm_info.requested_nodes       = self._cfg.nodes
-        rm_info.requested_cores       = self._cfg.cores
-        rm_info.requested_gpus        = self._cfg.gpus
-        rm_info.cores_per_node        = self._cfg.cores_per_node
-        rm_info.gpus_per_node         = self._cfg.gpus_per_node
-        rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
-        rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
-        rm_info.n_partitions          = sys_arch.get('n_partitions', 1)
+        rm_info.requested_nodes  = self._cfg.nodes
+        rm_info.requested_cores  = self._cfg.cores
+        rm_info.requested_gpus   = self._cfg.gpus
+        rm_info.cores_per_node   = self._cfg.cores_per_node
+        rm_info.gpus_per_node    = self._cfg.gpus_per_node
+        rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
+        rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
         rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
+        rm_info.n_partitions     = self._rcfg.n_partitions
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        sys_arch.get('smt', 1))
 
@@ -407,6 +407,7 @@ class ResourceManager(object):
 
         return rm(cfg, rcfg, log, prof)
 
+
     # --------------------------------------------------------------------------
     #
     @staticmethod
@@ -435,6 +436,7 @@ class ResourceManager(object):
         }
 
         return impl.get(name)
+
 
     # --------------------------------------------------------------------------
     #
