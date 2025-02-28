@@ -34,6 +34,9 @@ LM_NAME_SRUN          = 'SRUN'
 PWD = os.getcwd()
 
 
+# FIXME: add a well defined LMInfo TypedDict, similar to RMInfo
+
+
 # ------------------------------------------------------------------------------
 #
 class LaunchMethod(object):
@@ -272,9 +275,10 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        return None
+        # by default, launchers will only support a single partition
+        return [0]
 
 
     # --------------------------------------------------------------------------

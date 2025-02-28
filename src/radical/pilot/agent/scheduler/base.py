@@ -227,7 +227,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        self._partitions = self._rm.get_partitions()
+        self._partition_ids = self._rm.get_partition_ids()
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster

@@ -44,7 +44,7 @@ class RMInfo(ru.TypedDict):
             'requested_cores'      : int,           # number of requested cores
             'requested_gpus'       : int,           # number of requested gpus
 
-            'partitions'           : {int: None},   # partition setup
+            'partition_ids'        : [int],         # partition ids
             'node_list'            : [None],        # tuples of node uids and names
             'agent_node_list'      : [None],        # nodes reserved for sub-agents
             'service_node_list'    : [None],        # nodes reserved for services
@@ -64,6 +64,7 @@ class RMInfo(ru.TypedDict):
             'launch_methods'       : {str : None},  # dict of launch method cfgs
 
             'numa_domain_map'      : {int: None},   # resources per numa domain
+            'n_partitions'         : int,           # number of partitions
     }
 
     _defaults = {
@@ -71,7 +72,7 @@ class RMInfo(ru.TypedDict):
             'requested_cores'      : 0,
             'requested_gpus'       : 0,
 
-            'partitions'           : dict(),
+            'partition_ids'        : list(),
             'node_list'            : list(),
             'agent_node_list'      : list(),
             'service_node_list'    : list(),
@@ -91,6 +92,7 @@ class RMInfo(ru.TypedDict):
             'launch_methods'       : dict(),
 
             'numa_domain_map'      : dict(),
+            'n_partitions'         : 1,
     }
 
 
@@ -102,7 +104,6 @@ class RMInfo(ru.TypedDict):
         assert self['requested_cores'  ]
         assert self['requested_gpus'   ] is not None
 
-      # assert self['partitions'       ] is not None
         assert self['node_list']
         assert self['agent_node_list'  ] is not None
         assert self['service_node_list'] is not None
@@ -110,6 +111,7 @@ class RMInfo(ru.TypedDict):
         assert self['cores_per_node'   ]
         assert self['gpus_per_node'    ] is not None
         assert self['threads_per_core' ] is not None
+        assert self['n_partitions'     ] > 0
 
 
 # ------------------------------------------------------------------------------
@@ -231,7 +233,8 @@ class ResourceManager(object):
     #
     def init_from_scratch(self):
 
-        rm_info = RMInfo()
+        sys_arch = self._rcfg.get('system_architecture', {})
+        rm_info  = RMInfo()
 
         # fill well defined default attributes
         rm_info.requested_nodes       = self._cfg.nodes
@@ -241,24 +244,21 @@ class ResourceManager(object):
         rm_info.gpus_per_node         = self._cfg.gpus_per_node
         rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
         rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
+        rm_info.n_partitions          = sys_arch.get('n_partitions', 1)
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
         rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
-
-        system_architecture      = self._rcfg.get('system_architecture', {})
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
-                                       system_architecture.get('smt', 1))
-
+                                       sys_arch.get('smt', 1))
 
         rm_info.details = {
-                'exact'       : system_architecture.get('exclusive', False),
-                'n_partitions': system_architecture.get('n_partitions', 1)
+                'exact': sys_arch.get('exclusive', False)
         }
 
         # let the specific RM instance fill out the RMInfo attributes
-        rm_info = self._init_from_scratch(rm_info)
+        rm_info     = self._init_from_scratch(rm_info)
         alloc_nodes = len(rm_info.node_list)
 
         # we expect to have a valid node list now
@@ -266,8 +266,8 @@ class ResourceManager(object):
 
         # the config can override core and gpu detection,
         # and decide to block some resources (part of the core specialization)
-        blocked_cores = system_architecture.get('blocked_cores', [])
-        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
+        blocked_cores = sys_arch.get('blocked_cores', [])
+        blocked_gpus  = sys_arch.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
@@ -377,18 +377,15 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        # TODO: this makes it impossible to have mutiple launchers with a notion
-        #       of partitions
+        # TODO: this implies unique partition IDs across all launchers
 
+        partition_ids = list()
         for lname in self._launchers:
+            partition_ids += self._launchers[lname].get_partition_ids()
 
-            launcher   = self._launchers[lname]
-            partitions = launcher.get_partitions()
-
-            if partitions:
-                return partitions
+        return partition_ids
 
 
     # --------------------------------------------------------------------------
