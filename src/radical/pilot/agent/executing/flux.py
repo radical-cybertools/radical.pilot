@@ -73,7 +73,7 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def cancel_task(self, task):
 
         # FIXME: clarify how to cancel tasks in Flux
         pass
@@ -140,7 +140,7 @@ class Flux(AgentExecutingComponent) :
             partition_id = task['description']['partition']
 
             if partition_id is None:
-                partition_id = self._task_count % self._lm.n_partitions
+                partition_id = self._task_count % self._rm.info.n_partitions
                 self._task_count += 1
 
             parts[partition_id].append(task)
@@ -148,7 +148,7 @@ class Flux(AgentExecutingComponent) :
 
         for partition_id, partition_tasks in parts.items():
 
-            part = self._lm.get_partition(partition_id)
+            part = self._lm.get_flux_handle(partition_id)
             jds  = [self.task_to_spec(task) for task in partition_tasks]
             jids = part.submit_jobs([jd for jd in jds])
             self._log.debug('submitted tasks: %s', jids)
@@ -232,6 +232,26 @@ class Flux(AgentExecutingComponent) :
                     'type' : 'gpu'})
 
         return spec
+
+
+    # --------------------------------------------------------------------------
+    #
+    def control_cb(self, topic, msg):
+
+        self._log.info('command_cb [%s]: %s', topic, msg)
+
+        cmd = msg.get('cmd')
+        arg = msg.get('arg')
+
+        # FIXME RPC: already handled in the component base class
+        if cmd == 'task_execution_done':
+
+            self._log.info('task_execution_done command (%s)', arg)
+            self._prof.prof('task_execution_done')
+
+        else:
+
+            super().control_cb(topic, msg)
 
 
 # ------------------------------------------------------------------------------
