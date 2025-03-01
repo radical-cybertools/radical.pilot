@@ -415,16 +415,26 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
+            self._log.debug('=== cancel tasks: %s', arg)
+            for priority in self._waitpool:
+                self._log.debug('=== waitpool[%d]: %s', priority,
+                                list(self._waitpool[priority].keys()))
+
             uids = arg['uids']
             to_cancel = list()
             with self._lock:
                 for uid in uids:
                     for priority in self._waitpool:
                         if uid in self._waitpool[priority]:
+                            self._prof.prof('cancel_requested', uid=uid)
                             task = self._waitpool[priority][uid]
                             to_cancel.append(task)
                             del self._waitpool[priority][uid]
                             break
+
+            for priority in self._waitpool:
+                self._log.debug('=== Waitpool[%d]: %s', priority,
+                                list(self._waitpool[priority].keys()))
 
             with self._raptor_lock:
                 for queue in self._raptor_tasks:
@@ -434,7 +444,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
+            self.advance(to_cancel, rps.CANCELED, push=True, publish=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -1119,8 +1129,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
-                if self._active_cnt == 0:
-                    raise RuntimeError('task can never be scheduled')
+              # FIXME: temporarily disabled for debugging
+              # if self._active_cnt == 0:
+              #     raise RuntimeError('task can never be scheduled')
 
                 return False
 

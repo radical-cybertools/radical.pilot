@@ -1099,6 +1099,11 @@ class BaseComponent(object):
 
             _state = thing['state']
 
+            self._log.debug('==== advance %s: %s', uid, state)
+            if thing.get('target_state') == rps.CANCELED:
+                import pprint
+                self._log.debug('==== cancel %s: %s', uid, pprint.pformat(thing))
+
             if prof:
                 self._prof.prof('advance', uid=uid, state=_state, ts=ts)
 
@@ -1187,19 +1192,6 @@ class BaseComponent(object):
                 self._log.debug('put bulk %s: %s: %s', _state, len(_things),
                         output.channel)
                 output.put(_things, qname=qname)
-
-                # if a file `'/tmp/rp_wait_%s' % _state.lower()` exists, we
-                # wait for that file to disappear before continuing
-                waitfile = '/tmp/rp_wait_%s' % _state.lower()
-                while os.path.isfile(waitfile):
-                  self._log.debug('===== wait for file %s', waitfile)
-                  time.sleep(1)
-
-
-              # ts = time.time()
-              # for thing in _things:
-              #     self._prof.prof('put', uid=thing['uid'], state=_state,
-              #                     msg=output.name, ts=ts)
 
 
     # --------------------------------------------------------------------------
