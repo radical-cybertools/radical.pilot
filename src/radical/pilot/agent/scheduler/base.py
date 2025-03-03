@@ -741,7 +741,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     def _prof_sched_skip(self, task):
 
         pass
-      # self._prof.prof('schedule_skip', uid=task['uid'])
+        self._prof.prof('schedule_skip', uid=task['uid'])
 
 
     # --------------------------------------------------------------------------
@@ -785,6 +785,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                                     log=self._log)
             self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
                                                       len(unscheduled), len(failed))
+
+            for task in scheduled  : self._log.debug_9('= scheduled   %s', task['uid'])
+            for task in unscheduled: self._log.debug_9('= unscheduled %s', task['uid'])
+            for task in failed     : self._log.debug_9('= failed      %s', task['uid'])
 
             for task, error in failed:
 
@@ -1110,12 +1114,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             uid = task['uid']
           # td  = task['description']
 
-          # self._prof.prof('schedule_try', uid=uid)
+            self._prof.prof('schedule_try', uid=uid)
             slots, partition = self.schedule_task(task)
             if not slots:
 
                 # schedule failure
-              # self._prof.prof('schedule_fail', uid=uid)
+                self._prof.prof('schedule_fail', uid=uid)
 
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
