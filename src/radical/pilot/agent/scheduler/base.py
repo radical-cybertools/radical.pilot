@@ -550,16 +550,18 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             return
 
         # we can only rebuild if we have waiting tasks
-        for priority in self._waitpool:
+        with self._lock:
 
-            if not self._waitpool[priority]:
-                continue
+            for priority in self._waitpool:
 
-            for uid, task in self._waitpool[priority].items():
-                ts = task['tuple_size']
-                if ts not in self._ts_map:
-                    self._ts_map[ts] = set()
-                self._ts_map[ts].add(uid)
+                if not self._waitpool[priority]:
+                    continue
+
+                for uid, task in self._waitpool[priority].items():
+                    ts = task['tuple_size']
+                    if ts not in self._ts_map:
+                        self._ts_map[ts] = set()
+                    self._ts_map[ts].add(uid)
 
         self._ts_valid = True
 
@@ -696,22 +698,25 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         resources = True  # fresh start, all is free
         while not self._term.is_set():
 
-            self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
-                    sum([len(pool) for pool in self._waitpool.values()]))
+            with self._lock:
+                self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
+                        sum([len(pool) for pool in self._waitpool.values()]))
 
             active = 0  # see if we do anything in this iteration
 
             # if we have new resources, try to place waiting tasks.
             r_wait = False
             if resources:
-                r_wait, a = self._schedule_waitpool()
+                with self._lock:
+                    r_wait, a = self._schedule_waitpool()
                 active += int(a)
                 self._log.debug_3('schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
-            r_inc, a = self._schedule_incoming()
+            with self._lock:
+                r_inc, a = self._schedule_incoming()
             active += int(a)
             self._log.debug_3('schedule tasks i: %s %s', r_inc, a)
 
@@ -724,7 +729,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # if tasks got unscheduled (and not replaced), then we have new
             # space to schedule waiting tasks (unless we have resources from
             # before)
-            r, a = self._unschedule_completed()
+            with self._lock:
+                r, a = self._unschedule_completed()
+
             if not resources and r:
                 resources = True
             active += int(a)
