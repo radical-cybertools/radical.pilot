@@ -386,16 +386,19 @@ class Continuous(AgentSchedulingComponent):
             colo_tag = str(colo_tag)
 
         # in case of PRTE LM: the `slots` attribute may have a partition ID set
-        partition_id = td.get('partition', 0)
-        if self._partitions:
-            if partition_id not in self._partitions:
+        partition_id = td.get('partition')
+        if partition_id is not None and not self._partition_ids:
+            raise ValueError('partition id (%d) out of range' % partition_id)
+
+        if self._partition_ids:
+            if partition_id not in self._partition_ids:
                 raise ValueError('partition id (%d) out of range'
                                  % partition_id)
 
             # partition id becomes a part of a co-locate tag
             colo_tag = str(partition_id) + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
-                self._colo_history[colo_tag] = self._partitions[partition_id]
+                self._colo_history[colo_tag] = partition_id
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
