@@ -747,16 +747,16 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # We define `tuple_size` as
         #     `ranks * cores_per_rank * gpus_per_rank`
         #
-        to_wait   = list()
-        to_test   = list()
-
         active    = False  # nothing happeend yet
         resources = True   # fresh start, all is free
 
         for priority in sorted(self._waitpool.keys(), reverse=True):
 
+            to_wait   = list()
+            to_test   = list()
+
             pool = self._waitpool[priority]
-            self._log.debug_9('schedule waitpool[%d]: %d', priority, len(pool))
+            self._log.debug_5('schedule waitpool[%d]: %d', priority, len(pool))
 
             if not pool:
                 continue
@@ -790,7 +790,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                                       len(unscheduled), len(failed))
 
             for task, error in failed:
-
                 error  = error.replace('"', '\\"')
                 self._fail_task(task, RuntimeError('bisect failed'), error)
                 self._log.error('bisect failed on %s: %s', task['uid'], error)
