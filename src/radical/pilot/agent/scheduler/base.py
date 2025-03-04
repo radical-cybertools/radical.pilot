@@ -693,25 +693,22 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         resources = True  # fresh start, all is free
         while not self._term.is_set():
 
-            with self._lock:
-                self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
-                        sum([len(pool) for pool in self._waitpool.values()]))
+            self._log.debug_3('schedule tasks 0: %s, w: %d', resources,
+                    sum([len(pool) for pool in self._waitpool.values()]))
 
             active = 0  # see if we do anything in this iteration
 
             # if we have new resources, try to place waiting tasks.
             r_wait = False
             if resources:
-                with self._lock:
-                    r_wait, a = self._schedule_waitpool()
+                r_wait, a = self._schedule_waitpool()
                 active += int(a)
                 self._log.debug_3('schedule tasks w: %s %s', r_wait, a)
 
             # always try to schedule newly incoming tasks
             # running out of resources for incoming could still mean we have
             # smaller slots for waiting tasks, so ignore `r` for now.
-            with self._lock:
-                r_inc, a = self._schedule_incoming()
+            r_inc, a = self._schedule_incoming()
             active += int(a)
             self._log.debug_3('schedule tasks i: %s %s', r_inc, a)
 
@@ -724,8 +721,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # if tasks got unscheduled (and not replaced), then we have new
             # space to schedule waiting tasks (unless we have resources from
             # before)
-            with self._lock:
-                r, a = self._unschedule_completed()
+            r, a = self._unschedule_completed()
 
             if not resources and r:
                 resources = True
