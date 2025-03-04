@@ -24,11 +24,10 @@ def run_agent_command(sbox, cmd, args):
     if not os.path.isfile(portfile):
         raise RuntimeError('portfile not found: %s' % portfile)
 
-    port = None
     with open(portfile) as fin:
         info   = json.load(fin)
         port   = info.get('command_port')
-        hostip = info.get('hostip')
+        hostip = info.get('command_hostip')
 
   # print('command port: {%s} {%s}: %.2f' % (port, type(port), time.time()))
 
