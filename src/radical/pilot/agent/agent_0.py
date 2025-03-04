@@ -644,9 +644,10 @@ class Agent_0(rpu.AgentComponent):
         while True:
             port = ru.find_port()
             try:
-                # we only listen on localhost!
+                # we only listen on all interfaces
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.bind(('127.0.0.1', port))
+                hostip = ru.get_hostip()
+                sock.bind((hostip, port))
                 break
             except Exception as e:
                 self._log.error('port %s unusable: %s', port, e)
@@ -656,7 +657,8 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug('bound cmd handler to port %s', port)
 
-        ru.write_json('agent_0.ports.json', {'command': port})
+        ru.write_json('agent_0.ports.json', {'command_port'  : port,
+                                             'command_hostip': hostip})
         sock.listen(1)
 
         while True:
