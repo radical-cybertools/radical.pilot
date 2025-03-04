@@ -722,7 +722,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # space to schedule waiting tasks (unless we have resources from
             # before)
             r, a = self._unschedule_completed()
-
             if not resources and r:
                 resources = True
             active += int(a)
@@ -738,15 +737,15 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     #
     def _prof_sched_skip(self, task):
 
-        self._prof.prof('schedule_skip', uid=task['uid'])
-        # pass
+      # self._prof.prof('schedule_skip', uid=task['uid'])
+        pass
 
 
     # --------------------------------------------------------------------------
     #
     def _schedule_waitpool(self):
 
-        self.slot_status("before schedule waitpool")
+      # self.slot_status("before schedule waitpool")
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -819,7 +818,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # if we sccheduled some tasks but not all, we ran out of resources
             resources = resources and not (bool(unscheduled))
 
-        self.slot_status("after  schedule waitpool")
+      # self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -1130,12 +1129,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             uid = task['uid']
           # td  = task['description']
 
-            self._prof.prof('schedule_try', uid=uid)
+          # self._prof.prof('schedule_try', uid=uid)
             slots, partition = self.schedule_task(task)
             if not slots:
 
                 # schedule failure
-                self._prof.prof('schedule_fail', uid=uid)
+              # self._prof.prof('schedule_fail', uid=uid)
 
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
