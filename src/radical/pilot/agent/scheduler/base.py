@@ -753,7 +753,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     #
     def _schedule_waitpool(self):
 
-      # self.slot_status("before schedule waitpool")
+        self.slot_status("before schedule waitpool")
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -761,14 +761,21 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # We define `tuple_size` as
         #     `ranks * cores_per_rank * gpus_per_rank`
         #
-        to_wait    = list()
-        to_test    = list()
+        to_wait   = list()
+        to_test   = list()
 
         active    = False  # nothing happeend yet
         resources = True   # fresh start, all is free
 
         for priority in sorted(self._waitpool.keys(), reverse=True):
-            for task in self._waitpool[priority].values():
+
+            pool = self._waitpool[priority]
+            self._log.debug_9('schedule waitpool[%d]: %d', priority, len(pool))
+
+            if not pool:
+                continue
+
+            for task in pool.values():
                 named_env = task['description'].get('named_env')
                 if named_env:
                     if named_env in self._named_envs:
@@ -782,13 +789,18 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
                      reverse=True)
 
+            if not to_test:
+                # all tasks went into to_wait, so there is nothing to do
+                self._log.debug_8('no tasks to bisect')
+                continue
+
             # cycle through waitpool, and see if we get anything placed now.
-            self._log.debug_9('before bisec: %d', len(to_test))
+            self._log.debug_9('before bisect: %d', len(to_test))
             scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
                                                     check=self._try_allocation,
                                                     on_skip=self._prof_sched_skip,
                                                     log=self._log)
-            self._log.debug_9('after  bisec: %d : %d : %d', len(scheduled),
+            self._log.debug_9('after  bisect: %d : %d : %d', len(scheduled),
                                                       len(unscheduled), len(failed))
 
             for task in scheduled  : self._log.debug_9('= scheduled   %s', task['uid'])
@@ -819,7 +831,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # if we sccheduled some tasks but not all, we ran out of resources
             resources = resources and not (bool(unscheduled))
 
-      # self.slot_status("after  schedule waitpool")
+        self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -863,6 +875,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     raptor_id = td.get('raptor_id')
                     priority  = td.get('priority', 0)
                     mode      = td.get('mode')
+
+                    self._log.debug('incoming task %s (%s)', task['uid'], priority)
 
                     # raptor workers are not scheduled by raptor itself!
                     if raptor_id and mode != RAPTOR_WORKER:
@@ -1015,16 +1029,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
             # Timeout and bulk limit below are somewhat arbitrary, but the
             # behaviour is benign.  The goal is to avoid corner cases: for the
-            # sleep, avoid no sleep (busy idle) and also significant latencies.
-            # Anything smaller than 0.01 is under our noise level and works ok
-            # for the latency, and anything larger than 0 is sufficient to avoid
-            # busy idle.
-            #
-            # For the unschedule bulk, the corner case to avoid is waiting for
-            # too long to fill a bulk so that latencies add a up and negate the
-            # bulk optimization. For the 0.001 sleep, 128 as bulk size results
-            # in a max added latency of about 0.1 second, which is one order of
-            # magnitude above our noise level again and thus acceptable (tm).
+            # sleep, avoid no sleep (busy idle), for the bulk size, avoid
+            # waiting for too long to fill a bulk so that latencies add a up
+            # and negate the bulk optimization.
             while not self._term.is_set():
                 tasks = self._queue_unsched.get(timeout=0.01)
                 to_unschedule += ru.as_list(tasks)
@@ -1036,7 +1043,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             pass
 
         to_release = list()  # slots of unscheduling tasks
-        placed     = list()  # uids of waiting tasks replacing unscheduled ones
+      # placed     = list()  # uids of waiting tasks replacing unscheduled ones
 
         if to_unschedule:
 
@@ -1045,15 +1052,14 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
 
         for task in to_unschedule:
-            # if we find a waiting task with the same tuple size, we don't free
-            # the slots, but just pass them on unchanged to the waiting task.
-            # Thus we replace the unscheduled task on the same cores / GPUs
-            # immediately. This assumes that the `tuple_size` is good enough to
-            # judge the legality of the resources for the new target task.
-            #
-            # FIXME: use tuple size again
-            # FIXME: consider priorities
-
+          # # if we find a waiting task with the same tuple size, we don't free
+          # # the slots, but just pass them on unchanged to the waiting task.
+          # # Thus we replace the unscheduled task on the same cores / GPUs
+          # # immediately. This assumes that the `tuple_size` is good enough to
+          # # judge the legality of the resources for the new target task.
+          # #
+          # # FIXME: use tuple size again
+          # # FIXME: consider priorities
           # ts = tuple(task['tuple_size'])
           # if self._ts_map.get(ts):
           #
@@ -1096,14 +1102,15 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             self.slot_status("after  unschedule", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
-        # we placed some previously waiting tasks, and need to remove those from
-        # the waitpool
-        for priority in self._waitpool:
-            tasks = self._waitpool[priority].values()
-            self._waitpool[priority] = {task['uid']: task
-                                            for task in tasks
-                                            if  task['uid'] not in placed}
-
+      # # we placed some previously waiting tasks, and need to remove those from
+      # # the waitpool
+      # # FIXME: see FIXMEs above
+      # for priority in self._waitpool:
+      #     tasks = self._waitpool[priority].values()
+      #     self._waitpool[priority] = {task['uid']: task
+      #                                     for task in tasks
+      #                                     if  task['uid'] not in placed}
+      #
         # we have new resources, and were active
         return True, True
 
