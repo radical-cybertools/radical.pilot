@@ -187,6 +187,10 @@ SCHEDULER_NAME_NOOP                = "NOOP"
 #
 class AgentSchedulingComponent(rpu.AgentComponent):
 
+    # flags for the scheduler queue
+    _SCHEDULE = 1
+    _CANCEL   = 2
+
     # --------------------------------------------------------------------------
     #
     # the deriving schedulers should in general have the following structure in
@@ -204,7 +208,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     # respectively.  Some schedulers may need a more elaborate structures - but
     # where the above is suitable, it should be used for code consistency.
     #
-
     def __init__(self, cfg, session):
 
         self.nodes = []
@@ -236,7 +239,6 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # NOTE: the waitpool is really a dict of dicts where the first level key
         #       is the task priority.
         #
-        self._lock       = mt.Lock()          # lock for waitpool
         self._waitpool   = defaultdict(dict)  # {priority : {uid:task}}
         self._ts_map     = defaultdict(set)   # tasks binned by tuple size
         self._ts_valid   = False              # set to False to trigger re-binning
@@ -410,17 +412,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
 
+            # inform the scheduler process
             uids = arg['uids']
-            to_cancel = list()
-            with self._lock:
-                for uid in uids:
-                    for priority in self._waitpool:
-                        if uid in self._waitpool[priority]:
-                            task = self._waitpool[priority][uid]
-                            to_cancel.append(task)
-                            del self._waitpool[priority][uid]
-                            break
+            self._queue_sched.put((uids, self._CANCEL))
 
+            # also cancel any raptor tasks we know about
+            to_cancel = list()
             with self._raptor_lock:
                 for queue in self._raptor_tasks:
                     matches = [t for t in self._raptor_tasks[queue]
@@ -591,7 +588,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         # advance state, publish state change, and push to scheduler process
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
-        self._queue_sched.put(tasks)
+        self._queue_sched.put((tasks, self._SCHEDULE))
 
 
     # --------------------------------------------------------------------------
@@ -839,11 +836,27 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
             while not self._term.is_set():
 
-                data = self._queue_sched.get(timeout=0.001)
+                data, flag = self._queue_sched.get(timeout=0.001)
 
-                if not isinstance(data, list):
-                    data = [data]
+                assert flag in [self._SCHEDULE, self._CANCEL], flag
 
+                if flag == self._CANCEL:
+                    to_cancel = list()
+                    for uid in data:
+                        for priority in self._waitpool:
+                            task = self._waitpool[priority].get(uid)
+                            if task:
+                                to_cancel.append(task)
+                                del self._waitpool[priority][uid]
+                                break
+
+                    self.advance(to_cancel, rps.CANCELED,
+                                                       push=False, publish=True)
+
+                    # nothing to schedule, pull from queue again
+                    continue
+
+                # we got a task to schedule
                 for task in data:
 
                     td = task['description']
@@ -876,7 +889,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         to_schedule[priority].append(task)
 
         except queue.Empty:
-            # no more unschedule requests
+            # no more schedule requests
             pass
 
         # forward raptor tasks to their designated raptor

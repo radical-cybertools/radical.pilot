@@ -3,6 +3,7 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
+import queue
 
 import threading            as mt
 import radical.utils        as ru
@@ -172,6 +173,7 @@ class TestBaseScheduling(TestCase):
         sched._log = mock.Mock()
         sched._log.debug.side_effect = _log_debug
         sched._scheduler_process = True
+        sched._queue_sched = queue.Queue()
 
         sched._lock         = mt.Lock()
         sched._raptor_lock  = mt.Lock()
@@ -190,8 +192,10 @@ class TestBaseScheduling(TestCase):
         msg['cmd'] = 'cancel_tasks'
         sched._control_cb(topic=None, msg=msg)
 
-        # task from `waitpool` was cancelled
-        self.assertFalse(sched._waitpool[0])
+        # cancel was requested
+        data, flag = sched._queue_sched.get()
+        self.assertEqual(flag, AgentSchedulingComponent._CANCEL)
+        self.assertEqual(data, ['task.0000', 'task.0001'])
 
 
 # ------------------------------------------------------------------------------
