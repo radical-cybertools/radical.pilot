@@ -63,7 +63,14 @@ ENDPOINTS_DEFAULT      = {JOB_MANAGER_ENDPOINT: 'fork://localhost/',
 
 # ------------------------------------------------------------------------------
 #
-class RaptorConfig(ru.TypedDict):
+class FastTypedDict(ru.TypedDict):
+
+    _deep = False
+
+
+# ------------------------------------------------------------------------------
+#
+class RaptorConfig(FastTypedDict):
 
     _schema = {
         RAPTOR_HB_DELAY    : int,
@@ -80,7 +87,7 @@ class RaptorConfig(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class AccessSchema(ru.TypedDict):
+class AccessSchema(FastTypedDict):
 
     _schema = {
         JOB_MANAGER_ENDPOINT: str,
@@ -97,7 +104,7 @@ class AccessSchema(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class ResourceConfig(ru.TypedDict):
+class ResourceConfig(FastTypedDict):
     '''
     docstrings goes here
     '''
@@ -201,7 +208,7 @@ class ResourceConfig(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class RO(ru.TypedDict):
+class RO(FastTypedDict):
 
     INDEX      = 'index'
     OCCUPATION = 'occupation'
@@ -238,7 +245,7 @@ ResourceOccupation = RO
 
 # ------------------------------------------------------------------------------
 #
-class RankRequirements(ru.TypedDict):
+class RankRequirements(FastTypedDict):
 
     N_CORES         = 'n_cores'
     CORE_OCCUPATION = 'core_occupation'
@@ -342,7 +349,7 @@ class RankRequirements(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class Slot(ru.TypedDict):
+class Slot(FastTypedDict):
 
     CORES       = 'cores'
     GPUS        = 'gpus'
@@ -405,7 +412,7 @@ class Slot(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class Node(ru.TypedDict):
+class Node(FastTypedDict):
     '''
     Node resources as reported by the resource manager, used by the scheduler
     '''
@@ -614,7 +621,7 @@ class Node(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class NodeList(ru.TypedDict):
+class NodeList(FastTypedDict):
 
     NODES          = 'nodes'
     UNIFORM        = 'uniform'
@@ -788,7 +795,7 @@ class NodeList(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class NumaDomain(ru.TypedDict):
+class NumaDomain(FastTypedDict):
     '''
     A `NumaDomain` defines what cores and GPUs on a node are part of the same
     momory domain.
@@ -818,7 +825,7 @@ class NumaDomain(ru.TypedDict):
 
 # ------------------------------------------------------------------------------
 #
-class NumaDomainMap(ru.TypedDict):
+class NumaDomainMap(FastTypedDict):
     '''
     The `NumaDomainMap` is a dictionary of `NumaDomain`s which are mapped to the
     Node's NUMA domain indizes.  For example, a node with 8 cores and 2 GPUs
