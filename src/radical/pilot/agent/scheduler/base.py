@@ -550,18 +550,16 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             return
 
         # we can only rebuild if we have waiting tasks
-        with self._lock:
+        for priority in self._waitpool:
 
-            for priority in self._waitpool:
+            if not self._waitpool[priority]:
+                continue
 
-                if not self._waitpool[priority]:
-                    continue
-
-                for uid, task in self._waitpool[priority].items():
-                    ts = task['tuple_size']
-                    if ts not in self._ts_map:
-                        self._ts_map[ts] = set()
-                    self._ts_map[ts].add(uid)
+            for uid, task in self._waitpool[priority].items():
+                ts = task['tuple_size']
+                if ts not in self._ts_map:
+                    self._ts_map[ts] = set()
+                self._ts_map[ts].add(uid)
 
         self._ts_valid = True
 
@@ -747,8 +745,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     #
     def _prof_sched_skip(self, task):
 
-        pass
         self._prof.prof('schedule_skip', uid=task['uid'])
+        # pass
 
 
     # --------------------------------------------------------------------------
