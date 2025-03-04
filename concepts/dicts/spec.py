@@ -39,7 +39,7 @@ class PYDICT(dict):
 # ------------------------------------------------------------------------------
 #
 checks = [
-          OLD_CUD, GOOD, SCHEMA,
+        # OLD_CUD, GOOD, SCHEMA,
           RU_MUNCH, PYDICT, MYDICT, RU_CFG, NEW_CUD, RU_DICT, PYDANTIC
          ]
 
