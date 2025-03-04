@@ -7,7 +7,8 @@ from typing import Optional, List
 import threading     as mt
 import radical.utils as ru
 
-from .constants import BUSY, DOWN
+from .constants  import BUSY, DOWN
+from .utils.misc import FastTypedDict
 
 
 LABEL                  = 'label'
@@ -59,13 +60,6 @@ RAPTOR_HB_FREQUENCY    = 'hb_frequency'
 
 ENDPOINTS_DEFAULT      = {JOB_MANAGER_ENDPOINT: 'fork://localhost/',
                           FILESYSTEM_ENDPOINT : 'file://localhost/'}
-
-
-# ------------------------------------------------------------------------------
-#
-class FastTypedDict(ru.TypedDict):
-
-    _deep = False
 
 
 # ------------------------------------------------------------------------------
