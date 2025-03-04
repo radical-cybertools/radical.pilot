@@ -745,7 +745,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
     #
     def _schedule_waitpool(self):
 
-        self.slot_status("before schedule waitpool")
+      # self.slot_status("before schedule waitpool")
 
         # sort by inverse tuple size to place larger tasks first and backfill
         # with smaller tasks.  We only look at cores right now - this needs
@@ -818,7 +818,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # if we sccheduled some tasks but not all, we ran out of resources
             resources = resources and not (bool(unscheduled))
 
-        self.slot_status("after  schedule waitpool")
+      # self.slot_status("after  schedule waitpool")
         return resources, active
 
 
@@ -940,7 +940,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             return None, False
 
         n_tasks = sum([len(x) for x in to_schedule.values()])
-        self.slot_status("before schedule incoming [%d]" % n_tasks)
+      # self.slot_status("before schedule incoming [%d]" % n_tasks)
 
         # handle largest to_schedule first
         # FIXME: this needs lazy-bisect
@@ -1019,7 +1019,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # tuple_size map
         self._ts_valid = False
 
-        self.slot_status("after  schedule incoming")
+      # self.slot_status("after  schedule incoming")
         return resources, active
 
 
@@ -1100,9 +1100,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         # thus try to schedule larger tasks again, and also inform the caller
         # about resource availability.
         for task in to_release:
-            self.slot_status("before unschedule", task['uid'])
+          # self.slot_status("before unschedule", task['uid'])
             self.unschedule_task(task)
-            self.slot_status("after  unschedule", task['uid'])
+          # self.slot_status("after  unschedule", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
       # # we placed some previously waiting tasks, and need to remove those from
