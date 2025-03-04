@@ -22,7 +22,7 @@ jobs:
           fetch-depth: 2
       - uses: actions/setup-python@v5
         with:
-          python-version: 3.7
+          python-version: 3.9
       - name: Install dependencies
         run: |
           python -m venv testenv
@@ -46,11 +46,15 @@ jobs:
           pylint $FILTERED
 
   tests:
-    runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        os: [ ubuntu-latest ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        include:
+          - os: ubuntu-22.04
+            python-version: '3.8'
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,7 +76,7 @@ jobs:
           coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
           coverage xml
       - uses: codecov/codecov-action@v4
-        if: ${{ matrix.python-version == '3.7' }}
+        if: ${{ matrix.python-version == '3.9' }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
@@ -81,7 +85,7 @@ jobs:
   notebook_integration_test:
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
       python-version: ${{ matrix.python-version }}
@@ -89,10 +93,14 @@ jobs:
       notebook-name: 'getting_started.ipynb'
 
   analytics:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.7', '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        os: [ ubuntu-latest ]
+        python-version: [ '3.8', '3.9', '3.10', '3.11', '3.12' ]
+        include:
+          - os: ubuntu-22.04
+            python-version: '3.8'
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:

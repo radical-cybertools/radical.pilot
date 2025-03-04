@@ -5,7 +5,7 @@ Frontera (TACC)
 Platform user guide
 ===================
 
-https://frontera-portal.tacc.utexas.edu/user-guide/
+https://docs.tacc.utexas.edu/hpc/frontera/
 
 General description
 ===================
