@@ -10,6 +10,7 @@ import threading     as mt
 import radical.utils as ru
 
 from . import states    as rps
+from . import utils     as rpu
 from . import constants as rpc
 
 from .staging_directives import expand_description
@@ -612,7 +613,7 @@ class Task(object):
 
 # ------------------------------------------------------------------------------
 #
-class TaskDict(ru.TypedDict):
+class TaskDict(rpu.FastTypedDict):
     """Dictionary encoded Task.
 
     rp.Task is an API level object and as that is not a useful internal
