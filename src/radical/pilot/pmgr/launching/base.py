@@ -930,7 +930,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # ----------------------------------------------------------------------
         # Create Job description
 
-        jd_dict = ru.TypedDict()
+        jd_dict = rpu.FastTypedDict()
 
         jd_dict.name                  = job_name
         jd_dict.executable            = '/bin/bash'

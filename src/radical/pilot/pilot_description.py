@@ -3,7 +3,9 @@ __copyright__ = 'Copyright 2013-2021, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import radical.utils as ru
+
 from .task_description import TaskDescription
+from .utils.misc       import FastTypedDict
 
 # ------------------------------------------------------------------------------
 # Attribute description keys
@@ -37,7 +39,7 @@ PREPARE_ENV       = 'prepare_env'
 
 # ------------------------------------------------------------------------------
 #
-class PilotDescription(ru.TypedDict):
+class PilotDescription(FastTypedDict):
     """Specify a requested Pilot.
 
     A PilotDescription object describes the requirements and properties

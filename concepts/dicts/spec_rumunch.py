@@ -3,7 +3,9 @@ import radical.utils as ru
 import spec_attribs  as a
 
 
-class RU_MUNCH(ru.Description):
+class RU_MUNCH(ru.TypedDict):
+
+    _deep = False
 
     _schema = {
                a.EXECUTABLE      : str         ,
