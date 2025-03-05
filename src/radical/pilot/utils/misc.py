@@ -17,6 +17,13 @@ _rcfgs = None
 
 # ------------------------------------------------------------------------------
 #
+class FastTypedDict(ru.TypedDict):
+
+    _deep = False
+
+
+# ------------------------------------------------------------------------------
+#
 def tail(txt: str, maxlen: int = MAX_IO_LOGLENGTH) -> str:
 
     # shorten the given string to the last <n> characters, and prepend
