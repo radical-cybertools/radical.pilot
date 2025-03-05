@@ -7,6 +7,7 @@ __license__   = 'MIT'
 import radical.utils as ru
 
 from .resource_config import Slot
+from .utils.misc      import FastTypedDict
 
 
 # task modes
@@ -118,7 +119,7 @@ METADATA         = 'metadata'
 
 # ------------------------------------------------------------------------------
 #
-class TaskDescription(ru.TypedDict):
+class TaskDescription(FastTypedDict):
     """Describe the requirements and properties of a Task.
 
     A TaskDescription object describes the requirements and properties of a

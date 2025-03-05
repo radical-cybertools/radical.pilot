@@ -25,7 +25,7 @@ except: LOG_ENABLED = False
 
 # ------------------------------------------------------------------------------
 #
-class _CloseOptions(ru.TypedDict):
+class _CloseOptions(rpu.FastTypedDict):
     """Options and validation for Session.close().
 
     Arguments:
