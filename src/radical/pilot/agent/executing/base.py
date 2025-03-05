@@ -94,8 +94,10 @@ class AgentExecutingComponent(rpu.AgentComponent):
         assert self.rp_ctrl, 'radical-pilot-control not found'
 
         # if so configured, let the tasks know what to use as tmp dir
-        self._task_tmp = self.session.rcfg.get('task_tmp',
-                                               os.environ.get('TMP', '/tmp'))
+        self.tmpdir    = os.environ.get('TMPDIR', '/tmp') + '/' + self.sid
+        ru.rec_makedir(self.tmpdir)
+
+        self._task_tmp = self.session.rcfg.get('task_tmp', self.tmpdir)
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
