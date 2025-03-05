@@ -14,6 +14,7 @@ T_NODE_LIST = List[Dict[str, Any]]
 import radical.utils as ru
 
 from ... import agent     as rpa
+from ... import utils     as rpu
 from ... import constants as rpc
 
 
@@ -31,7 +32,7 @@ RM_NAME_DEBUG       = 'DEBUG'
 
 # ------------------------------------------------------------------------------
 #
-class RMInfo(ru.TypedDict):
+class RMInfo(rpu.FastTypedDict):
     '''
     Each resource manager instance must gather provide the information defined
     in this class.  Additional attributes can be attached, but should then only
