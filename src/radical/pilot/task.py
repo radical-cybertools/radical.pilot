@@ -156,6 +156,18 @@ class Task(object):
         current = self.state
         target  = task_dict['state']
 
+        # we never update once the task is FAILED or DONE
+        if current in [rps.FAILED, rps.DONE]:
+            self._log.debug('task %s is final, ignore update', self.uid)
+            return
+
+        # when in CANCELED state, we only allow updates for `DONE` tasks - in
+        # that case the cancel command raced the task execution, and the
+        # execution actually won, so we don't want to waste that work
+        if current == rps.CANCELED and target != rps.DONE:
+            self._log.debug('task %s was CANCELED, ignore update', self.uid)
+            return
+
         if not reconnect:
             if target not in [rps.FAILED, rps.CANCELED]:
                 s_tgt = rps._task_state_value(target)

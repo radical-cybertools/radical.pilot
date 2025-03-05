@@ -1019,6 +1019,9 @@ class BaseComponent(object):
 
                         if to_cancel:
                             # only advance stateful entities, otherwise just drop
+                            for thing in to_cancel:
+                                self._log.debug('==== cancel drop %s [%s]',
+                                                            thing['uid'], state)
                             if state:
                                 self.advance(to_cancel, rps.CANCELED,
                                              publish=True, push=False)
@@ -1116,6 +1119,11 @@ class BaseComponent(object):
                             len(_things), push, publish, _state)
 
         # should we publish state information on the state pubsub?
+        for thing in things:
+            self._log.info('===== b %s -> %20s [%s:%s] [%s]', thing['uid'],
+                           thing['state'], publish, fwd,
+                           thing.get('target_state'))
+
         if publish:
 
             to_publish = list()
@@ -1255,6 +1263,8 @@ class AgentComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=True, prof=True):
 
+        things = ru.as_list(things)
+
         # CANCELED and FAILED is handled on the client side
         if state in [rps.FAILED, rps.CANCELED]:
 
@@ -1264,9 +1274,16 @@ class AgentComponent(BaseComponent):
                 thing['control']      = 'tmgr_pending'
                 thing['$all']         = True
 
-            state   = rps.TMGR_STAGING_OUTPUT_PENDING
+          # state   = rps.TMGR_STAGING_OUTPUT_PENDING
             publish = True
             push    = False
+
+        for thing in things:
+            import pprint
+            self._log.debug(pprint.pformat(thing))
+            self._log.info('===== a %s -> %s/%s [%s:%s] [%s]', thing['uid'],
+                           thing['state'], state, publish, fwd,
+                           thing.get('target_state'))
 
         super().advance(things=things, state=state, publish=publish, push=push,
                         qname=qname, ts=ts, fwd=fwd, prof=prof)
