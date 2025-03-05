@@ -24,10 +24,10 @@ def run_agent_command(sbox, cmd, args):
     if not os.path.isfile(portfile):
         raise RuntimeError('portfile not found: %s' % portfile)
 
-    port = None
     with open(portfile) as fin:
-        info = json.load(fin)
-        port = info.get('command')
+        info   = json.load(fin)
+        port   = info.get('command_port')
+        hostip = info.get('command_hostip')
 
   # print('command port: {%s} {%s}: %.2f' % (port, type(port), time.time()))
 
@@ -38,7 +38,7 @@ def run_agent_command(sbox, cmd, args):
             'arg' : {x:v for x,v in [a.split('=') for a in args]}}
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('127.0.0.1', port))
+    sock.connect((hostip, port))
 
     try:
         sock.sendall(json.dumps(msg).encode('utf-8'))
