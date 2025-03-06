@@ -1020,7 +1020,7 @@ class BaseComponent(object):
                         if to_cancel:
                             # only advance stateful entities, otherwise just drop
                             for thing in to_cancel:
-                                self._log.debug('==== cancel drop %s [%s]',
+                                self._log.debug('cancel drop %s [%s]',
                                                             thing['uid'], state)
                             if state:
                                 self.advance(to_cancel, rps.CANCELED,
@@ -1093,19 +1093,14 @@ class BaseComponent(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['task', 'pilot']:
-          #     raise TypeError("thing has unknown type (%s)" % uid)
+            if thing['type'] not in ['task', 'pilot']:
+                raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
                 # state advance done here
                 thing['state'] = state
 
             _state = thing['state']
-
-            self._log.debug('==== advance %s: %s', uid, state)
-            if thing.get('target_state') == rps.CANCELED:
-                import pprint
-                self._log.debug('==== cancel %s: %s', uid, pprint.pformat(thing))
 
             if prof:
                 self._prof.prof('advance', uid=uid, state=_state, ts=ts)
@@ -1119,11 +1114,6 @@ class BaseComponent(object):
                             len(_things), push, publish, _state)
 
         # should we publish state information on the state pubsub?
-        for thing in things:
-            self._log.info('===== b %s -> %20s [%s:%s] [%s]', thing['uid'],
-                           thing['state'], publish, fwd,
-                           thing.get('target_state'))
-
         if publish:
 
             to_publish = list()
@@ -1201,6 +1191,11 @@ class BaseComponent(object):
                         output.channel)
                 output.put(_things, qname=qname)
 
+              # ts = time.time()
+              # for thing in _things:
+              #     self._prof.prof('put', uid=thing['uid'], state=_state,
+              #                     msg=output.name, ts=ts)
+
 
     # --------------------------------------------------------------------------
     #
@@ -1266,6 +1261,7 @@ class AgentComponent(BaseComponent):
         things = ru.as_list(things)
 
         # CANCELED and FAILED is handled on the client side
+        # FIXME: what if `state==None` and `task['state']` is set instead?
         if state in [rps.FAILED, rps.CANCELED]:
 
             # final state is handled on client side - hand task over to tmgr
@@ -1274,16 +1270,14 @@ class AgentComponent(BaseComponent):
                 thing['control']      = 'tmgr_pending'
                 thing['$all']         = True
 
-          # state   = rps.TMGR_STAGING_OUTPUT_PENDING
+              # FIXME: something like this should be done on `stage_on_error`
+              # if thing['description'].get('stage_on_error'):
+              #     thing['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
+              # else:
+              #     thing['state'] = state
+
             publish = True
             push    = False
-
-        for thing in things:
-            import pprint
-            self._log.debug(pprint.pformat(thing))
-            self._log.info('===== a %s -> %s/%s [%s:%s] [%s]', thing['uid'],
-                           thing['state'], state, publish, fwd,
-                           thing.get('target_state'))
 
         super().advance(things=things, state=state, publish=publish, push=push,
                         qname=qname, ts=ts, fwd=fwd, prof=prof)
