@@ -963,13 +963,15 @@ class BaseComponent(object):
             tid = task['uid']
 
             if tid not in self._cancel_list:
-                return task
+                return False
 
             if 'state' in task:
                 self.advance(task, rps.CANCELED, publish=True, push=False)
 
             # remove from cancel list
             self._cancel_list.remove(tid)
+
+            return True
 
 
     # --------------------------------------------------------------------------
@@ -1032,18 +1034,8 @@ class BaseComponent(object):
 
                     # filter out canceled things
                     if self._cancel_list:
-
-                        not_canceled = list()
-                        for thing in things:
-
-                            thing = self.check_canceled(thing)
-
-                            if thing:
-                                not_canceled.append(thing)
-
-                        things = not_canceled
-
-
+                        things = [x for x in things
+                                    if not self.check_canceled(x)]
 
                   # self._log.debug('== got %d things (%s)', len(things), state)
                   # for thing in things:

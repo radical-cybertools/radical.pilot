@@ -292,6 +292,11 @@ class Popen(AgentExecutingComponent):
         # watch task for completion
         self._watch_queue.put(task)
 
+        # now that the task cancellation cb would succeed, let's make sure that
+        # no cancellation request sneaked in before the task got started
+        if self.is_canceled(task) is True:
+            self.cancel_task(task)
+
 
     # --------------------------------------------------------------------------
     #
