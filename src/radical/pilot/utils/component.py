@@ -1201,7 +1201,7 @@ class BaseComponent(object):
                 # wait for that file to disappear before continuing
                 waitfile = '/tmp/rp_wait_%s' % _state.lower()
                 while os.path.isfile(waitfile):
-                  self._log.debug('===== wait for file %s', waitfile)
+                  self._log.debug('wait for file %s', waitfile)
                   time.sleep(1)
 
 
