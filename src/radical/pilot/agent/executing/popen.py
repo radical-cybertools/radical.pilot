@@ -80,6 +80,7 @@ class Popen(AgentExecutingComponent):
         proc = task.get('proc')
         if not proc:
             # task was not started, nothing to do
+            # FIXME: this is a race, the executor might already own the task
             self._log.debug('task %s was not started', tid)
             return
 

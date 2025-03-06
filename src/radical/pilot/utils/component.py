@@ -1019,6 +1019,9 @@ class BaseComponent(object):
 
                         if to_cancel:
                             # only advance stateful entities, otherwise just drop
+                            for thing in to_cancel:
+                                self._log.debug('cancel drop %s [%s]',
+                                                            thing['uid'], state)
                             if state:
                                 self.advance(to_cancel, rps.CANCELED,
                                              publish=True, push=False)
@@ -1090,8 +1093,8 @@ class BaseComponent(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['task', 'pilot']:
-          #     raise TypeError("thing has unknown type (%s)" % uid)
+            if thing['type'] not in ['task', 'pilot']:
+                raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
                 # state advance done here
@@ -1188,14 +1191,6 @@ class BaseComponent(object):
                         output.channel)
                 output.put(_things, qname=qname)
 
-                # if a file `'/tmp/rp_wait_%s' % _state.lower()` exists, we
-                # wait for that file to disappear before continuing
-                waitfile = '/tmp/rp_wait_%s' % _state.lower()
-                while os.path.isfile(waitfile):
-                  self._log.debug('wait for file %s', waitfile)
-                  time.sleep(1)
-
-
               # ts = time.time()
               # for thing in _things:
               #     self._prof.prof('put', uid=thing['uid'], state=_state,
@@ -1263,7 +1258,10 @@ class AgentComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=True, prof=True):
 
+        things = ru.as_list(things)
+
         # CANCELED and FAILED is handled on the client side
+        # FIXME: what if `state==None` and `task['state']` is set instead?
         if state in [rps.FAILED, rps.CANCELED]:
 
             # final state is handled on client side - hand task over to tmgr
@@ -1272,7 +1270,12 @@ class AgentComponent(BaseComponent):
                 thing['control']      = 'tmgr_pending'
                 thing['$all']         = True
 
-            state   = rps.TMGR_STAGING_OUTPUT_PENDING
+              # FIXME: something like this should be done on `stage_on_error`
+              # if thing['description'].get('stage_on_error'):
+              #     thing['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
+              # else:
+              #     thing['state'] = state
+
             publish = True
             push    = False
 
