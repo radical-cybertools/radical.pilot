@@ -88,6 +88,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self.psbox     = self.session.cfg.pilot_sandbox
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
+        self.rp_ctrl   = ru.which('radical-pilot-control')
+
+        assert self.rp_ctrl, 'radical-pilot-control not found'
 
         # if so configured, let the tasks know what to use as tmp dir
         self.tmpdir    = os.environ.get('TMPDIR', '/tmp') + '/' + self.sid
@@ -108,7 +111,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_UNSCHEDULE_PUBSUB)
 
         self._to_tasks  = list()
         self._to_lock   = mt.Lock()
@@ -142,6 +145,18 @@ class AgentExecutingComponent(rpu.AgentComponent):
                 if task:
                     self.cancel_task(task)
 
+        elif cmd == 'task_startup_done':
+
+            self._log.info('task_startup_done command (%s)', arg)
+            task = self.get_task(arg['uid'])
+            if task:
+                # if execution timeout is 0., then we will reset cancellation
+                cancel_time = task['description'].get('timeout', 0.)
+                if cancel_time:
+                    cancel_time += time.time()
+                with self._to_lock:
+                    self._to_tasks.append([task, cancel_time, True])
+
 
     # --------------------------------------------------------------------------
     #
@@ -166,51 +181,52 @@ class AgentExecutingComponent(rpu.AgentComponent):
         `self._cancel_task(task)`.  That has to be implemented by al executors.
         '''
 
-        # tasks to watch for timeout, sorted by absolut timeout timestamp
-        to_list = list()
+        # tasks to watch for timeout
+        to_tasks = dict()
 
         while not self._term.is_set():
 
             # collect new tasks to watch
             with self._to_lock:
 
-                for task, cancel_time in self._to_tasks:
-                    to_list.append([task, cancel_time])
+                for task, cancel_time, has_started in self._to_tasks:
+                    tid = task['uid']
+                    if has_started or tid not in to_tasks:
+                        to_tasks[task['uid']] = [task, cancel_time]
 
                 self._to_tasks = list()
 
             # avoid busy wait
-            if not to_list:
+            if not to_tasks:
                 time.sleep(1)
                 continue
 
-            # sort by timeout, smallest first
-            to_list.sort(key=lambda x: x[1])
-
+            # list of pairs <task, timeout> sorted by timeout, smallest first
+            to_list = sorted(to_tasks.values(), key=lambda x: x[1])
             # cancel all tasks which have timed out
-            offset = 0
             for task, cancel_time in to_list:
                 now = time.time()
                 if now > cancel_time:
-                    self._prof.prof('task_timeout', uid=task['uid'])
-                    self.cancel_task(task=task)
-                    offset += 1
+                    if cancel_time:
+                        self._prof.prof('task_timeout', uid=task['uid'])
+                        self.cancel_task(task=task)
+                    del to_tasks[task['uid']]
                 else:
                     break
-            # skip canceled tasks (reset the list)
-            to_list = to_list[offset:]
 
 
     # --------------------------------------------------------------------------
     #
     def handle_timeout(self, task):
 
-        to = task['description'].get('timeout', 0.0)
+        startup_to = task['description'].get('startup_timeout', 0.)
+        exec_to    = task['description'].get('timeout',         0.)
 
-        if to > 0.0:
+        if startup_to or exec_to:
             with self._to_lock:
-                cancel_time = time.time() + to
-                self._to_tasks.append([task, cancel_time])
+                cancel_time = time.time() + (startup_to or exec_to)
+                has_started = not bool(startup_to)
+                self._to_tasks.append([task, cancel_time, has_started])
 
 
     # --------------------------------------------------------------------------
@@ -302,6 +318,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# rank ID\n'
             tmp += self._get_rank_ids(n_ranks, launcher)
+
+            if td.get('startup_timeout'):
+                tmp += self._separator
+                tmp += '# startup completed\n'
+                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                       '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
+
             tmp += self._separator
             tmp += self._get_prof('exec_start')
 
@@ -665,6 +688,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_CTRL="%s"\n'             % self.rp_ctrl
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (rdir, tid)
