@@ -949,6 +949,31 @@ class BaseComponent(object):
 
     # --------------------------------------------------------------------------
     #
+    def check_canceled(self, task):
+        '''
+        check if the given task is listed in the cancel list.  If so, advance it
+        as CANCELED and return None - otherwise return the task.
+        '''
+
+        # FIXME: this can become expensive over time
+        #        if the cancel list is never cleaned
+
+        with self._cancel_lock:
+
+            tid = task['uid']
+
+            if tid not in self._cancel_list:
+                return task
+
+            if 'state' in task:
+                self.advance(task, rps.CANCELED, publish=True, push=False)
+
+            # remove from cancel list
+            self._cancel_list.remove(tid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def work_cb(self):
         '''
         This is the main routine of the component, as it runs in the component
@@ -1007,24 +1032,17 @@ class BaseComponent(object):
 
                     # filter out canceled things
                     if self._cancel_list:
-                        # FIXME: this can become expensive over time
-                        #        if the cancel list is never cleaned
-                        to_cancel = list()
-                        with self._cancel_lock:
-                            if thing['uid'] in self._cancel_list:
-                                to_cancel.append(thing)
 
-                            self._cancel_list = [x for x in self._cancel_list
-                                                   if  x not in to_cancel]
+                        not_canceled = list()
+                        for thing in things:
 
-                        if to_cancel:
-                            # only advance stateful entities, otherwise just drop
-                            for thing in to_cancel:
-                                self._log.debug('cancel drop %s [%s]',
-                                                            thing['uid'], state)
-                            if state:
-                                self.advance(to_cancel, rps.CANCELED,
-                                             publish=True, push=False)
+                            thing = self.check_canceled(thing)
+
+                            if thing:
+                                not_canceled.append(thing)
+
+                        things = not_canceled
+
 
 
                   # self._log.debug('== got %d things (%s)', len(things), state)
