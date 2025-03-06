@@ -109,7 +109,6 @@ STARTUP_TIMEOUT  = 'startup_timeout'
 CLEANUP          = 'cleanup'
 PILOT            = 'pilot'
 SLOTS            = 'slots'
-PARTITION        = 'partition'
 STDOUT           = 'stdout'
 STDERR           = 'stderr'
 RESTARTABLE      = 'restartable'
@@ -427,13 +426,17 @@ class TaskDescription(FastTypedDict):
             during service startup.
 
         timeout (float, optional): Any timeout larger than 0 will result in
-            the task process to be killed after the specified amount of seconds.
-            The task will then end up in `CANCELED` state.
+            the task process to be killed after the specified amount of seconds,
+            starting from the launch time, if startup_timeout is not set, or
+            starting from execution start time, if startup_timeout is set and
+            was tracked. The task will then end up in `CANCELED` state.
 
-        startup_timeout (float, optional): This setting is specific for service
-            tasks: any value larger than 0 will abort the service if after that
-            time no service information has been obtaines, i.e., if the service
-            startup takes too long.  The service will end up in `FAILED` state.
+        startup_timeout (float, optional): Any value larger than 0 will abort
+            the task process if it hasn't started the actual execution process,
+            e.g., batch system didn't provide allocated resources or the service
+            startup takes too long. This option is very important for service
+            tasks. The service task will end up in `FAILED` state, regular task
+            will end up in `CANCELED` state.
 
         cleanup (bool, optional): If cleanup flag is set, the pilot will
             delete the entire task sandbox upon termination. This includes all
