@@ -95,6 +95,7 @@ class TestPopen(TestCase):
         pex.psbox    = ''
         pex.gtod     = ''
         pex.prof     = ''
+        pex.rp_ctrl  = ''
 
         pex._session      = mock.Mock()
         pex._session.rcfg = ru.Config(from_dict={'new_session_per_task': False})
