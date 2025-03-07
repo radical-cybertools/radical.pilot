@@ -41,7 +41,7 @@ jobs:
         run: |
           export RADICAL_LOG_LVL=DEBUG
           export RADICAL_BASE=`pwd`
-          magic rm or empty...
+          # FIXME: magic rm / empty all cells
           sphinx-build -M html docs/source docs/build
           cp -R docs/build/*ipy docs/source
 
