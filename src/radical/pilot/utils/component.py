@@ -949,10 +949,10 @@ class BaseComponent(object):
 
     # --------------------------------------------------------------------------
     #
-    def check_canceled(self, task):
+    def is_canceled(self, task):
         '''
         check if the given task is listed in the cancel list.  If so, advance it
-        as CANCELED and return None - otherwise return the task.
+        as CANCELED and return True - otherwise return False.
         '''
 
         # FIXME: this can become expensive over time
@@ -1035,7 +1035,7 @@ class BaseComponent(object):
                     # filter out canceled things
                     with self._cancel_lock:
                         things = [x for x in things
-                                    if not self.check_canceled(x)]
+                                    if not self.is_canceled(x)]
 
                   # self._log.debug('== got %d things (%s)', len(things), state)
                   # for thing in things:
