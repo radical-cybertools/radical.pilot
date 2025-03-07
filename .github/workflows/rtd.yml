@@ -41,7 +41,9 @@ jobs:
         run: |
           export RADICAL_LOG_LVL=DEBUG
           export RADICAL_BASE=`pwd`
+          magic rm or empty...
           sphinx-build -M html docs/source docs/build
+          cp -R docs/build/*ipy docs/source
 
       - name: Collect artifacts
         if: always()
