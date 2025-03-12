@@ -1017,7 +1017,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 # now that we added the task to the waitpool, check if a cancel
                 # request has meanwhile arrived - if so remove it, otherwise it
                 # will get removed during the next iteration of the main loop
-                if self.check_canceled(task) is True:
+                if self.is_canceled(task) is True:
                     del self._waitpool[priority][uid]
 
         # we performed some activity (worked on tasks)
