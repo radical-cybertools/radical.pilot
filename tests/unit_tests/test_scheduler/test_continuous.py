@@ -120,7 +120,7 @@ class TestContinuous(TestCase):
             component.advance = advance
 
             self.assertIsNone(task.get('resources'))
-            component._queue_sched.put([task])
+            component._queue_sched.put(([task], Continuous._SCHEDULE))
             component._schedule_incoming()
 
             slots = test_case['result']['slots']
