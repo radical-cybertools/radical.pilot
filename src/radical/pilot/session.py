@@ -229,7 +229,8 @@ class Session(object):
 
         # if user did not set a uid, we need to generate a new ID
         if not self._uid:
-            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+            base = os.environ.get('RP_SID_BASE', 'rp.session')
+            self._uid = ru.generate_id(base, mode=ru.ID_PRIVATE)
 
         # we still call `_init_cfg` to complete missing config settings
         # FIXME: completion only needed by `PRIMARY`
