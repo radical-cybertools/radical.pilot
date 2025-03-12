@@ -54,15 +54,9 @@ class Flux(AgentExecutingComponent) :
                            'exception': rps.FAILED,
                           }
 
-        # we get an instance of the resource manager (init from registry info)
-        rm_name  = self.session.rcfg.resource_manager
-        self._rm = ResourceManager.create(rm_name,
-                                          self.session.cfg,
-                                          self.session.rcfg,
-                                          self._log, self._prof)
         self._n_partitions = self._rm.info.n_partitions
 
-        lm_cfg  = self.session.rcfg.launch_methods.get('FLUX')
+        lm_cfg = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
         lm_cfg['reg_addr']  = self.session.cfg.reg_addr
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
@@ -228,7 +222,7 @@ class Flux(AgentExecutingComponent) :
             gpr = td['gpus_per_rank']
 
             if gpr != int(gpr):
-                raise ValueError('flux does not support on-integer GPU count')
+                raise ValueError('flux does not support GPU sharing')
 
             spec['resources'][0]['with'].append({
                     'count': int(gpr),
