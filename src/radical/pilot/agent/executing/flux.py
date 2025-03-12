@@ -97,10 +97,12 @@ class Flux(AgentExecutingComponent) :
         ename = event.name
         state = self._event_map.get(ename)
 
+        if ename == 'alloc':
+            self._log.debug('map fluxid: %s: %s', flux_id, task['uid'])
+
         self._log.debug('flux event: %s: %s [%s]', flux_id, ename, state)
 
         if state is None:
-            self._log.debug('ignore flux event %s:%s', task['uid'], ename)
             return
 
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:

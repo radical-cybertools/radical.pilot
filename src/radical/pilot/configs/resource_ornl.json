@@ -102,10 +102,6 @@
             "local"                   : {
                 "job_manager_endpoint": "slurm://frontier.olcf.ornl.gov/",
                 "filesystem_endpoint" : "file://frontier.olcf.ornl.gov/"
-            },
-            "interactive"                   : {
-                "job_manager_endpoint": "fork://localhost/",
-                "filesystem_endpoint" : "file://localhost/"
             }
         },
         "default_queue"               : "batch",
@@ -151,17 +147,12 @@
         "launch_methods"              : {
                                          "order" : ["FLUX"],
                                          "FLUX"  : {
-                                           # "pre_exec_cached": [
-                                           #     "module load flux",
-                                           #     "module load rocm",
-                                           #     "module load craype-accel-amd-gfx90a",
-                                           #     "export MPICH_GPU_SUPPORT_ENABLED=1"
-                                           # ]
                                              "pre_exec_cached": [
-                                                 ". /ccs/home/matitov/am/spack/share/spack/setup-env.sh",
-                                                 "spack load flux-sched"
+                                                 "module load flux",
+                                                 "module load rocm",
+                                                 "module load craype-accel-amd-gfx90a",
+                                                 "export MPICH_GPU_SUPPORT_ENABLED=1"
                                              ]
-                                         }
                                         },
         "pre_bootstrap_0"             : [
                                          "module load flux",
