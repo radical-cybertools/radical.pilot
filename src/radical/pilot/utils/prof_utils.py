@@ -492,8 +492,7 @@ def get_session_profile(sid, src=None):
 
     if os.path.exists(src):
         # we have profiles locally
-        profiles  = glob.glob('%s/*.prof'    % src)
-        profiles += glob.glob('%s/**/*.prof' % src)
+        profiles = glob.glob('%s/**/*.prof' % src, recursive=True)
     else:
         # need to fetch profiles
         from .session import fetch_profiles
