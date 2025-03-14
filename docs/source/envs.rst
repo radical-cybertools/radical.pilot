@@ -59,6 +59,9 @@ End user
     * - .. envvar:: RADICAL_PILOT_PROXY_URL
       - Proxy to facilitate communication between the client machine, i.e., the host where the application created this Session instance, and the target resource, i.e., the host where the pilot agent/s is/are running and where the workload is being executed.
       - {NOT_SET}
+    * - .. envvar:: RADICAL_PILOT_SID_BASE
+      - Set the base for the session ID - a unique counter will be appended to this base.  If not set, the sid will be formed by `ru.generate_uid('rp.session')`.
+      - {NOT_SET}
 
 Logger
 ------
