@@ -36,7 +36,8 @@ data     = [('%s/examples'      % share, glob('examples/*.py'             )),
             ('%s/examples/docs' % share, glob('examples/docs/*.py'        )),
             ('%s/examples/misc' % share, glob('examples/misc/*.py'        )),
             ('%s/examples/misc' % share, glob('examples/misc/*.cfg'       )),
-            ('%s/examples/misc' % share, glob('examples/data_staging/*.py'))]
+            ('%s/examples/misc' % share, glob('examples/data_staging/*.py')),
+            ('%s/'              % share, ['docs/source/internals.rst']     )]
 
 
 # ------------------------------------------------------------------------------
