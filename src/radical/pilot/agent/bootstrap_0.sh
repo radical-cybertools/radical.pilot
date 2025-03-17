@@ -460,7 +460,8 @@ rehash()
         exit 1
     fi
 
-    PYTHON_VERSION=`$PYTHON -c 'from sys import version_info; print(f"{version_info.major}.{version_info.minor}")'`
+    code='from sys import version_info as vi; print(f"{vi.major}.{vi.minor}")'
+    PYTHON_VERSION=$($PYTHON -c "$code")
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
     #       commands (It means that the pip cacert [or the system's, dunno]
