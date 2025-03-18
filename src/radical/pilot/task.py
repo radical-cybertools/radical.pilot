@@ -198,7 +198,7 @@ class Task(object):
             self._descr['metadata'] = metadata
 
         # if a service is finalized, set info_wait event (only # once)
-        if target in rps.FINAL and current not current in rps.FINAL:
+        if target in rps.FINAL and current not in rps.FINAL:
             if self._descr.mode == TASK_SERVICE:
                 # signal failure in case we are still waiting for the service
                 self._set_info(None)
