@@ -387,10 +387,11 @@ class Continuous(AgentSchedulingComponent):
 
         # in case of PRTE LM: the `slots` attribute may have a partition ID set
         partition_id = td.get('partition')
-        if partition_id is not None and not self._partition_ids:
-            raise ValueError('partition id (%d) out of range' % partition_id)
+        if partition_id is not None:
 
-        if self._partition_ids:
+            if not self._partition_ids:
+                raise ValueError('partition id (%d) out of range' % partition_id)
+
             if partition_id not in self._partition_ids:
                 raise ValueError('partition id (%d) out of range'
                                  % partition_id)
@@ -436,19 +437,21 @@ class Continuous(AgentSchedulingComponent):
                                        'switched "exclusive" flag to "False"')
 
             node_partition_id = None
-            if self._partitions:
+            if self._partition_ids:
                 # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
-                _skip_node = True
-                for plabel, p_node_indexs in self._partitions.items():
-                    if node_index in p_node_indexs:
-                        if task_partition_id in [None, plabel]:
-                            node_partition_id = plabel
-                            _skip_node = False
-                        break
-                if _skip_node:
-                    continue
+                # FIXME: this needs to be fixed in the new scheduler
+                # _skip_node = True
+                # for plabel, p_node_indexs in self._partitions.items():
+                #     if node_index in p_node_indexs:
+                #         if task_partition_id in [None, plabel]:
+                #             node_partition_id = plabel
+                #             _skip_node = False
+                #         break
+                # if _skip_node:
+                #     continue
+                pass
 
             # if only a small set of cores/gpus remains unallocated (i.e., less
             # than node size), we are in fact looking for the last node.  Note
