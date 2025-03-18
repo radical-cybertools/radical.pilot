@@ -343,8 +343,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (ii)\n'
             tmp += 'ls | sort | comm -23 - ' \
-                   "%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
-                           % (env_sbox, tid, tid, tid)
+                   "%s/%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
+                           % (env_sbox, env_sbox, tid, tid, tid)
 
             tmp += self._separator
             tmp += '# post-exec commands\n'
