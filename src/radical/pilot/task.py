@@ -166,8 +166,9 @@ class Task(object):
         # that case the cancel command raced the task execution, and the
         # execution actually won, so we don't want to waste that work
         if current == rps.CANCELED and target != rps.DONE:
-            self._log.debug('task %s was CANCELED, ignore update', self.uid)
-            return
+            self._log.debug('task %s was CANCELED, state not updated', self.uid)
+            target = current
+
 
         if not reconnect:
             if target not in [rps.FAILED, rps.CANCELED]:
@@ -196,8 +197,8 @@ class Task(object):
         if metadata:
             self._descr['metadata'] = metadata
 
-        # if this is a service and is finalized, set info_wait event
-        if target in rps.FINAL:
+        # if a service is finalized, set info_wait event (only # once)
+        if target in rps.FINAL and if not current in rps.FINAL:
             if self._descr.mode == TASK_SERVICE:
                 # signal failure in case we are still waiting for the service
                 self._set_info(None)
