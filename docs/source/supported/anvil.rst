@@ -15,42 +15,43 @@ General description
 
   * ``purdue.anvil`` - ``SRUN``
 
-* Configuration per node (per user)
+* Configuration per node
 
-  * ``debug`` queue (2 nodes)
+  * ``debug`` queue (17 nodes)
 
     * 256 CPU cores
     * 257 GB of memory
 
-  * ``gpu-debug`` queue (1 node)
+  * ``gpu-debug`` queue (16 nodes)
 
     * 128 CPU cores
-    * 2 GPUs
+    * 2 GPUs (per node)
     * 515 GB of memory
 
-  * ``wholenode`` queue (16 nodes)
+  * ``wholenode`` queue (750 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-  * ``wide`` queue (56 nodes)
+  * ``wide`` queue (750 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-  * ``shared`` queue (1 nodes)
+  * ``shared`` queue (250 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-  * ``highmem`` queue (1 nodes)
+  * ``highmem`` queue (32 nodes)
 
     * 128 CPU cores
     * 1031 GB of memory
 
-  * ``gpu`` queue (max 12 GPUs per user)
+  * ``gpu`` queue (16 nides, max 12 GPUs per user)
 
     * 128 CPU cores
+    * 4 GPUs (per node)
     * 515 GB of memory
 
 
@@ -90,7 +91,7 @@ launching command for the application itself.
    #!/bin/sh
 
    # - pre run -
-   module load python
+   module load anaconda
    source ve.rp/bin/activate
 
    export RADICAL_PROFILE=TRUE
