@@ -57,7 +57,7 @@ class TestBaseScheduling(TestCase):
         sched.register_input      = mock.Mock()
         sched.register_subscriber = mock.Mock()
         sched.nodes               = []
-        sched._partitions         = {}
+        sched._partition_ids      = {}
         sched._scheduler_process  = False
         sched._uid                = 'uid'
 
