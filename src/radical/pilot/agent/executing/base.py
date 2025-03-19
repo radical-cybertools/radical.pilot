@@ -330,7 +330,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (i)\n'
             tmp += "ls | sort | grep -ve '^%s\\.' > %s/%s.files\n" \
-                    % (env_sbox, tid, tid)
+                    % (tid, env_sbox, tid)
 
             tmp += self._separator
             tmp += '# execute rank\n'
