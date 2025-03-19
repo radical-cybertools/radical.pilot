@@ -1139,6 +1139,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
                 if self._active_cnt == 0:
+                    ru.write_json('%s.never.json' % task['uid'], task)
+                    ru.write_json(self.nodes, '%s.nodes.json' % task['uid'])
                     raise RuntimeError('task can never be scheduled')
 
                 return False

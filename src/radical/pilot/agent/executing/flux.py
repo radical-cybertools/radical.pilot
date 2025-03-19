@@ -204,7 +204,7 @@ class Flux(AgentExecutingComponent) :
                     'duration': 0,
                 },
             },
-            'version': 1,
+            'version'  : 1,
             'resources': [{
                 'count': td['ranks'],
                 'type' : 'slot',
@@ -218,6 +218,9 @@ class Flux(AgentExecutingComponent) :
                 }]
             }]
         }
+
+        if td.get('timeout'):
+            spec['attributes']['system']['duration'] = '%ss' % int(td.get('timeout'))
 
         if td['gpus_per_rank']:
 

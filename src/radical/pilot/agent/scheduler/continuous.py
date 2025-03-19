@@ -399,7 +399,7 @@ class Continuous(AgentSchedulingComponent):
             # partition id becomes a part of a co-locate tag
             colo_tag = str(partition_id) + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
-                self._colo_history[colo_tag] = partition_id
+                self._colo_history[colo_tag] = list()
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
