@@ -107,7 +107,6 @@ def benchmark(reporter):
     for slots in allocs:
         nl.release_slots(slots)
 
-
     report.header('')
 
   # sys.exit()
