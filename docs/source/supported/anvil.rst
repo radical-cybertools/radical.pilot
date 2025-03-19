@@ -19,7 +19,7 @@ General description
 
   * ``debug`` queue (17 nodes)
 
-    * 256 CPU cores
+    * 128 CPU cores
     * 257 GB of memory
 
   * ``gpu-debug`` queue (16 nodes)
@@ -48,7 +48,7 @@ General description
     * 128 CPU cores
     * 1031 GB of memory
 
-  * ``gpu`` queue (16 nides, max 12 GPUs per user)
+  * ``gpu`` queue (16 nodes, max 12 GPUs per user)
 
     * 128 CPU cores
     * 4 GPUs (per node)
@@ -97,6 +97,7 @@ launching command for the application itself.
    export RADICAL_PROFILE=TRUE
    # for debugging purposes
    export RADICAL_LOG_LVL=DEBUG
+   export RADICAL_REPORT=TRUE
 
    # - run -
    python <rp_application>
