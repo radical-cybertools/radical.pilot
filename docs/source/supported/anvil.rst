@@ -25,7 +25,7 @@ General description
   * ``gpu-debug`` queue (16 nodes)
 
     * 128 CPU cores
-    * 2 GPUs (per node)
+    * 2 NVIDIA A100 GPUs (per node)
     * 515 GB of memory
 
   * ``wholenode`` queue (750 nodes)
@@ -51,7 +51,7 @@ General description
   * ``gpu`` queue (16 nodes, max 12 GPUs per user)
 
     * 128 CPU cores
-    * 4 GPUs (per node)
+    * 4 NVIDIA A100 GPUs (per node)
     * 515 GB of memory
 
 
@@ -71,6 +71,19 @@ Create a **virtual environment** with ``venv``:
 
    python3.9 -m venv ve.rp
    source ve.rp/bin/activate
+
+
+OR create a **virtual environment** with ``conda``:
+
+.. code-block:: bash
+
+   module load anaconda
+   conda create -y -n ve.rp python=3.9
+   conda activate ve.rp
+   # OR clone base environment
+   #   conda create -y -p $HOME/ve.rp --clone $CONDA_PREFIX
+   #   conda activate $HOME/ve.rp
+
 
 Install RADICAL-Pilot after activating a corresponding virtual environment:
 
