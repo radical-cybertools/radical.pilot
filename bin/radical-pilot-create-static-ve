@@ -1,17 +1,16 @@
 #!/bin/bash
 
-# save stdout and stderr to file descriptors 3 and 4,
-# then redirect them to "$logfile"
+# copy stdout and stderr to "$logfile"
 logfile='./create_env.log'
-echo "writing log to $logfile"
-exec 3>&1 4>&2 >$logfile 2>&1
+exec > >(tee -i $logfile)
+exec 2>&1
 
-# move the logfile to the prefix, if set
+# move the logfile to the `prefix.log`, if set
 function atexit {
     if test -z "$PREFIX"; then
         mv $logfile $logfile.err
     else
-        mv $logfile $PREFIX
+        mv $logfile $(basename $PREFIX).log
     fi
 }
 trap atexit EXIT
@@ -53,7 +52,7 @@ while getopts "e:p:P:v:m:t:T:d" OPTION; do
         T)  EDUMP="$OPTARG"     ;;
         d)  DEFAULTS=True       ;;
         *)  echo "Unknown option: '$OPTION'='$OPTARG'"
-            return 1;;
+            exit 1;;
     esac
 done
 
