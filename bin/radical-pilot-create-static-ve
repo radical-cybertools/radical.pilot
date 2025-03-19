@@ -10,7 +10,8 @@ function atexit {
     if test -z "$PREFIX"; then
         mv $logfile $logfile.err
     else
-        mv $logfile $(basename $PREFIX).log
+        echo "move logfile to 'env_$(basename $PREFIX).log'"
+        mv $logfile "env_$(basename $PREFIX).log"
     fi
 }
 trap atexit EXIT
