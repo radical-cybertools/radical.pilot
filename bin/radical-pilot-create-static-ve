@@ -23,7 +23,7 @@ ETYPE='venv'  # type of environment: 'virtualenv'/'venv' or 'anaconda'/'conda'
 
 pre_exec(){
     echo "pre exec: $*"
-    $*
+    eval $*
     echo "pre exec done"
 }
 
