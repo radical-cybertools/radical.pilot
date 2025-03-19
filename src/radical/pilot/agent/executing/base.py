@@ -280,8 +280,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
         td   = task['description']
         sbox = task['task_sandbox_path']
 
+        env_sbox      = '$RP_TASK_SANDBOX'
         exec_script   = '%s.exec.sh' % tid
-        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
+        exec_path     = '%s/%s' % (env_sbox, exec_script)
         exec_fullpath = '%s/%s' % (sbox, exec_script)
 
         # make sure the sandbox exists
@@ -328,7 +329,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
             tmp += self._separator
             tmp += '# output file detection (i)\n'
-            tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
+            tmp += "ls | sort | grep -ve '^%s\\.' > %s/%s.files\n" \
+                    % (tid, env_sbox, tid)
 
             tmp += self._separator
             tmp += '# execute rank\n'
@@ -341,7 +343,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (ii)\n'
             tmp += 'ls | sort | comm -23 - ' \
-                   "%s.files | grep -ve '^%s\\.' > %s.ofiles\n" % (tid, tid, tid)
+                   "%s/%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
+                           % (env_sbox, tid, tid, env_sbox, tid)
 
             tmp += self._separator
             tmp += '# post-exec commands\n'

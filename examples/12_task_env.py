@@ -70,8 +70,11 @@ if __name__ == '__main__':
         pilot = pmgr.submit_pilots(pdesc)
 
         report.header('prepare task env')
-        pilot.prepare_env('numpy_env', {'type' : 'virtualenv',
-                                        'setup': ['numpy']})
+        pilot.prepare_env('numpy_env', {'type'    : 'virtualenv',
+                                        'setup'   : ['numpy'],
+                                        'pre_exec': ['export FOO=bar',
+                                                     'export BAR=$FOO',
+                                                     'echo $BAR']})
         report.ok('ok')
 
         report.header('submit tasks')
