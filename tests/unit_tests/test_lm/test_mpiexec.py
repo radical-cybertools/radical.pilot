@@ -30,6 +30,7 @@ class TestMPIExec(TestCase):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
         lm_mpiexec.name = 'mpiexec'
+        lm_mpiexec._log = mock.Mock()
         lm_mpiexec._rm_info = ru.Config({'details': dict()})
 
         env    = {'test_env': 'test_value'}
@@ -60,6 +61,7 @@ class TestMPIExec(TestCase):
                                          mocked_mpi_info, mocked_init):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
+        lm_mpiexec._log = mock.Mock()
         lm_mpiexec._rm_info = ru.Config({'details': dict()})
 
         for _flag in ['mpt', 'rsh']:
