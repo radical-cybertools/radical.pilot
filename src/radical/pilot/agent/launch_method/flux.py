@@ -36,6 +36,12 @@ class Flux(LaunchMethod):
 
         self._prof.prof('flux_start')
 
+        # ensure we have flux
+        flux = ru.which('flux')
+        self._log.debug('flux location: %s', flux)
+        if not flux:
+            raise RuntimeError('flux not found')
+
         n_partitions        = self._rm_info.n_partitions
         n_nodes             = len(self._rm_info.node_list)
         nodes_per_partition = int(n_nodes / n_partitions)
