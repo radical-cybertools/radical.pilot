@@ -287,6 +287,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         sbox = task['task_sandbox_path']
         rdir = task['task_rundir_path']
 
+        env_sbox      = '$RP_TASK_SANDBOX'
         exec_script   = '%s.exec.sh' % tid
         exec_path     = '$RP_TASK_RUNDIR/%s' % exec_script
         exec_fullpath = '%s/%s' % (rdir, exec_script)
@@ -339,7 +340,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += '# output file detection (i)\n'
             tmp += "ls | sort | grep -ve '^%s\\.' > $RP_TASK_RUNDIR/%s.files\n"\
                                                                     % (tid, tid)
-
             tmp += self._separator
             tmp += '# execute rank\n'
             tmp += self._get_prof('rank_start')

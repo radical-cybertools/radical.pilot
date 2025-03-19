@@ -105,8 +105,15 @@ class MPIExec(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _check_available_lm_options(self, lm_cmd, option):
-        check = bool(ru.sh_callout('%s --help | grep -e "%s\\>"' %
-                                  (lm_cmd, option), shell=True)[0])
+        cmd   = '%s --help | grep -e "%s\\>"' % (lm_cmd, option)
+        check = bool(ru.sh_callout(cmd, shell=True)[0])
+        self._log.debug('lm option %s: %s (%s)' % (option, check, cmd))
+
+        if not check:
+            # openmpi needs `all` to work here
+            cmd   = '%s --help all | grep -e "%s\\>"' % (lm_cmd, option)
+            check = bool(ru.sh_callout(cmd, shell=True)[0])
+            self._log.debug('lm option %s: %s (%s)' % (option, check, cmd))
 
         if not check:
             # openmpi is different nowadays...
