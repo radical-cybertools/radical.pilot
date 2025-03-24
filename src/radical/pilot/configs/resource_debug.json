@@ -74,6 +74,43 @@
         "fake_resources"              : true
     },
 
+    "dragon": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "ssh://localhost/",
+                "filesystem_endpoint" : "sftp://localhost/"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "pre_bootstrap_1"             : [],
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+      # "agent_scheduler"             : "CONTINUOUS_COLO",
+        "agent_spawner"               : "DRAGON",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+                                        },
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "local",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
+        "mem_per_node"                : 4096,
+        "fake_resources"              : true
+    },
+
     "flux": {
         "description"                 : "",
         "notes"                       : "",

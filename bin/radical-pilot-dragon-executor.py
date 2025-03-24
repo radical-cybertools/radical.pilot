@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
-#dragon
+#!/usr/bin/env dragon
 
-USE_DRAGON = False
+USE_DRAGON = True
 
 import os
 import sys
