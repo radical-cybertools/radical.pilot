@@ -15,45 +15,25 @@ General description
 
   * ``purdue.anvil`` - ``SRUN``
 
-* Configuration per node
+* Configuration per node (per platform ID)
 
-  * ``debug`` queue (17 nodes)
-
-    * 128 CPU cores
-    * 257 GB of memory
-
-  * ``gpu-debug`` queue (16 nodes)
-
-    * 128 CPU cores
-    * 2 NVIDIA A100 GPUs (per node)
-    * 515 GB of memory
-
-  * ``wholenode`` queue (750 nodes)
+  * ``anvil`` queue (1767 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-  * ``wide`` queue (750 nodes)
 
-    * 128 CPU cores
-    * 257 GB of memory
-
-  * ``shared`` queue (250 nodes)
-
-    * 128 CPU cores
-    * 257 GB of memory
-
-  * ``highmem`` queue (32 nodes)
+  * ``anvil_mem`` queue (32 nodes)
 
     * 128 CPU cores
     * 1031 GB of memory
 
-  * ``gpu`` queue (16 nodes, max 12 GPUs per user)
+  * ``anvil_gpu`` queue (32 nodes)
 
     * 128 CPU cores
-    * 4 NVIDIA A100 GPUs (per node)
+    * 4 NVIDIA A100 GPUs (per node for gpu queue)
+    * 2 NVIDIA A100 GPUs (per node for gpu-debug queue)
     * 515 GB of memory
-
 
 
 Setup execution environment
