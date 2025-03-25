@@ -407,8 +407,13 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                               'raptor queue disappeared')
 
 
-        # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
+
+            self._log.debug('cancel tasks: %s', arg)
+
+          # for priority in self._waitpool:
+          #     self._log.debug('waitpool[%d]: %s', priority,
+          #                     list(self._waitpool[priority].keys()))
 
             # inform the scheduler process
             uids = arg['uids']
@@ -424,7 +429,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
+            self.advance(to_cancel, rps.CANCELED, push=True, publish=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -751,16 +756,34 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
         for priority in sorted(self._waitpool.keys(), reverse=True):
 
-            pool    = self._waitpool[priority]
-            to_test = list(pool.values())
-            to_test.sort(key=lambda x:
-                    x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
-                     reverse=True)
+            to_wait   = list()
+            to_test   = list()
+
+            pool = self._waitpool[priority]
+
+            if not pool:
+                continue
+
+            self._log.debug_5('schedule waitpool[%d]: %d', priority, len(pool))
+
+            for task in pool.values():
+                named_env = task['description'].get('named_env')
+                if named_env:
+                    if named_env in self._named_envs:
+                        to_test.append(task)
+                    else:
+                        to_wait.append(task)
+                else:
+                    to_test.append(task)
 
             if not to_test:
                 # all tasks went into to_wait, so there is nothing to do
                 self._log.debug_8('no tasks to bisect')
                 continue
+
+            to_test.sort(key=lambda x:
+                    x['tuple_size'][0] * x['tuple_size'][1] * x['tuple_size'][2],
+                     reverse=True)
 
             # cycle through waitpool, and see if we get anything placed now.
             self._log.debug_9('before bisect: %d', len(to_test))
@@ -972,6 +995,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             for task in to_wait:
                 uid = task['uid']
                 self._waitpool[priority][uid] = task
+
+                # now that we added the task to the waitpool, check if a cancel
+                # request has meanwhile arrived - if so remove it, otherwise it
+                # will get removed during the next iteration of the main loop
+                if self.is_canceled(task) is True:
+                    del self._waitpool[priority][uid]
 
         # we performed some activity (worked on tasks)
         active = True
