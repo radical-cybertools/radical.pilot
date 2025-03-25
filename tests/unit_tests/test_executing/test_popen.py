@@ -83,7 +83,7 @@ class TestPopen(TestCase):
 
         pex = Popen(cfg=None, session=None)
 
-        pex._log = pex._prof = pex._watch_queue = mock.Mock()
+        pex._log = pex._prof  = pex._watch_queue = mock.Mock()
         pex._log._debug_level = 1
 
         pex._pwd     = ''
@@ -99,6 +99,7 @@ class TestPopen(TestCase):
 
         pex._session      = mock.Mock()
         pex._session.rcfg = ru.Config(from_dict={'new_session_per_task': False})
+        pex.is_canceled   = mock.Mock(return_value=False)
 
         pex._rm      = mock.Mock()
         pex._rm.find_launcher = mocked_find_launcher

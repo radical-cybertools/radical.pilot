@@ -2,7 +2,7 @@
 # combine stdout and stderr
 exec 2>&1
 
-# iexplicitly cd to sandbox it to shield against bashrc shenanigans
+# explicitly cd to sandbox it to shield against bashrc shenanigans
 test -z "$RP_PILOT_SANDBOX" || cd "$RP_PILOT_SANDBOX"
 
 # Unset functions/aliases of commands that will be used during bootstrap as

@@ -243,7 +243,7 @@ class TestComponent(TestCase):
             agent_0._launch_service(sd)
 
         self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
-        self.assertEqual(advanced_services[0]['type'], 'service_task')
+        self.assertEqual(advanced_services[0]['type'], 'task')
 
         service_td = advanced_services[0]['description']
         self.assertEqual(service_td['executable'],

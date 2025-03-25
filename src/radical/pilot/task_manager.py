@@ -383,6 +383,10 @@ class TaskManager(rpu.ClientComponent):
 
             for task_dict in task_dicts:
 
+                self._log.debug('task update: %s: %s [%s]',
+                                task_dict['uid'], task_dict['state'],
+                                task_dict.get('target_state'))
+
                 uid = task_dict['uid']
 
                 # we don't care about tasks we don't know
