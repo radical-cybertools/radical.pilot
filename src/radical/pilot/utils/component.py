@@ -1247,10 +1247,12 @@ class ClientComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=False, prof=True):
 
+        things = ru.as_list(things)
+
         # CANCELED and FAILED are always published, never pushed
         if state in [rps.FAILED, rps.CANCELED]:
 
-            for thing in ru.as_list(things):
+            for thing in things:
                 thing['target_state'] = state
 
             publish = True
@@ -1275,7 +1277,7 @@ class AgentComponent(BaseComponent):
         if state in [rps.FAILED, rps.CANCELED]:
 
             # final state is handled on client side - hand task over to tmgr
-            for thing in ru.as_list(things):
+            for thing in things:
                 thing['target_state'] = state
                 thing['control']      = 'tmgr_pending'
                 thing['$all']         = True
