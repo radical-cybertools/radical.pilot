@@ -80,6 +80,7 @@ class Popen(AgentExecutingComponent):
         proc = task.get('proc')
         if not proc:
             # task was not started, nothing to do
+            # FIXME: this is a race, the executor might already own the task
             self._log.debug('task %s was not started', tid)
             return
 
@@ -302,6 +303,11 @@ class Popen(AgentExecutingComponent):
 
         # watch task for completion
         self._watch_queue.put(task)
+
+        # now that the task cancellation cb would succeed, let's make sure that
+        # no cancellation request sneaked in before the task got started
+        if self.is_canceled(task) is True:
+            self.cancel_task(task)
 
 
     # --------------------------------------------------------------------------

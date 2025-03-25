@@ -353,7 +353,7 @@ class Agent_0(rpu.AgentComponent):
         task['uid']               = td.uid
         task['name']              = td.name or td.uid
         task['origin']            = 'agent'
-        task['type']              = 'service_task'
+        task['type']              = 'task'
         task['pilot']             = self._cfg.pid
         task['description']       = td.as_dict()
         task['pilot_sandbox']     = self._cfg.pilot_sandbox
