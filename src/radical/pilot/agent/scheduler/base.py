@@ -791,14 +791,25 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 self._log.debug_8('no tasks to bisect')
                 continue
 
-            # cycle through waitpool, and see if we get anything placed now.
-            self._log.debug_9('before bisect: %d', len(to_test))
-            scheduled, unscheduled, failed = ru.lazy_bisect(to_test,
-                                                    check=self._try_allocation,
-                                                    on_skip=self._prof_sched_skip,
-                                                    log=self._log)
-            self._log.debug_9('after  bisect: %d : %d : %d', len(scheduled),
-                                                      len(unscheduled), len(failed))
+            try_again = to_test
+            while True:
+
+                # cycle through waitpool, and see if we get anything placed now.
+                self._log.debug_9('before bisect: %d', len(try_again))
+                scheduled, unscheduled, failed = ru.lazy_bisect(try_again,
+                                                        check=self._try_allocation,
+                                                        on_skip=self._prof_sched_skip,
+                                                        log=self._log)
+                self._log.debug_9('after  bisect: %d : %d : %d', len(scheduled),
+                                                          len(unscheduled), len(failed))
+
+                if self._policy = cancel_on_priority and unscheduled:
+
+                    try_again = self._try_cancel_lower_priority(unscheduled, priority)
+
+                    if len(try_again) == len(unscheduled):
+                        # nothing could be rescheduled, we're done here
+                        break
 
             for task, error in failed:
                 error  = error.replace('"', '\\"')
