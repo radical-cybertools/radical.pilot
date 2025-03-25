@@ -968,6 +968,33 @@ class BaseComponent(object):
 
     # --------------------------------------------------------------------------
     #
+    def is_canceled(self, task):
+        '''
+        check if the given task is listed in the cancel list.  If so, advance it
+        as CANCELED and return True - otherwise return False.
+        '''
+
+        # FIXME: this can become expensive over time
+        #        if the cancel list is never cleaned
+
+        with self._cancel_lock:
+
+            tid = task['uid']
+
+            if tid not in self._cancel_list:
+                return False
+
+            if 'state' in task:
+                self.advance(task, rps.CANCELED, publish=True, push=False)
+
+            # remove from cancel list
+            self._cancel_list.remove(tid)
+
+            return True
+
+
+    # --------------------------------------------------------------------------
+    #
     def work_cb(self):
         '''
         This is the main routine of the component, as it runs in the component
@@ -1026,6 +1053,7 @@ class BaseComponent(object):
 
                     # filter out canceled things
                     if self._cancel_list:
+<<<<<<< HEAD
                         # FIXME: this can become expensive over time
                         #        if the cancel list is never cleaned
                         to_cancel = list()
@@ -1042,6 +1070,22 @@ class BaseComponent(object):
                             if state:
                                 self.advance(to_cancel, rps.CANCELED,
                                              publish=True, push=False, fwd=True)
+
+                        # FIXME: this can become expensive over time
+                        #        if the cancel list is never cleaned
+                        to_cancel = list()
+                        with self._cancel_lock:
+                            if thing['uid'] in self._cancel_list:
+                                to_cancel.append(thing)
+
+                            self._cancel_list = [x for x in self._cancel_list
+                                                   if  x not in to_cancel]
+
+                        if to_cancel:
+                            # only advance stateful entities, otherwise just drop
+                            if state:
+                                self.advance(to_cancel, rps.CANCELED,
+                                             publish=True, push=False)
 
 
                   # self._log.debug('== got %d things (%s)', len(things), state)
@@ -1110,8 +1154,8 @@ class BaseComponent(object):
 
             uid = thing['uid']
 
-          # if thing['type'] not in ['task', 'pilot']:
-          #     raise TypeError("thing has unknown type (%s)" % uid)
+            if thing['type'] not in ['task', 'pilot']:
+                raise TypeError("thing has unknown type (%s)" % uid)
 
             if state:
                 # state advance done here
@@ -1208,14 +1252,6 @@ class BaseComponent(object):
                         output.channel)
                 output.put(_things, qname=qname)
 
-                # if a file `'/tmp/rp_wait_%s' % _state.lower()` exists, we
-                # wait for that file to disappear before continuing
-                waitfile = '/tmp/rp_wait_%s' % _state.lower()
-                while os.path.isfile(waitfile):
-                  self._log.debug('wait for file %s', waitfile)
-                  time.sleep(1)
-
-
               # ts = time.time()
               # for thing in _things:
               #     self._prof.prof('put', uid=thing['uid'], state=_state,
@@ -1263,10 +1299,12 @@ class ClientComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=False, prof=True):
 
+        things = ru.as_list(things)
+
         # CANCELED and FAILED are always published, never pushed
         if state in [rps.FAILED, rps.CANCELED]:
 
-            for thing in ru.as_list(things):
+            for thing in things:
                 thing['target_state'] = state
 
             publish = True
@@ -1284,16 +1322,24 @@ class AgentComponent(BaseComponent):
     def advance(self, things, state=None, publish=True, push=False, qname=None,
                       ts=None, fwd=True, prof=True):
 
+        things = ru.as_list(things)
+
         # CANCELED and FAILED is handled on the client side
+        # FIXME: what if `state==None` and `task['state']` is set instead?
         if state in [rps.FAILED, rps.CANCELED]:
 
             # final state is handled on client side - hand task over to tmgr
-            for thing in ru.as_list(things):
+            for thing in things:
                 thing['target_state'] = state
                 thing['control']      = 'tmgr_pending'
                 thing['$all']         = True
 
-            state   = rps.TMGR_STAGING_OUTPUT_PENDING
+              # FIXME: something like this should be done on `stage_on_error`
+              # if thing['description'].get('stage_on_error'):
+              #     thing['state'] = rps.TMGR_STAGING_OUTPUT_PENDING
+              # else:
+              #     thing['state'] = state
+
             publish = True
             push    = False
 

@@ -951,13 +951,18 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         jd_dict.environment           = dict()
         jd_dict.system_architecture   = dict(system_architecture)
 
-        # job description environment variable(s) setup
-        if self._prof.enabled:
-            jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
+        # forward all `RADICAL_*` env variables by default
+        for k,v in os.environ.items():
+            if k.startswith('RADICAL_'):
+                jd_dict.environment[k] = v
 
         jd_dict.environment['RP_PILOT_SANDBOX'] = pilot_sandbox
         jd_dict.environment['RADICAL_BASE']     = resource_sandbox
         jd_dict.environment['RADICAL_SMT']      = str(smt)
+
+        if self._prof.enabled:
+            jd_dict.environment['RADICAL_PROFILE'] = 'TRUE'
+
 
         # for condor backends and the like which do not have shared FSs, we add
         # additional staging directives so that the backend system binds the

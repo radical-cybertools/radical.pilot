@@ -423,8 +423,13 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                               'raptor queue disappeared')
 
 
-        # FIXME: RPC: this is caught in the base class handler already
         elif cmd == 'cancel_tasks':
+
+            self._log.debug('cancel tasks: %s', arg)
+
+          # for priority in self._waitpool:
+          #     self._log.debug('waitpool[%d]: %s', priority,
+          #                     list(self._waitpool[priority].keys()))
 
             # inform the scheduler process
             uids = arg['uids']
@@ -440,7 +445,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         to_cancel.append(task)
                         self._raptor_tasks[queue].remove(task)
 
-            self.advance(to_cancel, rps.CANCELED, push=False, publish=True)
+            self.advance(to_cancel, rps.CANCELED, push=True, publish=True)
 
         else:
             self._log.debug('command ignored: [%s]', cmd)
@@ -814,10 +819,10 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             to_test   = list()
 
             pool = self._waitpool[priority]
-            self._log.debug_5('schedule waitpool[%d]: %d', priority, len(pool))
-
             if not pool:
                 continue
+
+            self._log.debug_5('schedule waitpool[%d]: %d', priority, len(pool))
 
             for task in pool.values():
                 named_env = task['description'].get('named_env')
@@ -1076,6 +1081,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             for task in to_wait:
                 uid = task['uid']
                 self._waitpool[priority][uid] = task
+
+                # now that we added the task to the waitpool, check if a cancel
+                # request has meanwhile arrived - if so remove it, otherwise it
+                # will get removed during the next iteration of the main loop
+                if self.is_canceled(task) is True:
+                    del self._waitpool[priority][uid]
 
         # we performed some activity (worked on tasks)
         active = True
