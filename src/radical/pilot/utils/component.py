@@ -1033,7 +1033,7 @@ class BaseComponent(object):
                 try:
 
                     # filter out canceled things
-                    with self._cancel_lock:
+                    if self._cancel_list:
                         things = [x for x in things
                                     if not self.is_canceled(x)]
 
