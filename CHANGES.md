@@ -7,6 +7,21 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+--------------------------------------------------------------------------------
+### 1.100.0 Release                                                   2025-03-26
+
+  - add tutorial for app level scheduling
+  - distutils are deprecated (bootstrapper)
+  - extended functionality for `startup_timeout` attribute in TaskDescription
+  - fix install of internals.rst
+  - fix option check in mpiexec
+  - implement startup signal
+  - make it simpler to assign session IDs to experiments
+  - make sure task tmpdirs exist
+  - overwrite `NumaNode.as_dict()`
+  - random changes to update old code snippets - please ignore in review
+  - simplify NUMA scheduling, improve examples
+  
 
 --------------------------------------------------------------------------------
 ### 1.92.0 Release                                                    2025-02-25
