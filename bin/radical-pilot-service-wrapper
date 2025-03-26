@@ -75,6 +75,7 @@ class ServiceWrapper(object):
         if not self._reg_url: raise ValueError('RP_REGISTRY_ADDRESS not set')
 
         self._sbox = os.environ.get('RP_TASK_SANDBOX', './')
+        self._rdir = os.environ.get('RP_TASK_RUNDIR', './')
         self._log  = ru.Logger('radical.pilot.service_wrapper',
                                targets='%s/%s.log' % (self._sbox, self._uid))
         self._log.debug('starting service')

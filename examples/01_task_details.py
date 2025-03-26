@@ -30,9 +30,9 @@ if __name__ == '__main__':
     report.title('Task Details (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    if len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if len(sys.argv) == 2: resource = sys.argv[1]
+    else                 : resource = 'local.localhost'
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...
@@ -106,7 +106,7 @@ if __name__ == '__main__':
 
         report.info('\n')
         for task in tasks[:10]:
-            report.plain('  * %s: %s, exit: %3s, out: %s'
+            report.plain('  * %s: %s, exit: %3s, out: %s\n'
                     % (task.uid, task.state[:4],
                         task.exit_code, task.stdout))
 

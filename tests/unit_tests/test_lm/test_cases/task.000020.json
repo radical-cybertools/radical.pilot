@@ -13,6 +13,7 @@
             "gpu_type"      : "",
             "environment"   : {}
         },
+        "task_rundir_path"  : "/tmp",
         "task_sandbox_path" : "/tmp"
     },
 

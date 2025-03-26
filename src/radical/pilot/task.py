@@ -3,7 +3,6 @@ __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 
-import copy
 import time
 
 import threading     as mt
@@ -101,7 +100,7 @@ class Task(object):
         self._task_sandbox     = None
         self._client_sandbox   = None
         self._callbacks        = dict()
-        self._slots            = None
+        self._slots            = list()
         self._partition        = None
 
         # ensure uid is unique
@@ -483,10 +482,13 @@ class Task(object):
     @property
     def slots(self):
         '''dict: The slots assigned for the task's execution'''
-        if self._slots:
-            if not self._slots[0].get('version'):
-                for idx,slot in enumerate(self._slots):
-                    self._slots[idx] = Slot(self._slots[idx])
+        if not self._slots:
+            return None
+
+        if not self._slots[0].get('version'):
+            for idx,_ in enumerate(self._slots):
+                self._slots[idx] = Slot(self._slots[idx])
+
         return self._slots
 
 

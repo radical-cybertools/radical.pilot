@@ -66,18 +66,6 @@ if __name__ == "__main__":
     # the whole RP stack down via a 'session.close()' call in the 'finally'
     # clause...
     try:
-
-        # ----- CHANGE THIS -- CHANGE THIS -- CHANGE THIS -- CHANGE THIS ------
-        #
-        # Change the user name below if you are using a remote resource
-        # and your username on that resource is different from the username
-        # on your local machine.
-        #
-        c = rp.Context('ssh')
-        c.user_id = "username"
-      # c.user_pass = "PutYourPasswordHere"
-        session.add_context(c)
-
         # Add a Pilot Manager. Pilot managers manage one or more Pilots.
         print("Initializing Pilot Manager ...")
         pmgr = rp.PilotManager(session=session)

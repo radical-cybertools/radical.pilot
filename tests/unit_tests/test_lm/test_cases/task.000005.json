@@ -16,6 +16,7 @@
             "gpu_type"         : "CUDA",
             "environment"      : {"CUDA_VISIBLE_DEVICES": 0}
         },
+        "task_rundir_path"     : "/tmp",
         "task_sandbox_path"    : "/tmp"
     },
 

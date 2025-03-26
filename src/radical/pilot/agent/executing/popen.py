@@ -161,24 +161,34 @@ class Popen(AgentExecutingComponent):
         tid  = task['uid']
         td   = task['description']
         sbox = task['task_sandbox_path']
+        rdir = task['task_rundir_path']
 
         # prepare stdout/stderr
         task['stdout'] = ''
         task['stderr'] = ''
 
-        stdout_file    = td.get('stdout') or '%s.out' % tid
-        stderr_file    = td.get('stderr') or '%s.err' % tid
+        stdout_file = td.get('stdout') or '%s.out' % tid
+        stderr_file = td.get('stderr') or '%s.err' % tid
 
         if stdout_file[0] != '/':
-            task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
-            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % stdout_file
+            if td.get('stdout'):
+                task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
+                task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % stdout_file
+            else:
+                task['stdout_file']       = '%s/%s' % (rdir, stdout_file)
+                task['stdout_file_short'] = '$RP_TASK_RUNDIR/%s' % stdout_file
+
         else:
             task['stdout_file']       = stdout_file
             task['stdout_file_short'] = stdout_file
 
         if stderr_file[0] != '/':
-            task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
-            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % stderr_file
+            if td.get('stderr'):
+                task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
+                task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % stderr_file
+            else:
+                task['stderr_file']       = '%s/%s' % (rdir, stderr_file)
+                task['stderr_file_short'] = '$RP_TASK_RUNDIR/%s' % stderr_file
         else:
             task['stderr_file']       = stderr_file
             task['stderr_file_short'] = stderr_file
@@ -260,11 +270,13 @@ class Popen(AgentExecutingComponent):
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']
+        rdir = task['task_rundir_path']
 
         # launch and exec script are done, get ready for execution.
-        self._log.info('Launching task %s via %s in %s', tid, launch_path, sbox)
+        self._log.info('Launching task %s via %s in %s (%s)',
+                       tid, launch_path, sbox, rdir)
 
-        _launch_out_h = ru.ru_open('%s/%s.launch.out' % (sbox, tid), 'w')
+        _launch_out_h = ru.ru_open('%s/%s.launch.out' % (rdir, tid), 'w')
 
 
         # `start_new_session=True` is default, which enables decoupling
