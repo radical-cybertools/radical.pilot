@@ -146,6 +146,7 @@ class Flux(AgentExecutingComponent) :
 
             parts[partition_id].append(task)
             task['description']['environment']['RP_PARTITION_ID'] = partition_id
+            self._log.debug('task %s on flux partition %s', task['uid'], partition_id)
 
         for partition_id, partition_tasks in parts.items():
 
@@ -220,7 +221,7 @@ class Flux(AgentExecutingComponent) :
         }
 
         if td.get('timeout'):
-            spec['attributes']['system']['duration'] = '%ss' % int(td.get('timeout'))
+            spec['attributes']['system']['duration'] = int(td.get('timeout'))
 
         if td['gpus_per_rank']:
 
