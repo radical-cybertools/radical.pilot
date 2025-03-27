@@ -260,14 +260,9 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        partitions = dict()
-
-        for k, v in self._details['dvm_list'].items():
-            partitions[k] = v['nodes']
-
-        return partitions
+        return list(self._details['dvm_list'].keys())
 
 
     # --------------------------------------------------------------------------

@@ -230,7 +230,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                           self.session.rcfg,
                                           self._log, self._prof)
 
-        self._partitions = self._rm.get_partitions()
+        self._partition_ids = self._rm.get_partition_ids()
 
         # create and initialize the wait pool.  Also maintain a mapping of that
         # waitlist to a binned list where tasks are binned by size for faster
@@ -1150,6 +1150,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
                 if self._active_cnt == 0:
+                    ru.write_json('%s.never.json' % task['uid'], task)
+                    ru.write_json(self.nodes, '%s.nodes.json' % task['uid'])
                     raise RuntimeError('task can never be scheduled')
 
                 return False

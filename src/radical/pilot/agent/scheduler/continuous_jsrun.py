@@ -430,15 +430,15 @@ class ContinuousJsrun(AgentSchedulingComponent):
 
         # in case of PRTE LM: the `slots` attribute may have a partition ID set
         partition_id = td.get('partition', 0)
-        if self._partitions:
-            if partition_id not in self._partitions:
+        if self._partition_ids:
+            if partition_id not in self._partition_ids:
                 raise ValueError('partition id (%d) out of range'
                                  % partition_id)
 
             # partition id becomes a part of a co-locate tag
             colo_tag = str(partition_id) + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
-                self._colo_history[colo_tag] = self._partitions[partition_id]
+                self._colo_history[colo_tag] = self._partition_ids[partition_id]
         task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
@@ -476,19 +476,21 @@ class ContinuousJsrun(AgentSchedulingComponent):
                                        'switched "exclusive" flag to "False"')
 
             node_partition_id = None
-            if self._partitions:
+            if self._partition_ids:
                 # nodes assigned to the task should be from the same partition
                 # FIXME: handle the case when unit (MPI task) would require
                 #        more nodes than the amount available per partition
-                _skip_node = True
-                for plabel, p_node_indexs in self._partitions.items():
-                    if node_index in p_node_indexs:
-                        if task_partition_id in [None, plabel]:
-                            node_partition_id = plabel
-                            _skip_node = False
-                        break
-                if _skip_node:
-                    continue
+                # FIXME: needs fixing when using the scheduler
+                # _skip_node = True
+                # for plabel, p_node_indexs in self._partitions.items():
+                #     if node_index in p_node_indexs:
+                #         if task_partition_id in [None, plabel]:
+                #             node_partition_id = plabel
+                #             _skip_node = False
+                #         break
+                # if _skip_node:
+                #     continue
+                pass
 
             # if only a small set of cores/gpus remains unallocated (i.e., less
             # than node size), we are in fact looking for the last node.  Note
