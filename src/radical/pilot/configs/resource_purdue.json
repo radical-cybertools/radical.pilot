@@ -24,7 +24,7 @@
                                          "MPIRUN": {}
                                         },
         "pre_bootstrap_0"             :["module load anaconda"],
-        "default_remote_workdir"      : "/anvil/scratch/$USER",
+        "default_remote_workdir"      : "$PROJECT",
         "system_architecture"         : {"exclusive": true}
     },
 
@@ -53,7 +53,7 @@
                                          "MPIRUN": {}
                                         },
         "pre_bootstrap_0"             :["module load anaconda"],
-        "default_remote_workdir"      : "/anvil/scratch/$USER",
+        "default_remote_workdir"      : "$PROJECT",
         "system_architecture"         : {"exclusive": true}
     },
 
@@ -82,7 +82,7 @@
                                          "MPIRUN": {}
                                         },
         "pre_bootstrap_0"             :["module load anaconda"],
-        "default_remote_workdir"      : "/anvil/scratch/$USER",
+        "default_remote_workdir"      : "$PROJECT",
         "system_architecture"         : {"exclusive": true}
     }
 }
