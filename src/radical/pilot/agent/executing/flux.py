@@ -152,8 +152,17 @@ class Flux(AgentExecutingComponent) :
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1
 
+<<<<<<< HEAD
                 parts[part_id].append(task)
                 task['description']['environment']['RP_PARTITION_ID'] = part_id
+||||||| 420343370
+            parts[partition_id].append(task)
+            task['description']['environment']['RP_PARTITION_ID'] = partition_id
+=======
+            parts[partition_id].append(task)
+            task['description']['environment']['RP_PARTITION_ID'] = partition_id
+            self._log.debug('task %s on flux partition %s', task['uid'], partition_id)
+>>>>>>> 5a5beb8ba8f6ff79e3495b9a72cdc3e4d73a17eb
 
             for part_id, part_tasks in parts.items():
 
