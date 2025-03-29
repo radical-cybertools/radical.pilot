@@ -2,16 +2,14 @@
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
+import copy
 
 from collections import defaultdict
-from functools   import partial
 
 import radical.utils as ru
 
 from ...   import states as rps
-
 from ..    import LaunchMethod
-from ..    import ResourceManager
 from .base import AgentExecutingComponent
 
 
@@ -54,13 +52,20 @@ class Flux(AgentExecutingComponent) :
                            'exception': rps.FAILED,
                           }
 
-        self._n_partitions = self._rm.info.n_partitions
-
         lm_cfg = self.session.rcfg.launch_methods.get('FLUX')
         lm_cfg['pid']       = self.session.cfg.pid
         lm_cfg['reg_addr']  = self.session.cfg.reg_addr
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
+
+        # register state cb
+        self._log.debug('=== register flux state cb: %s',
+                        len(self._lm.partitions))
+
+        for part in self._lm.partitions:
+            self._log.debug('=== register flux state cb: %s', part.handle)
+            part.handle.register_cb(self._job_event_cb)
+
         # local state management
         self._tasks  = dict()             # flux_id -> task
         self._events = defaultdict(list)  # flux_id -> [events]
@@ -78,16 +83,18 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, flux_id, event):
+    def _job_event_cb(self, tid, event):
 
-        task = self._tasks.get(flux_id)
+        self._log.debug('=== flux event: %s: %s', tid, event.name)
+
+        task = self._tasks.get(tid)
 
         if not task:
           # self._log.warn('no task for flux job %s: %s', flux_id, event.name)
-            self._events[flux_id].append(event)
+            self._events[tid].append(event)
 
         else:
-            self._handle_event(task, flux_id, event)
+            self._handle_event(task, tid, event)
 
 
     # --------------------------------------------------------------------------
@@ -134,38 +141,38 @@ class Flux(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        # round robin on available flux partitions
-        parts = defaultdict(list)
-        for task in tasks:
+        try:
+            # round robin on available flux partitions
+            parts = defaultdict(list)
+            for task in tasks:
 
-            partition_id = task['description']['partition']
+                part_id = task['description']['partition']
 
-            if partition_id is None:
-                partition_id = self._task_count % self._n_partitions
-                self._task_count += 1
+                if part_id is None:
+                    part_id = self._task_count % len(self._lm.partitions)
+                    self._task_count += 1
 
-            parts[partition_id].append(task)
-            task['description']['environment']['RP_PARTITION_ID'] = partition_id
+                parts[part_id].append(task)
+                task['description']['environment']['RP_PARTITION_ID'] = part_id
 
-        for partition_id, partition_tasks in parts.items():
+            for part_id, part_tasks in parts.items():
 
-            part = self._lm.get_flux_handle(partition_id)
-            jds  = [self.task_to_spec(task) for task in partition_tasks]
-            jids = part.submit_jobs([jd for jd in jds], self._job_event_cb)
+                part  = self._lm.partitions[part_id]
+                specs = list()
+                for task in part_tasks:
+                    tid = task['uid']
+                    self._tasks[tid] = task
+                    specs.append(self.task_to_spec(task))
 
-            for task, flux_id in zip(partition_tasks, jids):
-              # self._log.debug('submitted task %s -> %s', task['uid'], flux_id)
-                task['description']['metadata'].update({'flux_id': flux_id})
-                self._tasks[flux_id] = task
+                self._log.debug('submitting %d tasks to flux partition %d',
+                                len(specs), part.uid)
+                tids = part.handle.submit(specs)
+                self._log.debug('=== %d: submitted %d tasks: %s', part.uid,
+                            len(tids), tids)
 
-        # at this point, we have all tasks submitted, and have mapped flux_ids
-        # to tasks.  However, state events might have arrived meanwhile and we
-        # need to work that backlog now.
-        for flux_id, events in self._events.items():
-            task = self._tasks[flux_id]
-            for event in events:
-                self._handle_event(task, flux_id, event)
-        self._events.clear()
+        except Exception as e:
+            self._log.exception('flux submit failed: %s', e)
+            raise
 
 
     # --------------------------------------------------------------------------
@@ -189,51 +196,12 @@ class Flux(AgentExecutingComponent) :
         command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
                                                    'out': stdout,
                                                    'err': stderr}
+        spec_dict = copy.deepcopy(td)
+        spec_dict['uid']        = uid
+        spec_dict['executable'] = '/bin/sh'
+        spec_dict['arguments']  = ['-c', command]
 
-        spec = {
-            'tasks': [{
-                'slot' : 'task',
-                'count': {
-                    'per_slot': 1
-                },
-                'command': [self._shell, '-c', command],
-            }],
-            'attributes': {
-                'system': {
-                    'cwd'     : sbox,
-                    'duration': 0,
-                },
-            },
-            'version'  : 1,
-            'resources': [{
-                'count': td['ranks'],
-                'type' : 'slot',
-                'label': 'task',
-                'with' : [{
-                    'count': td['cores_per_rank'],
-                    'type' : 'core'
-              # }, {
-              #     'count': int(td['gpus_per_rank'] or 0),
-              #     'type' : 'gpu'
-                }]
-            }]
-        }
-
-        if td.get('timeout'):
-            spec['attributes']['system']['duration'] = '%ss' % int(td.get('timeout'))
-
-        if td['gpus_per_rank']:
-
-            gpr = td['gpus_per_rank']
-
-            if gpr != int(gpr):
-                raise ValueError('flux does not support GPU sharing')
-
-            spec['resources'][0]['with'].append({
-                    'count': int(gpr),
-                    'type' : 'gpu'})
-
-        return spec
+        return ru.flux.spec_from_dict(spec_dict)
 
 
     # --------------------------------------------------------------------------
