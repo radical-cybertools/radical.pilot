@@ -711,7 +711,7 @@ class TaskDescription(FastTypedDict):
         CLEANUP         : False       ,
         PILOT           : ''          ,
         SLOTS           : list()      ,
-        PARTITION       : 0           ,
+        PARTITION       : None        ,
     }
 
 

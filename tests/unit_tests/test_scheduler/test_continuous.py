@@ -97,15 +97,15 @@ class TestContinuous(TestCase):
                 'lfs_per_node'  : nodes[0]['lfs'],
                 'mem_per_node'  : nodes[0]['mem']})
 
-            component._active_cnt   = 0
-            component._colo_history = {}
-            component._tagged_nodes = set()
-            component._node_offset  = 0
-            component._scattered    = None
-            component._partitions   = {}
-            component._term         = mp.Event()
-            component._queue_sched  = mp.Queue()
-            component._waitpool     = {}
+            component._active_cnt    = 0
+            component._colo_history  = {}
+            component._tagged_nodes  = set()
+            component._node_offset   = 0
+            component._scattered     = None
+            component._partition_ids = {}
+            component._term          = mp.Event()
+            component._queue_sched   = mp.Queue()
+            component._waitpool      = {}
 
             def advance(tasks, *args, **kwargs):
                 tasks = ru.as_list(tasks)
@@ -155,12 +155,12 @@ class TestContinuous(TestCase):
                 'lfs_per_node'  : nodes[0]['lfs'],
                 'mem_per_node'  : nodes[0]['mem']})
 
-            component._colo_history = {}
-            component._tagged_nodes = set()
-            component._scattered    = None
-            component._node_offset  = 0
-            component._partitions   = {}
-            component.nodes         = nodes
+            component._colo_history  = {}
+            component._tagged_nodes  = set()
+            component._scattered     = None
+            component._node_offset   = 0
+            component._partition_ids = {}
+            component.nodes          = nodes
 
             slots, partition = component.schedule_task(task)
 

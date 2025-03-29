@@ -34,6 +34,9 @@ LM_NAME_SRUN          = 'SRUN'
 PWD = os.getcwd()
 
 
+# FIXME: add a well defined LMInfo TypedDict, similar to RMInfo
+
+
 # ------------------------------------------------------------------------------
 #
 class LaunchMethod(object):
@@ -82,9 +85,17 @@ class LaunchMethod(object):
             self._envp = ru.EnvProcess(env=env_lm)
             with self._envp:
                 if self._envp:
-                    data = self._init_from_scratch(env_lm, env_sh)
-                    self._envp.put(data)
+                    try:
+                        data = self._init_from_scratch(env_lm, env_sh)
+                        self._envp.put(data)
+                    except Exception as e:
+                        self._envp.put(None)
+                        self._log.exception('LM init failed')
+
             lm_info = self._envp.get()
+
+            if not lm_info:
+                raise RuntimeError('LM init failed')
 
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
@@ -272,9 +283,10 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        return None
+        # by default, launchers will only support a single partition
+        return [0]
 
 
     # --------------------------------------------------------------------------

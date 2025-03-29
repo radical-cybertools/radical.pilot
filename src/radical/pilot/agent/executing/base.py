@@ -355,9 +355,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._get_prof('exec_stop')
             tmp += 'exit $RP_RET\n'
 
-            tmp += self._separator
-            tmp += '\n'
-
             fout.write(tmp)
 
         # make sure scripts are executable

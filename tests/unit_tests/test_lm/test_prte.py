@@ -180,7 +180,7 @@ class TestPRTE(TestCase):
     #
     @mock.patch.object(PRTE, '__init__', return_value=None)
     @mock.patch.object(PRTE, '_terminate', return_value=None)
-    def test_get_partitions(self, mocked_terminate, mocked_init):
+    def test_get_partition_ids(self, mocked_terminate, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
 
@@ -196,9 +196,7 @@ class TestPRTE(TestCase):
                                'version_info': {'name'   : 'PRTE',
                                                 'version': '1.1.1'}}}
         lm_prte._init_from_info(lm_info)
-        self.assertEqual(lm_prte.get_partitions(),
-                         {'0': ['0', '1'],
-                          '1': ['2', '3']})
+        self.assertEqual(lm_prte.get_partition_ids(), ['0', '1'])
 
 
     # --------------------------------------------------------------------------
