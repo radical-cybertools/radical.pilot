@@ -14,7 +14,7 @@ class Fork(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         detected_cores = multiprocessing.cpu_count()
         if not rm_info.cores_per_node:

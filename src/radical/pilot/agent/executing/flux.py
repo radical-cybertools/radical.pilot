@@ -59,11 +59,11 @@ class Flux(AgentExecutingComponent) :
                                                   self._log, self._prof)
 
         # register state cb
-        self._log.debug('=== register flux state cb: %s',
+        self._log.debug('register flux state cb: %s',
                         len(self._lm.partitions))
 
         for part in self._lm.partitions:
-            self._log.debug('=== register flux state cb: %s', part.handle)
+            self._log.debug('register flux state cb: %s', part.handle)
             part.handle.register_cb(self._job_event_cb)
 
         # local state management
@@ -85,7 +85,7 @@ class Flux(AgentExecutingComponent) :
     #
     def _job_event_cb(self, tid, event):
 
-        self._log.debug('=== flux event: %s: %s', tid, event.name)
+        self._log.debug('flux event: %s: %s', tid, event.name)
 
         task = self._tasks.get(tid)
 
@@ -152,17 +152,9 @@ class Flux(AgentExecutingComponent) :
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1
 
-<<<<<<< HEAD
                 parts[part_id].append(task)
                 task['description']['environment']['RP_PARTITION_ID'] = part_id
-||||||| 420343370
-            parts[partition_id].append(task)
-            task['description']['environment']['RP_PARTITION_ID'] = partition_id
-=======
-            parts[partition_id].append(task)
-            task['description']['environment']['RP_PARTITION_ID'] = partition_id
-            self._log.debug('task %s on flux partition %s', task['uid'], partition_id)
->>>>>>> 5a5beb8ba8f6ff79e3495b9a72cdc3e4d73a17eb
+                self._log.debug('task %s on partition %s', task['uid'], part_id)
 
             for part_id, part_tasks in parts.items():
 
@@ -173,11 +165,9 @@ class Flux(AgentExecutingComponent) :
                     self._tasks[tid] = task
                     specs.append(self.task_to_spec(task))
 
-                self._log.debug('submitting %d tasks to flux partition %d',
-                                len(specs), part.uid)
                 tids = part.handle.submit(specs)
-                self._log.debug('=== %d: submitted %d tasks: %s', part.uid,
-                            len(tids), tids)
+                self._log.debug('%s: submitted %d tasks: %s', part.uid,
+                                len(tids), tids)
 
         except Exception as e:
             self._log.exception('flux submit failed: %s', e)

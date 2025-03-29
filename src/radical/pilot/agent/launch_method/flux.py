@@ -56,7 +56,7 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         self._prof.prof('flux_start')
 
@@ -123,7 +123,7 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._prof.prof('flux_reconnect')
 

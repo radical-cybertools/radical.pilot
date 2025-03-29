@@ -39,7 +39,7 @@ class LSFTestCase(TestCase):
         rm_lsf = LSF(cfg=None, log=None, prof=None)
         rm_lsf._log = mock.Mock()
 
-        rm_info = rm_lsf._init_from_scratch(
+        rm_info = rm_lsf.init_from_scratch(
             RMInfo({'cores_per_node'  : None,
                     'threads_per_core': self.resource['smt']}))
 

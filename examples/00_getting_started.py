@@ -60,7 +60,8 @@ if __name__ == '__main__':
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'nodes'         : 4,
+                   'cores'         : config.get('cores', 1),
+                   'gpus'          : config.get('gpus',  0)
                   }
         pdesc = rp.PilotDescription(pd_init)
 
@@ -82,8 +83,7 @@ if __name__ == '__main__':
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable = '/bin/echo'
-            td.arguments = ['$RP_TASK_ID: $RP_PARTITION_ID']
+            td.executable = '/bin/date'
 
             tds.append(td)
             report.progress()

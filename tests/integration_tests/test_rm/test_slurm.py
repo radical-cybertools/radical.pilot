@@ -46,7 +46,7 @@ class SlurmTestCase(TestCase):
         rm_slurm = Slurm(cfg=None, log=None, prof=None)
         rm_slurm._log = mock.Mock()
 
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': 0,
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': 0,
                                                       'gpus_per_node' : 0}))
 
         node = os.environ['SLURM_NODELIST'].split(',')[0]

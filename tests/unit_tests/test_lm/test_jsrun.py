@@ -53,12 +53,12 @@ class TestJSRun(TestCase):
         lm_jsrun = JSRUN('', {}, None, None, None)
 
         lm_jsrun.name = 'JSRUN'
-        lm_info = lm_jsrun._init_from_scratch({}, '')
+        lm_info = lm_jsrun.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
         self.assertFalse(lm_info['erf'])
 
         lm_jsrun.name = 'JSRUN_ERF'
-        lm_info = lm_jsrun._init_from_scratch({}, '')
+        lm_info = lm_jsrun.init_from_scratch({}, '')
         self.assertTrue(lm_info['erf'])
 
     # --------------------------------------------------------------------------
@@ -72,7 +72,7 @@ class TestJSRun(TestCase):
                    'env_sh' : 'env/lm_jsrun.sh',
                    'command': '/usr/bin/jsrun',
                    'erf'    : True}
-        lm_jsrun._init_from_info(lm_info)
+        lm_jsrun.init_from_info(lm_info)
         self.assertEqual(lm_jsrun._env,     lm_info['env'])
         self.assertEqual(lm_jsrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_jsrun._command, lm_info['command'])
@@ -80,7 +80,7 @@ class TestJSRun(TestCase):
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_jsrun._init_from_info(lm_info)
+            lm_jsrun.init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -103,7 +103,7 @@ class TestJSRun(TestCase):
                    'env_sh' : 'env/lm_jsrun.sh',
                    'command': '/usr/bin/jsrun',
                    'erf'    : False}
-        lm_jsrun._init_from_info(lm_info)
+        lm_jsrun.init_from_info(lm_info)
         lm_env = lm_jsrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)

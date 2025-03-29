@@ -36,7 +36,7 @@ class TestMPIExec(TestCase):
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_mpiexec.name.lower()
 
-        lm_info = lm_mpiexec._init_from_scratch(env, env_sh)
+        lm_info = lm_mpiexec.init_from_scratch(env, env_sh)
         self.assertEqual(lm_info['env'],     env)
         self.assertEqual(lm_info['env_sh'],  env_sh)
         self.assertEqual(lm_info['command'], mocked_which())
@@ -66,22 +66,22 @@ class TestMPIExec(TestCase):
 
         for _flag in ['mpt', 'rsh']:
             lm_mpiexec.name = 'mpiexec_%s' % _flag
-            lm_info = lm_mpiexec._init_from_scratch({}, '')
+            lm_info = lm_mpiexec.init_from_scratch({}, '')
             self.assertTrue(lm_info[_flag])
 
         for _flavor in ['ccmrun', 'dplace']:
             lm_mpiexec.name = 'mpiexec_%s' % _flavor
             mocked_which.return_value = '/usr/bin/%s' % _flavor
-            lm_info = lm_mpiexec._init_from_scratch({}, '')
+            lm_info = lm_mpiexec.init_from_scratch({}, '')
             self.assertEqual(lm_info[_flavor], mocked_which())
             with self.assertRaises(ValueError):
                 mocked_which.return_value = ''
-                lm_mpiexec._init_from_scratch({}, '')
+                lm_mpiexec.init_from_scratch({}, '')
 
         lm_mpiexec.name = 'mpiexec'
         mocked_which.return_value = '/usr/bin/%s' % _flavor
         mocked_hostname.return_value = 'cheyenne'
-        lm_info = lm_mpiexec._init_from_scratch({}, '')
+        lm_info = lm_mpiexec.init_from_scratch({}, '')
         self.assertEqual(lm_info['omplace'], 'omplace')
         self.assertTrue(lm_info['mpt'])
 
@@ -107,7 +107,7 @@ class TestMPIExec(TestCase):
             'mpi_version': '1.1.1',
             'mpi_flavor' : 'OMPI'
         }
-        lm_mpiexec._init_from_info(lm_info)
+        lm_mpiexec.init_from_info(lm_info)
         self.assertEqual(lm_mpiexec._env,         lm_info['env'])
         self.assertEqual(lm_mpiexec._env_sh,      lm_info['env_sh'])
         self.assertEqual(lm_mpiexec._command,     lm_info['command'])
