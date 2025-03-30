@@ -104,11 +104,10 @@ class Flux(LaunchMethod):
             if not flux.ready(timeout=60):
                 raise RuntimeError('flux service did not start')
 
-            self._log.debug('flux partition %s started', fs.uid)
+            self._log.debug('flux partition %s started', flux.uid)
             self._partitions.append(self.Partition(service=flux,
-                                                   uri=fs.uri,
-                                                   uid=fs.uid))
-
+                                                   uri=flux.uri,
+                                                   uid=flux.uid))
 
         lm_info = {'env'       : env,
                    'env_sh'    : env_sh,
