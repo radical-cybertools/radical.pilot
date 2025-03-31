@@ -72,6 +72,15 @@ class Flux(LaunchMethod):
         threads_per_node    = self._rm_info.cores_per_node  # == hw threads
         gpus_per_node       = self._rm_info.gpus_per_node
 
+        # FIXME: this is a hook for some experiments
+        out, _, ret = ru.sh_callout('cat $HOME/parts.dat', shell=True)
+        if not ret:
+            elems = out.split()
+            n_partitions        = elems[0]
+            nodes_per_partition = elems[1]
+            self._log.warn('=== experiment settings: %d partitions [%d nodes/p]'
+                           % (n_partitions, nodes_per_partition))
+
         assert n_nodes % n_partitions == 0, \
                 'n_nodes %d %% n_partitions %d != 0' % (n_nodes, n_partitions)
 
