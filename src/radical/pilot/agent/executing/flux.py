@@ -2,6 +2,7 @@
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
+import time
 import copy
 
 from collections import defaultdict
@@ -69,6 +70,7 @@ class Flux(AgentExecutingComponent) :
         # local state management
         self._tasks  = dict()             # flux_id -> task
         self._events = defaultdict(list)  # flux_id -> [events]
+        self._idmap  = dict()             # flux_id -> task_id
 
         self._task_count = 0
 
@@ -87,10 +89,17 @@ class Flux(AgentExecutingComponent) :
 
         self._log.debug('flux event: %s: %s', tid, event.name)
 
-        task = self._tasks.get(tid)
+        while True:
+            task = self._tasks.get(tid)
+            if not task:
+                task = self._tasks.get(self._idmap.get(tid))
+            if task:
+                break
+            time.sleep(0.1)
 
         if not task:
-          # self._log.warn('no task for flux job %s: %s', flux_id, event.name)
+            self._log.error('no task for flux job %s: %s %s', tid,
+                            event.name, list(self._tasks.keys()))
             self._events[tid].append(event)
 
         else:
@@ -165,7 +174,12 @@ class Flux(AgentExecutingComponent) :
                     self._tasks[tid] = task
                     specs.append(self.task_to_spec(task))
 
-                tids = part.handle.submit(specs)
+                tids = [task['uid'] for task in part_tasks]
+                fids = part.handle.submit(specs)
+
+                for fid, tid in zip(fids, tids):
+                    self._idmap[fid] = tid
+
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
                                 len(tids), tids)
 
