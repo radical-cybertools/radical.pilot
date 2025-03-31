@@ -263,6 +263,11 @@ class ResourceManager(object):
         rm_info     = self.init_from_scratch(rm_info)
         alloc_nodes = len(rm_info.node_list)
 
+        # reduce the nodelist to the requested size
+        if alloc_nodes > rm_info.requested_nodes:
+            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
+            alloc_nodes       = len(rm_info.node_list)
+
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
 
