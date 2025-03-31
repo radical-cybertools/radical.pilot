@@ -136,7 +136,8 @@ class Srun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['export SLURM_CPU_BIND=verbose',  # debug mapping
+        return ['export SLURM_DEBUG=1',  # enable verbosity by default
+                'export SLURM_CPU_BIND=verbose',  # debug mapping
                 '. $RP_PILOT_SANDBOX/%s' % self._env_sh]
 
 
