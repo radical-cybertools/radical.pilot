@@ -32,7 +32,7 @@ class TorqueTestCase(TestCase):
         rm_torque = Torque(cfg=None, log=None, prof=None)
         rm_torque._log = mocked_logger
 
-        rm_info = rm_torque._init_from_scratch(RMInfo({'cores_per_node': None}))
+        rm_info = rm_torque.init_from_scratch(RMInfo({'cores_per_node': None}))
 
         node_names = sorted([n['name'] for n in rm_info.node_list])
         self.assertEqual(node_names, ['nodes1'])
@@ -51,7 +51,7 @@ class TorqueTestCase(TestCase):
         rm_torque._log = mocked_logger
 
         with self.assertRaises(RuntimeError):
-            rm_torque._init_from_scratch(RMInfo())
+            rm_torque.init_from_scratch(RMInfo())
 
     # --------------------------------------------------------------------------
     #

@@ -101,12 +101,12 @@
                                          "FLUX" : { "pre_exec_cached" : [
                 "export FLUX_DIR=/home/merzky/projects/flux/install/",
                 "export PATH=$PATH:$FLUX_DIR/bin",
-                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.11/site-packages/"
+                "export PYTHONPATH=$PYTHONPATH:$FLUX_DIR/lib/python3.12/site-packages/"
                                          ]}},
         "pre_bootstrap_0"             : [
                 "export FLUX_DIR=/home/merzky/projects/flux/install/",
                 "export PATH=\\$PATH:\\$FLUX_DIR/bin",
-                "export PYTHONPATH=\\$PYTHONPATH:\\$FLUX_DIR/lib/python3.11/site-packages/"
+                "export PYTHONPATH=\\$PYTHONPATH:\\$FLUX_DIR/lib/python3.12/site-packages/"
                                         ],
         "rp_version"                  : "installed",
         "virtenv_mode"                : "local",

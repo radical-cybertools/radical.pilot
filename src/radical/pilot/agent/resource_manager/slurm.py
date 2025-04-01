@@ -22,7 +22,7 @@ class Slurm(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         nodelist = os.environ.get('SLURM_NODELIST') or \
                    os.environ.get('SLURM_JOB_NODELIST')

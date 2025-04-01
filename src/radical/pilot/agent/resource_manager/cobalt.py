@@ -22,7 +22,7 @@ class Cobalt(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         if not rm_info.cores_per_node:
             raise RuntimeError('cores_per_node undetermined')

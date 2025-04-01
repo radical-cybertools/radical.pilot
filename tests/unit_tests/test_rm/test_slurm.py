@@ -34,8 +34,8 @@ class SlurmTestCase(TestCase):
         rm_slurm = Slurm(cfg=None, log=None, prof=None)
         rm_slurm._log = mocked_logger
 
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
-                                                      'gpus_per_node' : 1}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None,
+                                                     'gpus_per_node' : 1}))
 
         node_names = sorted([n['name'] for n in rm_info.node_list])
         self.assertEqual(node_names, ['node-1', 'node-2'])
@@ -44,32 +44,32 @@ class SlurmTestCase(TestCase):
 
         # test `gpus_per_node` discovery
 
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
-                                                      'gpus_per_node' : 0}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None,
+                                                     'gpus_per_node' : 0}))
         self.assertEqual(rm_info.gpus_per_node, 0)
 
         os.environ['SLURM_GPUS_ON_NODE'] = '10'
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
-                                                      'gpus_per_node' : 0}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None,
+                                                     'gpus_per_node' : 0}))
         self.assertEqual(rm_info.gpus_per_node, 10)
 
         del os.environ['SLURM_GPUS_ON_NODE']
         os.environ['SLURM_JOB_GPUS'] = '1,2,3,4'  # 4 allocated GPUs per node
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
-                                                      'gpus_per_node' : 0}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None,
+                                                     'gpus_per_node' : 0}))
         self.assertEqual(rm_info.gpus_per_node, 4)
 
         del os.environ['SLURM_JOB_GPUS']
         os.environ['GPU_DEVICE_ORDINAL'] = '0,1,2'  # 3 allocated GPUs per node
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None,
-                                                      'gpus_per_node': 0}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None,
+                                                     'gpus_per_node': 0}))
         self.assertEqual(rm_info.gpus_per_node, 3)
 
         # test env variable "SLURM_JOB_NODELIST"
         if 'SLURM_NODELIST' in os.environ:
             del os.environ['SLURM_NODELIST']
         os.environ['SLURM_JOB_NODELIST'] = 'node-[5-7]'
-        rm_info = rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None}))
+        rm_info = rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None}))
         node_names = sorted([n['name'] for n in rm_info.node_list])
         self.assertEqual(node_names, ['node-5', 'node-6', 'node-7'])
 
@@ -85,7 +85,7 @@ class SlurmTestCase(TestCase):
         if 'SLURM_CPUS_ON_NODE' in os.environ:
             del os.environ['SLURM_CPUS_ON_NODE']
         with self.assertRaises(RuntimeError):
-            rm_slurm._init_from_scratch(RMInfo({'cores_per_node': None}))
+            rm_slurm.init_from_scratch(RMInfo({'cores_per_node': None}))
         os.environ['SLURM_CPUS_ON_NODE'] = '24'
 
         if 'SLURM_NODELIST' in os.environ:
@@ -93,7 +93,7 @@ class SlurmTestCase(TestCase):
         if 'SLURM_JOB_NODELIST' in os.environ:
             del os.environ['SLURM_JOB_NODELIST']
         with self.assertRaises(RuntimeError):
-            rm_slurm._init_from_scratch(RMInfo())
+            rm_slurm.init_from_scratch(RMInfo())
 
     # --------------------------------------------------------------------------
     #

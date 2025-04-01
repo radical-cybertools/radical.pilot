@@ -21,7 +21,7 @@ class TestIBRun(TestCase):
 
         lm_ibrun = IBRun('', {}, None, None, None)
 
-        lm_info = lm_ibrun._init_from_scratch({}, '')
+        lm_info = lm_ibrun.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -34,14 +34,14 @@ class TestIBRun(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ibrun.sh',
                    'command': '/usr/bin/ibrun'}
-        lm_ibrun._init_from_info(lm_info)
+        lm_ibrun.init_from_info(lm_info)
         self.assertEqual(lm_ibrun._env,     lm_info['env'])
         self.assertEqual(lm_ibrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_ibrun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_ibrun._init_from_info(lm_info)
+            lm_ibrun.init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -63,7 +63,7 @@ class TestIBRun(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ibrun.sh',
                    'command': '/usr/bin/ibrun'}
-        lm_ibrun._init_from_info(lm_info)
+        lm_ibrun.init_from_info(lm_info)
         lm_env = lm_ibrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)

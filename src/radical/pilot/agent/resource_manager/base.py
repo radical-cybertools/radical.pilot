@@ -171,7 +171,7 @@ class ResourceManager(object):
             self._log.debug('RM init from scratch')
 
             # let the base class collect some data, then let the impl take over
-            rm_info = self.init_from_scratch()
+            rm_info = self._init_from_scratch()
             rm_info.verify()
 
             # have a valid info - store in registry and complete initialization
@@ -204,7 +204,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
         '''
         This method MUST be overloaded by any RM implementation.  It will be
         called during `init_from_scratch` and is expected to check and correct
@@ -227,12 +227,12 @@ class ResourceManager(object):
         be interpreted by the specific agent scheduler instance.
         '''
 
-        raise NotImplementedError('_init_from_scratch is not implemented')
+        raise NotImplementedError('init_from_scratch is not implemented')
 
 
     # --------------------------------------------------------------------------
     #
-    def init_from_scratch(self):
+    def _init_from_scratch(self):
 
         sys_arch = self._rcfg.get('system_architecture', {})
         rm_info  = RMInfo()
@@ -260,7 +260,7 @@ class ResourceManager(object):
         }
 
         # let the specific RM instance fill out the RMInfo attributes
-        rm_info     = self._init_from_scratch(rm_info)
+        rm_info     = self.init_from_scratch(rm_info)
         alloc_nodes = len(rm_info.node_list)
 
         # we expect to have a valid node list now
@@ -290,7 +290,7 @@ class ResourceManager(object):
                     node['gpus'][idx] = rpc.DOWN
 
         # number of nodes could be unknown if `cores_per_node` is not in config,
-        # but is provided by a corresponding RM in `_init_from_scratch`
+        # but is provided by a corresponding RM in `init_from_scratch`
         if not rm_info.requested_nodes:
             n_nodes = rm_info.requested_cores / rm_info.cores_per_node
             if rm_info.gpus_per_node:
@@ -369,9 +369,11 @@ class ResourceManager(object):
                 self._launchers[lm_name] = rpa.LaunchMethod.create(
                     lm_name, lm_cfg, self._rm_info, self._log, self._prof)
 
-            except Exception as e:
+            except Exception:
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
+
+        self._log.info('launch methods: %s', self._launch_order)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')

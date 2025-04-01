@@ -36,7 +36,7 @@ class PBSProTestCase(TestCase):
             mocked_callout.return_value = [
                 'exec_vnode = (vnode1:cpu=10)+(vnode2:cpu=10)', '', 0]
 
-            rm_info = rm_pbspro._init_from_scratch(RMInfo())
+            rm_info = rm_pbspro.init_from_scratch(RMInfo())
 
             self.assertEqual(rm_info.cores_per_node, 10)
             self.assertEqual(len(rm_info.node_list), 2)
@@ -44,7 +44,7 @@ class PBSProTestCase(TestCase):
         rm_pbspro._parse_pbspro_vnodes = mock.Mock(
             side_effect=RuntimeError('qstat failed: exception message'))
 
-        rm_info = rm_pbspro._init_from_scratch(RMInfo({'cores_per_node': 15}))
+        rm_info = rm_pbspro.init_from_scratch(RMInfo({'cores_per_node': 15}))
 
         # will be used "nodelist.pbs" ($PBS_NODEFILE) with node defined there
 
@@ -64,21 +64,21 @@ class PBSProTestCase(TestCase):
 
         rm_pbspro._parse_pbspro_vnodes = mock.Mock(side_effect=RuntimeError)
         with self.assertRaises(RuntimeError):
-            rm_pbspro._init_from_scratch(rm_info)
+            rm_pbspro.init_from_scratch(rm_info)
 
         rm_pbspro._parse_pbspro_vnodes.side_effect = ValueError
 
         rm_info.cores_per_node = 0
         with self.assertRaises(RuntimeError):
             # no vnodes parsing and no cores_per_node from config
-            rm_pbspro._init_from_scratch(rm_info)
+            rm_pbspro.init_from_scratch(rm_info)
 
         rm_info.cores_per_node = 10
         if 'PBS_NODEFILE' in os.environ:
             del os.environ['PBS_NODEFILE']
         with self.assertRaises(RuntimeError):
             # no vnodes parsing and no $PBS_NODEFILE
-            rm_pbspro._init_from_scratch(rm_info)
+            rm_pbspro.init_from_scratch(rm_info)
 
     # --------------------------------------------------------------------------
     #

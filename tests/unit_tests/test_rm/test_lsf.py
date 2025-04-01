@@ -40,7 +40,7 @@ class LSFTestCase(TestCase):
         rm_lsf._log = mocked_logger
         rm_lsf._cfg = ru.TypedDict({'resource_cfg': {'launch_methods': {}}})
 
-        rm_info = rm_lsf._init_from_scratch(RMInfo({'cores_per_node': None}))
+        rm_info = rm_lsf.init_from_scratch(RMInfo({'cores_per_node': None}))
 
         node_names = sorted([n['name'] for n in rm_info.node_list])
         self.assertEqual(node_names, ['nodes1', 'nodes2'])
@@ -58,7 +58,7 @@ class LSFTestCase(TestCase):
         if 'LSB_DJOB_HOSTFILE' in os.environ:
             del os.environ['LSB_DJOB_HOSTFILE']
         with self.assertRaises(RuntimeError):
-            rm_lsf._init_from_scratch(RMInfo())
+            rm_lsf.init_from_scratch(RMInfo())
 
     # --------------------------------------------------------------------------
     #
