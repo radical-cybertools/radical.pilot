@@ -250,7 +250,7 @@ class ResourceManager(object):
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
         rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
-        rm_info.n_partitions     = int(self._rcfg.n_partitions)
+        rm_info.n_partitions     = self._rcfg.n_partitions
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        sys_arch.get('smt', 1))
 

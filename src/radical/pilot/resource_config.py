@@ -104,7 +104,6 @@ class ResourceConfig(FastTypedDict):
     docstrings goes here
     '''
 
-    _cast   = True
     _schema = {
         LABEL                  : str         ,
         DESCRIPTION            : str         ,
@@ -140,7 +139,7 @@ class ResourceConfig(FastTypedDict):
         CORES_PER_NODE         : int         ,
         GPUS_PER_NODE          : int         ,
         NUMA_DOMAIN_MAP        : {int: None} ,
-        N_PARTITIONS           : str         ,
+        N_PARTITIONS           : int         ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
 
@@ -189,7 +188,7 @@ class ResourceConfig(FastTypedDict):
         CORES_PER_NODE         : 0           ,
         GPUS_PER_NODE          : 0           ,
         NUMA_DOMAIN_MAP        : dict()      ,
-        N_PARTITIONS           : '1'          ,
+        N_PARTITIONS           : 1           ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : True        ,
 
