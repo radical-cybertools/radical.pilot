@@ -148,16 +148,17 @@
                                          "order" : ["FLUX"],
                                          "FLUX"  : {
                                              "pre_exec_cached": [
-                                                 "module load flux",
                                                  "module load rocm",
+                                                 "module load hwloc/2.9.1-gpu",
                                                  "module load craype-accel-amd-gfx90a",
+                                                 "module load flux",
                                                  "export MPICH_GPU_SUPPORT_ENABLED=1"
                                              ]}
                                         },
-        "pre_bootstrap_0"             : [
-                                         "module load flux",
-                                         "module load rocm",
+        "pre_bootstrap_0"             : ["module load rocm",
+                                         "module load hwloc/2.9.1-gpu",
                                          "module load craype-accel-amd-gfx90a",
+                                         "module load flux",
                                          "export MPICH_GPU_SUPPORT_ENABLED=1",
                                          "module load cray-python"
                                         ],
