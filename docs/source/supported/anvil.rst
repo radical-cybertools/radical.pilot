@@ -1,6 +1,6 @@
-================
+==============
 Anvil (Purdue)
-================
+==============
 
 Platform user guide
 ===================
@@ -13,17 +13,16 @@ General description
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
 
-  * ``purdue.anvil`` - ``SRUN``
+  * ``purdue.anvil*`` - ``SRUN``, ``MPIRUN``
 
 * Configuration per node (per platform ID)
 
-  * ``purdue.anvil`` queue (1000 nodes)
+  * ``purdue.anvil`` (1000 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-
-  * ``purdue.anvil_mem`` queue (32 nodes)
+  * ``purdue.anvil_mem`` (32 nodes)
 
     * 128 CPU cores
     * 1031 GB of memory
@@ -31,9 +30,8 @@ General description
   * ``purdue.anvil_gpu`` queue (16 nodes)
 
     * 128 CPU cores
-    * 4 NVIDIA A100 GPUs
+    * 4 GPUs (NVIDIA A100)
     * 515 GB of memory
-
 
 Setup execution environment
 ===========================
@@ -50,7 +48,6 @@ Create a **virtual environment** with ``venv``:
 
    python3.9 -m venv ve.rp
    source ve.rp/bin/activate
-
 
 OR create a **virtual environment** with ``conda``:
 
