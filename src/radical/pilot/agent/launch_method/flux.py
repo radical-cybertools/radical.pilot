@@ -101,7 +101,7 @@ class Flux(LaunchMethod):
 
         for flux in fluxes:
 
-            if not flux.ready(timeout=60):
+            if not flux.ready(timeout=600):
                 raise RuntimeError('flux service did not start')
 
             self._log.debug('flux partition %s started', flux.uid)
