@@ -3,11 +3,10 @@
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
+import queue
 
 import threading            as mt
 import radical.utils        as ru
-import radical.pilot.states as rps
-import radical.pilot.utils  as rpu
 
 from unittest import mock, TestCase
 
@@ -130,6 +129,37 @@ class TestBaseScheduling(TestCase):
     @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
     @mock.patch.object(AgentSchedulingComponent, 'schedule_task')
     @mock.patch.object(AgentSchedulingComponent, '_change_slot_states')
+    def test_priorities(self, mocked_change_slot_states,
+                              mocked_schedule_task, mocked_init):
+
+        component = AgentSchedulingComponent(None, None)
+        component._active_cnt = 0
+        component._log        = ru.Logger('x', targets=None, level='OFF')
+        component._prof       = mock.Mock()
+        component.publish     = mock.Mock()
+        component._prof.prof  = mock.Mock(return_value=True)
+
+        component._log._debug_level = 0
+
+        component._waitpool = {
+                0: {'task.0001': {'uid'        : 'task.0001',
+                                  'type'       : 'task',
+                                  'description': {'priority': 1},
+                                  'tuple_size' : [1, 1, 1]}},
+                1: {'task.0002': {'uid'        : 'task.0002',
+                                  'type'       : 'task',
+                                  'description': {'priority': 2},
+                                  'tuple_size' : [2, 2, 2]}},
+        }
+        component._schedule_waitpool()
+        self.assertEqual(component._waitpool[0], {})
+
+
+    # --------------------------------------------------------------------------
+    #
+    @mock.patch.object(AgentSchedulingComponent, '__init__', return_value=None)
+    @mock.patch.object(AgentSchedulingComponent, 'schedule_task')
+    @mock.patch.object(AgentSchedulingComponent, '_change_slot_states')
     def test_try_allocation(self, mocked_change_slot_states,
                             mocked_schedule_task, mocked_init):
 
@@ -173,6 +203,7 @@ class TestBaseScheduling(TestCase):
         sched._log = mock.Mock()
         sched._log.debug.side_effect = _log_debug
         sched._scheduler_process = True
+        sched._queue_sched = queue.Queue()
 
         sched._lock         = mt.Lock()
         sched._raptor_lock  = mt.Lock()
@@ -191,8 +222,10 @@ class TestBaseScheduling(TestCase):
         msg['cmd'] = 'cancel_tasks'
         sched._control_cb(topic=None, msg=msg)
 
-        # task from `waitpool` was cancelled
-        self.assertFalse(sched._waitpool[0])
+        # cancel was requested
+        data, flag = sched._queue_sched.get()
+        self.assertEqual(flag, AgentSchedulingComponent._CANCEL)
+        self.assertEqual(data, ['task.0000', 'task.0001'])
 
 
 # ------------------------------------------------------------------------------
@@ -204,6 +237,7 @@ if __name__ == '__main__':
     tc.test_initialize()
     tc.test_change_slot_states()
     tc.test_slot_status()
+    tc.test_priorities()
     tc.test_try_allocation()
     tc.test_control_cb()
 

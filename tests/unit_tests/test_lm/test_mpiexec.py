@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # pylint: disable=protected-access, unused-argument, no-value-for-parameter
 
 import os
@@ -28,6 +30,8 @@ class TestMPIExec(TestCase):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
         lm_mpiexec.name = 'mpiexec'
+        lm_mpiexec._log = mock.Mock()
+        lm_mpiexec._rm_info = ru.Config({'details': dict()})
 
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_mpiexec.name.lower()
@@ -57,6 +61,8 @@ class TestMPIExec(TestCase):
                                          mocked_mpi_info, mocked_init):
 
         lm_mpiexec = MPIExec('', {}, None, None, None)
+        lm_mpiexec._log = mock.Mock()
+        lm_mpiexec._rm_info = ru.Config({'details': dict()})
 
         for _flag in ['mpt', 'rsh']:
             lm_mpiexec.name = 'mpiexec_%s' % _flag
@@ -84,7 +90,7 @@ class TestMPIExec(TestCase):
     @mock.patch.object(MPIExec, '__init__', return_value=None)
     def test_init_from_info(self, mocked_init):
 
-        lm_mpiexec = MPIExec('', {}, None, None, None)
+        lm_mpiexec = MPIExec('', {}, {}, None, None)
 
         lm_info = {
             'env'        : {'test_env': 'test_value'},
@@ -94,6 +100,7 @@ class TestMPIExec(TestCase):
             'rsh'        : False,
             'use_rf'     : True,
             'use_hf'     : False,
+            'can_os'     : False,
             'ccmrun'     : '/bin/ccmrun',
             'dplace'     : '/bin/dplace',
             'omplace'    : '/bin/omplace',
@@ -108,6 +115,7 @@ class TestMPIExec(TestCase):
         self.assertEqual(lm_mpiexec._rsh,         lm_info['rsh'])
         self.assertEqual(lm_mpiexec._use_rf,      lm_info['use_rf'])
         self.assertEqual(lm_mpiexec._use_hf,      lm_info['use_hf'])
+        self.assertEqual(lm_mpiexec._can_os,      lm_info['can_os'])
         self.assertEqual(lm_mpiexec._ccmrun,      lm_info['ccmrun'])
         self.assertEqual(lm_mpiexec._dplace,      lm_info['dplace'])
         self.assertEqual(lm_mpiexec._omplace,     'omplace')
@@ -297,6 +305,7 @@ class TestMPIExec(TestCase):
         lm_mpiexec._use_hf  = False
         lm_mpiexec._omplace = ''
         lm_mpiexec._log     = mocked_logger
+        lm_mpiexec._rm_info = ru.Config({'details': dict()})
 
         test_cases = setUp('lm', 'mpiexec')
         for test_case in test_cases:
@@ -335,6 +344,7 @@ class TestMPIExec(TestCase):
         lm_mpiexec._omplace    = 'omplace'
         lm_mpiexec._mpi_flavor = lm_mpiexec.MPI_FLAVOR_OMPI
         lm_mpiexec._log        = mocked_logger
+        lm_mpiexec._rm_info    = ru.Config({'details': dict()})
 
         test_cases = setUp('lm', 'mpiexec_mpt')
         for task, result in test_cases:

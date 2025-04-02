@@ -14,6 +14,7 @@ T_NODE_LIST = List[Dict[str, Any]]
 import radical.utils as ru
 
 from ... import agent     as rpa
+from ... import utils     as rpu
 from ... import constants as rpc
 
 
@@ -31,7 +32,7 @@ RM_NAME_DEBUG       = 'DEBUG'
 
 # ------------------------------------------------------------------------------
 #
-class RMInfo(ru.TypedDict):
+class RMInfo(rpu.FastTypedDict):
     '''
     Each resource manager instance must gather provide the information defined
     in this class.  Additional attributes can be attached, but should then only
@@ -251,10 +252,10 @@ class ResourceManager(object):
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
                                        system_architecture.get('smt', 1))
 
-
         rm_info.details = {
-                'exact'       : system_architecture.get('exclusive', False),
-                'n_partitions': system_architecture.get('n_partitions', 1)
+                'exact'        : system_architecture.get('exclusive', False),
+                'n_partitions' : system_architecture.get('n_partitions', 1),
+                'oversubscribe': system_architecture.get('oversubscribe', False)
         }
 
         # let the specific RM instance fill out the RMInfo attributes
@@ -470,7 +471,7 @@ class ResourceManager(object):
             launcher = self._launchers[name]
             lm_can_launch, err_message = launcher.can_launch(task)
             if lm_can_launch:
-                return launcher
+                return launcher, name
             else:
                 errors.append([name, err_message])
 
@@ -478,7 +479,17 @@ class ResourceManager(object):
         for name, error in errors:
             self._log.debug('    %s: %s', name, error)
 
-        return None
+        return None, None
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_launcher(self, lname):
+
+        if lname not in self._launchers:
+            raise ValueError('no such launcher %s' % lname)
+
+        return self._launchers[lname]
 
 
     # --------------------------------------------------------------------------

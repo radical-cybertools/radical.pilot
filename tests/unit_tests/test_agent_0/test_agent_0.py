@@ -148,7 +148,7 @@ class TestComponent(TestCase):
             'threads_per_core': 2})
 
         # no launcher for agent task(s)
-        agent_0._rm.find_launcher.return_value = None
+        agent_0._rm.find_launcher.return_value = (None, None)
         with self.assertRaises(RuntimeError):
             agent_0._start_sub_agents()
 
@@ -167,7 +167,7 @@ class TestComponent(TestCase):
         launcher = mock.Mock()
         launcher.get_launcher_env.return_value = []
         launcher.get_launch_cmds = check_agent_task
-        agent_0._rm.find_launcher.return_value = launcher
+        agent_0._rm.find_launcher.return_value = launcher, None
 
         agent_files = glob.glob('%s/agent_1.*.sh' % agent_0._pwd)
         self.assertEqual(0, len(agent_files))
@@ -243,7 +243,7 @@ class TestComponent(TestCase):
             agent_0._launch_service(sd)
 
         self.assertTrue(advanced_services[0]['uid'].startswith('service.'))
-        self.assertEqual(advanced_services[0]['type'], 'service_task')
+        self.assertEqual(advanced_services[0]['type'], 'task')
 
         service_td = advanced_services[0]['description']
         self.assertEqual(service_td['executable'],

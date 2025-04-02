@@ -3,8 +3,10 @@ __copyright__ = 'Copyright 2014-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
 import os
+import json
 import stat
 import time
+import socket
 
 import threading           as mt
 
@@ -350,7 +352,7 @@ class Agent_0(rpu.AgentComponent):
         task['uid']               = td.uid
         task['name']              = td.name or td.uid
         task['origin']            = 'agent'
-        task['type']              = 'service_task'
+        task['type']              = 'task'
         task['pilot']             = self._cfg.pid
         task['description']       = td.as_dict()
         task['pilot_sandbox']     = self._cfg.pilot_sandbox
@@ -541,9 +543,11 @@ class Agent_0(rpu.AgentComponent):
                 }
 
                 # find a launcher to use
-                launcher = self._rm.find_launcher(agent_task)
+                launcher, lname = self._rm.find_launcher(agent_task)
                 if not launcher:
                     raise RuntimeError('no launch method found for sub agent')
+
+                self._log.debug('found sa launcher %s', lname)
 
                 # FIXME: set RP environment (as in Popen Executor)
 
@@ -626,7 +630,61 @@ class Agent_0(rpu.AgentComponent):
             return self._ctrl_service_info(msg, arg)
 
         else:
-            self._log.error('invalid command: [%s]', cmd)
+            self._log.warn('invalid command: [%s]', cmd)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def command_port(self):
+        '''
+        listen on a command port, relay incoming commands to the control pubsub
+        '''
+
+        sock = None
+        while True:
+            port = ru.find_port()
+            try:
+                # we only listen on all interfaces
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                hostip = ru.get_hostip()
+                sock.bind((hostip, port))
+                break
+            except Exception as e:
+                self._log.error('port %s unusable: %s', port, e)
+                pass
+
+        assert sock
+
+        self._log.debug('bound cmd handler to port %s', port)
+
+        ru.write_json('agent_0.ports.json', {'command_port'  : port,
+                                             'command_hostip': hostip})
+        sock.listen(1)
+
+        while True:
+            connection, client_address = sock.accept()
+
+            try:
+                self._log.info('command connection from %s', client_address)
+
+                data = connection.recv(1024)
+                msg  = json.loads(data)
+
+                # don't forward to the client
+                if 'fwd' not in msg:
+                    msg['fwd'] = False
+
+                self._log.debug('command: %s', msg)
+
+                self.publish(rpc.CONTROL_PUBSUB, msg)
+                connection.sendall(b'OK')
+
+            except Exception as e:
+                connection.sendall(('ERROR: %s' % e).encode('utf-8'))
+
+            finally:
+                connection.close()
+
 
 
     # --------------------------------------------------------------------------
@@ -751,15 +809,17 @@ class Agent_0(rpu.AgentComponent):
         rp_cse = ru.which('radical-pilot-create-static-ve')
         ve_cmd = '/bin/bash %s -d -p %s -t %s ' % (rp_cse, ve_path, etype) + \
                  '%s %s %s '                    % (evers, mods, pre_exec)  + \
-                 '-T %s.env > env_%s.log 2>&1'  % (ve_local_path, env_name)
+                 '-T %s.env'                    % (ve_local_path)
 
         # FIXME: we should export all sandboxes etc. to the prep_env.
         os.environ['RP_RESOURCE_SANDBOX'] = '../../'
 
+        # `shell=False` to avoid expansion of env variables in pre_exec lines
         self._log.debug('env cmd: %s', ve_cmd)
-        out, err, ret = ru.sh_callout(ve_cmd, shell=True)
+        out, err, ret = ru.sh_callout(ve_cmd, shell=False)
         self._log.debug('    out: %s', out)
         self._log.debug('    err: %s', err)
+        self._log.debug('    ret: %s', ret)
 
         if ret:
             raise RuntimeError('prepare_env failed: \n%s\n%s\n' % (out, err))
@@ -794,6 +854,11 @@ class Agent_0(rpu.AgentComponent):
             self._service.start()
 
             self._log.info('service_url : %s', self._service.addr)
+
+        # always listen on a local port for commands
+        self._cmd_port = mt.Thread(target=self.command_port)
+        self._cmd_port.daemon = True
+        self._cmd_port.start()
 
 
     # --------------------------------------------------------------------------

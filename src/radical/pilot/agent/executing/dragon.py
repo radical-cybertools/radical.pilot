@@ -90,7 +90,7 @@ class Dragon(Popen):
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def cancel_task(self, task):
         '''
         This method is called by the base class to actually
         cancel the task.

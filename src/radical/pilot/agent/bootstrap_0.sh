@@ -2,7 +2,7 @@
 # combine stdout and stderr
 exec 2>&1
 
-# iexplicitly cd to sandbox it to shield against bashrc shenanigans
+# explicitly cd to sandbox it to shield against bashrc shenanigans
 test -z "$RP_PILOT_SANDBOX" || cd "$RP_PILOT_SANDBOX"
 
 # Unset functions/aliases of commands that will be used during bootstrap as
@@ -460,7 +460,8 @@ rehash()
         exit 1
     fi
 
-    PYTHON_VERSION=`$PYTHON -c 'from distutils.sysconfig import get_python_version; print(get_python_version())'`
+    code='from sys import version_info as vi; print(f"{vi.major}.{vi.minor}")'
+    PYTHON_VERSION=$($PYTHON -c "$code")
 
     # NOTE: if a cacert.pem.gz was staged, we unpack it and use it for all pip
     #       commands (It means that the pip cacert [or the system's, dunno]
@@ -894,7 +895,7 @@ virtenv_eval()
     rehash
 
     # make sure the lib path into the prefix conforms to the python conventions
-    VE_MOD_PREFIX=`$PYTHON -c 'from distutils.sysconfig import get_python_lib; print(get_python_lib())'`
+    VE_MOD_PREFIX=`$PYTHON -c 'import sys; print(sys.prefix)'`
     echo "VE_MOD_PREFIX init: $VE_MOD_PREFIX"
     # NOTE: distutils.sc.get_python_lib() behaves different on different
     #       systems: on some systems (versions?) it returns a normalized path,

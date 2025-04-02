@@ -25,7 +25,7 @@ except: LOG_ENABLED = False
 
 # ------------------------------------------------------------------------------
 #
-class _CloseOptions(ru.TypedDict):
+class _CloseOptions(rpu.FastTypedDict):
     """Options and validation for Session.close().
 
     Arguments:
@@ -229,7 +229,12 @@ class Session(object):
 
         # if user did not set a uid, we need to generate a new ID
         if not self._uid:
-            self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+            base = os.environ.get('RADICAL_PILOT_SID_BASE')
+            if base:
+                self._uid = ru.generate_id(base, mode=ru.SIMPLE)
+            else:
+                self._uid = ru.generate_id('rp.session', mode=ru.ID_PRIVATE)
+
 
         # we still call `_init_cfg` to complete missing config settings
         # FIXME: completion only needed by `PRIMARY`
@@ -271,7 +276,7 @@ class Session(object):
     #
     def _control_cb(self, topic, msg):
 
-        self._log.debug('==== control msg: %s', msg)
+        self._log.debug('control msg: %s', msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -311,7 +316,7 @@ class Session(object):
         self._start_components()
         self._crosswire_proxy()
 
-      # self._reg.dump(self._role)
+        self._reg.dump(self._role)
 
 
     # --------------------------------------------------------------------------

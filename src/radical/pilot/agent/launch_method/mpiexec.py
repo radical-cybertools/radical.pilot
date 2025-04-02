@@ -21,6 +21,7 @@ class MPIExec(LaunchMethod):
         self._rsh    : bool  = False
         self._use_rf : bool  = False
         self._use_hf : bool  = False
+        self._can_os : bool  = False
         self._ccmrun : str   = ''
         self._dplace : str   = ''
         self._omplace: str   = ''
@@ -49,6 +50,7 @@ class MPIExec(LaunchMethod):
             'rsh'    : False,
             'use_rf' : False,
             'use_hf' : False,
+            'can_os' : False,
             'ccmrun' : '',
             'dplace' : '',
             'omplace': ''
@@ -87,6 +89,13 @@ class MPIExec(LaunchMethod):
             lm_info['use_hf'] = self._check_available_lm_options(
                 lm_info['command'], '-f')
 
+        # check that this implementation allows to use `oversubscribe` option
+        if self._rm_info.details.get('oversubscribe'):
+            lm_info['can_os'] = self._check_available_lm_options(
+                lm_info['command'], '--oversubscribe')
+            if not lm_info['can_os']:
+                self._log.warn('oversubscribe requested but not supported')
+
         mpi_version, mpi_flavor = self._get_mpi_info(lm_info['command'])
         lm_info['mpi_version']  = mpi_version
         lm_info['mpi_flavor']   = mpi_flavor
@@ -96,8 +105,15 @@ class MPIExec(LaunchMethod):
     # --------------------------------------------------------------------------
     #
     def _check_available_lm_options(self, lm_cmd, option):
-        check = bool(ru.sh_callout('%s --help | grep -e "%s\\>"' %
-                                  (lm_cmd, option), shell=True)[0])
+        cmd   = '%s --help | grep -e "%s\\>"' % (lm_cmd, option)
+        check = bool(ru.sh_callout(cmd, shell=True)[0])
+        self._log.debug('lm option %s: %s (%s)' % (option, check, cmd))
+
+        if not check:
+            # openmpi needs `all` to work here
+            cmd   = '%s --help all | grep -e "%s\\>"' % (lm_cmd, option)
+            check = bool(ru.sh_callout(cmd, shell=True)[0])
+            self._log.debug('lm option %s: %s (%s)' % (option, check, cmd))
 
         if not check:
             # openmpi is different nowadays...
@@ -120,6 +136,7 @@ class MPIExec(LaunchMethod):
         self._rsh         = lm_info['rsh']
         self._use_rf      = lm_info['use_rf']
         self._use_hf      = lm_info['use_hf']
+        self._can_os      = lm_info['can_os']
         self._dplace      = lm_info['dplace']
         self._ccmrun      = lm_info['ccmrun']
 
@@ -245,8 +262,8 @@ class MPIExec(LaunchMethod):
         if self._use_rf:
             rankfile     = self._get_rank_file(slots, uid, sbox)
             hosts        = set([slot['node_name'] for slot in slots])
-            cmd_options += '-H %s -rf %s ' % (','.join(hosts), rankfile)
-            cmd_options += '-oversubscribe '
+          # cmd_options += '-H %s -rf %s ' % (','.join(hosts), rankfile)
+            cmd_options += '-rf %s ' % rankfile
 
         elif self._mpi_flavor == self.MPI_FLAVOR_PALS:
             hostfile     = self._get_host_file(slots, uid, sbox)
@@ -287,6 +304,9 @@ class MPIExec(LaunchMethod):
         else:
             hostfile     = self._get_host_file(slots, uid, sbox, mode=1)
             cmd_options += '--hostfile %s ' % hostfile
+
+        if self._rm_info.details.get('oversubscribe') and self._can_os:
+            cmd_options += '--oversubscribe '
 
         if self._omplace:
             cmd_options += '%s ' % self._omplace

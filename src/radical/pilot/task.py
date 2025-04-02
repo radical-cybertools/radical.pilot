@@ -11,6 +11,7 @@ import threading     as mt
 import radical.utils as ru
 
 from . import states    as rps
+from . import utils     as rpu
 from . import constants as rpc
 
 from .staging_directives import expand_description
@@ -156,6 +157,19 @@ class Task(object):
         current = self.state
         target  = task_dict['state']
 
+        # we never update once the task is FAILED or DONE
+        if current in [rps.FAILED, rps.DONE]:
+            self._log.debug('task %s is final, ignore update', self.uid)
+            return
+
+        # when in CANCELED state, we only allow updates for `DONE` tasks - in
+        # that case the cancel command raced the task execution, and the
+        # execution actually won, so we don't want to waste that work
+        if current == rps.CANCELED and target != rps.DONE:
+            self._log.debug('task %s was CANCELED, state not updated', self.uid)
+            target = current
+
+
         if not reconnect:
             if target not in [rps.FAILED, rps.CANCELED]:
                 s_tgt = rps._task_state_value(target)
@@ -183,8 +197,8 @@ class Task(object):
         if metadata:
             self._descr['metadata'] = metadata
 
-        # if this is a service and is finalized, set info_wait event
-        if target in rps.FINAL:
+        # if a service is finalized, set info_wait event (only # once)
+        if target in rps.FINAL and current not in rps.FINAL:
             if self._descr.mode == TASK_SERVICE:
                 # signal failure in case we are still waiting for the service
                 self._set_info(None)
@@ -610,7 +624,7 @@ class Task(object):
 
 # ------------------------------------------------------------------------------
 #
-class TaskDict(ru.TypedDict):
+class TaskDict(rpu.FastTypedDict):
     """Dictionary encoded Task.
 
     rp.Task is an API level object and as that is not a useful internal

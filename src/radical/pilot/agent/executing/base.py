@@ -89,10 +89,15 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self.psbox     = self.session.cfg.pilot_sandbox
         self.gtod      = '$RP_PILOT_SANDBOX/gtod'
         self.prof      = '$RP_PILOT_SANDBOX/prof'
+        self.rp_ctrl   = ru.which('radical-pilot-control')
+
+        assert self.rp_ctrl, 'radical-pilot-control not found'
 
         # if so configured, let the tasks know what to use as tmp dir
-        self._task_tmp = self.session.rcfg.get('task_tmp',
-                                               os.environ.get('TMP', '/tmp'))
+        self.tmpdir    = os.environ.get('TMPDIR', '/tmp') + '/' + self.sid
+        ru.rec_makedir(self.tmpdir)
+
+        self._task_tmp = self.session.rcfg.get('task_tmp', self.tmpdir)
 
         if self.psbox.startswith(self.ssbox):
             self.psbox = '$RP_SESSION_SANDBOX%s'  % self.psbox[len(self.ssbox):]
@@ -107,7 +112,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self.register_output(rps.AGENT_STAGING_OUTPUT_PENDING,
                              rpc.AGENT_STAGING_OUTPUT_QUEUE)
 
-        self.register_publisher (rpc.AGENT_UNSCHEDULE_PUBSUB)
+        self.register_publisher(rpc.AGENT_UNSCHEDULE_PUBSUB)
 
         self._to_tasks  = list()
         self._to_lock   = mt.Lock()
@@ -137,12 +142,26 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
             self._log.info('cancel_tasks command (%s)', arg)
             for tid in arg['uids']:
-                self.cancel_task(tid)
+                task = self.get_task(tid)
+                if task:
+                    self.cancel_task(task)
+
+        elif cmd == 'task_startup_done':
+
+            self._log.info('task_startup_done command (%s)', arg)
+            task = self.get_task(arg['uid'])
+            if task:
+                # if execution timeout is 0., then we will reset cancellation
+                cancel_time = task['description'].get('timeout', 0.)
+                if cancel_time:
+                    cancel_time += time.time()
+                with self._to_lock:
+                    self._to_tasks.append([task, cancel_time, True])
 
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def cancel_task(self, task):
 
         raise NotImplementedError('cancel_task is not implemented')
 
@@ -156,35 +175,52 @@ class AgentExecutingComponent(rpu.AgentComponent):
         `self._cancel_task(task)`.  That has to be implemented by al executors.
         '''
 
+        # tasks to watch for timeout
+        to_tasks = dict()
+
         while not self._term.is_set():
 
-            # check once per second at most
-            time.sleep(1)
-
-            now = time.time()
+            # collect new tasks to watch
             with self._to_lock:
 
-                # running tasks for next check
-                to_list = list()
-                for to, start, task in self._to_tasks:
-                    if now - start > to:
-                        self._prof.prof('task_timeout', uid=task['uid'])
-                        self.cancel_task(uid=task['uid'])
-                    else:
-                        to_list.append([to, start, task])
+                for task, cancel_time, has_started in self._to_tasks:
+                    tid = task['uid']
+                    if has_started or tid not in to_tasks:
+                        to_tasks[task['uid']] = [task, cancel_time]
 
-                self._to_tasks = to_list
+                self._to_tasks = list()
+
+            # avoid busy wait
+            if not to_tasks:
+                time.sleep(1)
+                continue
+
+            # list of pairs <task, timeout> sorted by timeout, smallest first
+            to_list = sorted(to_tasks.values(), key=lambda x: x[1])
+            # cancel all tasks which have timed out
+            for task, cancel_time in to_list:
+                now = time.time()
+                if now > cancel_time:
+                    if cancel_time:
+                        self._prof.prof('task_timeout', uid=task['uid'])
+                        self.cancel_task(task=task)
+                    del to_tasks[task['uid']]
+                else:
+                    break
 
 
     # --------------------------------------------------------------------------
     #
     def handle_timeout(self, task):
 
-        to = task['description'].get('timeout', 0.0)
+        startup_to = task['description'].get('startup_timeout', 0.)
+        exec_to    = task['description'].get('timeout',         0.)
 
-        if to > 0.0:
+        if startup_to or exec_to:
             with self._to_lock:
-                self._to_tasks.append([to, time.time(), task])
+                cancel_time = time.time() + (startup_to or exec_to)
+                has_started = not bool(startup_to)
+                self._to_tasks.append([task, cancel_time, has_started])
 
 
     # --------------------------------------------------------------------------
@@ -244,8 +280,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
         td   = task['description']
         sbox = task['task_sandbox_path']
 
+        env_sbox      = '$RP_TASK_SANDBOX'
         exec_script   = '%s.exec.sh' % tid
-        exec_path     = '$RP_TASK_SANDBOX/%s' % exec_script
+        exec_path     = '%s/%s' % (env_sbox, exec_script)
         exec_fullpath = '%s/%s' % (sbox, exec_script)
 
         # make sure the sandbox exists
@@ -273,6 +310,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# rank ID\n'
             tmp += self._get_rank_ids(n_ranks, launcher)
+
+            if td.get('startup_timeout'):
+                tmp += self._separator
+                tmp += '# startup completed\n'
+                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                       '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
+
             tmp += self._separator
             tmp += self._get_prof('exec_start')
 
@@ -285,7 +329,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
             tmp += self._separator
             tmp += '# output file detection (i)\n'
-            tmp += "ls | sort | grep -ve '^%s\\.' > %s.files\n" % (tid, tid)
+            tmp += "ls | sort | grep -ve '^%s\\.' > %s/%s.files\n" \
+                    % (tid, env_sbox, tid)
 
             tmp += self._separator
             tmp += '# execute rank\n'
@@ -298,7 +343,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
             tmp += self._separator
             tmp += '# output file detection (ii)\n'
             tmp += 'ls | sort | comm -23 - ' \
-                   "%s.files | grep -ve '^%s\\.' > %s.ofiles\n" % (tid, tid, tid)
+                   "%s/%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
+                           % (env_sbox, tid, tid, env_sbox, tid)
 
             tmp += self._separator
             tmp += '# post-exec commands\n'
@@ -629,6 +675,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
       # ret += 'export RP_LFS="%s"\n'              % self.lfs
         ret += 'export RP_GTOD="%s"\n'             % self.gtod
         ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_CTRL="%s"\n'             % self.rp_ctrl
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)

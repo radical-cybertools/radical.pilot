@@ -7,6 +7,37 @@ For a list of open issues and known problems, see:
 
 This is the latest release - if uncertain, use this release.
 
+--------------------------------------------------------------------------------
+### 1.100.0 Release                                                   2025-03-26
+
+  - add tutorial for app level scheduling
+  - distutils are deprecated (bootstrapper)
+  - extended functionality for `startup_timeout` attribute in TaskDescription
+  - fix install of internals.rst
+  - fix option check in mpiexec
+  - implement startup signal
+  - make it simpler to assign session IDs to experiments
+  - make sure task tmpdirs exist
+  - overwrite `NumaNode.as_dict()`
+  - random changes to update old code snippets - please ignore in review
+  - simplify NUMA scheduling, improve examples
+  
+
+--------------------------------------------------------------------------------
+### 1.92.0 Release                                                    2025-02-25
+
+  - allow oversubscribe on localhost
+  - close control subscriber on `close()`
+  - control PSI/J `exclusive` parameter for the LRM submission
+  - don't use a gpu in examples - that limits usable systems
+  - ensure scheduler sub-process terminates
+  - fix cancellation procedure (executor modules)
+  - fix rankfile / hostfile checks
+  - fix `task['proc']` handling (in `Popen._check_running()`)
+  - update py-versions for `ubuntu-latest`
+  - update references to RP classes
+  - update tutorials and docs
+
 
 --------------------------------------------------------------------------------
 ### 1.90.0 Release                                                    2024-12-16
