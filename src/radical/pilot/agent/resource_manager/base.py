@@ -180,6 +180,14 @@ class ResourceManager(object):
         reg.close()
         self._set_info(rm_info)
 
+
+        # immediately set the network interface if it was configured
+        # NOTE: setting this here implies that no ZMQ connectio was set up
+        #       before the ResourceManager got created!
+        if rm_info.details['network']:
+            rc_cfg = ru.config.DefaultConfig()
+            rc_cfg.iface = rm_info.details['network']
+
         # set up launch methods even when initialized from registry info.  In
         # that case, the LM *SHOULD NOT* be re-initialized, but only pick up
         # information from rm_info.
@@ -255,8 +263,10 @@ class ResourceManager(object):
                                        sys_arch.get('smt', 1))
 
         rm_info.details = {
-                'exact'        : sys_arch.get('exclusive',     False),
-                'oversubscribe': sys_arch.get('oversubscribe', False)
+            'exact'        : system_architecture.get('exclusive'    , False),
+            'n_partitions' : system_architecture.get('n_partitions' , 1),
+            'oversubscribe': system_architecture.get('oversubscribe', False),
+            'network'      : system_architecture.get('iface'        , None),
         }
 
         # let the specific RM instance fill out the RMInfo attributes
