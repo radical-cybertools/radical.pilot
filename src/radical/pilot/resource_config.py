@@ -104,7 +104,6 @@ class ResourceConfig(FastTypedDict):
     docstrings goes here
     '''
 
-    _cast   = True
     _schema = {
         LABEL                  : str         ,
         DESCRIPTION            : str         ,
