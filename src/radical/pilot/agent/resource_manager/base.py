@@ -314,9 +314,12 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
-        assert alloc_nodes                          >= rm_info.requested_nodes
-        assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
-        assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
+        # reduce the nodelist to the requested size
+        if alloc_nodes > rm_info.requested_nodes:
+            self._log.debig('=== reduce %d nodes to %d', alloc_nodes,
+                    rm_info.requested_nodes)
+            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
+            alloc_nodes       = len(rm_info.node_list)
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
