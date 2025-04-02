@@ -60,7 +60,7 @@ if __name__ == '__main__':
                    'project'       : config.get('project'),
                    'queue'         : config.get('queue'),
                    'access_schema' : config.get('schema'),
-                   'nodes'         : 4
+                   'cores'         : 256
                   }
         pdesc = rp.PilotDescription(pd_init)
 
