@@ -723,7 +723,7 @@ class Pilot(object):
                      'pre_exec': ['export PATH=$PATH:/opt/bin']},
 
                     {'type'    : 'venv',
-                     'version' : '3.7',
+                     'version' : '3.8',
                      'pre_exec': ['module load python'],
                      'setup'   : ['radical.pilot==1.0', 'pandas']},
 
