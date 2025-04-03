@@ -77,7 +77,7 @@
                                         },
         "pre_bootstrap_0"             :["module load TACC",
                                         "module load intel/18.0.0",
-                                        "module load python3/3.7.0"
+                                        "module load python3/3.8.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
         "rp_version"                  : "local",
@@ -120,7 +120,7 @@
                                         },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                         "module load python3/3.8.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
         "rp_version"                  : "local",
@@ -164,7 +164,7 @@
                                         },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                         "module load python3/3.8.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
         "rp_version"                  : "local",
@@ -211,7 +211,7 @@
         "pre_bootstrap_0"             : [
                                          "module load TACC",
                                          "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                         "module load python3/3.8.0"
                                         ],
         "default_remote_workdir"      : "$WORK",
         "rp_version"                  : "local",
@@ -249,13 +249,13 @@
                                              "pre_exec_cached": [
                                                  "module load TACC",
                                                  "module load intel/18.0.0",
-                                                 "module load python3/3.7.0"
+                                                 "module load python3/3.8.0"
                                              ]
                                          }
                                         },
         "pre_bootstrap_0"             : ["module load TACC",
                                          "module load intel/18.0.0",
-                                         "module load python3/3.7.0"
+                                         "module load python3/3.8.0"
                                         ],
         "default_remote_workdir"      : "$WORK2",
         "rp_version"                  : "local",
