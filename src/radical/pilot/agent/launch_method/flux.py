@@ -78,7 +78,8 @@ class Flux(LaunchMethod):
         self._log.info('using %d flux partitions [%d nodes]',
                        n_partitions, nodes_per_partition)
 
-        fluxes  = list()
+        launcher = ''
+        fluxes   = list()
         for n in range(n_partitions):
 
             self._log.debug('flux partition %d starting', n)
@@ -86,7 +87,6 @@ class Flux(LaunchMethod):
             # FIXME: this is a hack for frontier and will only work for slurm
             #        resources.  If Flux is to be used more widely, we need to
             #        pull the launch command from the agent's resource manager.
-            launcher = ''
             srun = ru.which('srun')
             if srun:
                 launcher = 'srun -n %s -N %d --ntasks-per-node 1 ' \
@@ -99,15 +99,21 @@ class Flux(LaunchMethod):
             fs.start()
             fluxes.append(fs)
 
-        for flux in fluxes:
+        for fs in fluxes:
 
-            if not flux.ready(timeout=60):
+            if not fs.ready(timeout=600):
                 raise RuntimeError('flux service did not start')
 
-            self._log.debug('flux partition %s started', flux.uid)
-            self._partitions.append(self.Partition(service=flux,
-                                                   uri=flux.uri,
-                                                   uid=flux.uid))
+            # check if we shuld use the remote uri
+            if launcher and n_partitions > 1:
+                uri = fs.r_uri
+            else:
+                uri = fs.uri
+
+            self._log.debug('flux partition %s started: %s', fs.uid, uri)
+            self._partitions.append(self.Partition(service=fs,
+                                                   uri=uri,
+                                                   uid=fs.uid))
 
         lm_info = {'env'       : env,
                    'env_sh'    : env_sh,
