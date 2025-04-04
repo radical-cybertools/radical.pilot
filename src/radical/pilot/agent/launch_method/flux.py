@@ -60,13 +60,13 @@ class Flux(LaunchMethod):
         if flux_exc:
             raise RuntimeError('flux import failed: %s' % flux_exc)
 
-        self._log.debug('flux import : %s', flux)
-        self._log.debug('flux job    : %s', flux_job)
-        self._log.debug('flux version: %s', flux_v)
+        self._log.debug('=== flux import : %s', flux)
+        self._log.debug('=== flux job    : %s', flux_job)
+        self._log.debug('=== flux version: %s', flux_v)
 
         # ensure we have flux
         flux = ru.which('flux')
-        self._log.debug('flux location: %s', flux)
+        self._log.debug('=== flux location: %s', flux)
         if not flux:
             raise RuntimeError('flux not found')
 
