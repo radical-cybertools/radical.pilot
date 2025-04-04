@@ -66,6 +66,9 @@ class Flux(AgentExecutingComponent) :
         self._log.debug('register flux state cb: %s',
                         len(self._lm.partitions))
 
+        if not self._lm.partitions:
+            raise RuntimeError('no partitions found')
+
         for part in self._lm.partitions:
             self._log.debug('register flux state cb: %s', part.helper)
             part.helper.register_cb(self._job_event_cb)
