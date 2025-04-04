@@ -13,18 +13,14 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    class Partition(ru.TypedDict):
+    class Partition(object):
 
-        _extensible = False
-        _schema     = {'uid'    : str,
-                       'uri'    : str,
-                       'service': object,
-                       'handle' : object}
+        def __init__(self):
 
-        def as_dict(self, _annotate=False):
-
-            return {'uid': self.uid,
-                    'uri': self.uri}
+            self.uid      = None
+            self.uri      = None
+            self.service  = None
+            self.helper   = None
 
 
     # --------------------------------------------------------------------------
@@ -47,7 +43,7 @@ class Flux(LaunchMethod):
             try   : part.service.stop()
             except: pass
 
-            for fh in part.handles:
+            for fh in part.helper:
                 try   : fh.stop()
                 except: pass
 
@@ -58,13 +54,33 @@ class Flux(LaunchMethod):
     #
     def init_from_scratch(self, env, env_sh):
 
-        self._prof.prof('flux_start')
+        # just make sure we can load flux
+
+        flux, flux_job, flux_exc, flux_v = ru.flux.import_flux()
+        if flux_exc:
+            raise RuntimeError('flux import failed: %s' % flux_exc)
+
+        self._log.debug('flux import : %s', flux)
+        self._log.debug('flux job    : %s', flux_job)
+        self._log.debug('flux version: %s', flux_v)
 
         # ensure we have flux
         flux = ru.which('flux')
         self._log.debug('flux location: %s', flux)
         if not flux:
             raise RuntimeError('flux not found')
+
+        lm_info = {'env'       : env,
+                   'env_sh'    : env_sh}
+
+        return lm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_flux(self):
+
+        self._prof.prof('flux_start')
 
         n_partitions        = self._rm_info.n_partitions
         n_nodes             = len(self._rm_info.node_list)
@@ -79,8 +95,9 @@ class Flux(LaunchMethod):
                        n_partitions, nodes_per_partition)
 
         launcher = ''
-        fluxes   = list()
         for n in range(n_partitions):
+
+            part = self.Partition()
 
             self._log.debug('flux partition %d starting', n)
 
@@ -95,58 +112,39 @@ class Flux(LaunchMethod):
                            % (nodes_per_partition, nodes_per_partition,
                               threads_per_node, gpus_per_node)
 
-            fs = ru.FluxService(launcher=launcher)
-            fs.start()
-            fluxes.append(fs)
+            part.service = ru.FluxService(launcher=launcher)
+            part.service.start()
+            self._partitions.append(part)
 
-        for fs in fluxes:
+        for part in self._partitions:
 
-            if not fs.ready(timeout=600):
+            if not part.service.ready(timeout=600):
                 raise RuntimeError('flux service did not start')
 
             # check if we shuld use the remote uri
             if launcher and n_partitions > 1:
-                uri = fs.r_uri
+                part.uri = part.service.r_uri
             else:
-                uri = fs.uri
+                part.uri = part.service.uri
 
-            self._log.debug('flux partition %s started', fs.uid)
-            self._partitions.append(self.Partition(service=fs,
-                                                   uri=uri,
-                                                   uid=fs.uid))
+            self._log.debug('flux partition %s: %s', part.service.uid, part.uri)
 
-        lm_info = {'env'       : env,
-                   'env_sh'    : env_sh,
-                   'partitions': [part.as_dict() for part in self._partitions]}
+            part.helper = ru.FluxHelper(uri=part.uri)
+            part.helper.start()
+
+            self._log.debug('flux helper    %s', part.helper.uid)
 
         self._prof.prof('flux_start_ok')
         self._log.debug('flux partitions started: %s',
                         [part.uid for part in self.partitions])
 
-        return lm_info
 
 
     # --------------------------------------------------------------------------
     #
     def init_from_info(self, lm_info):
 
-        self._prof.prof('flux_reconnect')
-
-        self._env    = lm_info['env']
-        self._env_sh = lm_info['env_sh']
-
-        for pinfo in lm_info['partitions']:
-
-            part = self.Partition(pinfo)
-            part.handle = ru.FluxHelper(uri=part.uri)
-            part.handle.start()
-
-            self._log.debug('connect flux partition: %s [%s]', part.uri,
-                            part.handle)
-
-            self._partitions.append(part)
-
-        self._prof.prof('flux_reconnect_ok')
+        pass
 
 
     # --------------------------------------------------------------------------
