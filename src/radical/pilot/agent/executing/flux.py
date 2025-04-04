@@ -59,13 +59,16 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
 
+        # we only start the flux backend here
+        self._lm.start_flux()
+
         # register state cb
         self._log.debug('register flux state cb: %s',
                         len(self._lm.partitions))
 
         for part in self._lm.partitions:
-            self._log.debug('register flux state cb: %s', part.handle)
-            part.handle.register_cb(self._job_event_cb)
+            self._log.debug('register flux state cb: %s', part.helper)
+            part.helper.register_cb(self._job_event_cb)
 
         # local state management
         self._tasks  = dict()             # flux_id -> task
@@ -74,6 +77,61 @@ class Flux(AgentExecutingComponent) :
 
         self._task_count = 0
 
+        self._nflux = 0
+
+
+        self._fs = ru.FluxService()
+        self._fs.start(timeout=-1)
+
+        self._fh = ru.FluxHelper(self._fs.uri)
+        self._fh.register_cb(self.flux_state_cb)
+        self._fh.start()
+
+
+    # --------------------------------------------------------------------------
+    def finalize(self):
+
+        self._fh.stop()
+        self._fs.stop()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def flux_state_cb(self, task_id, state):
+
+        self._log.debug('flux state cb: %s: %s', task_id, state)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _test_flux(self, n=5, count=2):
+
+        t0 = time.time()
+        specs = [ru.flux.spec_from_dict({'executable': 'true',
+                                         'uid'       : 'task.%06d' % i})
+                        for i in range(n)]
+        dt  = time.time() - t0
+        jps = len(specs) / dt
+        self._log.debug("==== create %4d tasks in %5.1fs - %8.1fjob/s" % (n, dt, jps))
+
+        with open('flux_async.prof', 'w') as fout:
+            for c in range(count):
+
+                specs = [ru.flux.spec_from_dict(
+                    {'executable': 'sleep',
+                     'arguments' : ['1'],
+                     'uid'       : 'task.%06d.%04d' % (i, c)})
+                                    for i in range(n)]
+                start = time.time()
+
+                tids = self._fh.submit(specs)
+                self._fh.wait(tids)
+
+                stop = time.time()
+                jps = n / (stop - start)
+                self._log.debug('==== waited %4d tasks in %5.1fs - %8.1fjob/s' % (n, stop-start, jps))
+                fout.write('%4d %8.1f\n' % (c, jps))
+                fout.flush()
 
     # --------------------------------------------------------------------------
     #
@@ -148,6 +206,12 @@ class Flux(AgentExecutingComponent) :
     #
     def work(self, tasks):
 
+        self._nflux += len(tasks)
+        self._log.debug('=== flux work: %d tasks', self._nflux)
+        if self._nflux > 32:
+            self._test_flux()
+            self._nflux = 0
+
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
         try:
@@ -175,7 +239,7 @@ class Flux(AgentExecutingComponent) :
                     specs.append(self.task_to_spec(task))
 
                 tids = [task['uid'] for task in part_tasks]
-                fids = part.handle.submit(specs)
+                fids = part.helper.submit(specs)
 
                 for fid, tid in zip(fids, tids):
                     self._idmap[fid] = tid
