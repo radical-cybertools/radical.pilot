@@ -16,6 +16,7 @@ LM_NAME_APRUN         = 'APRUN'
 LM_NAME_CCMRUN        = 'CCMRUN'
 LM_NAME_FORK          = 'FORK'
 LM_NAME_IBRUN         = 'IBRUN'
+LM_NAME_DRAGON        = 'DRAGON'
 LM_NAME_MPIEXEC       = 'MPIEXEC'
 LM_NAME_MPIEXEC_MPT   = 'MPIEXEC_MPT'
 LM_NAME_MPIRUN        = 'MPIRUN'
@@ -113,6 +114,7 @@ class LaunchMethod(object):
         from .ccmrun         import CCMRun
         from .fork           import Fork
         from .ibrun          import IBRun
+        from .dragon         import Dragon
         from .mpiexec        import MPIExec
         from .mpirun         import MPIRun
         from .jsrun          import JSRUN
@@ -128,6 +130,7 @@ class LaunchMethod(object):
                 LM_NAME_CCMRUN        : CCMRun,
                 LM_NAME_FORK          : Fork,
                 LM_NAME_IBRUN         : IBRun,
+                LM_NAME_DRAGON        : Dragon,
                 LM_NAME_MPIEXEC       : MPIExec,
                 LM_NAME_MPIEXEC_MPT   : MPIExec,
                 LM_NAME_MPIRUN        : MPIRun,

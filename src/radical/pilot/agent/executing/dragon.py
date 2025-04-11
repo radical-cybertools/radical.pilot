@@ -2,10 +2,14 @@
 __copyright__ = 'Copyright 2024, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import time
+
+import os
+
+from typing     import List
+
+from rc.process import Process
 
 import threading     as mt
-import subprocess    as sp
 
 import radical.utils as ru
 
@@ -33,41 +37,48 @@ class Dragon(Popen):
 
         super().initialize()
 
-        self._pid = self.session.cfg.pid
+        self._log.debug('=== 1')
 
-        # run dragon execution helper in a separate process which actually uses
-        # dragon's multiprocessing implementation
-        self._dragon = sp.Popen(
-                args   = ['dragon', 'radical-pilot-dragon-executor.py',
-                          self.session._cfg.path],
-                stdout = sp.PIPE,
-                stderr = sp.STDOUT)
+        self._url_in    = None
+        self._url_out   = None
+        self._start_evt = mt.Event()
 
-        # run this loop for 10 seconds to get the endpoints
-        start = time.time()
-        while True:
+        # ----------------------------------------------------------------------
+        #
+        def line_cb(proc: Process, lines : List[str]) -> None:
+            for line in lines:
+                self._log.info('=== line: %s', line)
+                if line.startswith('ZMQ_ENDPOINTS '):
+                    self._log.debug('=== 4')
+                    _, self._url_out, self._url_in = line.split()
+                    self._log.debug('=== 5')
+                    self._start_evt.set()
+                    break
 
-            if self._dragon.poll() is not None:
-                self._log.error('%s', str(self._dragon.communicate()))
-                raise RuntimeError('dragon process died')
+        def state_cb(proc: Process, state: str):
+            self._log.debug('process state: %s' % state)
+        # ----------------------------------------------------------------------
 
-            line = ru.as_string(self._dragon.stdout.readline().strip())
-            self._log.debug('line: [%s]', line)
+        cmd = 'dragon radical-pilot-dragon-executor.py %s' % os.getcwd()
+        p = Process(cmd)
+        p.register_cb(p.CB_OUT_LINE, line_cb)
+        p.register_cb(p.CB_STATE, state_cb)
+        p.polldelay = 0.1
+        p.start()
 
-            if line.startswith('ZMQ_ENDPOINTS '):
-                _, url_out, url_in = line.split()
-                break
+        self._log.debug('=== 8')
+        self._start_evt.wait()
+        self._log.debug('=== 9')
 
-            if time.time() - start > 3:
-                self._log.debug('%s', str(self._dragon.communicate()))
-                raise RuntimeError('failed to get dragon endpoint')
+        self._log.debug('dragon eps: %s - %s', self._url_in, self._url_out)
 
-        self._log.debug('dragon eps: %s - %s', url_in, url_out)
+        assert self._url_in
+        assert self._url_out
 
-        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH, url_out)
+        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH, self._url_out)
 
         # run watcher thread
-        self._watcher = mt.Thread(target=self._dragon_watch, args=[url_in])
+        self._watcher = mt.Thread(target=self._dragon_watch, args=[self._url_in])
         self._watcher.daemon = True
         self._watcher.start()
 
@@ -97,7 +108,7 @@ class Dragon(Popen):
         '''
 
         # send cancel request to dragon
-        self._pipe_out.put({'cmd': 'cancel', 'uid': uid})
+        self._pipe_out.put({'cmd': 'cancel', 'uid': task['uid']})
 
 
     # --------------------------------------------------------------------------

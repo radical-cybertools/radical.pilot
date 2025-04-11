@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 #dragon
 
-USE_DRAGON = False
+print('==== dragon executor')
+
+USE_DRAGON = True
 
 import os
 import sys
@@ -18,6 +20,7 @@ import threading       as mt
 import radical.utils   as ru
 import radical.pilot   as rp
 
+
 # ------------------------------------------------------------------------------
 #
 class Server(object):
@@ -30,9 +33,11 @@ class Server(object):
     # --------------------------------------------------------------------------
     #
     def __init__(self):
+        print('==== ex init 1')
 
         sandbox   = sys.argv[1]
         self._log = ru.Logger('radical.pilot.dragon', path=sandbox)
+        print('==== ex init 2', sandbox)
 
         self._pin  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
         self._pout = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
@@ -48,6 +53,7 @@ class Server(object):
         self._watcher = mt.Thread(target=self._watch)
         self._watcher.daemon = True
         self._watcher.start()
+        print('==== ex init 3')
 
 
     # --------------------------------------------------------------------------
@@ -93,8 +99,8 @@ class Server(object):
         if not msg:
             return
 
-      # import pprint
-      # self._log.debug('got request %s', pprint.pformat(msg))
+        import pprint
+        self._log.debug('got request %s', pprint.pformat(msg))
 
         if not isinstance(msg, dict):
             self._log.error('invalid message type %s', type(msg))
@@ -261,11 +267,15 @@ class Server(object):
 #
 if __name__ == '__main__':
 
+    print('==== d 1')
     sys.stdout.write('started\n')
+    print('==== d 2')
     sys.stdout.flush()
 
     s = Server()
+    print('==== d 3')
     s.serve()
+    print('==== d 4')
 
 
 # ------------------------------------------------------------------------------
