@@ -22,7 +22,7 @@
                                          "order": ["SRUN"],
                                          "SRUN" : {}
                                         },
-        "pre_bootstrap_0"             : ["module load anaconda"],
+        "pre_bootstrap_0"             : ["module load python/GEOSpyD/Min24.1.2-0_py3.12"],
         "default_remote_workdir"      : "$NOBACKUP/$USER",
         "virtenv_mode"                : "local"
     },
@@ -51,7 +51,7 @@
                                          "order": ["SRUN"],
                                          "SRUN" : {}
                                         },
-        "pre_bootstrap_0"             : ["module load anaconda"],
+        "pre_bootstrap_0"             : ["module load python/GEOSpyD/Min24.1.2-0_py3.12"],
         "default_remote_workdir"      : "$NOBACKUP/$USER",
         "virtenv_mode"                : "local"
     }
