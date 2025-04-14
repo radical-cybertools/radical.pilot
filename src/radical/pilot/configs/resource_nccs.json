@@ -13,8 +13,8 @@
                 "filesystem_endpoint" : "file://localhost/"
             }
         },
-        "default_queue"               : "serial",
-        "cores_per_node"              : 128,
+        "default_queue"               : "compute",
+        "cores_per_node"              : 46,
         "resource_manager"            : "SLURM",
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
@@ -27,7 +27,7 @@
         "virtenv_mode"                : "local"
     },
 
-    "discover_gpu":
+    "discover_gpu_a100":
     {
         "description"                 : "Heterogeneous cluster of 2096 GPU and CPU nodes",
         "default_schema"              : "batch",
