@@ -23,6 +23,7 @@ class PythonTask(object):
         Example:
             import PythonTask
             wrapped_func = partial(func_A, func_AB)
+            td = rp.TaskDescription()
             td.function  = pythonTask(wrapped_func)
         '''
 
@@ -80,7 +81,8 @@ class PythonTask(object):
             @pythontask
             def func_C(x):
                 return (x)
-            cud.EXECUTABLE = func_C(2)
+            td = rp.TaskDescription()
+            td.function = func_C(2)
 
         """
 
