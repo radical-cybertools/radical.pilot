@@ -840,6 +840,13 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         for arg in pre_bootstrap_0:   bs_args.extend(['-e', arg])
         for arg in pre_bootstrap_1:   bs_args.extend(['-w', arg])
 
+        # fix n_partitions before copying the rcfg
+        n_parts = int(rcfg.get('n_partitions', 1))
+        self._log.debug('=== found %d partitions', n_parts)
+        nparts = int(open('/lustre/orion/chm155/scratch/merzky1/frankenstein/nparts.dat').read().strip())
+        rcfg['n_partitions'] = n_parts
+        self._log.debug('=== using %d partitions', n_parts)
+
         agent_cfg['uid']                 = 'agent_0'
         agent_cfg['sid']                 = sid
         agent_cfg['pid']                 = pid
