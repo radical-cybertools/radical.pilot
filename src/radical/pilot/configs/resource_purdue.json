@@ -23,9 +23,10 @@
                                          "SRUN" : {},
                                          "MPIRUN": {}
                                         },
-        "pre_bootstrap_0"             :["module load anaconda"],
+        "pre_bootstrap_0"             : ["module load anaconda"],
         "default_remote_workdir"      : "$PROJECT",
-        "system_architecture"         : {"exclusive": true}
+        "system_architecture"         : {"exclusive": true},
+        "cores_per_node"              : 128
     },
 
     "anvil_gpu":
@@ -52,9 +53,11 @@
                                          "SRUN" : {},
                                          "MPIRUN": {}
                                         },
-        "pre_bootstrap_0"             :["module load anaconda"],
+        "pre_bootstrap_0"             : ["module load anaconda"],
         "default_remote_workdir"      : "$PROJECT",
-        "system_architecture"         : {"exclusive": true}
+        "system_architecture"         : {"exclusive": true},
+        "cores_per_node"              : 128,  
+        "gpus_per_node"               : 4
     },
 
     "anvil_mem":
@@ -81,8 +84,10 @@
                                          "SRUN" : {},
                                          "MPIRUN": {}
                                         },
-        "pre_bootstrap_0"             :["module load anaconda"],
+        "pre_bootstrap_0"             : ["module load anaconda"],
         "default_remote_workdir"      : "$PROJECT",
-        "system_architecture"         : {"exclusive": true}
+        "system_architecture"         : {"exclusive": true},
+        "cores_per_node"              : 128,
+        "mem_per_node"                : 1000000
     }
 }

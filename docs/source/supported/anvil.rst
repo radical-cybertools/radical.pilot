@@ -1,6 +1,6 @@
-================
+==============
 Anvil (Purdue)
-================
+==============
 
 Platform user guide
 ===================
@@ -13,28 +13,25 @@ General description
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
 
-  * ``purdue.anvil`` - ``SRUN``
+  * ``purdue.anvil*`` - ``SRUN``, ``MPIRUN``
 
 * Configuration per node (per platform ID)
 
-  * ``anvil`` queue (1767 nodes)
+  * ``purdue.anvil`` (1000 nodes)
 
     * 128 CPU cores
     * 257 GB of memory
 
-
-  * ``anvil_mem`` queue (32 nodes)
+  * ``purdue.anvil_mem`` (32 nodes)
 
     * 128 CPU cores
     * 1031 GB of memory
 
-  * ``anvil_gpu`` queue (32 nodes)
+  * ``purdue.anvil_gpu`` queue (16 nodes)
 
     * 128 CPU cores
-    * 4 NVIDIA A100 GPUs (per node for gpu queue)
-    * 2 NVIDIA A100 GPUs (per node for gpu-debug queue)
+    * 4 GPUs (NVIDIA A100)
     * 515 GB of memory
-
 
 Setup execution environment
 ===========================
@@ -51,7 +48,6 @@ Create a **virtual environment** with ``venv``:
 
    python3.9 -m venv ve.rp
    source ve.rp/bin/activate
-
 
 OR create a **virtual environment** with ``conda``:
 
@@ -70,6 +66,9 @@ Install RADICAL-Pilot after activating a corresponding virtual environment:
 .. code-block:: bash
 
    pip install radical.pilot
+   
+   # Or use conda to install radical.pilot within conda environment
+   conda install -c conda-forge radical.pilot 
 
 
 Launching script example
