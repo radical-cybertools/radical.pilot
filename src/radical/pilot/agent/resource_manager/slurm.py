@@ -60,13 +60,20 @@ class Slurm(ResourceManager):
 
         # filter out nodes which are not accessible.  Test access by running
         # `ssh <node> hostname` and checking the return code.
-        ok = list()
+        procs = list()
         for node in rm_info.node_list:
             name = node['name']
             cmd  = 'ssh -oBatchMode=yes %s hostname' % name
-            out, err, ret = ru.sh_callout(cmd)
-            self._log.debug('check node: %s ', name, [out, err, ret])
-            if not ret:
+            proc = rc.process.Process(cmd)
+            proc.start()
+            procs.append([name, proc])
+
+        ok = list()
+        for name, proc in procs:
+            proc.wait()
+            self._log.debug('check node: %s ', name, [proc.stdout, proc.stderr,
+                                                      proc.retcode])
+            if not proc.retcode:
                 ok.append(node)
 
         rm_info.node_list = ok
