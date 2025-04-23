@@ -80,6 +80,7 @@ class Flux(AgentExecutingComponent) :
 
         self._task_count = 0
 
+
       # self._test_flux()
 
 
@@ -98,9 +99,7 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _test_flux(self):
-
-        n = 128
+    def _test_flux(self, n=128, count=2):
 
         def state_cb(task_id, state):
           # self._log.debug('=====', task_id, state)
@@ -116,18 +115,20 @@ class Flux(AgentExecutingComponent) :
                         for i in range(n)]
         dt  = time.time() - t0
         jps = len(specs) / dt
-        self._log.debug("===== create %4d tasks in %5.1fs - %8.1fjob/s" % (n, dt, jps))
+        self._log.debug("===== create %4d tasks in %5.1fs - %8.1fjob/s"
+                                                                 % (n, dt, jps))
 
         fh.register_cb(state_cb)
         fh.start()
 
         with open('flux_async.prof', 'w') as fout:
-            for c in range(32):
+            for c in range(count):
 
-                specs = [ru.flux.spec_from_dict({'executable': 'sleep',
-                                                 'arguments' : ['1'],
-                                                 'uid'       : 'task.%06d.%04d' % (i, c)})
-                                for i in range(n)]
+                specs = [ru.flux.spec_from_dict(
+                            {'executable': 'sleep',
+                             'arguments' : ['1'],
+                             'uid'       : 'task.%06d.%04d' % (i, c)})
+                                         for i in range(n)]
                 start = time.time()
 
                 tids = fh.submit(specs)
@@ -135,7 +136,8 @@ class Flux(AgentExecutingComponent) :
 
                 stop = time.time()
                 jps = n / (stop - start)
-                self._log.debug('===== waited %4d tasks in %5.1fs - %8.1fjob/s' % (n, stop-start, jps))
+                self._log.debug('===== waited %4d tasks in %5.1fs - %8.1fjob/s'
+                                                         % (n, stop-start, jps))
                 fout.write('%4d %8.1f\n' % (c, jps))
                 fout.flush()
 
