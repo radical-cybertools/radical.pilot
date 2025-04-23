@@ -58,6 +58,25 @@ class Slurm(ResourceManager):
 
         rm_info.node_list = self._get_node_list(nodes, rm_info)
 
+        # filter out nodes which are not accessible.  Test access by running
+        # `ssh <node> hostname` and checking the return code.
+        ok = list()
+        for node in rm_info.node_list:
+            name = node['name']
+            out, err, ret = ru.sh_callout('ssh %s hostname' % name)
+            self._log.debug('ssh check for node: %s ', name, [out, err, ret])
+            if ret:
+                self._log.warning('node %s not accessible', name)
+            else:
+                ok.append(node)
+
+        rm_info.node_list = ok
+        self._log.warning('found %d accessible nodes out of %d',
+                              len(rm_info.node_list))
+
+        if not rm_info.node_list:
+            raise RuntimeError('no accessible nodes found')
+
         return rm_info
 
 
