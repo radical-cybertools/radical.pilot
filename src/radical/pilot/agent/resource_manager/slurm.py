@@ -63,16 +63,14 @@ class Slurm(ResourceManager):
         ok = list()
         for node in rm_info.node_list:
             name = node['name']
-            out, err, ret = ru.sh_callout('ssh %s hostname' % name)
-            self._log.debug('ssh check for node: %s ', name, [out, err, ret])
-            if ret:
-                self._log.warning('node %s not accessible', name)
-            else:
+            cmd  = 'ssh -oBatchMode=yes %s hostname' % name
+            out, err, ret = ru.sh_callout(cmd)
+            self._log.debug('check node: %s ', name, [out, err, ret])
+            if not ret:
                 ok.append(node)
 
         rm_info.node_list = ok
-        self._log.warning('found %d accessible nodes out of %d',
-                              len(rm_info.node_list))
+        self._log.warning('found %d accessible nodes out of %d', len(ok))
 
         if not rm_info.node_list:
             raise RuntimeError('no accessible nodes found')
