@@ -884,7 +884,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     priority  = td.get('priority', 0)
                     mode      = td.get('mode')
 
-                    self._log.debug('incoming task %s (%s)', task['uid'], priority)
+                    self._log.debug('incoming task %s (%s:%s)',
+                                    task['uid'], priority, raptor_id)
 
                     # raptor workers are not scheduled by raptor itself!
                     if raptor_id and mode != RAPTOR_WORKER:
