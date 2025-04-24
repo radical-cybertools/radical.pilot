@@ -7,7 +7,10 @@ import os
 
 from typing     import List
 
-from rc.process import Process
+try:
+    from rc.process import Process
+except ImportError:
+    Process = None
 
 import threading     as mt
 
@@ -36,6 +39,9 @@ class Dragon(Popen):
         '''
 
         super().initialize()
+
+        if not Process:
+            raise RuntimeError('dragon executor not available')
 
         self._log.debug('=== 1')
 
