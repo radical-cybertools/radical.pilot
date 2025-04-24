@@ -57,9 +57,15 @@ class Dragon(Popen):
 
         def state_cb(proc: Process, state: str):
             self._log.debug('process state: %s' % state)
+            if state == 'failed':
+                self._log.error('=== dragon executor failed')
+                self._log.error('=== stdout: %s', proc.stdout)
+                self._log.error('=== stderr: %s', proc.stderr)
+                self._start_evt.set()
         # ----------------------------------------------------------------------
 
         cmd = 'dragon radical-pilot-dragon-executor.py %s' % os.getcwd()
+        self._log.debug('=== cmd: %s', cmd)
         p = Process(cmd)
         p.register_cb(p.CB_OUT_LINE, line_cb)
         p.register_cb(p.CB_STATE, state_cb)
