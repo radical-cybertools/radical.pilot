@@ -3,18 +3,23 @@
 
 The Dragon executor requires Python 3.10 *or lower* - Python 3.11 conflicts with
 how json serialization is used (https://github.com/DragonHPC/dragon/issues/9).
+Pythyon 3.12 misses distutils and that leads to on import error (https://github.com/DragonHPC/dragon/issues/32).
 
-In order to correctly install Dragon, we had to change
-`.devcontainer/constraints.txt`:
+### Deployment:
 
-  - remove the `attrs=22.1.0` dependency
-  - remove the `pytest=7.2.0` dependency
+```bash
+$ python3 -m venv ve_dragon
+$ source ve_dragon/bin/activate
+$ pip install pip dragonhpc rc.process .
+```
 
-Also ensure that `radical.utils` is installed from the `fix/dragon` branch which
-avoids some logger lambdas which conflicted with the used serialization scheme.
+### Running the example:
 
-The simplest setup is to carefully prepare a virtualenv as described above, and
-then configure RP so that the pilot agent and the tasks use the very same
-environment.  In the resource config, set `rp_version=installed` and
-`virtenv_mode=local`, for task descriptions set `named_env=rp`.
+```bash
+$ python3 examples/00_getting_started.py local.dragon
+```
+
+Only `local.dragon` is configured as a dragon resource for now.  Please open an
+issue at `https://github.com/radical-cybertools/radical.pilot/issues/new` if you
+want to use a different resource.
 
