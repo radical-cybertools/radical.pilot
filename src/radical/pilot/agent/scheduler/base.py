@@ -888,7 +888,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                                     task['uid'], priority, raptor_id)
 
                     # raptor workers are not scheduled by raptor itself!
-                    if raptor_id and mode != RAPTOR_WORKER:
+                    if raptor_id is not None and mode != RAPTOR_WORKER:
 
                         if task.get('raptor_seen'):
                             # raptor has handled this one - we can execute it
