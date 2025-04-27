@@ -681,9 +681,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         #     resources = True  # maybe we can place a task now
 
         # keep a backlog of raptor tasks until their queues are registered
-        self._raptor_queues = dict()           # raptor_master_id : zmq.Queue
-        self._raptor_tasks  = dict()           # raptor_master_id : [task]
-        self._raptor_lock   = mt.Lock()        # lock for the above
+        self._raptor_queues = dict()             # raptor_master_id : zmq.Queue
+        self._raptor_tasks  = defaultdict(list)  # raptor_master_id : [task]
+        self._raptor_lock   = mt.Lock()          # lock for the above
 
         # register task output channels
         self.register_output(rps.AGENT_EXECUTING_PENDING,
@@ -885,10 +885,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                     mode      = td.get('mode')
 
                     self._log.debug('incoming task %s (%s:%s)',
-                                    task['uid'], priority, raptor_id)
+                                               task['uid'], priority, raptor_id)
 
                     # raptor workers are not scheduled by raptor itself!
-                    if raptor_id is not None and mode != RAPTOR_WORKER:
+                    if raptor_id and mode != RAPTOR_WORKER:
+
+                        self._log.debug('to_raptor task %s', task['uid'])
 
                         if task.get('raptor_seen'):
                             # raptor has handled this one - we can execute it
@@ -914,32 +916,32 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
                 for name in to_raptor:
 
+                    bucket = to_raptor[name]
+
                     if name in self._raptor_queues:
                         # forward to specified raptor queue
-                        self._log.debug('fwd %s: %d', name,
-                                        len(to_raptor[name]))
-                        self._raptor_queues[name].put(to_raptor[name])
+                        self._log.debug('fwd %s: %d', name, len(bucket))
+                        self._raptor_queues[name].put(bucket)
 
                     elif self._raptor_queues and name == '*':
                         # round robin to available raptor queues
                         names   = list(self._raptor_queues.keys())
                         n_names = len(names)
-                        for idx in range(len(to_raptor[name])):
-                            task  = to_raptor[name][idx]
+                        for idx in range(len(bucket)):
+                            task  = bucket[idx]
                             qname = names[idx % n_names]
                             self._log.debug('* put task %s to rq %s',
-                                    task['uid'], qname)
+                                                             task['uid'], qname)
                             self._raptor_queues[qname].put(task)
 
                     else:
                         # keep around until a raptor queue registers
-                        self._log.debug('cache %s: %d', name,
-                                        len(to_raptor[name]))
+                        self._log.debug('cache %s: %d', name, len(bucket))
 
                         if name not in self._raptor_tasks:
-                            self._raptor_tasks[name] = to_raptor[name]
+                            self._raptor_tasks[name] = bucket
                         else:
-                            self._raptor_tasks[name] += to_raptor[name]
+                            self._raptor_tasks[name] += bucket
 
         if not to_schedule:
             # no resource change, no activity

@@ -72,7 +72,6 @@ class Master(rpu.AgentComponent):
         self._workers    = dict()      # wid: worker
         self._tasks      = dict()      # bookkeeping of submitted requests
         self._exec_tasks = list()      # keep track of executable tasks
-        self._term       = mt.Event()  # termination signal
         self._thread     = None        # run loop
 
         self._session    = Session(uid=self._sid, _reg_addr=self._reg_addr,
@@ -180,12 +179,12 @@ class Master(rpu.AgentComponent):
         self.register_subscriber(rpc.STATE_PUBSUB, self._state_cb)
 
         # and register that input queue with the scheduler
-        self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
         self.publish(rpc.CONTROL_PUBSUB,
                       {'cmd': 'register_raptor_queue',
                        'arg': {'name' : self._uid,
                                'queue': qname,
                                'addr' : str(self._input_queue.addr_put)}})
+        self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
 
         # all comm channels are set up - begin to work
         self._log.debug('startup complete')
@@ -226,6 +225,8 @@ class Master(rpu.AgentComponent):
 
         if cmd == 'worker_register':
 
+            self._log.debug('register worker %s', arg)
+
             uid   = arg['uid']
             rid   = arg['raptor_id']
             ranks = arg['ranks']
@@ -257,7 +258,7 @@ class Master(rpu.AgentComponent):
             uid  = arg['uid']
             rank = arg['rank']
 
-            self._log.debug('recv rank heartbeat %s:%s', uid, rank)
+            self._log.debug_9('recv rank heartbeat %s:%s', uid, rank)
 
             if uid not in self._workers:
                 return
@@ -583,7 +584,7 @@ class Master(rpu.AgentComponent):
     #
     def _run(self):
         '''
-        main work threda of this master
+        main work thread of this master
         '''
 
         hb_thread = mt.Thread(target=self._hb_thread)

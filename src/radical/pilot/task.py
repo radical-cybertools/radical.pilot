@@ -475,7 +475,7 @@ class Task(object):
     @property
     def description(self):
         """dict: The description the task was started with, as a dictionary."""
-        return self._descr
+        return TaskDescription(self._descr)
 
 
     # --------------------------------------------------------------------------

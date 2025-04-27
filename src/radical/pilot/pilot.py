@@ -18,6 +18,7 @@ from . import constants as rpc
 from .messages             import RPCRequestMessage, RPCResultMessage
 from .staging_directives   import complete_url
 from .resource_config      import Node, NodeList, NumaNode
+from .pilot_description    import PilotDescription
 
 
 # ------------------------------------------------------------------------------
@@ -521,7 +522,7 @@ class Pilot(object):
     def description(self):
         """dict: The description the pilot was started with, as a dictionary."""
 
-        return copy.deepcopy(self._descr)
+        return PilotDescription(self._descr)
 
 
     # --------------------------------------------------------------------------

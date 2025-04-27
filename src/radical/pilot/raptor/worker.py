@@ -54,6 +54,8 @@ class Worker(object):
                                  ns='radical.pilot.worker',
                                  path=self._sbox)
 
+        self._log.debug('worker %s: %s', self._uid, self._raptor_id)
+
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']
         state_cfg = self._reg['bridges.%s' % rpc.STATE_PUBSUB]
