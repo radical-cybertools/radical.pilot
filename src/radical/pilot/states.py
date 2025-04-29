@@ -12,10 +12,11 @@ NEW      = 'NEW'
 DONE     = 'DONE'
 FAILED   = 'FAILED'
 CANCELED = 'CANCELED'
+SERVICE_ACTIVE = 'SERVICE_ACTIVE'
 
 # shortcut
 INITIAL  = [NEW]
-FINAL    = [DONE, FAILED, CANCELED]
+FINAL    = [DONE, FAILED, CANCELED, SERVICE_ACTIVE]
 
 
 # ------------------------------------------------------------------------------
@@ -160,7 +161,8 @@ _task_state_values = {
         TMGR_STAGING_OUTPUT          : 14,
         DONE                         : 15,
         FAILED                       : 15,
-        CANCELED                     : 15}
+        CANCELED                     : 15,
+        SERVICE_ACTIVE               : 15}
 _task_state_inv = {_v: _k for _k, _v in _task_state_values.items()}
 _task_state_inv_full = dict()
 for _st,_v in _task_state_values.items():
@@ -217,7 +219,7 @@ def _task_state_progress(uid, current, target):
 
     # first handle final state corrections
     if current == CANCELED:
-        if target in [DONE, FAILED, CANCELED]:
+        if target in [DONE, FAILED, CANCELED, SERVICE_ACTIVE]:
             return [target, []]
 
     if current in FINAL:
@@ -253,6 +255,7 @@ def _task_state_collapse(states):
     if DONE     in states: return DONE
     if FAILED   in states: return FAILED
     if CANCELED in states: return CANCELED
+    if SERVICE_ACTIVE in states: return SERVICE_ACTIVE
     ret = None
     for state in states:
         if _task_state_values[state] > _task_state_values[ret]:

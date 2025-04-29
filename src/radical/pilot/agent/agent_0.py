@@ -435,6 +435,8 @@ class Agent_0(rpu.AgentComponent):
                     raise RuntimeError('Unable to start service')
             else:
                 self._service_start_evt.wait()
+            
+            self.advance(task, rps.SERVICE_ACTIVE, publish=True, push=False)
 
             info = self._reg.get('services.%s' % td.uid)
             self._log.info('agent service started: %s - %s', td.uid, info)
