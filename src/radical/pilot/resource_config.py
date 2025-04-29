@@ -612,6 +612,61 @@ class Node(FastTypedDict):
 
             return slot
 
+    # --------------------------------------------------------------------------
+    #
+    def get_status(self, slots=None) -> dict:
+        '''
+        return a string representation of the node status, like
+
+            |---###---:--|
+
+        where the first part is the core status and the second part is the gpu
+        status.  The characters are:
+
+            - `-` : free
+            - `+` : busy
+            - `_` : down
+
+        If the optional given slots are present, their respective resources are
+        shown as '#' in the string.
+        '''
+
+        slots_idx_cpu = list()
+        slots_idx_gpu = list()
+        for slot in slots:
+            [slots_idx_cpu.append(core.index) for core in slot.cores]
+            [slots_idx_gpu.append(gpu.index)  for gpu  in slot.gpus]
+
+        ret = '|'
+
+        for ro in self.cores:
+            if ro.occupation < 0:
+                ret += '_'
+            elif ro.occupation > 0:
+                if ro.index in slots_idx_cpu:
+                    ret += '#'
+                else:
+                    ret += '+'
+            else:
+                ret += '-'
+
+        ret += ':'
+        for ro in self.gpus:
+            if ro.occupation < 0:
+                ret += '_'
+            elif ro.occupation > 0:
+                if ro.index in slots_idx_gpu:
+                    ret += '#'
+                else:
+                    ret += '+'
+            else:
+                ret += '-'
+
+
+        ret += '|'
+
+        return ret
+
 
 # ------------------------------------------------------------------------------
 #
@@ -785,6 +840,38 @@ class NodeList(FastTypedDict):
 
         self.__last_failed_rr__ = None
         self.__last_failed_n__  = None
+
+
+
+    # --------------------------------------------------------------------------
+    #
+    def get_status(self, slots = None) -> dict:
+        '''
+        return a string representation of the node status, like
+
+            "|---###---:--||---#---:--|"
+
+        where the first part is the core status and the second part is the gpu
+        status.  The characters are:
+
+            - `-` : free
+            - `+` : busy
+            - `_` : down
+
+        If the optional given slots are present, their respective resources are
+        shown as '#' in the string.
+        '''
+
+        slots = ru.as_list(slots)
+        ret   = str()
+        for node in self.nodes:
+            nslots = list()
+            for slot in slots:
+                if slot.node_index == node.index:
+                    nslots.append(slot)
+            ret += node.get_status(slots=nslots)
+
+        return ret
 
 
 # ------------------------------------------------------------------------------
