@@ -55,6 +55,7 @@ class Worker(object):
                                  path=self._sbox)
 
         self._log.debug('worker %s: %s', self._uid, self._raptor_id)
+        self._log.debug('====== %s: %.5f', self._uid, self._hb_delay)
 
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']

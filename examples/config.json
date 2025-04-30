@@ -46,6 +46,14 @@
         "gpus"     : 8
     },
 
+    "ncsa.delta": {
+        "project"  : "bblj-delta-cpu",
+        "queue"    : null,
+        "schema"   : "local",
+        "cores"    : 128,
+        "gpus"     : 0
+    },
+
     "anl.arcticus" : {
         "project"  : null,
         "queue"    : "arcticus",
