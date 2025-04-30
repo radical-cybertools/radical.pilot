@@ -184,6 +184,7 @@ class Master(rpu.AgentComponent):
                        'arg': {'name' : self._uid,
                                'queue': qname,
                                'addr' : str(self._input_queue.addr_put)}})
+        self._prof.prof('raptor.queue.register.send', uid=self._uid)
         self._log.debug('registered raptor queue: %s / %s', self._uid, qname)
 
         # all comm channels are set up - begin to work
@@ -225,14 +226,15 @@ class Master(rpu.AgentComponent):
 
         if cmd == 'worker_register':
 
-            self._log.debug('register worker %s', arg)
-
             uid   = arg['uid']
             rid   = arg['raptor_id']
             ranks = arg['ranks']
 
             if rid != self._uid:
                 return
+
+            self._log.debug('register worker %s', uid)
+            self._prof.prof('raptor.worker.register.recv', uid=uid)
 
             now = time.time()
             if uid not in self._workers:
@@ -252,27 +254,30 @@ class Master(rpu.AgentComponent):
             self.publish(rpc.CONTROL_PUBSUB, {'cmd': 'worker_registered',
                                               'arg': {'uid' : uid,
                                                       'info': info}})
+            self._prof.prof('raptor.worker.register.ack1', uid=self.uid)
 
-        elif cmd == 'worker_rank_heartbeat':
-
-            uid  = arg['uid']
-            rank = arg['rank']
-
-            self._log.debug_9('recv rank heartbeat %s:%s', uid, rank)
-
-            if uid not in self._workers:
-                return
-
-            self._workers[uid]['heartbeats'][rank] = time.time()
+      # elif cmd == 'worker_rank_heartbeat':
+      #
+      #     uid  = arg['uid']
+      #     rank = arg['rank']
+      #
+      #     self._log.debug_9('recv rank heartbeat %s:%s', uid, rank)
+      #
+      #     if uid not in self._workers:
+      #         return
+      #
+      #     self._workers[uid]['heartbeats'][rank] = time.time()
 
 
         elif cmd == 'worker_unregister':
 
             uid = arg['uid']
-            self._log.debug('unregister %s', uid)
 
             if uid not in self._workers:
                 return
+
+            self._prof.prof('raptor.worker.unregister.recv', uid=uid)
+            self._log.debug('unregister %s', uid)
 
             self._workers[uid]['status'] = self.DONE
 
@@ -427,6 +432,7 @@ class Master(rpu.AgentComponent):
             #       the update worker's message receive up to the insertion
             #       order into the update worker's DB bulk op.
             self._log.debug('insert %s', td.uid)
+            self._prof.prof('raptor.worker.insert', uid=td.uid)
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'insert', 'arg': task})
 
             now = time.time()
@@ -587,9 +593,9 @@ class Master(rpu.AgentComponent):
         main work thread of this master
         '''
 
-        hb_thread = mt.Thread(target=self._hb_thread)
-        hb_thread.daemon = True
-        hb_thread.start()
+     ## hb_thread = mt.Thread(target=self._hb_thread)
+     ## hb_thread.daemon = True
+     ## hb_thread.start()
 
         # wait for the submitted requests to complete
         while not self._term.is_set():

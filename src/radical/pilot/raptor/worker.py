@@ -79,9 +79,9 @@ class Worker(object):
         self._hb_register_count = 60
         # run heartbeat thread in all ranks (one hb msg every `n` seconds)
         self._log.debug('hb delay: %s', self._hb_delay)
-        self._hb_thread = mt.Thread(target=self._hb_worker)
-        self._hb_thread.daemon = True
-        self._hb_thread.start()
+      # self._hb_thread = mt.Thread(target=self._hb_worker)
+      # self._hb_thread.daemon = True
+      # self._hb_thread.start()
 
         # run worker initialization *before* starting to work on requests.
         # the worker provides these builtin methods:
@@ -110,6 +110,8 @@ class Worker(object):
                            'raptor_id'  : self._raptor_id,
                            'ranks'      : self._ranks}}
 
+        self._prof.prof('raptor.worker.register.send', uid=self._uid)
+
         # the manager (rank 0) registers the worker with the master
         if self._manager:
 
@@ -127,6 +129,7 @@ class Worker(object):
             if count < self._hb_register_count:
                 count += 1
                 if self._manager:
+                    self._prof.prof('raptor.worker.register.send.re', uid=self._uid)
                     self._log.debug('re-register: %s / %s', self._uid, self._raptor_id)
                     self._ctrl_pub.put(rpc.CONTROL_PUBSUB, reg_msg)
             else:
@@ -134,6 +137,7 @@ class Worker(object):
                 self.join()
                 self._log.error('registration with master timed out')
                 raise RuntimeError('registration with master timed out')
+        self._prof.prof('raptor.worker.register.ok', uid=self._uid)
 
         if self._manager:
             self._log.debug('registration with master ok')
@@ -197,6 +201,8 @@ class Worker(object):
             if self._reg_event.is_set():
                 # registration was completed already
                 return
+
+            self._prof.prof('raptor.worker.register.ack2', uid=self._uid)
 
             self._ts_addr      = arg['info']['ts_addr']
             self._res_addr_put = arg['info']['res_addr_put']
