@@ -1134,7 +1134,6 @@ class BaseComponent(object):
             for thing in things:
 
                 if '$all' in thing:
-                    del thing['$all']
                     to_publish.append(thing)
 
                 elif thing['state'] in rps.FINAL:
@@ -1144,6 +1143,8 @@ class BaseComponent(object):
                     tmp = {'uid'   : thing['uid'],
                            'type'  : thing['type'],
                            'state' : thing['state']}
+                    for k in thing.get('$set', []):
+                        tmp[k] = thing.get(k)
                     to_publish.append(tmp)
 
             self.publish(rpc.STATE_PUBSUB, {'cmd': 'update',
@@ -1155,14 +1156,13 @@ class BaseComponent(object):
           #     self._prof.prof('publish', uid=thing['uid'],
           #                     state=thing['state'], ts=ts)
 
-        # never carry $all and across component boundaries!
+        # never carry $all and $set across component boundaries!
         for thing in things:
-            if '$all' in thing:
-                del thing['$all']
+            if '$all' in thing: del thing['$all']
+            if '$set' in thing: del thing['$set']
 
         # should we push things downstream, to the next component
         if push:
-
             # the push target depends on the state of things, so we need to sort
             # the things into buckets by state before pushing them
             # now we can push the buckets as bulks

@@ -811,7 +811,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             # update task resources
             for task in scheduled:
                 td = task['description']
-                task['$set']      = ['resources']
+                task['$set']      = ['resources', 'slots']
                 task['resources'] = {'cpu': td['ranks'] * td['cores_per_rank'],
                                      'gpu': td['ranks'] * td['gpus_per_rank']}
             self.advance(scheduled, rps.AGENT_EXECUTING_PENDING, publish=True,
@@ -994,7 +994,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
                         # task got scheduled - advance state, notify world about the
                         # state change, and push it out toward the next component.
                         td = task['description']
-                        task['$set']      = ['resources']
+                        task['$set']      = ['resources', 'slots']
                         task['resources'] = {'cpu': td['ranks'] *
                                                     td['cores_per_rank'],
                                              'gpu': td['ranks'] *
