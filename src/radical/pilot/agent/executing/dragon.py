@@ -5,12 +5,9 @@ __license__   = 'MIT'
 
 import os
 
-from typing     import List
+from typing import List
 
-try:
-    from rc.process import Process
-except ImportError:
-    Process = None
+from rc.process import Process
 
 import threading     as mt
 
@@ -52,6 +49,7 @@ class Dragon(Popen):
         # ----------------------------------------------------------------------
         #
         def line_cb(proc: Process, lines : List[str]) -> None:
+            self._log.info('=== lines %s', lines)
             for line in lines:
                 self._log.info('=== line: %s', line)
                 if line.startswith('ZMQ_ENDPOINTS '):
@@ -62,7 +60,7 @@ class Dragon(Popen):
                     break
 
         def state_cb(proc: Process, state: str):
-            self._log.debug('process state: %s' % state)
+            self._log.debug('=== process state: %s' % state)
             if state == 'failed':
                 self._log.error('=== dragon executor failed')
                 self._log.error('=== stdout: %s', proc.stdout)
@@ -70,8 +68,10 @@ class Dragon(Popen):
                 self._start_evt.set()
         # ----------------------------------------------------------------------
 
-        cmd = 'dragon radical-pilot-dragon-executor.py %s' % os.getcwd()
+        dragon = 'dragon -l DEBUG -N 2 '
+        cmd    = dragon + 'radical-pilot-dragon-executor.py %s' % os.getcwd()
         self._log.debug('=== cmd: %s', cmd)
+
         p = Process(cmd)
         p.register_cb(p.CB_OUT_LINE, line_cb)
         p.register_cb(p.CB_STATE, state_cb)

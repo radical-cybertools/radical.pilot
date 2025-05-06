@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-#dragon
 
+print('=== startup')
 USE_DRAGON = True
 
 import os
@@ -34,14 +34,17 @@ class Server(object):
 
         sandbox   = sys.argv[1]
         self._log = ru.Logger('radical.pilot.dragon', path=sandbox)
+        print(10)
 
         self._pin  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
         self._pout = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+        print(11)
 
         sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
                          % (ru.as_string(self._pin.url),
                             ru.as_string(self._pout.url)))
         sys.stdout.flush()
+        print(12)
 
         self._watch_queue = queue.Queue()
         self._done_queue  = queue.Queue()
@@ -58,8 +61,8 @@ class Server(object):
         # FIXME: profile events
         self._log.info('serving')
 
-        if USE_DRAGON:
-            mp.set_start_method("dragon")
+      # if USE_DRAGON:
+      #     mp.set_start_method("dragon")
 
         self._log.info('serving dragon')
 
@@ -87,15 +90,15 @@ class Server(object):
             - task: the task to execute the command on
         '''
 
-      # self._log.debug('waiting for request')
+        self._log.debug('waiting for request')
 
-        msg = self._pin.get_nowait(0.1)
+        msg = self._pin.get_nowait(1)
 
         if not msg:
             return
 
-      # import pprint
-      # self._log.debug('got request %s', pprint.pformat(msg))
+        import pprint
+        self._log.debug('got request %s', pprint.pformat(msg))
 
         if not isinstance(msg, dict):
             self._log.error('invalid message type %s', type(msg))
@@ -262,8 +265,11 @@ class Server(object):
 #
 if __name__ == '__main__':
 
+    print(1)
     s = Server()
+    print(2)
     s.serve()
+    print(3)
 
 
 # ------------------------------------------------------------------------------
