@@ -6,4 +6,5 @@ psij-python
 setproctitle
 requests
 dill
+rc.process
 
