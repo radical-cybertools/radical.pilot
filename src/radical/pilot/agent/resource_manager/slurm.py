@@ -64,17 +64,27 @@ class Slurm(ResourceManager):
         for node in rm_info.node_list:
             name = node['name']
             cmd  = 'ssh -oBatchMode=yes %s hostname' % name
+            self._log.debug('check node: %s [%s]', name, cmd)
             proc = rc.process.Process(cmd)
             proc.start()
             procs.append([name, proc])
 
         ok = list()
         for name, proc in procs:
-            proc.wait()
-            self._log.debug('check node: %s ', name, [proc.stdout, proc.stderr,
-                                                      proc.retcode])
-            if not proc.retcode:
-                ok.append(node)
+            proc.wait(timeout=5)
+            self._log.debug('check node: %s [%s]', name,
+                            [proc.stdout, proc.stderr, proc.retcode])
+            if proc.retcode is not None:
+                if not proc.retcode:
+                    ok.append(node)
+            else:
+                self._log.warning('check node: %s [%s] timed out',
+                                  name, [proc.stdout, proc.stderr])
+                proc.cancel()
+                proc.wait(timeout=5)
+                if proc.retcode is None:
+                    self._log.warning('check node: %s [%s] timed out again',
+                                       name, [proc.stdout, proc.stderr])
 
         rm_info.node_list = ok
         self._log.warning('found %d accessible nodes out of %d', len(ok))
