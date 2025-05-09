@@ -16,7 +16,7 @@ class PythonTask(object):
 
     # --------------------------------------------------------------------------
     #
-    def __new__(cls, func, *args, **kwargs):
+    def __new__(cls, func, args, kwargs):
         '''
         We handle wrapped functions here with no args or kwargs.
 
