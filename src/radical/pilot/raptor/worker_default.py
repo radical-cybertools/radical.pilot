@@ -3,11 +3,13 @@ import os
 import sys
 import time
 import queue
+import asyncio
 
 import threading         as mt
 import multiprocessing   as mp
 
 import radical.utils     as ru
+import radical.pilot     as rp
 
 from .worker  import Worker
 
@@ -292,7 +294,11 @@ class DefaultWorker(Worker):
                 ru.rec_makedir(sbox)
                 os.chdir(sbox)
                 dispatcher = self.get_dispatcher(task['description']['mode'])
-                out, err, ret, val, exc = dispatcher(task)
+
+                if task['description']['mode'] in [rp.TASK_METH, rp.TASK_FUNC]:
+                    out, err, ret, val, exc = asyncio.run(dispatcher(task))
+                else:
+                    out, err, ret, val, exc = dispatcher(task)
 
             except Exception as e:
                 exc = [repr(e), '\n'.join(ru.get_exception_trace())]
