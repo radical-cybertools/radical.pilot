@@ -59,6 +59,9 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
 
+        # we only start the flux backend here
+        self._lm.start_flux()
+
         # register state cb
         self._log.debug('register flux state cb: %s',
                         len(self._lm.partitions))
@@ -67,8 +70,8 @@ class Flux(AgentExecutingComponent) :
             raise RuntimeError('no partitions found')
 
         for part in self._lm.partitions:
-            self._log.debug('register flux state cb: %s', part.handle)
-            part.handle.register_cb(self._job_event_cb)
+            self._log.debug('register flux state cb: %s', part.helper)
+            part.helper.register_cb(self._job_event_cb)
 
         # local state management
         self._tasks  = dict()             # flux_id -> task
@@ -76,6 +79,21 @@ class Flux(AgentExecutingComponent) :
         self._idmap  = dict()             # flux_id -> task_id
 
         self._task_count = 0
+
+        self._nflux = 0
+
+
+    # --------------------------------------------------------------------------
+    def finalize(self):
+
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def flux_state_cb(self, task_id, state):
+
+        self._log.debug('flux state cb: %s: %s', task_id, state)
 
 
     # --------------------------------------------------------------------------
@@ -178,7 +196,7 @@ class Flux(AgentExecutingComponent) :
                     specs.append(self.task_to_spec(task))
 
                 tids = [task['uid'] for task in part_tasks]
-                fids = part.handle.submit(specs)
+                fids = part.helper.submit(specs)
 
                 for fid, tid in zip(fids, tids):
                     self._idmap[fid] = tid
