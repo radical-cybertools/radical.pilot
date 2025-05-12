@@ -23,7 +23,8 @@ class PythonTask(object):
         Example:
             import PythonTask
             wrapped_func = partial(func_A, func_AB)
-            td.function  = pythonTask(wrapped_func)
+            td = rp.TaskDescription()
+            td.function  = PythonTask(wrapped_func)
         '''
 
         if not callable(func):
@@ -75,12 +76,14 @@ class PythonTask(object):
     def pythontask(f: Callable):
         """We handle all other functions here.
 
-        Example::
-            from PythonTask import pythonfunc as pythonfunc
-            @pythontask
+        Example:            
+            import radical.pilot as rp
+
+            @rp.pythontask
             def func_C(x):
                 return (x)
-            cud.EXECUTABLE = func_C(2)
+            td = rp.TaskDescription()
+            td.function = func_C(2)
 
         """
 
