@@ -293,9 +293,11 @@ class DefaultWorker(Worker):
                 sbox = task['task_sandbox_path']
                 ru.rec_makedir(sbox)
                 os.chdir(sbox)
-                dispatcher = self.get_dispatcher(task['description']['mode'])
 
-                if task['description']['mode'] in [rp.TASK_METH, rp.TASK_FUNC]:
+                mode = task['description']['mode']
+                dispatcher = self.get_dispatcher(mode)
+
+                if mode in [rp.TASK_METH, rp.TASK_FUNC]:
                     out, err, ret, val, exc = asyncio.run(dispatcher(task))
                 else:
                     out, err, ret, val, exc = dispatcher(task)
