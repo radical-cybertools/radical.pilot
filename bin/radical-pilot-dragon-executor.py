@@ -71,10 +71,13 @@ class Server(object):
         try:
             while True:
 
-              # self._log.debug('main loop')
+                self._log.debug('main loop')
 
-                self._handle_requests()
-                self._handle_results()
+                saw_request = self._handle_requests()
+                saw_result  = self._handle_results()
+
+                if not saw_request and not saw_result:
+                    time.sleep(1)
 
         except Exception as e:
             self._log.exception('error in main loop: %s', e)
@@ -97,7 +100,7 @@ class Server(object):
         msg = self._pin.get_nowait(1)
 
         if not msg:
-            return
+            return False
 
         if not isinstance(msg, dict):
             self._log.error('invalid message type %s', type(msg))
@@ -135,17 +138,21 @@ class Server(object):
         else:
             self._log.error('unsupported command %s', cmd)
 
+        return True
+
 
     # --------------------------------------------------------------------------
     #
     def _handle_results(self):
 
         if self._done_queue.empty():
-            return
+            return False
 
         task = self._done_queue.get()
         self._log.debug('collect task %s', task['task']['uid'])
         self._pout.put(task)
+
+        return True
 
 
     # --------------------------------------------------------------------------
