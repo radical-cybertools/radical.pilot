@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-#dragon
 
+# debug flag in case we want to test with plain Python3
 USE_DRAGON = True
 
 import os
 import sys
 import enum
+import time
 import queue
 import signal
 
@@ -14,9 +15,17 @@ if USE_DRAGON:
 
 import multiprocessing as mp
 import threading       as mt
+import subprocess      as sp
 
 import radical.utils   as ru
 import radical.pilot   as rp
+
+# FIXME: dragon documentation requires this - but when starting this script with
+#        `dragon <script>`, then setting the mp start method to dragon causes
+#        the tasks to fail
+#
+# if USE_DRAGON:
+#     mp.set_start_method("dragon")
 
 
 # ------------------------------------------------------------------------------
@@ -32,8 +41,7 @@ class Server(object):
     #
     def __init__(self):
 
-        sandbox   = sys.argv[1]
-        self._log = ru.Logger('radical.pilot.dragon', path=sandbox)
+        self._log = ru.Logger('radical.pilot.dragon', path='.')
 
         self._pin  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
         self._pout = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
@@ -57,9 +65,6 @@ class Server(object):
 
         # FIXME: profile events
         self._log.info('serving')
-
-        if USE_DRAGON:
-            mp.set_start_method("dragon")
 
         self._log.info('serving dragon')
 
@@ -101,37 +106,37 @@ class Server(object):
             self._log.error('invalid message type %s', type(msg))
 
         cmd  = msg.get('cmd')
-        task = msg.get('task')
-
-        if cmd not in ['run', 'cancel', 'stop']:
-            self._log.error('unsupported command %s', cmd)
-            return
 
         if cmd == 'stop':
             self._log.info('stopping')
             sys.exit(0)
 
-        if not task:
-            self._log.error('no task in message')
-            return
+        elif cmd == 'cancel':
 
-        if cmd == 'cancel':
+            task = msg['task']
+
             self._log.debug('cancel task %s', task['uid'])
             self._watch_queue.put((self.Command.TO_CANCEL, task))
-            return
 
-        self._log.debug('launch task %s', task['uid'])
-        task['proc'] = mp.Process(target=self._fork_task, args=[task, self._log])
-        task['proc'].start()
-        self._log.debug('task %s launched', task['uid'])
+        elif cmd == 'run':
 
-        # FIXME: this should be done in the watcher
-        # self.handle_timeout(task)
+            task = msg['task']
 
-        # watch task for completion
-        self._watch_queue.put((self.Command.TO_WATCH, task))
+            self._log.debug('launch task %s', task['uid'])
+            task['proc'] = mp.Process(target=self._fork_task, args=[task])
+            task['proc'].start()
+            self._log.debug('task %s launched', task['uid'])
 
-        self._log.debug('task %s watched', task['uid'])
+            # FIXME: this should be done in the watcher
+            # self.handle_timeout(task)
+
+            # watch task for completion
+            self._watch_queue.put((self.Command.TO_WATCH, task))
+
+            self._log.debug('task %s watched', task['uid'])
+
+        else:
+            self._log.error('unsupported command %s', cmd)
 
 
     # --------------------------------------------------------------------------
@@ -148,19 +153,28 @@ class Server(object):
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def _fork_task(task, log):
+    def _fork_task(task):
+
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']
 
-        launch_script = '%s.launch.sh' % tid
-        launch_out    = '%s/%s.launch.out' % (sbox, tid)
-        launch_err    = '%s/%s.launch.err' % (sbox, tid)
-        launch_cmd    = '%s/%s > %s 2> %s' % (sbox, launch_script,
-                                                    launch_out, launch_err)
-        out, err, ret = ru.sh_callout(launch_cmd, shell=True)
+        print('task %s: fork' % tid)
 
-        log.debug('task %s completed %s : %s : %s' % (tid, out, err, ret))
+        launch_path = task['launch_path']
+        launch_out  = '%s/%s.launch.out' % (sbox, tid)
+        launch_err  = '%s/%s.launch.err' % (sbox, tid)
+        launch_cmd  = '%s > %s 2> %s' % (launch_path, launch_out, launch_err)
+        print('task %s: launch command: %s' % (tid, launch_cmd))
+      # out, err, ret = ru.sh_callout(launch_cmd, shell=True)
+        p = sp.Popen(launch_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+        stdout, stderr = p.communicate()
+
+        ret = p.returncode
+        out = stdout.decode('utf-8')
+        err = stderr.decode('utf-8')
+
+        print('task %s: completed %s : %s : %s' % (tid, out, err, ret))
 
 
     # --------------------------------------------------------------------------
@@ -174,12 +188,15 @@ class Server(object):
         while True:
 
             if not self._watch_queue.empty():
+
                 cmd, task = self._watch_queue.get()
 
                 if cmd == self.Command.TO_WATCH:
                     to_watch.append(task)
+
                 elif cmd == self.Command.TO_CANCEL:
                     to_cancel.append(task)
+
                 else:
                     raise ValueError('unsupported cmd %s' % cmd)
 

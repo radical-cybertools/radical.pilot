@@ -258,8 +258,20 @@ class Popen(AgentExecutingComponent):
         exec_path  , _ = self._create_exec_script(launcher, task)
         _, launch_path = self._create_launch_script(launcher, task, exec_path)
 
+        task['exec_path']   = exec_path
+        task['launch_path'] = launch_path
+
+        self._launch_task(task)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _launch_task(self, task):
+
         tid  = task['uid']
         sbox = task['task_sandbox_path']
+
+        launch_path = task['launch_path']
 
         # launch and exec script are done, get ready for execution.
         self._log.info('Launching task %s via %s in %s', tid, launch_path, sbox)

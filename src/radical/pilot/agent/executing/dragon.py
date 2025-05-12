@@ -43,8 +43,6 @@ class Dragon(Popen):
         if not Process:
             raise RuntimeError('dragon executor not available')
 
-        self._log.debug('=== 1')
-
         self._url_in    = None
         self._url_out   = None
         self._start_evt = mt.Event()
@@ -53,34 +51,30 @@ class Dragon(Popen):
         #
         def line_cb(proc: Process, lines : List[str]) -> None:
             for line in lines:
-                self._log.info('=== line: %s', line)
+                self._log.info('line: %s', line)
                 if line.startswith('ZMQ_ENDPOINTS '):
-                    self._log.debug('=== 4')
                     _, self._url_out, self._url_in = line.split()
-                    self._log.debug('=== 5')
                     self._start_evt.set()
                     break
 
         def state_cb(proc: Process, state: str):
             self._log.debug('process state: %s' % state)
             if state == 'failed':
-                self._log.error('=== dragon executor failed')
-                self._log.error('=== stdout: %s', proc.stdout)
-                self._log.error('=== stderr: %s', proc.stderr)
+                self._log.error('dragon executor failed')
+                self._log.error('stdout: %s', proc.stdout)
+                self._log.error('stderr: %s', proc.stderr)
                 self._start_evt.set()
         # ----------------------------------------------------------------------
 
-        cmd = 'dragon radical-pilot-dragon-executor.py %s' % os.getcwd()
-        self._log.debug('=== cmd: %s', cmd)
+        cmd = 'dragon radical-pilot-dragon-executor.py'
+        self._log.debug('start cmd for dragon backend: %s', cmd)
         p = Process(cmd)
         p.register_cb(p.CB_OUT_LINE, line_cb)
         p.register_cb(p.CB_STATE, state_cb)
         p.polldelay = 0.1
         p.start()
 
-        self._log.debug('=== 8')
         self._start_evt.wait()
-        self._log.debug('=== 9')
 
         self._log.debug('dragon eps: %s - %s', self._url_in, self._url_out)
 
