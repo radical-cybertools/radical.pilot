@@ -73,7 +73,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
     #
     def initialize(self):
 
-
         rm_name  = self.session.rcfg.resource_manager
         self._rm = rpa.ResourceManager.create(rm_name,
                                               self.session.cfg,
