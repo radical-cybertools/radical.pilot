@@ -5,12 +5,9 @@ __license__   = 'MIT'
 
 import os
 
-from typing     import List
+from typing import List
 
-try:
-    from rc.process import Process
-except ImportError:
-    Process = None
+from rc.process import Process
 
 import threading     as mt
 
@@ -66,8 +63,10 @@ class Dragon(Popen):
                 self._start_evt.set()
         # ----------------------------------------------------------------------
 
-        cmd = 'dragon radical-pilot-dragon-executor.py'
-        self._log.debug('start cmd for dragon backend: %s', cmd)
+        dragon = 'dragon -l DEBUG -N 2 '
+        cmd    = dragon + 'radical-pilot-dragon-executor.py %s' % os.getcwd()
+        self._log.debug('cmd: %s', cmd)
+
         p = Process(cmd)
         p.register_cb(p.CB_OUT_LINE, line_cb)
         p.register_cb(p.CB_STATE, state_cb)

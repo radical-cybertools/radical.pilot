@@ -92,15 +92,12 @@ class Server(object):
             - task: the task to execute the command on
         '''
 
-      # self._log.debug('waiting for request')
+        self._log.debug('waiting for request')
 
-        msg = self._pin.get_nowait(0.1)
+        msg = self._pin.get_nowait(1)
 
         if not msg:
             return
-
-      # import pprint
-      # self._log.debug('got request %s', pprint.pformat(msg))
 
         if not isinstance(msg, dict):
             self._log.error('invalid message type %s', type(msg))
@@ -155,6 +152,8 @@ class Server(object):
     @staticmethod
     def _fork_task(task):
 
+        # NOTE: we can't use the logger here, as dragon wants to pickle
+        #       arguments to the process which looses the log handler.
 
         tid  = task['uid']
         sbox = task['task_sandbox_path']
@@ -166,6 +165,8 @@ class Server(object):
         launch_err  = '%s/%s.launch.err' % (sbox, tid)
         launch_cmd  = '%s > %s 2> %s' % (launch_path, launch_out, launch_err)
         print('task %s: launch command: %s' % (tid, launch_cmd))
+
+
       # out, err, ret = ru.sh_callout(launch_cmd, shell=True)
         p = sp.Popen(launch_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         stdout, stderr = p.communicate()
