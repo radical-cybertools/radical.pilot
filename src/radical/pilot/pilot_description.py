@@ -27,6 +27,7 @@ ENABLE_EP         = 'enable_ep'
 RECONFIG_SRC      = 'reconfig_src'
 
 NODES             = 'nodes'
+BACKUP_NODES      = 'backup_nodes'
 CORES             = 'cores'
 GPUS              = 'gpus'
 MEMORY            = 'memory'

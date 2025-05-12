@@ -6,6 +6,8 @@ import os
 
 import radical.utils as ru
 
+from rc.process import Process
+
 from .base import RMInfo, ResourceManager
 
 
@@ -65,13 +67,13 @@ class Slurm(ResourceManager):
             name = node['name']
             cmd  = 'ssh -oBatchMode=yes %s hostname' % name
             self._log.debug('check node: %s [%s]', name, cmd)
-            proc = rc.process.Process(cmd)
+            proc = Process(cmd)
             proc.start()
-            procs.append([name, proc])
+            procs.append([name, proc, node])
 
         ok = list()
-        for name, proc in procs:
-            proc.wait(timeout=5)
+        for name, proc, node in procs:
+            proc.wait(timeout=15)
             self._log.debug('check node: %s [%s]', name,
                             [proc.stdout, proc.stderr, proc.retcode])
             if proc.retcode is not None:
@@ -81,13 +83,14 @@ class Slurm(ResourceManager):
                 self._log.warning('check node: %s [%s] timed out',
                                   name, [proc.stdout, proc.stderr])
                 proc.cancel()
-                proc.wait(timeout=5)
+                proc.wait(timeout=15)
                 if proc.retcode is None:
                     self._log.warning('check node: %s [%s] timed out again',
                                        name, [proc.stdout, proc.stderr])
 
         rm_info.node_list = ok
-        self._log.warning('found %d accessible nodes out of %d', len(ok))
+        self._log.warning('found %d accessible nodes out of %d', len(ok),
+                          len(nodes))
 
         if not rm_info.node_list:
             raise RuntimeError('no accessible nodes found')
