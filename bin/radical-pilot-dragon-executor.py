@@ -144,6 +144,7 @@ class Server(object):
             return
 
         task = self._done_queue.get()
+        self._log.debug('collect task %s', task['task']['uid'])
         self._pout.put(task)
 
 

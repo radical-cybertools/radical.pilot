@@ -140,6 +140,8 @@ class Dragon(Popen):
                 if cmd != 'done':
                     raise ValueError('unsupported command %s' % cmd)
 
+                self._log.debug('dragon watch: %s', msg)
+
                 task = msg['task']
                 tid  = task['uid']
 
