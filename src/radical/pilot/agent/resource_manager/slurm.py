@@ -4,6 +4,8 @@ __license__   = 'MIT'
 
 import os
 
+from rc.process import Process
+
 import radical.utils as ru
 
 from .base import RMInfo, ResourceManager
@@ -65,7 +67,7 @@ class Slurm(ResourceManager):
             name = node['name']
             cmd  = 'ssh -oBatchMode=yes %s hostname' % name
             self._log.debug('check node: %s [%s]', name, cmd)
-            proc = rc.process.Process(cmd)
+            proc = Process(cmd)
             proc.start()
             procs.append([name, proc])
 
