@@ -86,11 +86,12 @@ class Slurm(ResourceManager):
                     self._log.warning('check node: %s [%s] timed out again',
                                        name, [proc.stdout, proc.stderr])
 
-        rm_info.node_list = ok
-        self._log.warning('found %d accessible nodes out of %d', len(ok))
 
-        if not rm_info.node_list:
+        self._log.warning('using %d nodes out of %d', len(ok), len(procs))
+        if not ok:
             raise RuntimeError('no accessible nodes found')
+
+        rm_info.node_list = ok
 
         return rm_info
 
