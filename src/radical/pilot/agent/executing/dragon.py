@@ -125,6 +125,8 @@ class Dragon(Popen):
         :param url_in:  the dragon endpoint to watch
         '''
 
+        self._log.debug('=== dragon watch: %s', url_in)
+
         pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL, url_in)
 
         try:
@@ -136,6 +138,9 @@ class Dragon(Popen):
                     continue
 
                 cmd = msg.get('cmd')
+
+                self._log.debug('=== dragon watch: %s', msg)
+                self._log.debug('=== dragon watch: %s', cmd)
 
                 if cmd != 'done':
                     raise ValueError('unsupported command %s' % cmd)

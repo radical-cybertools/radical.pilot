@@ -3,12 +3,9 @@
 # debug flag in case we want to test with plain Python3
 USE_DRAGON = True
 
-import os
 import sys
-import enum
 import time
 import queue
-import signal
 
 if USE_DRAGON:
     import dragon                  # pylint: disable=unused-import, import-error
@@ -32,133 +29,56 @@ import radical.pilot   as rp
 #
 class Server(object):
 
-    class Command(enum.Enum):
-        TO_WATCH  = 1
-        TO_CANCEL = 2
-
+    # FIXME: profile events
 
     # --------------------------------------------------------------------------
     #
     def __init__(self):
 
-        self._log = ru.Logger('radical.pilot.dragon', path='.')
+        self._log  = ru.Logger('radical.pilot.dragon', path='.')
+        self._term = mt.Event()
 
-        self._pin  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
-        self._pout = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+        self._pipe_in  = None
+        self._pipe_out = None
 
-        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
-                         % (ru.as_string(self._pin.url),
-                            ru.as_string(self._pout.url)))
-        sys.stdout.flush()
+        self._launcher = mt.Thread(target=self._launcher_thread)
+        self._launcher_event  = mt.Event()
+        self._launcher.daemon = True
+        self._launcher.start()
 
-        self._watch_queue = queue.Queue()
-        self._done_queue  = queue.Queue()
+        self._watcher_queue = queue.Queue()
 
-        self._watcher = mt.Thread(target=self._watch)
+        self._watcher = mt.Thread(target=self._watcher_thread)
+        self._watcher_event  = mt.Event()
         self._watcher.daemon = True
         self._watcher.start()
 
+        self._launcher_event.wait(timeout=5)
+        self._watcher_event.wait(timeout=5)
 
-    # --------------------------------------------------------------------------
-    #
-    def serve(self):
+        if not self._launcher_event.is_set():
+            raise RuntimeError('launcher thread did not start')
 
-        # FIXME: profile events
-        self._log.info('serving')
+        if not self._watcher_event.is_set():
+            raise RuntimeError('watcher thread did not start')
 
-        self._log.info('serving dragon')
+        assert self._pipe_in,  'pipe_in not set'
+        assert self._pipe_out, 'pipe_out not set'
 
-        try:
-            while True:
+        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
+                         % (ru.as_string(self._pipe_in.url),
+                            ru.as_string(self._pipe_out.url)))
+        sys.stdout.flush()
 
-                self._log.debug('main loop')
-
-                saw_request = self._handle_requests()
-                saw_result  = self._handle_results()
-
-                if not saw_request and not saw_result:
-                    time.sleep(1)
-
-        except Exception as e:
-            self._log.exception('error in main loop: %s', e)
-            raise
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_requests(self):
-        '''
-        handle incoming requests from the parent process
-
-        The requests are expected to be dictionaries with the following keys:
-            - cmd:  the command to execute (run, cancel, stop)
-            - task: the task to execute the command on
-        '''
-
-        self._log.debug('waiting for request')
-
-        msg = self._pin.get_nowait(1)
-
-        if not msg:
-            return False
-
-        if not isinstance(msg, dict):
-            self._log.error('invalid message type %s', type(msg))
-
-        cmd  = msg.get('cmd')
-
-        if cmd == 'stop':
-            self._log.info('stopping')
-            sys.exit(0)
-
-        elif cmd == 'cancel':
-
-            task = msg['task']
-
-            self._log.debug('cancel task %s', task['uid'])
-            self._watch_queue.put((self.Command.TO_CANCEL, task))
-
-        elif cmd == 'run':
-
-            task = msg['task']
-
-            self._log.debug('launch task %s', task['uid'])
-            task['proc'] = mp.Process(target=self._fork_task, args=[task])
-            task['proc'].start()
-            self._log.debug('task %s launched', task['uid'])
-
-            # FIXME: this should be done in the watcher
-            # self.handle_timeout(task)
-
-            # watch task for completion
-            self._watch_queue.put((self.Command.TO_WATCH, task))
-
-            self._log.debug('task %s watched', task['uid'])
-
-        else:
-            self._log.error('unsupported command %s', cmd)
-
-        return True
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _handle_results(self):
-
-        if self._done_queue.empty():
-            return False
-
-        task = self._done_queue.get()
-        self._log.debug('collect task %s', task['task']['uid'])
-        self._pout.put(task)
-
-        return True
+        # run forever
+        while not self._term.is_set():
+            time.sleep(1)
 
 
     # --------------------------------------------------------------------------
     #
     @staticmethod
-    def _fork_task(task):
+    def _popen(task):
 
         # NOTE: we can't use the logger here, as dragon wants to pickle
         #       arguments to the process which looses the log handler.
@@ -174,7 +94,6 @@ class Server(object):
         launch_cmd  = '%s > %s 2> %s' % (launch_path, launch_out, launch_err)
         print('task %s: launch command: %s' % (tid, launch_cmd))
 
-
       # out, err, ret = ru.sh_callout(launch_cmd, shell=True)
         p = sp.Popen(launch_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
         stdout, stderr = p.communicate()
@@ -188,100 +107,130 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    def _watch(self):
+    def _launcher_thread(self):
+        '''
+        handle incoming requests from the parent process
 
-        to_watch  = list()
-        to_cancel = list()
+        The requests are expected to be dictionaries with the following keys:
+            - cmd:  the command to execute (run, cancel, stop)
+            - task: the task to execute the command on
+        '''
+
+        print('start launcher')
+
+        self._pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
+        self._launcher_event.set()
+
+        try:
+            while True:
+
+                self._log.debug('waiting for request')
+                msg = self._pipe_in.get_nowait(5)
+
+                if not msg:
+                    continue
+
+                if not isinstance(msg, dict):
+                    self._log.error('invalid message type %s', type(msg))
+
+                cmd = msg.get('cmd')
+
+                if cmd == 'stop':
+                    self._log.info('stopping')
+                    self._term.set()
+                    sys.exit(0)
+
+                elif cmd == 'cancel':
+                    self._log.error('task cancellation not yet implemented')
+
+                elif cmd == 'run':
+
+                    task = msg['task']
+
+                    self._log.debug('launch task %s', task['uid'])
+                    task['proc'] = mp.Process(target=self._popen, args=[task])
+                    task['proc'].start()
+                    self._log.debug('task %s launched', task['uid'])
+
+                    self._watcher_queue.put(task)
+
+                else:
+                    raise ValueError('unknown command %s' % cmd)
+
+
+        except Exception as e:
+            self._log.exception('error in main loop: %s', e)
+            raise
+
+        finally:
+            self._term.set()
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _watcher_thread(self):
+
+        to_collect = dict()
+
+        print('start watcher')
+
+        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+        self._watcher_event.set()
 
         # get completed tasks
         while True:
 
-            if not self._watch_queue.empty():
+            while not self._watcher_queue.empty():
 
-                cmd, task = self._watch_queue.get()
+                task = self._watcher_queue.get()
+                tid  = task['uid']
+                to_collect[tid] = task
 
-                if cmd == self.Command.TO_WATCH:
-                    to_watch.append(task)
+            if not to_collect:
+                time.sleep(1)
+                continue
 
-                elif cmd == self.Command.TO_CANCEL:
-                    to_cancel.append(task)
+            print('watching %d tasks' % len(to_collect))
+
+            collected = list()
+            for tid,task in to_collect.items():
+
+                proc = task['proc']
+
+                if proc.is_alive():
+
+                    print('task %s is alive' % tid)
 
                 else:
-                    raise ValueError('unsupported cmd %s' % cmd)
 
-            self._check_running(to_watch, to_cancel)
+                    print('collecting %s' % tid)
 
-
-    # --------------------------------------------------------------------------
-    # Iterate over all running tasks, check their status, and decide on the
-    # next step.  Also check for a requested cancellation for the tasks.
-    def _check_running(self, to_watch, to_cancel):
-
-        # `to_watch.remove()` in the loop requires copy to iterate over the list
-        for task in list(to_watch):
-
-            tid  = task['uid']
-            proc = task['proc']
-
-            tasks_to_advance = list()
-            tasks_to_cancel  = list()
-
-            if proc.is_alive():
-
-                # process is still running - cancel if needed
-                if tid in to_cancel:
-
-                    # got a request to cancel this task - send SIGTERM to the
-                    # process group (which should include the actual launch
-                    # method)
-                    try:
-                        # kill the whole process group
-                        proc.kill()
-
-                    except OSError:
-                        # lost race: task is already gone, we ignore this
-                        # FIXME: collect and move to DONE/FAILED
-                        pass
-
+                    # make sure proc is collected
                     proc.join()
+                    task['exit_code'] = proc.exitcode
+                    del task['proc']
 
-                    to_cancel.remove(tid)
-                    to_watch.remove(task)
-                    del task['proc']  # proc is not json serializable
+                    collected.append(tid)
 
-                    tasks_to_cancel.append(task)
+                    self._log.debug('exit code %s: %s', tid, proc.exitcode)
 
-            else:
+                    if proc.exitcode != 0:
+                        task['target_state'] = rp.FAILED
+                    else:
+                        task['target_state'] = rp.DONE
 
-                # make sure proc is collected
-                proc.join()
-                task['exit_code'] = proc.exitcode
+                    self._log.debug('collect task %s', tid)
 
-                # Free the Slots, Flee the Flots, Ree the Frots!
-                to_watch.remove(task)
-                if tid in to_cancel:
-                    to_cancel.remove(tid)
+                    self._pipe_out.put({'cmd': 'done',
+                                        'task': task})
 
-                del task['proc']  # proc is not json serializable
-                tasks_to_advance.append(task)
+            for tid in collected:
+                del to_collect[tid]
 
-                self._log.debug('exit code %s: %s', task['uid'], proc.exitcode)
+            # avoid busy loop
+            if not collected:
+                time.sleep(0.1)
 
-                if proc.exitcode != 0:
-                    # task failed - fail after staging output
-                    task['exception']        = 'RuntimeError("task failed")'
-                    task['exception_detail'] = 'exit code: %s' % proc.exitcode
-                    task['target_state'    ] = rp.FAILED
-
-                else:
-                    # The task finished cleanly, see if we need to deal with
-                    # output data.  We always move to stageout, even if there
-                    # are no directives -- at the very least, we'll upload
-                    # stdout/stderr
-                    task['target_state'] = rp.DONE
-
-                self._done_queue.put({'cmd' : 'done',
-                                      'task': task})
 
 
 # ------------------------------------------------------------------------------
@@ -289,7 +238,6 @@ class Server(object):
 if __name__ == '__main__':
 
     s = Server()
-    s.serve()
 
 
 # ------------------------------------------------------------------------------
