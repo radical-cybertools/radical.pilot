@@ -56,19 +56,14 @@ class Flux(LaunchMethod):
 
         # just make sure we can load flux
 
-        flux, flux_job, flux_exc, flux_v = ru.flux.import_flux()
-        if flux_exc:
-            raise RuntimeError('flux import failed: %s' % flux_exc)
+        fm = ru.flux.FluxModule()
+        if fm.exc:
+            raise RuntimeError('flux import failed: %s' % fm.exc)
 
-        self._log.debug('flux import : %s', flux)
-        self._log.debug('flux job    : %s', flux_job)
-        self._log.debug('flux version: %s', flux_v)
-
-        # ensure we have flux
-        flux = ru.which('flux')
-        self._log.debug('flux location: %s', flux)
-        if not flux:
-            raise RuntimeError('flux not found')
+        self._log.debug('=== flux core   : %s', fm.core)
+        self._log.debug('=== flux job    : %s', fm.job)
+        self._log.debug('=== flux exe    : %s', fm.exe)
+        self._log.debug('=== flux version: %s', fm.version)
 
         lm_info = {'env'       : env,
                    'env_sh'    : env_sh}
@@ -125,7 +120,7 @@ class Flux(LaunchMethod):
             if launcher and n_partitions > 1:
                 part.uri = part.service.r_uri
             else:
-                part.uri = part.service.uri
+                part.uri = part.service.r_uri
 
             self._log.debug('flux partition %s: %s', part.service.uid, part.uri)
 
