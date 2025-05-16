@@ -4,8 +4,6 @@ __license__   = 'MIT'
 
 import os
 
-from rc.process import Process
-
 import radical.utils as ru
 
 from rc.process import Process
