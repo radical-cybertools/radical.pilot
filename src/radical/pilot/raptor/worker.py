@@ -4,6 +4,7 @@ import os
 import sys
 import time
 import shlex
+import asyncio
 
 import threading         as mt
 
@@ -327,7 +328,7 @@ class Worker(object):
 
     # --------------------------------------------------------------------------
     #
-    def _dispatch_func(self, task):
+    async def _dispatch_func(self, task):
         '''
         We expect three attributes: 'function', containing the name of the
         member method or free function to call, `args`, an optional list of
@@ -444,7 +445,12 @@ class Worker(object):
 
             self._prof.prof('rank_start', uid=uid)
             self._log.debug('to call %s: %s : %s', to_call, args, kwargs)
-            val = to_call(*args, **kwargs)
+            if asyncio.iscoroutinefunction(to_call):
+                self._log.debug('to call is async')
+                val = await to_call(*args, **kwargs)
+            else:
+                self._log.debug('to call is sync')
+                val = to_call(*args, **kwargs)
             self._prof.prof('rank_stop', uid=uid)
             out = strout.getvalue()
             err = strerr.getvalue()
