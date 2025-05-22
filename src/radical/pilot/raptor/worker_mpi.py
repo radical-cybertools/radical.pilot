@@ -4,9 +4,11 @@ import io
 import os
 import sys
 import time
+import asyncio
 
 import threading           as mt
 import radical.utils       as ru
+import radical.pilot       as rp
 
 from .worker            import Worker
 
@@ -557,8 +559,10 @@ class MPIWorkerRank(mt.Thread):
         if not dispatcher:
             raise ValueError('no execution mode defined for %s' % mode)
 
-        return dispatcher(task)
-
+        if mode in [rp.TASK_METH, rp.TASK_FUNC]:
+            return asyncio.run(dispatcher(task))
+        else:
+            return dispatcher(task)
 
 # ------------------------------------------------------------------------------
 #
