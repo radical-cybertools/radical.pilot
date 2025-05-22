@@ -187,6 +187,7 @@ class Flux(AgentExecutingComponent) :
             self._log.debug('map fluxid: %s: %s', flux_id, task['uid'])
 
         self._log.debug('flux event: %s: %s [%s]', flux_id, ename, state)
+        self._log.debug_3('          : %s', str(event.context))
 
         if state is None:
             return
