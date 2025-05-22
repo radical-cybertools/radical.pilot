@@ -5,6 +5,7 @@
 import glob
 import os
 import shutil
+import asyncio
 
 import multiprocessing as mp
 import radical.pilot   as rp
@@ -124,7 +125,7 @@ class TestRaptorWorker(TestCase):
                         'function': 'calculate_area',
                         'args'    : [2],
                         'kwargs'  : {}}}
-        out, err, ret, val, exc = component._dispatch_func(task)
+        out, err, ret, val, exc = asyncio.run(component._dispatch_func(task))
 
         self.assertEqual(ret, 0)
         self.assertEqual(val, 4)
