@@ -121,7 +121,7 @@ class Flux(AgentExecutingComponent) :
         fh.register_cb(state_cb)
         fh.start()
 
-        with open('flux_async.prof', 'w') as fout:
+        with ru.ru_open('flux_async.prof', 'w') as fout:
             for c in range(count):
 
                 specs = [ru.flux.spec_from_dict(
@@ -222,8 +222,26 @@ class Flux(AgentExecutingComponent) :
 
         try:
             # round robin on available flux partitions
-            parts = defaultdict(list)
+            parts  = defaultdict(list)
+            failed = list()
             for task in tasks:
+
+                # FIXME: run pre-launch commands here.  Alas, this is
+                #        synchronous, and thus potentially rather slow.
+                cmds = task['description'].get('pre_launch')
+                if cmds:
+                    sbox = task['task_sandbox_path']
+                    ru.rec_makedir(sbox)
+
+                for cmd in cmds:
+                    self._log.debug('pre-launch %s: %s', task['uid'], cmd)
+                    out, err, ret = ru.sh_callout(cmd, shell=True,
+                                                  cwd=task['task_sandbox_path'])
+                    self._log.debug('pre-launch %s: %s [%s][%s]', task['uid'],
+                                                                  ret, out, err)
+                    if ret:
+                        failed.append(task)
+                        continue
 
                 part_id = task['description']['partition']
 
@@ -252,6 +270,11 @@ class Flux(AgentExecutingComponent) :
 
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
                                 len(tids), tids)
+
+            if failed:
+                for task in failed:
+                    task['target_state'] = rps.FAILED
+                self.advance(failed, rps.FAILED, publish=True, push=False)
 
         except Exception as e:
             self._log.exception('flux submit failed: %s', e)
