@@ -5,7 +5,6 @@ __license__   = 'MIT'
 from typing import Optional, List
 
 import threading     as mt
-import radical.utils as ru
 
 from .constants  import BUSY, DOWN
 from .utils.misc import FastTypedDict
@@ -41,6 +40,7 @@ CORES_PER_NODE         = 'cores_per_node'
 GPUS_PER_NODE          = 'gpus_per_node'
 NUMA_DOMAIN_MAP        = 'numa_domain_map'
 N_PARTITIONS           = 'n_partitions'
+NETWORK_INTERFACE      = 'network_interface'
 SYSTEM_ARCHITECTURE    = 'system_architecture'
 SCATTERED              = 'scattered'
 
@@ -140,6 +140,7 @@ class ResourceConfig(FastTypedDict):
         GPUS_PER_NODE          : int         ,
         NUMA_DOMAIN_MAP        : {int: None} ,
         N_PARTITIONS           : int         ,
+        NETWORK_INTERFACE      : str         ,
         SYSTEM_ARCHITECTURE    : {str: None} ,
         SCATTERED              : bool        ,
 
@@ -189,6 +190,7 @@ class ResourceConfig(FastTypedDict):
         GPUS_PER_NODE          : 0           ,
         NUMA_DOMAIN_MAP        : dict()      ,
         N_PARTITIONS           : 1           ,
+        NETWORK_INTERFACE      : ''          ,
         SYSTEM_ARCHITECTURE    : dict()      ,
         SCATTERED              : True        ,
 
