@@ -53,7 +53,7 @@ class Agent_0(rpu.AgentComponent):
         # *before* we start the session.  This is important, as the session
         # will set up the ZMQ connection for registry etc. and thus needs the RU
         # iface setting to be in place.
-        iface = self._cfg.get('network_interface')
+        iface = cfg.get('network_interface')
         if iface:
             rc_cfg = ru.config.DefaultConfig()
             rc_cfg.iface = iface
