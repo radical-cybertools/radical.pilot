@@ -310,9 +310,9 @@ class Session(object):
         self._init_cfg_from_dict()
         self._start_registry()
         self._connect_registry()
+        self._init_rm()
         self._connect_proxy()
         self._publish_cfg()
-        self._init_rm()
         self._start_components()
         self._crosswire_proxy()
 

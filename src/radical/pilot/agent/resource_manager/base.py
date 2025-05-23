@@ -178,13 +178,13 @@ class ResourceManager(object):
         reg.close()
         self._set_info(rm_info)
 
-
         # immediately set the network interface if it was configured
         # NOTE: setting this here implies that no ZMQ connectio was set up
         #       before the ResourceManager got created!
-        if rm_info.details['network']:
+        iface = self._rm_info.details.get('network')
+        if iface:
             rc_cfg = ru.config.DefaultConfig()
-            rc_cfg.iface = rm_info.details['network']
+            rc_cfg.iface = iface
 
         # set up launch methods even when initialized from registry info.  In
         # that case, the LM *SHOULD NOT* be re-initialized, but only pick up
