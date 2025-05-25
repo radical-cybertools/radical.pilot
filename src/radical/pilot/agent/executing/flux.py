@@ -198,6 +198,21 @@ class Flux(AgentExecutingComponent) :
             if task['exit_code']: task['target_state'] = rps.FAILED
             else                : task['target_state'] = rps.DONE
 
+            # FIXME: run post-launch commands here.  Alas, this is
+            #        synchronous, and thus potentially rather slow.
+            tid  = task['uid']
+            cmds = task['description'].get('post_launch')
+            if cmds:
+                for cmd in cmds:
+                    self._log.debug('post-launch %s: %s', task['uid'], cmd)
+                    out, err, ret = ru.sh_callout(cmd, shell=True,
+                                                  cwd=task['task_sandbox_path'])
+                    self._log.debug('post-launch %s: %s [%s][%s]',
+                                                             tid, ret, out, err)
+                    if ret:
+                        failed.append(task)
+                        continue
+
             # on completion, push toward output staging
             self.advance_tasks(task, state, ts=event.timestamp,
                                publish=True, push=True)
@@ -229,23 +244,23 @@ class Flux(AgentExecutingComponent) :
 
                 # FIXME: run pre-launch commands here.  Alas, this is
                 #        synchronous, and thus potentially rather slow.
+                tid  = task['uid']
                 cmds = task['description'].get('pre_launch')
                 if cmds:
                     sbox = task['task_sandbox_path']
                     ru.rec_makedir(sbox)
 
-                for cmd in cmds:
-                    self._log.debug('pre-launch %s: %s', task['uid'], cmd)
-                    out, err, ret = ru.sh_callout(cmd, shell=True,
+                    for cmd in cmds:
+                        self._log.debug('pre-launch %s: %s', task['uid'], cmd)
+                        out, err, ret = ru.sh_callout(cmd, shell=True,
                                                   cwd=task['task_sandbox_path'])
-                    self._log.debug('pre-launch %s: %s [%s][%s]', task['uid'],
-                                                                  ret, out, err)
-                    if ret:
-                        failed.append(task)
-                        continue
+                        self._log.debug('pre-launch %s: %s [%s][%s]',
+                                                             tid, ret, out, err)
+                        if ret:
+                            failed.append(task)
+                            continue
 
                 part_id = task['description']['partition']
-
                 if part_id is None:
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1
