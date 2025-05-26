@@ -41,6 +41,7 @@ class RMInfo(rpu.FastTypedDict):
     '''
 
     _schema = {
+            'backup_nodes'         : int,           # number of backup nodes
             'requested_nodes'      : int,           # number of requested nodes
             'requested_cores'      : int,           # number of requested cores
             'requested_gpus'       : int,           # number of requested gpus
@@ -69,6 +70,7 @@ class RMInfo(rpu.FastTypedDict):
     }
 
     _defaults = {
+            'backup_nodes'         : 0,
             'requested_nodes'      : 0,
             'requested_cores'      : 0,
             'requested_gpus'       : 0,
@@ -246,6 +248,7 @@ class ResourceManager(object):
         rm_info  = RMInfo()
 
         # fill well defined default attributes
+        rm_info.backup_nodes     = self._cfg.backup_nodes
         rm_info.requested_nodes  = self._cfg.nodes
         rm_info.requested_cores  = self._cfg.cores
         rm_info.requested_gpus   = self._cfg.gpus
@@ -270,13 +273,7 @@ class ResourceManager(object):
         }
 
         # let the specific RM instance fill out the RMInfo attributes
-        rm_info     = self.init_from_scratch(rm_info)
-        alloc_nodes = len(rm_info.node_list)
-
-        # reduce the nodelist to the requested size
-        if alloc_nodes > rm_info.requested_nodes:
-            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
-            alloc_nodes       = len(rm_info.node_list)
+        rm_info = self.init_from_scratch(rm_info)
 
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
@@ -315,11 +312,12 @@ class ResourceManager(object):
             rm_info.requested_nodes = math.ceil(n_nodes)
 
         # reduce the nodelist to the requested size
-        if alloc_nodes > rm_info.requested_nodes:
-            self._log.debig('=== reduce %d nodes to %d', alloc_nodes,
-                    rm_info.requested_nodes)
-            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
-            alloc_nodes       = len(rm_info.node_list)
+        rm_info.backup_nodes = list()
+        if len(rm_info.node_list) > rm_info.requested_nodes:
+            self._log.debug('reduce %d nodes to %d', len(rm_info.node_list),
+                                                        rm_info.requested_nodes)
+            rm_info.node_list    = rm_info.node_list[:rm_info.requested_nodes]
+            rm_info.backup_nodes = rm_info.node_list[rm_info.requested_nodes:]
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out

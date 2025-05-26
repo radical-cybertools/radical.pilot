@@ -784,16 +784,11 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             avail_gpus_per_node -= len(blocked_gpus)
             assert (avail_gpus_per_node >= 0)
 
-        if not requested_nodes and not requested_cores:
-            requested_nodes = 1
-
         if requested_nodes:
-
             if not avail_cores_per_node:
                 raise RuntimeError('use "cores" in PilotDescription')
 
         else:
-
             if avail_cores_per_node:
                 requested_nodes = requested_cores / avail_cores_per_node
 
