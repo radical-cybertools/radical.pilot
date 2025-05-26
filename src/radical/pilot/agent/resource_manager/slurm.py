@@ -26,6 +26,8 @@ class Slurm(ResourceManager):
     #
     def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
+        ru.write_json(rm_info, 'rm_info.json')
+
         nodelist = os.environ.get('SLURM_NODELIST') or \
                    os.environ.get('SLURM_JOB_NODELIST')
         if nodelist is None:
@@ -88,12 +90,16 @@ class Slurm(ResourceManager):
                     self._log.warning('check node: %s [%s] timed out again',
                                        name, [proc.stdout, proc.stderr])
 
-        rm_info.node_list = ok
-        self._log.warning('found %d accessible nodes out of %d', len(ok),
-                          len(nodes))
+        self._log.warning('using %d nodes out of %d', len(ok), len(nodes))
 
-        if not rm_info.node_list:
+        if not ok:
             raise RuntimeError('no accessible nodes found')
+
+        # limit the nodelist to the requested number of nodes
+
+        rm_info.node_list = ok
+
+
 
         return rm_info
 

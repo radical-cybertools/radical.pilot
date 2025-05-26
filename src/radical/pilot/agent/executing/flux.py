@@ -121,7 +121,7 @@ class Flux(AgentExecutingComponent) :
         fh.register_cb(state_cb)
         fh.start()
 
-        with open('flux_async.prof', 'w') as fout:
+        with ru.ru_open('flux_async.prof', 'w') as fout:
             for c in range(count):
 
                 specs = [ru.flux.spec_from_dict(
@@ -187,6 +187,7 @@ class Flux(AgentExecutingComponent) :
             self._log.debug('map fluxid: %s: %s', flux_id, task['uid'])
 
         self._log.debug('flux event: %s: %s [%s]', flux_id, ename, state)
+        self._log.debug_3('          : %s', str(event.context))
 
         if state is None:
             return
@@ -196,6 +197,21 @@ class Flux(AgentExecutingComponent) :
             task['exit_code'] = event.context.get('status', 1)
             if task['exit_code']: task['target_state'] = rps.FAILED
             else                : task['target_state'] = rps.DONE
+
+            # FIXME: run post-launch commands here.  Alas, this is
+            #        synchronous, and thus potentially rather slow.
+            tid  = task['uid']
+            cmds = task['description'].get('post_launch')
+            if cmds:
+                for cmd in cmds:
+                    self._log.debug('post-launch %s: %s', task['uid'], cmd)
+                    out, err, ret = ru.sh_callout(cmd, shell=True,
+                                                  cwd=task['task_sandbox_path'])
+                    self._log.debug('post-launch %s: %s [%s][%s]',
+                                                             tid, ret, out, err)
+                    if ret:
+                        failed.append(task)
+                        continue
 
             # on completion, push toward output staging
             self.advance_tasks(task, state, ts=event.timestamp,
@@ -222,11 +238,29 @@ class Flux(AgentExecutingComponent) :
 
         try:
             # round robin on available flux partitions
-            parts = defaultdict(list)
+            parts  = defaultdict(list)
+            failed = list()
             for task in tasks:
 
-                part_id = task['description']['partition']
+                # FIXME: run pre-launch commands here.  Alas, this is
+                #        synchronous, and thus potentially rather slow.
+                tid  = task['uid']
+                cmds = task['description'].get('pre_launch')
+                if cmds:
+                    sbox = task['task_sandbox_path']
+                    ru.rec_makedir(sbox)
 
+                    for cmd in cmds:
+                        self._log.debug('pre-launch %s: %s', task['uid'], cmd)
+                        out, err, ret = ru.sh_callout(cmd, shell=True,
+                                                  cwd=task['task_sandbox_path'])
+                        self._log.debug('pre-launch %s: %s [%s][%s]',
+                                                             tid, ret, out, err)
+                        if ret:
+                            failed.append(task)
+                            continue
+
+                part_id = task['description']['partition']
                 if part_id is None:
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1
@@ -252,6 +286,11 @@ class Flux(AgentExecutingComponent) :
 
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
                                 len(tids), tids)
+
+            if failed:
+                for task in failed:
+                    task['target_state'] = rps.FAILED
+                self.advance(failed, rps.FAILED, publish=True, push=False)
 
         except Exception as e:
             self._log.exception('flux submit failed: %s', e)

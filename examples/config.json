@@ -250,5 +250,14 @@
         "queue"    : "standard",
         "schema"   : "local",
         "cores"    : 8
+    },
+
+    "debug.flux_spack": {
+        "cores"    : 32
+    },
+
+    "debug.flux"   : {
+        "cores"    : 32
     }
 }
+
