@@ -48,6 +48,7 @@ class RMInfo(rpu.FastTypedDict):
 
             'partition_ids'        : [int],         # partition ids
             'node_list'            : [None],        # tuples of node uids and names
+            'backup_list'          : [None],        # list of backup nodes
             'agent_node_list'      : [None],        # nodes reserved for sub-agents
             'service_node_list'    : [None],        # nodes reserved for services
 
@@ -77,6 +78,7 @@ class RMInfo(rpu.FastTypedDict):
 
             'partition_ids'        : list(),
             'node_list'            : list(),
+            'backup_list'          : list(),
             'agent_node_list'      : list(),
             'service_node_list'    : list(),
 
@@ -107,7 +109,7 @@ class RMInfo(rpu.FastTypedDict):
         assert self['requested_cores'  ]
         assert self['requested_gpus'   ] is not None
 
-        assert self['node_list']
+        assert self['node_list'        ]
         assert self['agent_node_list'  ] is not None
         assert self['service_node_list'] is not None
 
@@ -312,12 +314,12 @@ class ResourceManager(object):
             rm_info.requested_nodes = math.ceil(n_nodes)
 
         # reduce the nodelist to the requested size
-        rm_info.backup_nodes = list()
+        rm_info.backup_list = list()
         if len(rm_info.node_list) > rm_info.requested_nodes:
             self._log.debug('reduce %d nodes to %d', len(rm_info.node_list),
                                                         rm_info.requested_nodes)
-            rm_info.node_list    = rm_info.node_list[:rm_info.requested_nodes]
-            rm_info.backup_nodes = rm_info.node_list[rm_info.requested_nodes:]
+            rm_info.node_list   = rm_info.node_list[:rm_info.requested_nodes]
+            rm_info.backup_list = rm_info.node_list[rm_info.requested_nodes:]
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
