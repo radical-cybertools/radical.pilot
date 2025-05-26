@@ -6,8 +6,6 @@ import os
 
 import radical.utils as ru
 
-from rc.process import Process
-
 from .base import RMInfo, ResourceManager
 
 
@@ -61,45 +59,6 @@ class Slurm(ResourceManager):
         nodes = [(node, rm_info.cores_per_node) for node in node_names]
 
         rm_info.node_list = self._get_node_list(nodes, rm_info)
-
-        # filter out nodes which are not accessible.  Test access by running
-        # `ssh <node> hostname` and checking the return code.
-        procs = list()
-        for node in rm_info.node_list:
-            name = node['name']
-            cmd  = 'ssh -oBatchMode=yes %s hostname' % name
-            self._log.debug('check node: %s [%s]', name, cmd)
-            proc = Process(cmd)
-            proc.start()
-            procs.append([name, proc, node])
-
-        ok = list()
-        for name, proc, node in procs:
-            proc.wait(timeout=15)
-            self._log.debug('check node: %s [%s]', name,
-                            [proc.stdout, proc.stderr, proc.retcode])
-            if proc.retcode is not None:
-                if not proc.retcode:
-                    ok.append(node)
-            else:
-                self._log.warning('check node: %s [%s] timed out',
-                                  name, [proc.stdout, proc.stderr])
-                proc.cancel()
-                proc.wait(timeout=15)
-                if proc.retcode is None:
-                    self._log.warning('check node: %s [%s] timed out again',
-                                       name, [proc.stdout, proc.stderr])
-
-        self._log.warning('using %d nodes out of %d', len(ok), len(nodes))
-
-        if not ok:
-            raise RuntimeError('no accessible nodes found')
-
-        # limit the nodelist to the requested number of nodes
-
-        rm_info.node_list = ok
-
-
 
         return rm_info
 

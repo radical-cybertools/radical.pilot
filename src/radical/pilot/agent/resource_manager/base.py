@@ -5,7 +5,8 @@ __license__   = 'MIT'
 import math
 import os
 
-from typing import Optional, List, Tuple, Dict, Any
+from rc.process import Process
+from typing     import Optional, List, Tuple, Dict, Any
 
 T_NODES     = List[Tuple[str, int]]
 T_NODE_LIST = List[Dict[str, Any]]
@@ -313,6 +314,57 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
+
+        self._filter_nodes(rm_info)
+
+        # add launch method information to rm_info
+        rm_info.launch_methods = self._rcfg.launch_methods
+
+        return rm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _filter_nodes(self, rm_info: RMInfo) -> None:
+
+        # if we have backup nodes, then check all nodes (including backup nodes)
+        # to see if they are accessible.
+        if rm_info.backup_nodes:
+            procs = list()
+            for node in rm_info.node_list:
+                name = node['name']
+                cmd  = 'ssh -oBatchMode=yes %s hostname' % name
+                self._log.debug('check node: %s [%s]', name, cmd)
+                proc = Process(cmd)
+                proc.start()
+                procs.append([name, proc, node])
+
+            ok = list()
+            for name, proc, node in procs:
+                proc.wait(timeout=15)
+                self._log.debug('check node: %s [%s]', name,
+                                [proc.stdout, proc.stderr, proc.retcode])
+                if proc.retcode is not None:
+                    if not proc.retcode:
+                        ok.append(node)
+                else:
+                    self._log.warning('check node: %s [%s] timed out',
+                                      name, [proc.stdout, proc.stderr])
+                    proc.cancel()
+                    proc.wait(timeout=15)
+                    if proc.retcode is None:
+                        self._log.warning('check node: %s [%s] timed out again',
+                                           name, [proc.stdout, proc.stderr])
+
+            self._log.warning('using %d nodes out of %d', len(ok), len(procs))
+
+            if not ok:
+                raise RuntimeError('no accessible nodes found')
+
+            # limit the nodelist to the requested number of nodes
+            rm_info.node_list = ok
+
+
         # reduce the nodelist to the requested size
         rm_info.backup_list = list()
         if len(rm_info.node_list) > rm_info.requested_nodes:
@@ -361,10 +413,6 @@ class ResourceManager(object):
         if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # add launch method information to rm_info
-        rm_info.launch_methods = self._rcfg.launch_methods
-
-        return rm_info
 
 
     # --------------------------------------------------------------------------
