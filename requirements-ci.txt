@@ -22,4 +22,5 @@ flake8
 coverage
 psutil
 pudb
+mpi4py
 
