@@ -8,6 +8,19 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.102.0 Release                                                   2025-05-28
+
+  - adding resource config and doc for supported HPC
+  - fix #3347
+  - fix pytask docstring
+  - move python version to 3.8
+  - pass network configuration through to RU
+  - raptor can execute sync/async funcs with (non)MPI workers
+  - rtd fix
+  - set iface as early as possible
+  
+
+--------------------------------------------------------------------------------
 ### 1.100.0 Release                                                   2025-03-26
 
   - add tutorial for app level scheduling
