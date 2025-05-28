@@ -7,10 +7,6 @@
             "batch"                   : {
                 "job_manager_endpoint": "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
-            },
-            "interactive"             : {
-                "job_manager_endpoint": "fork://localhost/",
-                "filesystem_endpoint" : "file://localhost/"
             }
         },
         "default_queue"               : "compute",
@@ -33,10 +29,6 @@
         "default_schema"              : "batch",
         "schemas"                     : {
             "batch"                   : {
-                "job_manager_endpoint": "fork://localhost/",
-                "filesystem_endpoint" : "file://localhost/"
-            },
-            "interactive"             : {
                 "job_manager_endpoint": "fork://localhost/",
                 "filesystem_endpoint" : "file://localhost/"
             }
