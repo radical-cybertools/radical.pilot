@@ -590,6 +590,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         task_pre_exec           = rcfg.task_pre_exec
         task_post_exec          = rcfg.task_post_exec
         mandatory_args          = rcfg.mandatory_args
+        network_interface       = rcfg.network_interface
         system_architecture     = rcfg.system_architecture
         raptor_cfg              = rcfg.raptor
 
@@ -875,6 +876,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['prepare_env']         = prepare_env
         agent_cfg['reconfig_src']        = reconfig_src
         agent_cfg['raptor']              = raptor_cfg
+        agent_cfg['network_interface']   = network_interface
 
         pilot['cfg']       = agent_cfg
         pilot['resources'] = {'cpu': allocated_cores,
