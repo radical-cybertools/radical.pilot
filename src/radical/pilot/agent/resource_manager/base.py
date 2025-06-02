@@ -5,7 +5,8 @@ __license__   = 'MIT'
 import math
 import os
 
-from typing import Optional, List, Tuple, Dict, Any
+from rc.process import Process
+from typing     import Optional, List, Tuple, Dict, Any
 
 T_NODES     = List[Tuple[str, int]]
 T_NODE_LIST = List[Dict[str, Any]]
@@ -41,12 +42,14 @@ class RMInfo(rpu.FastTypedDict):
     '''
 
     _schema = {
+            'backup_nodes'         : int,           # number of backup nodes
             'requested_nodes'      : int,           # number of requested nodes
             'requested_cores'      : int,           # number of requested cores
             'requested_gpus'       : int,           # number of requested gpus
 
             'partition_ids'        : [int],         # partition ids
             'node_list'            : [None],        # tuples of node uids and names
+            'backup_list'          : [None],        # list of backup nodes
             'agent_node_list'      : [None],        # nodes reserved for sub-agents
             'service_node_list'    : [None],        # nodes reserved for services
 
@@ -69,12 +72,14 @@ class RMInfo(rpu.FastTypedDict):
     }
 
     _defaults = {
+            'backup_nodes'         : 0,
             'requested_nodes'      : 0,
             'requested_cores'      : 0,
             'requested_gpus'       : 0,
 
             'partition_ids'        : list(),
             'node_list'            : list(),
+            'backup_list'          : list(),
             'agent_node_list'      : list(),
             'service_node_list'    : list(),
 
@@ -105,7 +110,7 @@ class RMInfo(rpu.FastTypedDict):
         assert self['requested_cores'  ]
         assert self['requested_gpus'   ] is not None
 
-        assert self['node_list']
+        assert self['node_list'        ]
         assert self['agent_node_list'  ] is not None
         assert self['service_node_list'] is not None
 
@@ -246,6 +251,7 @@ class ResourceManager(object):
         rm_info  = RMInfo()
 
         # fill well defined default attributes
+        rm_info.backup_nodes     = self._cfg.backup_nodes
         rm_info.requested_nodes  = self._cfg.nodes
         rm_info.requested_cores  = self._cfg.cores
         rm_info.requested_gpus   = self._cfg.gpus
@@ -270,13 +276,7 @@ class ResourceManager(object):
         }
 
         # let the specific RM instance fill out the RMInfo attributes
-        rm_info     = self.init_from_scratch(rm_info)
-        alloc_nodes = len(rm_info.node_list)
-
-        # reduce the nodelist to the requested size
-        if alloc_nodes > rm_info.requested_nodes:
-            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
-            alloc_nodes       = len(rm_info.node_list)
+        rm_info = self.init_from_scratch(rm_info)
 
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
@@ -314,12 +314,64 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
+
+        self._filter_nodes(rm_info)
+
+        # add launch method information to rm_info
+        rm_info.launch_methods = self._rcfg.launch_methods
+
+        return rm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _filter_nodes(self, rm_info: RMInfo) -> None:
+
+        # if we have backup nodes, then check all nodes (including backup nodes)
+        # to see if they are accessible.
+        if rm_info.backup_nodes:
+            procs = list()
+            for node in rm_info.node_list:
+                name = node['name']
+                cmd  = 'ssh -oBatchMode=yes %s hostname' % name
+                self._log.debug('check node: %s [%s]', name, cmd)
+                proc = Process(cmd)
+                proc.start()
+                procs.append([name, proc, node])
+
+            ok = list()
+            for name, proc, node in procs:
+                proc.wait(timeout=15)
+                self._log.debug('check node: %s [%s]', name,
+                                [proc.stdout, proc.stderr, proc.retcode])
+                if proc.retcode is not None:
+                    if not proc.retcode:
+                        ok.append(node)
+                else:
+                    self._log.warning('check node: %s [%s] timed out',
+                                      name, [proc.stdout, proc.stderr])
+                    proc.cancel()
+                    proc.wait(timeout=15)
+                    if proc.retcode is None:
+                        self._log.warning('check node: %s [%s] timed out again',
+                                           name, [proc.stdout, proc.stderr])
+
+            self._log.warning('using %d nodes out of %d', len(ok), len(procs))
+
+            if not ok:
+                raise RuntimeError('no accessible nodes found')
+
+            # limit the nodelist to the requested number of nodes
+            rm_info.node_list = ok
+
+
         # reduce the nodelist to the requested size
-        if alloc_nodes > rm_info.requested_nodes:
-            self._log.debig('=== reduce %d nodes to %d', alloc_nodes,
-                    rm_info.requested_nodes)
-            rm_info.node_list = rm_info.node_list[:rm_info.requested_nodes]
-            alloc_nodes       = len(rm_info.node_list)
+        rm_info.backup_list = list()
+        if len(rm_info.node_list) > rm_info.requested_nodes:
+            self._log.debug('reduce %d nodes to %d', len(rm_info.node_list),
+                                                        rm_info.requested_nodes)
+            rm_info.node_list   = rm_info.node_list[:rm_info.requested_nodes]
+            rm_info.backup_list = rm_info.node_list[rm_info.requested_nodes:]
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -361,10 +413,6 @@ class ResourceManager(object):
         if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # add launch method information to rm_info
-        rm_info.launch_methods = self._rcfg.launch_methods
-
-        return rm_info
 
 
     # --------------------------------------------------------------------------
