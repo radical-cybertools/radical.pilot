@@ -1,0 +1,50 @@
+{
+    "discover":
+    {
+        "description"                 : "Heterogeneous cluster of 2096 GPU and CPU nodes",
+        "default_schema"              : "batch",
+        "schemas"                     : {
+            "batch"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_queue"               : "compute",
+        "cores_per_node"              : 46,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : ["module load python/GEOSpyD/Min24.1.2-0_py3.12"],
+        "default_remote_workdir"      : "$NOBACKUP/$USER",
+        "virtenv_mode"                : "local"
+    },
+
+    "discover_gpu_a100":
+    {
+        "description"                 : "Heterogeneous cluster of 2096 GPU and CPU nodes",
+        "default_schema"              : "batch",
+        "schemas"                     : {
+            "batch"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_queue"               : "gpu_a100",
+        "cores_per_node"              : 48,
+        "gpus_per_node"               : 4,
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : ["module load python/GEOSpyD/Min24.1.2-0_py3.12"],
+        "default_remote_workdir"      : "$NOBACKUP/$USER",
+        "virtenv_mode"                : "local"
+    }
+}
