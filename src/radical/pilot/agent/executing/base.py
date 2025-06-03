@@ -161,6 +161,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
     # --------------------------------------------------------------------------
     #
+    def get_task(self, tid):
+
+        raise NotImplementedError('get_task is not implemented')
+
+
+    # --------------------------------------------------------------------------
+    #
     def cancel_task(self, task):
 
         raise NotImplementedError('cancel_task is not implemented')
