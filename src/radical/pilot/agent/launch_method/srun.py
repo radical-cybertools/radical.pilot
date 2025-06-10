@@ -185,58 +185,69 @@ class Srun(LaunchMethod):
             if slots[0]['gpus']:
                 gpus_per_task = len(slots[0]['gpus'])
 
-        mapping = ''
+        largs = ''
         if n_tasks > 1:
             if td['use_mpi'] is False:
-                mapping += '-K0 '  # '--kill-on-bad-exit=0 '
+                largs += ' -K0'  # '--kill-on-bad-exit=0 '
             else:
                 # ensure that all ranks are killed if one rank fails
-                mapping += '-K1 '  # '--kill-on-bad-exit=1 '
+                largs += ' -K1'  # '--kill-on-bad-exit=1 '
                 # allow step cancellation with single SIGINT
-                mapping += '--quit-on-interrupt '
+                largs += ' --quit-on-interrupt'
 
         if self._exact:
-            mapping += '--exact '
+            largs += ' --exact'
 
         if self._traverse:
-            mapping += '--ntasks=%d '        % n_tasks \
-                    +  '--cpus-per-task=%d ' % n_task_threads \
-                    +  '--ntasks-per-core=1 --distribution="arbitrary"'
+            largs += ' --ntasks=%d'        % n_tasks \
+                  +  ' --cpus-per-task=%d' % n_task_threads \
+                  +  ' --ntasks-per-core=1 --distribution="arbitrary"'
         else:
-            mapping += '--nodes %d ' % n_nodes \
-                    +  '--ntasks %d' % n_tasks
+            largs += ' --nodes %d' % n_nodes \
+                  +  ' --ntasks %d' % n_tasks
 
             if n_task_threads:
-                mapping += ' --cpus-per-task %d' % n_task_threads
+                largs += ' --cpus-per-task %d' % n_task_threads
 
-        if self._rm_info['threads_per_core'] > 1:
-            mapping += ' --threads-per-core %d' % \
-                       self._rm_info['threads_per_core']
+        tpc = self._rm_info.get('threads_per_core', 1)
+        if tpc > 1:
+            largs += ' --threads-per-core %d' % tpc
 
         if td.get('mem_per_rank'):
-            mapping += ' --mem %s' % td.get('mem_per_rank')
+            largs += ' --mem %s' % td.get('mem_per_rank')
         else:
             # allow access to full node memory by default
-            mapping += ' --mem 0'
+            largs += ' --mem 0'
 
         # check that gpus were requested to be allocated
         if self._rm_info.get('requested_gpus') and gpus_per_task:
             if self._traverse:
-                mapping += ' --gpus-per-task=%d' % gpus_per_task
+                largs += ' --gpus-per-task=%d' % gpus_per_task
             else:
-                mapping += ' --gpus-per-task %d' % gpus_per_task + \
-                           ' --gpu-bind closest'
+                largs += ' --gpus-per-task %d' % gpus_per_task + \
+                         ' --gpu-bind closest'
 
         if nodefile:
-            mapping += ' --nodefile=%s' % nodefile
+            largs += ' --nodefile=%s' % nodefile
 
         elif nodelist:
-            mapping += ' --nodelist=%s' % ','.join(nodelist)
+            largs += ' --nodelist=%s' % ','.join(nodelist)
 
-        env = '--export=ALL'
+        largs += ' --export=ALL'
 
-        cmd = '%s %s %s %s' % (self._command, env, mapping, exec_path)
-        return cmd.rstrip()
+        # also apply launcher args
+        largs += ' %s' % self._check_launcher_args(task)
+
+        cmd = '%s %s %s' % (self._command, largs.strip(), exec_path)
+        return cmd
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _check_launcher_args(self, task):
+
+        # FIXME: should we check what launcher args are srun compatible?
+        return task['description'].get('launcher_args') or ''
 
 
     # --------------------------------------------------------------------------

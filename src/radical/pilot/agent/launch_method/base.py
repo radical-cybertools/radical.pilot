@@ -164,6 +164,16 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
+    def _check_launcher_args(self, task):
+
+        largs = task['description'].get('launcher_args')
+        if largs:
+            raise NotImplementedError("%s does not support `launcher_args` [%s]"
+                                      % (self.name, largs))
+
+
+    # --------------------------------------------------------------------------
+    #
     def _init_from_info(self, lm_info):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
@@ -246,6 +256,8 @@ class LaunchMethod(object):
     # --------------------------------------------------------------------------
     #
     def get_launch_cmds(self, task, exec_path):
+
+        self._check_launcher_args(task):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 

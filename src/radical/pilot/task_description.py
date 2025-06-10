@@ -79,6 +79,7 @@ GPU_TYPE         = 'gpu_type'                 # CUDA / ROCm?
 LFS_PER_RANK     = 'lfs_per_rank'             # disk space per rank
 MEM_PER_RANK     = 'mem_per_rank'             # memory per rank
 PARTITION        = 'partition'                # partition to run on
+LAUNCHER_ARGS    = 'launcher_args'            # args for the launcher
 
 # deprecated
 CPU_PROCESSES    = 'cpu_processes'            # ranks
@@ -454,6 +455,15 @@ class TaskDescription(FastTypedDict):
         partition (int, optional): index of pilot partition to use to run that
             task.
 
+        launcher_args (str, optional): Additional arguments to be passed to the
+            task launcher such as `srun`.  Specifically SLURM is configurable in
+            so many different ways that it is difficult for RP to automatically
+            determine the correct set of `srun` flags to use.  This hook allows
+            to pass additional flags to the `srun` command line, but can also be
+            used for other launchers as needed.  If the launcher does not
+            support `launcher_args`, the task will fail with an exception.
+
+
     **Task Ranks**
 
     The notion of `ranks` is central to RP's `TaskDescription` class.  We here
@@ -616,6 +626,21 @@ class TaskDescription(FastTypedDict):
         LFS_PER_RANK    : int         ,
         MEM_PER_RANK    : int         ,
 
+        RESTARTABLE     : bool        ,
+        TAGS            : {None: None},
+        RAPTOR_ID       : str         ,
+        RAPTOR_FILE     : str         ,
+        RAPTOR_CLASS    : str         ,
+        METADATA        : {str: None} ,
+        SERVICES        : [str]       ,
+        TIMEOUT         : float       ,
+        STARTUP_TIMEOUT : float       ,
+        CLEANUP         : bool        ,
+        PILOT           : str         ,
+        SLOTS           : [Slot]      ,
+        PARTITION       : int         ,
+        LAUNCHER_ARGS   : str         ,
+
         # deprecated
         CPU_PROCESSES   : int         ,  # RANKS
         CPU_PROCESS_TYPE: str         ,  # n/a
@@ -630,20 +655,6 @@ class TaskDescription(FastTypedDict):
         SCHEDULER       : str         ,  # RAPTOR_ID
         WORKER_FILE     : str         ,  # RAPTOR_FILE
         WORKER_CLASS    : str         ,  # RAPTOR_CLASS
-
-        RESTARTABLE     : bool        ,
-        TAGS            : {None: None},
-        RAPTOR_ID       : str         ,
-        RAPTOR_FILE     : str         ,
-        RAPTOR_CLASS    : str         ,
-        METADATA        : {str: None} ,
-        SERVICES        : [str]       ,
-        TIMEOUT         : float       ,
-        STARTUP_TIMEOUT : float       ,
-        CLEANUP         : bool        ,
-        PILOT           : str         ,
-        SLOTS           : [Slot]      ,
-        PARTITION       : int         ,
     }
 
     _defaults = {
@@ -712,6 +723,7 @@ class TaskDescription(FastTypedDict):
         PILOT           : ''          ,
         SLOTS           : list()      ,
         PARTITION       : 0           ,
+        LAUNCHER_ARGS   : ''          ,
     }
 
 
