@@ -1052,7 +1052,8 @@ class Session(object):
         This is a thin wrapper around `ru.Logger()` which makes sure that
         log files end up in a separate directory with the name of `session.uid`.
         """
-        log = ru.Logger(name=name, ns='radical.pilot', path=self._cfg.path,
+        path = self._cfg.path or os.getcwd()
+        log = ru.Logger(name=name, ns='radical.pilot', path=path,
                          targets=['.'], level=level, debug=debug)
 
         return log
@@ -1076,8 +1077,9 @@ class Session(object):
             else:
                 enabled = False
 
+            path = self._cfg.path or os.getcwd()
             self._reporter = ru.Reporter(name=name, ns='radical.pilot',
-                                         path=self._cfg.path, enabled=enabled)
+                                         path=path, enabled=enabled)
         return self._reporter
 
 
@@ -1090,7 +1092,8 @@ class Session(object):
         log files end up in a separate directory with the name of `session.uid`.
         """
 
-        prof = ru.Profiler(name=name, ns='radical.pilot', path=self._cfg.path)
+        path = self._cfg.path or os.getcwd()
+        prof = ru.Profiler(name=name, ns='radical.pilot', path=path)
 
         return prof
 
