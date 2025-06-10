@@ -185,7 +185,7 @@ class Srun(LaunchMethod):
             if slots[0]['gpus']:
                 gpus_per_task = len(slots[0]['gpus'])
 
-        largs = ''
+        largs = '--export=ALL'
         if n_tasks > 1:
             if td['use_mpi'] is False:
                 largs += ' -K0'  # '--kill-on-bad-exit=0 '
@@ -233,12 +233,10 @@ class Srun(LaunchMethod):
         elif nodelist:
             largs += ' --nodelist=%s' % ','.join(nodelist)
 
-        largs += ' --export=ALL'
-
         # also apply launcher args
         largs += ' %s' % self._check_launcher_args(task)
 
-        cmd = '%s %s %s' % (self._command, largs.strip(), exec_path)
+        cmd = '%s %s %s' % (self._command, largs, exec_path)
         return cmd
 
 
