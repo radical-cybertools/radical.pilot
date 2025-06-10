@@ -4,8 +4,6 @@
 __copyright__ = 'Copyright 2013-2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
-import radical.utils as ru
-
 from .resource_config import Slot
 from .utils.misc      import FastTypedDict
 

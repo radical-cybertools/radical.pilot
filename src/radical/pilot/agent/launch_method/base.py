@@ -257,7 +257,9 @@ class LaunchMethod(object):
     #
     def get_launch_cmds(self, task, exec_path):
 
-        self._check_launcher_args(task):
+        # pylint: disable=unused-argument
+
+        self._check_launcher_args(task)
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
