@@ -9,7 +9,8 @@
             "ranks"         : 4,
             "cores_per_rank": 2,
             "threading_type": "",
-            "use_mpi"       : false
+            "use_mpi"       : false,
+            "launcher_args" : "--test"
         },
         "task_sandbox_path" : "/tmp"
     },
@@ -61,7 +62,7 @@
     "results": {
         "lm": {
             "srun": {
-                "launch_cmd" : "srun --export=ALL -K0 --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1",
+                "launch_cmd" : "srun --export=ALL -K0 --exact --nodes 1 --ntasks 4 --cpus-per-task 2 --mem 0 --nodelist=node1 --test",
                 "rank_exec"  : "/bin/sleep \"12\""
             }
         }
