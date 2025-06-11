@@ -305,8 +305,11 @@ class MPIExec(LaunchMethod):
             hostfile     = self._get_host_file(slots, uid, sbox, mode=1)
             cmd_options += '--hostfile %s ' % hostfile
 
-        if self._rm_info.details.get('oversubscribe') and self._can_os:
-            cmd_options += '--oversubscribe '
+        # some mpi versions don't like oversubscribe and rankfile together
+        # (anvil OpenMPI 4.0.6)
+        if not self._use_rf and not self._use_hf:
+            if self._rm_info.details.get('oversubscribe') and self._can_os:
+                cmd_options += '--oversubscribe '
 
         if self._omplace:
             cmd_options += '%s ' % self._omplace
