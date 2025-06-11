@@ -68,6 +68,7 @@ class Server(object):
         url_in  = ru.Url(ru.as_string(self._pipe_in.url))
         url_out = ru.Url(ru.as_string(self._pipe_out.url))
 
+        # strangely enough, hostnames are not set in the out URL...
         url_in.host  = ru.get_hostname()
         url_out.host = ru.get_hostname()
 
