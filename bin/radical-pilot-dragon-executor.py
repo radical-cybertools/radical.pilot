@@ -65,12 +65,13 @@ class Server(object):
         assert self._pipe_in,  'pipe_in not set'
         assert self._pipe_out, 'pipe_out not set'
 
-        self._pipe_in.url.host = ru.get_hostname()
-        self._pipe_out.url.host = ru.get_hostname()
+        url_in  = ru.Url(ru.as_string(self._pipe_in.url))
+        url_out = ru.Url(ru.as_string(self._pipe_out.url))
 
-        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
-                         % (ru.as_string(self._pipe_in.url),
-                            ru.as_string(self._pipe_out.url)))
+        url_in.host  = ru.get_hostname()
+        url_out.host = ru.get_hostname()
+
+        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n' % (str(url_in), str(url_out)))
         sys.stdout.flush()
 
         # run forever
