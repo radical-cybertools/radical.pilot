@@ -170,66 +170,80 @@ class Server(object):
     #
     def _watcher_thread(self):
 
-        to_collect = dict()
+        try:
 
-        print('start watcher')
+            to_collect = dict()
 
-        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
-        self._watcher_event.set()
+            print('start watcher')
 
-        # get completed tasks
-        while True:
+            self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+            self._watcher_event.set()
 
-            while not self._watcher_queue.empty():
+            # get completed tasks
+            while True:
 
-                task = self._watcher_queue.get()
-                tid  = task['uid']
-                to_collect[tid] = task
+                while not self._watcher_queue.empty():
 
-            if not to_collect:
-                time.sleep(1)
-                continue
+                    task = self._watcher_queue.get()
+                    tid  = task['uid']
+                    to_collect[tid] = task
 
-            print('watching %d tasks' % len(to_collect))
+                if not to_collect:
+                    time.sleep(1)
+                    continue
 
-            collected = list()
-            for tid,task in to_collect.items():
+                print('watching %d tasks' % len(to_collect))
 
-                proc = task['proc']
+                collected = list()
+                for tid,task in to_collect.items():
 
-                if proc.is_alive():
+                    proc = task['proc']
 
-                    print('task %s is alive' % tid)
+                    if proc.is_alive():
 
-                else:
+                        print('task %s is alive' % tid)
 
-                    print('collecting %s' % tid)
-
-                    # make sure proc is collected
-                    proc.join()
-                    task['exit_code'] = proc.exitcode
-                    del task['proc']
-
-                    collected.append(tid)
-
-                    self._log.debug('exit code %s: %s', tid, proc.exitcode)
-
-                    if proc.exitcode != 0:
-                        task['target_state'] = rp.FAILED
                     else:
-                        task['target_state'] = rp.DONE
 
-                    self._log.debug('collect task %s', tid)
+                        print('collecting %s 1' % tid)
 
-                    self._pipe_out.put({'cmd': 'done',
-                                        'task': task})
+                        # make sure proc is collected
+                        proc.join()
+                        task['exit_code'] = proc.exitcode
+                        del task['proc']
 
-            for tid in collected:
-                del to_collect[tid]
+                        print('collecting %s 2' % tid)
 
-            # avoid busy loop
-            if not collected:
-                time.sleep(0.1)
+                        collected.append(tid)
+
+                        self._log.debug('exit code %s: %s', tid, proc.exitcode)
+                        print('task %s: exit code %s' % (tid, proc.exitcode))
+
+                        if proc.exitcode != 0:
+                            task['target_state'] = rp.FAILED
+                        else:
+                            task['target_state'] = rp.DONE
+
+                        self._log.debug('collect task %s', tid)
+                        print('task %s: collected' % tid)
+
+                        self._pipe_out.put({'cmd': 'done',
+                                            'task': task})
+
+                        print('task %s: sent done message' % tid)
+
+                for tid in collected:
+                    del to_collect[tid]
+
+                # avoid busy loop
+                if not collected:
+                    time.sleep(0.1)
+
+                print('watcher loop')
+
+        except Exception as e:
+            self._log.exception('error in watcher thread')
+            raise
 
 
 
