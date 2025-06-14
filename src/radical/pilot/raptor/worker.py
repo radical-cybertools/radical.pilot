@@ -394,8 +394,10 @@ class Worker(object):
 
             except DeserializationError as e:
                 self._log.warn('failed to deserialize function for [%s]: %s', uid, str(e))
+                out, val = None, None
                 exc = (repr(e), '\n'.join(ru.get_exception_trace()))
                 err = f'call failed: {e}'
+                ret = 1
                 return out, err, ret, val, exc
 
             except Exception:
