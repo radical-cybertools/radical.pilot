@@ -159,7 +159,7 @@ class ResourceConfig(FastTypedDict):
         DESCRIPTION            : ''          ,
         NOTES                  : ''          ,
         DEFAULT_SCHEMA         : ''          ,
-        SCHEMAS                : list()      ,
+        SCHEMAS                : dict()      ,
         RAPTOR                 : RaptorConfig(),
 
         # FIXME: AM - need to resolve since in Session it is moved into RD

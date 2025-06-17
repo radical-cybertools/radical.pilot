@@ -38,6 +38,14 @@
         "cores"    : 64
     },
 
+    "ncsa.delta": {
+        "project"  : "bblj-delta-cpu",
+        "queue"    : "cpu",
+        "schema"   : "local",
+        "cores"    : 128,
+        "gpus"     : 0
+    },
+
     "ncsa.delta_gpu_a100_4way": {
         "project"  : "bblj-delta-gpu",
         "queue"    : "gpuA100x4",
