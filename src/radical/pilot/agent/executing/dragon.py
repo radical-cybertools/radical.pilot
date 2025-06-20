@@ -37,9 +37,6 @@ class Dragon(Popen):
 
         super().initialize()
 
-        if not Process:
-            raise RuntimeError('dragon executor not available')
-
         self._url_in    = None
         self._url_out   = None
         self._start_evt = mt.Event()
@@ -73,6 +70,10 @@ class Dragon(Popen):
         p.polldelay = 0.1
         p.start()
 
+        self._pwatcher = ru.PWatcher(uid='%s.pw' % self._uid, log=self._log)
+        self._pwatcher.watch(os.getpid())
+        self._pwatcher.watch(p.pid)
+
         self._start_evt.wait()
 
         self._log.debug('dragon eps: %s - %s', self._url_in, self._url_out)
@@ -90,11 +91,45 @@ class Dragon(Popen):
 
     # --------------------------------------------------------------------------
     #
-    def _launch_task(self, task):
-        '''
-        This method is called by the base class to actually
-        launch the task.
-        '''
+    def _handle_task(self, task):
+
+        # before we start handling the task, check if it should run in a named
+        # env.  If so, inject the activation of that env in the task's pre_exec
+        # directives.
+        tid  = task['uid']
+        td   = task['description']
+        sbox = task['task_sandbox_path']
+
+        # prepare stdout/stderr
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        stdout_file    = td.get('stdout') or '%s.out' % tid
+        stderr_file    = td.get('stderr') or '%s.err' % tid
+
+        if stdout_file[0] != '/':
+            task['stdout_file']       = '%s/%s' % (sbox, stdout_file)
+            task['stdout_file_short'] = '$RP_TASK_SANDBOX/%s' % stdout_file
+        else:
+            task['stdout_file']       = stdout_file
+            task['stdout_file_short'] = stdout_file
+
+        if stderr_file[0] != '/':
+            task['stderr_file']       = '%s/%s' % (sbox, stderr_file)
+            task['stderr_file_short'] = '$RP_TASK_SANDBOX/%s' % stderr_file
+        else:
+            task['stderr_file']       = stderr_file
+            task['stderr_file_short'] = stderr_file
+
+        launcher, lname = self._rm.find_launcher(task)
+
+        if not launcher:
+            raise RuntimeError('no launcher found for %s' % task)
+
+        task['launcher_name'] = lname
+
+        _, exec_fullpath = self._create_exec_script(launcher, task)
+        task['exec_path']   = exec_fullpath
 
         # send task to dragon
         self._log.debug('launch task %s', task['uid'])
@@ -125,7 +160,7 @@ class Dragon(Popen):
         :param url_in:  the dragon endpoint to watch
         '''
 
-        self._log.debug('=== dragon watch: %s', url_in)
+        self._log.debug('dragon watch: %s', url_in)
 
         pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL, url_in)
 
@@ -139,18 +174,14 @@ class Dragon(Popen):
 
                 cmd = msg.get('cmd')
 
-                self._log.debug('=== dragon watch: %s', msg)
-                self._log.debug('=== dragon watch: %s', cmd)
-
                 if cmd != 'done':
                     raise ValueError('unsupported command %s' % cmd)
-
-                self._log.debug('dragon watch: %s', msg)
 
                 task = msg['task']
                 tid  = task['uid']
 
                 self._prof.prof('unschedule_start', uid=tid)
+                self._log.debug('dragon watch: %s : %s', cmd, tid)
 
                 self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
 

@@ -403,7 +403,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
             # make sure that RP_RANK is known (otherwise task fails silently)
             if 'export RP_RANK=' not in ret:
-                raise RuntimeError('launch method does not export RP_RANK')
+                raise RuntimeError('launch method %s does not export RP_RANK'
+                                   % launcher.name)
 
         # also define a method to sync all ranks on certain events
         ret += '\nrp_sync_ranks() {\n'

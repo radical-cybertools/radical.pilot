@@ -70,7 +70,7 @@ class Dragon(LaunchMethod):
     def get_rank_cmd(self):
 
         #  FIXME
-        return ''
+        return 'export RP_RANK=$DRAGON_INDEX'
 
 
 # ------------------------------------------------------------------------------

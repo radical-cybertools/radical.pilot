@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-# debug flag in case we want to test with plain Python3
-USE_DRAGON = True
-
+import os
 import sys
 import time
 import queue
 
-if USE_DRAGON:
-    import dragon                  # pylint: disable=unused-import, import-error
 
 import multiprocessing as mp
 import threading       as mt
@@ -17,13 +13,13 @@ import subprocess      as sp
 import radical.utils   as ru
 import radical.pilot   as rp
 
-# FIXME: dragon documentation requires this - but when starting this script with
-#        `dragon <script>`, then setting the mp start method to dragon causes
-#        the tasks to fail
-#
-# if USE_DRAGON:
-#     mp.set_start_method("dragon")
+import dragon                      # pylint: disable=unused-import, import-error
+mp.set_start_method("dragon")
 
+from dragon.native.process       import Popen
+from dragon.native.process       import Process
+from dragon.native.process       import ProcessTemplate
+from dragon.native.process_group import ProcessGroup
 
 # ------------------------------------------------------------------------------
 #
@@ -35,16 +31,22 @@ class Server(object):
     #
     def __init__(self):
 
-        self._log  = ru.Logger('radical.pilot.dragon', path='.')
+        self._uid = ru.generate_id('radical.pilot.dragon')
+
+        self._log  = ru.Logger(self._uid, path='.')
         self._term = mt.Event()
+
+        self._pwatcher = ru.PWatcher(uid='%s.pw' % self._uid, log=self._log)
+        self._pwatcher.watch(os.getpid())
+        self._pwatcher.watch(os.getppid())
 
         self._pipe_in  = None
         self._pipe_out = None
 
-        self._launcher = mt.Thread(target=self._launcher_thread)
-        self._launcher_event  = mt.Event()
-        self._launcher.daemon = True
-        self._launcher.start()
+        self._worker = mt.Thread(target=self._worker_thread)
+        self._worker_event  = mt.Event()
+        self._worker.daemon = True
+        self._worker.start()
 
         self._watcher_queue = queue.Queue()
 
@@ -53,10 +55,10 @@ class Server(object):
         self._watcher.daemon = True
         self._watcher.start()
 
-        self._launcher_event.wait(timeout=5)
+        self._worker_event.wait(timeout=5)
         self._watcher_event.wait(timeout=5)
 
-        if not self._launcher_event.is_set():
+        if not self._worker_event.is_set():
             raise RuntimeError('launcher thread did not start')
 
         if not self._watcher_event.is_set():
@@ -77,37 +79,7 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    @staticmethod
-    def _popen(task):
-
-        # NOTE: we can't use the logger here, as dragon wants to pickle
-        #       arguments to the process which looses the log handler.
-
-        tid  = task['uid']
-        sbox = task['task_sandbox_path']
-
-        print('task %s: fork' % tid)
-
-        launch_path = task['launch_path']
-        launch_out  = '%s/%s.launch.out' % (sbox, tid)
-        launch_err  = '%s/%s.launch.err' % (sbox, tid)
-        launch_cmd  = '%s > %s 2> %s' % (launch_path, launch_out, launch_err)
-        print('task %s: launch command: %s' % (tid, launch_cmd))
-
-      # out, err, ret = ru.sh_callout(launch_cmd, shell=True)
-        p = sp.Popen(launch_cmd, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-        stdout, stderr = p.communicate()
-
-        ret = p.returncode
-        out = stdout.decode('utf-8')
-        err = stderr.decode('utf-8')
-
-        print('task %s: completed %s : %s : %s' % (tid, out, err, ret))
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _launcher_thread(self):
+    def _worker_thread(self):
         '''
         handle incoming requests from the parent process
 
@@ -116,16 +88,15 @@ class Server(object):
             - task: the task to execute the command on
         '''
 
-        print('start launcher')
+        self._log.info('start launcher')
 
         self._pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
-        self._launcher_event.set()
+        self._worker_event.set()
 
         try:
             while True:
 
-                self._log.debug('waiting for request')
-                msg = self._pipe_in.get_nowait(5)
+                msg = self._pipe_in.get_nowait(1)
 
                 if not msg:
                     continue
@@ -136,7 +107,7 @@ class Server(object):
                 cmd = msg.get('cmd')
 
                 if cmd == 'stop':
-                    self._log.info('stopping')
+                    self._log.info('stop')
                     self._term.set()
                     sys.exit(0)
 
@@ -144,15 +115,7 @@ class Server(object):
                     self._log.error('task cancellation not yet implemented')
 
                 elif cmd == 'run':
-
-                    task = msg['task']
-
-                    self._log.debug('launch task %s', task['uid'])
-                    task['proc'] = mp.Process(target=self._popen, args=[task])
-                    task['proc'].start()
-                    self._log.debug('task %s launched', task['uid'])
-
-                    self._watcher_queue.put(task)
+                    self._launch(msg['task'])
 
                 else:
                     raise ValueError('unknown command %s' % cmd)
@@ -168,11 +131,48 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
+    def _launch(self, task):
+
+        self._log.debug('task %s: launch', task['uid'])
+
+        tid   = task['uid']
+        sbox  = task['task_sandbox_path']
+        ranks = task['description']['ranks']
+        exe   = task['exec_path']
+        out   = task['stdout_file']
+        err   = task['stderr_file']
+
+        cmd   = '/bin/sh'
+        args  = ['-c', '%s >> %s 2>> %s' % (exe, out, err)]
+        env   = os.environ.copy()
+
+        self._log.debug('task %s: [%d ranks]: %s %s', tid, ranks, cmd, args)
+
+        # TODO: use placement policies for GPU tasks
+        grp = ProcessGroup(restart=False, pmi_enabled=True, policy=None)
+
+        for rank in range(ranks):
+
+            env['DRAGON_RANK'] = str(rank)
+            tmp = ProcessTemplate(target=cmd, args=args, env=env, cwd=sbox,
+                                  stdout=Popen.PIPE, stderr=Popen.PIPE,
+                                  stdin=Popen.DEVNULL)
+            grp.add_process(nproc=1, template=tmp)
+
+        grp.init()
+        grp.start()
+
+        task['dragon_group'] = (grp, ranks)
+        self._watcher_queue.put(task)
+
+
+    # --------------------------------------------------------------------------
+    #
     def _watcher_thread(self):
 
         to_collect = dict()
 
-        print('start watcher')
+        self._log.info('start watcher')
 
         self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
         self._watcher_event.set()
@@ -182,44 +182,55 @@ class Server(object):
 
             while not self._watcher_queue.empty():
 
-                task = self._watcher_queue.get()
-                tid  = task['uid']
+                task  = self._watcher_queue.get()
+                tid   = task['uid']
                 to_collect[tid] = task
+
+                self._log.debug('task %s: watch', tid)
 
             if not to_collect:
                 time.sleep(1)
                 continue
 
-            print('watching %d tasks' % len(to_collect))
-
             collected = list()
             for tid,task in to_collect.items():
 
-                proc = task['proc']
+                grp, ranks = task['dragon_group']
 
-                if proc.is_alive():
-
-                    print('task %s is alive' % tid)
+                if len(grp.inactive_puids) < ranks:
+                    pass
 
                 else:
+                    self._log.debug('task %s: collect', tid)
 
-                    print('collecting %s' % tid)
+                    grp.join()
 
-                    # make sure proc is collected
-                    proc.join()
-                    task['exit_code'] = proc.exitcode
-                    del task['proc']
+                    out = ''
+                    err = ''
+                    ret = list()
+                    for item in grp.inactive_puids:
+                        proc = Process(None, ident=item[0])
+                        out  += self.get_results(proc.stdout_conn)
+                        err  += self.get_results(proc.stderr_conn)
+                        ret.append(item[1])
 
-                    collected.append(tid)
+                    grp.close()
+                    del task['dragon_group']
 
-                    self._log.debug('exit code %s: %s', tid, proc.exitcode)
+                    self._log.debug('task %s: completed %s : %s : %s',
+                                    tid, out, err, ret)
 
-                    if proc.exitcode != 0:
+                    if len(ret) > 1:
+                        task['exit_code'] = max(ret)
+                    else:
+                        task['exit_code'] = ret[0]
+
+                    if task['exit_code'] != 0:
                         task['target_state'] = rp.FAILED
                     else:
                         task['target_state'] = rp.DONE
 
-                    self._log.debug('collect task %s', tid)
+                    collected.append(tid)
 
                     self._pipe_out.put({'cmd': 'done',
                                         'task': task})
@@ -230,6 +241,22 @@ class Server(object):
             # avoid busy loop
             if not collected:
                 time.sleep(0.1)
+    # ------------------------------------------------------------------------------
+    #
+    def get_results(self, conn) -> str:
+
+        data = ''
+        try:
+            while True:
+                data += conn.recv()
+
+        except EOFError:
+            return data
+
+        finally:
+            conn.close()
+
+
 
 
 
