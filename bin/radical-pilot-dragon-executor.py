@@ -67,14 +67,9 @@ class Server(object):
         assert self._pipe_in,  'pipe_in not set'
         assert self._pipe_out, 'pipe_out not set'
 
-        url_in  = ru.Url(ru.as_string(self._pipe_in.url))
-        url_out = ru.Url(ru.as_string(self._pipe_out.url))
-
-        # strangely enough, hostnames are not set in the out URL...
-        url_in.host  = ru.get_hostname()
-        url_out.host = ru.get_hostname()
-
-        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n' % (str(url_in), str(url_out)))
+        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
+                         % (ru.as_string(self._pipe_in.url),
+                            ru.as_string(self._pipe_out.url)))
         sys.stdout.flush()
 
         # run forever
@@ -175,80 +170,93 @@ class Server(object):
     #
     def _watcher_thread(self):
 
-        try:
+        to_collect = dict()
 
-            to_collect = dict()
+        self._log.info('start watcher')
 
-            print('start watcher')
+        self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+        self._watcher_event.set()
 
-            self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
-            self._watcher_event.set()
+        # get completed tasks
+        while True:
 
-            # get completed tasks
-            while True:
+            while not self._watcher_queue.empty():
 
-                while not self._watcher_queue.empty():
+                task  = self._watcher_queue.get()
+                tid   = task['uid']
+                to_collect[tid] = task
 
-                    task = self._watcher_queue.get()
-                    tid  = task['uid']
-                    to_collect[tid] = task
+                self._log.debug('task %s: watch', tid)
 
-                if not to_collect:
-                    time.sleep(1)
-                    continue
+            if not to_collect:
+                time.sleep(1)
+                continue
 
-                print('watching %d tasks' % len(to_collect))
+            collected = list()
+            for tid,task in to_collect.items():
 
-                collected = list()
-                for tid,task in to_collect.items():
+                grp, ranks = task['dragon_group']
 
-                    proc = task['proc']
+                if len(grp.inactive_puids) < ranks:
+                    pass
 
-                    if proc.is_alive():
+                else:
+                    self._log.debug('task %s: collect', tid)
 
-                        print('task %s is alive' % tid)
+                    grp.join()
 
+                    out = ''
+                    err = ''
+                    ret = list()
+                    for item in grp.inactive_puids:
+                        proc = Process(None, ident=item[0])
+                        out  += self.get_results(proc.stdout_conn)
+                        err  += self.get_results(proc.stderr_conn)
+                        ret.append(item[1])
+
+                    grp.close()
+                    del task['dragon_group']
+
+                    self._log.debug('task %s: completed %s : %s : %s',
+                                    tid, out, err, ret)
+
+                    if len(ret) > 1:
+                        task['exit_code'] = max(ret)
                     else:
+                        task['exit_code'] = ret[0]
 
-                        print('collecting %s 1' % tid)
+                    if task['exit_code'] != 0:
+                        task['target_state'] = rp.FAILED
+                    else:
+                        task['target_state'] = rp.DONE
 
-                        # make sure proc is collected
-                        proc.join()
-                        task['exit_code'] = proc.exitcode
-                        del task['proc']
+                    collected.append(tid)
 
-                        print('collecting %s 2' % tid)
+                    self._pipe_out.put({'cmd': 'done',
+                                        'task': task})
 
-                        collected.append(tid)
+            for tid in collected:
+                del to_collect[tid]
 
-                        self._log.debug('exit code %s: %s', tid, proc.exitcode)
-                        print('task %s: exit code %s' % (tid, proc.exitcode))
+            # avoid busy loop
+            if not collected:
+                time.sleep(0.1)
+    # ------------------------------------------------------------------------------
+    #
+    def get_results(self, conn) -> str:
 
-                        if proc.exitcode != 0:
-                            task['target_state'] = rp.FAILED
-                        else:
-                            task['target_state'] = rp.DONE
+        data = ''
+        try:
+            while True:
+                data += conn.recv()
 
-                        self._log.debug('collect task %s', tid)
-                        print('task %s: collected' % tid)
+        except EOFError:
+            return data
 
-                        self._pipe_out.put({'cmd': 'done',
-                                            'task': task})
+        finally:
+            conn.close()
 
-                        print('task %s: sent done message' % tid)
 
-                for tid in collected:
-                    del to_collect[tid]
-
-                # avoid busy loop
-                if not collected:
-                    time.sleep(0.1)
-
-                print('watcher loop')
-
-        except Exception as e:
-            self._log.exception('error in watcher thread')
-            raise
 
 
 
