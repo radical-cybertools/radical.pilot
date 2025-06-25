@@ -15,7 +15,7 @@
         "resource_manager"            : "FORK",
         "agent_config"                : "default_sa",
         "agent_scheduler"             : "CONTINUOUS",
-        "agent_spawner"               : "SLEEP",
+        "agent_spawner"               : "NOOP",
         "launch_methods"              : {
                                          "order" : ["FORK", "MPIRUN"],
                                          "FORK"  : {},
@@ -48,7 +48,7 @@
         "resource_manager"            : "FORK",
         "agent_config"                : "default",
         "agent_scheduler"             : "NOOP",
-        "agent_spawner"               : "SLEEP",
+        "agent_spawner"               : "NOOP",
         "launch_methods"              : {
                                          "order"  : ["FORK", "MPIEXEC"],
                                          "FORK"   : {},
