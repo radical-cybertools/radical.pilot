@@ -34,6 +34,34 @@
         "lfs_size_per_node"           : 100
     },
 
+    "noop": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost/",
+                "filesystem_endpoint" : "file://localhost/"
+            }
+        },
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "NOOP",
+        "agent_spawner"               : "SLEEP",
+        "launch_methods"              : {
+                                         "order"  : ["FORK", "MPIEXEC"],
+                                         "FORK"   : {},
+                                         "MPIEXEC": {}
+                                        },
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "local",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "fake_resources"              : true
+    },
+
     "test": {
         "description"                 : "Your local machine.",
         "notes"                       : "",
