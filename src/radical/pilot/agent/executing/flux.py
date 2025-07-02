@@ -261,6 +261,9 @@ class Flux(AgentExecutingComponent) :
                             continue
 
                 part_id = task['description']['partition']
+                self._log.debug('=== part %s: %d %% %d = %d', part_id,
+                                self._task_count, len(self._lm.partitions),
+                                self._task_count % len(self._lm.partitions))
                 if part_id is None:
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1

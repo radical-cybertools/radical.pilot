@@ -848,7 +848,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # fix n_partitions before copying the rcfg
         n_parts = int(rcfg.get('n_partitions', 1))
         self._log.debug('=== found %d partitions', n_parts)
-        nparts = int(open('/lustre/orion/chm155/scratch/merzky1/frankenstein/nparts.dat').read().strip())
+        n_parts = int(open('/lustre/orion/chm155/scratch/merzky1/frankenstein/nparts.dat').read().strip())
         rcfg['n_partitions'] = n_parts
         self._log.debug('=== using %d partitions', n_parts)
 
