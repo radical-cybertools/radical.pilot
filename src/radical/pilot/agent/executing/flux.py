@@ -43,7 +43,7 @@ class Flux(AgentExecutingComponent) :
         self._event_map = {'submit'   : None,   # rps.AGENT_SCHEDULING,
                            'depend'   : None,
                            'alloc'    : rps.AGENT_EXECUTING_PENDING,
-                           'start'    : rps.AGENT_EXECUTING,
+                         # 'start'    : rps.AGENT_EXECUTING,
                            'cleanup'  : None,
                            'finish'   : rps.AGENT_STAGING_OUTPUT_PENDING,
                            'release'  : 'unschedule',
@@ -312,13 +312,16 @@ class Flux(AgentExecutingComponent) :
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
+
         task['stdout'] = ''
         task['stderr'] = ''
 
         task['stdout_file'] = stdout
         task['stderr_file'] = stderr
 
+        self._prof.prof('task_create_exec_start', uid=uid)
         _, exec_path = self._create_exec_script(self._lm, task)
+        self._prof.prof('task_create_exec_ok', uid=uid)
 
         command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
                                                    'out': stdout,
@@ -328,7 +331,12 @@ class Flux(AgentExecutingComponent) :
         spec_dict['executable'] = '/bin/sh'
         spec_dict['arguments']  = ['-c', command]
 
-        return ru.flux.spec_from_dict(spec_dict)
+        self._prof.prof('task_to_flux_start', uid=uid)
+        ret = ru.flux.spec_from_dict(spec_dict)
+
+        self._prof.prof('task_to_spec_stop', uid=uid)
+
+        return ret
 
 
 # ------------------------------------------------------------------------------
