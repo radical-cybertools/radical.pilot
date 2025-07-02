@@ -74,7 +74,7 @@ class Flux(AgentExecutingComponent) :
             part.helper.register_cb(self._job_event_cb)
 
         # local state management
-        self._tasks  = dict()             # flux_id -> task
+        self._tasks  = dict()             # task_id -> task
         self._events = defaultdict(list)  # flux_id -> [events]
         self._idmap  = dict()             # flux_id -> task_id
 
@@ -147,6 +147,13 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
+    def get_task(self, tid):
+
+        return self._tasks.get(tid)
+
+
+    # --------------------------------------------------------------------------
+    #
     def cancel_task(self, task):
 
         # FIXME: clarify how to cancel tasks in Flux
@@ -155,25 +162,23 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, tid, event):
+    def _job_event_cb(self, flux_id, event):
 
-        self._log.debug('flux event: %s: %s', tid, event.name)
+        self._log.debug('flux event: %s: %s', flux_id, event.name)
 
         while True:
-            task = self._tasks.get(tid)
-            if not task:
-                task = self._tasks.get(self._idmap.get(tid))
+            task = self._tasks.get(self._idmap.get(flux_id))
             if task:
                 break
             time.sleep(0.1)
 
         if not task:
-            self._log.error('no task for flux job %s: %s %s', tid,
+            self._log.error('no task for flux job %s: %s %s', flux_id,
                             event.name, list(self._tasks.keys()))
-            self._events[tid].append(event)
+            self._events[flux_id].append(event)
 
         else:
-            self._handle_event(task, tid, event)
+            self._handle_event(task, flux_id, event)
 
 
     # --------------------------------------------------------------------------
@@ -327,26 +332,6 @@ class Flux(AgentExecutingComponent) :
         spec_dict['arguments']  = ['-c', command]
 
         return ru.flux.spec_from_dict(spec_dict)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def control_cb(self, topic, msg):
-
-        self._log.info('command_cb [%s]: %s', topic, msg)
-
-        cmd = msg.get('cmd')
-        arg = msg.get('arg')
-
-        # FIXME RPC: already handled in the component base class
-        if cmd == 'task_execution_done':
-
-            self._log.info('task_execution_done command (%s)', arg)
-            self._prof.prof('task_execution_done')
-
-        else:
-
-            super().control_cb(topic, msg)
 
 
 # ------------------------------------------------------------------------------

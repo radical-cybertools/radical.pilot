@@ -39,16 +39,9 @@ class Fork(ResourceManager):
                 'insufficient cores found (%d < %d)' %
                 (detected_cores, rm_info.requested_cores))
 
-        # duplicates the code from the base class, but here it should be
-        # called first before determining `rm_info.node_list`
-        if not rm_info.requested_nodes:
-            n_nodes = rm_info.requested_cores / rm_info.cores_per_node
-            rm_info.requested_nodes = math.ceil(n_nodes)
-            # FIXME: number of GPUs should also be checked - how?
-            #        Should we use hwlock if available?
-
-        nodes = [('localhost', rm_info.cores_per_node)
-                 for _ in range(rm_info.requested_nodes)]
+        n_nodes = rm_info.requested_nodes + rm_info.backup_nodes
+        nodes   = [('localhost', rm_info.cores_per_node)
+                   for _ in range(n_nodes)]
 
         rm_info.node_list = self._get_node_list(nodes, rm_info)
 
