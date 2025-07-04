@@ -249,6 +249,7 @@ class Flux(AgentExecutingComponent) :
 
                 # FIXME: run pre-launch commands here.  Alas, this is
                 #        synchronous, and thus potentially rather slow.
+                self._prof.prof('work_0', uid=task['uid'])
                 tid  = task['uid']
                 cmds = task['description'].get('pre_launch')
                 if cmds:
@@ -265,6 +266,7 @@ class Flux(AgentExecutingComponent) :
                             failed.append(task)
                             continue
 
+                self._prof.prof('work_1', uid=task['uid'])
                 part_id = task['description']['partition']
                 self._log.debug('=== part %s: %d %% %d = %d', part_id,
                                 self._task_count, len(self._lm.partitions),
@@ -273,9 +275,12 @@ class Flux(AgentExecutingComponent) :
                     part_id = self._task_count % len(self._lm.partitions)
                     self._task_count += 1
 
+                self._prof.prof('work_2', uid=task['uid'])
                 parts[part_id].append(task)
                 task['description']['environment']['RP_PARTITION_ID'] = part_id
                 self._log.debug('task %s on partition %s', task['uid'], part_id)
+
+                self._prof.prof('work_3', uid=task['uid'])
 
             for part_id, part_tasks in parts.items():
 
@@ -284,10 +289,15 @@ class Flux(AgentExecutingComponent) :
                 for task in part_tasks:
                     tid = task['uid']
                     self._tasks[tid] = task
+                    self._prof.prof('part_0', uid=tid)
                     specs.append(self.task_to_spec(task))
 
                 tids = [task['uid'] for task in part_tasks]
+                for task in part_tasks:
+                    self._prof.prof('submit_0', uid=task['uid']
                 fids = part.helper.submit(specs)
+                for task in part_tasks:
+                    self._prof.prof('submit_1', uid=task['uid']
 
                 for fid, tid in zip(fids, tids):
                     self._idmap[fid] = tid
