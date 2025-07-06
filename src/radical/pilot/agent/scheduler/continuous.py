@@ -387,12 +387,15 @@ class Continuous(AgentSchedulingComponent):
 
         # in case of PRTE LM: the `slots` attribute may have a partition ID set
         partition_id = td.get('partition')
-        if partition_id is not None:
 
-            if not self._partition_ids:
-                raise ValueError('partition id (%d) out of range' % partition_id)
 
-            if partition_id not in self._partition_ids:
+        if partition_id:
+
+            partition_id = int(partition_id)
+
+            assert partition_id >= 0
+
+            if partition_id >= len(self._partitions):
                 raise ValueError('partition id (%d) out of range'
                                  % partition_id)
 
@@ -400,7 +403,6 @@ class Continuous(AgentSchedulingComponent):
             colo_tag = str(partition_id) + ('' if not colo_tag else '_%s' % colo_tag)
             if colo_tag not in self._colo_history:
                 self._colo_history[colo_tag] = list()
-        task_partition_id = None
 
         # what remains to be allocated?  all of it right now.
         alc_slots = list()
@@ -436,22 +438,8 @@ class Continuous(AgentSchedulingComponent):
                         self._log.warn('not enough nodes for exclusive tags, ' +
                                        'switched "exclusive" flag to "False"')
 
-            node_partition_id = None
-            if self._partition_ids:
-                # nodes assigned to the task should be from the same partition
-                # FIXME: handle the case when unit (MPI task) would require
-                #        more nodes than the amount available per partition
-                # FIXME: this needs to be fixed in the new scheduler
-                # _skip_node = True
-                # for plabel, p_node_indexs in self._partitions.items():
-                #     if node_index in p_node_indexs:
-                #         if task_partition_id in [None, plabel]:
-                #             node_partition_id = plabel
-                #             _skip_node = False
-                #         break
-                # if _skip_node:
-                #     continue
-                pass
+            if partition_id and partition_id != node['partition']:
+                continue
 
             # if only a small set of cores/gpus remains unallocated (i.e., less
             # than node size), we are in fact looking for the last node.  Note
@@ -499,9 +487,6 @@ class Continuous(AgentSchedulingComponent):
                 # try next node
                 continue
 
-            if node_partition_id is not None and task_partition_id is None:
-                task_partition_id = node_partition_id
-
             # this node got a match, store away the found slots and continue
             # search for remaining ones
             rem_slots -= len(new_slots)
@@ -526,13 +511,14 @@ class Continuous(AgentSchedulingComponent):
         # if tag `colocate` was provided, then corresponding nodes should be
         # stored in the tag history (if partition nodes were kept under this
         # key before then it will be overwritten)
-        if colo_tag is not None and colo_tag != str(partition_id):
-            self._colo_history[colo_tag] = [slot['node_index']
-                                            for slot in alc_slots]
-            self._tagged_nodes.update(self._colo_history[colo_tag])
+        if colo_tag and partition_id:
+            if colo_tag != str(partition_id):
+                self._colo_history[colo_tag] = [slot['node_index']
+                                                for slot in alc_slots]
+                self._tagged_nodes.update(self._colo_history[colo_tag])
 
         # this should be nicely filled out now - return
-        return alc_slots, task_partition_id
+        return alc_slots, partition_id
 
 
 # ------------------------------------------------------------------------------

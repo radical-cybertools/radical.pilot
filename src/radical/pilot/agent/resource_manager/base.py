@@ -50,6 +50,7 @@ class RMInfo(rpu.FastTypedDict):
             'partition_ids'        : [int],         # partition ids
             'node_list'            : [None],        # tuples of node uids and names
             'backup_list'          : [None],        # list of backup nodes
+            'partitions'           : [None],        # partitioned node list
             'agent_node_list'      : [None],        # nodes reserved for sub-agents
             'service_node_list'    : [None],        # nodes reserved for services
 
@@ -79,6 +80,7 @@ class RMInfo(rpu.FastTypedDict):
 
             'partition_ids'        : list(),
             'node_list'            : list(),
+            'partitions'           : list(),
             'backup_list'          : list(),
             'agent_node_list'      : list(),
             'service_node_list'    : list(),
@@ -111,6 +113,7 @@ class RMInfo(rpu.FastTypedDict):
         assert self['requested_gpus'   ] is not None
 
         assert self['node_list'        ]
+        assert self['partitions'       ]
         assert self['agent_node_list'  ] is not None
         assert self['service_node_list'] is not None
 
@@ -130,6 +133,7 @@ class ResourceManager(object):
     `self.info` (see `RMInfo` class definition).
 
       ResourceManager.node_list      : list of nodes names and uids
+      ResourceManager.partitions     : partitioned node list
       ResourceManager.agent_node_list: list of nodes reserved for agent procs
       ResourceManager.cores_per_node : number of cores each node has available
       ResourceManager.gpus_per_node  : number of gpus  each node has available
@@ -315,7 +319,8 @@ class ResourceManager(object):
             rm_info.requested_nodes = math.ceil(n_nodes)
 
 
-        self._filter_nodes(rm_info)
+        self._filter_nodelists(rm_info)
+        self._partition_nodelists(rm_info)
 
         # add launch method information to rm_info
         rm_info.launch_methods = self._rcfg.launch_methods
@@ -325,7 +330,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _filter_nodes(self, rm_info: RMInfo) -> None:
+    def _filter_nodelists(self, rm_info: RMInfo) -> None:
 
         # if we have backup nodes, then check all nodes (including backup nodes)
         # to see if they are accessible.
@@ -417,6 +422,25 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
+    def _partition_nodelists(self, rm_info: RMInfo) -> None:
+
+        # nodelist is detected and filters, and agent and service nodes are set.
+        # Divide the remaining node list into partitions.
+        rm_info.partitions = ru.partition(rm_info.node_list,
+                                          rm_info.n_partitions)
+
+        for idx,partition in enumerate(rm_info.partitions):
+
+            for node in partition:
+                node['partition'] = idx
+
+            self._log.debug('partition %d (%d): %s:', idx, len(partition),
+                            [node['name'] for node in partition])
+
+
+
+    # --------------------------------------------------------------------------
+    #
     def _prepare_launch_methods(self):
 
         launch_methods     = self._rm_info.launch_methods
@@ -443,19 +467,6 @@ class ResourceManager(object):
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
-
-
-    # --------------------------------------------------------------------------
-    #
-    def get_partition_ids(self):
-
-        # TODO: this implies unique partition IDs across all launchers
-
-        partition_ids = list()
-        for lname in self._launchers:
-            partition_ids += self._launchers[lname].get_partition_ids()
-
-        return partition_ids
 
 
     # --------------------------------------------------------------------------
@@ -642,14 +653,14 @@ class ResourceManager(object):
         as required for rm_info.
         '''
 
-        # keep nodes to be indexed (node_index)
-        # (required for jsrun ERF spec files and expanded to all other RMs)
-        node_list = [{'name'  : node[0],
-                      'index' : idx,
-                      'cores' : [rpc.FREE] * node[1],
-                      'gpus'  : [rpc.FREE] * rm_info.gpus_per_node,
-                      'lfs'   : rm_info.lfs_per_node,
-                      'mem'   : rm_info.mem_per_node}
+        # nodelist will not be partitioned
+        node_list = [{'name'     : node[0],
+                      'partition': None,
+                      'index'    : idx,
+                      'cores'    : [rpc.FREE] * node[1],
+                      'gpus'     : [rpc.FREE] * rm_info.gpus_per_node,
+                      'lfs'      : rm_info.lfs_per_node,
+                      'mem'      : rm_info.mem_per_node}
                      for idx, node in enumerate(nodes)]
 
         return node_list
