@@ -137,12 +137,6 @@ class Flux(LaunchMethod):
         partitions = ru.partition(self._rm_info.node_list,
                                   self._rm_info.n_partitions)
 
-        # start watcher thread
-        watcher = mt.Thread(target=self._queue_watcher)
-        watcher.daemon = True
-        watcher.start()
-
-
         # run one partition thread per partition
         for part_id, nodes in enumerate(partitions):
 
@@ -179,6 +173,11 @@ class Flux(LaunchMethod):
                 break
 
             self._log.debug('flux partition started')
+
+        # start watcher thread
+        watcher = mt.Thread(target=self._queue_watcher)
+        watcher.daemon = True
+        watcher.start()
 
         self._prof.prof('flux_start_ok')
 
@@ -260,7 +259,7 @@ class Flux(LaunchMethod):
                 fids = part.helper.submit(specs)
                 for fid, tid in zip(fids, tids):
                     self._prof.prof('submit_1', uid=tid)
-                    self._log.debug('=== push flux job id: %s -> %s', tid, fid)
+                  # self._log.debug('push flux job id: %s -> %s', tid, fid)
                     q_out.put(['job_id', (tid, fid)])
 
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
@@ -377,7 +376,7 @@ class Flux(LaunchMethod):
                 busy = True
                 cmd, event = q_out.get()
 
-                self._log.debug('=== pull event: %s: %s', cmd, event)
+              # self._log.debug('=== pull event: %s: %s', cmd, event)
 
                 if cmd == 'job_id':
                     task_id, flux_id = event
@@ -420,7 +419,7 @@ class Flux(LaunchMethod):
     #
     def _job_event_cb(self, q_out, flux_id, event):
 
-        self._log.debug('=== push flux job event: %s: %s', flux_id, event.name)
+      # self._log.debug('=== push flux job event: %s: %s', flux_id, event.name)
         q_out.put(['event', (flux_id, event)])
 
 
