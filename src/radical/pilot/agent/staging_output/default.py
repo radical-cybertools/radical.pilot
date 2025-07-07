@@ -79,6 +79,10 @@ class Default(AgentStagingOutputComponent):
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
 
+                self._log.debug('=== staging task %s: %s', uid, task['state'])
+                import pprint
+                self._log.debug('=== staging task %s: %s', uid, pprint.pformat(task))
+
                 # we always dig for stdout/stderr
                 self._handle_task_stdio(task)
 
@@ -142,12 +146,10 @@ class Default(AgentStagingOutputComponent):
         sbox = task.get('task_sandbox_path')
         uid  = task['uid']
 
-        # no sbox, no io
-        if not sbox:
-            return
+        self._log.debug('out %s: %s', uid, sbox)
 
         self._prof.prof('staging_stdout_start', uid=uid)
-      # self._log.debug('out: %s', task.get('stdout_file'))
+        self._log.debug('out %s: %s', uid, task.get('stdout_file'))
 
         # TODO: disable this at scale?
         if task.get('stdout_file') and os.path.isfile(task['stdout_file']):
