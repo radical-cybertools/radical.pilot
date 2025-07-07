@@ -204,10 +204,10 @@ class Flux(LaunchMethod):
         srun     = ru.which('srun')
         nodelist = ','.join([node['name'] for node in nodes])
         if srun:
-            launcher = 'srun --nodes %s --ntasks-per-node 1 ' \
+            launcher = 'srun --nodes %d --nodelist %s --ntasks-per-node 1 ' \
                        '--cpus-per-task=%d --gpus-per-task=%d ' \
                        '--export=ALL' \
-                       % (nodelist, threads_per_node, gpus_per_node)
+                       % (len(nodes), nodelist, threads_per_node, gpus_per_node)
 
         part.service = ru.FluxService(launcher=launcher)
         part.service.start()
