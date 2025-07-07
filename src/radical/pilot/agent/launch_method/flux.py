@@ -3,11 +3,14 @@ __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
 import copy
+import time
 import queue
 
 from collections import defaultdict
+from functools   import partial
 
-import threading as mt
+import threading       as mt
+import multiprocessing as mp
 
 import radical.utils as ru
 
@@ -39,12 +42,13 @@ class Flux(LaunchMethod):
 
         self._partitions  = list()
         self._create_cb   = None
-        self._part_queues = list()
         self._task_count  = 0
 
         self._idmap       = dict()             # flux_id -> task_id
         self._events      = defaultdict(list)  # flux_id -> [events]
         self._events_lock = mt.Lock()
+        self._in_queues   = list()
+        self._out_queues  = list()
 
         super().__init__(name, lm_cfg, rm_info, session, prof)
 
@@ -133,37 +137,55 @@ class Flux(LaunchMethod):
         partitions = ru.partition(self._rm_info.node_list,
                                   self._rm_info.n_partitions)
 
+        # start watcher thread
+        watcher = mt.Thread(target=self._queue_watcher)
+        watcher.daemon = True
+        watcher.start()
+
+
         # run one partition thread per partition
-        part_events = list()
         for part_id, nodes in enumerate(partitions):
 
             self._log.debug('starting flux partition %d on %d nodes',
                             part_id, len(nodes))
 
-            q_in = queue.Queue()
-            evt  = mt.Event()
-            part_thread = mt.Thread(target=self._part_thread,
-                                    args=(part_id, nodes, q_in, evt),
-                                    name='rp.flux.part.%d' % part_id)
-            part_thread.daemon = True
-            part_thread.start()
-            part_events.append(evt)
+            q_in  = mp.Queue()
+            q_out = mp.Queue()
+            part_proc = mp.Process(target=self._part_thread,
+                                     args=(part_id, nodes, q_in, q_out),
+                                     name='rp.flux.part.%d' % part_id)
+            part_proc.start()
 
-            self._part_queues.append(q_in)
+            self._in_queues.append(q_in)
+            self._out_queues.append(q_out)
 
-        for evt in part_events:
+        for q_out in self._out_queues:
 
             # wait for all partition threads to finish starting
-            if not evt.wait(timeout=600):
-                self._prof.prof('flux_start_failed')
-                raise RuntimeError('partition thread did not start')
+            start = time.time()
+            while True:
+                now = time.time()
+                if now - start > 600:
+                    raise RuntimeError('flux partition did not start')
+
+                try:
+                    val = q_out.get(timeout=1)
+                except queue.Empty:
+                    continue
+
+                if val is not True:
+                    raise RuntimeError('flux partition startup failed')
+
+                break
+
+            self._log.debug('flux partition started')
 
         self._prof.prof('flux_start_ok')
 
 
     # --------------------------------------------------------------------------
     #
-    def _part_thread(self, part_id, nodes, q_in, evt):
+    def _part_thread(self, part_id, nodes, q_in, q_out):
 
         threads_per_node = self._rm_info.cores_per_node  # == hw threads
         gpus_per_node    = self._rm_info.gpus_per_node
@@ -199,11 +221,14 @@ class Flux(LaunchMethod):
 
         part.helper = ru.FluxHelper(uri=part.uri)
         part.helper.start()
-        part.helper.register_cb(self._job_event_cb)
+
+        partial_cb = partial(self._job_event_cb, q_out)
+        part.helper.register_cb(partial_cb)
 
         self._log.debug('flux helper: %s', part.helper.uid)
 
-        evt.set()
+        # signal startup
+        q_out.put(True)
 
 
         # we now wait for tasks to submit to our flux service
@@ -235,7 +260,8 @@ class Flux(LaunchMethod):
                 fids = part.helper.submit(specs)
                 for fid, tid in zip(fids, tids):
                     self._prof.prof('submit_1', uid=tid)
-                    self._job_id_cb(tid, fid)
+                    self._log.debug('=== push flux job id: %s -> %s', tid, fid)
+                    q_out.put(['job_id', (tid, fid)])
 
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
                                 len(tids), tids)
@@ -282,7 +308,7 @@ class Flux(LaunchMethod):
                 self._prof.prof('work_1', uid=task['uid'])
                 part_id = task['description']['partition']
                 if part_id is None:
-                    part_id = self._task_count % len(self._part_queues)
+                    part_id = self._task_count % len(self._in_queues)
                     self._task_count += 1
 
                 self._prof.prof('work_2', uid=task['uid'])
@@ -297,7 +323,8 @@ class Flux(LaunchMethod):
                 self._event_cb(tid, self.Event(name='lm_failed'))
 
         for part_id in parts:
-            self._part_queues[part_id].put(parts[part_id])
+            self._in_queues[part_id].put(parts[part_id])
+
 
     # --------------------------------------------------------------------------
     #
@@ -337,7 +364,39 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _job_id_cb(self, task_id, flux_id):
+    def _queue_watcher(self):
+
+        while True:
+
+            busy = False
+            for q_out in self._out_queues:
+
+                if q_out.empty():
+                    continue
+
+                busy = True
+                cmd, event = q_out.get()
+
+                self._log.debug('=== pull event: %s: %s', cmd, event)
+
+                if cmd == 'job_id':
+                    task_id, flux_id = event
+                    self._job_id_handler(task_id, flux_id)
+
+                elif cmd == 'event':
+                    flux_id, event = event
+                    self._job_event_handler(flux_id, event)
+
+                else:
+                    self._log.error('unknown flux event: %s', cmd)
+
+            if not busy:
+                time.sleep(0.1)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _job_id_handler(self, task_id, flux_id):
 
         with self._events_lock:
 
@@ -359,7 +418,15 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, flux_id, event):
+    def _job_event_cb(self, q_out, flux_id, event):
+
+        self._log.debug('=== push flux job event: %s: %s', flux_id, event.name)
+        q_out.put(['event', (flux_id, event)])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _job_event_handler(self, flux_id, event):
 
         self._log.debug('flux event: %s: %s', flux_id, event.name)
 
