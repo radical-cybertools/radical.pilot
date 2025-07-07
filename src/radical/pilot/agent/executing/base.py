@@ -691,13 +691,13 @@ class AgentExecutingComponent(rpu.AgentComponent):
         else              : gpr = '%f' % gpr
 
         ret  = '\n'
+        ret += self._rp_env
+        ret += '\n'
         ret += 'export RP_TASK_ID="%s"\n'           % tid
         ret += 'export RP_TASK_NAME="%s"\n'         % name
         ret += 'export RP_TASK_SANDBOX="%s"\n'      % sbox
         ret += 'export RP_CORES_PER_RANK=%d\n'      % td['cores_per_rank']
         ret += 'export RP_GPUS_PER_RANK=%s\n'       % gpr
-
-        ret += self._rp_env
 
         services = td.get('services') or list()
         for service in services:

@@ -59,14 +59,11 @@ class Flux(AgentExecutingComponent) :
                                                   self._log, self._prof)
 
         # we only start the flux backend here
-        self._lm.start_flux(id_cb=self._job_id_cb,
-                            event_cb=self._job_event_cb,
-                            fail_cb=self._lm_fail_task,
+        self._lm.start_flux(event_cb=self._handle_event_cb,
                             create_cb=self._create_cb)
 
         # local state management
         self._tasks       = dict()             # task_id -> task
-        self._idmap       = dict()             # flux_id -> task_id
         self._events      = defaultdict(list)  # flux_id -> [events]
         self._events_lock = mt.Lock()
 
@@ -111,48 +108,9 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _job_id_cb(self, task_id, flux_id):
-
-        with self._events_lock:
-
-            self._idmap[flux_id] = task_id
-
-            events = self._events.get(flux_id, [])
-
-            if events:
-                del self._events[flux_id]
-
-        if events:
-            task = self._tasks[task_id]
-            for event in events:
-                self._handle_event(task, flux_id, event)
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _job_event_cb(self, flux_id, event):
-
-        self._log.debug('flux event: %s: %s', flux_id, event.name)
-
-        with self._events_lock:
-
-            task_id = self._idmap.get(flux_id)
-            task    = self._tasks.get(task_id)
-
-            if not task:
-                self._log.info('no task for flux job %s: %s %s', flux_id,
-                                event.name, list(self._tasks.keys()))
-                self._events[flux_id].append(event)
-                return
-
-        self._handle_event(task, flux_id, event)
-
-
-    # --------------------------------------------------------------------------
-    #
     def _create_cb(self, task):
 
-        self._log.debug('=== create exec script: %s', task['uid'])
+        self._log.debug('create exec script: %s', task['uid'])
         _, exec_path = self._create_exec_script(self._lm, task)
 
         return exec_path
@@ -160,16 +118,19 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _handle_event(self, task, flux_id, event):
+    def _handle_event_cb(self, task_id, event):
 
         ename = event.name
         state = self._event_map.get(ename)
 
-        if ename == 'alloc':
-            self._log.debug('map fluxid: %s: %s', flux_id, task['uid'])
-
-        self._log.debug('flux event: %s: %s [%s]', flux_id, ename, state)
+        self._log.debug('flux event: %s: %s [%s]', task_id, ename, state)
         self._log.debug_3('          : %s', str(event.context))
+
+        task = self._tasks.get(task_id)
+
+        if ename == 'lm_failed':
+            self.advance_tasks(task, rps.FAILED, publish=True, push=False)
+            return
 
         if state is None:
             return
@@ -192,8 +153,8 @@ class Flux(AgentExecutingComponent) :
                     self._log.debug('post-launch %s: %s [%s][%s]',
                                                              tid, ret, out, err)
                     if ret:
-                        self._advance_tasks(task, rps.FAILED,
-                                            publish=True, push=False)
+                        self.advance_tasks(task, rps.FAILED,
+                                           publish=True, push=False)
                         return
 
             # on completion, push toward output staging
