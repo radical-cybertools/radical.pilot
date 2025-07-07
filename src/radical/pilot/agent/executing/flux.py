@@ -2,6 +2,8 @@
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
+import copy
+
 import threading as mt
 
 from collections import defaultdict
@@ -58,17 +60,15 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
 
-        # we only start the flux backend here
-        self._lm.start_flux(event_cb=self._handle_event_cb,
-                            create_cb=self._create_cb)
-
         # local state management
         self._tasks       = dict()             # task_id -> task
         self._events      = defaultdict(list)  # flux_id -> [events]
         self._events_lock = mt.Lock()
 
-
         self._task_count = 0
+
+        # we only start the flux backend here
+        self._lm.start_flux(event_cb=self._handle_event_cb)
 
 
     # --------------------------------------------------------------------------
@@ -108,12 +108,42 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def _create_cb(self, task):
+    def _create_spec(self, task):
 
-        self._log.debug('create exec script: %s', task['uid'])
+        tid = task['uid']
+
+        self._log.debug('create spec: %s', tid)
+
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
+
+        self._prof.prof('task_create_exec_start', uid=uid)
         _, exec_path = self._create_exec_script(self._lm, task)
+        self._prof.prof('task_create_exec_ok', uid=uid)
 
-        return exec_path
+        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
+                                                   'out': stdout,
+                                                   'err': stderr}
+        spec_dict = copy.deepcopy(td)
+        spec_dict['uid']        = uid
+        spec_dict['executable'] = '/bin/sh'
+        spec_dict['arguments']  = ['-c', command]
+
+        self._prof.prof('task_to_flux_start', uid=uid)
+        ret = ru.flux.spec_from_dict(spec_dict)
+
+        self._prof.prof('task_to_spec_stop', uid=uid)
+
+        return ret
 
 
     # --------------------------------------------------------------------------
@@ -180,10 +210,54 @@ class Flux(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        for task in tasks:
-            self._tasks[task['uid']] = task
+        n_parts = self._rm.info.n_partitions
+        parts   = defaultdict(dict)  # part_id -> {task_id: task}
 
-        self._lm.submit_tasks(tasks)
+        for task in tasks:
+
+            tid = task['uid']
+            self._tasks[tid] = task
+
+            self._log.debug('=== register %s', tid)
+
+            try:
+                # FIXME: pre_launch commands are synchronous and thus
+                #        potentially slow.
+                self._prof.prof('work_0', uid=tid)
+
+                cmds = task['description'].get('pre_launch')
+                if cmds:
+                    sbox = task['task_sandbox_path']
+                    ru.rec_makedir(sbox)
+
+                    for cmd in cmds:
+                        self._log.debug('pre-launch %s: %s', task['uid'], cmd)
+                        out, err, ret = ru.sh_callout(cmd, shell=True,
+                                              cwd=task['task_sandbox_path'])
+                        self._log.debug('pre-launch %s: %s [%s][%s]',
+                                        tid, ret, out, err)
+
+                        if ret:
+                            raise RuntimeError('cmd failed: %s' % cmd)
+
+                self._prof.prof('work_1', uid=task['uid'])
+                part_id = task['description']['partition']
+                if part_id is None:
+                    part_id = self._task_count % n_parts
+                    self._task_count += 1
+
+                self._prof.prof('work_2', uid=task['uid'])
+                self._log.debug('task %s on partition %s', task['uid'], part_id)
+                task['description']['environment']['RP_PARTITION_ID'] = part_id
+
+                parts[part_id][tid] = self._create_spec(task)
+                self._prof.prof('work_3', uid=task['uid'])
+
+            except:
+                self._log.exception('LM flux submit failed for %s', tid)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
+
+        self._lm.submit_tasks(parts)
 
 
 # ------------------------------------------------------------------------------
