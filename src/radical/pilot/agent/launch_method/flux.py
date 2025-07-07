@@ -2,7 +2,6 @@
 __copyright__ = "Copyright 2016, http://radical.rutgers.edu"
 __license__   = "MIT"
 
-import copy
 import time
 import queue
 
@@ -41,9 +40,6 @@ class Flux(LaunchMethod):
     def __init__(self, name, lm_cfg, rm_info, session, prof):
 
         self._partitions  = list()
-        self._create_cb   = None
-        self._task_count  = 0
-
         self._idmap       = dict()             # flux_id -> task_id
         self._events      = defaultdict(list)  # flux_id -> [events]
         self._events_lock = mt.Lock()
@@ -124,10 +120,9 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def start_flux(self, event_cb, create_cb):
+    def start_flux(self, event_cb):
 
         self._event_cb  = event_cb
-        self._create_cb = create_cb
 
         # start one flux instance per partition.  Flux instances are hosted in
         # partition threads which are fed tasks through queues.
@@ -149,6 +144,7 @@ class Flux(LaunchMethod):
                                      args=(part_id, nodes, q_in, q_out),
                                      name='rp.flux.part.%d' % part_id)
             part_proc.start()
+            # FIXME: add process watcher
 
             self._in_queues.append(q_in)
             self._out_queues.append(q_out)
@@ -243,122 +239,36 @@ class Flux(LaunchMethod):
 
             try:
                 specs = list()
-                tids  = list()
 
-                for task in tasks:
-
-                    tid = task['uid']
-                    tids.append(tid)
+                for tid in tasks:
 
                     self._prof.prof('part_0', uid=tid)
-                    specs.append(self.task_to_spec(task))
+                    specs.append(tasks[tid])
 
-                for task in tasks:
-                    self._prof.prof('submit_0', uid=task['uid'])
+                for tid in tasks:
+                    self._prof.prof('submit_0', uid=tid)
 
                 fids = part.helper.submit(specs)
-                for fid, tid in zip(fids, tids):
+                for fid, tid in zip(fids, tasks.keys()):
                     self._prof.prof('submit_1', uid=tid)
                   # self._log.debug('push flux job id: %s -> %s', tid, fid)
                     q_out.put(['job_id', (tid, fid)])
 
-                self._log.debug('%s: submitted %d tasks: %s', part.uid,
-                                len(tids), tids)
+                self._log.debug('%s: submitted %d tasks', part.uid, len(tasks))
 
             except Exception:
                 self._log.exception('LM flux submit failed')
-                for task in tasks:
+                for tid in tasks:
                     self._event_cb(tid, self.Event(name='lm_failed'))
 
 
 
     # --------------------------------------------------------------------------
     #
-    def submit_tasks(self, tasks):
+    def submit_tasks(self, parts):
 
-        # round robin on available flux partitions
-        parts  = defaultdict(list)
-        for task in tasks:
-
-            tid = task['uid']
-
-            try:
-
-                # FIXME: pre_launch commands are synchronous and thus
-                #        potentially slow.
-                self._prof.prof('work_0', uid=tid)
-                self._log.debug('LM submit %s', tid)
-
-                cmds = task['description'].get('pre_launch')
-                if cmds:
-                    sbox = task['task_sandbox_path']
-                    ru.rec_makedir(sbox)
-
-                    for cmd in cmds:
-                        self._log.debug('pre-launch %s: %s', task['uid'], cmd)
-                        out, err, ret = ru.sh_callout(cmd, shell=True,
-                                              cwd=task['task_sandbox_path'])
-                        self._log.debug('pre-launch %s: %s [%s][%s]',
-                                        tid, ret, out, err)
-
-                        if ret:
-                            raise RuntimeError('cmd failed: %s' % cmd)
-
-                self._prof.prof('work_1', uid=task['uid'])
-                part_id = task['description']['partition']
-                if part_id is None:
-                    part_id = self._task_count % len(self._in_queues)
-                    self._task_count += 1
-
-                self._prof.prof('work_2', uid=task['uid'])
-                parts[part_id].append(task)
-                task['description']['environment']['RP_PARTITION_ID'] = part_id
-                self._log.debug('task %s on partition %s', task['uid'], part_id)
-
-                self._prof.prof('work_3', uid=task['uid'])
-
-            except:
-                self._log.exception('LM flux submit failed for %s', tid)
-                self._event_cb(tid, self.Event(name='lm_failed'))
-
-        for part_id in parts:
-            self._in_queues[part_id].put(parts[part_id])
-
-
-    # --------------------------------------------------------------------------
-    #
-    def task_to_spec(self, task):
-
-        td     = task['description']
-        uid    = task['uid']
-        sbox   = task['task_sandbox_path']
-        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
-        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
-
-        task['stdout'] = ''
-        task['stderr'] = ''
-
-        task['stdout_file'] = stdout
-        task['stderr_file'] = stderr
-
-        self._prof.prof('task_create_exec_start', uid=uid)
-        exec_path = self._create_cb(task)
-        self._prof.prof('task_create_exec_ok', uid=uid)
-
-        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
-                                                   'out': stdout,
-                                                   'err': stderr}
-        spec_dict = copy.deepcopy(td)
-        spec_dict['uid']        = uid
-        spec_dict['executable'] = '/bin/sh'
-        spec_dict['arguments']  = ['-c', command]
-
-        self._prof.prof('task_to_flux_start', uid=uid)
-        ret = ru.flux.spec_from_dict(spec_dict)
-
-        self._prof.prof('task_to_spec_stop', uid=uid)
-
-        return ret
+        for part_id, tasks in parts.items():
+            self._in_queues[part_id].put(tasks)
 
 
     # --------------------------------------------------------------------------

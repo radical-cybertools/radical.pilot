@@ -120,36 +120,6 @@ class AgentExecutingComponent(rpu.AgentComponent):
         self._to_thread.daemon = True
         self._to_thread.start()
 
-        self._rp_env = self._get_static_rp_env()
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _get_static_rp_env(self):
-
-        ctrl_pub_addr = self._reg['bridges.control_pubsub']['addr_pub']
-        ctrl_sub_addr = self._reg['bridges.control_pubsub']['addr_pub']
-
-        ret  = ''
-        ret += 'export RP_PILOT_ID="%s"\n'          % self.pid
-        ret += 'export RP_SESSION_ID="%s"\n'        % self.sid
-        ret += 'export RP_RESOURCE="%s"\n'          % self.resource
-        ret += 'export RP_RESOURCE_SANDBOX="%s"\n'  % self.rsbox
-        ret += 'export RP_SESSION_SANDBOX="%s"\n'   % self.ssbox
-        ret += 'export RP_PILOT_SANDBOX="%s"\n'     % self.psbox
-        ret += 'export RP_REGISTRY_ADDRESS="%s"\n'  % self.session.reg_addr
-        ret += 'export RP_CONTROL_PUB_ADDRESS=%s\n' % ctrl_pub_addr
-        ret += 'export RP_CONTROL_SUB_ADDRESS=%s\n' % ctrl_sub_addr
-
-        # FIXME AM
-      # ret += 'export RP_LFS="%s"\n'              % self.lfs
-        ret += 'export RP_GTOD="%s"\n'             % self.gtod
-        ret += 'export RP_PROF="%s"\n'             % self.prof
-        ret += 'export RP_CTRL="%s"\n'             % self.rp_ctrl
-
-        return ret
-
-
 
     # --------------------------------------------------------------------------
     #
@@ -162,7 +132,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
     #
     def control_cb(self, topic, msg):
 
-        self._log.info('control_cb [%s]: %s', topic, msg)
+        self._log.info('command_cb [%s]: %s', topic, msg)
 
         cmd = msg.get('cmd')
         arg = msg.get('arg')
@@ -275,6 +245,7 @@ class AgentExecutingComponent(rpu.AgentComponent):
         a fallback is not in place to enforce the specification of the
         `origin` attributes for tasks.
         '''
+
 
         buckets = {'client': list(),
                    'raptor': list(),
@@ -690,12 +661,22 @@ class AgentExecutingComponent(rpu.AgentComponent):
         if int(gpr) == gpr: gpr = '%d' % gpr
         else              : gpr = '%f' % gpr
 
+        ctrl_pub_addr = self._reg['bridges.control_pubsub']['addr_pub']
+        ctrl_sub_addr = self._reg['bridges.control_pubsub']['addr_pub']
+
         ret  = '\n'
-        ret += self._rp_env
-        ret += '\n'
         ret += 'export RP_TASK_ID="%s"\n'           % tid
         ret += 'export RP_TASK_NAME="%s"\n'         % name
+        ret += 'export RP_PILOT_ID="%s"\n'          % self.pid
+        ret += 'export RP_SESSION_ID="%s"\n'        % self.sid
+        ret += 'export RP_RESOURCE="%s"\n'          % self.resource
+        ret += 'export RP_RESOURCE_SANDBOX="%s"\n'  % self.rsbox
+        ret += 'export RP_SESSION_SANDBOX="%s"\n'   % self.ssbox
+        ret += 'export RP_PILOT_SANDBOX="%s"\n'     % self.psbox
         ret += 'export RP_TASK_SANDBOX="%s"\n'      % sbox
+        ret += 'export RP_REGISTRY_ADDRESS="%s"\n'  % self.session.reg_addr
+        ret += 'export RP_CONTROL_PUB_ADDRESS=%s\n' % ctrl_pub_addr
+        ret += 'export RP_CONTROL_SUB_ADDRESS=%s\n' % ctrl_sub_addr
         ret += 'export RP_CORES_PER_RANK=%d\n'      % td['cores_per_rank']
         ret += 'export RP_GPUS_PER_RANK=%s\n'       % gpr
 
@@ -704,6 +685,12 @@ class AgentExecutingComponent(rpu.AgentComponent):
             info = self._reg['services.%s' % service] or ''
             sid  = service.replace('.', '_').upper()
             ret += 'export RP_INFO_%s="%s"\n' % (sid, str(info))
+
+        # FIXME AM
+      # ret += 'export RP_LFS="%s"\n'              % self.lfs
+        ret += 'export RP_GTOD="%s"\n'             % self.gtod
+        ret += 'export RP_PROF="%s"\n'             % self.prof
+        ret += 'export RP_CTRL="%s"\n'             % self.rp_ctrl
 
         if self._prof.enabled:
             ret += 'export RP_PROF_TGT="%s/%s.prof"\n' % (sbox, tid)
