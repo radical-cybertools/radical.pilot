@@ -29,20 +29,47 @@ class Flux(LaunchMethod):
             self.service  = None
             self.helper   = None
 
+    class Event(ru.TypedDict):
+        _schema = {'name': str}
+
 
     # --------------------------------------------------------------------------
     #
     def __init__(self, name, lm_cfg, rm_info, session, prof):
 
         self._partitions  = list()
-        self._id_cb       = None
-        self._event_cb    = None
-        self._fail_cb     = None
         self._create_cb   = None
         self._part_queues = list()
         self._task_count  = 0
 
+        self._idmap       = dict()             # flux_id -> task_id
+        self._events      = defaultdict(list)  # flux_id -> [events]
+        self._events_lock = mt.Lock()
+
         super().__init__(name, lm_cfg, rm_info, session, prof)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @property
+    def partitions(self):
+        return self._partitions
+
+
+    def can_launch(self, task):
+        raise RuntimeError('method cannot be used on Flux LM')
+
+
+    def get_launch_cmds(self, task, exec_path):
+        raise RuntimeError('method cannot be used on Flux LM')
+
+
+    def get_launcher_env(self):
+        raise RuntimeError('method cannot be used on Flux LM')
+
+
+    def get_rank_cmd(self):
+        return 'export RP_RANK=$FLUX_TASK_RANK\n'
 
 
     # --------------------------------------------------------------------------
@@ -73,10 +100,10 @@ class Flux(LaunchMethod):
         if fm.exc:
             raise RuntimeError('flux import failed: %s' % fm.exc)
 
-        self._log.debug('=== flux core   : %s', fm.core)
-        self._log.debug('=== flux job    : %s', fm.job)
-        self._log.debug('=== flux exe    : %s', fm.exe)
-        self._log.debug('=== flux version: %s', fm.version)
+        self._log.debug('flux core   : %s', fm.core)
+        self._log.debug('flux job    : %s', fm.job)
+        self._log.debug('flux exe    : %s', fm.exe)
+        self._log.debug('flux version: %s', fm.version)
 
         lm_info = {'env'       : env,
                    'env_sh'    : env_sh}
@@ -86,11 +113,16 @@ class Flux(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def start_flux(self, id_cb, event_cb, fail_cb, create_cb):
+    def init_from_info(self, lm_info):
 
-        self._id_cb     = id_cb
+        pass
+
+
+    # --------------------------------------------------------------------------
+    #
+    def start_flux(self, event_cb, create_cb):
+
         self._event_cb  = event_cb
-        self._fail_cb   = fail_cb
         self._create_cb = create_cb
 
         # start one flux instance per partition.  Flux instances are hosted in
@@ -150,10 +182,10 @@ class Flux(LaunchMethod):
         srun     = ru.which('srun')
         nodelist = ','.join([node['name'] for node in nodes])
         if srun:
-            launcher = 'srun --nodes %s --ntasks-per-node 1 ' \
+            launcher = 'srun --nodes %d --nodelist %s --ntasks-per-node 1 ' \
                        '--cpus-per-task=%d --gpus-per-task=%d ' \
                        '--export=ALL' \
-                       % (nodelist, threads_per_node, gpus_per_node)
+                       % (len(nodes), nodelist, threads_per_node, gpus_per_node)
 
         part.service = ru.FluxService(launcher=launcher)
         part.service.start()
@@ -167,7 +199,7 @@ class Flux(LaunchMethod):
 
         part.helper = ru.FluxHelper(uri=part.uri)
         part.helper.start()
-        part.helper.register_cb(self._event_cb)
+        part.helper.register_cb(self._job_event_cb)
 
         self._log.debug('flux helper: %s', part.helper.uid)
 
@@ -203,22 +235,16 @@ class Flux(LaunchMethod):
                 fids = part.helper.submit(specs)
                 for fid, tid in zip(fids, tids):
                     self._prof.prof('submit_1', uid=tid)
-                    self._id_cb(tid, fid)
+                    self._job_id_cb(tid, fid)
 
                 self._log.debug('%s: submitted %d tasks: %s', part.uid,
                                 len(tids), tids)
 
             except Exception:
                 self._log.exception('LM flux submit failed')
-                self._fail_cb(tasks)
+                for task in tasks:
+                    self._event_cb(tid, self.Event(name='lm_failed'))
 
-
-
-    # --------------------------------------------------------------------------
-    #
-    def init_from_info(self, lm_info):
-
-        pass
 
 
     # --------------------------------------------------------------------------
@@ -229,8 +255,9 @@ class Flux(LaunchMethod):
         parts  = defaultdict(list)
         for task in tasks:
 
+            tid = task['uid']
+
             try:
-                tid  = task['uid']
 
                 # FIXME: pre_launch commands are synchronous and thus
                 #        potentially slow.
@@ -265,8 +292,9 @@ class Flux(LaunchMethod):
 
                 self._prof.prof('work_3', uid=task['uid'])
 
-            except Exception:
-                self._fail_cb(task)
+            except:
+                self._log.exception('LM flux submit failed for %s', tid)
+                self._event_cb(tid, self.Event(name='lm_failed'))
 
         for part_id in parts:
             self._part_queues[part_id].put(parts[part_id])
@@ -307,29 +335,45 @@ class Flux(LaunchMethod):
         return ret
 
 
+    # --------------------------------------------------------------------------
+    #
+    def _job_id_cb(self, task_id, flux_id):
+
+        with self._events_lock:
+
+            self._log.debug('flux job id: %s -> %s', task_id, flux_id)
+
+            self._idmap[flux_id] = task_id
+
+            events = self._events.get(flux_id, [])
+
+            self._log.debug('flux job id: %s -> %d events', task_id, len(events))
+            if events:
+                del self._events[flux_id]
+
+
+        for event in events:
+            self._log.debug('job id event: %s, event: %s', task_id, event.name)
+            self._event_cb(task_id, event)
 
 
     # --------------------------------------------------------------------------
     #
-    @property
-    def partitions(self):
-        return self._partitions
+    def _job_event_cb(self, flux_id, event):
 
+        self._log.debug('flux event: %s: %s', flux_id, event.name)
 
-    def can_launch(self, task):
-        raise RuntimeError('method cannot be used on Flux LM')
+        with self._events_lock:
 
+            task_id = self._idmap.get(flux_id)
 
-    def get_launch_cmds(self, task, exec_path):
-        raise RuntimeError('method cannot be used on Flux LM')
+            if not task_id:
+                self._log.info('no task id for flux job %s: %s', flux_id,
+                                event.name)
+                self._events[flux_id].append(event)
+                return
 
-
-    def get_launcher_env(self):
-        raise RuntimeError('method cannot be used on Flux LM')
-
-
-    def get_rank_cmd(self):
-        return 'export RP_RANK=$FLUX_TASK_RANK\n'
+        self._event_cb(task_id, event)
 
 
 # ------------------------------------------------------------------------------
