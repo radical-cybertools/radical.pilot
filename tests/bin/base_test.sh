@@ -11,6 +11,13 @@ else
     exit 1
 fi
 
+while getopts "o:" OPTION; do
+    case $OPTION in
+        o) OUTPUT_DIR="$OPTARG" ;;
+        *) exit 1               ;;
+    esac
+done
+
 base_url="https://raw.githubusercontent.com/radical-cybertools/radical.pilot/v$rp_version/examples"
 wget -q "$base_url/config.json"
 wget -q "$base_url/00_getting_started.py"
@@ -27,6 +34,8 @@ session_agent_sbox="$HOME/radical.pilot.sandbox/$session_id"
 if [ -d "$session_agent_sbox" ]; then
   tar -P -czf session_agent.tar.gz $session_agent_sbox
 fi
+mkdir -p $OUTPUT_DIR
+mv session_*.tar.gz $OUTPUT_DIR/
 echo "sid           : $session_id"
 echo "agent sandbox : $session_agent_sbox"
 

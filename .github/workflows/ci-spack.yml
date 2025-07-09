@@ -44,9 +44,7 @@ jobs:
       run: |
         spack env activate ${{ env.ENV_NAME }}
         spack env status
-        bash -c "tests/bin/base_test.sh"
-        mkdir -p session_spack_run
-        cp session*.tar.gz session_spack_run/ || true
+        bash -c "tests/bin/base_test.sh -o session_spack_run"
     - name: Upload session
       if: always()
       uses: actions/upload-artifact@v4
