@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# consider to use EnTK+Darshan example:
-#    radical.entk/examples/misc/darshan_enabled.py
-
 if which radical-pilot-version >/dev/null; then
     rp_version="$(radical-pilot-version)"
     if [[ -z $rp_version ]]; then
