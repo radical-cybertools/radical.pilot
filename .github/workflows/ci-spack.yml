@@ -1,5 +1,6 @@
 name: CI tests with Spack
 on:
+  # temporary, remove before merging and enable schedule cron
   pull_request:
     branches:
       - 'devel*'
@@ -35,7 +36,7 @@ jobs:
         spack config add concretizer:unify:when_possible
         spack config add concretizer:reuse:false
         spack config add config:db_lock_timeout:300
-        spack add py-radical-pilot ^python@3.9
+        spack add py-radical-pilot ^python@3.10
         spack concretize -f
         spack install
     - name: Run tests
