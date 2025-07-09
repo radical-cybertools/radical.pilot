@@ -20,6 +20,16 @@ radical-stack
 RADICAL_REPORT_ANIME=FALSE ./00_getting_started.py local.localhost
 exitcode=$?
 
+# collect session sandboxes as tarballs
+session_id=$(find . -maxdepth 1 -name "rp.session*" -type d -exec basename {} "rp.session" \;)
+tar -czf session_client.tar.gz `find $session_id -type d -print`
+session_agent_sbox="$HOME/radical.pilot.sandbox/$session_id"
+if [ -d "$session_agent_sbox" ]; then
+  tar -P -czf session_agent.tar.gz $session_agent_sbox
+fi
+echo "sid           : $session_id"
+echo "agent sandbox : $session_agent_sbox"
+
 test "$exitcode" = 0 && echo "Success!"
 exit $exitcode
 
