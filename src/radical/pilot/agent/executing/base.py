@@ -307,70 +307,79 @@ class AgentExecutingComponent(rpu.AgentComponent):
 
         self._extend_pre_exec(td, slots)
 
-        with ru.ru_open(exec_fullpath, 'w') as fout:
+        tmp  = ''
+        tmp += self._header
+        tmp += self._separator
+        tmp += self._get_rp_env(task)
+        tmp += self._get_rp_funcs()
+        tmp += self._separator
+        tmp += '# rank ID\n'
+        tmp += self._get_rank_ids(n_ranks, launcher)
 
-            tmp  = ''
-            tmp += self._header
+        if td.get('startup_timeout'):
             tmp += self._separator
-            tmp += self._get_rp_env(task)
-            tmp += self._get_rp_funcs()
-            tmp += self._separator
-            tmp += '# rank ID\n'
-            tmp += self._get_rank_ids(n_ranks, launcher)
+            tmp += '# startup completed\n'
+            tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
+                   '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
 
-            if td.get('startup_timeout'):
-                tmp += self._separator
-                tmp += '# startup completed\n'
-                tmp += 'test "$RP_RANK" == "0" && $RP_CTRL '\
-                       '$RP_SESSION_ID task_startup_done uid=$RP_TASK_ID\n'
+        tmp += self._separator
+        tmp += self._get_prof('exec_start')
 
-            tmp += self._separator
-            tmp += self._get_prof('exec_start')
+        tmp += self._get_task_env(task, launcher)
 
-            tmp += self._get_task_env(task, launcher)
+        tmp += self._separator
+        tmp += '# pre-exec commands\n'
+        tmp += self._get_prof('exec_pre')
+        tmp += self._get_prep_exec(task, n_ranks, sig='pre_exec')
 
-            tmp += self._separator
-            tmp += '# pre-exec commands\n'
-            tmp += self._get_prof('exec_pre')
-            tmp += self._get_prep_exec(task, n_ranks, sig='pre_exec')
+        tmp += self._separator
+        tmp += '# output file detection (i)\n'
+        tmp += "ls | sort | grep -ve '^%s\\.' > %s/%s.files\n" \
+                % (tid, env_sbox, tid)
 
-            tmp += self._separator
-            tmp += '# output file detection (i)\n'
-            tmp += "ls | sort | grep -ve '^%s\\.' > %s/%s.files\n" \
-                    % (tid, env_sbox, tid)
+        tmp += self._separator
+        tmp += '# execute rank\n'
+        tmp += self._get_prof('rank_start')
+        tmp += self._get_exec(task, launcher)
+        tmp += self._get_prof('rank_stop',
+                              msg='RP_EXEC_PID=$RP_EXEC_PID:'
+                                  'RP_RANK_PID=$RP_RANK_PID')
 
-            tmp += self._separator
-            tmp += '# execute rank\n'
-            tmp += self._get_prof('rank_start')
-            tmp += self._get_exec(task, launcher)
-            tmp += self._get_prof('rank_stop',
-                                  msg='RP_EXEC_PID=$RP_EXEC_PID:'
-                                      'RP_RANK_PID=$RP_RANK_PID')
+        tmp += self._separator
+        tmp += '# output file detection (ii)\n'
+        tmp += 'ls | sort | comm -23 - ' \
+               "%s/%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
+                       % (env_sbox, tid, tid, env_sbox, tid)
 
-            tmp += self._separator
-            tmp += '# output file detection (ii)\n'
-            tmp += 'ls | sort | comm -23 - ' \
-                   "%s/%s.files | grep -ve '^%s\\.' > %s/%s.ofiles\n" \
-                           % (env_sbox, tid, tid, env_sbox, tid)
+        tmp += self._separator
+        tmp += '# post-exec commands\n'
+        tmp += self._get_prof('exec_post')
+        tmp += self._get_prep_exec(task, n_ranks, sig='post_exec')
 
-            tmp += self._separator
-            tmp += '# post-exec commands\n'
-            tmp += self._get_prof('exec_post')
-            tmp += self._get_prep_exec(task, n_ranks, sig='post_exec')
+        tmp += self._separator
+        tmp += self._get_prof('exec_stop')
+        tmp += 'exit $RP_RET\n'
 
-            tmp += self._separator
-            tmp += self._get_prof('exec_stop')
-            tmp += 'exit $RP_RET\n'
+        fh = os.open(path=exec_fullpath,
+                     mode=0o755,
+                     flags=(
+                             os.O_WRONLY|   # access mode: write only
+                             os.O_CREAT |   # create if not exists
+                             os.O_TRUNC ))  # truncate the file to zero
 
-            fout.write(tmp)
+        os.write(fh, tmp.encode('utf-8'))
+        os.close(fh)
 
-        # make sure scripts are executable
-        st_e = os.stat(exec_fullpath)
-        os.chmod(exec_fullpath, st_e.st_mode | stat.S_IEXEC)
+      # with ru.ru_open(exec_fullpath, 'w') as fout:
+      #     fout.write(tmp)
 
-        # need to set `DEBUG_5` or higher to get slot debug logs
-        if self._log._debug_level >= 5:
-            ru.write_json(slots, '%s/%s.sl' % (sbox, tid))
+      # # make sure scripts are executable
+      # st_e = os.stat(exec_fullpath)
+      # os.chmod(exec_fullpath, st_e.st_mode | stat.S_IEXEC)
+
+      # # need to set `DEBUG_5` or higher to get slot debug logs
+      # if self._log._debug_level >= 5:
+      #     ru.write_json(slots, '%s/%s.sl' % (sbox, tid))
 
         return exec_path, exec_fullpath
 
@@ -449,7 +458,9 @@ class AgentExecutingComponent(rpu.AgentComponent):
             td['pre_exec'].append(rank_env)
 
         # pre-defined `pre_exec` per platform configuration
-        td['pre_exec'].extend(ru.as_list(self.session.rcfg.get('task_pre_exec')))
+        tmp = self.session.rcfg.get('task_pre_exec')
+        if tmp:
+            td['pre_exec'].extend(ru.as_list(tmp))
 
 
     # --------------------------------------------------------------------------
