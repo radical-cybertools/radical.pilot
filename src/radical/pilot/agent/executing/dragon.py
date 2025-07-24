@@ -133,7 +133,21 @@ class Dragon(Popen):
 
         # send task to dragon
         self._log.debug('launch task %s', task['uid'])
-        self._pipe_out.put({'cmd': 'run', 'task': task})
+
+
+        if True:
+            task['target_state'] = rps.DONE
+            task['exit_code']    = 0
+
+            self._prof.prof('unschedule_start', uid=tid)
+
+            self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, [task])
+
+            self.advance([task], rps.AGENT_STAGING_OUTPUT_PENDING,
+                                 publish=True, push=True)
+
+        else:
+            self._pipe_out.put({'cmd': 'run', 'task': task})
 
         # handle task timeout if needed
         self.handle_timeout(task)

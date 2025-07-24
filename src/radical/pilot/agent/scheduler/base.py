@@ -596,6 +596,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
         process (self._schedule_tasks).
         '''
 
+        raise NotImplementedError('oops')
+
         # advance state, publish state change, and push to scheduler process
         self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
         self._queue_sched.put((tasks, self._SCHEDULE))
@@ -1057,7 +1059,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             pass
 
         to_release = list()  # slots of unscheduling tasks
-      # placed     = list()  # uids of waiting tasks replacing unscheduled ones
+        placed     = list()  # uids of waiting tasks replacing unscheduled ones
 
         if to_unschedule:
 
@@ -1066,35 +1068,47 @@ class AgentSchedulingComponent(rpu.AgentComponent):
 
 
         for task in to_unschedule:
-          # # if we find a waiting task with the same tuple size, we don't free
-          # # the slots, but just pass them on unchanged to the waiting task.
-          # # Thus we replace the unscheduled task on the same cores / GPUs
-          # # immediately. This assumes that the `tuple_size` is good enough to
-          # # judge the legality of the resources for the new target task.
-          # #
-          # # FIXME: use tuple size again
-          # # FIXME: consider priorities
-          # ts = tuple(task['tuple_size'])
-          # if self._ts_map.get(ts):
-          #
-          #     replace = self._waitpool[self._ts_map[ts].pop()]
-          #     replace['slots'] = task['slots']
-          #     placed.append(placed)
-          #
-          #     # unschedule task A and schedule task B have the same
-          #     # timestamp
-          #     ts = time.time()
-          #     self._prof.prof('unschedule_stop', uid=task['uid'],
-          #                     timestamp=ts)
-          #     self._prof.prof('schedule_fast', uid=replace['uid'],
-          #                     timestamp=ts)
-          #     self.advance(replace, rps.AGENT_EXECUTING_PENDING,
-          #                  publish=True, push=True)
-          # else:
-          #
-          #     # no replacement task found: free the slots, and try to
-          #     # schedule other tasks of other sizes.
-          #     to_release.append(task)
+            # if we find a waiting task with the same tuple size, we don't free
+            # the slots, but just pass them on unchanged to the waiting task.
+            # Thus we replace the unscheduled task on the same cores / GPUs
+            # immediately. This assumes that the `tuple_size` is good enough to
+            # judge the legality of the resources for the new target task.
+            #
+            # FIXME: use tuple size again
+            # FIXME: consider priorities
+            ts = tuple(task['tuple_size'])
+            if self._ts_map[ts]:
+
+                prio  = ts[-1]
+                r_uid = self._ts_map[ts].pop()
+
+                replace = None
+                for prio in self._waitpool:
+                    replace = self._waitpool[prio].get(r_uid)
+                    if replace:
+                        del self._waitpool[prio][r_uid]
+                        break
+
+                if not replace:
+                    to_release.append(task)
+
+                else:
+                    replace['slots'] = task['slots']
+                    placed.append(placed)
+
+                    # unschedule task A and schedule task B have the same
+                    # timestamp
+                    ts = time.time()
+                    self._prof.prof('unschedule_stop', uid=task['uid'], ts=ts)
+                    self._prof.prof('schedule_ok', uid=r_uid, ts=ts)
+                    self._prof.prof('schedule_fast', uid=r_uid, ts=ts)
+                    self.advance(replace, rps.AGENT_EXECUTING_PENDING,
+                                 publish=True, push=True)
+            else:
+
+                # no replacement task found: free the slots, and try to
+                # schedule other tasks of other sizes.
+                to_release.append(task)
 
             self._active_cnt -= 1
             to_release.append(task)
@@ -1116,15 +1130,15 @@ class AgentSchedulingComponent(rpu.AgentComponent):
           # self.slot_status("after  unschedule", task['uid'])
             self._prof.prof('unschedule_stop', uid=task['uid'])
 
-      # # we placed some previously waiting tasks, and need to remove those from
-      # # the waitpool
-      # # FIXME: see FIXMEs above
-      # for priority in self._waitpool:
-      #     tasks = self._waitpool[priority].values()
-      #     self._waitpool[priority] = {task['uid']: task
-      #                                     for task in tasks
-      #                                     if  task['uid'] not in placed}
-      #
+        # we placed some previously waiting tasks, and need to remove those from
+        # the waitpool
+        # FIXME: see FIXMEs above
+        for priority in self._waitpool:
+            tasks = self._waitpool[priority].values()
+            self._waitpool[priority] = {task['uid']: task
+                                            for task in tasks
+                                            if  task['uid'] not in placed}
+
         # we have new resources, and were active
         return True, True
 
@@ -1140,12 +1154,12 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             uid = task['uid']
           # td  = task['description']
 
-          # self._prof.prof('schedule_try', uid=uid)
+            self._prof.prof('schedule_try', uid=uid)
             slots, partition = self.schedule_task(task)
             if not slots:
 
                 # schedule failure
-              # self._prof.prof('schedule_fail', uid=uid)
+                self._prof.prof('schedule_fail', uid=uid)
 
                 # if schedule fails while no other task is scheduled, then the
                 # `schedule_task` will never be able to succeed - fail that task
