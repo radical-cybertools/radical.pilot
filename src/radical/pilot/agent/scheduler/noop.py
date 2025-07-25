@@ -2,8 +2,12 @@
 __copyright__ = "Copyright 2013-2016, http://radical.rutgers.edu"
 __license__ = "MIT"
 
+import time
 
 from .base import AgentSchedulingComponent
+
+from ...   import states    as rps
+from ...   import constants as rpc
 
 
 # ------------------------------------------------------------------------------
@@ -28,21 +32,40 @@ class Noop(AgentSchedulingComponent):
 
         AgentSchedulingComponent.__init__(self, cfg, session)
 
+        # register task output channels
+        self.register_output(rps.AGENT_EXECUTING_PENDING,
+                             rpc.AGENT_EXECUTING_QUEUE)
+
 
     # --------------------------------------------------------------------------
     #
-    def schedule_task(self, task):
+    def work(self, tasks):
 
-        # this abstract method is not used in this implementation
-        return None, None
+        uids = [task['uid'] for task in tasks]
+
+        self.advance(tasks, rps.AGENT_SCHEDULING, publish=True, push=False)
+
+        self._prof.prof('schedule_try', uid=uids)
+        self._prof.prof('schedule_ok',  uid=uids)
+
+        self.advance(tasks, rps.AGENT_EXECUTING_PENDING, publish=True, push=True)
 
 
     # --------------------------------------------------------------------------
     #
     def unschedule_task(self, task):
 
-        # this abstract method is not used in this implementation
-        pass
+        self._prof.prof('unschedule_ok', uid=task['uid'])
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _schedule_tasks(self):
+
+        # we don't need a scheduler proc really, but we let it idle as to not
+        # trip the pwatcher
+        while True:
+            time.sleep(1)
 
 
     # --------------------------------------------------------------------------
@@ -50,14 +73,6 @@ class Noop(AgentSchedulingComponent):
     def _configure(self):
 
         pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def _try_allocation(self, task):
-
-        # signal success
-        return True
 
 
 # ------------------------------------------------------------------------------
