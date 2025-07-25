@@ -3,6 +3,7 @@ radical.utils>=1.100.0,<1.110
 radical.gtod>=1.100.0,<1.110
 
 psij-python
+rc.process
 setproctitle
 requests
 dill
