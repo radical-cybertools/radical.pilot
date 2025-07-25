@@ -100,9 +100,7 @@ class ContinuousJsrun(AgentSchedulingComponent):
           scattered mode!  The default is 'False'.
         '''
 
-        self._scattered     = self.session.rcfg.get('scattered', False)
-        self._partition_ids = self._rm.get_partition_ids()
-
+        self._scattered = self.session.rcfg.get('scattered', False)
 
 
     # --------------------------------------------------------------------------
