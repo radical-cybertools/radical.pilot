@@ -160,24 +160,27 @@ class Server(object):
         self._pipe_in  = None
         self._pipe_out = None
 
-        self._pool = None
+        self._pool  = None
+      # self._slots = mp.cpu_count()
+        self._slots = int(sys.argv[1])
+        self._free  = self._slots
 
         self._watcher_queue = queue.Queue()
         self._logger_queue  = mp.Queue()
 
-        self._worker = mt.Thread(target=self._worker_thread)
-        self._worker_event  = mt.Event()
-        self._worker.daemon = True
-        self._worker.start()
+        self._logger = mt.Thread(target=self._logger_thread)
+        self._logger.daemon = True
+        self._logger.start()
 
         self._watcher = mt.Thread(target=self._watcher_thread)
         self._watcher_event  = mt.Event()
         self._watcher.daemon = True
         self._watcher.start()
 
-        self._logger = mt.Thread(target=self._logger_thread)
-        self._logger.daemon = True
-        self._logger.start()
+        self._worker = mt.Thread(target=self._worker_thread)
+        self._worker_event  = mt.Event()
+        self._worker.daemon = True
+        self._worker.start()
 
         self._worker_event.wait(timeout=5)
         self._watcher_event.wait(timeout=5)
@@ -191,9 +194,15 @@ class Server(object):
         assert self._pipe_in,  'pipe_in not set'
         assert self._pipe_out, 'pipe_out not set'
 
-        sys.stdout.write('ZMQ_ENDPOINTS %s %s\n'
-                         % (ru.as_string(self._pipe_in.url),
-                            ru.as_string(self._pipe_out.url)))
+        url_in  = ru.Url(ru.as_string(self._pipe_in.url))
+        url_out = ru.Url(ru.as_string(self._pipe_out.url))
+
+        url_in.host  = ru.get_hostip()
+        url_out.host = ru.get_hostip()
+
+        msg = 'ZMQ_ENDPOINTS %s %s\n' % (str(url_in), str(url_out))
+        self._log.debug('URLs: %s', msg)
+        sys.stdout.write(msg)
         sys.stdout.flush()
 
         # run forever
@@ -217,8 +226,7 @@ class Server(object):
         self._pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
         self._worker_event.set()
 
-        slots = 10  # FIXME: make this configurable
-        self._pool = mp.Pool(slots)
+        self._pool = mp.Pool(self._slots)
 
         try:
             while True:
@@ -227,9 +235,6 @@ class Server(object):
 
                 if not msg:
                     continue
-
-                if not isinstance(msg, dict):
-                    self._log.error('invalid message type %s', type(msg))
 
                 cmd = msg.get('cmd')
 
@@ -260,8 +265,21 @@ class Server(object):
     #
     def _launch(self, task):
 
+        tid   = task['uid']
         ranks = task['description']['ranks']
         mode  = task['description']['mode']
+
+        # we may need to wait for free slots.
+        # FIXME: check GPUs, multithreadind, mem etc.
+        while self._free < ranks:
+            self._log.debug_9('=== wait for slots for %s [%d] - %d free', tid,
+                              ranks, self._free)
+            time.sleep(1)
+
+        self._free -= ranks
+        self._log.debug('=== found slots for %s [%d] - %d free', tid, ranks,
+                        self._free)
+
 
         if mode == rp.TASK_EXECUTABLE:
             if ranks > 1:
@@ -416,7 +434,7 @@ class Server(object):
             # FIXME
             # os.environ = old_env
 
-        lq.put(('debug', '%s: got %s', tid, out))
+        lq.put(('debug', '%s: got "%s"', tid, out))
 
         return out, err, ret, val, exc
 
@@ -432,13 +450,21 @@ class Server(object):
             self._log.info('start watcher')
 
             self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
+            self._log.debug('pipe_out PUSH created: %s - %s',
+                            ru.as_string(self._pipe_out.url), ru.get_hostip())
             self._watcher_event.set()
+
+            time.sleep(0.5)
+
+            self._pipe_out.put({'cmd': 'hello'})
+            self._log.debug('pipe_out sent hello')
 
             # get completed tasks
             while True:
 
-              # self._log.debug('watcher loop')
+              # self._log.debug('watcher loop: %s', list(to_collect.keys()))
 
+                # FIXME: get_nowait
                 while not self._watcher_queue.empty():
 
                     task  = self._watcher_queue.get()
@@ -448,15 +474,15 @@ class Server(object):
                     self._log.debug('task %s: watch', tid)
 
                 if not to_collect:
-                  # time.sleep(1)
-                  # self._log.debug('no tasks to collect')
+                    time.sleep(0.1)
+                 #  self._log.debug('no tasks to collect')
                     continue
 
                 collected = list()
                 for tid,task in to_collect.items():
 
                     handler, _ = task['dragon_handler']
-                    self._log.debug('task %s: check handler %s', tid, handler)
+                  # self._log.debug('task %s: check handler %s', tid, handler)
 
                     if handler.is_alive():
                         pass
@@ -464,7 +490,11 @@ class Server(object):
                     else:
                         del task['dragon_handler']
 
-                        self._log.debug('task %s: collect', tid)
+                        ranks = task['description']['ranks']
+                        self._free += ranks
+
+                        self._log.debug('=== task %s: collect [%d] - %d free',
+                                        tid, ranks, self._free)
 
                         out, err, ret, val, exc = handler.get_results()
 
@@ -475,22 +505,25 @@ class Server(object):
                         task['stderr']       = err
                         task['exit_code']    = ret
                         task['return_value'] = val
-                        task['exception']    = exc
+                        task['exception']    = str(exc)
 
                         if ret == 0: task['target_state'] = rp.DONE
                         else       : task['target_state'] = rp.FAILED
 
                         collected.append(tid)
 
+                     #  self._log.debug('push %s: completed %s', tid, task)
                         self._pipe_out.put({'cmd': 'done',
                                             'task': task})
+                     #  self._log.debug('pushed %s', tid)
 
                 for tid in collected:
                     del to_collect[tid]
+                  # self._log.debug('deleted %s', tid)
 
-              # # avoid busy loop
-              # if not collected:
-              #     time.sleep(0.1)
+                # avoid busy loop
+                if not collected:
+                    time.sleep(0.5)
 
         except:
             self._log.exception('error in watcher thread')

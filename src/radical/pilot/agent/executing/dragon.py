@@ -4,6 +4,7 @@ __license__   = 'MIT'
 
 
 import os
+import time
 
 from typing import List
 
@@ -60,11 +61,17 @@ class Dragon(Popen):
                 self._start_evt.set()
         # ----------------------------------------------------------------------
 
-        dragon = 'dragon -l DEBUG -N 2 '
-        cmd    = dragon + 'radical-pilot-dragon-executor.py %s' % os.getcwd()
-        self._log.debug('cmd: %s', cmd)
+        n_nodes = len(self._rm.info.node_list)
+        n_slots = self._rm.info.cores_per_node * n_nodes
+        cmd  = 'dragon-config '
+        cmd += '-a "ofi-runtime-lib=/opt/cray/libfabric/1.22.0/lib64"; '
+        cmd += 'dragon -N %d ' % n_nodes
+        cmd += '-l ERROR '
+        cmd += 'radical-pilot-dragon-executor.py %d' % n_slots
 
-        p = Process(cmd)
+        self._log.debug('=== cmd: %s', cmd)
+
+        p = Process(cmd, shell=True)
         p.register_cb(p.CB_OUT_LINE, line_cb)
         p.register_cb(p.CB_STATE, state_cb)
         p.polldelay = 0.1
@@ -134,8 +141,7 @@ class Dragon(Popen):
         # send task to dragon
         self._log.debug('launch task %s', task['uid'])
 
-
-        if True:
+        if False:
             task['target_state'] = rps.DONE
             task['exit_code']    = 0
 
@@ -148,6 +154,7 @@ class Dragon(Popen):
 
         else:
             self._pipe_out.put({'cmd': 'run', 'task': task})
+            self._log.debug('sent task %s', task['uid'])
 
         # handle task timeout if needed
         self.handle_timeout(task)
@@ -177,16 +184,27 @@ class Dragon(Popen):
         self._log.debug('dragon watch: %s', url_in)
 
         pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL, url_in)
+        self._log.debug('pipe_in  PUll created: %s - %s',
+                            ru.as_string(pipe_in.url), ru.get_hostname())
+        time.sleep(0.5)
 
         try:
             while not self._term.is_set():
 
-                msg = pipe_in.get_nowait(0.1)
+              # self._log.debug('pipe_in  receive')
+                msg = pipe_in.get_nowait(5.1)
 
                 if not msg:
+                  # self._log.info('pipe_in  no msg')
                     continue
 
                 cmd = msg.get('cmd')
+
+                self._log.debug('pipe_in  receive [%s]', cmd)
+
+                if cmd == 'hello':
+                    self._log.info('pipe_in  hello pipe')
+                    continue
 
                 if cmd != 'done':
                     raise ValueError('unsupported command %s' % cmd)
