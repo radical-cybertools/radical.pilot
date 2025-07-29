@@ -272,12 +272,12 @@ class Server(object):
         # we may need to wait for free slots.
         # FIXME: check GPUs, multithreadind, mem etc.
         while self._free < ranks:
-            self._log.debug_9('=== wait for slots for %s [%d] - %d free', tid,
+            self._log.debug_9('wait for slots for %s [%d] - %d free', tid,
                               ranks, self._free)
             time.sleep(1)
 
         self._free -= ranks
-        self._log.debug('=== found slots for %s [%d] - %d free', tid, ranks,
+        self._log.debug('found slots for %s [%d] - %d free', tid, ranks,
                         self._free)
 
 
@@ -335,7 +335,7 @@ class Server(object):
     #
     def _launch_nonmpi(self, task):
 
-        self._log.debug('task %s: launch', task['uid'])
+        self._log.debug('task %s: nonmpi launch', task['uid'])
 
         ranks = task['description']['ranks']
         assert ranks == 1, 'non-MPI tasks must have ranks==1'
@@ -383,7 +383,7 @@ class Server(object):
     #
     def _launch_function(self, task):
 
-        self._log.debug('task %s: launch', task['uid'])
+        self._log.debug('task %s: launch func', task['uid'])
 
         ranks = task['description']['ranks']
 
@@ -426,7 +426,7 @@ class Server(object):
                 to_call, _args, _kwargs = rp.PythonTask.get_func_attr(func)
 
             except Exception:
-                lq.put('function is not a PythonTask [%s] ', tid)
+                lq.put('exception', 'function is not a PythonTask [%s] ', tid)
 
             else:
                 if args or kwargs:
@@ -541,7 +541,7 @@ class Server(object):
                         ranks = task['description']['ranks']
                         self._free += ranks
 
-                        self._log.debug('=== task %s: collect [%d] - %d free',
+                        self._log.debug('task %s: collect [%d] - %d free',
                                         tid, ranks, self._free)
 
                         out, err, ret, val, exc = handler.get_results()
