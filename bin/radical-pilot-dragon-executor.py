@@ -267,7 +267,7 @@ class Server(object):
             if ranks > 1:
                 return self._launch_mpi(task)
             else:
-                return self._launch_mpi(task)
+                return self._launch_nonmpi(task)
         else:
             return self._launch_function(task)
 
@@ -311,6 +311,54 @@ class Server(object):
 
         self._log.debug('task %s: dragon handler %s', tid, handler)
         self._watcher_queue.put(task)
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _launch_nonmpi(self, task):
+
+        self._log.debug('task %s: launch', task['uid'])
+
+        ranks = task['description']['ranks']
+        assert ranks == 1, 'non-MPI tasks must have ranks==1'
+
+        res = self._pool.apply_async(self._run_nonmpi,
+                                     [task, self._logger_queue])
+
+        handler = AsyncResultHandler(res)
+
+        task['dragon_handler'] = (handler, ranks)
+        self._watcher_queue.put(task)
+
+
+    # --------------------------------------------------------------------------
+    #
+    @staticmethod
+    def _run_nonmpi(task, lq):
+
+        val = None
+        exc = None
+        out = ''
+        err = ''
+        ret = 0
+
+        tid = task['uid']
+        exe = task['exec_path']
+
+        lq.put(('debug', 'task %s: launch', tid))
+
+        try:
+            # TODO: use placement policies for GPU tasks
+            out, err, ret = ru.sh_callout('/bin/sh %s' % exe, shell=True)
+            lq.put(('debug', 'task %s: done: %s : %s : %s', tid, out, err, ret))
+
+        except Exception as e:
+            lq.put(('exception', 'task %s: call failed: %s', tid, e))
+            exc = repr(e)
+            ret = 1
+            err += '\ncall failed: %s' % e
+
+        return out, err, ret, val, exc
 
 
     # --------------------------------------------------------------------------
