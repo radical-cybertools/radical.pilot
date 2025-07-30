@@ -908,9 +908,10 @@ class Session(object):
 
             if self._role in [self._PRIMARY, self._AGENT_0]:
 
-                self._proxy.stop()
-                self._proxy.wait()
-                self._proxy = None
+                if self._proxy:
+                    self._proxy.stop()
+                    self._proxy.wait()
+                    self._proxy = None
 
         self._log.debug("session %s closed", self._uid)
         self._prof.prof("session_stop", uid=self._uid)
@@ -965,7 +966,8 @@ class Session(object):
             self._proxy.wait()
 
         finally:
-            self._proxy.stop()
+            if self._proxy:
+                self._proxy.stop()
 
 
     # --------------------------------------------------------------------------
