@@ -79,11 +79,15 @@ if __name__ == '__main__':
 
         report.progress_tgt(n, label='create')
         tds = list()
-        for i in range(n):
+        for i in range(4):
 
             # create a new task description, and fill it.
             td = rp.TaskDescription()
-            td.executable = '/bin/date'
+          # td.executable  = '/bin/sh'
+          # td.arguments   = ['-c', '(date +%%s; echo "-"; sleep 10; date +%%s) | bc']
+            td.executable  = '/bin/sleep'
+            td.arguments   = ['100']
+            td.timeout     = 10
 
             tds.append(td)
             report.progress()
