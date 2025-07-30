@@ -1,17 +1,14 @@
 name: CI tests with Spack
 on:
-  # temporary, remove before merging and enable schedule cron
-  pull_request:
-    branches:
-      - 'devel*'
 # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#workflow_dispatch
   workflow_dispatch:
 # https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event
   repository_dispatch:
     types: [ ci-spack-on-demand ]
 # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
-#  schedule:
-#    - cron: '30 10 * * *'
+# scheduled to run on every Mon,Wed at 7am UTC
+  schedule:
+    - cron: '00 7 * * 1,3'
 
 jobs:
 
