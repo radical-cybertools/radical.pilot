@@ -100,14 +100,18 @@ class Sleep(AgentExecutingComponent) :
         now = time.time()
 
         # assert t['description']['executable'].endswith('sleep')
-        task['to_finish'] = now + float(task['description']['arguments'][0])
+        t_sleep = 0.0
+        if task['description'].get('executable', '').endswith('sleep'):
+            t_sleep = float(task['description'].get('arguments', [0.0])[0])
+
+        task['deadline'] = now + t_sleep
 
         uid = task['uid']
         self._prof.prof('task_run_start', uid=uid)
         self._prof.prof('task_run_ok',    uid=uid)
         self._prof.prof('launch_start',   uid=uid)
         self._prof.prof('exec_start',     uid=uid)
-        self._prof.prof('rank_start',      uid=uid)
+        self._prof.prof('rank_start',     uid=uid)
 
 
     # --------------------------------------------------------------------------
