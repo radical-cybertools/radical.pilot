@@ -41,6 +41,7 @@ class Flux(LaunchMethod):
 
         self._partitions  = list()
         self._idmap       = dict()             # flux_id -> task_id
+        self._part_map    = dict()             # task_id -> part_id
         self._events      = defaultdict(list)  # flux_id -> [events]
         self._events_lock = mt.Lock()
         self._in_queues   = list()
@@ -229,15 +230,24 @@ class Flux(LaunchMethod):
         # we now wait for tasks to submit to our flux service
         while True:
 
-            tasks = None
-
             try:
-                tasks = q_in.get(timeout=1)
+                msg = q_in.get(timeout=1)
 
             except queue.Empty:
                 continue
 
+            cmd = msg[0]
+
+            if cmd == 'cancel':
+                tid = msg[1]
+                self._log.debug('cancel task %s on partition %d', tid, part_id)
+                part.helper.cancel(tid)
+                continue
+
+            assert cmd == 'submit', cmd
+
             try:
+                tasks = msg[1]
                 specs = list()
 
                 for tid in tasks:
@@ -267,8 +277,31 @@ class Flux(LaunchMethod):
     #
     def submit_tasks(self, parts):
 
-        for part_id, tasks in parts.items():
-            self._in_queues[part_id].put(tasks)
+        for part_id, specs in parts.items():
+
+            q_in = self._in_queues[part_id]
+            q_in.put(['submit', specs])
+
+            for tid in specs:
+                self._log.debug('register %s on part %d', tid, part_id)
+                self._part_map[tid] = part_id
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, task):
+
+        tid     = task['uid']
+        part_id = self._part_map.get(tid)
+
+        if part_id is None:
+            self._log.error('cancel: no part for task %s', tid)
+            return
+
+        self._log.debug('cancel task %s on partition %d', tid, part_id)
+
+        q_in = self._in_queues[part_id]
+        q_in.put(['cancel', tid])
 
 
     # --------------------------------------------------------------------------

@@ -190,6 +190,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
             with self._to_lock:
 
                 for task, cancel_time, has_started in self._to_tasks:
+                    self._log.debug('to_watcher: %s, cancel_time=%s, has_started=%s',
+                                    task['uid'], cancel_time, has_started)
                     tid = task['uid']
                     if has_started or tid not in to_tasks:
                         to_tasks[task['uid']] = [task, cancel_time]
@@ -208,6 +210,8 @@ class AgentExecutingComponent(rpu.AgentComponent):
                 now = time.time()
                 if now > cancel_time:
                     if cancel_time:
+                        self._log.warning('task %s timed out after %.2f seconds',
+                                          task['uid'], now - cancel_time)
                         self._prof.prof('task_timeout', uid=task['uid'])
                         self.cancel_task(task=task)
                     del to_tasks[task['uid']]
@@ -223,6 +227,10 @@ class AgentExecutingComponent(rpu.AgentComponent):
         exec_to    = task['description'].get('timeout',         0.)
 
         if startup_to or exec_to:
+
+            self._log.debug('handle_timeout: %s, startup_to=%s, exec_to=%s',
+                            task['uid'], startup_to, exec_to)
+
             with self._to_lock:
                 cancel_time = time.time() + (startup_to or exec_to)
                 has_started = not bool(startup_to)
