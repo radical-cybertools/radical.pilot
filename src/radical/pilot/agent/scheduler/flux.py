@@ -12,7 +12,6 @@ class Flux(Noop):
     '''
     Pass all scheduling and execution control to the Flux executor
     '''
-
     pass
 
 

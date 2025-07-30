@@ -103,7 +103,7 @@ class Flux(AgentExecutingComponent) :
     def cancel_task(self, task):
 
         # FIXME: clarify how to cancel tasks in Flux
-        pass
+        self._lm.cancel_task(task)
 
 
     # --------------------------------------------------------------------------
@@ -162,6 +162,14 @@ class Flux(AgentExecutingComponent) :
             self.advance_tasks(task, rps.FAILED, publish=True, push=False)
             return
 
+        if ename == 'exception' and event.context['type'] == 'cancel':
+            # this is a cancel event, which we translate to 'unschedule'
+            state = rps.AGENT_STAGING_OUTPUT_PENDING
+            task['target_state'] = rps.CANCELED
+            self.advance_tasks(task, state, ts=event.timestamp,
+                               publish=True, push=True)
+
+
         if state is None:
             return
 
@@ -218,8 +226,6 @@ class Flux(AgentExecutingComponent) :
             tid = task['uid']
             self._tasks[tid] = task
 
-            self._log.debug('=== register %s', tid)
-
             try:
                 # FIXME: pre_launch commands are synchronous and thus
                 #        potentially slow.
@@ -252,6 +258,8 @@ class Flux(AgentExecutingComponent) :
 
                 parts[part_id][tid] = self._create_spec(task)
                 self._prof.prof('work_3', uid=task['uid'])
+
+                self.handle_timeout(task)
 
             except:
                 self._log.exception('LM flux submit failed for %s', tid)
