@@ -142,11 +142,14 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, addr_pub, addr_sub):
 
         cpn     = 16
         gpn     = 0
         n_nodes = 1
+
+        self._addr_pub = addr_pub
+        self._addr_sub = addr_sub
 
         self._uid = ru.generate_id('radical.pilot.dragon')
 
@@ -172,7 +175,7 @@ class Server(object):
                 {'mem_per_node'   : 0,
                  'lfs_per_node'   : 0,
                  'cores_per_node' : cpn,
-                 'gpus_per_node'  : gpn,
+                 'gpus_per_node'  :dragon/ gpn,
                  'requested_nodes': n_nodes,
                  'requested_cores': cpn * n_nodes,
                  'launch_methods' : {'order': ['FORK'],
@@ -188,13 +191,12 @@ class Server(object):
         self._pwatcher.watch(os.getpid())
         self._pwatcher.watch(os.getppid())
 
-        self._pipe_in  = None
-        self._pipe_out = None
-
         self._pool  = None
       # self._slots = mp.cpu_count()
-        self._slots = int(sys.argv[1])
+        self._slots = len(self._rm.info.node_list) * self._rm.info.cores_per_node
         self._free  = self._slots
+
+        self._log.info('%s: %d slots', self._uid, self._slots)
 
         self._watcher_queue = queue.Queue()
         self._logger_queue  = mp.Queue()
@@ -221,9 +223,6 @@ class Server(object):
 
         if not self._watcher_event.is_set():
             raise RuntimeError('watcher thread did not start')
-
-        assert self._pipe_in,  'pipe_in not set'
-        assert self._pipe_out, 'pipe_out not set'
 
         url_in  = ru.Url(ru.as_string(self._pipe_in.url))
         url_out = ru.Url(ru.as_string(self._pipe_out.url))
@@ -658,7 +657,10 @@ class Server(object):
 #
 if __name__ == '__main__':
 
-    s = Server()
+    addr_pub = sys.argv[1]
+    addr_sub = sys.argv[2]
+
+    s = Server(addr_pub, addr_sub)
 
 
 # ------------------------------------------------------------------------------
