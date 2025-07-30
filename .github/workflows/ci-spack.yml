@@ -1,0 +1,53 @@
+name: CI tests with Spack
+on:
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#workflow_dispatch
+  workflow_dispatch:
+# https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event
+  repository_dispatch:
+    types: [ ci-spack-on-demand ]
+# https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#schedule
+# scheduled to run on every Mon,Wed at 7am UTC
+  schedule:
+    - cron: '00 7 * * 1,3'
+
+jobs:
+
+  tests-spack:
+    runs-on: ubuntu-latest
+    env:
+      ENV_NAME: rp-env
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+    - uses: spack/setup-spack@v2
+      with:
+        ref: develop      # Spack version (examples: develop, releases/v0.23)
+        buildcache: true  # Configure oci://ghcr.io/spack/github-actions-buildcache
+        path: spack       # Where to clone Spack
+    - name: Create environment
+      shell: spack-bash {0}
+      run: |
+        spack env create ${{ env.ENV_NAME }}
+        spack env activate ${{ env.ENV_NAME }}
+        spack config add concretizer:unify:when_possible
+        spack config add concretizer:reuse:false
+        spack config add config:db_lock_timeout:300
+        spack add py-radical-pilot ^python@3.9
+        spack concretize -f
+        spack install
+    - name: Run tests
+      shell: spack-bash {0}
+      run: |
+        spack env activate ${{ env.ENV_NAME }}
+        spack env status
+        bash -c "tests/bin/base_test.sh -o session_spack_run"
+    - name: Upload session
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: session_spack_run
+        path: session_spack_run
+        retention-days: 5
+        overwrite: true
+
