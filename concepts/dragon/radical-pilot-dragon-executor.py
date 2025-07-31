@@ -142,7 +142,7 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self, addr_pub, addr_sub):
+    def __init__(self, addr_pub, addr_sub, channel, uid):
 
         cpn     = 16
         gpn     = 0
@@ -150,8 +150,8 @@ class Server(object):
 
         self._addr_pub = addr_pub
         self._addr_sub = addr_sub
-
-        self._uid = ru.generate_id('radical.pilot.dragon')
+        self._channel  = channel
+        self._uid      = uid
 
         self._log  = ru.Logger(self._uid)
         self._prof = ru.Profiler(self._uid, path='.')
@@ -160,26 +160,30 @@ class Server(object):
         self._reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid)
         self._reg_service.start()
 
-        self._cfg  = ru.TypedDict({'reg_addr': self._reg_service.addr,
-                                   'nodes'   : n_nodes,
-                                   'cores'   : n_nodes * cpn,
-                                   'gpus'    : n_nodes * gpn,
-                                   'cores_per_node': cpn,
-                                   'gpus_per_node' : gpn,
-                                   'lfs_per_node' : 0,
-                                   'mem_per_node' : 0,
+        self._cfg  = ru.TypedDict({'reg_addr'         : self._reg_service.addr,
+                                   'nodes'            : n_nodes,
+                                   'backup_nodes'     : 0,
+                                   'cores'            : n_nodes * cpn,
+                                   'gpus'             : n_nodes * gpn,
+                                   'cores_per_node'   : cpn,
+                                   'gpus_per_node'    : gpn,
+                                   'lfs_per_node'     : 0,
+                                   'mem_per_node'     : 0,
                                    'lfs_path_per_node': '',
+                                   'n_partitions'     : 1,
 
                                    })
         self._rcfg = ru.TypedDict(
-                {'mem_per_node'   : 0,
-                 'lfs_per_node'   : 0,
-                 'cores_per_node' : cpn,
-                 'gpus_per_node'  :dragon/ gpn,
-                 'requested_nodes': n_nodes,
-                 'requested_cores': cpn * n_nodes,
-                 'launch_methods' : {'order': ['FORK'],
-                                     'FORK': {}},
+                {'mem_per_node'     : 0,
+                 'lfs_per_node'     : 0,
+                 'cores_per_node'   : cpn,
+                 'gpus_per_node'    : gpn,
+                 'requested_nodes'  : n_nodes,
+                 'requested_cores'  : cpn * n_nodes,
+               # 'backup_nodes'     : 0,
+                 'n_partitions'     : 1,
+                 'launch_methods'   : {'order': ['FORK'],
+                                       'FORK': {}},
                 })
 
         self._rm = rp.agent.ResourceManager.create('FORK', self._cfg,
@@ -224,17 +228,6 @@ class Server(object):
         if not self._watcher_event.is_set():
             raise RuntimeError('watcher thread did not start')
 
-        url_in  = ru.Url(ru.as_string(self._pipe_in.url))
-        url_out = ru.Url(ru.as_string(self._pipe_out.url))
-
-        url_in.host  = ru.get_hostip()
-        url_out.host = ru.get_hostip()
-
-        msg = 'ZMQ_ENDPOINTS %s %s\n' % (str(url_in), str(url_out))
-        self._log.debug('URLs: %s', msg)
-        sys.stdout.write(msg)
-        sys.stdout.flush()
-
         # run forever
         while not self._term.is_set():
             time.sleep(1)
@@ -253,7 +246,7 @@ class Server(object):
 
         self._log.info('start launcher')
 
-        self._pipe_in  = ru.zmq.Pipe(ru.zmq.MODE_PULL)
+        sub = ru.zmq.Subscriber(channel, url=self._addr_sub, topic=self._uid)
         self._worker_event.set()
 
         self._pool = mp.Pool(self._slots)
@@ -261,9 +254,10 @@ class Server(object):
         try:
             while True:
 
-                msg = self._pipe_in.get_nowait(1)
+                topic, msg = sub.get()
 
                 if not msg:
+                  # print(self._uid, 'wait', flush=True)
                     continue
 
                 cmd = msg.get('cmd')
@@ -530,14 +524,14 @@ class Server(object):
 
             self._log.info('start watcher')
 
-            self._pipe_out = ru.zmq.Pipe(ru.zmq.MODE_PUSH)
-            self._log.debug('pipe_out PUSH created: %s - %s',
-                            ru.as_string(self._pipe_out.url), ru.get_hostip())
+            pub = ru.zmq.Publisher(self._channel, url=self._addr_pub)
             self._watcher_event.set()
+
+            pub.put(self._channel, {'cmd': 'part', 'pid': self._uid})
 
             time.sleep(0.5)
 
-            self._pipe_out.put({'cmd': 'hello'})
+            pub.put(channel, {'cmd': 'hello'})
             self._log.debug('pipe_out sent hello')
 
             # get completed tasks
@@ -594,8 +588,7 @@ class Server(object):
                         collected.append(tid)
 
                      #  self._log.debug('push %s: completed %s', tid, task)
-                        self._pipe_out.put({'cmd': 'done',
-                                            'task': task})
+                        pub.put(channel, {'cmd': 'done', 'task': task})
                      #  self._log.debug('pushed %s', tid)
 
                 for tid in collected:
@@ -659,8 +652,10 @@ if __name__ == '__main__':
 
     addr_pub = sys.argv[1]
     addr_sub = sys.argv[2]
+    channel  = sys.argv[3]
+    uid      = sys.argv[4]
 
-    s = Server(addr_pub, addr_sub)
+    s = Server(addr_pub, addr_sub, channel, uid)
 
 
 # ------------------------------------------------------------------------------

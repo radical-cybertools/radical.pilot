@@ -6,3 +6,4 @@ __license__   = 'MIT'
 from .base import *
 from .base import ResourceManager, RMInfo
 
+from .slurm import Slurm

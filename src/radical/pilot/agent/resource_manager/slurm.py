@@ -69,7 +69,7 @@ class Slurm(ResourceManager):
                             f.write(comp)
                         raise ValueError('nodelist does not match partitioned nodes')
 
-                    parts[i][key] = compress_nodelist(part_nodes[i])
+                    parts[i][key] = ru.compress_hostlist(part_nodes[i])
 
 
             # some SLURM envs need to reflect the partition size
