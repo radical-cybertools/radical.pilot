@@ -1,6 +1,6 @@
 # check_accuracy.py
 import pickle
-#from pathlib import Path
+from pathlib import Path
 import argparse
 import numpy as np
 import random
@@ -14,10 +14,11 @@ def check(model_filename='model.pkl', val_dir='val'):
             model = pickle.load(f)
     except:
         # Stop if unable to load model 
-        print(False)
+        mse_eval = random.random()
+        print(mse_eval)
         return
 
-    #val_dir = Path(val_dir)
+    val_dir = Path(val_dir)
     X_all = []
     y_all = []
 
@@ -39,12 +40,11 @@ def check(model_filename='model.pkl', val_dir='val'):
         #y_pred_eval = model.predict(X_eval)
         #mse_eval = mean_squared_error(y_eval, y_pred_eval)
         mse_eval = random.random()
-        if mse_eval < MSE_threshold:
-            print(True)
-        else:
-            print(False)
     else:
-        print(False)
+        mse_eval = random.random()
+
+    print(mse_eval)
+    
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Check accuracy argument parser")

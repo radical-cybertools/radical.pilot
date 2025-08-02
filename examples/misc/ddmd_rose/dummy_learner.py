@@ -2,17 +2,26 @@ import os
 import sys
 import json
 from ddmd_manager import DDMD_manager
-from rose.engine import Task
 from rose.metrics import MODEL_ACCURACY
-#import radical.utils as ru
 from pathlib import Path
+import random
+#import pickle
+from pathlib import Path
+import numpy as np
+import time
+import random
+
+
+VAL_SPLIT = 0.2
+MIN_TRAIN_SIZE = 1
 
 # --------------------------------------------------------------------------
 #
 class dummy_workflow(DDMD_manager):
     def __init__(self, **kwargs):
 
-        home_dir = Path.home() /'DDMD'
+        home_dir = kwargs.get('home_dir', Path.home() /'DDMD')   
+        home_dir = Path(home_dir)
         self.sim_output_path = kwargs.get('sim_output_path', home_dir / 'sim_output')    
         self.sim_output_path = Path(self.sim_output_path)
         if not self.sim_output_path.is_dir():
@@ -33,7 +42,7 @@ class dummy_workflow(DDMD_manager):
         if not self.val_path.is_dir():
             self.val_path.mkdir(parents=True, exist_ok=True) 
 
-        self.max_sim_batch_size = kwargs.get('max_sim_batch_size', 1)
+        self.max_sim_batch_size = kwargs.get('max_sim_batch_size', 4)
         self.sim_batch_size = self.max_sim_batch_size
         self.init_sim_time = kwargs.get('init_sim_time', 10)
 
@@ -45,6 +54,7 @@ class dummy_workflow(DDMD_manager):
 
         self.sim_inputs = []
         self.sim_tags = []
+        self.predictions = {}
         self.total_sim = 0
 
         self.code_path = f'{sys.executable} {os.getcwd()}'
@@ -54,25 +64,10 @@ class dummy_workflow(DDMD_manager):
         self._collect_sim_inputs()
         self.next_input = self._get_next_input()
 
-        self.resources = kwargs.get('resources', {'runtime': 30, 'resource': 'local.localhost'})
-        super().__init__(self.resources)
+        asyncflow = kwargs.get('asyncflow')
+        super().__init__(asyncflow)
 
         self._register_learner_tasks()
-        
-    # --------------------------------------------------------------------------
-    #
-    def start_training(self, *args, **kwargs):
-        return 'start' in kwargs['al_result']
-
-    # --------------------------------------------------------------------------
-    #
-    def get_sim_tag(self, *args, **kwargs):
-        try:
-            return self.sim_tags[kwargs['ind']]
-        except:
-            raise RuntimeError(f"Simulation tag not found for the specified index: {kwargs.ind}")
-    # --------------------------------------------------------------------------
-    #
 
     def check_prediction(self, *args, **kwargs):
         return kwargs['pred'] < self.prediciont_threshold
@@ -94,12 +89,8 @@ class dummy_workflow(DDMD_manager):
                 self.sim_inputs.append(input_path)
                 self.total_sim += 1
                 sim_tag = f'sim_{filename.name}'
-                # output_path = self.sim_output_path / sim_tag
-                # output_path.mkdir(parents=True, exist_ok=True)
-
                 # #Create directory for simulation outputs
                 self.sim_tags.append(sim_tag)
-                #self.set_sim_ids(sim_tag)
 
     # --------------------------------------------------------------------------
     #
@@ -108,46 +99,90 @@ class dummy_workflow(DDMD_manager):
         for i in range(self.total_sim):
             if i == self.total_sim -1:
                 self.submit_next_sim = False
-            yield (self.sim_inputs[i],self.sim_tags[i])
+            yield ({'sim_input': self.sim_inputs[i], 'sim_tag': self.sim_tags[i]})
+            #yield (self.sim_inputs[i], self.sim_tags[i])
 
     # --------------------------------------------------------------------------
     #
     def _register_learner_tasks(self):
 
-        # Define and register the simulation task
+        # # # Define and register the simulation task
+        # @self.learner.simulation_task(as_executable=False) 
+        # async def simulation(sim_ind=0):
+        #     input_path='input.file'
+        #     output_path='output.dir'
+
+        #     sim_tag = f'sim_{sim_ind}'
+            
+        #     print('input_path', input_path)
+        #     print(f'Simulation will read from {input_path}')
+        #     output_sim_path = Path(output_path, sim_tag)
+        #     if not output_sim_path.is_dir():
+        #         output_sim_path.mkdir(parents=True, exist_ok=True)
+            
+        #     for i in range(150):
+                
+        #         X = np.random.uniform(low=0.0, high=1.0, size=500)
+        #         #y = complicated_function(X)
+        #         X = X.reshape(-1, 1)
+        #         output_file = f'{output_sim_path}/r{sim_tag}_{i}.npz'
+        #         np.savez(output_file, X=X, y=y)
+        #         print(f'Saved simulation {i} to {output_file}')
+        #     t = random.randint(10,15)
+        #     time.sleep(t)
+
+        #     #print(f'Simulation completed and all results saved to {output_file}')
+        #     return
+        # self.simulation = simulation
+
         @self.learner.simulation_task
-        def simulation(*args, **kwargs):
-            sim_input, sim_tag = next(self.next_input)
+        async def simulation(*args, **kwargs):
+            sim_tag = kwargs.get("sim_tag")
+            sim_input = kwargs.get("sim_input")
             sim_args = f' --input_path {sim_input} --output_path {self.sim_output_path} --sim_tag {sim_tag} '
-            print(sim_args)
-            return Task(executable=f'{self.code_path}/simulation.py {sim_args}')
+            return f'{self.code_path}/simulation.py {sim_args}'
         self.simulation = simulation
+
 
         # Define and register the training task
         @self.learner.training_task
-        def training(*args, **kwargs):
-            train_args = f'--model_filename {self.model_filename} --train_path {self.train_path}'
-            return Task(executable=f'{self.code_path}/train.py {train_args}')
+        async def training(*args, **kwargs):
+            train_args = f'--model_filename {self.model_filename} ' \
+                         f'--sim_output_path {self.sim_output_path} '\
+                        f'--registered_sims_filename {self.registered_sims_filename} '\
+                        f'--train_path {self.train_path} --val_path {self.val_path} '
+            return f'{self.code_path}/train.py {train_args}'
         self.training = training
 
         # Define and register the active learning task
         @self.learner.active_learn_task
-        def active_learn(*args, **kwargs):
-            al_args = f'--sim_output_path {self.sim_output_path} --registered_sims_filename {self.registered_sims_filename}  --train_path {self.train_path} --val_path {self.val_path} '
-            return Task(executable=f'{self.code_path}/active_learn.py {al_args}')
+        async def active_learn(*args, **kwargs):
+            return f'{self.code_path}/active_learn.py '
         self.active_learn = active_learn
+        
+        # # Define and register the prediction task
+        # @self.learner.utility_task
+        # async def prediction(*args, **kwargs):
+        #     prediction_args = f'--model_filename {self.model_filename} --sim_output_path {self.sim_output_path} --registered_sims_filename {self.registered_sims_filename} --output_file {self.prediction_filename}'
+        #     return f'{self.code_path}/predict.py {prediction_args}'
+        # self.prediction = prediction         
+
+        # Define and register the prediction task
+        @self.learner.utility_task(as_executable=False) 
+        async def prediction():
+            self.predictions = {}
+            for sim_ind in self.registered_sims.keys():
+                sim_dir = Path(self.sim_output_path, sim_ind)
+                if sim_dir.is_dir():
+                    self.predictions[sim_dir.name] = random.random()
+            print(f'\n\n[Taks-Prediction] completed with total {len(self.predictions)} new predictions .')
+            return
+        self.prediction = prediction  
+
 
         # Defining the stop criterion with a metric (MSE in this case)
         @self.learner.as_stop_criterion(metric_name=MODEL_ACCURACY, threshold=self.training_threshold)
-        def check_accuracy(*args, **kwargs):
+        async def check_accuracy(*args, **kwargs):
             val_args = f'--model_filename {self.model_filename} --val_dir {self.val_path}'
-            return Task(executable=f'{self.code_path}/check_accuracy.py {val_args}')
+            return f'{self.code_path}/check_accuracy.py {val_args}'
         self.check_accuracy = check_accuracy
-
-        # Define and register the prediction task
-        @self.learner.utility_task
-        def prediction(*args, **kwargs):
-            prediction_args = f'--model_filename {self.model_filename} --sim_output_path {self.sim_output_path} --registered_sims_filename {self.registered_sims_filename} --output_file {self.prediction_filename}'
-            return Task(executable=f'{self.code_path}/predict.py {prediction_args}')
-        self.prediction = prediction
-

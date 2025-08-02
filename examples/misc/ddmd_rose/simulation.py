@@ -17,6 +17,7 @@ def complicated_function(x):
 def sim(input_path='input.file', output_path='output.dir', sim_tag=0):
 
     print(f'Simulation will read from {input_path}')
+    #sim_tag = f'sim_tag_{sim_ind}'
     output_sim_path = Path(output_path, sim_tag)
     if not output_sim_path.is_dir():
         output_sim_path.mkdir(parents=True, exist_ok=True)
@@ -29,11 +30,11 @@ def sim(input_path='input.file', output_path='output.dir', sim_tag=0):
         output_file = f'{output_sim_path}/r{sim_tag}_{i}.npz'
         np.savez(output_file, X=X, y=y)
         print(f'Saved simulation {i} to {output_file}')
-        t = random.randint(100,150)
-        time.sleep(t)
+        #t = random.randint(1,5)
+        #time.sleep(10)
 
-    #print(f'Simulation completed and all results saved to {output_dir}')
-    #return
+    print(f'Simulation completed and all results saved to {output_sim_path} dir')
+    return
 
 
 if __name__ == "__main__":
@@ -41,7 +42,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Simulation argument parser")
     parser.add_argument('--input_path', type=str, help='Path to Input file')
     parser.add_argument('--output_path', type=str, help='Path to simulation output data')
-    parser.add_argument('--sim_tag', help='Simulation tag')
+    parser.add_argument('--sim_tag', help='Simulation ind')
     args = parser.parse_args()
 
     sim(args.input_path, args.output_path, args.sim_tag) 
