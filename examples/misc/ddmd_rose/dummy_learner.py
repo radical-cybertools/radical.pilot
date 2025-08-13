@@ -10,10 +10,7 @@ from pathlib import Path
 import numpy as np
 import time
 import random
-<<<<<<< HEAD
-=======
 import subprocess
->>>>>>> 55529eddf (RP debugging only)
 
 
 VAL_SPLIT = 0.2
@@ -180,11 +177,6 @@ class dummy_workflow(DDMD_manager):
                 if sim_dir.is_dir():
                     self.predictions[sim_dir.name] = random.random()
             print(f'\n\n[Taks-Prediction] completed with total {len(self.predictions)} new predictions .')
-<<<<<<< HEAD
-            return
-        self.prediction = prediction  
-
-=======
             return #f'\n\n[Taks-Prediction] completed with total {len(self.predictions)} new predictions .'
         self.prediction = prediction  
 
@@ -200,7 +192,6 @@ class dummy_workflow(DDMD_manager):
         #                 subprocess.run(cmd, check=True)
         #     return
         # self.prediction = prediction 
->>>>>>> 55529eddf (RP debugging only)
 
         # Defining the stop criterion with a metric (MSE in this case)
         @self.learner.as_stop_criterion(metric_name=MODEL_ACCURACY, threshold=self.training_threshold)

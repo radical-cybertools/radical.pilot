@@ -32,11 +32,7 @@ def sim(input_path='input.file', output_path='output.dir', sim_tag=0):
         np.savez(output_file, X=X, y=y)
         print(f'Saved simulation {i} to {output_file}')
         #t = random.randint(1,5)
-<<<<<<< HEAD
-        #time.sleep(10)
-=======
         #time.sleep(50)
->>>>>>> 55529eddf (RP debugging only)
 
     print(f'Simulation completed and all results saved to {output_sim_path} dir')
     return

@@ -8,13 +8,9 @@ MIN_TRAIN_SIZE = 1
 def active_learn():
     #sim_output_path='sim_output', registered_sims_filename='registered_sims.json', train_path='train_data', val_path='val_data'):
     print('starting active_learn')
-<<<<<<< HEAD
-    time.sleep(20)
-=======
     for i in range(1000):
         y = i * i
     #time.sleep(20)
->>>>>>> 55529eddf (RP debugging only)
     print('finished active_learn')
 
 if __name__ == "__main__":

@@ -17,11 +17,7 @@ def check(model_filename='model.pkl', val_dir='val'):
             model = pickle.load(f)
     except:
         # Stop if unable to load model 
-<<<<<<< HEAD
-        mse_eval = random.random()
-=======
         mse_eval = dummy_mse()
->>>>>>> 55529eddf (RP debugging only)
         print(mse_eval)
         return
 
@@ -43,19 +39,11 @@ def check(model_filename='model.pkl', val_dir='val'):
     y_eval = np.concatenate(y_all, axis=0)
     # Evaluate the model on the new data
     if len(y_eval) > 0:
-<<<<<<< HEAD
-        #y_pred_eval = model.predict(X_eval)
-        #mse_eval = mean_squared_error(y_eval, y_pred_eval)
-        mse_eval = random.random()
-    else:
-        mse_eval = random.random()
-=======
         # y_pred_eval = model.predict(X_eval)
         # mse_eval = mean_squared_error(y_eval, y_pred_eval)
         mse_eval = dummy_mse()    
     else:
         mse_eval = dummy_mse()
->>>>>>> 55529eddf (RP debugging only)
 
     print(mse_eval)
     
