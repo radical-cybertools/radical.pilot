@@ -4,10 +4,18 @@
 #
 import json
 import asyncio
+<<<<<<< HEAD
 from rose import TaskConfig
 #from rose.uq.uq_learner import ParallelUQLearner
 from rose import Learner
 #from rose.uq.uq_learner import ParallelUQLearner
+=======
+#from rose import TaskConfig
+#from rose.uq.uq_learner import ParallelUQLearner
+from rose import Learner
+#from rose.uq.uq_learner import ParallelUQLearner
+from ddmd_newLearner import DDMDLearner
+>>>>>>> 55529eddf (RP debugging only)
 import time
 from logger import Logger
 from collections import OrderedDict
@@ -22,6 +30,10 @@ class DDMD_manager(object):
     def __init__(self, asyncflow):
 
         self.learner = Learner(asyncflow)
+<<<<<<< HEAD
+=======
+        #self.learner = DDMDLearner(asyncflow)
+>>>>>>> 55529eddf (RP debugging only)
         self.registered_sims = OrderedDict()
         self.submit_next_sim = True
         self.logger: Logger = Logger(use_colors=True)
@@ -185,7 +197,11 @@ class DDMD_manager(object):
                     unregistered_sims.append(sim_tag)
                     try:
                         task.cancel()
+<<<<<<< HEAD
                         self.logger.task_killed(f'Cancelling {sim_tag}: ROSE task ID {task.id}')
+=======
+                        self.logger.task_killed(f'Cancelling {sim_tag} with prediction score {pred}: ROSE task ID {task.id}')
+>>>>>>> 55529eddf (RP debugging only)
                     except Exception as e:
                         self.logger.error(f'An error occurred: {e}. Unable to cancel simulation {sim_tag}.')
                 else:
@@ -199,10 +215,10 @@ class DDMD_manager(object):
     async def teach(self):
 
         self.logger.separator("DDMD MANAGER STARTING")
-        init_run  = True
 
         run_simulations = True
 
+<<<<<<< HEAD
         #@self.learner.block
         async def _run_predict(sim_ind: int) -> Dict[str, Any]:
             try:
@@ -214,20 +230,28 @@ class DDMD_manager(object):
             except Exception as e:
                 print(f"[Sim-{sim_ind}] Failed prediction with error: {e}")
                 raise
+=======
+>>>>>>> 55529eddf (RP debugging only)
 
         while run_simulations:
 
             # Submit the initial batch of simulations and pause before initiating active learning training.
             self.submit_sim_batch()
+<<<<<<< HEAD
             # if init_run:
             #     time.sleep(self.init_sim_time)
             self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
 
             if self.retrain_model or init_run:
+=======
+
+            if self.retrain_model:
+>>>>>>> 55529eddf (RP debugging only)
 
                 for acl_iter in range(self.training_epochs):
 
                     self.logger.info(f'\nStarting Training Iteration-{acl_iter}')
+<<<<<<< HEAD
                     train = await self.training()
                     self.logger.task_started('Training')
 
@@ -237,6 +261,18 @@ class DDMD_manager(object):
                         self.logger.info(f'Accuracy ({metric_val}) met the threshold, breaking...')
                         break
 
+=======
+                    self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
+                    self.logger.task_started('Training')
+                    train = await self.training()
+                    
+                    self.logger.task_started('Check Accuracy')
+                    (should_stop, metric_val) = await self.check_accuracy(train)
+                    if should_stop:
+                        self.logger.info(f'Accuracy ({metric_val}) met the threshold, breaking...')
+                        break
+
+>>>>>>> 55529eddf (RP debugging only)
                     self.logger.task_started(f'Active Learning iteration {acl_iter}')
                     await self.active_learn()
 
@@ -245,16 +281,26 @@ class DDMD_manager(object):
                     if self._debug:
                         time.sleep(20)
 
-
             if self._debug:
                 time.sleep(10)
+<<<<<<< HEAD
             pred_tasks = await self.prediction()
             self.logger.task_started('Prediction')
             #print(pred_tasks)
             
+=======
+            # 
+>>>>>>> 55529eddf (RP debugging only)
 
+            self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
+            self.logger.task_started('Prediction')
+            await self.prediction()
+            
             self.calcel_sim()
+<<<<<<< HEAD
             #init_run = False
+=======
+>>>>>>> 55529eddf (RP debugging only)
 
             # Continue running until there are no more simulations to submit and no more registered simulations.
             if not self.submit_next_sim and len(self.registered_sims) == 0:

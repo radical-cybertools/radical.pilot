@@ -21,6 +21,12 @@ def data_loading(sim_output_path='sim_output', registered_sims_filename='registe
     if not val_path.is_dir():
         val_path.mkdir(parents=True, exist_ok=True)
 
+<<<<<<< HEAD
+=======
+    if not Path(registered_sims_filename).is_file():
+        return False
+    
+>>>>>>> 55529eddf (RP debugging only)
     with open(registered_sims_filename, 'r') as f:
         sim_inds = json.load(f)
     train_num = 0
@@ -93,7 +99,7 @@ def train(model_filename='model.pkl', sim_output_path='sim_output',
 
     for file in train_path.iterdir():
         if file.is_file():
-            #print(f'Using data from {file} for training')
+            print(f'Using data from {file} for training')
 
             data = np.load(file)
             X_labeled = data['X']

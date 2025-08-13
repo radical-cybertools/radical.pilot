@@ -4,8 +4,11 @@ from pathlib import Path
 import argparse
 import numpy as np
 import random
-from sklearn.metrics import mean_squared_error
-MSE_threshold = 0.5
+#from sklearn.metrics import mean_squared_error
+
+def dummy_mse():
+    #Return a random value for testing purposes.
+    return random.random()
 
 def check(model_filename='model.pkl', val_dir='val'):
     try:
@@ -14,7 +17,11 @@ def check(model_filename='model.pkl', val_dir='val'):
             model = pickle.load(f)
     except:
         # Stop if unable to load model 
+<<<<<<< HEAD
         mse_eval = random.random()
+=======
+        mse_eval = dummy_mse()
+>>>>>>> 55529eddf (RP debugging only)
         print(mse_eval)
         return
 
@@ -24,7 +31,6 @@ def check(model_filename='model.pkl', val_dir='val'):
 
     for file in val_dir.iterdir():
         if file.is_file():
-
             #print(f'Using data from {file} for training')
             data = np.load(file)
             X_labeled = data['X']
@@ -37,11 +43,19 @@ def check(model_filename='model.pkl', val_dir='val'):
     y_eval = np.concatenate(y_all, axis=0)
     # Evaluate the model on the new data
     if len(y_eval) > 0:
+<<<<<<< HEAD
         #y_pred_eval = model.predict(X_eval)
         #mse_eval = mean_squared_error(y_eval, y_pred_eval)
         mse_eval = random.random()
     else:
         mse_eval = random.random()
+=======
+        # y_pred_eval = model.predict(X_eval)
+        # mse_eval = mean_squared_error(y_eval, y_pred_eval)
+        mse_eval = dummy_mse()    
+    else:
+        mse_eval = dummy_mse()
+>>>>>>> 55529eddf (RP debugging only)
 
     print(mse_eval)
     

@@ -10,6 +10,10 @@ from pathlib import Path
 import numpy as np
 import time
 import random
+<<<<<<< HEAD
+=======
+import subprocess
+>>>>>>> 55529eddf (RP debugging only)
 
 
 VAL_SPLIT = 0.2
@@ -47,7 +51,7 @@ class dummy_workflow(DDMD_manager):
         self.init_sim_time = kwargs.get('init_sim_time', 10)
 
         self.training_threshold = kwargs.get('training_threshold', 0.95)
-        self.prediciont_threshold = kwargs.get('prediciont_threshold', 1.5)
+        self.prediciont_threshold = kwargs.get('prediciont_threshold', 0.5)
         self.training_epochs = kwargs.get('training_epochs', 1)
         
         self.retrain_model = True   #retrain model after first convergens 
@@ -176,9 +180,27 @@ class dummy_workflow(DDMD_manager):
                 if sim_dir.is_dir():
                     self.predictions[sim_dir.name] = random.random()
             print(f'\n\n[Taks-Prediction] completed with total {len(self.predictions)} new predictions .')
+<<<<<<< HEAD
             return
         self.prediction = prediction  
 
+=======
+            return #f'\n\n[Taks-Prediction] completed with total {len(self.predictions)} new predictions .'
+        self.prediction = prediction  
+
+        # @self.learner.utility_task(as_executable=False) 
+        # async def prediction(input_path, use_msa_server=True):
+        #     for sim_ind in self.registered_sims.keys():
+        #         sim_dir = Path(self.sim_output_path, sim_ind)
+        #         if sim_dir.is_dir():
+        #             for input_path in sim_dir:
+        #                 cmd = ["boltz", "predict", input_path]
+        #                 if use_msa_server:
+        #                     cmd.append("--use_msa_server")
+        #                 subprocess.run(cmd, check=True)
+        #     return
+        # self.prediction = prediction 
+>>>>>>> 55529eddf (RP debugging only)
 
         # Defining the stop criterion with a metric (MSE in this case)
         @self.learner.as_stop_criterion(metric_name=MODEL_ACCURACY, threshold=self.training_threshold)
