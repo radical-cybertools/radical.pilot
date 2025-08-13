@@ -91,6 +91,13 @@ class Flux(LaunchMethod):
 
         return ret
 
+    def get_env_preserved(self):
+        ret = super().get_env_preserved()
+        ret.extend([
+            'LD_LIBRARY_PATH'
+        ])
+        return ret
+
 
     # --------------------------------------------------------------------------
     #
