@@ -73,6 +73,25 @@ class Flux(LaunchMethod):
         return 'export RP_RANK=$FLUX_TASK_RANK\n'
 
 
+    def get_env_blacklist(self):
+        '''
+        extend the base blacklist by FLUX related environment variables
+        '''
+
+        ret = super().get_env_blacklist()
+
+        ret.extend([
+                    'FLUX_*',
+                    'MPICH_*',
+                    'PMI_*',
+                    'PMIX_*',
+                    # Slurm included since we launch Flux using Srun LM
+                    'SLURM_*'
+                   ])
+
+        return ret
+
+
     # --------------------------------------------------------------------------
     #
     def _terminate(self):
