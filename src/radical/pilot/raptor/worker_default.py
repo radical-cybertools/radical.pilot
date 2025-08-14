@@ -377,7 +377,7 @@ class DefaultWorker(Worker):
 
                 try:
                     res = self._result_queue.get(timeout=0.1)
-                    self._log.debug('got   result: %s', res)
+                    self._log.debug('got result: %s', res)
                     self._result_cb(res)
 
                 except queue.Empty:

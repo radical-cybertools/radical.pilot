@@ -388,7 +388,7 @@ class Worker(object):
         # check if we have a serialized object
         if not to_call:
             self._log.debug('func serialized: %d: %s', len(func), func)
-            
+
             try:
                 to_call, _args, _kwargs = PythonTask.get_func_attr(func)
 
@@ -412,7 +412,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+            self._log.error('could not obtain callable from %s' % uid)
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
