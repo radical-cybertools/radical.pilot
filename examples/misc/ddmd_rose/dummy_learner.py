@@ -170,7 +170,7 @@ class dummy_workflow(DDMD_manager):
 
         # Define and register the prediction task
         @self.learner.utility_task(as_executable=False) 
-        async def prediction():
+        async def prediction(*args, **kwargs):
             self.predictions = {}
             for sim_ind in self.registered_sims.keys():
                 sim_dir = Path(self.sim_output_path, sim_ind)
@@ -199,3 +199,25 @@ class dummy_workflow(DDMD_manager):
             val_args = f'--model_filename {self.model_filename} --val_dir {self.val_path}'
             return f'{self.code_path}/check_accuracy.py {val_args}'
         self.check_accuracy = check_accuracy
+
+
+    async def train_model(self):
+
+        for acl_iter in range(self.training_epochs):
+
+            self.logger.info(f'\nStarting Training Iteration-{acl_iter}')
+            self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
+            self.logger.task_started('Training')
+            train = self.training()
+            
+            self.logger.task_started('Check Accuracy')
+            (should_stop, metric_val) = await self.check_accuracy(train)
+            if should_stop:
+                self.logger.info(f'Accuracy ({metric_val}) met the threshold, breaking...')
+                break
+
+            self.logger.task_started(f'Active Learning iteration {acl_iter}')
+            await self.active_learn()
+
+            #self.unregister_sims()
+            #self.submit_sim_batch()

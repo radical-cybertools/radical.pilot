@@ -8,26 +8,41 @@ import random
 import shutil
 import json
 VAL_SPLIT = 0.5
-MIN_TRAIN_SIZE = 1
+MIN_TRAIN_SIZE = 10
 MIN_NUM_TO_PREDICT = 1
 
-def data_loading(sim_output_path='sim_output', registered_sims_filename='registered_sims.json', 
-                 train_path='train_data', val_path='val_data'):
-
-    train_path = Path(train_path)
-    if not train_path.is_dir():
-        train_path.mkdir(parents=True, exist_ok=True)
-    val_path = Path(val_path)
-    if not val_path.is_dir():
-        val_path.mkdir(parents=True, exist_ok=True)
-
+def check_sim_results(sim_output_path, registered_sims_filename):
+    files = []
+    
     if not Path(registered_sims_filename).is_file():
         return False
     
     with open(registered_sims_filename, 'r') as f:
         sim_inds = json.load(f)
-    train_num = 0
-    val_num = 0
+
+    for sim_ind in sim_inds:
+        sim_results = Path(sim_output_path / sim_ind)
+        if sim_results.exists():
+            files= files + [f.name for f in sim_results.iterdir()]
+    
+    if len(files) > MIN_TRAIN_SIZE:
+        print(f'Will use {len(files)} files for training')
+        return True
+    else:
+        return False
+
+def data_loading(sim_output_path, registered_sims_filename, 
+                 train_path, val_path):
+
+    train_path = Path(train_path)
+    if not train_path.exists():
+        train_path.mkdir(parents=True, exist_ok=True)
+    val_path = Path(val_path)
+    if not val_path.exists():
+        val_path.mkdir(parents=True, exist_ok=True)
+    
+    with open(registered_sims_filename, 'r') as f:
+        sim_inds = json.load(f)
 
     #Parent directory with subdirs from each simulation
     sim_output_path = Path(sim_output_path)
@@ -36,48 +51,50 @@ def data_loading(sim_output_path='sim_output', registered_sims_filename='registe
     for sim_ind in sim_inds:
         sim_results = Path(sim_output_path / sim_ind)
 
-        print(f'using data from {sim_results}')
-
         #Collect data from directory sim_1, sim2 etc
-        if sim_results.is_dir():
+        if sim_results.exists():
         
+            files1 = [f for f in sim_results.iterdir()]
+            
             files = [f.name for f in sim_results.iterdir()]
             if len(files) == 0:
                 continue
             random.shuffle(files)
+            print(f'using data from {sim_results}')
+            print(files1)
 
             #Split all files for current simulation into train and val subsets
             val_subset = int(len(files) * VAL_SPLIT)
             train_files = files[val_subset:]
             val_files = files[:val_subset]
             for filename in train_files:
+                print('\nmoving', filename)
                 source_file = sim_results / filename
                 target_file = train_path / filename
                 shutil.move(source_file, target_file)
-                train_num += 1
             for filename in val_files:
+                print('moving', filename)
                 source_file = sim_results / filename
                 target_file = val_path / filename
                 shutil.move(source_file, target_file)
-                val_num += 1
-    
-    print(f'Will use {train_num} files for training and {val_num} for validation')
-    if train_num > MIN_TRAIN_SIZE and val_num > 0:
-        return True
-    else:
-        return False
 
 def train(model_filename='model.pkl', sim_output_path='sim_output', 
           registered_sims_filename='registered_sims.json', 
         train_path='train_data', val_path='val_data'):
 
+
+    train_path = Path(train_path)
+    val_path = Path(val_path)
+    sim_output_path = Path(sim_output_path)
+
     while True:
-        data_ready = data_loading(sim_output_path=sim_output_path, 
-                        registered_sims_filename=registered_sims_filename,
-                        train_path=train_path, val_path=val_path)
+        data_ready = check_sim_results(sim_output_path, registered_sims_filename)
         if data_ready:
             break
 
+    data_loading(sim_output_path=sim_output_path, 
+                        registered_sims_filename=registered_sims_filename,
+                        train_path=train_path, val_path=val_path)
     try:
         # Load model pre-trained at prev AL iteration
         with open(model_filename, 'rb') as f:
@@ -86,13 +103,9 @@ def train(model_filename='model.pkl', sim_output_path='sim_output',
         # Train a simple linear regression model
         model = LinearRegression()
 
-    train_path = Path(train_path)
+    
     X_all = []
     y_all = []
-
-    train_path = Path(train_path)
-    if not train_path.is_dir():
-        train_path.mkdir(parents=True, exist_ok=True)
 
     for file in train_path.iterdir():
         if file.is_file():

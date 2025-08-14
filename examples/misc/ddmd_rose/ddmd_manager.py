@@ -2,18 +2,11 @@
 
 # ------------------------------------------------------------------------------
 #
-import json
-import asyncio
-#from rose import TaskConfig
-#from rose.uq.uq_learner import ParallelUQLearner
 from rose import Learner
-#from rose.uq.uq_learner import ParallelUQLearner
-from ddmd_newLearner import DDMDLearner
 import time
 from logger import Logger
 from collections import OrderedDict
-from typing import Callable, Dict, Any, Optional, List, Union, Tuple, Iterator
-
+#from typing import Callable, Dict, Any, Optional, List, Union, Tuple, Iterator
 
 
 class DDMD_manager(object):
@@ -217,7 +210,7 @@ class DDMD_manager(object):
                     self.logger.info(f'\nStarting Training Iteration-{acl_iter}')
                     self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
                     self.logger.task_started('Training')
-                    train = await self.training()
+                    train = self.training()
                     
                     self.logger.task_started('Check Accuracy')
                     (should_stop, metric_val) = await self.check_accuracy(train)
@@ -230,12 +223,7 @@ class DDMD_manager(object):
 
                     self.unregister_sims()
                     self.submit_sim_batch()
-                    if self._debug:
-                        time.sleep(20)
 
-            if self._debug:
-                time.sleep(10)
-            # 
 
             self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
             self.logger.task_started('Prediction')
@@ -246,7 +234,6 @@ class DDMD_manager(object):
             # Continue running until there are no more simulations to submit and no more registered simulations.
             if not self.submit_next_sim and len(self.registered_sims) == 0:
                 run_simulations = False
-
 
         self.logger.manager_exiting()
         self.logger.separator("DDMD MANAGER FINISHED")

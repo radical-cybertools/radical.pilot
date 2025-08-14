@@ -11,7 +11,7 @@
 
 module load anaconda
 source activate base
-conda activate /anvil/scratch/$USER/impress/ve.impress
+conda activate /anvil/scratch/x-mgoliyad1/conda_env/rose_env
 
 
-python /anvil/scratch/x-mgoliyad1/impress_framework/IMPRESS/src/old_ddmd/ddmd_run.py
+python /anvil/scratch/x-mgoliyad1/DDMD/ddmd_rose/ddmd_run.py

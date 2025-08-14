@@ -25,10 +25,10 @@ def sim(input_path='input.file', output_path='output.dir', sim_tag=0):
     for i in range(150):
         
         X = np.random.uniform(low=0.0, high=1.0, size=500)
-        for _ in range(1000):
+        for _ in range(100):
             y = complicated_function(X)
         X = X.reshape(-1, 1)
-        output_file = f'{output_sim_path}/r{sim_tag}_{i}.npz'
+        output_file = f'{output_sim_path}/{sim_tag}_{i}.npz'
         np.savez(output_file, X=X, y=y)
         print(f'Saved simulation {i} to {output_file}')
         #t = random.randint(1,5)
