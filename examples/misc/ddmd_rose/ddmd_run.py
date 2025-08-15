@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 import asyncio
-from dummy_learner import dummy_workflow
+from dummy_learner import DummyWorkflow
 from radical.asyncflow import WorkflowEngine
 from radical.asyncflow import ConcurrentExecutionBackend
 from radical.asyncflow import RadicalExecutionBackend
 # from radical.asyncflow import DaskExecutionBackend
-#from radical.asyncflow import RadicalExecutionBackend
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 VAL_SPLIT = 0.2
 MIN_TRAIN_SIZE = 1
@@ -35,18 +34,25 @@ raptor_config = {
 async def run_ddmd():
 
     #engine = await ConcurrentExecutionBackend(ThreadPoolExecutor())
-    engine = await RadicalExecutionBackend(RESOURCES, raptor_config)
+    engine = await ConcurrentExecutionBackend(ProcessPoolExecutor())
+    #engine = await RadicalExecutionBackend(RESOURCES, raptor_config)
     #engine = await RadicalExecutionBackend(RESOURCES)
     #engine = await RadicalExecutionBackend({'resource': 'local.localhost'})
     #engine = await DaskExecutionBackend({'n_workers': 2, 'threads_per_worker': 1})
 
+    # Create the async workflow engine
     asyncflow = await WorkflowEngine.create(engine)
-    workflow = dummy_workflow(asyncflow=asyncflow)
+    
+    # Initialize the workflow
+    workflow = DummyWorkflow(asyncflow=asyncflow)
+    
     try:
+        # Run the workflow
         await workflow.teach()
     except Exception as e:
-       print(f"While teching nn error occurred: {e}")
+        print(f"An error occurred during teaching: {e}")
     finally:
+        # Ensure cleanup regardless of errors
         workflow.close()
 
 if __name__ == '__main__':

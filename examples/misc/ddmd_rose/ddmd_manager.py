@@ -1,76 +1,36 @@
 #!/usr/bin/env python3
-
 # ------------------------------------------------------------------------------
-#
-from rose import Learner
-import time
-from logger import Logger
+# Async-friendly DDMD manager for orchestrating simulations
+# ------------------------------------------------------------------------------
+
+import asyncio
 from collections import OrderedDict
-#from typing import Callable, Dict, Any, Optional, List, Union, Tuple, Iterator
+from rose import Learner
+from logger import Logger
+import json
 
 
-class DDMD_manager(object):
+class DDMD_manager:
+    """
+    Orchestrates the scheduling, monitoring, and cancellation of simulations
+    in an AI-steered ensemble simulation workflow.
+    """
 
-    # --------------------------------------------------------------------------
-    #
     def __init__(self, asyncflow):
-
         self.learner = Learner(asyncflow)
-        #self.learner = DDMDLearner(asyncflow)
-        self.registered_sims = OrderedDict()
-        self.submit_next_sim = True
-        self.logger: Logger = Logger(use_colors=True)
-        self.last_sim_ind = 0
-
-        self._debug = False
-
-        if len(self.sim_tags) == 0:
-            raise RuntimeError("# Simulation IDs must be initialized before this point")
-
+        self.logger = Logger(use_colors=True)
+        self.registered_sims = OrderedDict()   # Active simulations: {tag: asyncio.Task}
+        self.sim_task_queue = asyncio.Queue()  # Queue of pending simulation inputs
+        self.time_between_predictions = 20     # If training is not performed, pause briefly before initiating the next prediction attempt.
+ 
     # --------------------------------------------------------------------------
-    #
-    # def set_sim_ids(self):
-    #     raise NotImplementedError
+    def check_prediction(self, pred):
+        """
+        Decide whether a simulation should be canceled based on prediction.
+        Override this with actual logic.
+        """
+        raise NotImplementedError("check_prediction must be implemented")
     
-    # def get_sim_tag(self, *args, **kwargs):
-    #     # Returns the name of the simulation at the specified index
-    #     # Args:    
-    #     #       index
-    #     # Returen: 
-    #     #       Simulation name
-    #     raise NotImplementedError
-    
-    # --------------------------------------------------------------------------
-    #
-    def store_registered_sims(self):
-        # Store names of all registered simulations
-        raise NotImplementedError
-
-    # # --------------------------------------------------------------------------
-    # #
-    # def start_training(self, *args, **kwargs):
-    #     # Determine if the simulation has generated sufficient data for model training.
-    #     #
-    #     # Args:
-    #     #     active_learning_output: Output from the active learning process.
-    #     #
-    #     # Returns:
-    #     #     True if model training can begin; False otherwise.
-
-    #     raise NotImplementedError
-        
-    # --------------------------------------------------------------------------
-    #    
-    def check_prediction(self, *args, **kwargs):
-        # Determine whether the simulation should be canceled based on the model's prior prediction.
-        # 
-        # Args:
-        #     prediction: Model prediction for the current simulation.
-        #
-        # Returns:
-        #     True if the simulation should be canceled; False otherwise.
-
-        raise NotImplementedError
     # --------------------------------------------------------------------------
     #
     def __del__(self):
@@ -84,156 +44,153 @@ class DDMD_manager(object):
     def close(self):
         try:
             self.engine.shutdown()
+            print('Engine is shutdown')
         except:
             pass
-
-
-    # --------------------------------------------------------------------------
-    #
-    def wait(self, t=1):
-        time.sleep(t)
 
     # --------------------------------------------------------------------------
     #
     def stop(self):
         try:
             self.engine.shutdown()
+            print('Engine is shutdown')
         except:
             pass
-    
-    # --------------------------------------------------------------------------
-    #
-    def submit_sim_batch(self):
-        # Submit the next batch of simulations and register each one
-
-
-        if not self.submit_next_sim or self.sim_batch_size == 0:
-            return
-        print(f'[DDMD] submitting {self.sim_batch_size} simulation(s)')
-        for i in range(self.sim_batch_size):
-
-            self.last_sim_ind += 1
-            sim_kwargs = next(self.next_input)
-            sim_config = self.learner.simulation_function.copy()
-            sim_config['kwargs'] = sim_kwargs
-            simul = self.learner._register_task(sim_config)
-            sim_tag = sim_kwargs['sim_tag']
-            self.logger.task_started(f'Simulation {sim_tag} registered')
-            self.registered_sims[sim_tag] = simul 
-            if self.last_sim_ind == self.total_sim:
-                self.submit_next_sim = False
-                self.logger.info(f'Last simulation has been submitted with {self.last_sim_ind} total ...')
-                break
-        self.store_registered_sims()
-        self.sim_batch_size = 0
-        
-    # --------------------------------------------------------------------------
-    #        
-    def unregister_sims(self, unregistered_sims=[]):
-        # Unregister all tasks that have finished execution or were canceled
-        #unregistered_sims = []
-        self.sim_batch_size = len(unregistered_sims)
-        for sim_tag, task in self.registered_sims.items():
-            if sim_tag not in unregistered_sims:
-                if task.done():
-                    unregistered_sims.append(sim_tag)
-                    self.sim_batch_size += 1
-                    self.logger.task_completed(f'{sim_tag} state is done')
-                # elif task.cancelled():
-                #     unregistered_sims.append(sim_tag)
-                #     self.sim_batch_size += 1
-                #     self.logger.task_completed(f'{sim_tag} state is cancelled')
-                else:
-                    #self.logger.task_log(f'{sim_tag} state is running')
-                    pass
-
-
-        if len(unregistered_sims) > 0 :
-            # Remove all tasks that are no longer registered
-            self.registered_sims = {key:val for key, val in  self.registered_sims.items() if key not in  unregistered_sims}
-            self.store_registered_sims()
-
-        if self.submit_next_sim:
-            # Set the simulation batch size for the next submission
-            self.sim_batch_size = min(self.sim_batch_size, self.max_sim_batch_size)
-            self.logger.info(f'{self.sim_batch_size} simulations will start at next iteration')
-    # --------------------------------------------------------------------------
-    #        
-    def calcel_sim(self):
-
-        if self._debug:
-            unresolved = self.learner.unresolved
-            print('unresolved:', unresolved)
-            print('keys:', self.registered_sims.keys())
-        # with open(self.prediction_filename, 'r') as f:
-        #     loaded_data = json.load(f)
-
-        unregistered_sims = []
-        for sim_tag, pred in self.predictions.items():
-            self.logger.info(f'{sim_tag} simulations got prediction {pred}')
-            if sim_tag in self.registered_sims.keys():
-                if self._debug:
-                    print('task:', self.registered_sims[sim_tag])
-                cancel_task = self.check_prediction(pred=pred)
-                if cancel_task:
-                    task = self.registered_sims[sim_tag]
-                    unregistered_sims.append(sim_tag)
-                    try:
-                        task.cancel()
-                        self.logger.task_killed(f'Cancelling {sim_tag} with prediction score {pred}: ROSE task ID {task.id}')
-                    except Exception as e:
-                        self.logger.error(f'An error occurred: {e}. Unable to cancel simulation {sim_tag}.')
-                else:
-                    self.logger.info(f'prediction for {sim_tag} simulations is {pred} => no calcelation yet')
-        
-        # Tasks canceled by ROSE must be unregistered.
-        self.unregister_sims(unregistered_sims=unregistered_sims)
 
     # --------------------------------------------------------------------------
-    #
+    async def submit_sims(self):
+        """
+        Submit simulations from the queue and register them.
+        """
+        while True:
+            await self.monitor_sims()  # Clean up completed/failed tasks
+
+            if self.next_batch_size <= 0:
+                await asyncio.sleep(1)
+                continue
+
+            for _ in range(self.next_batch_size):
+                try:
+                    sim_inputs = self.sim_task_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    self.logger.info("No more simulation inputs in queue.")
+                    return
+
+                simul = self.simulation(sim_inputs=sim_inputs)
+                sim_tag = sim_inputs['sim_tag']
+                self.logger.task_started(f'Simulation {sim_tag}')
+                self.registered_sims[sim_tag] = simul 
+
+                if self.sim_task_queue.empty():
+                    self.logger.info("Last simulation has been submitted.")
+                    break
+
+            if self.next_batch_size > 0:
+                self.logger.info(
+                    f"[DDMD] Submitted {self.next_batch_size} new simulation(s)"
+                )
+                self.next_batch_size = 0  # Reset after submission
+
+            await asyncio.sleep(0.5)
+
+    # --------------------------------------------------------------------------
+    async def monitor_sims(self):
+        """
+        Unregister completed or failed simulations and prepare to submit next batch of simulations.
+        """
+        unregister_sims = []
+
+        for sim_tag, task in list(self.registered_sims.items()):
+            if task.done():
+                unregister_sims.append(sim_tag)
+                self.logger.task_completed(f"Simulation {sim_tag}")
+                self.next_batch_size += 1
+
+                if task.exception():
+                    self.logger.error(
+                        f"Simulation {sim_tag} failed: {task.exception()}"
+                    )
+
+        for tag in unregister_sims:
+            self.registered_sims.pop(tag, None)
+
+        if unregister_sims and not self.sim_task_queue.empty():
+            self.next_batch_size = min(self.next_batch_size, self.max_sim_batch)
+            self.logger.info(
+                f"{self.next_batch_size} simulations will start at next iteration"
+            )
+
+    # --------------------------------------------------------------------------
+    async def cancel_sims(self):
+        """
+        Cancel simulations that meet the prediction-based stop criteria.
+        """
+        unregister_sims = []
+
+        for sim_tag, pred in self.sim_predictions.items():
+            self.logger.info(f"{sim_tag} prediction: {pred}")
+
+            if sim_tag not in self.registered_sims:
+                continue
+
+            if self.check_prediction(prediction=pred):
+                task = self.registered_sims[sim_tag]
+                task.cancel()
+                unregister_sims.append(sim_tag)
+                self.logger.task_killed(
+                    f"Simulation {sim_tag} canceled due to prediction score {pred}"
+                )
+                self.next_batch_size += 1
+
+        for tag in unregister_sims:
+            self.registered_sims.pop(tag, None)
+
+        if unregister_sims and not self.sim_task_queue.empty():
+            self.next_batch_size = min(self.next_batch_size, self.max_sim_batch)
+            self.logger.info(
+                f"{self.next_batch_size} simulations will start at next iteration"
+            )
+
+    # --------------------------------------------------------------------------
     async def teach(self):
-
+        """
+        Main event loop: orchestrates input collection, submissions,
+        predictions, cancellations, and monitoring.
+        """
         self.logger.separator("DDMD MANAGER STARTING")
+        await self.collect_sim_inputs()
 
-        run_simulations = True
+        submit_task = asyncio.create_task(self.submit_sims())
 
-
-        while run_simulations:
-
-            # Submit the initial batch of simulations and pause before initiating active learning training.
-            self.submit_sim_batch()
+        while True:
+            self.logger.info(f"{len(self.registered_sims)} simulation(s) running...")
 
             if self.retrain_model:
+                await self.train_model()
+            else:
+                await asyncio.sleep(self.time_between_predictions) 
 
-                for acl_iter in range(self.training_epochs):
+            self.logger.task_started("Prediction")
+            sim_inds = list(self.registered_sims.keys())
+            predictions = await self.prediction(sim_inds=sim_inds, sim_output_dir=self.sim_output_dir)
 
-                    self.logger.info(f'\nStarting Training Iteration-{acl_iter}')
-                    self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
-                    self.logger.task_started('Training')
-                    train = self.training()
-                    
-                    self.logger.task_started('Check Accuracy')
-                    (should_stop, metric_val) = await self.check_accuracy(train)
-                    if should_stop:
-                        self.logger.info(f'Accuracy ({metric_val}) met the threshold, breaking...')
-                        break
+            # # ************************
+            # # Use the following call for calling predicions as executable
+            # await self.exe_prediction(sim_inds=sim_inds, sim_output_dir=self.sim_output_dir)
+            # with open(self.prediction_file, 'r') as f:
+            #     predictions = json.load(f) 
+            # # ************************
 
-                    self.logger.task_started(f'Active Learning iteration {acl_iter}')
-                    await self.active_learn()
+            self.sim_predictions = predictions
+            self.logger.info(f'[Task-Prediction] completed with {len(predictions)} new results.')
+            if predictions:
+                await self.cancel_sims()
 
-                    self.unregister_sims()
-                    self.submit_sim_batch()
+            if self.sim_task_queue.empty() and not self.registered_sims:
+                break
 
+            await asyncio.sleep(1) 
 
-            self.logger.info(f'{len(self.registered_sims)} simulation(s) running....')
-            self.logger.task_started('Prediction')
-            await self.prediction()
-            
-            self.calcel_sim()
-
-            # Continue running until there are no more simulations to submit and no more registered simulations.
-            if not self.submit_next_sim and len(self.registered_sims) == 0:
-                run_simulations = False
-
+        await submit_task
         self.logger.manager_exiting()
         self.logger.separator("DDMD MANAGER FINISHED")
