@@ -117,10 +117,12 @@ class Flux(AgentExecutingComponent) :
         td     = task['description']
         uid    = task['uid']
         sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
-        stdout = td.setdefault('stdout', '%s/%s.out' % (sbox, uid))
-        stderr = td.setdefault('stderr', '%s/%s.err' % (sbox, uid))
         td['sandbox'] = sbox
+        td['stdout']  = stdout
+        td['stderr']  = stderr
 
         task['stdout'] = ''
         task['stderr'] = ''
