@@ -11,7 +11,8 @@ import multiprocessing   as mp
 import radical.utils     as ru
 import radical.pilot     as rp
 
-from .worker  import Worker
+from .worker           import Worker
+from ..resource_config import Slot
 
 
 # ------------------------------------------------------------------------------
@@ -22,19 +23,8 @@ class DefaultWorker(Worker):
     #
     def __init__(self, raptor_id : str):
 
-        # generate a MPI rank dependent UID for each worker process
-        # FIXME: this should be delegated to ru.generate_id
-        # FIXME: rank determination should be moved to RU
-        rank = None
-
-        if rank is None: rank = os.environ.get('PMIX_RANK')
-        if rank is None: rank = os.environ.get('PMI_RANK')
-        if rank is None: rank = os.environ.get('OMPI_COMM_WORLD_RANK')
-
-        if rank is None: rank = 0
-        else           : rank = int(rank)
-
         # only rank 0 (the manager) registers with the master.
+        rank = int(os.environ.get('RP_RANK', 0))
         if rank == 0: manager = True
         else        : manager = False
 
@@ -145,8 +135,12 @@ class DefaultWorker(Worker):
                         if len(alloc_gpus) == gpus:
                             break
 
-            task['slots'] = {'cores': alloc_cores,
-                             'gpus' : alloc_gpus}
+            # FIXME: `Slot` serialization for the `mp.Queue` seems broken, just
+            #        using a plain dict for now
+            # task['slots'] = [Slot(cores=alloc_cores,
+            #                       gpus=alloc_gpus)]
+            task['slots'] = [{'cores': alloc_cores,
+                              'gpus' : alloc_gpus}]
 
         self._prof.prof('schedule_ok', uid=uid)
 
@@ -164,7 +158,7 @@ class DefaultWorker(Worker):
 
         with self._rlock:
 
-            resources = task['slots']
+            resources = task['slots'][0]
 
             for n in resources['cores']:
                 assert self._resources['cores'][n]
@@ -279,9 +273,9 @@ class DefaultWorker(Worker):
 
             # make CUDA happy
             # FIXME: assume physical device numbering for now
-            if task['slots']['gpus']:
+            if task['slots'][0]['gpus']:
                 os.environ['CUDA_VISIBLE_DEVICES'] = \
-                             ','.join(str(i) for i in task['slots']['gpus'])
+                             ','.join(str(i) for i in task['slots'][0]['gpus'])
 
             out = None
             err = None
