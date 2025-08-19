@@ -9,10 +9,10 @@ import threading         as mt
 import multiprocessing   as mp
 
 import radical.utils     as ru
-import radical.pilot     as rp
 
-from .worker           import Worker
-from ..resource_config import Slot
+from .worker            import Worker
+from ..resource_config  import Slot
+from ..task_description import TASK_FUNC, TASK_METH
 
 
 # ------------------------------------------------------------------------------
@@ -291,7 +291,7 @@ class DefaultWorker(Worker):
                 mode = task['description']['mode']
                 dispatcher = self.get_dispatcher(mode)
 
-                if mode in [rp.TASK_METH, rp.TASK_FUNC]:
+                if mode in [TASK_METH, TASK_FUNC]:
                     out, err, ret, val, exc = asyncio.run(dispatcher(task))
                 else:
                     out, err, ret, val, exc = dispatcher(task)
@@ -370,7 +370,7 @@ class DefaultWorker(Worker):
 
                 try:
                     res = self._result_queue.get(timeout=0.1)
-                    self._log.debug('got   result: %s', res)
+                    self._log.debug('got result: %s', res)
                     self._result_cb(res)
 
                 except queue.Empty:
