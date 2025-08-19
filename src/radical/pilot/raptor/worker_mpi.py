@@ -8,12 +8,11 @@ import asyncio
 
 import threading           as mt
 import radical.utils       as ru
-import radical.pilot       as rp
-
-from .worker            import Worker
 
 from ..states           import AGENT_EXECUTING_PENDING, AGENT_EXECUTING
+from ..task_description import TASK_FUNC, TASK_METH
 
+from .worker import Worker
 
 # MPI message tags
 TAG_REGISTER_REQUESTS    = 110
@@ -558,7 +557,7 @@ class MPIWorkerRank(mt.Thread):
         if not dispatcher:
             raise ValueError('no execution mode defined for %s' % mode)
 
-        if mode in [rp.TASK_METH, rp.TASK_FUNC]:
+        if mode in [TASK_METH, TASK_FUNC]:
             return asyncio.run(dispatcher(task))
         else:
             return dispatcher(task)
