@@ -14,8 +14,10 @@ from .. import states    as rps
 from .. import constants as rpc
 
 from ..pytask           import PythonTask
+from ..utils            import DeserializationError
 from ..task_description import TASK_FUNC, TASK_METH, TASK_EXEC
 from ..task_description import TASK_PROC, TASK_SHELL, TASK_EVAL
+
 
 
 # ------------------------------------------------------------------------------
@@ -399,9 +401,16 @@ class Worker(object):
             try:
                 to_call, _args, _kwargs = PythonTask.get_func_attr(func)
 
-            except Exception:
-                self._log.warn('function is not a PythonTask [%s] ', uid)
+            except DeserializationError as e:
+                self._log.warn('failed to deserialize function for [%s]: %s', uid, str(e))
+                out, val = None, None
+                exc = (repr(e), '\n'.join(ru.get_exception_trace()))
+                err = f'call failed: {e}'
+                ret = 1
+                return out, err, ret, val, exc
 
+            except Exception:
+                self._log.warn('function is not a PythonTask [%s]', uid)
             else:
                 py_func = True
                 if args or kwargs:
@@ -412,7 +421,7 @@ class Worker(object):
                     kwargs = _kwargs
 
         if not to_call:
-            self._log.error('no %s in \n%s\n\n%s', func, names, dir(self))
+            self._log.error('could not obtain callable from %s' % uid)
             raise ValueError('%s callable %s not found: %s' % (uid, func, task))
 
         comm = task.get('mpi_comm')
