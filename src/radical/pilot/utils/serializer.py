@@ -1,14 +1,3 @@
-
-'''
-The serializer should be able to (de)serialize information that we want
-to send over the wire from the client side to the agent side via
-1- ZMQ
-2- MongoDB
-
-we except:
-    1- Callables with and without dependecies.
-    2- Non-callables like classes and other python objects
-'''
 __copyright__ = 'Copyright 2022, The RADICAL-Cybertools Team'
 __license__   = 'MIT'
 
@@ -25,81 +14,96 @@ _obj_file_path = os.path.join(_obj_dir, _obj_file_name)
 
 
 # ------------------------------------------------------------------------------
-#
-def serialize_obj(obj):
-    '''
-    serialize object
-    '''
+# Custom Exceptions
+# ------------------------------------------------------------------------------
 
-    if callable(obj):
-        try:
-            return dill.dumps(obj)
-        except:
-            # if we fail, then pickle it by reference
-            # see issue: https://github.com/uqfoundation/dill/issues/128
-            return dill.dumps(obj, byref = True)
+class SerializationError(Exception):
+    def __init__(self, message: str, original_exception: Exception):
+        super().__init__(f"{message}: {str(original_exception)}")
+        self.original_exception = original_exception
 
-    else:
-        try:
-            return dill.dumps(obj, recurse = True)
-        except:
-            # if we fail, then pickle it by reference
-            # see issue: https://github.com/uqfoundation/dill/issues/128
-            return dill.dumps(obj, byref = True)
+
+class DeserializationError(Exception):
+    def __init__(self, message: str, original_exception: Exception):
+        super().__init__(f"{message}: {str(original_exception)}")
+        self.original_exception = original_exception
 
 
 # ------------------------------------------------------------------------------
-#
+# Serialization
+# ------------------------------------------------------------------------------
+
+def serialize_obj(obj):
+    '''
+    Serialize object using dill.
+    '''
+    try:
+        if callable(obj):
+            return dill.dumps(obj)
+        else:
+            return dill.dumps(obj, recurse=True)
+    except Exception as e:
+        try:
+            return dill.dumps(obj, byref=True)
+        except Exception as e2:
+            raise SerializationError("Failed to serialize object", e2) from e2
+
+
 def serialize_file(obj, fname=None):
     '''
-    serialize object to file
+    Serialize object to file.
     '''
-
     if not fname:
         fname = _obj_file_path
 
-    # FIXME: assign unique path and id for the pickled file
-    #        to avoid overwriting to the same file
-    with open(fname, 'wb') as f:
-        f.write(serialize_obj(obj))
+    try:
+        with open(fname, 'wb') as f:
+            f.write(serialize_obj(obj))
+        return fname
+    except Exception as e:
+        raise SerializationError("Failed to serialize object to file", e) from e
 
-    return _obj_file_path
+
+def serialize_bson(obj):
+    '''
+    Serialize object to base64-encoded BSON.
+    '''
+    try:
+        return codecs.encode(pickle.dumps(obj), "base64").decode()
+    except Exception as e:
+        raise SerializationError("Failed to serialize object to BSON", e) from e
 
 
 # ------------------------------------------------------------------------------
-#
+# Deserialization
+# ------------------------------------------------------------------------------
+
 def deserialize_file(fname):
     '''
-    Deserialize object from file
+    Deserialize object from file.
     '''
+    try:
+        with open(fname, 'rb') as f:
+            return dill.load(f)
+    except Exception as e:
+        raise DeserializationError("Failed to deserialize object from file", e) from e
 
-    with open(fname, 'rb') as f:
-        return dill.load(f)
 
-
-# ------------------------------------------------------------------------------
-#
 def deserialize_obj(data):
     '''
-    Deserialize object from str.
+    Deserialize object from bytes.
     '''
-
-    return dill.loads(data)
-
-
-# ------------------------------------------------------------------------------
-#
-def serialize_bson(obj):
-
-    return codecs.encode(pickle.dumps(obj), "base64").decode()
+    try:
+        return dill.loads(data)
+    except Exception as e:
+        raise DeserializationError("Failed to deserialize object from data", e) from e
 
 
-# ------------------------------------------------------------------------------
-#
 def deserialize_bson(obj):
-
-    return pickle.loads(codecs.decode(obj.encode(), "base64"))
-
-
-# ------------------------------------------------------------------------------
-
+    '''
+    Deserialize object from base64-encoded BSON.
+    '''
+    try:
+        return pickle.loads(codecs.decode(obj.encode(), "base64"))
+    except Exception as e:
+        raise DeserializationError("Failed to deserialize object from BSON", e) from e
