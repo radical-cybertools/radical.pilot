@@ -153,7 +153,7 @@ class TestRaptorWorker(TestCase):
         self.assertFalse(os.path.isdir(task_sbox_path))
 
         task = {'uid'              : 'task.0000',
-                'slots'            : {'gpus': []},
+                'slots'            : [{'gpus': []}],
                 'description'      : {'mode'    : rp.TASK_FUNCTION,
                                       'function': 'check_pwd',
                                       'args'    : [],
