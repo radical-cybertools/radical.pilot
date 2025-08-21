@@ -106,12 +106,12 @@ class TestWorker(TestCase):
         worker._alloc(task_1)
         self.assertEqual(worker._resources['cores'], [1, 0, 0, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 0])
-        self.assertEqual(task_1['slots'], {'cores': [0], 'gpus': [0]})
+        self.assertEqual(task_1['slots'], [{'cores': [0], 'gpus': [0]}])
 
         worker._alloc(task_2)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 0, 0, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 1])
-        self.assertEqual(task_2['slots'], {'cores': [1, 2], 'gpus': [1]})
+        self.assertEqual(task_2['slots'], [{'cores': [1, 2], 'gpus': [1]}])
 
         worker._alloc(task_3)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 0, 0, 0, 0, 0])
@@ -125,7 +125,7 @@ class TestWorker(TestCase):
         worker._alloc(task_3)
         self.assertEqual(worker._resources['cores'], [1, 1, 1, 1, 1, 0, 0, 0])
         self.assertEqual(worker._resources['gpus' ], [1, 1])
-        self.assertEqual(task_3['slots'], {'cores': [0, 3, 4], 'gpus': [0]})
+        self.assertEqual(task_3['slots'], [{'cores': [0, 3, 4], 'gpus': [0]}])
 
         worker._dealloc(task_2)
         self.assertEqual(worker._resources['cores'], [1, 0, 0, 1, 1, 0, 0, 0])
