@@ -74,14 +74,16 @@
                                          "order" : ["FLUX"],
                                          "FLUX"  : {
                                              "pre_exec_cached": [
+                                                  # update spack location
                                                   ".  /pfs/lustrep3/scratch/project_465001998/spack/share/spack/setup-env.sh",
-                                                  "spack load flux-core"
+                                                  "spack load flux-sched"
                                              ]
                                          }
                                         },
         "pre_bootstrap_0"             : [
+                                          # update spack location
                                           ".  /pfs/lustrep3/scratch/project_465001998/spack/share/spack/setup-env.sh",
-                                          "spack load flux-core"
+                                          "spack load flux-sched"
                                         ],
         "default_remote_workdir"      : "/pfs/lustrep3/scratch/%(pd.project)s",
         "virtenv_mode"                : "local",
