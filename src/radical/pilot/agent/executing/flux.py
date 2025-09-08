@@ -44,7 +44,7 @@ class Flux(AgentExecutingComponent) :
         self._event_map = {'submit'   : None,   # rps.AGENT_SCHEDULING,
                            'depend'   : None,
                            'alloc'    : rps.AGENT_EXECUTING_PENDING,
-                           'start'    : rps.AGENT_EXECUTING,
+                         # 'start'    : rps.AGENT_EXECUTING,
                            'cleanup'  : None,
                            'finish'   : rps.AGENT_STAGING_OUTPUT_PENDING,
                            'release'  : 'unschedule',
