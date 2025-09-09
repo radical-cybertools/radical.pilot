@@ -120,6 +120,10 @@ class Flux(AgentExecutingComponent) :
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
+        td['sandbox'] = sbox
+        td['stdout']  = stdout
+        td['stderr']  = stderr
+
         task['stdout'] = ''
         task['stderr'] = ''
 
@@ -130,17 +134,13 @@ class Flux(AgentExecutingComponent) :
         _, exec_path = self._create_exec_script(self._lm, task)
         self._prof.prof('task_create_exec_ok', uid=uid)
 
-        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
-                                                   'out': stdout,
-                                                   'err': stderr}
         spec_dict = copy.deepcopy(td)
         spec_dict['uid']        = uid
         spec_dict['executable'] = '/bin/sh'
-        spec_dict['arguments']  = ['-c', command]
+        spec_dict['arguments']  = ['-c', exec_path]
 
-        self._prof.prof('task_to_flux_start', uid=uid)
+        self._prof.prof('task_to_spec_start', uid=uid)
         ret = ru.flux.spec_from_dict(spec_dict)
-
         self._prof.prof('task_to_spec_stop', uid=uid)
 
         return ret
