@@ -151,7 +151,7 @@ class Srun(LaunchMethod):
 
         n_tasks        = len(slots)
         n_task_threads = td.get('cores_per_rank', 1)
-        gpus_per_task  = td.get('gpus_per_rank', 0.)
+        gpus_per_rank  = td.get('gpus_per_rank', 0.)
 
         # Alas, exact rank-to-core mapping seems only be available in Slurm when
         # tasks use full nodes - which in RP is rarely the case.  We thus are
@@ -181,9 +181,6 @@ class Srun(LaunchMethod):
                     nodefile = '%s/%s.nodes' % (sbox, uid)
                     with ru.ru_open(nodefile, 'w') as fout:
                         fout.write(','.join(nodelist) + '\n')
-
-            if slots[0]['gpus']:
-                gpus_per_task = len(slots[0]['gpus'])
 
         mapping = ''
         if n_tasks > 1:
@@ -220,12 +217,16 @@ class Srun(LaunchMethod):
             mapping += ' --mem 0'
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('requested_gpus') and gpus_per_task:
+        if self._rm_info.get('requested_gpus') and gpus_per_rank:
             if self._traverse:
-                mapping += ' --gpus-per-task=%d' % gpus_per_task
+                mapping += ' --gpus-per-task=%d' % gpus_per_rank
             else:
-                mapping += ' --gpus-per-task %d' % gpus_per_task + \
+                mapping += ' --gpus-per-task %d' % gpus_per_rank + \
                            ' --gpu-bind closest'
+
+        if gpus_per_rank:
+            mapping += ' --gres=gpu:%d' % gpus_per_rank
+
 
         if nodefile:
             mapping += ' --nodefile=%s' % nodefile
