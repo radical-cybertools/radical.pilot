@@ -19,8 +19,8 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SRUN"],
-                                         "SRUN" : {}
+                                         "order": ["MPIRUN"],
+                                         "MPIRUN" : {}
                                         },
         "pre_bootstrap_0"             : [],
         "default_remote_workdir"      : "/data/user/$USER",
@@ -48,8 +48,8 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SRUN"],
-                                         "SRUN" : {}
+                                         "order": ["MPIRUN"],
+                                         "MPIRUN" : {}
                                         },
         "pre_bootstrap_0"             : [],
         "default_remote_workdir"      : "/data/user/$USER",
@@ -78,8 +78,8 @@
         "agent_scheduler"             : "CONTINUOUS",
         "agent_spawner"               : "POPEN",
         "launch_methods"              : {
-                                         "order": ["SRUN"],
-                                         "SRUN" : {}
+                                         "order": ["MPIRUN"],
+                                         "MPIRUN" : {}
                                         },
         "pre_bootstrap_0"             : [],
         "default_remote_workdir"      : "/data/user/$USER",

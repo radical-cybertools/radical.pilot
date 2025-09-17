@@ -12,7 +12,7 @@ General description
 * Resource manager - ``SLURM``
 * Launch methods (per platform ID)
 
-  * ``iu.lair*`` - ``SRUN``
+  * ``iu.lair*`` - ``MPIRUN``
 
 * Configuration per node (per platform ID)
 
