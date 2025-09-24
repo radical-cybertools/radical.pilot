@@ -1,8 +1,8 @@
 
 {
     "lumi": {
-        "description"                 : "",
-        "notes"                       : "",
+        "description"                 : "LUMI is a pre-exascale EuroHPC supercomputer located in Finland.",
+        "notes"                       : "User guide: https://docs.lumi-supercomputer.eu/",
         "default_schema"              : "local",
         "schemas"                     : {
             "local"                   : {
