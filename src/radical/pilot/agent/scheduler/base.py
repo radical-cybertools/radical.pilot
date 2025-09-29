@@ -1108,8 +1108,8 @@ class AgentSchedulingComponent(rpu.AgentComponent):
       #         # schedule other tasks of other sizes.
       #         to_release.append(task)
       #
-            self._active_cnt -= 1
-            to_release.append(task)
+      #     self._active_cnt -= 1
+      #     to_release.append(task)
 
         if not to_release:
             if not to_unschedule:
