@@ -542,12 +542,102 @@ def get_session_profile(sid, src=None):
                             '',
                             'pilot'])
 
+    profile = fix_profiles(profile)
 
     if not hostmap:
         # FIXME: legacy host notation - deprecated
         hostmap = get_hostmap_deprecated(profiles)
 
     return profile, accuracy, hostmap
+
+
+# ------------------------------------------------------------------------------
+#
+def fix_profiles(profile):
+
+    # - collect the set of task IDs from the profiles
+    # - for all tasks which end up in CANCELED state, check if `exec_stop` and
+    # `launch_stop` events are present - if not, add them with the timestamp of
+    # the first `advance` to CANCELED
+    events = dict()
+    for e in profile:
+        tid = e[4]
+        if tid not in events:
+            events[tid] = list()
+        events[tid].append(e)
+
+    # we conider only entities as tasks which have a `schedule_ok` event
+    tids = set()
+    for tid, t_events in events.items():
+        for e in t_events:
+            if e[1] == 'schedule_ok':
+                tids.add(tid)
+                break
+        if _debug and tid not in tids:
+            print('=== skip %s ===' % tid)
+
+    for tid in tids:
+
+        t_events = events[tid]
+        states = [e[ru.STATE] for e in t_events if e[ru.EVENT] == 'state']
+
+        if _debug:
+            print('=== fix  %s states: %s ===' % (tid, states))
+            for e in t_events:
+                print('    %s' % e)
+
+        if s.CANCELED not in states and s.FAILED not in states:
+            if _debug:
+                print('=== skip %s (not canceled/failed) ===' % tid)
+            continue
+
+        # sort the events by timestamp
+        t_events = sorted(t_events, key=lambda x: x[0])
+
+        ts = None
+        for e in t_events:
+            if e[ru.EVENT] == 'state' and e[ru.STATE] in [s.CANCELED, s.FAILED]:
+                ts = e[0]
+                break
+        assert(ts is not None)
+        if _debug:
+            print('=== fix  %s @ %s ===' % (tid, ts))
+
+        pairs = [['schedule_ok',    'unschedule_stop'],
+                 ['task_run_start', 'task_run_stop'],
+                 ['launch_start',   'launch_stop'],
+                 ['exec_start',     'exec_stop']]
+
+        # whenever we find the first of a pair but not the second, we inject an
+        # event for the second event with the timestamp of the CANCELED
+        for pair in pairs:
+
+            have_first  = False
+            have_second = False
+
+            for e in t_events:
+                if e[ru.EVENT] == pair[0]:
+                    have_first = True
+                if e[ru.EVENT] == pair[1]:
+                    have_second = True
+
+            if have_first and not have_second:
+                entry = [ts, pair[1], 'inject', 'MainThread', tid,
+                         'CANCELED', '', tid.split('.')[0]]
+                profile.append(entry)
+                if _debug:
+                    print('=== append %s' % entry)
+
+
+
+      # if not have_launch_stop:
+      #     entry = [ts, 'launch_stop', 'launch_method', 'MainThread', tid,
+      #              'task_state', '', 'task']
+      #     print('=== append %s' % entry)
+      #
+      #     profile.append(entry)
+
+    return profile
 
 
 # ------------------------------------------------------------------------------
