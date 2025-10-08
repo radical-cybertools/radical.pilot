@@ -566,7 +566,7 @@ def fix_profiles(profile):
             events[tid] = list()
         events[tid].append(e)
 
-    # we conider only entities as tasks which have a `schedule_ok` event
+    # we consider only entities as tasks which have a `schedule_ok` event
     tids = set()
     for tid, t_events in events.items():
         for e in t_events:
