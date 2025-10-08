@@ -628,15 +628,6 @@ def fix_profiles(profile):
                 if _debug:
                     print('=== append %s' % entry)
 
-
-
-      # if not have_launch_stop:
-      #     entry = [ts, 'launch_stop', 'launch_method', 'MainThread', tid,
-      #              'task_state', '', 'task']
-      #     print('=== append %s' % entry)
-      #
-      #     profile.append(entry)
-
     return profile
 
 
