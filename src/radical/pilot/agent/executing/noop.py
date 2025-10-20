@@ -18,7 +18,7 @@ from .base import AgentExecutingComponent
 
 # ------------------------------------------------------------------------------
 #
-class Sleep(AgentExecutingComponent) :
+class NOOP(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
@@ -90,21 +90,23 @@ class Sleep(AgentExecutingComponent) :
     #
     def cancel_task(self, task):
 
-        raise NotImplementedError('no cancellation support in sleep executor')
+        raise NotImplementedError('no cancellation support in noop executor')
 
 
     # --------------------------------------------------------------------------
     #
     def _handle_task(self, task):
 
-        now = time.time()
+        now  = time.time()
+        td   = task['description']
+        args = td.get('arguments', [0])
 
-        # assert t['description']['executable'].endswith('sleep')
-        t_sleep = 0.0
-        if task['description'].get('executable', '').endswith('sleep'):
-            t_sleep = float(task['description'].get('arguments', [0.0])[0])
-
-        task['deadline'] = now + t_sleep
+        task['deadline'] = now
+        if 'sleep' in td['executable']:
+            try:
+                task['deadline'] = now + float(args[0])
+            except:
+                pass
 
         uid = task['uid']
         self._prof.prof('task_run_start', uid=uid)
