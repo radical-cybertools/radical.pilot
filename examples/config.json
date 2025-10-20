@@ -231,6 +231,15 @@
         "cores"    : 64
     },
 
+    "eurohpc.lumi"  : {
+        "project"  : "project_465001998",
+        "queue"    : "small",
+        "schema"   : "local",
+        "cores"    : 128,
+        "gpus"     : 0
+    },
+
+
     "radical.three" : {
         "project"  : null,
         "queue"    : null,
