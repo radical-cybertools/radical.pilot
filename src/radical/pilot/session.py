@@ -965,7 +965,8 @@ class Session(object):
             self._proxy.wait()
 
         finally:
-            self._proxy.stop()
+            if self._proxy:
+                self._proxy.stop()
 
 
     # --------------------------------------------------------------------------
