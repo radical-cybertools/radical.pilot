@@ -1,0 +1,97 @@
+
+{
+    "lumi": {
+        "description"                 : "LUMI is a pre-exascale EuroHPC supercomputer located in Finland.",
+        "notes"                       : "User guide: https://docs.lumi-supercomputer.eu/",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://lumi.csc.fi/",
+                "filesystem_endpoint" : "file://lumi.csc.fi/"
+            }
+        },
+        "default_queue"               : "small",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [],
+        "default_remote_workdir"      : "/pfs/lustrep3/scratch/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 0,
+        "system_architecture"         : {
+                                         "smt": 1
+                                        }
+    },
+
+    "lumig": {
+        "description"                 : "",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://lumi.csc.fi/",
+                "filesystem_endpoint" : "file://lumi.csc.fi/"
+            }
+        },
+        "default_queue"               : "small-g",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "POPEN",
+        "launch_methods"              : {
+                                         "order": ["SRUN"],
+                                         "SRUN" : {}
+                                        },
+        "pre_bootstrap_0"             : [],
+        "default_remote_workdir"      : "/pfs/lustrep3/scratch/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 8,
+        "system_architecture"         : {
+                                         "smt": 1
+                                        }
+    },
+
+    "lumig_flux": {
+        "description"                 : "",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "local"                   : {
+                "job_manager_endpoint": "slurm://lumi.csc.fi/",
+                "filesystem_endpoint" : "file://lumi.csc.fi/"
+            }
+        },
+        "default_queue"               : "small",
+        "resource_manager"            : "SLURM",
+        "agent_scheduler"             : "FLUX",
+        "agent_spawner"               : "FLUX",
+        "launch_methods"              : {
+                                         "order" : ["FLUX"],
+                                         "FLUX"  : {
+                                             "pre_exec_cached": [
+                                                  # update spack location
+                                                  ".  /pfs/lustrep3/scratch/project_465001998/spack/share/spack/setup-env.sh",
+                                                  "spack load flux-sched"
+                                             ]
+                                         }
+                                        },
+        "pre_bootstrap_0"             : [
+                                          # update spack location
+                                          ".  /pfs/lustrep3/scratch/project_465001998/spack/share/spack/setup-env.sh",
+                                          "spack load flux-sched"
+                                        ],
+        "default_remote_workdir"      : "/pfs/lustrep3/scratch/%(pd.project)s",
+        "virtenv_mode"                : "local",
+        "cores_per_node"              : 64,
+        "gpus_per_node"               : 0,
+        "system_architecture"         : {
+                                         "smt": 1
+                                        }
+    }
+}
+
