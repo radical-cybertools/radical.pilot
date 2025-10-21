@@ -128,8 +128,6 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         self._rp_version, _, _, _, _ = \
                 ru.get_version([self._mod_dir, self._root_dir])
 
-
-        # load all launcher implementations
         self._launchers = dict()
 
         from .saga  import PilotLauncherSAGA
@@ -143,12 +141,15 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         exceptions = dict()
         for name in [RP_UL_NAME_PSI_J, RP_UL_NAME_SAGA]:
             try:
-                ctor = impl[name]
-                self._launchers[name] = ctor(name, self._log, self._prof,
-                                             self._state_cb)
+                self._launchers[name] = impl[name](name, self._log, self._prof,
+                                                   self._state_cb)
             except Exception as e:
                 self._log.warn('skip launcher %s' % name)
                 exceptions[name] = e
+            else:
+                # check SAGA only if PSI/J is not available
+                self._log.debug('enabled launcher: %s', list(self._launchers))
+                break
 
         # if no launcher is usable, log the found exceptions
         if not self._launchers:
@@ -550,6 +551,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
 
         # ----------------------------------------------------------------------
         # pilot description and resource configuration
+        backup_nodes     = pilot['description']['backup_nodes']
         requested_nodes  = pilot['description']['nodes']
         requested_cores  = pilot['description']['cores']
         requested_gpus   = pilot['description']['gpus']
@@ -761,7 +763,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             #  e : everything (== pilot sandbox)
             cleanup = 'luve'
 
-            # we never cleanup virtenvs which are not private
+            # we never clean up virtenvs which are not private
             if virtenv_mode != 'private':
                 cleanup = cleanup.replace('v', '')
 
@@ -783,16 +785,11 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
             avail_gpus_per_node -= len(blocked_gpus)
             assert (avail_gpus_per_node >= 0)
 
-        if not requested_nodes and not requested_cores:
-            requested_nodes = 1
-
         if requested_nodes:
-
             if not avail_cores_per_node:
                 raise RuntimeError('use "cores" in PilotDescription')
 
         else:
-
             if avail_cores_per_node:
                 requested_nodes = requested_cores / avail_cores_per_node
 
@@ -805,18 +802,21 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         # now that we know the number of nodes to request, derive
         # the *actual* number of cores and gpus we allocate
         allocated_cores = (
-            requested_nodes * avail_cores_per_node) or requested_cores
+            (requested_nodes + backup_nodes) * avail_cores_per_node) \
+                    or requested_cores
         allocated_gpus  = (
-            requested_nodes * avail_gpus_per_node)  or requested_gpus
+            (requested_nodes + backup_nodes) * avail_gpus_per_node)  \
+                    or requested_gpus
 
         if rcfg.numa_domain_map:
             numa_domains_per_node = len(rcfg.numa_domain_map)
         else:
             numa_domains_per_node = 1
 
-        self._log.debug('nodes: %s [%s %s | %s], cores: %s, gpus: %s',
-                        requested_nodes, cores_per_node, gpus_per_node,
-                        numa_domains_per_node, allocated_cores, allocated_gpus)
+        self._log.debug('nodes: %s[+%d] [%s %s | %s], cores: %s, gpus: %s',
+                        requested_nodes, backup_nodes,
+                        cores_per_node, gpus_per_node, numa_domains_per_node,
+                        allocated_cores, allocated_gpus)
 
         # set mandatory args
         bs_args = ['-l', '%s/bootstrap_0.sh' % pilot_sandbox]
@@ -847,6 +847,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         agent_cfg['owner']               = pid
         agent_cfg['pmgr']                = self._pmgr
         agent_cfg['resource']            = resource
+        agent_cfg['backup_nodes']        = backup_nodes
         agent_cfg['nodes']               = requested_nodes
         agent_cfg['cores']               = allocated_cores
         agent_cfg['gpus']                = allocated_gpus
@@ -942,7 +943,7 @@ class PMGRLaunchingComponent(rpu.ClientComponent):
         jd_dict.project               = project
         jd_dict.output                = 'bootstrap_0.out'
         jd_dict.error                 = 'bootstrap_0.err'
-        jd_dict.node_count            = requested_nodes
+        jd_dict.node_count            = requested_nodes + backup_nodes
         jd_dict.total_cpu_count       = allocated_cores
         jd_dict.total_gpu_count       = allocated_gpus
         jd_dict.total_physical_memory = requested_memory
