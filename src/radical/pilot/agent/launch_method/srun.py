@@ -54,7 +54,7 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def init_from_scratch(self, env, env_sh):
+    def _init_from_scratch(self, env, env_sh):
 
         command = ru.which('srun')
         out, err, ret = ru.sh_callout('%s -V' % command)
