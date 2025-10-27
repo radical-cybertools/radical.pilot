@@ -356,6 +356,7 @@ class Agent_0(rpu.AgentComponent):
         self._log.info('starting agent service from sd %s', td.uid)
 
         sbox = self._cfg.pilot_sandbox + '/' + td.uid
+        rdir = self._cfg.pilot_sandbox + '/' + td.uid
 
         task = dict()
         task['uid']               = td.uid
@@ -369,6 +370,8 @@ class Agent_0(rpu.AgentComponent):
         task['resource_sandbox']  = self._cfg.resource_sandbox
         task['task_sandbox']      = 'file://localhost/' + sbox
         task['task_sandbox_path'] = sbox
+        task['task_rundir']       = 'file://localhost/' + rdir
+        task['task_rundir_path']  = rdir
         task['resources']         = {'cpu': td.ranks * td.cores_per_rank,
                                      'gpu': td.ranks * td.gpus_per_rank}
 
@@ -536,6 +539,7 @@ class Agent_0(rpu.AgentComponent):
                 agent_task = {
                     'uid'               : sa,
                     'task_sandbox_path' : self._pwd,
+                    'task_rundir_path'  : self._pwd,
                     'description'       : TaskDescription({
                         'uid'           : sa,
                         'ranks'         : 1,
@@ -878,6 +882,7 @@ class Agent_0(rpu.AgentComponent):
 
         for task in tasks:
 
+            # FIXME: make sure to evaluate the task description attributes
             td  = task['description']
             tid = task.get('uid')
 
@@ -886,6 +891,7 @@ class Agent_0(rpu.AgentComponent):
                                      ru.ID_CUSTOM, ns=self._pid)
 
             sbox = self._cfg.pilot_sandbox + '/' + tid
+            rdir = self._cfg.pilot_sandbox + '/' + tid
 
             task['uid']               = tid
             task['origin']            = 'agent'
@@ -899,6 +905,8 @@ class Agent_0(rpu.AgentComponent):
 
             task['task_sandbox']      = 'file://localhost/' + sbox
             task['task_sandbox_path'] = sbox
+            task['task_rundir']       = 'file://localhost/' + rdir
+            task['task_rundir_path']  = rdir
 
             self._log.debug('ep: submit %s', td['uid'])
 

@@ -38,6 +38,7 @@ class Worker(object):
         self._reg_event = mt.Event()
         self._reg_addr  = os.environ['RP_REGISTRY_ADDRESS']
         self._sbox      = os.environ['RP_TASK_SANDBOX']
+        self._rdir      = os.environ['RP_TASK_RUNDIR']
         self._uid       = os.environ['RP_TASK_ID']
         self._sid       = os.environ['RP_SESSION_ID']
         self._ranks     = int(os.environ['RP_RANKS'])
@@ -55,7 +56,7 @@ class Worker(object):
                                path=self._cfg.path)
         self._prof = ru.Profiler(name='%s.%04d' % (self._uid, self._rank),
                                  ns='radical.pilot.worker',
-                                 path=self._sbox)
+                                 path=self._rdir)
 
         # register for lifetime management messages on the control pubsub
         psbox     = os.environ['RP_PILOT_SANDBOX']

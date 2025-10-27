@@ -70,6 +70,7 @@ jobs:
         run: |
           . testenv/bin/activate
           radical-stack
+          coverage run --source=radical.pilot -m pytest -ra -vvv -s --showlocals tests/unit_tests/test_pytest.py
           coverage run --source=radical.pilot -m pytest -ra -vvv --showlocals tests/unit_tests/ tests/component_tests/
           coverage xml
       - uses: codecov/codecov-action@v4

@@ -9,6 +9,7 @@
             "ranks"         : 1,
             "environment"   : {"test_env": "test_val"}
         },
+        "task_rundir_path"  : "/tmp",
         "task_sandbox_path" : "/tmp"
     },
 

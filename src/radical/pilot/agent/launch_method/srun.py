@@ -147,7 +147,7 @@ class Srun(LaunchMethod):
         uid            = task['uid']
         slots          = task['slots']
         td             = task['description']
-        sbox           = task['task_sandbox_path']
+        rdir           = task['task_rundir_path']
 
         n_tasks        = len(slots)
         n_task_threads = td.get('cores_per_rank', 1)
@@ -178,7 +178,7 @@ class Srun(LaunchMethod):
             # to `--nodefile`
             if self._vmajor > MIN_VSLURM_IN_LIST:
                 if n_nodes > MIN_NNODES_IN_LIST:
-                    nodefile = '%s/%s.nodes' % (sbox, uid)
+                    nodefile = '%s/%s.nodes' % (rdir, uid)
                     with ru.ru_open(nodefile, 'w') as fout:
                         fout.write(','.join(nodelist) + '\n')
 

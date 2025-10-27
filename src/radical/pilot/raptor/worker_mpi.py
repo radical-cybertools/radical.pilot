@@ -490,7 +490,8 @@ class MPIWorkerRank(mt.Thread):
         task['description']['environment'].update(
               {'RP_TASK_ID'         : task['uid'],
                'RP_TASK_NAME'       : task.get('name'),
-               'RP_TASK_SANDBOX'    : os.environ['RP_TASK_SANDBOX'],  # FIXME?
+               'RP_TASK_SANDBOX'    : os.environ['RP_TASK_SANDBOX'],
+               'RP_TASK_RUNDIR'     : os.environ['RP_TASK_RUNDIR'],
                'RP_PILOT_ID'        : os.environ['RP_PILOT_ID'],
                'RP_SESSION_ID'      : os.environ['RP_SESSION_ID'],
                'RP_RESOURCE'        : os.environ['RP_RESOURCE'],

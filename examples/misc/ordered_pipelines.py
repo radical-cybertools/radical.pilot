@@ -20,8 +20,8 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv) > 1: resource = sys.argv[1]
-    else                  : resource = 'local.localhost'
+    if len(sys.argv) > 1: resource = sys.argv[1]
+    else                : resource = 'local.localhost'
 
     session = rp.Session()
 

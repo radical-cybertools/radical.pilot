@@ -1527,6 +1527,24 @@ class Session(object):
 
     # --------------------------------------------------------------------------
     #
+    def _get_task_rundir(self, task, pilot):
+
+        # task sandboxes are cached in the task dict
+        task_rundir = task.get('task_rundir')
+        if task_rundir:
+            return task_rundir
+
+        task_rundir = ru.Url(self._get_pilot_sandbox(pilot))
+        task_rundir.path += "/%s/" % task['uid']
+
+        # cache
+        task['task_rundir'] = str(task_rundir)
+
+        return task_rundir
+
+
+    # --------------------------------------------------------------------------
+    #
     def _get_jsurl(self, pilot):
         """Get job service endpoint and hop URL for pilot's target resource."""
 

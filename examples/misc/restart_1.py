@@ -38,15 +38,15 @@ if __name__ == '__main__':
     report.title('Getting Started (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if   len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
-    elif len(sys.argv) == 2: resource = sys.argv[1]
-    else                   : resource = 'local.localhost'
+    if len(sys.argv)  > 2: report.exit('Usage:\t%s [resource]\n\n' % sys.argv[0])
+    if len(sys.argv) == 2: resource = sys.argv[1]
+    else                 : resource = 'local.localhost'
 
     try:
         # Create a new session, and reconnect tmgr and pmgr
         session = rp.Session(uid=session_id)
-        tmgr    = rp.TaskManager(session=session,  uid=tmgr_id)
-        pmgr    = rp.PilotManager(session=session, uid=pmgr_id)
+        tmgr    = rp.TaskManager(session=session)   # uid=tmgr_id)
+        pmgr    = rp.PilotManager(session=session)  # uid=pmgr_id)
 
         # re-add pilots to the uymgr
         tmgr.add_pilots(pmgr.get_pilots())

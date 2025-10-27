@@ -345,6 +345,8 @@ class TMGRSchedulingComponent(rpu.ClientComponent):
         task['pilot_sandbox'    ] = str(self._session._get_pilot_sandbox(pilot))
         task['task_sandbox'     ] = str(self._session._get_task_sandbox(task, pilot))
         task['task_sandbox_path'] = ru.Url(task['task_sandbox']).path
+        task['task_rundir'      ] = str(self._session._get_task_rundir(task, pilot))
+        task['task_rundir_path' ] = ru.Url(task['task_rundir']).path
 
         with self._tasks_lock:
             if pid not in self._tasks:

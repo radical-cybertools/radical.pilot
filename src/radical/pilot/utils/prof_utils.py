@@ -1020,6 +1020,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
         if   e.etype == 'pilot': data = _get_pilot_consumption(e, rtype)
         elif e.etype == 'task' : data = _get_task_consumption(session, e, rtype,
                                                               tdurations)
+        else: raise ValueError('unknown entity type: %s' % e.etype)
 
         for metric in data:
             for uid in data[metric]:

@@ -282,8 +282,8 @@ class DefaultWorker(Worker):
             ret = 1
             val = None
             exc = [None, None]
-            try:
 
+            try:
                 sbox = task['task_sandbox_path']
                 ru.rec_makedir(sbox)
                 os.chdir(sbox)

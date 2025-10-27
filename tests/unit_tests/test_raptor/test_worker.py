@@ -159,6 +159,7 @@ class TestRaptorWorker(TestCase):
                                       'args'    : [],
                                       'kwargs'  : {},
                                       'timeout' : 0},
+                'task_rundir_path' : task_sbox,
                 'task_sandbox_path': task_sbox}
 
         def _target_process(target, args):

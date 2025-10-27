@@ -29,8 +29,8 @@ if __name__ == '__main__':
     report.title('Scheduler Selection (RP version %s)' % rp.version)
 
     # use the resource specified as argument, fall back to localhost
-    if len(sys.argv) >= 2  : resources = sys.argv[1:]
-    else                   : resources = ['local.localhost']
+    if len(sys.argv) >= 2: resources = sys.argv[1:]
+    else                 : resources = ['local.localhost']
 
     # Create a new session. No need to try/except this: if session creation
     # fails, there is not much we can do anyways...

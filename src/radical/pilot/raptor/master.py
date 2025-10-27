@@ -412,6 +412,7 @@ class Master(rpu.AgentComponent):
             task['type']              = 'task'
             task['uid']               = td.uid
             task['task_sandbox_path'] = td.sandbox
+            task['task_rundir_path']  = td.sandbox
             task['task_sandbox']      = 'file://localhost/' + td.sandbox
             task['pilot_sandbox']     = self._psbox
             task['session_sandbox']   = self._ssbox
@@ -701,6 +702,7 @@ class Master(rpu.AgentComponent):
             sbox  = self._session._get_task_sandbox(task, dummy)
             task['task_sandbox']      = str(sbox)
             task['task_sandbox_path'] = ru.Url(sbox).path
+            task['task_rundir_path']  = task['task_sandbox_path']
 
         self._submit_executable_tasks(executable_tasks)
         self._submit_raptor_tasks(raptor_tasks)

@@ -164,6 +164,7 @@ class JSRUN(LaunchMethod):
         uid   = task['uid']
         td    = task['description']
         slots = task['slots']
+        rdir  = task['task_rundir_path']
 
         assert slots, 'task.slots not defined'
 
@@ -174,8 +175,8 @@ class JSRUN(LaunchMethod):
 
         if self._erf:
 
-            cmd_options = '--erf_input %s' % self._create_resource_set_file(
-                slots, uid, task['task_sandbox_path'])
+            cmd_options = '--erf_input %s' \
+                        % self._create_resource_set_file(slots, uid, rdir)
 
         else:
 

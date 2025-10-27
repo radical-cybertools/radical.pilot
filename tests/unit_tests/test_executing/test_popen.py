@@ -115,7 +115,7 @@ class TestPopen(TestCase):
         self.assertFalse(popen_input_kwargs['start_new_session'])
 
         for prefix in ['.launch.sh', '.exec.sh']:
-            path = '%s/%s%s' % (task['task_sandbox_path'], task['uid'], prefix)
+            path = '%s/%s%s' % (task['task_rundir_path'], task['uid'], prefix)
             self.assertTrue(os.path.isfile(path))
 
             with ru.ru_open(path) as fd:

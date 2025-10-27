@@ -73,7 +73,21 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def cancel_task(self, uid):
+    def get_task(self, tid):
+
+        task = None
+
+        for partition_id, tasks in self._tasks.items():
+            task = tasks.get(tid)
+            if task:
+                break
+
+        return task
+
+
+    # --------------------------------------------------------------------------
+    #
+    def cancel_task(self, task):
 
         # FIXME: clarify how to cancel tasks in Flux
         pass
@@ -176,8 +190,9 @@ class Flux(AgentExecutingComponent) :
         td     = task['description']
         uid    = task['uid']
         sbox   = task['task_sandbox_path']
-        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
-        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
+        rdir   = task['task_rundir_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (rdir, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (rdir, uid)
 
         task['stdout'] = ''
         task['stderr'] = ''
