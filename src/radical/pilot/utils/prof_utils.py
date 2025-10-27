@@ -5,6 +5,8 @@ import json
 import os
 import sys
 
+from collections import defaultdict
+
 import radical.utils as ru
 
 from ..                 import states as s
@@ -558,23 +560,36 @@ def get_session_profile(sid, src=None):
 # ------------------------------------------------------------------------------
 #
 def fix_profiles(profile):
+    """
+    For tasks that were CANCELED or FAILED, this function ensures that certain
+    event pairs are complete. If a start-event is present without a
+    corresponding stop-event, the stop-event is injected with the timestamp
+    of the cancellation or failure.
+
+    This function modifies the profile list in-place.
+
+    Args:
+        profile (list): A list of profile events.
+
+    Returns:
+        list: The modified profile list.
+
+    """
 
     # - collect the set of task IDs from the profiles
     # - for all tasks which end up in CANCELED state, check if `exec_stop` and
     # `launch_stop` events are present - if not, add them with the timestamp of
     # the first `advance` to CANCELED
-    events = dict()
+    events = defaultdict(list)
     for e in profile:
-        tid = e[4]
-        if tid not in events:
-            events[tid] = list()
+        tid = e[ru.UID]
         events[tid].append(e)
 
     # we consider only entities as tasks which have a `schedule_ok` event
     tids = set()
     for tid, t_events in events.items():
         for e in t_events:
-            if e[1] == 'schedule_ok':
+            if e[ru.EVENT] == 'schedule_ok':
                 tids.add(tid)
                 break
         if _debug and tid not in tids:
@@ -583,7 +598,8 @@ def fix_profiles(profile):
     for tid in tids:
 
         t_events = events[tid]
-        states = [e[ru.STATE] for e in t_events if e[ru.EVENT] == 'state']
+        e_names  = {e[ru.EVENT] for e in t_events}
+        states   = {e[ru.STATE] for e in t_events if e[ru.EVENT] == 'state'}
 
         if _debug:
             print('=== fix  %s states: %s ===' % (tid, states))
@@ -596,14 +612,16 @@ def fix_profiles(profile):
             continue
 
         # sort the events by timestamp
-        t_events = sorted(t_events, key=lambda x: x[0])
+        t_events = sorted(t_events, key=lambda x: x[ru.TIME])
 
         ts = None
         for e in t_events:
             if e[ru.EVENT] == 'state' and e[ru.STATE] in [s.CANCELED, s.FAILED]:
-                ts = e[0]
+                ts = e[ru.TIME]
                 break
-        assert(ts is not None)
+
+        assert ts is not None
+
         if _debug:
             print('=== fix  %s @ %s ===' % (tid, ts))
 
@@ -615,17 +633,7 @@ def fix_profiles(profile):
         # whenever we find the first of a pair but not the second, we inject an
         # event for the second event with the timestamp of the CANCELED
         for pair in pairs:
-
-            have_first  = False
-            have_second = False
-
-            for e in t_events:
-                if e[ru.EVENT] == pair[0]:
-                    have_first = True
-                if e[ru.EVENT] == pair[1]:
-                    have_second = True
-
-            if have_first and not have_second:
+            if pair[0] in e_names and pair[1] not in e_names:
                 entry = [ts, pair[1], 'inject', 'MainThread', tid,
                          'CANCELED', '', tid.split('.')[0]]
                 profile.append(entry)
@@ -960,16 +968,12 @@ def get_provided_resources(session, rtype='cpu'):
 
     reset_node_index()
 
-    provided = dict()
+    provided = defaultdict(dict)
     for p in session.get(etype='pilot'):
 
         data = _get_pilot_provision(p, rtype)
 
         for metric in data:
-
-            if metric not in provided:
-                provided[metric] = dict()
-
             for uid in data[metric]:
                 provided[metric][uid] = data[metric][uid]
 
@@ -1014,7 +1018,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
     log = ru.Logger('radical.pilot.utils')
     reset_node_index()
 
-    consumed = dict()
+    consumed = defaultdict(dict)
     for e in session.get(etype=['pilot', 'task']):
 
         if   e.etype == 'pilot': data = _get_pilot_consumption(e, rtype)
@@ -1022,10 +1026,6 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
                                                               tdurations)
 
         for metric in data:
-
-            if metric not in consumed:
-                consumed[metric] = dict()
-
             for uid in data[metric]:
                 consumed[metric][uid] = data[metric][uid]
 
@@ -1124,8 +1124,8 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
         # now sift through resources and find buckets of pairs with same t_min
         # or same t_max
-        bucket_min  = dict()
-        bucket_max  = dict()
+        bucket_min  = defaultdict(list)
+        bucket_max  = defaultdict(list)
         bucket_none = list()
         for idx in resources:
 
@@ -1138,13 +1138,7 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
                 bucket_none.append(idx)
 
             else:
-
-                if t_min not in bucket_min:
-                    bucket_min[t_min] = list()
                 bucket_min[t_min].append(idx)
-
-                if t_max not in bucket_max:
-                    bucket_max[t_max] = list()
                 bucket_max[t_max].append(idx)
 
         boxes_warm  = list()
@@ -1162,10 +1156,6 @@ def get_consumed_resources(session, rtype='cpu', tdurations=None):
 
         for r in cluster_resources(bucket_none):
             boxes_idle.append([p_min, p_max, r[0], r[1]])
-
-        if 'warm'  not in consumed: consumed['warm']  = dict()
-        if 'drain' not in consumed: consumed['drain'] = dict()
-        if 'idle'  not in consumed: consumed['idle']  = dict()
 
         consumed['warm'][pid]  = boxes_warm
         consumed['drain'][pid] = boxes_drain
