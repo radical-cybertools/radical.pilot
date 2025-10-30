@@ -586,6 +586,9 @@ class ResourceManager(object):
 
             launcher = self._launchers[name]
             lm_can_launch, err_message = launcher.can_launch(task)
+            self._log.debug('can launch %s with %s: %s',
+                            task['uid'], name, lm_can_launch)
+
             if lm_can_launch:
                 return launcher, name
             else:
