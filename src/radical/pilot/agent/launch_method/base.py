@@ -257,15 +257,20 @@ class LaunchMethod(object):
         src  = '%s.env'                 %  base
         tgt  = '%s.%s.sh'               % (base, self.name.lower())
 
-        blacklist = self.get_env_blacklist()
-
-        self._log.debug_5('blacklist: %s', blacklist)
-
         # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
-            ru.env_prep(environment=ru.env_read(src),
+
+            src_env = ru.env_read(src)
+            for ep in self.get_env_preserved():
+                if ep in src_env:
+                    src_env[ep] = f'${ep}:{src_env[ep]}'
+
+            blacklist = self.get_env_blacklist()
+            self._log.debug_5('blacklist: %s', blacklist)
+
+            ru.env_prep(environment=src_env,
                         blacklist=blacklist,
                         unset=list(os.environ.keys()),
                         script_path=tgt)
@@ -402,6 +407,12 @@ class LaunchMethod(object):
                 'ROCR_VISIBLE_DEVICES',
                 'CUDA_VISIBLE_DEVICES',
         ]
+
+    def get_env_preserved(self):
+        '''List of environment variables that will be preserved. If a
+        corresponding environment variable will be reassigned, then we extend
+        its value with the original one (e.g., ENV_VAR=$ENV_VAR:new_value)'''
+        return []
 
 
 # ------------------------------------------------------------------------------

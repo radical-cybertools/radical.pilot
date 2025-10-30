@@ -73,6 +73,32 @@ class Flux(LaunchMethod):
         return 'export RP_RANK=$FLUX_TASK_RANK\n'
 
 
+    def get_env_blacklist(self):
+        '''
+        extend the base blacklist by FLUX related environment variables
+        '''
+
+        ret = super().get_env_blacklist()
+
+        ret.extend([
+                    'FLUX_*',
+                    'MPICH_*',
+                    'PMI_*',
+                    'PMIX_*',
+                    # Slurm included since we launch Flux using Srun LM
+                    'SLURM_*'
+                   ])
+
+        return ret
+
+    def get_env_preserved(self):
+        ret = super().get_env_preserved()
+        ret.extend([
+            'LD_LIBRARY_PATH'
+        ])
+        return ret
+
+
     # --------------------------------------------------------------------------
     #
     def _terminate(self):
@@ -198,12 +224,18 @@ class Flux(LaunchMethod):
         #        pull the launch command from the agent's resource manager.
         launcher = None
         srun     = ru.which('srun')
+        mpiexec  = ru.which('mpiexec')
         nodelist = ','.join([node['name'] for node in nodes])
         if srun:
             launcher = 'srun --nodes %d --nodelist %s --ntasks-per-node 1 ' \
                        '--cpus-per-task=%d --gpus-per-task=%d ' \
                        '--export=ALL' \
                        % (len(nodes), nodelist, threads_per_node, gpus_per_node)
+
+        elif mpiexec:
+            launcher = 'mpiexec -n %d --host %s' % (len(nodes), nodelist)
+
+        self._log.debug('flux launcher: %s', launcher)
 
         part.service = ru.FluxService(launcher=launcher)
         part.service.start()

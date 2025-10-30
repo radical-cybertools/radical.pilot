@@ -39,6 +39,14 @@ class Fork(ResourceManager):
                 'insufficient cores found (%d < %d)' %
                 (detected_cores, rm_info.requested_cores))
 
+        if not rm_info.requested_nodes:
+            rm_info.requested_nodes = int(
+                math.ceil(rm_info.requested_cores / rm_info.cores_per_node))
+            if rm_info.requested_gpus:
+                rm_info.requested_nodes = max(
+                    rm_info.requested_nodes,
+                    int(math.ceil(rm_info.requested_gpus / rm_info.gpus_per_node)))
+
         n_nodes = rm_info.requested_nodes + rm_info.backup_nodes
         nodes   = [('localhost', rm_info.cores_per_node)
                    for _ in range(n_nodes)]

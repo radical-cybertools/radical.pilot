@@ -120,6 +120,10 @@ class Flux(AgentExecutingComponent) :
         stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
         stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
+        td['sandbox'] = sbox
+        td['stdout']  = stdout
+        td['stderr']  = stderr
+
         task['stdout'] = ''
         task['stderr'] = ''
 
@@ -130,17 +134,13 @@ class Flux(AgentExecutingComponent) :
         _, exec_path = self._create_exec_script(self._lm, task)
         self._prof.prof('task_create_exec_ok', uid=uid)
 
-        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
-                                                   'out': stdout,
-                                                   'err': stderr}
         spec_dict = copy.deepcopy(td)
         spec_dict['uid']        = uid
         spec_dict['executable'] = '/bin/sh'
-        spec_dict['arguments']  = ['-c', command]
+        spec_dict['arguments']  = ['-c', exec_path]
 
-        self._prof.prof('task_to_flux_start', uid=uid)
+        self._prof.prof('task_to_spec_start', uid=uid)
         ret = ru.flux.spec_from_dict(spec_dict)
-
         self._prof.prof('task_to_spec_stop', uid=uid)
 
         return ret
@@ -158,21 +158,30 @@ class Flux(AgentExecutingComponent) :
 
         task = self._tasks.get(task_id)
 
+        # handle some special events
         if ename == 'lm_failed':
             self.advance_tasks(task, rps.FAILED, publish=True, push=False)
             return
 
-        if ename == 'exception' and event.context['type'] == 'cancel':
+        elif ename == 'exception' and event.context['type'] == 'cancel':
             # this is a cancel event, which we translate to 'unschedule'
             state = rps.AGENT_STAGING_OUTPUT_PENDING
             task['target_state'] = rps.CANCELED
             self.advance_tasks(task, state, ts=event.timestamp,
                                publish=True, push=True)
+            return
+
+        elif ename == 'start':
+            # start task timeout handling on `start` event
+            self.handle_timeout(task)
 
 
         if state is None:
+            # special events are handled above, no state handling needed below
             return
 
+
+        # handle some states specifically
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:
 
             task['exit_code'] = event.context.get('status', 1)
@@ -200,7 +209,6 @@ class Flux(AgentExecutingComponent) :
                                publish=True, push=True)
 
         elif state == 'unschedule':
-
             # free task resources
             self._prof.prof('unschedule_start', uid=task['uid'])
             self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
@@ -258,8 +266,6 @@ class Flux(AgentExecutingComponent) :
 
                 parts[part_id][tid] = self._create_spec(task)
                 self._prof.prof('work_3', uid=task['uid'])
-
-                self.handle_timeout(task)
 
             except:
                 self._log.exception('LM flux submit failed for %s', tid)
