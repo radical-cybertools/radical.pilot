@@ -260,14 +260,9 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        partitions = dict()
-
-        for k, v in self._details['dvm_list'].items():
-            partitions[k] = v['nodes']
-
-        return partitions
+        return list(self._details['dvm_list'].keys())
 
 
     # --------------------------------------------------------------------------
@@ -299,7 +294,7 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
@@ -310,7 +305,7 @@ class PRTE(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
