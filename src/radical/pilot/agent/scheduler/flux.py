@@ -12,21 +12,7 @@ class Flux(Noop):
     '''
     Pass all scheduling and execution control to the Flux executor
     '''
-
-    # --------------------------------------------------------------------------
-    #
-    def schedule_task(self, task):
-
-        # this abstract method is not used in this implementation
-        assert False
-
-
-    # --------------------------------------------------------------------------
-    #
-    def unschedule_task(self, task):
-
-        # this abstract method is ignored in this implementation
-        pass
+    pass
 
 
 # ------------------------------------------------------------------------------

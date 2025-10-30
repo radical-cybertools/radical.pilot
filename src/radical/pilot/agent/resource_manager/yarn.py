@@ -16,10 +16,10 @@ class Yarn(Fork):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         # initialize nodelist from FORK RM
-        super()._init_from_scratch(rm_info)
+        super().init_from_scratch(rm_info)
 
         self.namenode_url = subprocess.check_output(
             ['hdfs', 'getconf', '-nnRpcAddresses']).split(b'\n')[0]
