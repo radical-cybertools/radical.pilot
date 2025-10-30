@@ -2,8 +2,9 @@
 __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
-import time
 import copy
+
+import threading as mt
 
 from collections import defaultdict
 
@@ -59,29 +60,15 @@ class Flux(AgentExecutingComponent) :
         self._lm            = LaunchMethod.create('FLUX', lm_cfg, self._rm.info,
                                                   self._log, self._prof)
 
-        # we only start the flux backend here
-        self._lm.start_flux()
-
-        # register state cb
-        self._log.debug('register flux state cb: %s',
-                        len(self._lm.partitions))
-
-        if not self._lm.partitions:
-            raise RuntimeError('no partitions found')
-
-        for part in self._lm.partitions:
-            self._log.debug('register flux state cb: %s', part.helper)
-            part.helper.register_cb(self._job_event_cb)
-
         # local state management
-        self._tasks  = dict()             # task_id -> task
-        self._events = defaultdict(list)  # flux_id -> [events]
-        self._idmap  = dict()             # flux_id -> task_id
+        self._tasks       = dict()             # task_id -> task
+        self._events      = defaultdict(list)  # flux_id -> [events]
+        self._events_lock = mt.Lock()
 
         self._task_count = 0
 
-
-      # self._test_flux()
+        # we only start the flux backend here
+        self._lm.start_flux(event_cb=self._handle_event_cb)
 
 
     # --------------------------------------------------------------------------
@@ -92,57 +79,16 @@ class Flux(AgentExecutingComponent) :
 
     # --------------------------------------------------------------------------
     #
-    def flux_state_cb(self, task_id, state):
+    def _lm_fail_task(self, tasks, state):
+        '''
+        This will be called by the launch method in case a task error was
+        detected during launch, before handing the task to flux
+        '''
 
-        self._log.debug('flux state cb: %s: %s', task_id, state)
+        for task in tasks:
+            self._log.error('flux launch failed for %s: %s', task['uid'], state)
 
-
-    # --------------------------------------------------------------------------
-    #
-    def _test_flux(self, n=128, count=2):
-
-        def state_cb(task_id, state):
-          # self._log.debug('=====', task_id, state)
-            pass
-
-        fs = ru.FluxService()
-        fs.start(timeout=-1)
-        fh = ru.FluxHelper(fs.r_uri)
-
-        t0 = time.time()
-        specs = [ru.flux.spec_from_dict({'executable': 'true',
-                                         'uid'       : 'task.%06d' % i})
-                        for i in range(n)]
-        dt  = time.time() - t0
-        jps = len(specs) / dt
-        self._log.debug("===== create %4d tasks in %5.1fs - %8.1fjob/s"
-                                                                 % (n, dt, jps))
-
-        fh.register_cb(state_cb)
-        fh.start()
-
-        with ru.ru_open('flux_async.prof', 'w') as fout:
-            for c in range(count):
-
-                specs = [ru.flux.spec_from_dict(
-                            {'executable': 'sleep',
-                             'arguments' : ['1'],
-                             'uid'       : 'task.%06d.%04d' % (i, c)})
-                                         for i in range(n)]
-                start = time.time()
-
-                tids = fh.submit(specs)
-                fh.wait(tids)
-
-                stop = time.time()
-                jps = n / (stop - start)
-                self._log.debug('===== waited %4d tasks in %5.1fs - %8.1fjob/s'
-                                                         % (n, stop-start, jps))
-                fout.write('%4d %8.1f\n' % (c, jps))
-                fout.flush()
-
-        fh.stop()
-        fs.stop()
+        self.advance_tasks(tasks, state=rps.FAILED, publish=True, push=False)
 
 
     # --------------------------------------------------------------------------
@@ -157,46 +103,85 @@ class Flux(AgentExecutingComponent) :
     def cancel_task(self, task):
 
         # FIXME: clarify how to cancel tasks in Flux
-        pass
+        self._lm.cancel_task(task)
 
 
     # --------------------------------------------------------------------------
     #
-    def _job_event_cb(self, flux_id, event):
+    def _create_spec(self, task):
 
-        self._log.debug('flux event: %s: %s', flux_id, event.name)
+        tid = task['uid']
 
-        while True:
-            task = self._tasks.get(self._idmap.get(flux_id))
-            if task:
-                break
-            time.sleep(0.1)
+        self._log.debug('create spec: %s', tid)
 
-        if not task:
-            self._log.error('no task for flux job %s: %s %s', flux_id,
-                            event.name, list(self._tasks.keys()))
-            self._events[flux_id].append(event)
+        td     = task['description']
+        uid    = task['uid']
+        sbox   = task['task_sandbox_path']
+        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
+        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
 
-        else:
-            self._handle_event(task, flux_id, event)
+        td['sandbox'] = sbox
+        td['stdout']  = stdout
+        td['stderr']  = stderr
+
+        task['stdout'] = ''
+        task['stderr'] = ''
+
+        task['stdout_file'] = stdout
+        task['stderr_file'] = stderr
+
+        self._prof.prof('task_create_exec_start', uid=uid)
+        _, exec_path = self._create_exec_script(self._lm, task)
+        self._prof.prof('task_create_exec_ok', uid=uid)
+
+        spec_dict = copy.deepcopy(td)
+        spec_dict['uid']        = uid
+        spec_dict['executable'] = '/bin/sh'
+        spec_dict['arguments']  = ['-c', exec_path]
+
+        self._prof.prof('task_to_spec_start', uid=uid)
+        ret = ru.flux.spec_from_dict(spec_dict)
+        self._prof.prof('task_to_spec_stop', uid=uid)
+
+        return ret
 
 
     # --------------------------------------------------------------------------
     #
-    def _handle_event(self, task, flux_id, event):
+    def _handle_event_cb(self, task_id, event):
 
         ename = event.name
         state = self._event_map.get(ename)
 
-        if ename == 'alloc':
-            self._log.debug('map fluxid: %s: %s', flux_id, task['uid'])
-
-        self._log.debug('flux event: %s: %s [%s]', flux_id, ename, state)
+        self._log.debug('flux event: %s: %s [%s]', task_id, ename, state)
         self._log.debug_3('          : %s', str(event.context))
 
-        if state is None:
+        task = self._tasks.get(task_id)
+
+        # handle some special events
+        if ename == 'lm_failed':
+            self.advance_tasks(task, rps.FAILED, publish=True, push=False)
             return
 
+        elif ename == 'exception' and event.context['type'] == 'cancel':
+            # this is a cancel event, which we translate to 'unschedule'
+            state = rps.AGENT_STAGING_OUTPUT_PENDING
+            task['target_state'] = rps.CANCELED
+            self.advance_tasks(task, state, ts=event.timestamp,
+                               publish=True, push=True)
+            return
+
+        elif ename == 'start':
+            # start task timeout handling on `start` event
+            self.handle_timeout(task)
+
+
+        if state is None:
+            # special events are handled above, no state handling needed below
+            return
+
+
+        # handle some states specifically
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:
 
             task['exit_code'] = event.context.get('status', 1)
@@ -215,15 +200,15 @@ class Flux(AgentExecutingComponent) :
                     self._log.debug('post-launch %s: %s [%s][%s]',
                                                              tid, ret, out, err)
                     if ret:
-                        failed.append(task)
-                        continue
+                        self.advance_tasks(task, rps.FAILED,
+                                           publish=True, push=False)
+                        return
 
             # on completion, push toward output staging
             self.advance_tasks(task, state, ts=event.timestamp,
                                publish=True, push=True)
 
         elif state == 'unschedule':
-
             # free task resources
             self._prof.prof('unschedule_start', uid=task['uid'])
             self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
@@ -241,16 +226,19 @@ class Flux(AgentExecutingComponent) :
 
         self.advance(tasks, rps.AGENT_EXECUTING, publish=True, push=False)
 
-        try:
-            # round robin on available flux partitions
-            parts  = defaultdict(list)
-            failed = list()
-            for task in tasks:
+        n_parts = self._rm.info.n_partitions
+        parts   = defaultdict(dict)  # part_id -> {task_id: task}
 
-                # FIXME: run pre-launch commands here.  Alas, this is
-                #        synchronous, and thus potentially rather slow.
-                self._prof.prof('work_0', uid=task['uid'])
-                tid  = task['uid']
+        for task in tasks:
+
+            tid = task['uid']
+            self._tasks[tid] = task
+
+            try:
+                # FIXME: pre_launch commands are synchronous and thus
+                #        potentially slow.
+                self._prof.prof('work_0', uid=tid)
+
                 cmds = task['description'].get('pre_launch')
                 if cmds:
                     sbox = task['task_sandbox_path']
@@ -259,94 +247,31 @@ class Flux(AgentExecutingComponent) :
                     for cmd in cmds:
                         self._log.debug('pre-launch %s: %s', task['uid'], cmd)
                         out, err, ret = ru.sh_callout(cmd, shell=True,
-                                                  cwd=task['task_sandbox_path'])
+                                              cwd=task['task_sandbox_path'])
                         self._log.debug('pre-launch %s: %s [%s][%s]',
-                                                             tid, ret, out, err)
+                                        tid, ret, out, err)
+
                         if ret:
-                            failed.append(task)
-                            continue
+                            raise RuntimeError('cmd failed: %s' % cmd)
 
                 self._prof.prof('work_1', uid=task['uid'])
                 part_id = task['description']['partition']
                 if part_id is None:
-                    part_id = self._task_count % len(self._lm.partitions)
+                    part_id = self._task_count % n_parts
                     self._task_count += 1
 
                 self._prof.prof('work_2', uid=task['uid'])
-                parts[part_id].append(task)
-                task['description']['environment']['RP_PARTITION_ID'] = part_id
                 self._log.debug('task %s on partition %s', task['uid'], part_id)
+                task['description']['environment']['RP_PARTITION_ID'] = part_id
 
+                parts[part_id][tid] = self._create_spec(task)
                 self._prof.prof('work_3', uid=task['uid'])
 
-            for part_id, part_tasks in parts.items():
+            except:
+                self._log.exception('LM flux submit failed for %s', tid)
+                self.advance_tasks(task, rps.FAILED, publish=True, push=False)
 
-                part  = self._lm.partitions[part_id]
-                specs = list()
-                for task in part_tasks:
-                    tid = task['uid']
-                    self._tasks[tid] = task
-                    self._prof.prof('part_0', uid=tid)
-                    specs.append(self.task_to_spec(task))
-
-                tids = [task['uid'] for task in part_tasks]
-                for task in part_tasks:
-                    self._prof.prof('submit_0', uid=task['uid']
-                fids = part.helper.submit(specs)
-                for task in part_tasks:
-                    self._prof.prof('submit_1', uid=task['uid']
-
-                for fid, tid in zip(fids, tids):
-                    self._idmap[fid] = tid
-
-                self._log.debug('%s: submitted %d tasks: %s', part.uid,
-                                len(tids), tids)
-
-            if failed:
-                for task in failed:
-                    task['target_state'] = rps.FAILED
-                self.advance(failed, rps.FAILED, publish=True, push=False)
-
-        except Exception as e:
-            self._log.exception('flux submit failed: %s', e)
-            raise
-
-
-    # --------------------------------------------------------------------------
-    #
-    def task_to_spec(self, task):
-
-        td     = task['description']
-        uid    = task['uid']
-        sbox   = task['task_sandbox_path']
-        stdout = td.get('stdout') or '%s/%s.out' % (sbox, uid)
-        stderr = td.get('stderr') or '%s/%s.err' % (sbox, uid)
-
-
-        task['stdout'] = ''
-        task['stderr'] = ''
-
-        task['stdout_file'] = stdout
-        task['stderr_file'] = stderr
-
-        self._prof.prof('task_create_exec_start', uid=uid)
-        _, exec_path = self._create_exec_script(self._lm, task)
-        self._prof.prof('task_create_exec_ok', uid=uid)
-
-        command = '%(cmd)s 1>%(out)s 2>%(err)s' % {'cmd': exec_path,
-                                                   'out': stdout,
-                                                   'err': stderr}
-        spec_dict = copy.deepcopy(td)
-        spec_dict['uid']        = uid
-        spec_dict['executable'] = '/bin/sh'
-        spec_dict['arguments']  = ['-c', command]
-
-        self._prof.prof('task_to_flux_start', uid=uid)
-        ret = ru.flux.spec_from_dict(spec_dict)
-
-        self._prof.prof('task_to_spec_stop', uid=uid)
-
-        return ret
+        self._lm.submit_tasks(parts)
 
 
 # ------------------------------------------------------------------------------
