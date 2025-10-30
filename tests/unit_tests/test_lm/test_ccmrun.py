@@ -18,7 +18,7 @@ class TestCCMRun(TestCase):
 
         lm_ccmrun = CCMRun('', {}, None, None, None)
 
-        lm_info = lm_ccmrun._init_from_scratch({}, '')
+        lm_info = lm_ccmrun.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -31,14 +31,14 @@ class TestCCMRun(TestCase):
         lm_info = {'env': {'test_env': 'test_value'},
                    'env_sh': 'env/lm_ccmrun.sh',
                    'command': '/usr/bin/ccmrun'}
-        lm_ccmrun._init_from_info(lm_info)
+        lm_ccmrun.init_from_info(lm_info)
         self.assertEqual(lm_ccmrun._env,     lm_info['env'])
         self.assertEqual(lm_ccmrun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_ccmrun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_ccmrun._init_from_info(lm_info)
+            lm_ccmrun.init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -60,7 +60,7 @@ class TestCCMRun(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ccmrun.sh',
                    'command': '/usr/bin/ccmrun'}
-        lm_ccmrun._init_from_info(lm_info)
+        lm_ccmrun.init_from_info(lm_info)
         lm_env = lm_ccmrun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)

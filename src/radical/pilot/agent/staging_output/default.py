@@ -79,6 +79,10 @@ class Default(AgentStagingOutputComponent):
                 task['$all']    = True
                 task['control'] = 'tmgr_pending'
 
+                self._log.debug('=== staging task %s: %s', uid, task['state'])
+                import pprint
+                self._log.debug('=== staging task %s: %s', uid, pprint.pformat(task))
+
                 # we always dig for stdout/stderr
                 self._handle_task_stdio(task)
 
@@ -142,12 +146,10 @@ class Default(AgentStagingOutputComponent):
         sbox = task.get('task_sandbox_path')
         uid  = task['uid']
 
-        # no sbox, no io
-        if not sbox:
-            return
+        self._log.debug('out %s: %s', uid, sbox)
 
         self._prof.prof('staging_stdout_start', uid=uid)
-      # self._log.debug('out: %s', task.get('stdout_file'))
+        self._log.debug('out %s: %s', uid, task.get('stdout_file'))
 
         # TODO: disable this at scale?
         if task.get('stdout_file') and os.path.isfile(task['stdout_file']):
@@ -177,39 +179,39 @@ class Default(AgentStagingOutputComponent):
         self._prof.prof('staging_stderr_stop', uid=uid)
         self._prof.prof('staging_uprof_start', uid=uid)
 
-        task_prof = '%s/%s.prof' % (sbox, uid)
-        if os.path.isfile(task_prof):
-            pids = {}
-            try:
-                with ru.ru_open(task_prof, 'r', errors='ignore') as prof_f:
-                    txt = ru.as_string(prof_f.read())
-                    for line in txt.split("\n"):
-                        if not line:
-                            continue
-                        if line[0] == '#':
-                            continue
-                        ts, event, comp, tid, _uid, state, msg = \
-                                                             line.split(',')
-                        self._prof.prof(ts=float(ts), event=event,
-                                        comp=comp, tid=tid, uid=_uid,
-                                        state=state, msg=msg)
-                        # collect task related PIDs
-                        if 'RP_LAUNCH_PID' in msg:
-                            pids['launch_pid'] = int(msg.split('=')[1])
-                        elif 'RP_RANK_PID' in msg:
-                            epid_msg, rpid_msg = msg.split(':')
-                            pids.setdefault('exec_pid', []) \
-                                .append(int(epid_msg.split('=')[1]))
-                            pids.setdefault('rank_pid', [])\
-                                .append(int(rpid_msg.split('=')[1]))
-            except Exception as e:
-                self._log.error("Pre/Post profile read failed: `%s`" % e)
-
-            if pids:
-                # keep process IDs within metadata in the task description
-                if not task['description'].get('metadata'):
-                    task['description']['metadata'] = {}
-                task['description']['metadata'].update(pids)
+      # task_prof = '%s/%s.prof' % (sbox, uid)
+      # if os.path.isfile(task_prof):
+      #     pids = {}
+      #     try:
+      #         with ru.ru_open(task_prof, 'r', errors='ignore') as prof_f:
+      #             txt = ru.as_string(prof_f.read())
+      #             for line in txt.split("\n"):
+      #                 if not line:
+      #                     continue
+      #                 if line[0] == '#':
+      #                     continue
+      #                 ts, event, comp, tid, _uid, state, msg = \
+      #                                                      line.split(',')
+      #                 self._prof.prof(ts=float(ts), event=event,
+      #                                 comp=comp, tid=tid, uid=_uid,
+      #                                 state=state, msg=msg)
+      #                 # collect task related PIDs
+      #                 if 'RP_LAUNCH_PID' in msg:
+      #                     pids['launch_pid'] = int(msg.split('=')[1])
+      #                 elif 'RP_RANK_PID' in msg:
+      #                     epid_msg, rpid_msg = msg.split(':')
+      #                     pids.setdefault('exec_pid', []) \
+      #                         .append(int(epid_msg.split('=')[1]))
+      #                     pids.setdefault('rank_pid', [])\
+      #                         .append(int(rpid_msg.split('=')[1]))
+      #     except Exception as e:
+      #         self._log.error("Pre/Post profile read failed: `%s`" % e)
+      #
+      #     if pids:
+      #         # keep process IDs within metadata in the task description
+      #         if not task['description'].get('metadata'):
+      #             task['description']['metadata'] = {}
+      #         task['description']['metadata'].update(pids)
 
         self._prof.prof('staging_uprof_stop', uid=uid)
         self._prof.prof('staging_ofile_start', uid=uid)
