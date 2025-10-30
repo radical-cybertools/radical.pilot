@@ -33,7 +33,7 @@ def main(sid, reg_addr, uid, ppid, evt):
     '''
 
     # basic setup: logger and profiler
-    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd())
+    log  = ru.Logger(name=uid, ns='radical.pilot', path=os.getcwd(), level='DEBUG_9')
     prof = ru.Profiler(name=uid, ns='radical.pilot', path=os.getcwd())
 
     try:
