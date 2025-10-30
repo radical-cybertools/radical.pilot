@@ -11,7 +11,7 @@ class Debug(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         nodes = [('localhost', rm_info.cores_per_node)
                  for _ in range(rm_info.requested_nodes)]

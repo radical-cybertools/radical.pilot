@@ -20,7 +20,7 @@ class TestFork(TestCase):
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_fork.sh'
 
-        lm_info = lm_fork._init_from_scratch(env, env_sh)
+        lm_info = lm_fork.init_from_scratch(env, env_sh)
         self.assertEqual(lm_info, {'env'   : env,
                                    'env_sh': env_sh})
 
@@ -33,7 +33,7 @@ class TestFork(TestCase):
 
         lm_info = {'env'   : {'test_env': 'test_value'},
                    'env_sh': 'env/lm_fork.sh'}
-        lm_fork._init_from_info(lm_info)
+        lm_fork.init_from_info(lm_info)
         self.assertEqual(lm_fork._env,    lm_info['env'])
         self.assertEqual(lm_fork._env_sh, lm_info['env_sh'])
 
@@ -77,7 +77,7 @@ class TestFork(TestCase):
         lm_fork = Fork('', {}, None, None, None)
         lm_info = {'env'   : {'test_env': 'test_value'},
                    'env_sh': 'env/lm_fork.sh'}
-        lm_fork._init_from_info(lm_info)
+        lm_fork.init_from_info(lm_info)
         lm_env = lm_fork.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)
