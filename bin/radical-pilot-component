@@ -96,7 +96,7 @@ if __name__ == "__main__":
     ru.daemonize(main=main, args=[sid, reg_addr, uid, ppid, evt],
                  stdout='%s.out' % uid, stderr='%s.err' % uid)
 
-    evt.wait(5.0)
+    evt.wait(30.0)
     if not evt.is_set():
         sys.stderr.write('error: component did not start\n')
 
