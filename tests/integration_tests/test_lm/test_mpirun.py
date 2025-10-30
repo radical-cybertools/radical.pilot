@@ -50,8 +50,8 @@ class TestTask(TestCase):
         component = MPIRun('', {}, None, None, None)
         component.name = 'MPIRUN'
         component._log = mock.Mock()
-        lm_info = component._init_from_scratch({}, '')
-        component._init_from_info(lm_info)
+        lm_info = component.init_from_scratch({}, '')
+        component.init_from_info(lm_info)
 
         self.assertEqual(component._command,     self.resource['mpirun_path'])
         if self.resource['mpi_version']:

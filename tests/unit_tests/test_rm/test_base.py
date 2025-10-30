@@ -87,9 +87,9 @@ class RMBaseTestCase(TestCase):
             return rm_info
 
         # RM specific method (to update node_list and cores_per_node if needed)
-        rm._init_from_scratch = _init_from_scratch
+        rm.init_from_scratch = _init_from_scratch
 
-        rm_info_output = rm.init_from_scratch()
+        rm_info_output = rm._init_from_scratch()
 
         self.assertIsInstance(rm_info_output, RMInfo)
         # check some attributes
@@ -105,7 +105,7 @@ class RMBaseTestCase(TestCase):
         rm._cfg.update({'agents': {'agent.0000': {'target': 'node'}}})
         with self.assertRaises(RuntimeError):
             # `node_list` became empty b/c of `agent_node_list`
-            rm.init_from_scratch()
+            rm._init_from_scratch()
 
     # --------------------------------------------------------------------------
     #
@@ -134,13 +134,13 @@ class RMBaseTestCase(TestCase):
             rm._rcfg = ru.TypedDict(rm_cfg['rcfg'])
             del rm_cfg['rcfg']
             rm._cfg  = ru.TypedDict(rm_cfg)
-            rm._init_from_scratch = partial(_init_from_scratch, rm_info)
+            rm.init_from_scratch = partial(_init_from_scratch, rm_info)
 
             if result == 'AssertionError':
                 with self.assertRaises(AssertionError):
-                    rm.init_from_scratch()
+                    rm._init_from_scratch()
             else:
-                rm_info_output = rm.init_from_scratch()
+                rm_info_output = rm._init_from_scratch()
                 self.assertEqual(rm_info_output.node_list, result)
 
 
