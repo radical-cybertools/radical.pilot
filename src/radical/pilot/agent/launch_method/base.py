@@ -146,6 +146,7 @@ class LaunchMethod(object):
             LM_NAME_RSH           : RSH,
             LM_NAME_SSH           : SSH,
             LM_NAME_SRUN          : Srun,
+        }
 
         if name not in impl:
             raise ValueError('LaunchMethod %s unknown' % name)
