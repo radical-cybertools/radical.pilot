@@ -6,7 +6,6 @@ import sys
 import time
 import queue
 
-
 import radical.utils   as ru
 import radical.pilot   as rp
 
@@ -143,7 +142,14 @@ class Server(object):
 
     # --------------------------------------------------------------------------
     #
-    def __init__(self):
+    def __init__(self, addr_pub, addr_sub):
+
+        cpn     = 16
+        gpn     = 0
+        n_nodes = 1
+
+        self._addr_pub = addr_pub
+        self._addr_sub = addr_sub
 
         self._uid = ru.generate_id('radical.pilot.dragon')
 
@@ -151,19 +157,46 @@ class Server(object):
         self._prof = ru.Profiler(self._uid, path='.')
         self._term = mt.Event()
 
+        self._reg_service = ru.zmq.Registry(uid='%s.reg' % self._uid)
+        self._reg_service.start()
+
+        self._cfg  = ru.TypedDict({'reg_addr': self._reg_service.addr,
+                                   'nodes'   : n_nodes,
+                                   'cores'   : n_nodes * cpn,
+                                   'gpus'    : n_nodes * gpn,
+                                   'cores_per_node': cpn,
+                                   'gpus_per_node' : gpn,
+                                   'lfs_per_node' : 0,
+                                   'mem_per_node' : 0,
+                                   'lfs_path_per_node': '',
+
+                                   })
+        self._rcfg = ru.TypedDict(
+                {'mem_per_node'   : 0,
+                 'lfs_per_node'   : 0,
+                 'cores_per_node' : cpn,
+                 'gpus_per_node'  :dragon/ gpn,
+                 'requested_nodes': n_nodes,
+                 'requested_cores': cpn * n_nodes,
+                 'launch_methods' : {'order': ['FORK'],
+                                     'FORK': {}},
+                })
+
+        self._rm = rp.agent.ResourceManager.create('FORK', self._cfg,
+                            self._rcfg, self._log, self._prof)
+
         self._log.info('start dragon executor server %s', self._uid)
 
         self._pwatcher = ru.PWatcher(uid='%s.pw' % self._uid, log=self._log)
         self._pwatcher.watch(os.getpid())
         self._pwatcher.watch(os.getppid())
 
-        self._pipe_in  = None
-        self._pipe_out = None
-
         self._pool  = None
       # self._slots = mp.cpu_count()
-        self._slots = int(sys.argv[1])
+        self._slots = len(self._rm.info.node_list) * self._rm.info.cores_per_node
         self._free  = self._slots
+
+        self._log.info('%s: %d slots', self._uid, self._slots)
 
         self._watcher_queue = queue.Queue()
         self._logger_queue  = mp.Queue()
@@ -190,9 +223,6 @@ class Server(object):
 
         if not self._watcher_event.is_set():
             raise RuntimeError('watcher thread did not start')
-
-        assert self._pipe_in,  'pipe_in not set'
-        assert self._pipe_out, 'pipe_out not set'
 
         url_in  = ru.Url(ru.as_string(self._pipe_in.url))
         url_out = ru.Url(ru.as_string(self._pipe_out.url))
@@ -272,9 +302,10 @@ class Server(object):
         # we may need to wait for free slots.
         # FIXME: check GPUs, multithreadind, mem etc.
         while self._free < ranks:
+
             self._log.debug_9('wait for slots for %s [%d] - %d free', tid,
                               ranks, self._free)
-            time.sleep(1)
+            time.sleep(0.01)
 
         self._free -= ranks
         self._log.debug('found slots for %s [%d] - %d free', tid, ranks,
@@ -295,6 +326,8 @@ class Server(object):
     def _launch_mpi(self, task):
 
         self._log.debug('task %s: launch', task['uid'])
+
+        self._ensure_exec_path(task)
 
         tid   = task['uid']
         sbox  = task['task_sandbox_path']
@@ -363,11 +396,11 @@ class Server(object):
         tid = task['uid']
         exe = task['exec_path']
 
-        lq.put(('debug', 'task %s: launch', tid))
+        lq.put(('debug', 'task %s: launch [%s]', tid, exe))
 
         try:
             # TODO: use placement policies for GPU tasks
-            out, err, ret = ru.sh_callout('/bin/sh %s' % exe, shell=True)
+            out, err, ret = ru.sh_callout('%s' % exe, shell=True)
             lq.put(('debug', 'task %s: done: %s : %s : %s', tid, out, err, ret))
 
         except Exception as e:
@@ -600,11 +633,34 @@ class Server(object):
                 self._log.error('unknown logger mode %s: %s', mode, vals)
 
 
+    # --------------------------------------------------------------------------
+    #
+    def _ensure_exec_path(self, task):
+        '''
+        Ensure that the executable path is set in the task description.
+        If not, set it to the task's exec_path.
+        '''
+        launcher, lname = self._rm.find_launcher(task)
+
+        if not launcher:
+            raise RuntimeError('no launcher found for %s' % task)
+
+        task['launcher_name'] = lname
+
+        exec_path  , _ = self._create_exec_script(launcher, task)
+
+        task['exec_path'] = exec_path
+
+
+
 # ------------------------------------------------------------------------------
 #
 if __name__ == '__main__':
 
-    s = Server()
+    addr_pub = sys.argv[1]
+    addr_sub = sys.argv[2]
+
+    s = Server(addr_pub, addr_sub)
 
 
 # ------------------------------------------------------------------------------
