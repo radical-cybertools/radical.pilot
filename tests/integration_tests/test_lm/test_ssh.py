@@ -41,8 +41,8 @@ class TestTask(TestCase):
 
         component = SSH('', {}, None, None, None)
         component._log = mock.Mock()
-        lm_info = component._init_from_scratch({}, '')
-        component._init_from_info(lm_info)
+        lm_info = component.init_from_scratch({}, '')
+        component.init_from_info(lm_info)
 
         command = cfg['ssh_path'] + ' -o StrictHostKeyChecking=no -o ControlMaster=auto'
         self.assertEqual(component._command, command)
