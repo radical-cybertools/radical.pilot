@@ -13,7 +13,7 @@ class CCM(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         # use the last (creation time) ccm_nodelist file in ~/.crayccm
         nodefile_dir  = os.path.expanduser('~/.crayccm')
