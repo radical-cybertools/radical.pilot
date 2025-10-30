@@ -27,7 +27,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
         '''
         The RP launch methods are used in different components: the agent will
         use them to spawn sub-agents and components, the resource manager may
@@ -37,7 +37,7 @@ class MPIRun(LaunchMethod):
 
         The first use (likely in `agent_0`) will call this initializer to
         inspect LM properties.  Later uses will be able to use the information
-        gathered and should re-initialize via `_init_from_info()`, using the
+        gathered and should re-initialize via `init_from_info()`, using the
         info dict returned here.
         '''
 
@@ -94,7 +94,7 @@ class MPIRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._env         = lm_info['env']
         self._env_sh      = lm_info['env_sh']
