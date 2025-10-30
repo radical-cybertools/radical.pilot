@@ -53,8 +53,8 @@ class TestTask(TestCase):
     def test_configure(self, mocked_init):
 
         component = JSRUN('', {}, None, None, None)
-        lm_info = component._init_from_scratch({}, '')
-        component._init_from_info(lm_info)
+        lm_info = component.init_from_scratch({}, '')
+        component.init_from_info(lm_info)
 
         self.assertEqual(component._command, self.resource['jsrun_path'])
 
@@ -79,7 +79,7 @@ class TestTask(TestCase):
 
             component = JSRUN(name=None, lm_cfg=None, rm_info=None,
                                          log=log, prof=prof)
-            component._init_from_scratch(None, None)
+            component.init_from_scratch(None, None)
 
             # FIXME
             command, _ = component.get_launch_cmds(task, '.')

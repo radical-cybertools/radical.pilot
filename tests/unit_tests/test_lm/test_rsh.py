@@ -18,7 +18,7 @@ class TestRSH(TestCase):
 
         lm_rsh = RSH('', {}, None, None, None)
 
-        lm_info = lm_rsh._init_from_scratch({}, '')
+        lm_info = lm_rsh.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -31,14 +31,14 @@ class TestRSH(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_rsh.sh',
                    'command': '/usr/bin/rsh'}
-        lm_rsh._init_from_info(lm_info)
+        lm_rsh.init_from_info(lm_info)
         self.assertEqual(lm_rsh._env,     lm_info['env'])
         self.assertEqual(lm_rsh._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_rsh._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_rsh._init_from_info(lm_info)
+            lm_rsh.init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -69,7 +69,7 @@ class TestRSH(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_ssh.sh',
                    'command': '/usr/bin/ssh'}
-        lm_rsh._init_from_info(lm_info)
+        lm_rsh.init_from_info(lm_info)
         lm_env = lm_rsh.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)

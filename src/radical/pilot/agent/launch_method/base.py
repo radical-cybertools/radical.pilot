@@ -34,6 +34,9 @@ LM_NAME_SRUN          = 'SRUN'
 PWD = os.getcwd()
 
 
+# FIXME: add a well defined LMInfo TypedDict, similar to RMInfo
+
+
 # ------------------------------------------------------------------------------
 #
 class LaunchMethod(object):
@@ -44,6 +47,8 @@ class LaunchMethod(object):
     MPI_FLAVOR_PALS     = 'PALS'
     MPI_FLAVOR_UNKNOWN  = 'unknown'
 
+    LM_INVALID          = 'invalid'
+    LM_EMPTY            = 'empty'
 
     # --------------------------------------------------------------------------
     #
@@ -61,12 +66,15 @@ class LaunchMethod(object):
         reg     = ru.zmq.RegistryClient(url=self._lm_cfg.reg_addr)
         lm_info = reg.get('lm.%s' % self.name.lower())
 
-      # import pprint
-      # self._log.debug('addr: %s', self._lm_cfg.reg_addr)
-      # self._log.debug('name: %s', self.name)
-      # self._log.debug('info: %s', pprint.pformat(lm_info))
+        self._log.debug('initialize LM %s', self.name)
 
-        if not lm_info:
+        if lm_info == self.LM_INVALID:
+            self._log.warn('LM info invalid - skip %s', lm_info)
+
+        elif lm_info == self.LM_EMPTY:
+            self._log.info('LM info empty for %s', lm_info)
+
+        elif not lm_info:
 
             # The registry does not yet contain any info for this LM - we need
             # to initialize the LM from scratch.  That happens in the env
@@ -77,21 +85,15 @@ class LaunchMethod(object):
                           pre_exec_cached=lm_cfg.get('pre_exec_cached'),
                           script_path=env_sh)
 
-            # run init_from_scratch in a process under that derived env
-            # FIXME: move this into init_from_scratch
-            self._envp = ru.EnvProcess(env=env_lm)
-            with self._envp:
-                if self._envp:
-                    data = self._init_from_scratch(env_lm, env_sh)
-                    self._envp.put(data)
-            lm_info = self._envp.get()
+            lm_info = self._init_from_scratch(env_lm, env_sh)
 
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
-          # self._log.debug('INFO: %s', pprint.pformat(lm_info))
+
+        if lm_info != self.LM_INVALID:
+            self.init_from_info(lm_info)
 
         reg.close()
-        self._init_from_info(lm_info)
 
 
     # --------------------------------------------------------------------------
@@ -122,49 +124,75 @@ class LaunchMethod(object):
         from .ssh            import SSH
         from .srun           import Srun
 
+        impl = {
+            LM_NAME_APRUN         : APRun,
+            LM_NAME_CCMRUN        : CCMRun,
+            LM_NAME_FORK          : Fork,
+            LM_NAME_IBRUN         : IBRun,
+            LM_NAME_MPIEXEC       : MPIExec,
+            LM_NAME_MPIEXEC_MPT   : MPIExec,
+            LM_NAME_MPIRUN        : MPIRun,
+            LM_NAME_MPIRUN_CCMRUN : MPIRun,
+            LM_NAME_MPIRUN_RSH    : MPIRun,
+            LM_NAME_MPIRUN_MPT    : MPIRun,
+            LM_NAME_MPIRUN_DPLACE : MPIRun,
+            LM_NAME_JSRUN         : JSRUN,
+            LM_NAME_JSRUN_ERF     : JSRUN,
+            LM_NAME_PRTE          : PRTE,
+            LM_NAME_FLUX          : Flux,
+            LM_NAME_RSH           : RSH,
+            LM_NAME_SSH           : SSH,
+            LM_NAME_SRUN          : Srun,
+
+        }
+
+        if name not in impl:
+            raise ValueError('LaunchMethod %s unknown' % name)
+
+        return impl[name](name, lm_cfg, rm_info, log, prof)
+
+
+    # --------------------------------------------------------------------------
+    def _init_from_scratch(self, env, env_sh):
+
+        lm_info = None
+
+        # run init_from_scratch in a process under the LM env
         try:
-            impl = {
-                LM_NAME_APRUN         : APRun,
-                LM_NAME_CCMRUN        : CCMRun,
-                LM_NAME_FORK          : Fork,
-                LM_NAME_IBRUN         : IBRun,
-                LM_NAME_MPIEXEC       : MPIExec,
-                LM_NAME_MPIEXEC_MPT   : MPIExec,
-                LM_NAME_MPIRUN        : MPIRun,
-                LM_NAME_MPIRUN_CCMRUN : MPIRun,
-                LM_NAME_MPIRUN_RSH    : MPIRun,
-                LM_NAME_MPIRUN_MPT    : MPIRun,
-                LM_NAME_MPIRUN_DPLACE : MPIRun,
-                LM_NAME_JSRUN         : JSRUN,
-                LM_NAME_JSRUN_ERF     : JSRUN,
-                LM_NAME_PRTE          : PRTE,
-                LM_NAME_FLUX          : Flux,
-                LM_NAME_RSH           : RSH,
-                LM_NAME_SSH           : SSH,
-                LM_NAME_SRUN          : Srun,
+            self._envp = ru.EnvProcess(env=env)
+            with self._envp:
+                if self._envp:
+                    try:
+                        data = self.init_from_scratch(env, env_sh)
+                        self._envp.put(data)
+                    except:
+                        self._log.exception('LM init failed')
+                        raise
 
-            }
-
-            if name not in impl:
-                raise ValueError('LaunchMethod %s unknown' % name)
-
-            return impl[name](name, lm_cfg, rm_info, log, prof)
+            lm_info = self._envp.get()
 
         except Exception:
-            log.exception('unusable lm %s' % name)
-            raise
+            self._log.warn('LM init failed')
+            lm_info = self.LM_INVALID
+
+        # force non-empty lm_info
+        if not lm_info:
+            self._log.warn('LM init came up empty')
+            lm_info = self.LM_EMPTY
+
+        return lm_info
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         raise NotImplementedError("incomplete LaunchMethod %s" % self.name)
 
@@ -227,15 +255,20 @@ class LaunchMethod(object):
         src  = '%s.env'                 %  base
         tgt  = '%s.%s.sh'               % (base, self.name.lower())
 
-        blacklist = self.get_env_blacklist()
-
-        self._log.debug_5('blacklist: %s', blacklist)
-
         # if the env does not yet exists - create
         # FIXME: this would need some file locking for concurrent executors. or
         #        add self._uid to path name
         if not os.path.isfile(tgt):
-            ru.env_prep(environment=ru.env_read(src),
+
+            src_env = ru.env_read(src)
+            for ep in self.get_env_preserved():
+                if ep in src_env:
+                    src_env[ep] = f'${ep}:{src_env[ep]}'
+
+            blacklist = self.get_env_blacklist()
+            self._log.debug_5('blacklist: %s', blacklist)
+
+            ru.env_prep(environment=src_env,
                         blacklist=blacklist,
                         unset=list(os.environ.keys()),
                         script_path=tgt)
@@ -272,9 +305,10 @@ class LaunchMethod(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        return None
+        # by default, launchers will only support a single partition
+        return [0]
 
 
     # --------------------------------------------------------------------------
@@ -371,6 +405,12 @@ class LaunchMethod(object):
                 'ROCR_VISIBLE_DEVICES',
                 'CUDA_VISIBLE_DEVICES',
         ]
+
+    def get_env_preserved(self):
+        '''List of environment variables that will be preserved. If a
+        corresponding environment variable will be reassigned, then we extend
+        its value with the original one (e.g., ENV_VAR=$ENV_VAR:new_value)'''
+        return []
 
 
 # ------------------------------------------------------------------------------

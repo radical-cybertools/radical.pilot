@@ -5,7 +5,8 @@ __license__   = 'MIT'
 import math
 import os
 
-from typing import Optional, List, Tuple, Dict, Any
+from rc.process import Process
+from typing     import Optional, List, Tuple, Dict, Any
 
 T_NODES     = List[Tuple[str, int]]
 T_NODE_LIST = List[Dict[str, Any]]
@@ -41,12 +42,14 @@ class RMInfo(rpu.FastTypedDict):
     '''
 
     _schema = {
+            'backup_nodes'         : int,           # number of backup nodes
             'requested_nodes'      : int,           # number of requested nodes
             'requested_cores'      : int,           # number of requested cores
             'requested_gpus'       : int,           # number of requested gpus
 
-            'partitions'           : {int: None},   # partition setup
+            'partition_ids'        : [int],         # partition ids
             'node_list'            : [None],        # tuples of node uids and names
+            'backup_list'          : [None],        # list of backup nodes
             'agent_node_list'      : [None],        # nodes reserved for sub-agents
             'service_node_list'    : [None],        # nodes reserved for services
 
@@ -65,15 +68,18 @@ class RMInfo(rpu.FastTypedDict):
             'launch_methods'       : {str : None},  # dict of launch method cfgs
 
             'numa_domain_map'      : {int: None},   # resources per numa domain
+            'n_partitions'         : int,           # number of partitions
     }
 
     _defaults = {
+            'backup_nodes'         : 0,
             'requested_nodes'      : 0,
             'requested_cores'      : 0,
             'requested_gpus'       : 0,
 
-            'partitions'           : dict(),
+            'partition_ids'        : list(),
             'node_list'            : list(),
+            'backup_list'          : list(),
             'agent_node_list'      : list(),
             'service_node_list'    : list(),
 
@@ -92,6 +98,7 @@ class RMInfo(rpu.FastTypedDict):
             'launch_methods'       : dict(),
 
             'numa_domain_map'      : dict(),
+            'n_partitions'         : 1,
     }
 
 
@@ -103,14 +110,14 @@ class RMInfo(rpu.FastTypedDict):
         assert self['requested_cores'  ]
         assert self['requested_gpus'   ] is not None
 
-      # assert self['partitions'       ] is not None
-        assert self['node_list']
+        assert self['node_list'        ]
         assert self['agent_node_list'  ] is not None
         assert self['service_node_list'] is not None
 
         assert self['cores_per_node'   ]
         assert self['gpus_per_node'    ] is not None
         assert self['threads_per_core' ] is not None
+        assert self['n_partitions'     ] > 0
 
 
 # ------------------------------------------------------------------------------
@@ -169,7 +176,7 @@ class ResourceManager(object):
             self._log.debug('RM init from scratch')
 
             # let the base class collect some data, then let the impl take over
-            rm_info = self.init_from_scratch()
+            rm_info = self._init_from_scratch()
             rm_info.verify()
 
             # have a valid info - store in registry and complete initialization
@@ -177,6 +184,14 @@ class ResourceManager(object):
 
         reg.close()
         self._set_info(rm_info)
+
+
+        # immediately set the network interface if it was configured
+        # NOTE: setting this here implies that no ZMQ connectio was set up
+        #       before the ResourceManager got created!
+        if rm_info.details.get('network'):
+            rc_cfg = ru.config.DefaultConfig()
+            rc_cfg.iface = rm_info.details['network']
 
         # set up launch methods even when initialized from registry info.  In
         # that case, the LM *SHOULD NOT* be re-initialized, but only pick up
@@ -202,7 +217,7 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
         '''
         This method MUST be overloaded by any RM implementation.  It will be
         called during `init_from_scratch` and is expected to check and correct
@@ -225,50 +240,51 @@ class ResourceManager(object):
         be interpreted by the specific agent scheduler instance.
         '''
 
-        raise NotImplementedError('_init_from_scratch is not implemented')
+        raise NotImplementedError('init_from_scratch is not implemented')
 
 
     # --------------------------------------------------------------------------
     #
-    def init_from_scratch(self):
+    def _init_from_scratch(self):
 
-        rm_info = RMInfo()
+        sys_arch = self._rcfg.get('system_architecture', {})
+        rm_info  = RMInfo()
 
         # fill well defined default attributes
-        rm_info.requested_nodes       = self._cfg.nodes
-        rm_info.requested_cores       = self._cfg.cores
-        rm_info.requested_gpus        = self._cfg.gpus
-        rm_info.cores_per_node        = self._cfg.cores_per_node
-        rm_info.gpus_per_node         = self._cfg.gpus_per_node
-        rm_info.lfs_per_node          = self._cfg.lfs_size_per_node
-        rm_info.lfs_path              = ru.expand_env(self._cfg.lfs_path_per_node)
+        rm_info.backup_nodes     = self._cfg.backup_nodes
+        rm_info.requested_nodes  = self._cfg.nodes
+        rm_info.requested_cores  = self._cfg.cores
+        rm_info.requested_gpus   = self._cfg.gpus
+        rm_info.cores_per_node   = self._cfg.cores_per_node
+        rm_info.gpus_per_node    = self._cfg.gpus_per_node
+        rm_info.lfs_per_node     = self._cfg.lfs_size_per_node
+        rm_info.lfs_path         = ru.expand_env(self._cfg.lfs_path_per_node)
 
         rm_info.threads_per_gpu  = 1
         rm_info.mem_per_gpu      = None
         rm_info.mem_per_node     = self._rcfg.mem_per_node    or 0
         rm_info.numa_domain_map  = self._rcfg.numa_domain_map or {}
-
-        system_architecture      = self._rcfg.get('system_architecture', {})
+        rm_info.n_partitions     = self._rcfg.n_partitions
         rm_info.threads_per_core = int(os.environ.get('RADICAL_SMT') or
-                                       system_architecture.get('smt', 1))
+                                       sys_arch.get('smt', 1))
 
         rm_info.details = {
-                'exact'        : system_architecture.get('exclusive', False),
-                'n_partitions' : system_architecture.get('n_partitions', 1),
-                'oversubscribe': system_architecture.get('oversubscribe', False)
+                'exact'        : sys_arch.get('exclusive'    , False),
+                'n_partitions' : sys_arch.get('n_partitions' , 1),
+                'oversubscribe': sys_arch.get('oversubscribe', False),
+                'network'      : sys_arch.get('iface'        , None),
         }
 
         # let the specific RM instance fill out the RMInfo attributes
-        rm_info = self._init_from_scratch(rm_info)
-        alloc_nodes = len(rm_info.node_list)
+        rm_info = self.init_from_scratch(rm_info)
 
         # we expect to have a valid node list now
         self._log.info('node list: %s', rm_info.node_list)
 
         # the config can override core and gpu detection,
         # and decide to block some resources (part of the core specialization)
-        blocked_cores = system_architecture.get('blocked_cores', [])
-        blocked_gpus  = system_architecture.get('blocked_gpus',  [])
+        blocked_cores = sys_arch.get('blocked_cores', [])
+        blocked_gpus  = sys_arch.get('blocked_gpus',  [])
 
         self._log.info('blocked cores: %s' % blocked_cores)
         self._log.info('blocked gpus : %s' % blocked_gpus)
@@ -289,7 +305,7 @@ class ResourceManager(object):
                     node['gpus'][idx] = rpc.DOWN
 
         # number of nodes could be unknown if `cores_per_node` is not in config,
-        # but is provided by a corresponding RM in `_init_from_scratch`
+        # but is provided by a corresponding RM in `init_from_scratch`
         if not rm_info.requested_nodes:
             n_nodes = rm_info.requested_cores / rm_info.cores_per_node
             if rm_info.gpus_per_node:
@@ -298,9 +314,66 @@ class ResourceManager(object):
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
 
-        assert alloc_nodes                          >= rm_info.requested_nodes
-        assert alloc_nodes * rm_info.cores_per_node >= rm_info.requested_cores
-        assert alloc_nodes * rm_info.gpus_per_node  >= rm_info.requested_gpus
+        assert rm_info.requested_nodes <= len(rm_info.node_list)
+
+
+        self._filter_nodes(rm_info)
+
+        # add launch method information to rm_info
+        rm_info.launch_methods = self._rcfg.launch_methods
+
+        return rm_info
+
+
+    # --------------------------------------------------------------------------
+    #
+    def _filter_nodes(self, rm_info: RMInfo) -> None:
+
+        # if we have backup nodes, then check all nodes (including backup nodes)
+        # to see if they are accessible.
+        if rm_info.backup_nodes:
+            procs = list()
+            for node in rm_info.node_list:
+                name = node['name']
+                cmd  = 'ssh -oBatchMode=yes %s hostname' % name
+                self._log.debug('check node: %s [%s]', name, cmd)
+                proc = Process(cmd)
+                proc.start()
+                procs.append([name, proc, node])
+
+            ok = list()
+            for name, proc, node in procs:
+                proc.wait(timeout=15)
+                self._log.debug('check node: %s [%s]', name,
+                                [proc.stdout, proc.stderr, proc.retcode])
+                if proc.retcode is not None:
+                    if not proc.retcode:
+                        ok.append(node)
+                else:
+                    self._log.warning('check node: %s [%s] timed out',
+                                      name, [proc.stdout, proc.stderr])
+                    proc.cancel()
+                    proc.wait(timeout=15)
+                    if proc.retcode is None:
+                        self._log.warning('check node: %s [%s] timed out again',
+                                           name, [proc.stdout, proc.stderr])
+
+            self._log.warning('using %d nodes out of %d', len(ok), len(procs))
+
+            if not ok:
+                raise RuntimeError('no accessible nodes found')
+
+            # limit the nodelist to the requested number of nodes
+            rm_info.node_list = ok
+
+
+        # reduce the nodelist to the requested size
+        rm_info.backup_list = list()
+        if len(rm_info.node_list) > rm_info.requested_nodes:
+            self._log.debug('reduce %d nodes to %d', len(rm_info.node_list),
+                                                        rm_info.requested_nodes)
+            rm_info.node_list   = rm_info.node_list[:rm_info.requested_nodes]
+            rm_info.backup_list = rm_info.node_list[rm_info.requested_nodes:]
 
         # The ResourceManager may need to reserve nodes for sub agents and
         # service, according to the agent layout and pilot config.  We dig out
@@ -342,10 +415,6 @@ class ResourceManager(object):
         if not rm_info.node_list:
             raise RuntimeError('ResourceManager has no nodes left to run tasks')
 
-        # add launch method information to rm_info
-        rm_info.launch_methods = self._rcfg.launch_methods
-
-        return rm_info
 
 
     # --------------------------------------------------------------------------
@@ -368,9 +437,11 @@ class ResourceManager(object):
                 self._launchers[lm_name] = rpa.LaunchMethod.create(
                     lm_name, lm_cfg, self._rm_info, self._log, self._prof)
 
-            except Exception as e:
+            except Exception:
                 self._log.exception('skip lm %s', lm_name)
                 self._launch_order.remove(lm_name)
+
+        self._log.info('launch methods: %s', self._launch_order)
 
         if not self._launchers:
             raise RuntimeError('no valid launch methods found')
@@ -378,18 +449,15 @@ class ResourceManager(object):
 
     # --------------------------------------------------------------------------
     #
-    def get_partitions(self):
+    def get_partition_ids(self):
 
-        # TODO: this makes it impossible to have mutiple launchers with a notion
-        #       of partitions
+        # TODO: this implies unique partition IDs across all launchers
 
+        partition_ids = list()
         for lname in self._launchers:
+            partition_ids += self._launchers[lname].get_partition_ids()
 
-            launcher   = self._launchers[lname]
-            partitions = launcher.get_partitions()
-
-            if partitions:
-                return partitions
+        return partition_ids
 
 
     # --------------------------------------------------------------------------
@@ -409,6 +477,7 @@ class ResourceManager(object):
             raise RuntimeError('ResourceManager %s unknown' % name)
 
         return rm(cfg, rcfg, log, prof)
+
 
     # --------------------------------------------------------------------------
     #
@@ -438,6 +507,7 @@ class ResourceManager(object):
         }
 
         return impl.get(name)
+
 
     # --------------------------------------------------------------------------
     #
