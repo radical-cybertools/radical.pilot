@@ -96,6 +96,7 @@ class TestSrun(TestCase):
     def test_get_launcher_env(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
+        lm_srun._verbose = True
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_srun.sh',
                    'command': '/bin/srun',
