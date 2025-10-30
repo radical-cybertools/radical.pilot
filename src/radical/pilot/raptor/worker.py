@@ -405,7 +405,7 @@ class Worker(object):
             else:
                 py_func = True
                 if args or kwargs:
-                    raise ValueError('`args` and `kwargs` must be empty for'
+                    raise ValueError('`args` and `kwargs` must be empty for '
                                      'PythonTask function [%s]' % uid)
                 else:
                     args   = _args
