@@ -148,16 +148,30 @@ then
 elif test "$ETYPE" = 'conda'
 then
 
-    which conda || help "conda not found"
-    eval "$(conda shell.bash hook)"
-    conda activate base
-
     if test -d "$PREFIX"
     then
+
         printf "env at $PREFIX exists\n"
-        conda activate "$PREFIX"
+        if ! test -z "$(which conda)"; then
+            eval "$(conda shell.posix hook)"
+            conda activate "$PREFIX"  # ?! test
+
+        elif test -e "$PREFIX/bin/activate"; then
+            . "$PREFIX/bin/activate"
+
+        elif test -e "$PREFIX/../../bin/activate"; then
+            # check conda base directory
+            . "$PREFIX/../../bin/activate" "$(basename $PREFIX)"
+
+        else
+            help "conda not found"
+        fi
 
     else
+
+        which conda || help "conda not found"
+        eval "$(conda shell.bash hook)"
+        conda activate base
 
         printf "create  $ETYPE ve [$PREFIX]\n"
         if test -z "$VERSION"
@@ -192,14 +206,11 @@ elif test "$ETYPE" = 'venv'
 then
     if ! test -z "$VERSION"
     then
-        if ! test -z "$VERSION"
+        PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
+        if ! test "$VERSION" = "$PY_VERSION"
         then
-            PY_VERSION=$($PYTHON -V | cut -f 2 -d ' ' | cut -f 1,2 -d '.')
-            if ! test "$VERSION" = "$PY_VERSION"
-            then
-                echo "requested version $VERSION not supported for venv ($PY_VERSION)"
-                exit 1
-            fi
+            echo "requested version $VERSION not supported for venv ($PY_VERSION)"
+            exit 1
         fi
     fi
 
