@@ -49,7 +49,7 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         command = ru.which('srun')
         out, err, ret = ru.sh_callout('%s -V' % command)
@@ -71,7 +71,7 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
