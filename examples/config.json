@@ -46,6 +46,14 @@
         "cores"    : 64
     },
 
+    "ncsa.delta": {
+        "project"  : "bblj-delta-cpu",
+        "queue"    : "cpu",
+        "schema"   : "local",
+        "cores"    : 128,
+        "gpus"     : 0
+    },
+
     "ncsa.delta_gpu_a100_4way": {
         "project"  : "bblj-delta-gpu",
         "queue"    : "gpuA100x4",
@@ -259,5 +267,14 @@
         "queue"    : "standard",
         "schema"   : "local",
         "cores"    : 8
+    },
+
+    "debug.flux_spack": {
+        "cores"    : 32
+    },
+
+    "debug.flux"   : {
+        "cores"    : 32
     }
 }
+

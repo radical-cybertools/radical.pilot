@@ -155,7 +155,7 @@ class ComponentManager(object):
 
         # all bridges are started, wait for their startup messages
         self._log.debug('wait   for %s', buids)
-        self._wait_startup(buids, timeout=300.0)
+        self._wait_startup(buids, timeout=600.0)
 
         self._prof.prof('start_bridges_stop', uid=self._uid)
 
@@ -212,7 +212,7 @@ class ComponentManager(object):
 
         # all components should start now, wait for heartbeats to appear.
         self._log.debug('wait   for %s', cuids)
-        self._wait_startup(cuids, timeout=10.0)
+        self._wait_startup(cuids, timeout=600.0)
 
         self._prof.prof('start_components_stop', uid=self._uid)
 
