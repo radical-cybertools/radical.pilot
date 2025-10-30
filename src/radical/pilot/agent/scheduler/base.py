@@ -1065,7 +1065,7 @@ class AgentSchedulingComponent(rpu.AgentComponent):
             self._refresh_ts_map()
 
 
-      # for task in to_unschedule:
+        for task in to_unschedule:
       #     # if we find a waiting task with the same tuple size, we don't free
       #     # the slots, but just pass them on unchanged to the waiting task.
       #     # Thus we replace the unscheduled task on the same cores / GPUs
@@ -1107,9 +1107,9 @@ class AgentSchedulingComponent(rpu.AgentComponent):
       #         # no replacement task found: free the slots, and try to
       #         # schedule other tasks of other sizes.
       #         to_release.append(task)
-      #
-            self._active_cnt -= 1
+
             to_release.append(task)
+            self._active_cnt -= 1
 
         if not to_release:
             if not to_unschedule:

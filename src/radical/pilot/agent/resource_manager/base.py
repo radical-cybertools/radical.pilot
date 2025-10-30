@@ -189,7 +189,7 @@ class ResourceManager(object):
         # immediately set the network interface if it was configured
         # NOTE: setting this here implies that no ZMQ connectio was set up
         #       before the ResourceManager got created!
-        if rm_info.details['network']:
+        if rm_info.details.get('network'):
             rc_cfg = ru.config.DefaultConfig()
             rc_cfg.iface = rm_info.details['network']
 
@@ -313,6 +313,8 @@ class ResourceManager(object):
                     rm_info.requested_gpus / rm_info.gpus_per_node,
                     n_nodes)
             rm_info.requested_nodes = math.ceil(n_nodes)
+
+        assert rm_info.requested_nodes <= len(rm_info.node_list)
 
 
         self._filter_nodes(rm_info)
