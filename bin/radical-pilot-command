@@ -17,9 +17,9 @@ if __name__ == "__main__":
 
     if len(sys.argv) <= 2:
         sys.stderr.write(
-                'error: invalid arguments\n'
-                'usage: %s <sid> <command> [arg=val] ...\n'
-                         % sys.argv[0])
+            'error: invalid arguments\n'
+            'usage: %s <sid> <command> [arg0=val0] [arg1=val1,val2] [fwd] ...\n'
+            % sys.argv[0])
         raise RuntimeError('invalid arguments: %s' % sys.argv)
 
     sid  = sys.argv[1]
@@ -29,15 +29,23 @@ if __name__ == "__main__":
     else:
         args = []
 
-
     log  = ru.Logger(name='radical.pilot', targets='/dev/null')
   # log  = ru.Logger(name='radical.pilot', targets='-')
     reg  = ru.Config(ru.read_json(f'{sid}/{sid}.reg.init.json'))
     addr = reg.bridges.control_pubsub.addr_pub
     pub  = ru.zmq.Publisher(rp.CONTROL_PUBSUB, url=addr, log=log)
 
+    try:
+        args.remove('fwd')
+    except ValueError:
+        fwd = False
+    else:
+        fwd = True
+
     msg  = {'cmd' : cmd,
-            'arg' : {x:v for x,v in [a.split('=') for a in args]}}
+            'arg' : {k: (v if ',' not in v else v.split(','))
+                     for k, v in [a.split('=') for a in args]},
+            'fwd' : fwd}
 
     pub.put(rp.CONTROL_PUBSUB, msg)
     time.sleep(0.1)

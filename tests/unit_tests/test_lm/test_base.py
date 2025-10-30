@@ -24,7 +24,7 @@ class TestBaseLaunchMethod(TestCase):
 
         class NewLaunchMethod(LaunchMethod):
 
-            def _init_from_info(self, lm_info):
+            def init_from_info(self, lm_info):
                 self._env     = lm_info['env']
                 self._env_sh  = lm_info['env_sh']
                 self._command = lm_info['command']

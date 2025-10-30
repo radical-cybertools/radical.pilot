@@ -27,6 +27,7 @@ ENABLE_EP         = 'enable_ep'
 RECONFIG_SRC      = 'reconfig_src'
 
 NODES             = 'nodes'
+BACKUP_NODES      = 'backup_nodes'
 CORES             = 'cores'
 GPUS              = 'gpus'
 MEMORY            = 'memory'
@@ -48,15 +49,17 @@ class PilotDescription(FastTypedDict):
     a new pilot.
 
     Note:
-        A PilotDescription **MUST** define at least
-        :attr:`resource`, :attr:`cores` or :attr:`nodes`,
-        and :attr:`runtime`.
+        A PilotDescription **MUST** define at least :attr:`resource`,
+        :attr:`cores` or :attr:`nodes`, and :attr:`runtime`.
+
+        If :attr:`backup_nodes` is set, then :attr:`nodes` must also be set.
+
 
     Example::
         pm = radical.pilot.PilotManager(session=s)
         pd = radical.pilot.PilotDescription()
         pd.resource = "local.localhost"
-        pd.cores    = 16
+        pd.nodes    = 2
         pd.runtime  = 5 # minutes
 
         pilot = pm.submit_pilots(pd)
@@ -69,19 +72,21 @@ class PilotDescription(FastTypedDict):
         resource (str): The key of a
             :ref:`platform description </tutorials/configuration.ipynb#Platform-description>`
             entry. If the key exists, the machine-specific
-            configuration is loaded from the config file once the `PilotDescription`
-            is passed to :meth:`radical.pilot.PilotManager.submit_pilots`. If the
-            key doesn't exist, an exception :class:`ValueError` is raised.
-        access_schema (str, optional): The key of an access mechanism to use.
-            The valid access mechanism is defined in the resource configuration.
-            See :doc:`/tutorials/configuration`. The first ``schema`` defined
-            in the resource configuration is used by
-            default, if no *access_schema* is specified.
-        runtime (int, optional): The maximum run time (wall-clock time) in **minutes** of
-            the pilot. Default 10.
-        sandbox (str, optional): The working ("sandbox") directory of the pilot agent.
-            This parameter is optional and if not set, it defaults to
-            *radical.pilot.sandbox* in your home or login directory. Default None.
+            configuration is loaded from the config file once the
+            `PilotDescription` is passed to
+            :meth:`radical.pilot.PilotManager.submit_pilots`. If the key doesn't
+            exist, an exception :class:`ValueError` is raised.  access_schema
+            (str, optional): The key of an access mechanism to use.  The valid
+            access mechanism is defined in the resource configuration.  See
+            :doc:`/tutorials/configuration`. The first ``schema`` defined in the
+            resource configuration is used by default, if no *access_schema* is
+            specified.
+        runtime (int, optional): The maximum run time (wall-clock time) in
+            **minutes** of the pilot. Default 10.
+        sandbox (str, optional): The working ("sandbox") directory of the pilot
+            agent.  This parameter is optional and if not set, it defaults to
+            *radical.pilot.sandbox* in your home or login directory.
+            Default None.
 
             Warning:
                 If you define a pilot on an HPC cluster and you want to set
@@ -89,12 +94,16 @@ class PilotDescription(FastTypedDict):
                 on a shared filesystem that can be reached from all
                 compute nodes.
 
-        nodes (int, optional): The number of nodes the pilot should allocate on the target
-            resource. This parameter could be set instead of `cores` and `gpus`
-            (and `memory`). Default 1.
+        nodes (int, optional): The number of nodes the pilot should allocate on
+            the target resource. This parameter could be set instead of `cores`
+            and `gpus` (and `memory`). Default 1.
 
             Note:
-                If `nodes` is specified, `gpus` and `cores` must not be specified.
+                If `nodes` is specified, `gpus` and `cores` must not be
+                specified.
+
+        backup_nodes (int, optional): The number of backup nodes the pilot will
+            allocate.  Those nodes will be swapped-in in case of node failures.
 
         cores (int, optional): The number of cores the pilot should allocate on
             the target resource. This parameter could be set instead of `nodes`.
@@ -120,32 +129,34 @@ class PilotDescription(FastTypedDict):
             (:attr:`resource`), defining `queue` will override it explicitly.
         project (str, optional): The name of the project / allocation to
             charge for used CPU time. If *project* is set in the resource
-            configuration (:attr:`resource`), defining `project` will override it
-            explicitly.
-        app_comm (list[str], optional): The list of names is interpreted as communication
-            channels to start within the pilot agent, for the purpose of
-            application communication, i.e., that tasks running on that pilot are
-            able to use those channels to communicate amongst each other.
+            configuration (:attr:`resource`), defining `project` will override
+            it explicitly.
+        app_comm (list[str], optional): The list of names is interpreted as
+            communication channels to start within the pilot agent, for the
+            purpose of application communication, i.e., that tasks running on
+            that pilot are able to use those channels to communicate amongst
+            each other.
 
-            The names are expected to end in *_queue* or *_pubsub*, indicating the
-            type of channel to create.  Once created, tasks will find environment
-            variables of the name ``RP_%s_IN`` and ``RP_%s_OUT``, where ``%s``
-            is replaced with the given channel name (uppercased), and ``IN/OUT``
-            indicate the respective endpoint addresses for the created channels.
+            The names are expected to end in *_queue* or *_pubsub*, indicating
+            the type of channel to create.  Once created, tasks will find
+            environment variables of the name ``RP_%s_IN`` and ``RP_%s_OUT``,
+            where ``%s`` is replaced with the given channel name (uppercased),
+            and ``IN/OUT`` indicate the respective endpoint addresses for the
+            created channels.
         input_staging (list, optional): The list of files to be staged into the
             pilot sandbox.
         output_staging (list, optional): The list of files to be staged from the
             pilot sandbox.
         cleanup (bool, optional): If cleanup is set to True, the pilot
-            will delete its entire sandbox upon termination. This includes individual
-            Task sandboxes and all generated output data. Only log files will
-            remain in the sandbox directory. Default False.
+            will delete its entire sandbox upon termination. This includes
+            individual Task sandboxes and all generated output data. Only log
+            files will remain in the sandbox directory. Default False.
         exit_on_error (bool, optional): Flag to trigger app termination in case
             of the pilot failure. Default True.
         services (list[TaskDescription], optional): A list of
-            commands which get started on a separate service compute node right after
-            bootstrapping, and before any RP task is launched.  That service compute
-            node will not be used for any other tasks.
+            commands which get started on a separate service compute node right
+            after bootstrapping, and before any RP task is launched.  That
+            service compute node will not be used for any other tasks.
         enable_ep (bool, optional): enable a ZMQ submission endpoint on the
             pilot. Default `False`.
         prepare_env (dict, optional): A dictionary of `{env_name: env_spec}` as
@@ -167,6 +178,7 @@ class PilotDescription(FastTypedDict):
         CORES           : int        ,
         GPUS            : int        ,
         NODES           : int        ,
+        BACKUP_NODES    : int        ,
         MEMORY          : int        ,
         QUEUE           : str        ,
         JOB_NAME        : str        ,
@@ -191,6 +203,7 @@ class PilotDescription(FastTypedDict):
         CORES           : 0          ,
         GPUS            : 0          ,
         NODES           : 0          ,
+        BACKUP_NODES    : 0          ,
         MEMORY          : 0          ,
         QUEUE           : None       ,
         JOB_NAME        : None       ,
@@ -220,8 +233,14 @@ class PilotDescription(FastTypedDict):
         if not self.get('resource'):
             raise ValueError("Pilot description needs 'resource'")
 
-        if self.get('nodes'):
+        if self.get('backup_nodes') and not self.get('nodes'):
+            raise ValueError("'nodes' must be set if 'backup_nodes' is set")
 
+        if not self.get('nodes'):
+            if not self.get('cores'):
+                raise ValueError("Pilot description needs 'nodes' or 'cores'")
+
+        else:
             if self.get('cores'):
                 raise ValueError("Pilot description needs 'cores' *or* 'nodes'")
 
@@ -230,3 +249,4 @@ class PilotDescription(FastTypedDict):
 
 
 # ------------------------------------------------------------------------------
+
