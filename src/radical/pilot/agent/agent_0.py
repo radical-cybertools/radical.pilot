@@ -786,7 +786,7 @@ class Agent_0(rpu.AgentComponent):
 
         self._log.debug('env_spec %s: %s', env_name, env_spec)
 
-        etype = env_spec.get('type', 'venv')
+        etype = env_spec.get('type')     or 'venv'
         evers = env_spec.get('version')
         path  = env_spec.get('path')
         emods = env_spec.get('setup')    or []
