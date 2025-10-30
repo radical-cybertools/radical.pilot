@@ -8,4 +8,5 @@ setproctitle
 requests
 cffi
 dill
+rc.process
 
