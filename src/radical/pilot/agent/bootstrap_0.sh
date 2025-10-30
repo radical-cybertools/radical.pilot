@@ -130,19 +130,28 @@ export MAKEFLAGS="-j"
 #
 create_deactivate()
 {
+    profile_event 'create_deactivate_start'
+
     # at this point we activated the agent VE and thus have RU availale.  Use
     # `radical-utils-env.sh` to create a script to recover the virgin env
     # (`bs0_orig.env`) from the current state (`bs0_acivate.env`)
+    profile_event 'create_deactivate_start_1'
     which radical-utils-env.sh
+    profile_event 'create_deactivate_start_2'
     . radical-utils-env.sh
+    profile_event 'create_deactivate_start_3'
     env_dump -t env/bs0_active.env
+    profile_event 'create_deactivate_start_4'
     env_prep -s env/bs0_orig.env -r env/bs0_active.env -t env/bs0_orig.sh
+    profile_event 'create_deactivate_start_5'
 
     # we also prepare a script to return to the `pre_bootstrap_0` state: all
     # pre_bootstrap_0 commands have been run, but the virtualenv is not yet
     # activated.  This can be used in case a different VE is to be created or
     # used.
     env_prep -s env/bs0_pre_0.env -r env/bs0_active.env -t env/bs0_pre_0.sh
+
+    profile_event 'create_deactivate_stop'
 }
 
 
@@ -152,6 +161,8 @@ create_deactivate()
 #
 create_gtod()
 {
+    profile_event 'gtod_start'
+
     tmp=`date '+%s.%N' | grep N`
     if test "$?" = 0
     then
@@ -193,6 +204,8 @@ create_gtod()
         "$now" "sync_abs" "bootstrap_0" "MainThread" "$PILOT_ID" \
         "$pilot_state" "$(hostname):$ip:$now:$now:$now" \
         | tee -a "$PROFILE"
+
+    profile_event 'gtod_stop'
 }
 
 
@@ -254,12 +267,58 @@ trap last_event INT TERM
 
 # ------------------------------------------------------------------------------
 #
-# `waitfor()` will test a condition in certain intervals and return once that
-# condition is met, or finish after a timeout.  This method will not create
-# subshells, and thus can be utilized for job control etc.
+# we add another safety feature to ensure agent cancelation after runtime
+# expires: the timeout() function expects *exactly* two processes to run in the
+# background.  Whichever finishes with will cause a SIGUSR1 signal, which is
+# then trapped to kill both processes.  Since the first one is dead, only the
+# second will actually get the kill, and the subsequent wait will thus succeed.
+# The second process is, of course, a `sleep $TIMEOUT`, so that the actual
+# workload process will get killed after that timeout...
+#
+timeout()
+{
+    profile_event 'timeout_start'
+
+    TIMEOUT="$1"; shift
+    COMMAND="$*"
+
+    RET="./timetrap.$$.ret"
+
+    # note that this insane construct uses `$PID_1` and `$PID_2` which will
+    # only be set later on.  In fact, those may or may not be set at all...
+    timetrap()
+    {
+        kill $PID_1 2>&1 > /dev/null
+        kill $PID_2 2>&1 > /dev/null
+    }
+    trap timetrap USR1
+
+    rm -f $RET
+    ($COMMAND;       echo "$?" >> $RET; /bin/kill -s USR1 $$) & PID_1=$!
+    (sleep $TIMEOUT; echo "1"  >> $RET; /bin/kill -s USR1 $$) & PID_2=$!
+
+    wait
+
+    ret=`cat $RET || echo 2`
+    rm -f $RET
+
+    profile_event 'timeout_stop'
+
+    return $ret
+}
+
+
+# ------------------------------------------------------------------------------
+#
+# a similar method is `waitfor()`, which will test a condition in certain
+# intervals and return once that condition is met, or finish after a timeout.
+# Other than `timeout()` above, this method will not create subshells, and thus
+# can be utilized for job control etc.
 #
 waitfor()
 {
+    profile_event 'waitfor_start'
+
     INTERVAL="$1"; shift
     TIMEOUT="$1";  shift
     COMMAND="$*"
@@ -289,6 +348,8 @@ waitfor()
         echo "COND timeout"
     fi
 
+    profile_event 'waitfor_stop'
+
     return $RET
 }
 
@@ -302,6 +363,8 @@ waitfor()
 #
 lock()
 {
+    profile_event 'lock_start'
+
     pid="$1"      # ID of pilot/bootstrapper waiting
     entry="$2"    # entry to lock
     timeout="$3"  # time to wait for a lock to expire In seconds)
@@ -353,6 +416,8 @@ lock()
 
     # one way or the other, we got the lock finally.
     echo "obtained lock $lockfile"
+
+    profile_event 'lock_stop'
 }
 
 
@@ -364,6 +429,8 @@ lock()
 #
 unlock()
 {
+    profile_event 'unlock_start'
+
     pid="$1"      # ID of pilot/bootstrapper which has the lock
     entry="$2"    # locked entry
 
@@ -386,6 +453,8 @@ unlock()
     fi
 
     rm -vf $lockfile
+
+    profile_event 'unlock_stop'
 }
 
 
@@ -401,6 +470,8 @@ unlock()
 #
 rehash()
 {
+    profile_event 'rehash_start'
+
     explicit_python="$1"
 
     # If PYTHON was not set as an argument, detect it here.
@@ -459,6 +530,8 @@ rehash()
     echo "PYTHON_VERSION    : $PYTHON_VERSION"
     echo "PIP               : $PIP"
     echo "PIP version       : `$PIP --version`"
+
+    profile_event 'rehash_stop'
 }
 
 
@@ -466,6 +539,8 @@ rehash()
 # verify that we have a usable python installation
 verify_install()
 {
+    profile_event 'verify_install_start'
+
     verify_rp_install
     echo    "PYTHONPATH             : $PYTHONPATH"
     echo -n "Verify python viability: $PYTHON ..."
@@ -476,6 +551,8 @@ verify_install()
         exit 1
     fi
     echo ' ok'
+
+    profile_event 'verify_install_stop'
 }
 
 
@@ -507,6 +584,8 @@ run_cmd()
     msg="$1"
     cmd="$2"
     fallback="$3"
+
+    profile_event 'run_cmd_start' "$msg"
 
     echo ""
     echo "# -------------------------------------------------------------------"
@@ -550,6 +629,8 @@ run_cmd()
         echo "# -------------------------------------------------------------------"
         return 1
     fi
+
+    profile_event 'run_cmd_stop'
 }
 
 
@@ -577,7 +658,7 @@ run_cmd()
 #
 virtenv_setup()
 {
-    profile_event 've_setup_start'
+    profile_event 'virtenv_setup_start'
 
     pid="$1"
     virtenv="$2"
@@ -778,7 +859,7 @@ virtenv_setup()
        unlock "$pid" "$virtenv"
     fi
 
-    profile_event 've_setup_stop'
+    profile_event 'virtenv_setup_stop'
 }
 
 
@@ -790,7 +871,7 @@ virtenv_activate()
         return
     fi
 
-    profile_event 've_activate_start'
+    profile_event 'virtenv_activate_start'
 
     virtenv="$1"
     python_dist="$2"
@@ -843,6 +924,7 @@ virtenv_activate()
         export PATH
     fi
 
+    profile_event 'virtenv_activate_stop'
 }
 
 
@@ -850,6 +932,8 @@ virtenv_activate()
 #
 virtenv_eval()
 {
+
+    profile_event 'virtenv_eval_start'
     # make sure we use the new python binary
     rehash
 
@@ -898,7 +982,7 @@ virtenv_eval()
     PYTHONPATH="$VE_MOD_PREFIX:$VE_PYTHONPATH"
     export PYTHONPATH
 
-    profile_event 've_activate_stop'
+    profile_event 'virtenv_eval_stop'
 }
 
 
@@ -914,7 +998,7 @@ virtenv_eval()
 virtenv_create()
 {
     # create a fresh ve
-    profile_event 've_create_start'
+    profile_event 'virtenv_create_start'
 
     virtenv="$1"
     python_dist="$2"
@@ -1025,7 +1109,7 @@ virtenv_create()
     # collect ve info
     virtenv_eval
 
-    profile_event 've_create_stop'
+    profile_event 'virtenv_create_stop'
 }
 
 
@@ -1035,7 +1119,7 @@ virtenv_create()
 #
 virtenv_update()
 {
-    profile_event 've_update_start'
+    profile_event 'virtenv_update_start'
 
     virtenv="$1"
     python_dist="$2"
@@ -1044,7 +1128,7 @@ virtenv_update()
     virtenv_activate "$virtenv" "$python_dist"
     virtenv_eval
 
-    profile_event 've_update_stop'
+    profile_event 'virtenv_update_stop'
 }
 
 
@@ -1071,6 +1155,8 @@ virtenv_update()
 #
 rp_install()
 {
+    profile_event 'rp_install_start'
+
     rp_install_sources="$1"
     rp_install_target="$2"
 
@@ -1087,8 +1173,6 @@ rp_install()
 
         return
     fi
-
-    profile_event 'rp_install_start'
 
     echo "Using RADICAL-Pilot install sources '$rp_install_sources'"
 
@@ -1185,6 +1269,8 @@ rp_install()
 #
 verify_rp_install()
 {
+    profile_event 'verify_rp_install_start'
+
     OLD_RADICAL_VERBOSE=$RADICAL_VERBOSE
     OLD_RADICAL_PILOT_VERBOSE=$RADICAL_PILOT_VERBOSE
 
@@ -1206,6 +1292,8 @@ verify_rp_install()
 
     RADICAL_VERBOSE=$OLD_RADICAL_VERBOSE
     RADICAL_PILOT_VERBOSE=$OLD_RADICAL_PILOT_VERBOSE
+
+    profile_event 'verify_rp_install_stop'
 }
 
 
@@ -1214,6 +1302,8 @@ verify_rp_install()
 #
 find_available_port()
 {
+    profile_event 'find_available_port_start'
+
     RANGE="23000..23100"
     # TODO: Now that we have corrected the logic of checking on the localhost,
     #       instead of the remote host, we need to improve the checking.
@@ -1247,6 +1337,8 @@ find_available_port()
 
     # Assume the most recent port is available
     AVAILABLE_PORT=$port
+
+    profile_event 'find_available_port_stop'
 }
 
 
@@ -1260,6 +1352,9 @@ find_available_port()
 pre_bootstrap_0()
 {
     cmd=$(eval echo "$@")
+
+    profile_event 'pre_bootstrap_0_start' "$cmd"
+
     run_cmd "Running pre_bootstrap_0 command" "$cmd"
 
     if test $? -ne 0
@@ -1267,6 +1362,8 @@ pre_bootstrap_0()
         echo "#ABORT"
         exit 1
     fi
+
+    profile_event 'pre_bootstrap_0_stop'
 }
 
 # -------------------------------------------------------------------------------
@@ -1277,8 +1374,12 @@ pre_bootstrap_2()
 {
     cmd="$@"
 
+    profile_event 'pre_bootstrap_2_start' "$cmd"
+
     PREBOOTSTRAP2="$PREBOOTSTRAP2
 $cmd"
+
+    profile_event 'pre_bootstrap_2_stop'
 }
 
 
@@ -1289,7 +1390,12 @@ $cmd"
 untar()
 {
     tar="$1"
+
+    profile_event 'untar_start' "$tar"
+
     tar zxvf ../"$tar" -C .. "$PILOT_ID"
+
+    profile_event 'untar_stop'
 }
 
 
@@ -1540,8 +1646,6 @@ verify_install
 # all is installed - keep a local copy of `radical-gtod` so that task profiling
 # is independent of its location in the pilot VE
 test -z $(which radical-gtod) || cp $(which radical-gtod) ./gtod
-
-verify_rp_install
 
 # TODO: (re)move this output?
 echo

@@ -60,7 +60,7 @@ class Torque(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
 
         nodefile = os.environ.get('PBS_NODEFILE')
         if not nodefile:

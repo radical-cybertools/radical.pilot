@@ -72,7 +72,9 @@ class Slurm(ResourceManager):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+    def init_from_scratch(self, rm_info: RMInfo) -> RMInfo:
+
+        ru.write_json(rm_info, 'rm_info.json')
 
         nodelist = os.environ.get('SLURM_NODELIST') or \
                    os.environ.get('SLURM_JOB_NODELIST')
