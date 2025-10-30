@@ -67,7 +67,7 @@ class TestPRTE(TestCase):
 
         lm_prte = PRTE('', {}, None, None, None)
 
-        lm_info = lm_prte._init_from_scratch({}, '')
+        lm_info = lm_prte.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
         self.assertEqual(lm_info['details'], mocked_configure())
 
@@ -87,7 +87,7 @@ class TestPRTE(TestCase):
                                'version_info': {'name'   : 'PRTE',
                                                 'version': '1.1.1'}}}
 
-        lm_prte._init_from_info(lm_info)
+        lm_prte.init_from_info(lm_info)
         self.assertEqual(lm_prte._env,     lm_info['env'])
         self.assertEqual(lm_prte._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_prte._command, lm_info['command'])
@@ -95,7 +95,7 @@ class TestPRTE(TestCase):
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_prte._init_from_info(lm_info)
+            lm_prte.init_from_info(lm_info)
 
 
     # --------------------------------------------------------------------------
@@ -180,7 +180,7 @@ class TestPRTE(TestCase):
     #
     @mock.patch.object(PRTE, '__init__', return_value=None)
     @mock.patch.object(PRTE, '_terminate', return_value=None)
-    def test_get_partitions(self, mocked_terminate, mocked_init):
+    def test_get_partition_ids(self, mocked_terminate, mocked_init):
 
         lm_prte = PRTE('', {}, None, None, None)
 
@@ -195,10 +195,8 @@ class TestPRTE(TestCase):
                    'details': {'dvm_list'    : dvm_list,
                                'version_info': {'name'   : 'PRTE',
                                                 'version': '1.1.1'}}}
-        lm_prte._init_from_info(lm_info)
-        self.assertEqual(lm_prte.get_partitions(),
-                         {'0': ['0', '1'],
-                          '1': ['2', '3']})
+        lm_prte.init_from_info(lm_info)
+        self.assertEqual(lm_prte.get_partition_ids(), ['0', '1'])
 
 
     # --------------------------------------------------------------------------
@@ -229,7 +227,7 @@ class TestPRTE(TestCase):
                                'version_info': {'name'   : 'PRTE',
                                                 'version': '1.1.1'},
                                'cvd_id_mode' : 'physical'}}
-        lm_prte._init_from_info(lm_info)
+        lm_prte.init_from_info(lm_info)
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'],
                       lm_prte.get_launcher_env())

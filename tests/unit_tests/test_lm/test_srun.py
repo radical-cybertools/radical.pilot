@@ -30,8 +30,8 @@ class TestSrun(TestCase):
         env    = {'test_env': 'test_value'}
         env_sh = 'env/lm_%s.sh' % lm_srun.name.lower()
 
-        lm_info = lm_srun._init_from_scratch(env, env_sh)
-        lm_srun._init_from_info(lm_info)
+        lm_info = lm_srun.init_from_scratch(env, env_sh)
+        lm_srun.init_from_info(lm_info)
         self.assertEqual(lm_info, {'env'    : env,
                                    'env_sh' : env_sh,
                                    'command': mocked_which(),
@@ -51,7 +51,7 @@ class TestSrun(TestCase):
         lm_srun = Srun('', {}, None, None, None)
         with self.assertRaises(RuntimeError):
             # error while getting version of the launch command
-            lm_srun._init_from_scratch({}, '')
+            lm_srun.init_from_scratch({}, '')
 
 
     # --------------------------------------------------------------------------
@@ -66,7 +66,7 @@ class TestSrun(TestCase):
                    'command': '/bin/srun',
                    'version': '19.05.2',
                    'vmajor' : 19}
-        lm_srun._init_from_info(lm_info)
+        lm_srun.init_from_info(lm_info)
         self.assertEqual(lm_srun._env,     lm_info['env'])
         self.assertEqual(lm_srun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_srun._command, lm_info['command'])
@@ -75,7 +75,7 @@ class TestSrun(TestCase):
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_srun._init_from_info(lm_info)
+            lm_srun.init_from_info(lm_info)
 
 
     # --------------------------------------------------------------------------
@@ -96,12 +96,13 @@ class TestSrun(TestCase):
     def test_get_launcher_env(self, mocked_init):
 
         lm_srun = Srun('', {}, None, None, None)
+        lm_srun._verbose = True
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_srun.sh',
                    'command': '/bin/srun',
                    'version': '19.05.2',
                    'vmajor' : 19}
-        lm_srun._init_from_info(lm_info)
+        lm_srun.init_from_info(lm_info)
         lm_env = lm_srun.get_launcher_env()
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'], lm_env)

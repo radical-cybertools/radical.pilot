@@ -26,7 +26,7 @@ class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         lm_info = {'env'    : env,
                    'env_sh' : env_sh,
@@ -37,7 +37,7 @@ class CCMRun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
