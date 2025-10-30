@@ -20,7 +20,7 @@ class TestAPRun(TestCase):
 
         lm_aprun = APRun('', {}, None, None, None)
 
-        lm_info = lm_aprun._init_from_scratch({}, '')
+        lm_info = lm_aprun.init_from_scratch({}, '')
         self.assertEqual(lm_info['command'], mocked_which())
 
     # --------------------------------------------------------------------------
@@ -33,14 +33,14 @@ class TestAPRun(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_aprun.sh',
                    'command': '/usr/bin/aprun'}
-        lm_aprun._init_from_info(lm_info)
+        lm_aprun.init_from_info(lm_info)
         self.assertEqual(lm_aprun._env,     lm_info['env'])
         self.assertEqual(lm_aprun._env_sh,  lm_info['env_sh'])
         self.assertEqual(lm_aprun._command, lm_info['command'])
 
         lm_info['command'] = ''
         with self.assertRaises(AssertionError):
-            lm_aprun._init_from_info(lm_info)
+            lm_aprun.init_from_info(lm_info)
 
     # --------------------------------------------------------------------------
     #
@@ -62,7 +62,7 @@ class TestAPRun(TestCase):
         lm_info = {'env'    : {'test_env': 'test_value'},
                    'env_sh' : 'env/lm_aprun.sh',
                    'command': '/usr/bin/aprun'}
-        lm_aprun._init_from_info(lm_info)
+        lm_aprun.init_from_info(lm_info)
 
         self.assertIn('. $RP_PILOT_SANDBOX/%s' % lm_info['env_sh'],
                       lm_aprun.get_launcher_env())
