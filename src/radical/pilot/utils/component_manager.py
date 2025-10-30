@@ -155,7 +155,7 @@ class ComponentManager(object):
 
         # all bridges are started, wait for their startup messages
         self._log.debug('wait   for %s', buids)
-        self._wait_startup(buids, timeout=300.0)
+        self._wait_startup(buids, timeout=600.0)
 
         self._prof.prof('start_bridges_stop', uid=self._uid)
 

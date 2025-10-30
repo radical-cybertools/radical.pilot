@@ -129,7 +129,9 @@ class LaunchMethod(object):
         impl = {
             LM_NAME_APRUN         : APRun,
             LM_NAME_CCMRUN        : CCMRun,
+            LM_NAME_DRAGON        : Dragon,
             LM_NAME_FORK          : Fork,
+            LM_NAME_FLUX          : Flux,
             LM_NAME_IBRUN         : IBRun,
             LM_NAME_DRAGON        : Dragon,
             LM_NAME_MPIEXEC       : MPIExec,
@@ -142,7 +144,6 @@ class LaunchMethod(object):
             LM_NAME_JSRUN         : JSRUN,
             LM_NAME_JSRUN_ERF     : JSRUN,
             LM_NAME_PRTE          : PRTE,
-            LM_NAME_FLUX          : Flux,
             LM_NAME_RSH           : RSH,
             LM_NAME_SSH           : SSH,
             LM_NAME_SRUN          : Srun,
