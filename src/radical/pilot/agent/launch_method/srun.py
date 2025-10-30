@@ -43,13 +43,18 @@ class Srun(LaunchMethod):
         self._command : str  = ''
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
         self._exact   : bool = rm_info.details.get('exact', False)
+        self._verbose : bool = False
+
+        if (os.environ.get('RADICAL_PILOT_SRUN_VERBOSE', '').lower() in
+                ['true', 'yes', '1']):
+            self._verbose = True
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_scratch(self, env, env_sh):
+    def init_from_scratch(self, env, env_sh):
 
         command = ru.which('srun')
         out, err, ret = ru.sh_callout('%s -V' % command)
@@ -71,7 +76,7 @@ class Srun(LaunchMethod):
 
     # --------------------------------------------------------------------------
     #
-    def _init_from_info(self, lm_info):
+    def init_from_info(self, lm_info):
 
         self._env     = lm_info['env']
         self._env_sh  = lm_info['env_sh']
@@ -97,7 +102,7 @@ class Srun(LaunchMethod):
         launch process identified by its process ID.
         '''
 
-        # according to ORNL, SIGINT should be sent twice for effective rank
+        # according to OLCF, SIGINT should be sent twice for effective rank
         # cancellation
         try:
             self._log.debug('killing task %s (%d)', task['uid'], pid)
@@ -136,8 +141,16 @@ class Srun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['export SLURM_CPU_BIND=verbose',  # debug mapping
-                '. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+        launcher_env = []
+
+        if self._verbose:
+            launcher_env.extend([
+                'export SLURM_DEBUG=1',  # enable verbosity
+                'export SLURM_CPU_BIND=verbose'  # debug mapping
+            ])
+
+        launcher_env.append('. $RP_PILOT_SANDBOX/%s' % self._env_sh)
+        return launcher_env
 
 
     # --------------------------------------------------------------------------
@@ -220,12 +233,13 @@ class Srun(LaunchMethod):
             largs += ' --mem 0'
 
         # check that gpus were requested to be allocated
-        if self._rm_info.get('requested_gpus') and gpus_per_task:
-            if self._traverse:
-                largs += ' --gpus-per-task=%d' % gpus_per_task
-            else:
-                largs += ' --gpus-per-task %d' % gpus_per_task + \
-                         ' --gpu-bind closest'
+        if not td.get('metadata', {}).get('lm_skip_gpus', False):
+            if self._rm_info.get('requested_gpus') and gpus_per_task:
+                if self._traverse:
+                    mapping += ' --gpus-per-task=%d' % gpus_per_task
+                else:
+                    mapping += ' --gpus-per-task %d' % gpus_per_task + \
+                               ' --gpu-bind closest'
 
         if nodefile:
             largs += ' --nodefile=%s' % nodefile
