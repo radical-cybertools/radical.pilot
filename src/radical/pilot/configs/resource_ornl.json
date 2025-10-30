@@ -155,8 +155,7 @@
                                                  "module load rocm",
                                                  "module load craype-accel-amd-gfx90a",
                                                  "export MPICH_GPU_SUPPORT_ENABLED=1"
-                                             ]
-                                         }
+                                             ]}
                                         },
         "pre_bootstrap_0"             : [
                                          "module load flux",

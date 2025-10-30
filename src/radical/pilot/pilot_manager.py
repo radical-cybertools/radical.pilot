@@ -512,8 +512,14 @@ class PilotManager(rpu.ClientComponent):
                 self._pilots[pilot.uid] = pilot
 
             if pd.get('nodes'):
-                self._rep.plain('\n\t%s   %-20s %6d nodes' %
-                                (pilot.uid, pd['resource'], pd['nodes']))
+                bn = pd.get('backup_nodes', 0)
+                if bn:
+                    self._rep.plain('\n\t%s   %-20s %6d+%d nodes' %
+                                    (pilot.uid, pd['resource'], pd['nodes'], bn))
+                else:
+                    self._rep.plain('\n\t%s   %-20s %6d nodes' %
+                                    (pilot.uid, pd['resource'], pd['nodes']))
+
             else:
                 self._rep.plain('\n\t%s   %-20s %6d cores  %6d gpus' %
                                 (pilot.uid, pd['resource'],

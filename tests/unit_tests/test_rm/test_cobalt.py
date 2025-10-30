@@ -26,7 +26,7 @@ class CobaltTestCase(TestCase):
 
         rm_cobalt = Cobalt(cfg=None, log=None, prof=None)
 
-        rm_info = rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
+        rm_info = rm_cobalt.init_from_scratch(RMInfo({'cores_per_node': 1}))
 
         self.assertEqual(rm_info.node_list[0]['name'], 'nid00001')
         self.assertEqual(rm_info.node_list[0]['cores'], [0])  # list of cores
@@ -40,14 +40,14 @@ class CobaltTestCase(TestCase):
 
         with self.assertRaises(RuntimeError):
             # `cores_per_node` not defined
-            rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': None}))
+            rm_cobalt.init_from_scratch(RMInfo({'cores_per_node': None}))
 
         for cobalt_env_var in ['COBALT_NODEFILE', 'COBALT_PARTNAME']:
             if cobalt_env_var in os.environ:
                 del os.environ[cobalt_env_var]
         with self.assertRaises(RuntimeError):
             # both $COBALT_NODEFILE and $COBALT_PARTNAME are not set
-            rm_cobalt._init_from_scratch(RMInfo({'cores_per_node': 1}))
+            rm_cobalt.init_from_scratch(RMInfo({'cores_per_node': 1}))
 
     # --------------------------------------------------------------------------
     #
