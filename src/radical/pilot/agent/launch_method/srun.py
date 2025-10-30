@@ -43,6 +43,11 @@ class Srun(LaunchMethod):
         self._command : str  = ''
         self._traverse: bool = bool('princeton.traverse' in lm_cfg['resource'])
         self._exact   : bool = rm_info.details.get('exact', False)
+        self._verbose : bool = False
+
+        if (os.environ.get('RADICAL_PILOT_SRUN_VERBOSE', '').lower() in
+                ['true', 'yes', '1']):
+            self._verbose = True
 
         LaunchMethod.__init__(self, name, lm_cfg, rm_info, log, prof)
 
@@ -136,9 +141,16 @@ class Srun(LaunchMethod):
     #
     def get_launcher_env(self):
 
-        return ['export SLURM_DEBUG=1',  # enable verbosity by default
-                'export SLURM_CPU_BIND=verbose',  # debug mapping
-                '. $RP_PILOT_SANDBOX/%s' % self._env_sh]
+        launcher_env = []
+
+        if self._verbose:
+            launcher_env.extend([
+                'export SLURM_DEBUG=1',  # enable verbosity
+                'export SLURM_CPU_BIND=verbose'  # debug mapping
+            ])
+
+        launcher_env.append('. $RP_PILOT_SANDBOX/%s' % self._env_sh)
+        return launcher_env
 
 
     # --------------------------------------------------------------------------
