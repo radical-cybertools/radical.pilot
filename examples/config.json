@@ -8,6 +8,14 @@
         "gpus"     : 0
     },
 
+    "local.dragon" : {
+        "project"  : null,
+        "queue"    : null,
+        "schema"   : null,
+        "cores"    : 32,
+        "gpus"     : 0
+    },
+
     "local.localhost_test" : {
         "project"  : null,
         "queue"    : null,
