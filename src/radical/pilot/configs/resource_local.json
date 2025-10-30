@@ -43,6 +43,45 @@
         "system_architecture"         : {"oversubscribe": true}
     },
 
+    "dragon": {
+        "description"                 : "Your local machine.",
+        "notes"                       : "",
+        "default_schema"              : "local",
+        "schemas"                     : {
+            "ssh"                     : {
+                "job_manager_endpoint": "ssh://localhost",
+                "filesystem_endpoint" : "sftp://localhost"
+            },
+            "local"                   : {
+                "job_manager_endpoint": "fork://localhost",
+                "filesystem_endpoint" : "file://localhost"
+            }
+        },
+        "default_remote_workdir"      : "$HOME",
+        "resource_manager"            : "FORK",
+        "agent_config"                : "default",
+        "agent_scheduler"             : "CONTINUOUS",
+        "agent_spawner"               : "DRAGON",
+        "launch_methods"              : {
+                                         "order": ["FORK"],
+                                         "FORK" : {}
+                                        },
+        "rp_version"                  : "installed",
+        "virtenv_mode"                : "local",
+        "python_dist"                 : "default",
+        "cores_per_node"              : 8,
+        "gpus_per_node"               : 1,
+        "lfs_path_per_node"           : "/tmp",
+        "lfs_size_per_node"           : 1024,
+        "mem_per_node"                : 4096,
+        "fake_resources"              : true,
+        "raptor"                      : {
+                                         "hb_delay"     : 100,
+                                         "hb_timeout"   : 400,
+                                         "hb_frequency" : 100},
+        "system_architecture"         : {"oversubscribe": true}
+    },
+
     "localhost_test": {
         "description"                 : "Your local machine.",
         "notes"                       : "To use the ssh schema, make sure that ssh access to localhost is enabled.",
