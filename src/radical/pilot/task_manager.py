@@ -19,6 +19,8 @@ from . import constants as rpc
 from .task_description import RAPTOR_MASTER, RAPTOR_WORKER
 from .raptor_tasks     import RaptorMaster, RaptorWorker
 
+_DEFAULT_SUBMIT_BULK_SIZE = 1024 * 1024
+
 
 # bulk callbacks are implemented, but are currently not used nor exposed.
 _USE_BULK_CB = False
@@ -862,48 +864,51 @@ class TaskManager(rpu.ClientComponent):
             ret_list     = False
             descriptions = [descriptions]
 
-        # we return a list of tasks
-        tasks = list()
-        ret   = list()
-        self._rep.progress_tgt(len(descriptions), label='submit')
-        for td in descriptions:
+        # we don't want the submission to stall just because some tasks get
+        # completed meanwhile, so we lock the submission routine.
+        with self._tasks_lock:
 
-            mode = td.mode
+            # we return a list of tasks
+            tasks = list()
+            ret   = list()
+            self._rep.progress_tgt(len(descriptions), label='submit')
+            for td in descriptions:
 
-            if mode == RAPTOR_MASTER:
-                task = RaptorMaster(tmgr=self, descr=td, origin='client')
+                mode = td.mode
 
-            elif mode == RAPTOR_WORKER:
-                task = RaptorWorker(tmgr=self, descr=td, origin='client')
+                if mode == RAPTOR_MASTER:
+                    task = RaptorMaster(tmgr=self, descr=td, origin='client')
 
-            else:
-                task = Task(tmgr=self, descr=td, origin='client')
+                elif mode == RAPTOR_WORKER:
+                    task = RaptorWorker(tmgr=self, descr=td, origin='client')
 
-            tasks.append(task)
-            self._rep.progress()
+                else:
+                    task = Task(tmgr=self, descr=td, origin='client')
 
-            if len(tasks) >= 1024:
-                # submit this bulk
-                with self._tasks_lock:
+                tasks.append(task)
+                self._rep.progress()
+
+                if len(tasks) >= _DEFAULT_SUBMIT_BULK_SIZE:
+
+                    # submit this bulk
                     for task in tasks:
                         self._tasks[task.uid] = task
 
-                task_docs = [u.as_dict() for u in tasks]
-                self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
-                             publish=True, push=True)
-                ret += tasks
-                tasks = list()
+                    task_docs = [u.as_dict() for u in tasks]
+                    self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
+                                 publish=True, push=True)
+                    ret += tasks
+                    tasks = list()
 
-        # submit remaining bulk (if any)
-        if tasks:
-            with self._tasks_lock:
+            # submit remaining bulk (if any)
+            if tasks:
                 for task in tasks:
                     self._tasks[task.uid] = task
 
-            task_docs = [t.as_dict() for t in tasks]
-            self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
-                         publish=True, push=True)
-            ret += tasks
+                task_docs = [t.as_dict() for t in tasks]
+                self.advance(task_docs, rps.TMGR_SCHEDULING_PENDING,
+                             publish=True, push=True)
+                ret += tasks
 
         self._rep.progress_done()
 

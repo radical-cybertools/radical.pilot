@@ -254,6 +254,7 @@ class BaseComponent(object):
     #
     def _work_loop(self, sync):
 
+        self._log.debug('work loop 1')
         try:
             self._initialize()
 
@@ -261,6 +262,7 @@ class BaseComponent(object):
             self._log.exception('worker thread initialization failed')
             raise
 
+        self._log.debug('work loop 2')
         sync.set()
 
         while not self._term.is_set():
