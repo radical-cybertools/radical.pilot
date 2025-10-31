@@ -171,6 +171,14 @@ class Flux(AgentExecutingComponent) :
                                publish=True, push=True)
             return
 
+        elif ename == 'exception' and event.context['type'] == 'timeout':
+            # this is a timeout event, which we translate to 'unschedule'
+            state = rps.AGENT_STAGING_OUTPUT_PENDING
+            task['target_state'] = rps.CANCELED
+            self.advance_tasks(task, state, ts=event.timestamp,
+                               publish=True, push=True)
+            return
+
         elif ename == 'start':
             # start task timeout handling on `start` event
             self.handle_timeout(task)
