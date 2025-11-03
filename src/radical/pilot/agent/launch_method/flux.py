@@ -32,7 +32,8 @@ class Flux(LaunchMethod):
             self.helper   = None
 
     class Event(ru.TypedDict):
-        _schema = {'name': str}
+        _schema = {'name'     : str,
+                   'timestamp': float}
 
 
     # --------------------------------------------------------------------------
@@ -149,7 +150,7 @@ class Flux(LaunchMethod):
     #
     def start_flux(self, event_cb):
 
-        self._event_cb  = event_cb
+        self._event_cb = event_cb
 
         # start one flux instance per partition.  Flux instances are hosted in
         # partition threads which are fed tasks through queues.
@@ -301,7 +302,8 @@ class Flux(LaunchMethod):
             except Exception:
                 self._log.exception('LM flux submit failed')
                 for tid in tasks:
-                    self._event_cb(tid, self.Event(name='lm_failed'))
+                    self._event_cb(tid, self.Event(name='lm_failed',
+                                                   timestamp=time.time()))
 
 
 

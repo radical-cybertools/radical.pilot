@@ -3,6 +3,7 @@ __copyright__ = 'Copyright 2013-2020, http://radical.rutgers.edu'
 __license__   = 'MIT'
 
 import copy
+import time
 
 import threading as mt
 
@@ -47,7 +48,7 @@ class Flux(AgentExecutingComponent) :
                          # 'start'    : rps.AGENT_EXECUTING,
                            'cleanup'  : None,
                            'finish'   : rps.AGENT_STAGING_OUTPUT_PENDING,
-                           'release'  : 'unschedule',
+                         # 'release'  : 'unschedule',
                            'free'     : None,
                            'clean'    : None,
                            'priority' : None,
@@ -151,50 +152,52 @@ class Flux(AgentExecutingComponent) :
     def _handle_event_cb(self, task_id, event):
 
         ename = event.name
-        state = self._event_map.get(ename)
+        state = None
+        push  = True
 
-        self._log.debug('flux event: %s: %s [%s]', task_id, ename, state)
+        self._log.debug('flux event: %s: %s', task_id, ename)
         self._log.debug_3('          : %s', str(event.context))
 
         task = self._tasks.get(task_id)
 
-        # handle some special events
-        if ename == 'lm_failed':
-            self.advance_tasks(task, rps.FAILED, publish=True, push=False)
-            return
-
-        elif ename == 'exception' and event.context['type'] == 'cancel':
-            # this is a cancel event, which we translate to 'unschedule'
-            state = rps.AGENT_STAGING_OUTPUT_PENDING
-            task['target_state'] = rps.CANCELED
-            self.advance_tasks(task, state, ts=event.timestamp,
-                               publish=True, push=True)
-            return
-
-        elif ename == 'exception' and event.context['type'] == 'timeout':
-            # this is a timeout event, which we translate to 'unschedule'
-            state = rps.AGENT_STAGING_OUTPUT_PENDING
-            task['target_state'] = rps.CANCELED
-            self.advance_tasks(task, state, ts=event.timestamp,
-                               publish=True, push=True)
-            return
-
-        elif ename == 'start':
-            # start task timeout handling on `start` event
+        # handle some special events, fallback to _event_map otherwise
+        if ename == 'start':
+            # start task timeout handling, no further action
             self.handle_timeout(task)
+
+        elif ename == 'unschedule':
+            # free task resources, no further action
+            self._prof.prof('unschedule_start', uid=task['uid'])
+            self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
+
+        elif ename == 'lm_failed':
+            self._log.error('flux launch failed for %s', task_id)
+            state = rps.FAILED
+            push  = False
+
+        elif ename == 'exception' and \
+             event.context['type'] in ['cancel', 'timeout']:
+
+            state = rps.AGENT_STAGING_OUTPUT_PENDING
+            task['target_state'] = rps.CANCELED
+
+        else:
+            state = self._event_map.get(ename)
 
 
         if state is None:
-            # special events are handled above, no state handling needed below
+            # no further state handling needed
             return
 
+        self._log.debug('flux event mapped: %s -> %s', ename, state)
 
         # handle some states specifically
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:
 
-            task['exit_code'] = event.context.get('status', 1)
-            if task['exit_code']: task['target_state'] = rps.FAILED
-            else                : task['target_state'] = rps.DONE
+            if not task['target_state']:
+                task['exit_code'] = event.context.get('status', 1)
+                if task['exit_code']: task['target_state'] = rps.FAILED
+                else                : task['target_state'] = rps.DONE
 
             # FIXME: run post-launch commands here.  Alas, this is
             #        synchronous, and thus potentially rather slow.
@@ -212,20 +215,9 @@ class Flux(AgentExecutingComponent) :
                                            publish=True, push=False)
                         return
 
-            # on completion, push toward output staging
-            self.advance_tasks(task, state, ts=event.timestamp,
-                               publish=True, push=True)
-
-        elif state == 'unschedule':
-            # free task resources
-            self._prof.prof('unschedule_start', uid=task['uid'])
-            self._prof.prof('unschedule_stop',  uid=task['uid'])  # ?
-          # self.publish(rpc.AGENT_UNSCHEDULE_PUBSUB, task)
-
-        else:
-            # otherwise only push a state update
-            self.advance_tasks(task, state, ts=event.timestamp,
-                               publish=True, push=False)
+        # push a state update
+        self.advance_tasks(task, state, ts=event.timestamp,
+                           publish=True, push=push)
 
 
     # --------------------------------------------------------------------------
