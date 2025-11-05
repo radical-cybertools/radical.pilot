@@ -63,8 +63,12 @@ class Dragon(Popen):
 
         n_nodes = len(self._rm.info.node_list)
         n_slots = self._rm.info.cores_per_node * n_nodes
-        cmd  = 'dragon-config '
-        cmd += '-a "ofi-runtime-lib=/opt/cray/libfabric/1.22.0/lib64"; '
+
+        cmd  = ''
+        if os.path.exists('/opt/cray/libfabric/1.22.0/lib64'):
+            cmd += 'dragon-config '
+            cmd += '-a "ofi-runtime-lib=/opt/cray/libfabric/1.22.0/lib64"; '
+
         cmd += 'dragon -N %d ' % n_nodes
         cmd += '-l ERROR '
         cmd += 'radical-pilot-dragon-executor.py %d' % n_slots
