@@ -8,6 +8,13 @@ For a list of open issues and known problems, see:
 This is the latest release - if uncertain, use this release.
 
 --------------------------------------------------------------------------------
+### 1.103.0 Release                                                   2025-11-06
+
+  - improve flux support
+  - improve dragon support
+
+
+--------------------------------------------------------------------------------
 ### 1.102.0 Release                                                   2025-05-28
 
   - adding resource config and doc for supported HPC
