@@ -868,7 +868,7 @@ class TaskManager(rpu.ClientComponent):
 
                 # ensure uid is unique
                 if td.uid:
-                    if not _check_uid(td.uid):
+                    if not self._check_uid(td.uid):
                         raise ValueError('uid %s is not unique' % td.uid)
                 else:
                     td.uid = ru.generate_id('task.%(item_counter)06d',
@@ -916,16 +916,16 @@ class TaskManager(rpu.ClientComponent):
         else       : return ret[0]
 
 
-        # ------------------------------------------------------------------------------
-        #
-        def _check_uid(self, uid):
+    # ------------------------------------------------------------------------------
+    #
+    def _check_uid(self, uid):
 
-            # ensure that uid is unique
-            if uid in self._known_uids:
-                return False
-            else:
-                self._known_uids.append(uid)
-                return True
+        # ensure that uid is unique
+        if uid in self._known_uids:
+            return False
+        else:
+            self._known_uids.append(uid)
+            return True
 
 
     # --------------------------------------------------------------------------
