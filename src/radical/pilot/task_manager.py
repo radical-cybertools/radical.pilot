@@ -102,7 +102,7 @@ class TaskManager(rpu.ClientComponent):
         if not scheduler:
             scheduler = rpc.SCHEDULER_ROUND_ROBIN
 
-        self._known_uids  = list()
+        self._known_uids  = set()
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
         self._tasks       = dict()
@@ -924,7 +924,7 @@ class TaskManager(rpu.ClientComponent):
         if uid in self._known_uids:
             return False
         else:
-            self._known_uids.append(uid)
+            self._known_uids.add(uid)
             return True
 
 
