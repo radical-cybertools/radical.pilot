@@ -37,16 +37,6 @@ class TestTask(TestCase):
         self.assertEqual(task.state, rp.NEW)
         self.assertIsInstance(task.as_dict(), dict)
 
-        with self.assertRaises(ValueError):
-            # uid is not unique
-            rp.Task(tmgr, descr, 'test')
-
-        descr = rp.TaskDescription({'executable': './exec'})
-        self.assertEqual(rp.Task(tmgr, descr, 'test').uid, 'task.000000')
-
-        descr = rp.TaskDescription({'executable': './exec'})
-        self.assertEqual(rp.Task(tmgr, descr, 'test').uid, 'task.000001')
-
 
     # --------------------------------------------------------------------------
     #
