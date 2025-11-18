@@ -92,6 +92,7 @@ class TaskManager(rpu.ClientComponent):
 
         """
 
+
         assert session._role == session._PRIMARY, 'tmgr needs primary session'
 
         # initialize the base class (with no intent to fork)
@@ -101,6 +102,7 @@ class TaskManager(rpu.ClientComponent):
         if not scheduler:
             scheduler = rpc.SCHEDULER_ROUND_ROBIN
 
+        self._known_uids  = set()
         self._pilots      = dict()
         self._pilots_lock = mt.RLock()
         self._tasks       = dict()
@@ -868,11 +870,32 @@ class TaskManager(rpu.ClientComponent):
         # completed meanwhile, so we lock the submission routine.
         with self._tasks_lock:
 
+            print()
+
             # we return a list of tasks
             tasks = list()
             ret   = list()
             self._rep.progress_tgt(len(descriptions), label='submit')
             for td in descriptions:
+
+                # ensure uid is unique
+                if not td.uid:
+
+                    while True:
+                        td.uid = ru.generate_id('task.%(item_counter)06d',
+                                                ru.ID_CUSTOM, ns=self._session.uid)
+                        print('generate uid %s' % td.uid)
+                        if self._check_uid(td.uid):
+                            print('accept   uid %s' % td.uid)
+                            break
+
+
+                else:
+                    print('check    uid %s' % td.uid)
+                    if not self._check_uid(td.uid):
+                        raise ValueError('uid %s is not unique' % td.uid)
+
+                print('submit   uid %s' % td.uid)
 
                 mode = td.mode
 
@@ -914,6 +937,18 @@ class TaskManager(rpu.ClientComponent):
 
         if ret_list: return ret
         else       : return ret[0]
+
+
+    # ------------------------------------------------------------------------------
+    #
+    def _check_uid(self, uid):
+
+        # ensure that uid is unique
+        if uid in self._known_uids:
+            return False
+        else:
+            self._known_uids.add(uid)
+            return True
 
 
     # --------------------------------------------------------------------------
