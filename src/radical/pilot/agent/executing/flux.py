@@ -42,9 +42,11 @@ class Flux(AgentExecutingComponent) :
         super().initialize()
 
         # translate Flux states to RP states
-        self._event_map = {'submit'   : None,   # rps.AGENT_SCHEDULING,
-                           'depend'   : None,
-                           'alloc'    : rps.AGENT_EXECUTING_PENDING,
+        # NOTE: only map to states for which output channels are defined
+        self._event_map = {
+                         # 'submit'   : rps.AGENT_SCHEDULING,
+                         # 'depend'   : rps.AGENT_SCHEDULING_PENDING,
+                         # 'alloc'    : rps.AGENT_EXECUTING_PENDING,
                          # 'start'    : rps.AGENT_EXECUTING,
                            'cleanup'  : None,
                            'finish'   : rps.AGENT_STAGING_OUTPUT_PENDING,
@@ -194,7 +196,7 @@ class Flux(AgentExecutingComponent) :
         # handle some states specifically
         if state == rps.AGENT_STAGING_OUTPUT_PENDING:
 
-            if not task['target_state']:
+            if not task.get('target_state'):
                 task['exit_code'] = event.context.get('status', 1)
                 if task['exit_code']: task['target_state'] = rps.FAILED
                 else                : task['target_state'] = rps.DONE
@@ -215,7 +217,7 @@ class Flux(AgentExecutingComponent) :
                                            publish=True, push=False)
                         return
 
-        # push a state update
+        # otherwise we just advance to the found state
         self.advance_tasks(task, state, ts=event.timestamp,
                            publish=True, push=push)
 
