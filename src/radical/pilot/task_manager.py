@@ -860,6 +860,8 @@ class TaskManager(rpu.ClientComponent):
         # completed meanwhile, so we lock the submission routine.
         with self._tasks_lock:
 
+            print()
+
             # we return a list of tasks
             tasks = list()
             ret   = list()
@@ -867,12 +869,23 @@ class TaskManager(rpu.ClientComponent):
             for td in descriptions:
 
                 # ensure uid is unique
-                if td.uid:
+                if not td.uid:
+
+                    while True:
+                        td.uid = ru.generate_id('task.%(item_counter)06d',
+                                                ru.ID_CUSTOM, ns=self._session.uid)
+                        print('generate uid %s' % td.uid)
+                        if self._check_uid(td.uid):
+                            print('accept   uid %s' % td.uid)
+                            break
+
+
+                else:
+                    print('check    uid %s' % td.uid)
                     if not self._check_uid(td.uid):
                         raise ValueError('uid %s is not unique' % td.uid)
-                else:
-                    td.uid = ru.generate_id('task.%(item_counter)06d',
-                                            ru.ID_CUSTOM, ns=self._session.uid)
+
+                print('submit   uid %s' % td.uid)
 
                 mode = td.mode
 
