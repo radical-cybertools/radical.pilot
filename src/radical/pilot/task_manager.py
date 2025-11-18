@@ -431,7 +431,7 @@ class TaskManager(rpu.ClientComponent):
 
                     to_notify.append([task, s])
 
-                task_dict['state'] = target
+                task_dict['state'] = self._tasks[uid].state
                 ru.dict_merge(self._task_info[uid], task_dict, ru.OVERWRITE)
 
         if to_notify:
