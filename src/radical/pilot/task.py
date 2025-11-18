@@ -19,21 +19,6 @@ from .task_description   import TaskDescription, TASK_SERVICE
 from .resource_config    import Slot
 
 
-_uids = list()
-
-
-# ------------------------------------------------------------------------------
-#
-def _check_uid(uid):
-    # ensure that uid is not yet known
-
-    if uid in _uids:
-        return False
-    else:
-        _uids.append(uid)
-        return True
-
-
 # ------------------------------------------------------------------------------
 #
 class Task(object):
@@ -104,13 +89,9 @@ class Task(object):
         self._slots            = None
         self._partition        = None
 
-        # ensure uid is unique
-        if self._uid:
-            if not _check_uid(self._uid):
-                raise ValueError('uid %s is not unique' % self._uid)
-        else:
-            self._uid = ru.generate_id('task.%(item_counter)06d', ru.ID_CUSTOM,
-                                       ns=self._session.uid)
+        # ensure uid
+        if not self._uid:
+            raise ValueError('task uid must be specified in task description')
 
         for m in rpc.TMGR_METRICS:
             self._callbacks[m] = dict()
