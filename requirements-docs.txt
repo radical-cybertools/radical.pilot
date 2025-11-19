@@ -11,6 +11,8 @@ python-dotenv[cli]
 sphinx_copybutton
 sphinx_rtd_theme>=0.5.1
 myst_parser
+docutils
+rtds_action
 docutils==0.17.1
 mpi4py
 

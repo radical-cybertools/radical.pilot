@@ -4,6 +4,8 @@
 # list see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import os
+
 # -- Path setup --------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -55,6 +57,13 @@ extensions = [
     'sphinx.ext.imgconverter',
     'myst_parser'
 ]
+
+
+github_token = os.environ.get("GITHUB_TOKEN")
+
+if github_token:
+    extensions.append('rtds_action')
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -120,3 +129,12 @@ napoleon_numpy_docstring = False
 # napoleon_preprocess_types = False
 # napoleon_type_aliases = None
 # napoleon_attr_annotations = True
+
+# -- rtds settings -------------------------------------------------------------
+# The "prefix" used in the `upload-artifact` step of the action
+if github_token:
+    rtds_action_github_repo      = "radical-cybertools/radical.pilot"
+    rtds_action_github_token     = github_token
+    rtds_action_artifact_prefix  = "rtd-"
+    rtds_action_error_if_missing = False
+

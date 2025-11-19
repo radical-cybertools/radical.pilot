@@ -1,0 +1,77 @@
+name: 'Build RTD'
+
+on:
+  push:
+    branches:
+      - 'devel*'
+  pull_request:
+    branches:
+      - 'devel*'
+      - 'master*'
+
+# This allows a subsequently queued workflow run to interrupt previous runs
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: true
+
+jobs:
+  rtd:
+    name: "Build documentation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y pandoc
+          sudo apt install -y libopenmpi-dev
+          sudo apt install -y texlive cm-super
+          sudo apt install -y texlive-fonts-extra texlive-extra-utils dvipng
+          sudo apt install -y texlive-fonts-recommended texlive-latex-extra
+          python -m pip install -U pip
+          python -m pip install -r requirements-docs-ci.txt
+
+      - name: Build the docs
+        run: |
+          export RADICAL_LOG_LVL=DEBUG
+          export RADICAL_BASE=`pwd`
+          # FIXME: magic rm / empty all cells
+          sphinx-build -M html docs/source docs/build
+          cp -R docs/build/*ipy docs/source
+
+      - name: Collect artifacts
+        if: always()
+        run: |
+          mkdir doc_artifacts/
+          cp -R ./docs doc_artifacts/
+          cp -R ./rp.sess* doc_artifacts/
+          cp -R /home/runner/radical.pilot.sandbox doc_artifacts/
+
+      - name: Upload doc artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+            name: doc_artifacts
+            path: doc_artifacts
+            retention-days: 5
+
+      - name: Upload to RTD
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rtd-${{ github.sha }}
+          path: docs/build
+
+      - name: Trigger RTDs build
+        uses: dfm/rtds-action@v1
+        with:
+          webhook_url:   ${{ secrets.RTD_URL }}
+          webhook_token: ${{ secrets.RTD_TOKEN }}
+          commit_ref:    ${{ github.ref }}
+
