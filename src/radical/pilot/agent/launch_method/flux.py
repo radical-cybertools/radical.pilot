@@ -33,7 +33,8 @@ class Flux(LaunchMethod):
 
     class Event(ru.TypedDict):
         _schema = {'name'     : str,
-                   'timestamp': float}
+                   'timestamp': float,
+                   'context'  : dict}
 
 
     # --------------------------------------------------------------------------
@@ -299,11 +300,12 @@ class Flux(LaunchMethod):
 
                 self._log.debug('%s: submitted %d tasks', part.uid, len(tasks))
 
-            except Exception:
-                self._log.exception('LM flux submit failed')
+            except Exception as e:
+                self._log.exception(f'LM flux submit failed: {e}')
                 for tid in tasks:
                     self._event_cb(tid, self.Event(name='lm_failed',
-                                                   timestamp=time.time()))
+                                                   timestamp=time.time(),
+                                                   context={}))
 
 
 
