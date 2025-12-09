@@ -271,6 +271,7 @@ class ResourceManager(object):
             'exact'        : sys_arch.get('exclusive'    , False),
             'n_partitions' : sys_arch.get('n_partitions' , 1),
             'oversubscribe': sys_arch.get('oversubscribe', False),
+            'network'      : sys_arch.get('iface'        , None),
         }
 
         # let the specific RM instance fill out the RMInfo attributes
