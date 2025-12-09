@@ -168,6 +168,7 @@
         "virtenv_mode"                : "local",
         "cores_per_node"              : 64,
         "gpus_per_node"               : 8,
+        "n_partitions"                : 1,
         "system_architecture"         : {
                                          "smt"           : 1,
                                        # "options"       : ["nvme"],
@@ -175,8 +176,7 @@
                                                             32,  40,  48,  56],
                                                           # 64,  72,  80,  88,
                                                           # 96, 104, 112, 120],
-                                         "blocked_gpus"  : [],
-                                         "n_partitions"  : 1
+                                         "blocked_gpus"  : []
                                         }
     },
 
