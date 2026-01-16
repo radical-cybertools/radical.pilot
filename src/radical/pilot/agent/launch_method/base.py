@@ -91,11 +91,13 @@ class LaunchMethod(object):
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
 
-        if lm_info in [self.LM_INVALID, self.LM_EMPTY]:
-            raise RuntimeError('LM is broken')
+        try:
+            if lm_info in [self.LM_INVALID, self.LM_EMPTY]:
+                raise RuntimeError(f"LM '{self.name}' is broken: {lm_info}")
 
-        self.init_from_info(lm_info)
-        reg.close()
+            self.init_from_info(lm_info)
+        finally:
+            reg.close()
 
 
     # --------------------------------------------------------------------------
