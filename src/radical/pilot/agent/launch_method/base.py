@@ -70,10 +70,10 @@ class LaunchMethod(object):
         self._log.debug('initialize LM %s', self.name)
 
         if lm_info == self.LM_INVALID:
-            self._log.warn('LM info invalid - skip %s', lm_info)
+            self._log.warn('LM info invalid - skip %s', self.name)
 
         elif lm_info == self.LM_EMPTY:
-            self._log.info('LM info empty for %s', lm_info)
+            self._log.warn('LM info empty for %s', self.name)
 
         elif not lm_info:
 
@@ -91,10 +91,13 @@ class LaunchMethod(object):
             # store the info in the registry for any other instances of the LM
             reg.put('lm.%s' % self.name.lower(), lm_info)
 
-        if lm_info != self.LM_INVALID:
-            self.init_from_info(lm_info)
+        try:
+            if lm_info in [self.LM_INVALID, self.LM_EMPTY]:
+                raise RuntimeError(f"LM '{self.name}' is broken: {lm_info}")
 
-        reg.close()
+            self.init_from_info(lm_info)
+        finally:
+            reg.close()
 
 
     # --------------------------------------------------------------------------
@@ -174,12 +177,12 @@ class LaunchMethod(object):
             lm_info = self._envp.get()
 
         except Exception:
-            self._log.warn('LM init failed')
+            self._log.warn('LM env process failed')
             lm_info = self.LM_INVALID
 
         # force non-empty lm_info
         if not lm_info:
-            self._log.warn('LM init came up empty')
+            self._log.warn('LM info came up empty')
             lm_info = self.LM_EMPTY
 
         return lm_info
