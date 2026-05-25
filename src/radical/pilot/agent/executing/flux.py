@@ -144,6 +144,7 @@ class Flux(AgentExecutingComponent) :
 
         self._prof.prof('task_to_spec_start', uid=uid)
         ret = ru.flux.spec_from_dict(spec_dict)
+
         self._prof.prof('task_to_spec_stop', uid=uid)
 
         return ret

@@ -227,6 +227,7 @@ class Flux(LaunchMethod):
         launcher = None
         srun     = ru.which('srun')
         mpiexec  = ru.which('mpiexec')
+        mpiexec  = None
         nodelist = ','.join([node['name'] for node in nodes])
         if srun:
             launcher = 'srun --nodes %d --nodelist %s --ntasks-per-node 1 ' \
