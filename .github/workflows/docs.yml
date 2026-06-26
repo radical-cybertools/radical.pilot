@@ -23,7 +23,7 @@ jobs:
   test-getting_started:
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
-      python-version: 3.9
+      python-version: 3.12
       requirements-file: 'requirements-docs-ci.txt'
       notebook-name: 'getting_started.ipynb'
 
@@ -31,6 +31,7 @@ jobs:
     strategy:
       matrix:
         tutorial: [
+          # FIXME: *.ipynb
           'configuration.ipynb',
           'debugging.ipynb',
           'describing_tasks.ipynb',
@@ -43,8 +44,16 @@ jobs:
         ]
     uses: ./.github/workflows/run-rp-notebook.yml
     with:
-      python-version: 3.9
+      python-version: 3.12
       requirements-file: 'requirements-docs-ci.txt'
       notebook-name: ${{ matrix.tutorial }}
       notebook-path: 'tutorials'
+
+# build-docs: # FIXME...
+#   # runs on VM1
+#   # sphinx w/o notebooks
+#
+# commit-notebooks: # FIXME...
+#   # runs on VM2
+#   # sphinx w/o notebooks
 
